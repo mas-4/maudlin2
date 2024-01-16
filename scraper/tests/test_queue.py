@@ -1,4 +1,4 @@
-from scraper.scraper_queue import Queue
+from scraper.main import Queue
 
 
 def test_instantiation():
@@ -9,6 +9,6 @@ def test_instantiation():
 
 def test_queue():
     queue = Queue()
-    assert len(queue.items) > 0, "Queue should have items"
+    assert len(queue.scrapers) > 0, "Queue should have items"
     queue.run()
-    assert len(queue.items) == 0, "Queue should have no items after running"
+    assert len(queue.scrapers) == 0, "Queue should have no items after running"

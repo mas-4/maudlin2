@@ -1,9 +1,13 @@
+import time
+from threading import Thread
+
 import requests as rq
 from bs4 import BeautifulSoup as Soup
-import time
+
 from scraper.config import Config
-from threading import Thread
-import urllib
+from scraper.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class CNNScraper(Thread):
@@ -36,17 +40,12 @@ class CNNScraper(Thread):
         story = []
         for p in soup.find('article').find_all('p'):
             story.append(p.text.strip())
-        print(title)
-        print(href)
-        print('\n\n'.join(story))
+        logger.info(f"Title: {title}")
+        logger.info(f"URL: {href}")
+        logger.info(f"Story: {' '.join(story)}")
 
     def run(self):
         self.setup()
         while not self.done:
             self.consume()
             time.sleep(Config.time_between_requests())
-
-
-if __name__ == '__main__':
-    scraper = CNNScraper()
-    scraper.run()
