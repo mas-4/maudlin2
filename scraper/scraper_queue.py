@@ -1,3 +1,5 @@
+from scraper.scrapers.cnn import CNNScraper
+
 
 class Queue:
     def __init__(self):
@@ -8,7 +10,12 @@ class Queue:
 
 
 def main():
-    ...
+
+    cnn = CNNScraper()
+    cnn.start()
+    while True:
+        if cnn.done:
+            break
 
 
 if __name__ == '__main__':

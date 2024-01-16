@@ -1,4 +1,4 @@
-from scrapers.queue import Queue
+from scraper.scraper_queue import Queue
 
 
 def test_instantiation():
