@@ -10,5 +10,5 @@ class Config:
     connection_string = 'sqlite:///data.db'
 
     @staticmethod
-    def time_between_requests():
+    def time_between_requests() -> float:  # this is a function so we can make it random if necessary
         return 2

@@ -1,6 +1,6 @@
-from scraper.scrapers.cnn import CNNScraper
+from scraper.scrapers.cnn import CNN
 
 def test_CNN_scraper_instantiation():
-    scraper = CNNScraper()
+    scraper = CNN()
     assert scraper is not None
-    assert isinstance(scraper, CNNScraper)
+    assert isinstance(scraper, CNN)

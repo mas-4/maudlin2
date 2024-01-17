@@ -6,16 +6,15 @@ from scraper.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class CNN(Scraper):
+class NPR(Scraper):
     def __init__(self):
-        self.url = 'https://lite.cnn.com/'
-        self.agency = "CNN"
+        self.url = 'https://text.npr.org/'
+        self.agency = "NPR"
         super().__init__()
 
     def setup(self, soup: Soup):
-        for li in soup.find_all('li', class_='card--lite'):
-            a = li.find('a')
-            href = self.url + a.get('href')[1:]  # /path/ can't have the /
+        for a in soup.find_all('a', class_='topic-title'):
+            href = self.url + a.get('href')[1:]
             title = a.text.strip()
             self.downstream.append((href, title))
 
@@ -28,5 +27,3 @@ class CNN(Scraper):
             'title': title,
             'url': href
         })
-
-
