@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup as Soup
 
-from scraper.logger import get_logger
-from scraper.scrapers.scraper import Scraper
+from app.logger import get_logger
+from app.scrapers.scraper import Scraper
 
 logger = get_logger(__name__)
 
