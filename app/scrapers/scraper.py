@@ -6,9 +6,9 @@ import requests as rq
 from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-from scraper.config import Config
-from scraper.logger import get_logger
-from scraper.models import Session, Article, Agency
+from app.config import Config
+from app.logger import get_logger
+from app.models import Session, Article, Agency
 
 logger = get_logger(__name__)
 

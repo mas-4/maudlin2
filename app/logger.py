@@ -20,7 +20,9 @@ It just makes imports simpler in the long run.
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
-from config import Config
+
+from app.config import Config
+
 
 class Colors:
     """

@@ -1,5 +1,5 @@
-from scraper.registry import Scrapers
-from logger import get_logger
+from app.registry import Scrapers
+from app.logger import get_logger
 
 logger = get_logger(__name__)
 

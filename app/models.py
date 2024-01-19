@@ -3,7 +3,9 @@ from typing import List
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float
-from config import Config
+
+from app.config import Config
+
 
 class Base(DeclarativeBase):
     pass
