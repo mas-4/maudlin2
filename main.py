@@ -19,7 +19,7 @@ class Queue:
         self.scrapers.append(scraper())
 
 
-def main():
+def scrape():
     queue = Queue()
     logger.info("Initializing queue")
     logger.info("Scrapers: %s", Scrapers)
@@ -27,6 +27,14 @@ def main():
         queue.add(scraper)
 
     queue.run()
+
+def build_site():
+    pass
+
+
+def main():
+    scrape()
+    build_site()
 
 
 if __name__ == '__main__':
