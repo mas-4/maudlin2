@@ -40,11 +40,10 @@ class Article(Base):
     headpos: Mapped[float] = mapped_column(Float())
     headcompound: Mapped[float] = mapped_column(Float())
 
-
     def __repr__(self) -> str:
         return f"Address(id={self.id!r}, email_address={self.title!r})"
 
-engine = create_engine(Config.connection_string, echo=True)
+engine = create_engine(Config.connection_string)
 Base.metadata.create_all(engine)
 
 session_factory = sessionmaker(bind=engine)
