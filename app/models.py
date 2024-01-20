@@ -3,9 +3,11 @@ from datetime import datetime as dt
 
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
-from sqlalchemy.types import Text, Float, DateTime
+from sqlalchemy.types import Text, Float, DateTime, Integer
 
 from app.config import Config
+from app.constants import Bias, Credibility
+import pandas as pd
 
 
 class Base(DeclarativeBase):
@@ -17,11 +19,44 @@ class Agency(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30))
     url: Mapped[str] = mapped_column(String(100))
-    articles: Mapped[List["Article"]] = relationship("Article", back_populates="agency")
+    articles: Mapped[List["Article"]] = relationship("Article", back_populates="agency", lazy="dynamic")
+    _bias: Mapped[int] = mapped_column(Integer())
+    _credibility: Mapped[int] = mapped_column(Integer())
 
+
+    columns = ["artneg", "artneu", "artpos", "artcompound", "headneg", "headneu", "headpos", "headcompound"]
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
 
+    def average_sentiment(self):
+        with Session() as s:
+            numbers = s.query(
+                *[getattr(Article, column) for column in self.columns]
+            ).filter_by(agency_id=self.id).all()
+        return pd.DataFrame(numbers, columns=self.columns).mean()
+
+    def todays_sentiment(self):
+        with Session() as s:
+            numbers = s.query(
+                *[getattr(Article, column) for column in self.columns]
+            ).filter_by(agency_id=self.id).filter(Article.last_accessed > dt.now().date()).all()
+        return pd.DataFrame(numbers, columns=self.columns).mean()
+
+    @property
+    def bias(self):
+        return Bias(self._bias)
+
+    @bias.setter
+    def bias(self, value):
+        self._bias = value.value
+
+    @property
+    def credibility(self):
+        return Credibility(self._credibility)
+
+    @credibility.setter
+    def credibility(self, value):
+        self._credibility = value.value
 
 class Article(Base):
     __tablename__ = "article"
@@ -51,6 +86,8 @@ class Article(Base):
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, title={self.title!r})"
+
+
 
 engine = create_engine(Config.connection_string)
 Base.metadata.create_all(engine)

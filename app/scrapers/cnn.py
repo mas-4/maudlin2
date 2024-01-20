@@ -2,15 +2,16 @@ from bs4 import BeautifulSoup as Soup
 
 from app.logger import get_logger
 from app.scrapers.scraper import Scraper
+from app.constants import Bias, Credibility
 
 logger = get_logger(__name__)
 
 
 class CNN(Scraper):
-    def __init__(self):
-        self.url: str = 'https://lite.cnn.com/'
-        self.agency: str = "CNN"
-        super().__init__()
+    bias = Bias.left
+    credibility = Credibility.mostly_factual
+    url: str = 'https://lite.cnn.com/'
+    agency: str = "CNN"
 
     def setup(self, soup: Soup):
         for li in soup.find_all('li', class_='card--lite'):

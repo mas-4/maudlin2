@@ -2,15 +2,16 @@ from bs4 import BeautifulSoup as Soup
 
 from app.logger import get_logger
 from app.scrapers.scraper import Scraper
+from app.constants import Bias, Credibility
 
 logger = get_logger(__name__)
 
 
 class NPR(Scraper):
-    def __init__(self):
-        self.url = 'https://text.npr.org/'
-        self.agency = "NPR"
-        super().__init__()
+    url = 'https://text.npr.org/'
+    agency = "NPR"
+    bias = Bias.left_center
+    credibility = Credibility.high
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', class_='topic-title'):

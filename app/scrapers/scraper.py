@@ -17,6 +17,8 @@ logger = get_logger(__name__)
 class Scraper(ABC, Thread):
     agency: str = ''
     url: str = ''
+    bias = None
+    credibility = None
 
     def __init__(self):
         super().__init__()
@@ -31,6 +33,8 @@ class Scraper(ABC, Thread):
             agency = session.query(Agency).filter_by(name=self.agency).first()
             if not agency:
                 agency = Agency(name=self.agency, url=self.url)
+                agency.bias = self.bias
+                agency.credibility = self.credibility
                 session.add(agency)
                 session.commit()
             self.agency_id = agency.id
