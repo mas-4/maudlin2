@@ -1,0 +1,36 @@
+{% extends "page.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<img src="{{ image }}" alt="{{ title }}">
+<table>
+    <thead>
+        <tr>
+            <th>Article</th>
+            <th>Headline Pos</th>
+            <th>Neg</th>
+            <th>Neu</th>
+            <th>Compound</th>
+            <th>Article Pos</th>
+            <th>Neg</th>
+            <th>Neu</th>
+            <th>Compound</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for article in agency.articles %}
+        <tr>
+            <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
+            <td>{{ article.headpos }}</td>
+            <td>{{ article.headneg }}</td>
+            <td>{{ article.headneu }}</td>
+            <td>{{ article.headcompound }}</td>
+            <td>{{ article.artpos }}</td>
+            <td>{{ article.artneg }}</td>
+            <td>{{ article.artneu }}</td>
+            <td>{{ article.artcompound }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock content %}

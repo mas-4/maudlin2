@@ -1,8 +1,9 @@
 from typing import List
+from datetime import datetime as dt
 
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
-from sqlalchemy.types import Text, Float
+from sqlalchemy.types import Text, Float, DateTime
 
 from app.config import Config
 
@@ -25,6 +26,8 @@ class Agency(Base):
 class Article(Base):
     __tablename__ = "article"
     id: Mapped[int] = mapped_column(primary_key=True)
+    first_accessed: Mapped[dt] = mapped_column(DateTime())
+    last_accessed: Mapped[dt] = mapped_column(DateTime())
     agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
     title: Mapped[str] = mapped_column(String(254))
@@ -39,6 +42,12 @@ class Article(Base):
     headneu: Mapped[float] = mapped_column(Float())
     headpos: Mapped[float] = mapped_column(Float())
     headcompound: Mapped[float] = mapped_column(Float())
+
+    def __init__(self, **kwargs):
+        super().__init__(first_accessed=dt.now(), last_accessed=dt.now(), **kwargs)
+
+    def update_last_accessed(self):
+        self.last_accessed = dt.now()  # noqa bad pycharm typing
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, title={self.title!r})"

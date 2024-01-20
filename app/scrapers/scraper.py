@@ -68,8 +68,11 @@ class Scraper(ABC, Thread):
         self.setup(self.get_page(self.url))
         while self.downstream:
             href, title = self.downstream.pop()
-            with Session() as session:
-                if session.query(Article).filter_by(url=href).first():
+            with Session() as s:
+                if article := s.query(Article).filter_by(url=href).first():
+                    logger.info("Article already exists, updating last_accessed: %s", article)
+                    article.update_last_accessed()
+                    s.commit()
                     continue
             try:
                 time.sleep(Config.time_between_requests())  # we sleep before a query

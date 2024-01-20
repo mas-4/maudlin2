@@ -1,5 +1,6 @@
 from app.registry import Scrapers
 from app.logger import get_logger
+from app.site_builder import build_site
 
 logger = get_logger(__name__)
 
@@ -27,10 +28,6 @@ def scrape():
         queue.add(scraper)
 
     queue.run()
-
-def build_site():
-    pass
-
 
 def main():
     scrape()
