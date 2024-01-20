@@ -86,8 +86,13 @@ def copy_assets():
     for file in os.listdir(Config.assets):
         shutil.copy(os.path.join(Config.assets, file), Config.build)
 
+def move_to_public():
+    server_location = os.environ['SERVER_LOCATION']
+    shutil.move(Config.build, server_location)
+
 
 def build_site():
     generate_agency_pages()
     generate_homepage()
     copy_assets()
+    move_to_public()
