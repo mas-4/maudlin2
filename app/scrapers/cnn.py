@@ -8,8 +8,8 @@ logger = get_logger(__name__)
 
 class CNN(Scraper):
     def __init__(self):
-        self.url = 'https://lite.cnn.com/'
-        self.agency = "CNN"
+        self.url: str = 'https://lite.cnn.com/'
+        self.agency: str = "CNN"
         super().__init__()
 
     def setup(self, soup: Soup):

@@ -16,7 +16,7 @@ class Agency(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30))
     url: Mapped[str] = mapped_column(String(100))
-    articles: Mapped[List["Article"]] = relationship("Article", back_populates="user")
+    articles: Mapped[List["Article"]] = relationship("Article", back_populates="agency")
 
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
@@ -26,7 +26,7 @@ class Article(Base):
     __tablename__ = "article"
     id: Mapped[int] = mapped_column(primary_key=True)
     agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
-    user: Mapped["Agency"] = relationship(back_populates="articles")
+    agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
     title: Mapped[str] = mapped_column(String(254))
     url: Mapped[str] = mapped_column(String(254))
     body: Mapped[str] = mapped_column(Text())
@@ -41,7 +41,7 @@ class Article(Base):
     headcompound: Mapped[float] = mapped_column(Float())
 
     def __repr__(self) -> str:
-        return f"Address(id={self.id!r}, email_address={self.title!r})"
+        return f"Article(id={self.id!r}, agency={self.agency.name!r}, title={self.title!r})"
 
 engine = create_engine(Config.connection_string)
 Base.metadata.create_all(engine)

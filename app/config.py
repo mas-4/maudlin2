@@ -1,8 +1,10 @@
 import os
+import pathlib
 
 class Config:
     use_color = True
-    output_dir = 'data'
+    root = pathlib.Path(__file__).parent.parent.absolute()
+    output_dir = os.path.join(root, 'data')
     log_file = f'{output_dir}/app.log'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

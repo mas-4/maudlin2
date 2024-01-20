@@ -10,12 +10,13 @@ from app.config import Config
 from app.logger import get_logger
 from app.models import Session, Article, Agency
 
+
 logger = get_logger(__name__)
 
 
 class Scraper(ABC, Thread):
-    agency = ''
-    url = ''
+    agency: str = ''
+    url: str = ''
 
     def __init__(self):
         super().__init__()
@@ -23,9 +24,9 @@ class Scraper(ABC, Thread):
             raise ValueError("Agency name must be set")
         if not self.url:
             raise ValueError("URL must be set")
-        self.downstream = []
-        self.done = False
-        self.results = []
+        self.downstream: list[tuple[str, str]] = []
+        self.done: bool = False
+        self.results: list[dict[str, str]] = []
         with Session() as session:
             agency = session.query(Agency).filter_by(name=self.agency).first()
             if not agency:
@@ -43,19 +44,20 @@ class Scraper(ABC, Thread):
         pass
 
     def process(self):
-        sid = SentimentIntensityAnalyzer()
+        sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         for result in self.results:
             result.update({f"art{k}": v for k, v in sid.polarity_scores(result['body']).items()})
             result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
-            logger.info(f"Summary: {result}")
             with Session() as session:
                 article = Article(**result, agency_id=self.agency_id)
                 session.add(article)
                 session.commit()
+                logger.info(f"Adding to database: %s", article)
+        self.results = []
 
     @staticmethod
     def get_page(url: str):
-        response = rq.get(url)
+        response: rq.Response = rq.get(url)
         if not response.ok:
             raise ValueError("Bad response")
         else:
@@ -73,10 +75,8 @@ class Scraper(ABC, Thread):
                 time.sleep(Config.time_between_requests())  # we sleep before a query
                 page = self.get_page(href)
             except ValueError:
-                self.downstream.remove((href, title))
                 continue
-            self.consume(page, title, href)
-            if self.results:
-                self.process()
+            self.consume(page, href, title)
+            self.process()
 
         self.done = True
