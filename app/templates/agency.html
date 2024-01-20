@@ -3,17 +3,10 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <img alt="{{ title }}" src="{{ wordcloud }}">
-<h2>Credibility: {{ agency.credibility }}</h2>
-<h2>Bias: {{ agency.bias }}</h2>
+<h2>Credibility: {{ credibility }}</h2>
+<h2>Bias: {{ bias }}</h2>
 <div>
-    <div>
-        <h1>Today's Sentiment</h1>
-        {{ agency.todays_sentiment().to_frame().to_html() }}
-    </div>
-    <div>
-        <h1>All Time Average</h1>
-        {{ agency.average_sentiment().to_frame().to_html()|safe }}
-    </div>
+    {{ sentiment }}
 </div>
 <table>
     <thead>

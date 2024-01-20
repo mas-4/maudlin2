@@ -1,7 +1,7 @@
 import os
 import shutil
 import string
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt
 from typing import Optional
 
 import nltk
@@ -10,6 +10,9 @@ from wordcloud import WordCloud, STOPWORDS
 from app import j2env
 from app.config import Config
 from app.models import Session, Agency, Article
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 POS = [
     'FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'RB',
@@ -21,6 +24,8 @@ STOPWORDS = list(STOPWORDS)
 STOPWORDS.extend(['say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month'])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
+
+midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
@@ -44,16 +49,37 @@ def generate_wordcloud(articles, path):
 
 def generate_agency_pages():
     template = j2env.get_template('agency.html')
+    s = Session()
+    for agency in s.query(Agency).all():
+        vars = {
+            'title': agency.name,
+            'agency_name': agency.name,
+            'wordcloud': f'{agency.name}.png',
+            'articles': agency.articles.filter(Article.last_accessed > midnight).order_by(Article.last_accessed.desc()).all(),
+            'bias': str(agency.bias),
+            'credibility': str(agency.credibility),
+            'sentiment': agency.todays_sentiment(s).to_frame().to_html()
+        }
+        generate_wordcloud(
+            vars['articles'],
+            os.path.join(Config.build, vars['wordcloud'])
+        )
+        with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
+            f.write(template.render(**vars))
+            logger.info(f"Generated page for %s", agency.name)
+    s.close()
+
+
+def generate_homepage():
+    template = j2env.get_template('index.html')
     with Session() as s:
-        for agency in s.query(Agency).all():
-            wordcloud_name = f'{agency.name}.png'
-            generate_wordcloud(
-                agency.articles.filter(Article.last_accessed > dt.now() - timedelta(hours=1)).all(),
-                os.path.join(Config.build, wordcloud_name)
-            )
-            articles = agency.articles.order_by(Article.last_accessed.desc()).all()
-    with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
-        f.write(template.render(title=agency.name, agency=agency, wordcloud=wordcloud_name, articles=articles))
+        agencies = s.query(Agency).all()
+        generate_wordcloud(
+            s.query(Article).filter(Article.last_accessed > midnight).all(),
+            os.path.join(Config.build, 'wordcloud.png')
+        )
+    with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
+        f.write(template.render(title='Home', agencies=agencies))
 
 
 def copy_assets():
@@ -63,4 +89,5 @@ def copy_assets():
 
 def build_site():
     generate_agency_pages()
+    generate_homepage()
     copy_assets()

@@ -1,17 +1,31 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>My Website</title>
-    <link rel="stylesheet" href="./style.css">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
-</head>
-<body>
-<main>
-    <h1>Welcome to My Website</h1>
-</main>
-<script src="index.js"></script>
-</body>
-</html>
+{% extends "page.html" %}
+
+{% block content %}
+<img alt="Word Cloud" src="wordcloud.png">
+<h1>Agencies</h1>
+<table>
+    <thead>
+    <tr>
+        <th>Agency</th>
+        <th>Credibility</th>
+        <th>Bias</th>
+        <th>Today's Headline Sentiment</th>
+        <th>Today's Article Sentiment</th>
+        <th>Agency Page</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for agency in agencies %}
+    {% set sentiment = agency.todays_compound() %}
+    <tr>
+        <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
+        <td>{{ agency.credibility }}</td>
+        <td>{{ agency.bias }}</td>
+        <td>{{ sentiment[0] }}</td>
+        <td>{{ sentiment[1] }}</td>
+        <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock content %}

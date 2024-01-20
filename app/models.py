@@ -35,12 +35,26 @@ class Agency(Base):
             ).filter_by(agency_id=self.id).all()
         return pd.DataFrame(numbers, columns=self.columns).mean()
 
-    def todays_sentiment(self):
-        with Session() as s:
-            numbers = s.query(
-                *[getattr(Article, column) for column in self.columns]
-            ).filter_by(agency_id=self.id).filter(Article.last_accessed > dt.now().date()).all()
+    def todays_sentiment(self, s=None):
+        close = False
+        if s is None:
+            s = Session()
+            close = True
+        numbers = s.query(
+            *[getattr(Article, column) for column in self.columns]
+        ).filter_by(agency_id=self.id).filter(Article.last_accessed > dt.now().date()).all()
+        if close:
+            s.close()
         return pd.DataFrame(numbers, columns=self.columns).mean()
+
+    def todays_compound(self):
+        with (Session() as s):
+            numbers = s.query(Article.headcompound, Article.artcompound)\
+                .filter_by(agency_id=self.id)\
+                .filter(Article.last_accessed > dt.now().date())\
+                .all()
+            df = pd.DataFrame(numbers, columns=["headcompound", "artcompound"]).mean()
+        return df["headcompound"], df["artcompound"]
 
     @property
     def bias(self):
