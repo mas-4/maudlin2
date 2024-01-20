@@ -2,11 +2,13 @@
 
 {% block content %}
 <h1>{{ title }}</h1>
-<img src="{{ image }}" alt="{{ title }}">
+<img src="{{ wordcloud }}" alt="{{ title }}">
 <table>
     <thead>
         <tr>
             <th>Article</th>
+            <th>First Accessed</th>
+            <th>Last Accessed</th>
             <th>Headline Pos</th>
             <th>Neg</th>
             <th>Neu</th>
@@ -21,6 +23,8 @@
     {% for article in agency.articles %}
         <tr>
             <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
+            <td>{{ article.first_accessed|date }}</td>
+            <td>{{ article.last_accessed|date }}</td>
             <td>{{ article.headpos }}</td>
             <td>{{ article.headneg }}</td>
             <td>{{ article.headneu }}</td>
