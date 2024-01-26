@@ -71,6 +71,7 @@ def generate_agency_pages():
 
 
 def generate_homepage():
+    logger.info(f"Generating homepage")
     template = j2env.get_template('index.html')
     with Session() as s:
         agencies = s.query(Agency).all()
@@ -80,15 +81,18 @@ def generate_homepage():
         )
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
         f.write(template.render(title='Home', agencies=agencies))
+    logger.info(f"Generated homepage")
 
 
 def copy_assets():
     for file in os.listdir(Config.assets):
+        logger.debug(f"Copying %s", file)
         shutil.copy(os.path.join(Config.assets, file), Config.build)
 
 def move_to_public():
     server_location = os.environ['SERVER_LOCATION']
     for file in os.listdir(Config.build):
+        logger.debug(f"Moving %s", file)
         shutil.move(os.path.join(Config.build, file), server_location)
 
 
