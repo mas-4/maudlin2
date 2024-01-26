@@ -25,3 +25,5 @@ jobs:
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "git -C $SERVER_DIRECTORY pull origin main "
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "$SERVER_DIRECTORY/venv/bin/pip install -r $SERVER_DIRECTORY/requirements.txt"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "$SERVER_DIRECTORY/venv/bin/pip install -r $SERVER_DIRECTORY/requirements.txt"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "SERVER_LOCATION=/var/www/html /home/maudlin/maudlin2/venv/bin/python /home/maudlin/maudlin2/main.py"

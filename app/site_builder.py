@@ -88,7 +88,8 @@ def copy_assets():
 
 def move_to_public():
     server_location = os.environ['SERVER_LOCATION']
-    shutil.move(Config.build, server_location)
+    for file in os.listdir(Config.build):
+        shutil.move(os.path.join(Config.build, file), server_location)
 
 
 def build_site():
