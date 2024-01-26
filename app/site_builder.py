@@ -28,6 +28,11 @@ STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def get_navbar():
+    template = j2env.get_template('nav.html')
+    return template.render()
+
+
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
     if parts_of_speech is None:
         parts_of_speech = POS
@@ -51,7 +56,8 @@ def generate_agency_pages():
     template = j2env.get_template('agency.html')
     s = Session()
     for agency in s.query(Agency).all():
-        vars = {
+        variables = {
+            'nav': get_navbar(),
             'title': agency.name,
             'agency_name': agency.name,
             'wordcloud': f'{agency.name}.png',
@@ -61,11 +67,11 @@ def generate_agency_pages():
             'sentiment': agency.todays_sentiment(s).to_frame().to_html()
         }
         generate_wordcloud(
-            vars['articles'],
-            os.path.join(Config.build, vars['wordcloud'])
+            variables['articles'],
+            os.path.join(Config.build, variables['wordcloud'])
         )
         with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
-            f.write(template.render(**vars))
+            f.write(template.render(**variables))
             logger.info(f"Generated page for %s", agency.name)
     s.close()
 
@@ -80,7 +86,7 @@ def generate_homepage():
             os.path.join(Config.build, 'wordcloud.png')
         )
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
-        f.write(template.render(title='Home', agencies=agencies))
+        f.write(template.render(title='Home', agencies=agencies, nav=get_navbar()))
     logger.info(f"Generated homepage")
 
 
@@ -90,7 +96,11 @@ def copy_assets():
         shutil.copy(os.path.join(Config.assets, file), Config.build)
 
 def move_to_public():
-    server_location = os.environ['SERVER_LOCATION']
+    server_location = os.environ.get('SERVER_LOCATION', None)
+    if server_location is None:
+        logger.warning("No server location specified, not moving files")
+        return
+
     for file in os.listdir(Config.build):
         logger.debug(f"Moving %s", file)
         shutil.move(os.path.join(Config.build, file), server_location)
