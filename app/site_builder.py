@@ -103,7 +103,7 @@ def move_to_public():
 
     for file in os.listdir(Config.build):
         logger.debug(f"Moving %s", file)
-        shutil.move(os.path.join(Config.build, file), server_location)
+        shutil.move(os.path.join(Config.build, file), os.path.join(server_location, file))
 
 
 def build_site():
