@@ -1,3 +1,4 @@
+import re
 import time
 from abc import ABC, abstractmethod
 from threading import Thread
@@ -7,9 +8,9 @@ from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 from app.config import Config
+from app.constants import Credibility, Bias
 from app.logger import get_logger
 from app.models import Session, Article, Agency
-
 
 logger = get_logger(__name__)
 
@@ -17,8 +18,9 @@ logger = get_logger(__name__)
 class Scraper(ABC, Thread):
     agency: str = ''
     url: str = ''
-    bias = None
-    credibility = None
+    bias: Bias = None
+    credibility: Credibility = None
+    strip: list[str] = []
 
     def __init__(self):
         super().__init__()
@@ -47,9 +49,15 @@ class Scraper(ABC, Thread):
     def consume(self, page: Soup, href: str, title: str) -> bool:
         pass
 
+    def strip_text(self, text: str) -> str:
+        for regex in self.strip:
+            text = re.sub(regex, '', text)
+        return text
+
     def process(self):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         for result in self.results:
+            result['body'] = self.strip_text(result['body'])
             result.update({f"art{k}": v for k, v in sid.polarity_scores(result['body']).items()})
             result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
             with Session() as session:

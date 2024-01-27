@@ -12,6 +12,8 @@ class CNN(Scraper):
     credibility = Credibility.mostly_factual
     url: str = 'https://lite.cnn.com/'
     agency: str = "CNN"
+    strip: list[str] = ['CNN', 'See Full Web Article', 'Updated:.*$', 'Source:.*$', 'By .*,$']
+
 
     def setup(self, soup: Soup):
         for li in soup.find_all('li', class_='card--lite'):
@@ -25,7 +27,7 @@ class CNN(Scraper):
         for p in page.find('article').find_all('p'):
             story.append(p.text.strip())
         self.results.append({
-            'body': ' '.join(story),
+            'body': '\n'.join(story),
             'title': title,
             'url': href
         })

@@ -8,10 +8,11 @@ logger = get_logger(__name__)
 
 
 class NPR(Scraper):
-    url = 'https://text.npr.org/'
-    agency = "NPR"
-    bias = Bias.left_center
-    credibility = Credibility.high
+    url: str = 'https://text.npr.org/'
+    agency: str = "NPR"
+    bias: Bias = Bias.left_center
+    credibility: Credibility = Credibility.high
+    strip: list[str] = ['NPR News', 'NPR', 'By .*$']
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', class_='topic-title'):
@@ -24,7 +25,7 @@ class NPR(Scraper):
         for p in page.find('article').find_all('p'):
             story.append(p.text.strip())
         self.results.append({
-            'body': ' '.join(story),
+            'body': '\n'.join(story),
             'title': title,
             'url': href
         })
