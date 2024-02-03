@@ -1,4 +1,5 @@
 import os
+from random import random
 import pathlib
 from app import j2env
 
@@ -7,6 +8,7 @@ class Config:
     logging_level = 'DEBUG'
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
+    dev_mode = False
 
     root = pathlib.Path(__file__).parent.parent.absolute()
     output_dir = os.path.join(root, 'data')
@@ -22,7 +24,7 @@ class Config:
 
     @staticmethod
     def time_between_requests() -> float:  # this is a function so that we can make it random if necessary
-        return 2
+        return random() * 2 + 2
 
 
 def date(value):

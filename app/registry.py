@@ -3,5 +3,5 @@ from app.scrapers.npr import NPR
 
 Scrapers = [
     CNN,
-    NPR
+    NPR,
 ]

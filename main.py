@@ -1,5 +1,8 @@
-from app.registry import Scrapers
+import argparse
+
+from app.config import Config
 from app.logger import get_logger
+from app.registry import Scrapers
 from app.site_builder import build_site
 
 logger = get_logger(__name__)
@@ -29,10 +32,23 @@ def scrape():
 
     queue.run()
 
-def main():
+def main(args):
+    if args.scraper:
+        scraper = [s for s in Scrapers if s.agency == args.scraper]
+        if len(scraper) == 0:
+            raise ValueError(f"Scraper {args.scraper} not found")
+        sc = scraper[0]()
+        sc.start()
+        sc.join()
+        return
     scrape()
     build_site()
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dev', action='store_true')
+    parser.add_argument('--scraper', type=str, default=None)
+    args = parser.parse_args()
+    Config.dev_mode = args.dev
+    main(args)
