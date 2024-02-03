@@ -3,7 +3,7 @@ from datetime import datetime as dt
 
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
-from sqlalchemy.types import Text, Float, DateTime, Integer
+from sqlalchemy.types import Text, Float, DateTime, Integer, Boolean
 
 from app.config import Config
 from app.constants import Bias, Credibility
@@ -79,18 +79,19 @@ class Article(Base):
     last_accessed: Mapped[dt] = mapped_column(DateTime())
     agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
-    title: Mapped[str] = mapped_column(String(254))
+    title: Mapped[str] = mapped_column(String(254), nullable=True)
     url: Mapped[str] = mapped_column(String(254))
-    body: Mapped[str] = mapped_column(Text())
+    body: Mapped[str] = mapped_column(Text(), nullable=True)
+    failure: Mapped[bool] = mapped_column(Boolean(), default=False)
 
-    artneg: Mapped[float] = mapped_column(Float())
-    artneu: Mapped[float] = mapped_column(Float())
-    artpos: Mapped[float] = mapped_column(Float())
-    artcompound: Mapped[float] = mapped_column(Float())
-    headneg: Mapped[float] = mapped_column(Float())
-    headneu: Mapped[float] = mapped_column(Float())
-    headpos: Mapped[float] = mapped_column(Float())
-    headcompound: Mapped[float] = mapped_column(Float())
+    artneg: Mapped[float] = mapped_column(Float(), nullable=True)
+    artneu: Mapped[float] = mapped_column(Float(), nullable=True)
+    artpos: Mapped[float] = mapped_column(Float(), nullable=True)
+    artcompound: Mapped[float] = mapped_column(Float(), nullable=True)
+    headneg: Mapped[float] = mapped_column(Float(), nullable=True)
+    headneu: Mapped[float] = mapped_column(Float(), nullable=True)
+    headpos: Mapped[float] = mapped_column(Float(), nullable=True)
+    headcompound: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __init__(self, **kwargs):
         super().__init__(first_accessed=dt.now(), last_accessed=dt.now(), **kwargs)

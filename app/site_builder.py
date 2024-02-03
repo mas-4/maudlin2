@@ -61,7 +61,9 @@ def generate_agency_pages():
             'title': agency.name,
             'agency_name': agency.name,
             'wordcloud': f'{agency.name}.png',
-            'articles': agency.articles.filter(Article.last_accessed > midnight).order_by(Article.last_accessed.desc()).all(),
+            'articles': agency.articles.filter(
+                Article.last_accessed > midnight, Article.failure == False
+            ).order_by(Article.last_accessed.desc()).all(),
             'bias': str(agency.bias),
             'credibility': str(agency.credibility),
             'sentiment': agency.todays_sentiment(s).to_frame().to_html()
@@ -82,7 +84,7 @@ def generate_homepage():
     with Session() as s:
         agencies = s.query(Agency).all()
         generate_wordcloud(
-            s.query(Article).filter(Article.last_accessed > midnight).all(),
+            s.query(Article).filter(Article.last_accessed > midnight, Article.failure == False).all(),
             os.path.join(Config.build, 'wordcloud.png')
         )
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
