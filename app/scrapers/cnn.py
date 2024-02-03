@@ -12,7 +12,7 @@ class CNN(Scraper):
     credibility = Credibility.mostly_factual
     url: str = 'https://lite.cnn.com/'
     agency: str = "CNN"
-    strip: list[str] = ['CNN', 'See Full Web Article', 'Updated:.*$', 'Source:.*$', 'By .*,$']
+    strip: list[str] = ['CNN', 'See Full Web Article', 'Updated:.*$', 'Source:.*$', 'By .*,$', "Source:"]
 
 
     def setup(self, soup: Soup):

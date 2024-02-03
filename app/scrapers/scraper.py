@@ -53,6 +53,7 @@ class Scraper(ABC, Thread):
     def strip_text(self, text: str) -> str:
         for regex in self.strip:
             text = re.sub(regex, '', text)
+        re.sub(r'\s+', ' ', text)
         return text
 
     def process(self):
@@ -60,7 +61,7 @@ class Scraper(ABC, Thread):
         for result in self.results:
             result['body'] = self.strip_text(result['body'])
             if Config.dev_mode:
-                logger.debug(f"Body: %s", result['body'])
+                logger.debug(f"%s", result['body'])
             result.update({f"art{k}": v for k, v in sid.polarity_scores( result['body']).items()})
             result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
             with Session() as session:

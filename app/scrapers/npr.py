@@ -12,7 +12,7 @@ class NPR(Scraper):
     agency: str = "NPR"
     bias: Bias = Bias.left_center
     credibility: Credibility = Credibility.high
-    strip: list[str] = ['NPR News', 'NPR', 'By .*$']
+    strip: list[str] = ['NPR News', 'NPR', 'By .*$', ">"]
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', class_='topic-title'):
