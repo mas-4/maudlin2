@@ -14,6 +14,13 @@ from app.models import Session, Article, Agency
 
 logger = get_logger(__name__)
 
+STRIPS = [
+    "News Digital",
+    "News",
+    "Getty Images", "Getty",
+    "Refinitiv", "Lipper", 
+]
+
 
 class Scraper(ABC, Thread):
     agency: str = ''
@@ -43,6 +50,7 @@ class Scraper(ABC, Thread):
                 session.add(agency)
                 session.commit()
             self.agency_id = agency.id
+        self.strip.extend(STRIPS)
 
     @abstractmethod
     def setup(self, soup: Soup):

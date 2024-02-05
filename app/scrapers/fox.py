@@ -30,8 +30,10 @@ class Fox(Scraper):
         "CLICK HERE TO GET THE FOX NEWS APP",
         "You've successfully subscribed to this newsletter!",
         "Subscribed",
-        "Get all the stories you need-to-know from the most powerful name in news delivered first thing every morning to your inbox"
-
+        "Get all the stories you need-to-know from the most powerful name in news delivered first thing every morning to your inbox",
+        "Fox",
+        "Fox News",
+        "News"
     ]
     parser: str = 'lxml'
 

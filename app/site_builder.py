@@ -21,7 +21,10 @@ POS = [
 
 STOPWORDS = list(STOPWORDS)
 # clean some default words
-STOPWORDS.extend(['say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month'])
+STOPWORDS.extend([
+    'say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month',
+    "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group", 
+    ])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 
