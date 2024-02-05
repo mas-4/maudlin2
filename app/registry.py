@@ -1,11 +1,13 @@
+from app.scrapers.ap import AP
 from app.scrapers.cnn import CNN
-from app.scrapers.npr import NPR
-from app.scrapers.nbc import NBC
 from app.scrapers.fox import Fox
+from app.scrapers.nbc import NBC
+from app.scrapers.npr import NPR
 
 Scrapers = [
+    AP,
     CNN,
-    NPR,
+    Fox,
     NBC,
-    Fox
+    NPR,
 ]
