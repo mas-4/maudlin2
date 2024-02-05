@@ -3,6 +3,7 @@ from app.scrapers.cnn import CNN
 from app.scrapers.fox import Fox
 from app.scrapers.nbc import NBC
 from app.scrapers.npr import NPR
+from app.scrapers.semafor import Semafor
 
 Scrapers = [
     AP,
@@ -10,4 +11,5 @@ Scrapers = [
     Fox,
     NBC,
     NPR,
+    Semafor,
 ]

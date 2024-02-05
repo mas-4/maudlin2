@@ -37,7 +37,7 @@ If you know of a good source not on this list please open an issue!
 
 - [ ] ABC News
 - [ ] Al Jazeera
-- [ ] Associated Press
+- [X] Associated Press
 - [ ] Axios
 - [ ] BBC
 - [ ] Barron's
@@ -67,7 +67,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Politico
 - [ ] Reuters
 - [ ] Salon
-- [ ] Semafor
+- [X] Semafor
 - [ ] Slate
 - [ ] South China Morning Post
 - [ ] Tampa Bay Times
