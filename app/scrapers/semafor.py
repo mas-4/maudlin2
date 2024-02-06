@@ -15,7 +15,7 @@ class Semafor(Scraper):
         "Sign up for Semafor Principals",
         "What the White House is reading",
         "Read it now",
-        "Sign up for.*\. Read it now.",
+        r"Sign up for.*\. Read it now.",
         "In this article:",
     ]
 
