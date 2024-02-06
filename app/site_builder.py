@@ -45,7 +45,7 @@ def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
 
 def generate_wordcloud(articles, path):
     # filter for only articles from the last hour
-    wc = WordCloud(background_color="white", max_words=2000, width=800, height=400, stopwords=STOPWORDS)
+    wc = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
     wc.generate(
         filter_words(
             ' '.join([article.title + ' ' + article.body for article in articles]),
