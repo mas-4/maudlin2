@@ -64,6 +64,8 @@ class Scraper(ABC, Thread):
         for regex in self.strip:
             text = re.sub(regex, '', text)
         re.sub(r'\s+', ' ', text)
+        re.sub('  +', ' ', text)
+        re.sub('\n\n', '\n', text)
         return text
 
     def process(self):
@@ -72,7 +74,7 @@ class Scraper(ABC, Thread):
             for result in self.results:
                 result['body'] = self.strip_text(result['body'])
                 if Config.dev_mode:
-                    logger.debug(f"%s", result['body'])
+                    logger.debug("%s", result['body'])
                 result.update({f"art{k}": v for k, v in sid.polarity_scores( result['body']).items()})
                 result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
                 article = Article(**result, agency_id=self.agency_id)
@@ -99,6 +101,8 @@ class Scraper(ABC, Thread):
         self.setup(self.get_page(self.url))
         while self.downstream:
             href, title = self.downstream.pop()
+            # todo this can be a single query to filter the articles by just querying for all urls
+            # todo change the filtration method to be based on headline?
             with Session() as s:
                 if article := s.query(Article).filter_by(url=href).first():
                     logger.info("Article already exists, updating last_accessed: %s", article)
@@ -107,6 +111,7 @@ class Scraper(ABC, Thread):
                     continue
             time.sleep(Config.time_between_requests())  # we sleep before a query
             try:
+                logger.info("%d articles left to check", len(self.downstream))
                 page = self.get_page(href)
                 self.consume(page, href, title)
                 self.process()

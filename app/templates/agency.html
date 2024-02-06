@@ -28,16 +28,16 @@
     {% for article in articles %}
     <tr>
         <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
-        <td>{{ article.first_accessed|date }}</td>
-        <td>{{ article.last_accessed|date }}</td>
-        <td>{{ article.headpos }}</td>
-        <td>{{ article.headneg }}</td>
-        <td>{{ article.headneu }}</td>
-        <td>{{ article.headcompound }}</td>
-        <td>{{ article.artpos }}</td>
-        <td>{{ article.artneg }}</td>
-        <td>{{ article.artneu }}</td>
-        <td>{{ article.artcompound }}</td>
+        <td>{{ article.first_accessed | date }}</td>
+        <td>{{ article.last_accessed | date }}</td>
+        <td>{{ article.headpos | round(2) }}</td>
+        <td>{{ article.headneg | round(2) }}</td>
+        <td>{{ article.headneu | round(2) }}</td>
+        <td>{{ article.headcompound | round(2)}}</td>
+        <td>{{ article.artpos | round(2)}}</td>
+        <td>{{ article.artneg | round(2)}}</td>
+        <td>{{ article.artneu | round(2)}}</td>
+        <td>{{ article.artcompound | round(2)}}</td>
     </tr>
     {% endfor %}
     </tbody>

@@ -27,8 +27,12 @@ class Config:
         return random() * 2 + 2
 
 
+# <editor-fold desc="Jinja2 Environment Stuff">
+j2env.globals['Config'] = Config
+
 def date(value):
     return value.strftime(Config.strf)
 
-j2env.globals['Config'] = Config
+
 j2env.filters['date'] = date
+# </editor-fold>
