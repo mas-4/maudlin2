@@ -15,8 +15,8 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 POS = [
-    'FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'RB',
-    'RBR', 'RBS', 'RP', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VNP', 'VBZ'
+    'FW', 'NN', 'NNS', 'NNP', 'NNPS', 'PRP$',
+    'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VNP', 'VBZ'
 ]
 
 STOPWORDS = list(STOPWORDS)
@@ -24,7 +24,8 @@ STOPWORDS = list(STOPWORDS)
 STOPWORDS.extend([
     'say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month', "years",
     "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group", 
-    "state", "country", 
+    "state", "country", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+    "home", "effort"
     ])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
