@@ -45,7 +45,9 @@ class Fox(Scraper):
             href = item['href']
             if href.startswith('//'):
                 href = f'https:{href}'
-            self.downstream.append((href, item.text.strip()))
+            if not (title := item.text.strip()):
+                continue
+            self.downstream.append((href, title))
 
     def consume(self, page: Soup, href: str, title: str):
         title = page.find('h1', class_='headline').text.strip()

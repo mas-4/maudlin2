@@ -30,6 +30,7 @@ class Scraper(ABC, Thread):
     strip: list[str] = []
     headers: dict[str, str] = {}
     parser: str = 'lxml'
+    headline_only = False
 
     def __init__(self):
         super().__init__()
@@ -47,6 +48,7 @@ class Scraper(ABC, Thread):
                 agency = Agency(name=self.agency, url=self.url)
                 agency.bias = self.bias
                 agency.credibility = self.credibility
+                agency.headline_only = self.headline_only
                 session.add(agency)
                 session.commit()
             self.agency_id = agency.id
@@ -63,26 +65,30 @@ class Scraper(ABC, Thread):
     def strip_text(self, text: str) -> str:
         for regex in self.strip:
             text = re.sub(regex, '', text)
-        re.sub(r'\s+', ' ', text)
-        re.sub('  +', ' ', text)
-        re.sub('\n\n', '\n', text)
-        return text
+        text = re.sub(r'^\s*\.\s*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r'\s+\.\s+', '.', text)
+        text = re.sub('\n\n', '\n', text)
+        text = re.sub('  +', ' ', text)
+        return text.strip()
 
     def process(self):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         with Session() as session:
             for result in self.results:
-                result['body'] = self.strip_text(result['body'])
-                if Config.dev_mode:
-                    logger.debug("%s", result['body'])
-                result.update({f"art{k}": v for k, v in sid.polarity_scores( result['body']).items()})
+                if not self.headline_only:
+                    self.process_body(result, sid)
                 result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
-                article = Article(**result, agency_id=self.agency_id)
-                session.add(article)
+                session.add(article := Article(**result, agency_id=self.agency_id))
                 session.commit()
-                logger.info(f"Adding to database: %s", article)
+                logger.info(f"Adding to database: %r", article)
                 self.added += 1
         self.results = []
+
+    def process_body(self, result, sid):
+        result['body'] = self.strip_text(result['body'])
+        if Config.dev_mode:
+            logger.debug("%s", result['body'])
+        result.update({f"art{k}": v for k, v in sid.polarity_scores(result['body']).items()})
 
     def add_stub(self, href: str, title: str):
         with Session() as session:
@@ -97,23 +103,30 @@ class Scraper(ABC, Thread):
             logger.info(f"Downloaded {url}")
         return Soup(response.content, self.parser)
 
+    def filter_seen(self):
+        self.downstream = list(filter(lambda x: x[1], set(self.downstream)))  # no empties and no dupes
+        with Session() as s:
+            titles = [x[1] for x in self.downstream]
+            articles = s.query(Article).filter(Article.title.in_(titles))
+            for article in articles:
+                article.update_last_accessed()
+                logger.info("Article already exists, updating last_accessed: %r", article)
+            s.commit()
+            self.downstream = list(set(self.downstream) - set((article.url, article.title) for article in articles))
+
     def run(self):
         self.setup(self.get_page(self.url))
+        self.filter_seen()
         while self.downstream:
             href, title = self.downstream.pop()
-            # todo this can be a single query to filter the articles by just querying for all urls
-            # todo change the filtration method to be based on headline?
-            with Session() as s:
-                if article := s.query(Article).filter_by(url=href).first():
-                    logger.info("Article already exists, updating last_accessed: %s", article)
-                    article.update_last_accessed()
-                    s.commit()
-                    continue
-            time.sleep(Config.time_between_requests())  # we sleep before a query
             try:
-                logger.info("%d articles left to check", len(self.downstream))
-                page = self.get_page(href)
-                self.consume(page, href, title)
+                logger.info("%s: %d articles left to check", self.agency, len(self.downstream))
+                if self.headline_only:
+                    self.results.append({'title': title, 'url': href})
+                else:
+                    time.sleep(Config.time_between_requests())  # we sleep before a query
+                    page = self.get_page(href)
+                    self.consume(page, href, title)
                 self.process()
             except:  # noqa
                 logger.exception("Failed to get page: %s", (href, title))

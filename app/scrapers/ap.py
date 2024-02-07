@@ -22,7 +22,8 @@ class AP(Scraper):
                 'a', { 'href': re.compile(".*/article/.*")}):
             href = a['href']
             title = a.text.strip()
-            self.downstream.append((href, title))
+            if title:
+                self.downstream.append((href, title))
 
     def consume(self, page: Soup, href: str, title: str):
         story = []

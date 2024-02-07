@@ -45,12 +45,12 @@ def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
     return ' '.join([word[0] for word in words])
 
 
-def generate_wordcloud(articles, path):
+def generate_wordcloud(articles: list[Article], path: str):
     # filter for only articles from the last hour
     wc = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
     wc.generate(
         filter_words(
-            ' '.join([article.title + ' ' + article.body for article in articles]),
+            ' '.join([str(article) for article in articles]),
             ['NN', 'NNS', 'NNP', 'NNPS']
         )
     )
@@ -71,7 +71,8 @@ def generate_agency_pages():
             ).order_by(Article.last_accessed.desc()).all(),
             'bias': str(agency.bias),
             'credibility': str(agency.credibility),
-            'sentiment': agency.todays_sentiment(s).to_frame().to_html()
+            'sentiment': agency.todays_sentiment(s).to_frame().to_html(),
+            'headline_only': agency.headline_only
         }
         generate_wordcloud(
             variables['articles'],

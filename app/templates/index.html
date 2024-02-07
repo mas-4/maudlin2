@@ -22,7 +22,11 @@
         <td>{{ agency.credibility }}</td>
         <td>{{ agency.bias }}</td>
         <td>{{ sentiment[0] | round(2) }}</td>
+        {% if not agency.headline_only %}
         <td>{{ sentiment[1] | round(2)}}</td>
+        {% else %}
+        <td>Headline Only</td>
+        {% endif %}
         <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
     </tr>
     {% endfor %}

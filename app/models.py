@@ -22,6 +22,7 @@ class Agency(Base):
     articles: Mapped[List["Article"]] = relationship("Article", back_populates="agency", lazy="dynamic")
     _bias: Mapped[int] = mapped_column(Integer())
     _credibility: Mapped[int] = mapped_column(Integer())
+    headline_only: Mapped[bool] = mapped_column(Boolean(), default=False)
 
 
     columns = ["artneg", "artneu", "artpos", "artcompound", "headneg", "headneu", "headpos", "headcompound"]
@@ -101,6 +102,11 @@ class Article(Base):
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, title={self.title!r})"
+
+    def __str__(self) -> str:
+        if self.agency.headline_only:
+            return self.title
+        return f"{self.title}\n\n{self.body}"
 
 
 

@@ -34,10 +34,14 @@
         <td>{{ article.headneg | round(2) }}</td>
         <td>{{ article.headneu | round(2) }}</td>
         <td>{{ article.headcompound | round(2)}}</td>
+        {% if headline_only %}
+        <td colspan="4">Headline Only</td>
+        {% else %}
         <td>{{ article.artpos | round(2)}}</td>
         <td>{{ article.artneg | round(2)}}</td>
         <td>{{ article.artneu | round(2)}}</td>
         <td>{{ article.artcompound | round(2)}}</td>
+        {% endif %}
     </tr>
     {% endfor %}
     </tbody>

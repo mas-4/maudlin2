@@ -32,7 +32,7 @@ def scrape():
 
     queue.run()
 
-def main(args):
+def main(args: argparse.Namespace):  # noqa shadowing
     if args.scraper:
         scraper = [s for s in Scrapers if s.agency == args.scraper]
         if len(scraper) == 0:
@@ -41,13 +41,15 @@ def main(args):
         sc.start()
         sc.join()
         return
-    scrape()
+    if not args.skip_scrape:
+        scrape()
     build_site()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dev', action='store_true')
+    parser.add_argument('--skip-scrape', action='store_true')
     parser.add_argument('--scraper', type=str, default=None)
     args = parser.parse_args()
     Config.dev_mode = args.dev
