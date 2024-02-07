@@ -46,7 +46,7 @@ class Agency(Base):
         ).filter_by(agency_id=self.id).filter(Article.last_accessed > dt.now().date()).all()
         if close:
             s.close()
-        return pd.DataFrame(numbers, columns=self.columns).mean()
+        return pd.DataFrame(numbers, columns=self.columns).mean().to_frame().T.reset_index(drop=True)
 
     def todays_compound(self):
         with (Session() as s):

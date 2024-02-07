@@ -71,7 +71,7 @@ def generate_agency_pages():
             ).order_by(Article.last_accessed.desc()).all(),
             'bias': str(agency.bias),
             'credibility': str(agency.credibility),
-            'sentiment': agency.todays_sentiment(s).to_frame().to_html(),
+            'sentiment': agency.todays_sentiment(s).to_html(),
             'headline_only': agency.headline_only
         }
         generate_wordcloud(
