@@ -36,7 +36,7 @@ class Config:
 
     if os.path.exists(Constants.Paths.EMAIL_CREDS):
         with open(Constants.Paths.EMAIL_CREDS, 'rt') as f_in:
-            emails, domain, email, pw = f_in.readlines()
+            emails, domain, email, pw = f_in.read().strip().splitlines()
             emails_to_notify = emails.split(',')
 
 

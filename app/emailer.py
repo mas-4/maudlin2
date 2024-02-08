@@ -1,4 +1,6 @@
 import smtplib
+import shutil
+from datetime import datetime as dt
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -59,3 +61,6 @@ def send_notification():
                          to_addrs=Config.emails,
                          msg=day_report,
                          subject="Maudlin Daily Report")
+
+    shutil.move(Constants.Paths.DAY_REPORT, f'{Constants.Paths.DAY_REPORT}.{dt.now().strftime("%Y-%m-%d")}')
+
