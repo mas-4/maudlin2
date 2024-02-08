@@ -1,14 +1,14 @@
 import re
 import time
 from abc import ABC, abstractmethod
-from threading import Thread
+from threading import Thread, Lock
 
 import requests as rq
 from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 from app.config import Config
-from app.constants import Credibility, Bias
+from app.constants import Credibility, Bias, Constants
 from app.logger import get_logger
 from app.models import Session, Article, Agency
 
@@ -53,6 +53,7 @@ class Scraper(ABC, Thread):
                 session.commit()
             self.agency_id = agency.id
         self.strip.extend(STRIPS)
+        self.day_lock = Lock()
 
     @abstractmethod
     def setup(self, soup: Soup):
@@ -128,9 +129,14 @@ class Scraper(ABC, Thread):
                     page = self.get_page(href)
                     self.consume(page, href, title)
                 self.process()
-            except:  # noqa
+            except Exception as e:  # noqa
+                with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
+                    f.write(f"{self.agency}: Failed to get page: {(href, title)}")
+                    f.write(f"{self.agency}: {e}\n")
                 logger.exception("Failed to get page: %s", (href, title))
                 self.add_stub(href, title)
 
         self.done = True
         logger.info("Added %d articles to %s", self.added, self.agency)
+        with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
+            f.write(f"{self.agency}: Added {self.added} articles\n")
