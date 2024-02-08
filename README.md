@@ -44,7 +44,7 @@ If you know of a good source not on this list please open an issue!
 - [X] Breitbart
 - [ ] Business Insider
 - [X] CBS News
-- [ ] CNBC
+- [X] CNBC
 - [ ] Daily Beast
 - [ ] Daily Kos
 - [ ] Daily mail

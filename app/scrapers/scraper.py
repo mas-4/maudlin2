@@ -123,7 +123,7 @@ class Scraper(ABC, Thread):
     def day_report(self, message, log_func=logger.exception):
         with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
             f.write(f"[{self.agency} ({dt.now().strftime('%Y-%m-%d %H:%M:%S')})]: {message}\n")
-        log_func("Day report: %s", message)
+        log_func("Day report %s: %s", self.agency, message)
 
     def run(self):
         try:
