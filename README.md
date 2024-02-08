@@ -52,7 +52,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Forbes
 - [ ] Foreign Affairs
 - [X] Foreign Policy
-- [ ] Fortune
+- [X] Fortune
 - [ ] Fox Business
 - [ ] Global Times
 - [ ] Huffington Post
