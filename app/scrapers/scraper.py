@@ -126,6 +126,7 @@ class Scraper(ABC, Thread):
             Session.rollback()
             with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
                 f.write(f"{self.agency} failed to setup")
+            logger.exception("Failed to setup %s", self.agency)
             raise
 
         while self.downstream:
