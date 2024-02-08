@@ -21,6 +21,8 @@ class NBC(Scraper):
                                {'href': re.compile(r"https://www.nbcnews.com/[a-z-]+/[a-z-]+/[a-z-]+")}):
             if 'live-updates' in a['href']:
                 continue
+            if '/select/' in a['href']:
+                continue
             href = a['href']
             title = a.text.strip()
             self.downstream.append((href, title))
