@@ -39,10 +39,12 @@ class Scraper(ABC, Thread):
             raise ValueError("Agency name must be set")
         if not self.url:
             raise ValueError("URL must be set")
+        self.day_lock = Lock()
+        self.sql_lock = Lock()
         self.downstream: list[tuple[str, str]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
-        with Session() as session:
+        with Session() as session, self.sql_lock:
             agency = session.query(Agency).filter_by(name=self.agency).first()
             if not agency:
                 agency = Agency(name=self.agency, url=self.url)
@@ -53,7 +55,6 @@ class Scraper(ABC, Thread):
                 session.commit()
             self.agency_id = agency.id
         self.strip.extend(STRIPS)
-        self.day_lock = Lock()
 
     @abstractmethod
     def setup(self, soup: Soup):
@@ -74,7 +75,7 @@ class Scraper(ABC, Thread):
 
     def process(self):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
-        with Session() as session:
+        with Session() as session, self.sql_lock:
             for result in self.results:
                 if not self.headline_only:
                     self.process_body(result, sid)
@@ -92,7 +93,7 @@ class Scraper(ABC, Thread):
         result.update({f"art{k}": v for k, v in sid.polarity_scores(result['body']).items()})
 
     def add_stub(self, href: str, title: str):
-        with Session() as session:
+        with Session() as session, self.sql_lock:
             session.add(Article(title=title, url=href, agency_id=self.agency_id, failure=True))
             session.commit()
 
@@ -106,7 +107,7 @@ class Scraper(ABC, Thread):
 
     def filter_seen(self):
         self.downstream = list(filter(lambda x: x[1], set(self.downstream)))  # no empties and no dupes
-        with Session() as s:
+        with Session() as s, self.sql_lock:
             titles = [x[1] for x in self.downstream]
             articles = s.query(Article).filter(Article.title.in_(titles))
             for article in articles:
