@@ -130,6 +130,7 @@ class Scraper(ABC, Thread):
                     self.consume(page, href, title)
                 self.process()
             except Exception as e:  # noqa
+                Session.rollback()
                 with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
                     f.write(f"{self.agency}: Failed to get page: {(href, title)}")
                     f.write(f"{self.agency}: {e}\n")
