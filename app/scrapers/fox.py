@@ -42,6 +42,8 @@ class Fox(Scraper):
                 'a', {'href': re.compile(r'//www.foxnews.com/[a-z-]+/[a-z-]+$')}):
             if 'category' in item['href']:
                 continue
+            if '/lifestyle/' in item['href']:
+                continue
             href = item['href']
             if href.startswith('//'):
                 href = f'https:{href}'
@@ -53,6 +55,9 @@ class Fox(Scraper):
         title = page.find('h1', class_='headline').text.strip()
         story = []
         for p in page.find_all('p'):
+            if a := p.find('a'):
+                if a.text.strip() == p.text.strip():
+                    continue
             story.append(p.text.strip())
         self.results.append({
             'body': '\n'.join(story),
