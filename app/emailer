@@ -1,0 +1,72 @@
+import os
+import smtplib
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import List
+
+from app.config import Config
+from app.constants import Constants
+from app.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class SMTPWrapper(smtplib.SMTP_SSL):
+    """
+    A wrapper for handling SMTP connections to fastmail, other servers.
+
+    From https://alexwlchan.net/2016/05/python-smtplib-and-fastmail/
+    """
+
+    def __init__(self, url, username, password):
+        super().__init__(url, port=465)
+        self.login(username, password)
+
+    def send_mail(self,
+                  *,
+                  from_addr: str,
+                  to_addrs: List[str],
+                  msg: str,
+                  subject: str,
+                  attachments=None):
+        msg_root = MIMEMultipart()
+        msg_root['Subject'] = subject
+        msg_root['From'] = from_addr
+        msg_root['To'] = ', '.join(to_addrs)
+
+        msg_alternative = MIMEMultipart('alternative')
+        msg_root.attach(msg_alternative)
+        msg_alternative.attach(MIMEText(msg))  # noqa
+
+        if attachments:
+            for attachment in attachments:
+                prt = MIMEBase('application', "octet-stream")
+                prt.set_payload(open(attachment, "rb").read())
+                encoders.encode_base64(prt)
+                prt.add_header('Content-Disposition', 'attachment; filename="%s"' % attachment.replace('"', ''))
+                msg_root.attach(prt)
+
+        self.sendmail(from_addr, to_addrs, msg_root.as_string())
+
+
+def send_notification(run_id: int, run_time: float):
+    if not Config.emails_to_notify:
+        return
+    path = os.path.join(Constants.Paths.ROOT_NPT, Constants.Paths.EMAILER_CREDS)
+    if not os.path.exists(path):
+        return
+    with open(path, 'rt') as f_in:
+        tmp = f_in.readlines()
+        try:
+            domain, user, pw = tmp[0].strip(), tmp[1].strip(), tmp[2].strip()
+        except Exception as e:  # noqa
+            logger.exception(".creds file incorrectly formatted")
+            return
+
+    with SMTPWrapper(domain, user, pw) as server:
+        server.send_mail(from_addr=user,
+                         to_addrs=Config.emails_to_notify,
+                         msg=f"NPT run {run_id} completed in {run_time}s",
+                         subject=f'From {Config.machine_name}')
