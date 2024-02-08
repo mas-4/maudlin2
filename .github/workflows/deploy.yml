@@ -20,9 +20,13 @@ jobs:
           SERVER_DIRECTORY: ${{ secrets.DIRECTORY }}
           EMAIL_CREDS: ${{ secrets.EMAIL_CRED_FILE }}
         run: |
+          echo "Making ssh directory"
           mkdir -p ~/.ssh
+          echo "Writing ssh key"
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          echo "Setting permissions"
           chmod 600 ~/.ssh/id_rsa
+          echo "Adding server to known hosts"
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
           echo "Copying repository to server"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "git -C $SERVER_DIRECTORY pull origin main "
