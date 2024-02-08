@@ -3,8 +3,6 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import List
-
 from app.config import Config
 from app.constants import Constants
 from app.logger import get_logger
@@ -26,7 +24,7 @@ class SMTPWrapper(smtplib.SMTP_SSL):
     def send_mail(self,
                   *,
                   from_addr: str,
-                  to_addrs: List[str],
+                  to_addrs: list[str],
                   msg: str,
                   subject: str,
                   attachments=None):
