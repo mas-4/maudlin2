@@ -1,7 +1,10 @@
 import os
-from random import random
 import pathlib
+from random import random
+
 from app import j2env
+from app.constants import Constants
+
 
 class Config:
     use_color = True
@@ -25,6 +28,16 @@ class Config:
     @staticmethod
     def time_between_requests() -> float:  # this is a function so that we can make it random if necessary
         return random() * 2 + 2
+
+    emails = []
+    email = ''
+    pw = ''
+    domain = ''
+
+    if os.path.exists(Constants.Paths.EMAIL_CREDS):
+        with open(Constants.Paths.EMAIL_CREDS, 'rt') as f_in:
+            emails, domain, email, pw = f_in.readlines()
+            emails_to_notify = emails.split(',')
 
 
 # <editor-fold desc="Jinja2 Environment Stuff">

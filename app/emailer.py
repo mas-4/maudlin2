@@ -1,4 +1,3 @@
-import os
 import smtplib
 from email import encoders
 from email.mime.base import MIMEBase
@@ -51,22 +50,14 @@ class SMTPWrapper(smtplib.SMTP_SSL):
         self.sendmail(from_addr, to_addrs, msg_root.as_string())
 
 
-def send_notification(run_id: int, run_time: float):
+def send_notification():
     if not Config.emails_to_notify:
         return
-    path = os.path.join(Constants.Paths.ROOT_NPT, Constants.Paths.EMAILER_CREDS)
-    if not os.path.exists(path):
-        return
-    with open(path, 'rt') as f_in:
-        tmp = f_in.readlines()
-        try:
-            domain, user, pw = tmp[0].strip(), tmp[1].strip(), tmp[2].strip()
-        except Exception as e:  # noqa
-            logger.exception(".creds file incorrectly formatted")
-            return
+    with open(Constants.Paths.DAY_REPORT, 'rt') as f_in:
+        day_report = f_in.read()
 
-    with SMTPWrapper(domain, user, pw) as server:
-        server.send_mail(from_addr=user,
-                         to_addrs=Config.emails_to_notify,
-                         msg=f"NPT run {run_id} completed in {run_time}s",
-                         subject=f'From {Config.machine_name}')
+    with SMTPWrapper(Config.domain, Config.email, Config.pw) as server:
+        server.send_mail(from_addr=Config.email,
+                         to_addrs=Config.emails,
+                         msg=day_report,
+                         subject="Maudlin Daily Report")
