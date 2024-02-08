@@ -122,6 +122,9 @@ class Scraper(ABC, Thread):
             self.filter_seen()
         except Exception as e:  # noqa
             Session.rollback()
+            with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
+                f.write(f"{self.agency} failed to setup")
+            raise
 
         while self.downstream:
             href, title = self.downstream.pop()
