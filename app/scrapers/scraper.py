@@ -1,5 +1,7 @@
 import re
+from datetime import datetime as dt
 import time
+import traceback as tb
 from abc import ABC, abstractmethod
 from threading import Thread, Lock
 
@@ -118,15 +120,18 @@ class Scraper(ABC, Thread):
             s.commit()
             self.downstream = list(set(self.downstream) - set((article.url, article.title) for article in articles))
 
+    def day_report(self, message, log_func=logger.exception):
+        with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
+            f.write(f"[{self.agency} ({dt.now().strftime('%Y-%m-%d %H:%M:%S')})]: {message}\n")
+        log_func("Day report: %s", message)
+
     def run(self):
         try:
             self.setup(self.get_page(self.url))
             self.filter_seen()
         except Exception as e:  # noqa
             Session.rollback()
-            with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
-                f.write(f"{self.agency} failed to setup")
-            logger.exception("Failed to setup %s", self.agency)
+            self.day_report(f"Failed to setup: {e}\n{tb.format_exc()}")
             raise
 
         while self.downstream:
@@ -142,13 +147,8 @@ class Scraper(ABC, Thread):
                 self.process()
             except Exception as e:  # noqa
                 Session.rollback()
-                with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
-                    f.write(f"{self.agency}: Failed to get page: {(href, title)}")
-                    f.write(f"{self.agency}: {e}\n")
-                logger.exception("Failed to get page: %s", (href, title))
+                self.day_report(f"Failed to get page: {(href, title)}\n{e}\n{tb.format_exc()}")
                 self.add_stub(href, title)
 
+        self.day_report(f"Added {self.added} articles", logger.info)
         self.done = True
-        logger.info("Added %d articles to %s", self.added, self.agency)
-        with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
-            f.write(f"{self.agency}: Added {self.added} articles\n")
