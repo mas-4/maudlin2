@@ -38,10 +38,10 @@ If you know of a good source not on this list please open an issue!
 - [ ] ABC News
 - [ ] Al Jazeera
 - [X] Associated Press
-- [ ] Axios
+- [-] Axios
 - [ ] BBC
 - [ ] Barron's
-- [ ] Breitbart
+- [X] Breitbart
 - [ ] Business Insider
 - [ ] CBS News
 - [ ] CNBC
