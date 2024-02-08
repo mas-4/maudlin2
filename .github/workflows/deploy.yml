@@ -33,7 +33,8 @@ jobs:
           echo "Installing requirements"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "$SERVER_DIRECTORY/venv/bin/pip install -r $SERVER_DIRECTORY/requirements.txt"
           echo "Writing creds"
-          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "echo $EMAIL_CREDS > $SERVER_DIRECTORY/.creds"
+          echo "$EMAIL_CREDS" > .creds
+          scp -i ~/.ssh/id_rsa .creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
           echo "Running server"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "SERVER_LOCATION=/var/www/html /home/maudlin/maudlin2/venv/bin/python /home/maudlin/maudlin2/main.py"
           
