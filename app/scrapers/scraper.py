@@ -18,7 +18,8 @@ STRIPS = [
     "News Digital",
     "News",
     "Getty Images", "Getty",
-    "Refinitiv", "Lipper", 
+    "Refinitiv", "Lipper",
+    "Associated Press", "AP", "AP Images"
 ]
 
 
