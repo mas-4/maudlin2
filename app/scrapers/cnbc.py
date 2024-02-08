@@ -22,6 +22,8 @@ class CNBC(Scraper):
             href = a['href']
             if not href.startswith('http'):
                 href = f'{self.url}{href}'
+            if '/video/' in href:
+                continue
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
@@ -32,7 +34,7 @@ class CNBC(Scraper):
         if keypoints:
             for li in keypoints.find_all('li'):
                 story.append(li.text.strip())
-        article = page.find('div', {'class': 'ArticleBody-articleBody'})
+        article = page.find('div', {'class': re.compile('ArticleBody')})
         for p in article.find_all(['li', 'blockquote', 'p']):
             story.append(p.text.strip())
         self.results.append({
