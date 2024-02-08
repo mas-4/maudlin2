@@ -61,6 +61,7 @@ def generate_agency_pages():
     template = j2env.get_template('agency.html')
     s = Session()
     for agency in s.query(Agency).all():
+        logger.info("Generating page for %s...", agency.name)
         variables = {
             'nav': get_navbar(),
             'title': agency.name,
@@ -80,7 +81,7 @@ def generate_agency_pages():
         )
         with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
             f.write(template.render(**variables))
-            logger.info(f"Generated page for %s", agency.name)
+        logger.info("Done")
     s.close()
 
 

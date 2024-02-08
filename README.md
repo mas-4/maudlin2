@@ -53,7 +53,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Foreign Affairs
 - [X] Foreign Policy
 - [X] Fortune
-- [ ] Fox Business
+- [X] Fox Business
 - [ ] Global Times
 - [ ] Huffington Post
 - [ ] India Times

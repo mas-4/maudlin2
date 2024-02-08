@@ -7,6 +7,7 @@ from app.scrapers.dailykos import DailyKos
 from app.scrapers.foreignpolicy import ForeignPolicy
 from app.scrapers.fortune import Fortune
 from app.scrapers.fox import Fox
+from app.scrapers.foxbusiness import FoxBusiness
 from app.scrapers.nbc import NBC
 from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
@@ -22,6 +23,7 @@ Scrapers = [
     ForeignPolicy,
     Fortune,
     Fox,
+    FoxBusiness,
     NBC,
     NPR,
     NYT,
