@@ -46,12 +46,12 @@ If you know of a good source not on this list please open an issue!
 - [X] CBS News
 - [X] CNBC
 - [-] Daily Beast
-- [ ] Daily Kos
+- [X] Daily Kos
 - [ ] Daily mail
 - [ ] FT
 - [ ] Forbes
 - [ ] Foreign Affairs
-- [ ] Foreign Policy
+- [X] Foreign Policy
 - [ ] Fortune
 - [ ] Fox Business
 - [ ] Global Times

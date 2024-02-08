@@ -4,6 +4,7 @@ from app.scrapers.cbs import CBS
 from app.scrapers.cnbc import CNBC
 from app.scrapers.cnn import CNN
 from app.scrapers.dailykos import DailyKos
+from app.scrapers.foreignpolicy import ForeignPolicy
 from app.scrapers.fox import Fox
 from app.scrapers.nbc import NBC
 from app.scrapers.npr import NPR
@@ -17,6 +18,7 @@ Scrapers = [
     CNBC,
     CNN,
     DailyKos,
+    ForeignPolicy,
     Fox,
     NBC,
     NPR,
