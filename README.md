@@ -43,7 +43,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Barron's
 - [X] Breitbart
 - [ ] Business Insider
-- [ ] CBS News
+- [X] CBS News
 - [ ] CNBC
 - [ ] Daily Beast
 - [ ] Daily Kos
