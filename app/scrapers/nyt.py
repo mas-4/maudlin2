@@ -16,6 +16,8 @@ class NYT(Scraper):
     agency: str = "New York Times"
     # Leaving this scraper disabled for now because honestly not sure about the legality here.
     headline_only = True
+    strip = ["New York Times", "NYT", "The New York Times", "NY Times", "News Digital", "News"]
+
 
     def setup(self, soup: Soup):
         ignore = 'podcasts', 'crosswords',
