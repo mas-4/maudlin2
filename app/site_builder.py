@@ -60,21 +60,9 @@ def generate_wordcloud(articles: list[Article], path: str):
 def generate_agency_pages():
     template = j2env.get_template('agency.html')
     s = Session()
-    for agency in s.query(Agency).all():
+    for agency in s.query(Agency).filter(Agency.articles.any()).all():
         logger.info("Generating page for %s...", agency.name)
-        variables = {
-            'nav': get_navbar(),
-            'title': agency.name,
-            'agency_name': agency.name,
-            'wordcloud': f'{agency.name}.png',
-            'articles': agency.articles.filter(
-                Article.last_accessed > midnight, Article.failure == False
-            ).order_by(Article.last_accessed.desc()).all(),
-            'bias': str(agency.bias),
-            'credibility': str(agency.credibility),
-            'sentiment': agency.todays_sentiment(s).to_html(),
-            'headline_only': agency.headline_only
-        }
+        variables = get_variables(agency, s)
         generate_wordcloud(
             variables['articles'],
             os.path.join(Config.build, variables['wordcloud'])
@@ -85,11 +73,27 @@ def generate_agency_pages():
     s.close()
 
 
+def get_variables(agency, s):
+    return {
+        'nav': get_navbar(),
+        'title': agency.name,
+        'agency_name': agency.name,
+        'wordcloud': f'{agency.name}.png',
+        'articles': agency.articles.filter(
+            Article.last_accessed > midnight, Article.failure == False
+        ).order_by(Article.last_accessed.desc()).all(),
+        'bias': str(agency.bias),
+        'credibility': str(agency.credibility),
+        'sentiment': agency.todays_sentiment(s).to_html(),
+        'headline_only': agency.headline_only
+    }
+
+
 def generate_homepage():
     logger.info(f"Generating homepage")
     template = j2env.get_template('index.html')
     with Session() as s:
-        agencies = s.query(Agency).all()
+        agencies = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
         generate_wordcloud(
             s.query(Article).filter(Article.last_accessed > midnight, Article.failure == False).all(),
             os.path.join(Config.build, 'wordcloud.png')
