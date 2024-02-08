@@ -18,7 +18,7 @@
     {% for agency in agencies %}
     {% set sentiment = agency.todays_compound() %}
     <tr>
-        <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
+        <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
         <td>{{ agency.credibility }}</td>
         <td>{{ agency.bias }}</td>
         <td>{{ sentiment[0] | round(2) }}</td>
@@ -27,7 +27,7 @@
         {% else %}
         <td>Headline Only</td>
         {% endif %}
-        <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
+        <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
     </tr>
     {% endfor %}
     </tbody>
