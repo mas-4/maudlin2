@@ -1,4 +1,5 @@
 import argparse
+from app.emailer import send_notification
 
 from app.config import Config
 from app.logger import get_logger
@@ -23,34 +24,37 @@ class Queue:
         self.scrapers.append(scraper())
 
 
-def scrape():
+def scrape(scrapers):
+    if not len(scrapers):
+        raise ValueError("No scrapers provided")
     queue = Queue()
     logger.info("Initializing queue")
-    logger.info("Scrapers: %s", Scrapers)
-    for scraper in Scrapers:
+    logger.info("Scrapers: %s", scrapers)
+    for scraper in scrapers:
         queue.add(scraper)
 
     queue.run()
 
-def main(args: argparse.Namespace):  # noqa shadowing
-    if args.scraper:
-        scraper = [s for s in Scrapers if s.agency == args.scraper]
-        if len(scraper) == 0:
-            raise ValueError(f"Scraper {args.scraper} not found")
-        sc = scraper[0]()
-        sc.start()
-        sc.join()
+def main(args: argparse.Namespace):
+    if args.email_report:
+        send_notification()
         return
     if not args.skip_scrape:
-        scrape()
+        scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
+        scrape(scrapers)
     build_site()
 
 
-if __name__ == '__main__':
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--dev', action='store_true')
     parser.add_argument('--skip-scrape', action='store_true')
     parser.add_argument('--scraper', type=str, default=None)
+    parser.add_argument('--email-report', action='store_true')
     args = parser.parse_args()
     Config.dev_mode = args.dev
-    main(args)
+    return args
+
+
+if __name__ == '__main__':
+    main(get_args())
