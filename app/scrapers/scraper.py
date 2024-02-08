@@ -31,6 +31,8 @@ class Scraper(ABC, Thread):
     headers: dict[str, str] = {}
     parser: str = 'lxml'
     headline_only = False
+    day_lock = Lock()
+    sql_lock = Lock()
 
     def __init__(self):
         super().__init__()
@@ -39,8 +41,6 @@ class Scraper(ABC, Thread):
             raise ValueError("Agency name must be set")
         if not self.url:
             raise ValueError("URL must be set")
-        self.day_lock = Lock()
-        self.sql_lock = Lock()
         self.downstream: list[tuple[str, str]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
@@ -117,8 +117,12 @@ class Scraper(ABC, Thread):
             self.downstream = list(set(self.downstream) - set((article.url, article.title) for article in articles))
 
     def run(self):
-        self.setup(self.get_page(self.url))
-        self.filter_seen()
+        try:
+            self.setup(self.get_page(self.url))
+            self.filter_seen()
+        except Exception as e:  # noqa
+            Session.rollback()
+
         while self.downstream:
             href, title = self.downstream.pop()
             try:
