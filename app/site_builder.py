@@ -5,7 +5,7 @@ from datetime import datetime as dt
 from typing import Optional
 
 import nltk
-import pandas as pd
+import numpy as np
 from wordcloud import WordCloud, STOPWORDS
 
 from app import j2env
@@ -100,11 +100,12 @@ def generate_homepage():
         data = []
         for agency in agencies:
             headline, article = agency.todays_compound()
-            data.append([agency.name, agency.bias, agency.credibility, headline, article])
-        df = pd.DataFrame(data, columns=['Agency', 'Bias', 'Credibility', 'Headline', 'Article'])
+            headline = round(headline, 2) if not np.isnan(headline) else "N/A"
+            article = round(article, 2) if not np.isnan(article) else "N/A"
+            data.append([agency.name, agency.bias.name, agency.credibility.name, headline, article])
 
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
-        f.write(template.render(title='Home', agencies=agencies, nav=get_navbar(), tabledata=df.to_json()))
+        f.write(template.render(title='Home', agencies=agencies, nav=get_navbar(), tabledata=data))
     logger.info(f"Generated homepage")
 
 
