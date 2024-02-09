@@ -3,7 +3,60 @@
 {% block content %}
 <img alt="Word Cloud" src="wordcloud.png">
 <h1>Agencies</h1>
-<table>
+<script type="text/javascript">
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        var data = {{tabledata|safe}};
+        var urls = {{urls|safe}};
+
+        document.getElementById('maintable').remove()
+
+
+        new gridjs.Grid({
+            columns: [
+                {
+                    name: "Agency Name",
+                    formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                },
+                {
+                    name: "Credibility",
+                    formatter: (cell) => credibility[cell],
+                },
+                {
+                    name: "Bias",
+                    formatter: (cell) => bias[cell],
+                },
+                {
+                    name: "Headline",
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    attributes: (cell) => {
+                        return {
+                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                        }
+                    }
+                },
+                {
+                    name: "Article",
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    attributes: (cell) => {
+                        return {
+                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                        }
+                    },
+                    sort: {
+                        compare: nacompare
+                    }
+
+                }
+            ],
+            data: data,
+            sort: true
+        }).render(document.getElementById('wrapper'));
+    });
+</script>
+<div id="wrapper"></div>
+<table id="maintable">
     <thead>
     <tr>
         <th>Agency</th>
