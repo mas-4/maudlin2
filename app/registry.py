@@ -11,6 +11,7 @@ from app.scrapers.foreignpolicy import ForeignPolicy
 from app.scrapers.fortune import Fortune
 from app.scrapers.fox import Fox
 from app.scrapers.foxbusiness import FoxBusiness
+from app.scrapers.huffpost import HuffPost
 from app.scrapers.nbc import NBC
 from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
@@ -30,6 +31,7 @@ Scrapers = [
     Fortune,
     Fox,
     FoxBusiness,
+    HuffPost,
     NBC,
     NPR,
     NYT,

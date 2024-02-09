@@ -45,7 +45,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Forbes
 - [ ] Foreign Affairs
 - [ ] Global Times
-- [ ] Huffington Post
+- [X] Huffington Post
 - [ ] India Times
 - [ ] Jacobin
 - [ ] MSNBC
