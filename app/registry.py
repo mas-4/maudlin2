@@ -1,3 +1,4 @@
+from app.scrapers.abc import ABC
 from app.scrapers.ap import AP
 from app.scrapers.breitbart import Breitbart
 from app.scrapers.cbs import CBS
@@ -15,6 +16,7 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    ABC,
     AP,
     Breitbart,
     CBS,
