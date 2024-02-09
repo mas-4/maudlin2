@@ -3,7 +3,15 @@
 {% block content %}
 <img alt="Word Cloud" src="wordcloud.png">
 <h1>Agencies</h1>
-<table>
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function () {
+        new gridjs.Grid({
+            from: document.getElementById('maintable'),
+        }).render(document.getElementById('wrapper'));
+    });
+</script>
+<div id="wrapper"></div>
+<table id="maintable">
     <thead>
     <tr>
         <th>Agency</th>

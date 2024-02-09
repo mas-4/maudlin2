@@ -5,6 +5,7 @@ from datetime import datetime as dt
 from typing import Optional
 
 import nltk
+import pandas as pd
 from wordcloud import WordCloud, STOPWORDS
 
 from app import j2env
@@ -96,8 +97,14 @@ def generate_homepage():
             s.query(Article).filter(Article.last_accessed > midnight, Article.failure == False).all(),
             os.path.join(Config.build, 'wordcloud.png')
         )
+        data = []
+        for agency in agencies:
+            headline, article = agency.todays_compound()
+            data.append([agency.name, agency.bias, agency.credibility, headline, article])
+        df = pd.DataFrame(data, columns=['Agency', 'Bias', 'Credibility', 'Headline', 'Article'])
+
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
-        f.write(template.render(title='Home', agencies=agencies, nav=get_navbar()))
+        f.write(template.render(title='Home', agencies=agencies, nav=get_navbar(), tabledata=df.to_json()))
     logger.info(f"Generated homepage")
 
 
