@@ -10,6 +10,7 @@ from wordcloud import WordCloud, STOPWORDS
 
 from app import j2env
 from app.config import Config
+from app.constants import Bias, Credibility
 from app.models import Session, Agency, Article
 from app.logger import get_logger
 
@@ -102,10 +103,17 @@ def generate_homepage():
             headline, article = agency.todays_compound()
             headline = round(headline, 2) if not np.isnan(headline) else "N/A"
             article = round(article, 2) if not np.isnan(article) else "N/A"
-            data.append([agency.name, agency.bias.name, agency.credibility.name, headline, article])
+            data.append([agency.name, agency.credibility.value, agency.bias.value, headline, article])
 
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
-        f.write(template.render(title='Home', agencies=agencies, nav=get_navbar(), tabledata=data))
+        f.write(template.render(
+            title='Home',
+            agencies=agencies,
+            nav=get_navbar(),
+            tabledata=data,
+            bias=Bias.to_dict(),
+            credibility=Credibility.to_dict()
+        ))
     logger.info(f"Generated homepage")
 
 

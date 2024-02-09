@@ -30,6 +30,8 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             var data = {{tabledata|safe}};
+            var bias = {{bias|safe}};
+            var credibility = {{credibility|safe}};
 
             document.getElementById('maintable').remove()
 
@@ -45,8 +47,14 @@
             new gridjs.Grid({
                 columns: [
                     "Agency Name",
-                    "Credibility",
-                    "Bias",
+                    {
+                        name: "Credibility",
+                        formatter: (cell) => credibility[cell],
+                    },
+                    {
+                        name: "Bias",
+                        formatter: (cell) => bias[cell],
+                    },
                     {
                         name: "Headline",
                         formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),

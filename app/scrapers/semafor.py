@@ -7,7 +7,7 @@ from app.scrapers.scraper import Scraper
 
 
 class Semafor(Scraper):
-    bias = Bias.center
+    bias = Bias.unbiased
     credibility = Credibility.high
     url: str = 'https://www.semafor.com'
     agency: str = "Semafor"
