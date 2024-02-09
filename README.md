@@ -39,7 +39,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Al Jazeera
 - [ ] BBC
 - [ ] Barron's
-- [ ] Business Insider
+- [X] Business Insider
 - [ ] Daily mail
 - [ ] FT
 - [ ] Forbes

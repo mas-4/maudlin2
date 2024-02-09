@@ -1,6 +1,7 @@
 from app.scrapers.abc import ABC
 from app.scrapers.ap import AP
 from app.scrapers.breitbart import Breitbart
+from app.scrapers.businessinsider import BusinessInsider
 from app.scrapers.cbs import CBS
 from app.scrapers.cnbc import CNBC
 from app.scrapers.cnn import CNN
@@ -19,6 +20,7 @@ Scrapers = [
     ABC,
     AP,
     Breitbart,
+    BusinessInsider,
     CBS,
     CNBC,
     CNN,
