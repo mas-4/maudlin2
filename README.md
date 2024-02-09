@@ -47,7 +47,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Global Times
 - [X] Huffington Post
 - [ ] India Times
-- [ ] Jacobin
+- [X] Jacobin
 - [ ] MSNBC
 - [ ] Mother Jones
 - [ ] New York Post
