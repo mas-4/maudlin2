@@ -14,7 +14,7 @@ class AP(Scraper):
     credibility = Credibility.high
     url: str = 'https://apnews.com/'
     agency: str = "AP"
-    strip: list[str] = ["Associated Press", "AP"]
+    strip: list[str] = ["Associated Press", "AP", "AP Photo"]
 
 
     def setup(self, soup: Soup):

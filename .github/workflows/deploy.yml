@@ -36,5 +36,5 @@ jobs:
           echo "$EMAIL_CREDS" > .creds
           scp -i ~/.ssh/id_rsa .creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
           echo "Running server"
-          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "SERVER_LOCATION=/var/www/html /home/maudlin/maudlin2/venv/bin/python /home/maudlin/maudlin2/main.py"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" "nohup SERVER_LOCATION=/var/www/html /home/maudlin/maudlin2/venv/bin/python /home/maudlin/maudlin2/main.py > "$(date +%Y-%m-%d_%H-%M-%S)-log.txt" 2>&1 &"
           

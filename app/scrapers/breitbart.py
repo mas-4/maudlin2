@@ -14,7 +14,7 @@ class Breitbart(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.breitbart.com/'
     agency: str = "Breitbart"
-    strip: list[str] = []
+    strip: list[str] = ["https", "Breitbart", "outlet", "article", "source", "place"]
 
 
     def setup(self, soup: Soup):

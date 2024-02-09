@@ -15,7 +15,7 @@ class NYT(Scraper):
     url: str = 'https://www.nytimes.com/'
     agency: str = "New York Times"
     headline_only = True
-    strip = ["New York Times", "NYT", "The New York Times", "NY Times", "News Digital", "News"]
+    strip = ["New York Times", "NYT", "The New York Times", "NY Times", "News Digital", "News", "New"]
 
 
     def setup(self, soup: Soup):

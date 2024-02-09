@@ -17,6 +17,8 @@ class Semafor(Scraper):
         "Read it now",
         r"Sign up for.*\. Read it now.",
         "In this article:",
+        "Sign",
+        "Semaphor"
     ]
 
     def setup(self, soup: Soup):

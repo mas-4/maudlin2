@@ -14,8 +14,7 @@ class FoxBusiness(Scraper):
     agency: str = "Fox Business"
     bias: Bias = Bias.right_center
     credibility: Credibility = Credibility.mixed
-    strip: list[str] = [
-    ]
+    strip: list[str] = ["Fox Business"]
     parser: str = 'lxml'
 
     def setup(self, soup: Soup):

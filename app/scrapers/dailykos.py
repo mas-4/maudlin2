@@ -15,7 +15,7 @@ class DailyKos(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.dailykos.com'
     agency: str = "The Daily Kos"
-    strip: list[str] = []
+    strip: list[str] = ["Daily Kos"]
 
     def get_page(self, url):
         if url == self.url:

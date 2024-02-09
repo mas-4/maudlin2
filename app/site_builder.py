@@ -14,10 +14,7 @@ from app.logger import get_logger
 
 logger = get_logger(__name__)
 
-POS = [
-    'FW', 'NN', 'NNS', 'NNP', 'NNPS', 'PRP$',
-    'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VNP', 'VBZ'
-]
+POS = ['NN', 'NNS', 'NNP', 'NNPS']
 
 STOPWORDS = list(STOPWORDS)
 # clean some default words
@@ -25,8 +22,9 @@ STOPWORDS.extend([
     'say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month', "years",
     "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group", 
     "state", "country", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-    "home", "effort"
-    ])
+    "home", "effort", "product", "part", "cup", "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sep", "Sept",
+    "Oct", "Nov", "Dec", "company", "companies", "business"
+])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 
