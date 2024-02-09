@@ -62,7 +62,7 @@ def generate_agency_pages():
     s = Session()
     for agency in s.query(Agency).filter(Agency.articles.any()).all():
         logger.info("Generating page for %s...", agency.name)
-        variables = get_variables(agency, s)
+        variables = get_variables(agency)
         generate_wordcloud(
             variables['articles'],
             os.path.join(Config.build, variables['wordcloud'])
@@ -73,7 +73,7 @@ def generate_agency_pages():
     s.close()
 
 
-def get_variables(agency, s):
+def get_variables(agency):
     articles = agency.articles\
         .filter(Article.last_accessed > midnight, Article.failure == False)\
         .order_by(Article.last_accessed.desc()).all()
