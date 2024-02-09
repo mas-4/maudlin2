@@ -17,7 +17,11 @@ class BusinessInsider(Scraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'data-analytics-product-module': 'hp_tout_clicks'}):
-            href = self.url + a['href']
+            href = a['href']
+            if href.startswith('//'):
+                href = 'https:' + href
+            elif href.startswith('/'):
+                href = self.url + href
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
