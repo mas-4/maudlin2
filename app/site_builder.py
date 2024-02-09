@@ -74,18 +74,31 @@ def generate_agency_pages():
 
 
 def get_variables(agency, s):
+    articles = agency.articles\
+        .filter(Article.last_accessed > midnight, Article.failure == False)\
+        .order_by(Article.last_accessed.desc()).all()
+    tabledata = []
+    urls = {}
+    for article in articles:
+        urls[article.title] = article.url
+        tabledata.append([
+            article.title,
+            article.first_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+            article.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+            article.headcompound,
+            article.artcompound or "N/A"
+        ])
     return {
-        'nav': get_navbar(),
-        'title': agency.name,
         'agency_name': agency.name,
-        'wordcloud': f'{agency.name}.png',
-        'articles': agency.articles.filter(
-            Article.last_accessed > midnight, Article.failure == False
-        ).order_by(Article.last_accessed.desc()).all(),
+        'articles': articles,
         'bias': str(agency.bias),
         'credibility': str(agency.credibility),
-        'sentiment': agency.todays_sentiment(s).to_html(),
-        'headline_only': agency.headline_only
+        'headline_only': agency.headline_only,
+        'nav': get_navbar(),
+        'tabledata': tabledata,
+        'title': agency.name,
+        'urls': urls,
+        'wordcloud': f'{agency.name}.png',
     }
 
 
@@ -99,11 +112,13 @@ def generate_homepage():
             os.path.join(Config.build, 'wordcloud.png')
         )
         data = []
+        urls = {}
         for agency in agencies:
             headline, article = agency.todays_compound()
             headline = round(headline, 2) if not np.isnan(headline) else "N/A"
             article = round(article, 2) if not np.isnan(article) else "N/A"
             data.append([agency.name, agency.credibility.value, agency.bias.value, headline, article])
+            urls[agency.name] = f"{agency.name}.html"
 
     with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
         f.write(template.render(
@@ -112,7 +127,8 @@ def generate_homepage():
             nav=get_navbar(),
             tabledata=data,
             bias=Bias.to_dict(),
-            credibility=Credibility.to_dict()
+            credibility=Credibility.to_dict(),
+            urls=urls
         ))
     logger.info(f"Generated homepage")
 
