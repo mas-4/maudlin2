@@ -18,6 +18,7 @@ class Config:
     log_file = f'{output_dir}/app.log'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+    dayreport_file = os.path.join(output_dir, 'day-report.json')
     assets = os.path.join(root, 'app', 'static')
     build = os.path.join(root, 'build')
     if not os.path.exists(build):

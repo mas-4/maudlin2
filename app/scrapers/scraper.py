@@ -1,5 +1,4 @@
 import re
-from datetime import datetime as dt
 import time
 import traceback as tb
 from abc import ABC, abstractmethod
@@ -10,9 +9,10 @@ from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 from app.config import Config
-from app.constants import Credibility, Bias, Constants
+from app.constants import Credibility, Bias
 from app.logger import get_logger
 from app.models import Session, Article, Agency
+from app.dayreport import DayReport
 
 logger = get_logger(__name__)
 
@@ -21,8 +21,8 @@ STRIPS = [
     "News",
     "Getty Images", "Getty",
     "Refinitiv", "Lipper",
-    "Associated Press", "AP", "AP Images",
-
+    "Associated Press", "AP",
+    "AP Images",
 ]
 
 
@@ -59,6 +59,7 @@ class Scraper(ABC, Thread):
                 session.commit()
             self.agency_id = agency.id
         self.strip.extend(STRIPS)
+        self.dayreport = DayReport(self.agency)
 
     @abstractmethod
     def setup(self, soup: Soup):
@@ -120,18 +121,15 @@ class Scraper(ABC, Thread):
             s.commit()
             self.downstream = list(set(self.downstream) - set((article.url, article.title) for article in articles))
 
-    def day_report(self, message, log_func=logger.exception):
-        with open(Constants.Paths.DAY_REPORT, 'at') as f, self.day_lock:
-            f.write(f"[{self.agency} ({dt.now().strftime('%Y-%m-%d %H:%M:%S')})]: {message}\n")
-        log_func("Day report %s: %s", self.agency, message)
-
     def run(self):
         try:
             self.setup(self.get_page(self.url))
             self.filter_seen()
         except Exception as e:  # noqa
             Session.rollback()
-            self.day_report(f"Failed to setup: {e}\n{tb.format_exc()}")
+            msg = f"Failed to setup: {e}"
+            logger.exception(msg)
+            self.dayreport.add_exception(msg, tb.format_exc())
             raise
 
         while self.downstream:
@@ -147,8 +145,10 @@ class Scraper(ABC, Thread):
                 self.process()
             except Exception as e:  # noqa
                 Session.rollback()
-                self.day_report(f"Failed to get page: {(href, title)}\n{e}\n{tb.format_exc()}")
+                msg = f"Failed to get page: {(href, title)}: {e}"
+                self.dayreport.add_exception(msg, tb.format_exc())
+                logger.exception(msg)
                 self.add_stub(href, title)
-
-        self.day_report(f"Added {self.added} articles", logger.info)
+        self.dayreport.added(self.added)
+        logger.info("Done with %s, added %d articles", self.agency, self.added)
         self.done = True

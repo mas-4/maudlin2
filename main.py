@@ -1,10 +1,10 @@
 import argparse
-from app.emailer import send_notification
 
 from app.config import Config
 from app.logger import get_logger
 from app.registry import Scrapers
 from app.site_builder import build_site
+from app.dayreport import DayReport
 
 logger = get_logger(__name__)
 
@@ -37,7 +37,7 @@ def scrape(scrapers):
 
 def main(args: argparse.Namespace):
     if args.email_report:
-        send_notification()
+        DayReport.report_turnover()
         return
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers

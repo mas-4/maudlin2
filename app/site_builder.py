@@ -34,8 +34,7 @@ midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_navbar():
-    template = j2env.get_template('nav.html')
-    return template.render()
+    return j2env.get_template('nav.html').render()
 
 
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):

@@ -40,7 +40,6 @@ class Constants:
     class Paths:
         ROOT = str(pathlib.Path(__file__).parent.parent)
         EMAIL_CREDS = os.path.join(ROOT, '.creds')
-        DAY_REPORT = os.path.join(ROOT, 'data', 'day-report.txt')
 
     class Patterns:
         DATE_URL = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')

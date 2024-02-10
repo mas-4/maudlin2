@@ -50,17 +50,9 @@ class SMTPWrapper(smtplib.SMTP_SSL):
         self.sendmail(from_addr, to_addrs, msg_root.as_string())
 
 
-def send_notification():
+def send_notification(message: str):
     if not Config.emails_to_notify:
         return
-    with open(Constants.Paths.DAY_REPORT, 'rt') as f_in:
-        day_report = f_in.read()
 
     with SMTPWrapper(Config.domain, Config.email, Config.pw) as server:
-        server.send_mail(from_addr=Config.email,
-                         to_addrs=Config.emails,
-                         msg=day_report,
-                         subject="Maudlin Daily Report")
-
-    shutil.move(Constants.Paths.DAY_REPORT, f'{Constants.Paths.DAY_REPORT}.{dt.now().strftime("%Y-%m-%d")}')
-
+        server.send_mail(from_addr=Config.email, to_addrs=Config.emails, msg=message, subject="Maudlin Daily Report")
