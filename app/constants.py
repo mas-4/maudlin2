@@ -35,10 +35,21 @@ class Credibility(Enum):
     def to_dict(cls):
         return {str(e.value): str(e) for e in cls}
 
+
 class Country(Enum):
     us = 0
     gb = 1
+    qa = 2
 
+
+    def __str__(self):
+        return country_pretty[self]
+
+country_pretty = {
+    Country.us: 'United States',
+    Country.gb: 'Great Britain',
+    Country.qa: 'Qatar'
+}
 
 class Constants:
     class Paths:

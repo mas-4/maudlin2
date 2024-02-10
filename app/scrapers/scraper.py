@@ -59,7 +59,7 @@ class Scraper(ABC, Thread):
             agency.country = self.country
             if not agency.id:
                 session.add(agency)
-                session.commit()
+            session.commit()
             self.agency_id = agency.id
         self.strip.extend(STRIPS)
         self.dayreport = DayReport(self.agency)

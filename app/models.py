@@ -118,6 +118,9 @@ class Article(Base):
 
 
 engine = create_engine(Config.connection_string)
+# Keeping this after migrating to alembic
+# Running this would create the tables in the database but not mark alembic upgrades
+# So just don't do it. To upgrade the database run alembic upgrade head
 # Base.metadata.create_all(engine)
 
 session_factory = sessionmaker(bind=engine)
