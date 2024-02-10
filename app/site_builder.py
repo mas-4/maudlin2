@@ -110,7 +110,7 @@ def generate_homepage():
     with Session() as s:
         agencies = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
         last_hour = dt.now()
-        last_hour.replace(hour=last_hour.hour - 1)
+        last_hour = last_hour.replace(hour=last_hour.hour - 1)
         generate_wordcloud(
             s.query(Article).filter(Article.last_accessed > last_hour, Article.failure == False).all(),
             os.path.join(Config.build, 'wordcloud.png')
@@ -155,7 +155,7 @@ def move_to_public():
 
 
 def build_site():
-    generate_agency_pages()
+    # generate_agency_pages()
     generate_homepage()
     copy_assets()
     move_to_public()
