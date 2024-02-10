@@ -155,7 +155,7 @@ def move_to_public():
 
 
 def build_site():
-    # generate_agency_pages()
+    generate_agency_pages()
     generate_homepage()
     copy_assets()
     move_to_public()
