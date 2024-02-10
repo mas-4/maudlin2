@@ -41,7 +41,7 @@ If you know of a good source not on this list please open an issue!
 - [X] Daily mail
 - [X] FT
 - [ ] Forbes
-- [ ] Foreign Affairs
+- [X] Foreign Affairs
 - [ ] Global Times
 - [ ] India Times
 - [ ] MSNBC
