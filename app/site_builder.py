@@ -63,10 +63,11 @@ def generate_agency_pages():
     for agency in s.query(Agency).filter(Agency.articles.any()).all():
         logger.info("Generating page for %s...", agency.name)
         variables = get_variables(agency)
-        generate_wordcloud(
-            variables['articles'],
-            str(os.path.join(Config.build, variables['wordcloud']))
-        )
+        if variables['articles']:
+            generate_wordcloud(
+                variables['articles'],
+                str(os.path.join(Config.build, variables['wordcloud']))
+            )
         with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
             f.write(template.render(**variables))
         logger.info("Done")
