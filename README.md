@@ -43,7 +43,7 @@ If you know of a good source not on this list please open an issue!
 - [ ] Forbes
 - [X] Foreign Affairs
 - [X] Global Times
-- [ ] India Times
+- [X] India Times
 - [ ] MSNBC
 - [ ] Mother Jones
 - [ ] New York Post
