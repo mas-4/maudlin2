@@ -48,14 +48,12 @@ def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
 
 
 def generate_wordcloud(articles: list[Article], path: str):
-    # filter for only articles from the last hour
     wc = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
-    wc.generate(
-        filter_words(
-            ' '.join([str(article) for article in articles]),
-            ['NN', 'NNS', 'NNP', 'NNPS']
-        )
-    )
+    logger.info("Generating wordcloud for %s articles", len(articles))
+    text = ' '.join([str(article) for article in articles]),
+    logger.info("There are %d words", text.count(' '))
+    wc.generate(filter_words(text, ['NN', 'NNS', 'NNP', 'NNPS'] ))
+    logger.info("Saving wordcloud to %s", path)
     wc.to_file(path)
 
 
@@ -110,8 +108,10 @@ def generate_homepage():
     template = j2env.get_template('index.html')
     with Session() as s:
         agencies = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
+        last_hour = dt.now()
+        last_hour.replace(hour=last_hour.hour - 1)
         generate_wordcloud(
-            s.query(Article).filter(Article.last_accessed > midnight, Article.failure == False).all(),
+            s.query(Article).filter(Article.last_accessed > last_hour, Article.failure == False).all(),
             os.path.join(Config.build, 'wordcloud.png')
         )
         data = []
