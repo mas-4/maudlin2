@@ -37,7 +37,7 @@ If you know of a good source not on this list please open an issue!
 
 - [X] Al Jazeera
 - [X] BBC
-- [ ] Barron's
+- [X] Barron's
 - [ ] Daily mail
 - [ ] FT
 - [ ] Forbes
