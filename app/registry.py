@@ -18,6 +18,7 @@ from app.scrapers.foxbusiness import FoxBusiness
 from app.scrapers.ft import FT
 from app.scrapers.globaltimes import GlobalTimes
 from app.scrapers.huffpost import HuffPost
+from app.scrapers.indiatimes import IndiaTimes
 from app.scrapers.jacobin import Jacobin
 from app.scrapers.nbc import NBC
 from app.scrapers.npr import NPR
@@ -45,6 +46,7 @@ Scrapers = [
     FT,
     GlobalTimes,
     HuffPost,
+    IndiaTimes,
     Jacobin,
     NBC,
     NPR,
