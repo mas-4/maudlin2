@@ -36,7 +36,7 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue!
 
 - [X] Al Jazeera
-- [ ] BBC
+- [X] BBC
 - [ ] Barron's
 - [ ] Daily mail
 - [ ] FT
