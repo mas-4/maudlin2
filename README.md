@@ -42,7 +42,7 @@ If you know of a good source not on this list please open an issue!
 - [X] FT
 - [ ] Forbes
 - [X] Foreign Affairs
-- [ ] Global Times
+- [X] Global Times
 - [ ] India Times
 - [ ] MSNBC
 - [ ] Mother Jones
