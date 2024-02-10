@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 from app.config import Config
-from app.constants import Credibility, Bias
+from app.constants import Credibility, Bias, Country
 from app.logger import get_logger
 from app.models import Session, Article, Agency
 from app.dayreport import DayReport
@@ -35,6 +35,7 @@ class Scraper(ABC, Thread):
     headers: dict[str, str] = {}
     parser: str = 'lxml'
     headline_only = False
+    country = Country.us
     day_lock = Lock()
     sql_lock = Lock()
 
@@ -52,9 +53,11 @@ class Scraper(ABC, Thread):
             agency = session.query(Agency).filter_by(name=self.agency).first()
             if not agency:
                 agency = Agency(name=self.agency, url=self.url)
-                agency.bias = self.bias
-                agency.credibility = self.credibility
-                agency.headline_only = self.headline_only
+            agency.bias = self.bias
+            agency.credibility = self.credibility
+            agency.headline_only = self.headline_only
+            agency.country = self.country
+            if not agency.id:
                 session.add(agency)
                 session.commit()
             self.agency_id = agency.id

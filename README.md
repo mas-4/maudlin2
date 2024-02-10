@@ -35,19 +35,15 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue!
 
-- [X] ABC News
 - [ ] Al Jazeera
 - [ ] BBC
 - [ ] Barron's
-- [X] Business Insider
 - [ ] Daily mail
 - [ ] FT
 - [ ] Forbes
 - [ ] Foreign Affairs
 - [ ] Global Times
-- [X] Huffington Post
 - [ ] India Times
-- [X] Jacobin
 - [ ] MSNBC
 - [ ] Mother Jones
 - [ ] New York Post
@@ -79,8 +75,10 @@ If you know of a good source not on this list please open an issue!
 - [ ] Xinhua
 - [-] Axios
 - [-] Daily Beast
+- [X] ABC News
 - [X] Associated Press
 - [X] Breitbart
+- [X] Business Insider
 - [X] CBS News
 - [X] CNBC
 - [X] CNN
@@ -88,6 +86,8 @@ If you know of a good source not on this list please open an issue!
 - [X] Foreign Policy
 - [X] Fortune
 - [X] Fox Business
+- [X] Huffington Post
+- [X] Jacobin
 - [X] NBC
 - [X] NPR
 - [X] Semafor

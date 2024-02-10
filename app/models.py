@@ -1,13 +1,12 @@
-from typing import List
 from datetime import datetime as dt
 
+import pandas as pd
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer, Boolean
 
 from app.config import Config
-from app.constants import Bias, Credibility
-import pandas as pd
+from app.constants import Bias, Credibility, Country
 
 
 class Base(DeclarativeBase):
@@ -19,11 +18,11 @@ class Agency(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30))
     url: Mapped[str] = mapped_column(String(100))
-    articles: Mapped[List["Article"]] = relationship("Article", back_populates="agency", lazy="dynamic")
+    articles: Mapped[list["Article"]] = relationship("Article", back_populates="agency", lazy="dynamic")
     _bias: Mapped[int] = mapped_column(Integer())
     _credibility: Mapped[int] = mapped_column(Integer())
+    _country: Mapped[int] = mapped_column(Integer())
     headline_only: Mapped[bool] = mapped_column(Boolean(), default=False)
-
 
     columns = ["artneg", "artneu", "artpos", "artcompound", "headneg", "headneu", "headpos", "headcompound"]
     def __repr__(self) -> str:
@@ -73,6 +72,14 @@ class Agency(Base):
     def credibility(self, value):
         self._credibility = value.value
 
+    @property
+    def country(self):
+        return Country(self._country)
+
+    @country.setter
+    def country(self, value):
+        self._country = value.value
+
 class Article(Base):
     __tablename__ = "article"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -111,7 +118,7 @@ class Article(Base):
 
 
 engine = create_engine(Config.connection_string)
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)

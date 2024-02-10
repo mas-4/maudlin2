@@ -35,6 +35,10 @@ class Credibility(Enum):
     def to_dict(cls):
         return {str(e.value): str(e) for e in cls}
 
+class Country(Enum):
+    us = 0
+    gb = 1
+
 
 class Constants:
     class Paths:
