@@ -36,6 +36,9 @@ midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
 def get_navbar():
     return j2env.get_template('nav.html').render()
 
+def get_footer():
+    return j2env.get_template('footer.html').render(now=dt.now().strftime('%m-%d-%Y %H:%M:%S'))
+
 
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
     if parts_of_speech is None:
@@ -64,7 +67,7 @@ def generate_agency_pages():
         variables = get_variables(agency)
         generate_wordcloud(
             variables['articles'],
-            os.path.join(Config.build, variables['wordcloud'])
+            str(os.path.join(Config.build, variables['wordcloud']))
         )
         with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
             f.write(template.render(**variables))
@@ -94,6 +97,7 @@ def get_variables(agency):
         'credibility': str(agency.credibility),
         'headline_only': agency.headline_only,
         'nav': get_navbar(),
+        'footer': get_footer(),
         'tabledata': tabledata,
         'title': agency.name,
         'urls': urls,
@@ -124,6 +128,7 @@ def generate_homepage():
             title='Home',
             agencies=agencies,
             nav=get_navbar(),
+            footer=get_footer(),
             tabledata=data,
             bias=Bias.to_dict(),
             credibility=Credibility.to_dict(),
