@@ -49,11 +49,11 @@ def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
 
 def generate_wordcloud(articles: list[Article], path: str):
     wc = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
-    logger.info("Generating wordcloud for %s articles", len(articles))
+    logger.debug("Generating wordcloud for %s articles", len(articles))
     text = ' '.join([str(article) for article in articles])
-    logger.info("There are %d words", text.count(' '))
+    logger.debug("There are %d words", text.count(' '))
     wc.generate(filter_words(text, ['NN', 'NNS', 'NNP', 'NNPS'] ))
-    logger.info("Saving wordcloud to %s", path)
+    logger.debug("Saving wordcloud to %s", path)
     wc.to_file(path)
 
 
