@@ -39,7 +39,7 @@ If you know of a good source not on this list please open an issue!
 - [X] BBC
 - [X] Barron's
 - [X] Daily mail
-- [ ] FT
+- [X] FT
 - [ ] Forbes
 - [ ] Foreign Affairs
 - [ ] Global Times

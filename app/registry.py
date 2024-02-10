@@ -14,6 +14,7 @@ from app.scrapers.foreignpolicy import ForeignPolicy
 from app.scrapers.fortune import Fortune
 from app.scrapers.fox import Fox
 from app.scrapers.foxbusiness import FoxBusiness
+from app.scrapers.ft import FT
 from app.scrapers.huffpost import HuffPost
 from app.scrapers.jacobin import Jacobin
 from app.scrapers.nbc import NBC
@@ -38,6 +39,7 @@ Scrapers = [
     Fortune,
     Fox,
     FoxBusiness,
+    FT,
     HuffPost,
     Jacobin,
     NBC,
