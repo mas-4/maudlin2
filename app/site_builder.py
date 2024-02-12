@@ -1,7 +1,7 @@
 import os
 import shutil
 import string
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td, timezone as tz
 from typing import Optional
 
 import nltk
@@ -31,13 +31,14 @@ STOPWORDS.extend([
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 
 midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
+timezone = tz(td(hours=-5))
 
 
 def get_navbar():
     return j2env.get_template('nav.html').render()
 
 def get_footer():
-    return j2env.get_template('footer.html').render(now=dt.now().strftime('%m-%d-%Y %H:%M:%S'))
+    return j2env.get_template('footer.html').render(now=dt.now(timezone).strftime('%m-%d-%Y %H:%M:%S'))
 
 
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
