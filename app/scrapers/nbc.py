@@ -29,7 +29,6 @@ class NBC(Scraper):
 
     def consume(self, page: Soup, href: str, title: str):
         story = []
-        title = page.find("h1", class_="article-hero-headline__htag").text.strip()
         for p in page.find("div", class_="article-body__content").find_all('p'):
             story.append(p.text.strip())
         self.results.append({

@@ -32,7 +32,6 @@ class FoxBusiness(Scraper):
             self.downstream.append((href, title))
 
     def consume(self, page: Soup, href: str, title: str):
-        title = page.find('h1', class_='headline').text.strip()
         story = []
         for p in page.find('div', {'class': 'article-body'}).find_all('p'):
             if a := p.find('a'):
