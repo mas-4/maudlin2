@@ -16,7 +16,6 @@ class FT(Scraper):
     agency: str = "Financial Times"
     country = Country.gb
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/content/')}):
             href = a['href']

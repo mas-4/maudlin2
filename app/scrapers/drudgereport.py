@@ -12,7 +12,6 @@ class DrudgeReport(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.drudgereport.com/'
     agency: str = "Drudge Report"
-
     def setup(self, soup: Soup):
         # Drudge has a lot of non story links, but tbh who cares if they get added
         # I'm not going to filter them out

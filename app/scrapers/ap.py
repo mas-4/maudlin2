@@ -15,7 +15,6 @@ class AP(Scraper):
     url: str = 'https://apnews.com/'
     agency: str = "AP"
 
-
     def setup(self, soup: Soup):
         for a in soup.find('main', {'class': 'Page-oneColumn'}).find_all(
                 'a', { 'href': re.compile(".*/article/.*")}):

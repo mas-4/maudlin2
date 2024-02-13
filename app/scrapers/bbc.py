@@ -14,7 +14,6 @@ class BBC(Scraper):
     agency: str = "BBC"
     country = Country.gb
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'data-testid': 'internal-link'}):
             href = a['href']

@@ -11,7 +11,6 @@ class Semafor(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.semafor.com'
     agency: str = "Semafor"
-
     def setup(self, soup: Soup):
         for a in soup.find('div', {'class': re.compile('styles_grid')}).find_all(
                 'a', { 'href': re.compile(".*/article/.*")}):

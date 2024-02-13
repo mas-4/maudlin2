@@ -15,7 +15,6 @@ class AlJazeera(Scraper):
     agency: str = "Al Jazeera"
     country = Country.qa
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
             href = a['href']

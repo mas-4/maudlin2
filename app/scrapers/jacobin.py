@@ -15,7 +15,6 @@ class Jacobin(Scraper):
     url: str = 'https://jacobin.com'
     agency: str = "Jacobin"
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/\d{4}/\d{2}/')}):
             href = a['href']

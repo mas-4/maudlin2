@@ -15,7 +15,6 @@ class ABC(Scraper):
     url: str = 'https://abcnews.go.com/'
     agency: str = "ABC News"
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/story\?id=')}):
             href = a['href']

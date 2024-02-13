@@ -13,7 +13,6 @@ class CNN(Scraper):
     url: str = 'https://lite.cnn.com/'
     agency: str = "CNN"
 
-
     def setup(self, soup: Soup):
         for li in soup.find_all('li', class_='card--lite'):
             a = li.find('a')

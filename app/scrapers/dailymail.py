@@ -15,7 +15,6 @@ class DailyMail(Scraper):
     url: str = 'https://www.dailymail.co.uk'
     agency: str = "Daily Mail"
     country = Country.gb
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/article-\d+/')}):
             if a['href'].startswith('https:'):

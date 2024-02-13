@@ -15,7 +15,6 @@ class Barrons(Scraper):  # Disabled because they're assholes
     url: str = 'https://www.barrons.com'
     agency: str = "Barron's"
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/articles/')}):
             href = a['href']

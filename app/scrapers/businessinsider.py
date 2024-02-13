@@ -13,7 +13,6 @@ class BusinessInsider(Scraper):
     url: str = 'https://www.businessinsider.com'
     agency: str = "Business Insider"
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'data-analytics-product-module': 'hp_tout_clicks'}):
             href = a['href']

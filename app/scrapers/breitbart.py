@@ -15,7 +15,6 @@ class Breitbart(Scraper):
     url: str = 'https://www.breitbart.com/'
     agency: str = "Breitbart"
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/\d{4}/\d{2}/\d{2}/')}):
             href = a['href']

@@ -14,6 +14,5 @@ class DailyBeast(Scraper):
     url: str = 'https://www.thedailybeast.com/'
     agency: str = "The Daily Beast"
     strip: list[str] = []
-
     def setup(self, soup: Soup):
         pass

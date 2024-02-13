@@ -16,7 +16,6 @@ class Axios(Scraper):
     url: str = 'https://www.axios.com'
     agency: str = "Axios"
 
-
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/\d{4}/\d{2}/\d{2}/')}):
             href = self.url + a['href']
