@@ -3,22 +3,21 @@ import shutil
 import string
 from datetime import datetime as dt, timedelta as td, timezone as tz
 from typing import Optional
-import seaborn as sns
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-
-
-import pandas as pd
-from sqlalchemy import func
 
 import nltk
 import numpy as np
+import pandas as pd
+import seaborn as sns
+import yaml
+from matplotlib import pyplot as plt, dates as mdates
+from sqlalchemy import func
 from wordcloud import WordCloud, STOPWORDS
 
 from app import j2env
 from app.config import Config
-from app.models import Session, Agency, Article, Headline
+from app.constants import Constants
 from app.logger import get_logger
+from app.models import Session, Agency, Article, Headline
 
 logger = get_logger(__name__)
 
@@ -201,6 +200,54 @@ class HomePage:
                 os.path.join(Config.build, self.wordcloud_filename)
             )
 
+class Blog:
+    page = j2env.get_template('blog.html')
+    index = j2env.get_template('blog.index.html')
+
+    def __init__(self):
+        self.posts = []
+
+    def generate(self):
+        logger.info("Generating blog...")
+        self.load_posts()
+        self.render_blog_index()
+        self.render_blog()
+        logger.info("...done")
+
+    def load_posts(self):
+        path = os.path.join(Constants.Paths.ROOT, 'app', 'posts')
+        for file in os.listdir(path):
+            with open(os.path.join(path, file), 'rt') as f:
+                frontmatter, post = self.read_frontmatter(f.read())
+            url = frontmatter['title'].lower()
+            for item in string.punctuation + ' ':
+                url = url.replace(item, '-')
+            url = url.strip('-')
+
+            self.posts.append({
+                'title': frontmatter['title'],
+                'date': frontmatter['date'],
+                'body': post,
+                'url': url
+            })
+
+    @staticmethod
+    def read_frontmatter(post):
+        frontmatter = post.split('---')[1]
+        post = post.split('---')[2]
+        frontmatter: dict = yaml.safe_load(frontmatter)
+        return frontmatter, post
+
+    def render_blog_index(self):
+        with open(os.path.join(Config.build, 'blog'), 'wt') as f:
+            f.write(self.index.render(posts=self.posts))
+
+    def render_blog(self):
+        for post in self.posts:
+            with open(os.path.join(Config.build, f"{post['url']}"), 'wt') as f:
+                f.write(self.page.render(post=post))
+
+
 
 def copy_assets():
     for file in os.listdir(Config.assets):
@@ -222,5 +269,6 @@ def move_to_public():
 def build_site():
     generate_agency_pages()
     HomePage().generate()
+    Blog().generate()
     copy_assets()
     move_to_public()
