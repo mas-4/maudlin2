@@ -1,6 +1,9 @@
 import os
 import pathlib
+from datetime import datetime as dt
 from random import random
+
+import mistune
 
 from app import j2env
 from app.constants import Constants, Credibility, Bias
@@ -45,6 +48,7 @@ class Config:
 j2env.globals['Config'] = Config
 j2env.globals['bias'] = Bias.to_dict()
 j2env.globals['credibility'] = Credibility.to_dict()
+j2env.globals['now'] = dt.now().strftime(Config.strf)
 
 j2env.globals['nav'] = j2env.get_template('nav.html').render()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
@@ -55,4 +59,5 @@ def date(value):
 
 
 j2env.filters['date'] = date
+j2env.filters['markdown'] = lambda text: mistune.markdown(text)
 # </editor-fold>
