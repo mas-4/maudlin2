@@ -2,7 +2,6 @@
 
 {% block content %}
 <img alt="Word Cloud" src="wordcloud.png">
-<h1>Agencies</h1>
 <script type="text/javascript">
 
 
@@ -55,12 +54,11 @@
     </thead>
     <tbody>
     {% for agency in agencies %}
-    {% set sentiment = agency.todays_compound() %}
     <tr>
         <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
         <td>{{ agency.credibility }}</td>
         <td>{{ agency.bias }}</td>
-        <td>{{ sentiment | round(2) }}</td>
+        <td>{{ agency.todays_compound() | round(2) }}</td>
         <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
     </tr>
     {% endfor %}

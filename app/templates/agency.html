@@ -3,38 +3,36 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <img alt="{{ title }}" src="{{ wordcloud }}">
-<h2>Credibility: {{ credibility }}</h2>
-<h2>Bias: {{ bias }}</h2>
-    <script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function () {
-            const data = {{tabledata|safe}};
-            const urls = {{urls|safe}};
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function () {
+        const data = {{tabledata|safe}};
+        const urls = {{urls|safe}};
 
-            document.getElementById('maintable').remove()
+        document.getElementById('maintable').remove()
 
-            new gridjs.Grid({
-                columns: [
-                    {
-                        name: "Title",
-                        formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
-                    },
-                    "First Accessed",
-                    "Last Accessed",
-                    {
-                        name: "Sentiment",
-                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
-                        attributes: (cell) => {
-                            return {
-                                style: `background-color: ${getColorForValue(cell)}; text-align: center;`
-                            }
+        new gridjs.Grid({
+            columns: [
+                {
+                    name: "Title",
+                    formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                },
+                "First Accessed",
+                "Last Accessed",
+                {
+                    name: "Sentiment",
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    attributes: (cell) => {
+                        return {
+                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
                         }
-                    },
-                ],
-                data: data,
-                sort: true
-            }).render(document.getElementById('wrapper'));
-        });
-    </script>
+                    }
+                },
+            ],
+            data: data,
+            sort: true
+        }).render(document.getElementById('wrapper'));
+    });
+</script>
 <div id="wrapper"></div>
 <table id="maintable">
     <thead>
