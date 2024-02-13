@@ -222,7 +222,7 @@ class Blog:
             url = frontmatter['title'].lower()
             for item in string.punctuation + ' ':
                 url = url.replace(item, '-')
-            url = url.strip('-')
+            url = url.strip('-') + '.html'
 
             self.posts.append({
                 'title': frontmatter['title'],
@@ -239,12 +239,12 @@ class Blog:
         return frontmatter, post
 
     def render_blog_index(self):
-        with open(os.path.join(Config.build, 'blog'), 'wt') as f:
+        with open(os.path.join(Config.build, 'blog.html'), 'wt') as f:
             f.write(self.index.render(posts=self.posts))
 
     def render_blog(self):
         for post in self.posts:
-            with open(os.path.join(Config.build, f"{post['url']}"), 'wt') as f:
+            with open(os.path.join(Config.build, post['url']), 'wt') as f:
                 f.write(self.page.render(post=post))
 
 
