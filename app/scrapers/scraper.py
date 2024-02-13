@@ -1,3 +1,4 @@
+import re
 import traceback as tb
 from abc import ABC, abstractmethod
 from collections import namedtuple
@@ -16,7 +17,7 @@ logger = get_logger(__name__)
 
 
 ArticlePair = namedtuple('ArticlePair', ['href', 'title'])
-STRIPS = ['\xad', '\xa0', '\n', '\t', '\r']
+STRIPS = {'\xad': ' ', '\xa0': ' ', '\n': ' ', '\t': ' ', '\r': ' ', '  +': ' '}
 
 
 class Scraper(ABC, Thread):
@@ -108,8 +109,8 @@ class Scraper(ABC, Thread):
 
     @staticmethod
     def strip(text: str):
-        for strip in STRIPS:
-            text = text.replace(strip, '')
+        for pattern, replacement in STRIPS.items():
+            text = re.sub(pattern, replacement, text)
         return text
 
     def run_processing(self):
