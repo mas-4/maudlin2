@@ -14,9 +14,6 @@ class NYT(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.nytimes.com/'
     agency: str = "New York Times"
-    headline_only = True
-    strip = ["New York Times", "NYT", "The New York Times", "NY Times", "News Digital", "News", "New"]
-
 
     def setup(self, soup: Soup):
         ignore = 'podcasts', 'crosswords',
@@ -37,6 +34,3 @@ class NYT(Scraper):
                 logger.exception(a)
                 raise
             self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        pass  # headline only

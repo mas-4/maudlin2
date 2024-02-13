@@ -12,8 +12,6 @@ class CBS(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.cbsnews.com'
     agency: str = "CBS News"
-    strip: list[str] = []
-
 
     def setup(self, soup: Soup):
         for art in soup.find_all('article'):
@@ -26,19 +24,3 @@ class CBS(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        article = page.find('section', {'class': 'content__body'})
-        aside = article.find('aside')
-        if aside:
-            aside.decompose()
-        for p in article.find_all(['p', 'ul', 'blockquote']):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

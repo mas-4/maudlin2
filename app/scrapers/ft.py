@@ -14,8 +14,6 @@ class FT(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.ft.com'
     agency: str = "Financial Times"
-    strip: list[str] = []
-    headline_only = True
     country = Country.gb
 
 
@@ -25,7 +23,3 @@ class FT(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        pass
-

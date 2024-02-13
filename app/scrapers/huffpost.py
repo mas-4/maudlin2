@@ -14,8 +14,6 @@ class HuffPost(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.huffpost.com/'
     agency: str = "HuffPost"
-    strip: list[str] = []
-
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/entry/')}):
@@ -23,15 +21,3 @@ class HuffPost(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find('section', {'class': 'js-entry-content'}).find_all('p'):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

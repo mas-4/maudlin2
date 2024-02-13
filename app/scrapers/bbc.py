@@ -12,7 +12,6 @@ class BBC(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.bbc.com'
     agency: str = "BBC"
-    strip: list[str] = []
     country = Country.gb
 
 
@@ -23,15 +22,3 @@ class BBC(Scraper):
                 href = self.url + href
             if title := a.find('h2', {'data-testid': 'card-headline'}):
                 self.downstream.append((href, title.text.strip()))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find_all('section', {'data-component': 'text-block'}):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

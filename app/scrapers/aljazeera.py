@@ -13,7 +13,6 @@ class AlJazeera(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.aljazeera.com'
     agency: str = "Al Jazeera"
-    strip: list[str] = []
     country = Country.qa
 
 
@@ -25,15 +24,3 @@ class AlJazeera(Scraper):
             title = a.text.strip().replace('\xad', '')
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find('main').find_all('p'):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

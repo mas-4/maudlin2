@@ -31,10 +31,8 @@ class Scraper(ABC, Thread):
     url: str = ''
     bias: Bias = None
     credibility: Credibility = None
-    strip: list[str] = []
     headers: dict[str, str] = {}
     parser: str = 'lxml'
-    headline_only = False
     country = Country.us
     day_lock = Lock()
     sql_lock = Lock()
@@ -46,6 +44,8 @@ class Scraper(ABC, Thread):
             raise ValueError("Agency name must be set")
         if not self.url:
             raise ValueError("URL must be set")
+        if self.bias is None or self.credibility is None:
+            raise ValueError("Bias and credibility must be set")
         self.downstream: list[tuple[str, str]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
@@ -55,50 +55,27 @@ class Scraper(ABC, Thread):
                 agency = Agency(name=self.agency, url=self.url)
             agency.bias = self.bias
             agency.credibility = self.credibility
-            agency.headline_only = self.headline_only
             agency.country = self.country
             if not agency.id:
                 session.add(agency)
             session.commit()
             self.agency_id = agency.id
-        self.strip.extend(STRIPS)
         self.dayreport = DayReport(self.agency)
 
     @abstractmethod
     def setup(self, soup: Soup):
         pass
 
-    @abstractmethod
-    def consume(self, page: Soup, href: str, title: str) -> bool:
-        pass
-
-    def strip_text(self, text: str) -> str:
-        for regex in self.strip:
-            text = re.sub(regex, '', text)
-        text = re.sub(r'^\s*\.\s*$', '', text, flags=re.MULTILINE)
-        text = re.sub(r'\s+\.\s+', '.', text)
-        text = re.sub('\n\n', '\n', text)
-        text = re.sub('  +', ' ', text)
-        return text.strip()
-
     def process(self):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         with Session() as session, self.sql_lock:
             for result in self.results:
-                if not self.headline_only:
-                    self.process_body(result, sid)
                 result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
                 session.add(article := Article(**result, agency_id=self.agency_id))
                 session.commit()
                 logger.info(f"Adding to database: %r", article)
                 self.added += 1
         self.results = []
-
-    def process_body(self, result, sid):
-        result['body'] = self.strip_text(result['body'])
-        if Config.dev_mode:
-            logger.debug("%s", result['body'])
-        result.update({f"art{k}": v for k, v in sid.polarity_scores(result['body']).items()})
 
     def add_stub(self, href: str, title: str):
         with Session() as session, self.sql_lock:
@@ -125,6 +102,26 @@ class Scraper(ABC, Thread):
             self.downstream = list(set(self.downstream) - set((article.url, article.title) for article in articles))
 
     def run(self):
+        self.run_setup()
+        self.run_processing()
+        self.dayreport.added(self.added)
+        logger.info("Done with %s, added %d articles", self.agency, self.added)
+        self.done = True
+
+    def run_processing(self):
+        while self.downstream:
+            href, title = self.downstream.pop()
+            try:
+                self.results.append({'title': title, 'url': href})
+                self.process()
+            except Exception as e:  # noqa
+                Session.rollback()
+                msg = f"Failed to get page: {(href, title)}: {e}"
+                self.dayreport.add_exception(msg, tb.format_exc())
+                logger.exception(msg)
+                self.add_stub(href, title)
+
+    def run_setup(self):
         try:
             self.setup(self.get_page(self.url))
             self.filter_seen()
@@ -134,24 +131,3 @@ class Scraper(ABC, Thread):
             logger.exception(msg)
             self.dayreport.add_exception(msg, tb.format_exc())
             raise
-
-        while self.downstream:
-            href, title = self.downstream.pop()
-            try:
-                logger.info("%s: %d articles left to check", self.agency, len(self.downstream))
-                if self.headline_only:
-                    self.results.append({'title': title, 'url': href})
-                else:
-                    time.sleep(Config.time_between_requests())  # we sleep before a query
-                    page = self.get_page(href)
-                    self.consume(page, href, title)
-                self.process()
-            except Exception as e:  # noqa
-                Session.rollback()
-                msg = f"Failed to get page: {(href, title)}: {e}"
-                self.dayreport.add_exception(msg, tb.format_exc())
-                logger.exception(msg)
-                self.add_stub(href, title)
-        self.dayreport.added(self.added)
-        logger.info("Done with %s, added %d articles", self.agency, self.added)
-        self.done = True

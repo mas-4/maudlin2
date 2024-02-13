@@ -89,13 +89,8 @@ class Article(Base):
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
     title: Mapped[str] = mapped_column(String(254), nullable=True)
     url: Mapped[str] = mapped_column(String(254))
-    body: Mapped[str] = mapped_column(Text(), nullable=True)
     failure: Mapped[bool] = mapped_column(Boolean(), default=False)
 
-    artneg: Mapped[float] = mapped_column(Float(), nullable=True)
-    artneu: Mapped[float] = mapped_column(Float(), nullable=True)
-    artpos: Mapped[float] = mapped_column(Float(), nullable=True)
-    artcompound: Mapped[float] = mapped_column(Float(), nullable=True)
     headneg: Mapped[float] = mapped_column(Float(), nullable=True)
     headneu: Mapped[float] = mapped_column(Float(), nullable=True)
     headpos: Mapped[float] = mapped_column(Float(), nullable=True)
@@ -113,7 +108,6 @@ class Article(Base):
     def __str__(self) -> str:
         if self.agency.headline_only:
             return self.title
-        return f"{self.title}\n\n{self.body}"
 
 
 

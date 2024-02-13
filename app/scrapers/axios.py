@@ -15,7 +15,6 @@ class Axios(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.axios.com'
     agency: str = "Axios"
-    strip: list[str] = []
 
 
     def setup(self, soup: Soup):
@@ -24,18 +23,3 @@ class Axios(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find('div', {'class': re.compile('DraftjsBlocks')}
-                           ).find_all(['p', 'ul']):
-            p.select('strong')
-            p.extract()
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-
