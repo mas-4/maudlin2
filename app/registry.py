@@ -2,6 +2,7 @@ from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.abc import ABC
 from app.scrapers.ap import AP
 from app.scrapers.bbc import BBC
+from app.scrapers.bloomberg import Bloomberg
 from app.scrapers.breitbart import Breitbart
 from app.scrapers.businessinsider import BusinessInsider
 from app.scrapers.cbs import CBS
@@ -30,6 +31,7 @@ Scrapers = [
     AlJazeera,
     AP,
     BBC,
+    Bloomberg,
     Breitbart,
     BusinessInsider,
     CBS,
