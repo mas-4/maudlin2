@@ -3,7 +3,7 @@ import pathlib
 from random import random
 
 from app import j2env
-from app.constants import Constants
+from app.constants import Constants, Credibility, Bias
 
 
 class Config:
@@ -43,6 +43,12 @@ class Config:
 
 # <editor-fold desc="Jinja2 Environment Stuff">
 j2env.globals['Config'] = Config
+j2env.globals['bias'] = Bias.to_dict()
+j2env.globals['credibility'] = Credibility.to_dict()
+
+j2env.globals['nav'] = j2env.get_template('nav.html').render()
+j2env.globals['footer'] = j2env.get_template('footer.html').render()
+
 
 def date(value):
     return value.strftime(Config.strf)

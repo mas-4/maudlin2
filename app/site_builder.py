@@ -10,7 +10,6 @@ from wordcloud import WordCloud, STOPWORDS
 
 from app import j2env
 from app.config import Config
-from app.constants import Bias, Credibility
 from app.models import Session, Agency, Article, Headline
 from app.logger import get_logger
 
@@ -39,14 +38,6 @@ class TimeConstants:
     timezone = tz(td(hours=-5))
 
 
-def get_navbar():
-    return j2env.get_template('nav.html').render()
-
-
-def get_footer():
-    return j2env.get_template('footer.html').render(now=dt.now(TimeConstants.timezone).strftime('%m-%d-%Y %H:%M:%S'))
-
-
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
     if parts_of_speech is None:
         parts_of_speech = POS
@@ -66,87 +57,104 @@ def generate_wordcloud(headlines: list[Headline], path: str):
     logger.debug("Saving wordcloud to %s", path)
     wc.to_file(path)
 
-
-def generate_agency_pages():
+class AgencyPage:
     template = j2env.get_template('agency.html')
-    s = Session()
-    for agency in s.query(Agency).filter(Agency.articles.any()).all():
-        logger.info("Generating page for %s...", agency.name)
-        variables = get_variables(agency, s)
+
+    def __init__(self, agency: Agency, s: Session):
+        self.agency = agency
+        self.s: Session = s
+
+    def generate(self):
+        logger.info("Generating page for %s...", self.agency.name)
+        variables = self.get_variables()
         if variables['headlines']:
             generate_wordcloud(
                 variables['headlines'],
                 str(os.path.join(Config.build, variables['wordcloud']))
             )
-        with open(os.path.join(Config.build, f'{agency.name}.html'), 'wt') as f:
-            f.write(template.render(**variables))
+        with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
+            f.write(self.template.render(**variables))
         logger.info("Done")
+
+    def get_variables(self):
+        s = self.s
+        headlines = s.query(Headline) \
+            .join(Article, Article.id == Headline.article_id) \
+            .filter(Article.first_accessed > TimeConstants.yesterday,
+                    Article.last_accessed > TimeConstants.midnight,
+                    Article.agency_id == self.agency.id) \
+            .order_by(Headline.last_accessed.desc()).all()
+        tabledata = []
+        urls = {}
+        for headline in headlines:
+            urls[headline.title] = headline.article.url
+            tabledata.append([
+                headline.title,
+                headline.article.first_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+                headline.article.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+                headline.headcompound
+            ])
+        return {
+            'agency_name': self.agency.name,
+            'headlines': headlines,
+            'bias': str(self.agency.bias),
+            'credibility': str(self.agency.credibility),
+            'tabledata': tabledata,
+            'title': self.agency.name,
+            'urls': urls,
+            'wordcloud': f'{self.agency.name}.png',
+        }
+
+
+def generate_agency_pages():
+    s = Session()
+    for agency in s.query(Agency).filter(Agency.articles.any()).all():
+        AgencyPage(agency, s).generate()
     s.close()
 
 
-def get_variables(agency, s):
-    headlines = s.query(Headline) \
-        .join(Article, Article.id == Headline.article_id) \
-        .filter(Article.first_accessed > TimeConstants.yesterday,
-                Article.last_accessed > TimeConstants.midnight,
-                Article.agency_id == agency.id) \
-        .order_by(Headline.last_accessed.desc()).all()
-    tabledata = []
-    urls = {}
-    for headline in headlines:
-        urls[headline.title] = headline.article.url
-        tabledata.append([
-            headline.title,
-            headline.article.first_accessed.strftime('%Y-%m-%d %H:%M:%S'),
-            headline.article.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
-            headline.headcompound
-        ])
-    return {
-        'agency_name': agency.name,
-        'headlines': headlines,
-        'bias': str(agency.bias),
-        'credibility': str(agency.credibility),
-        'nav': get_navbar(),
-        'footer': get_footer(),
-        'tabledata': tabledata,
-        'title': agency.name,
-        'urls': urls,
-        'wordcloud': f'{agency.name}.png',
-    }
-
-
-def generate_homepage():
-    logger.info(f"Generating homepage")
+class HomePage:
     template = j2env.get_template('index.html')
-    with Session() as s:
-        generate_wordcloud(
-            s.query(Headline).filter(
-                Headline.first_accessed > TimeConstants.midnight,
-                Headline.last_accessed > TimeConstants.last_hour
-            ).all(),
-            os.path.join(Config.build, 'wordcloud.png')
-        )
-        data = []
-        urls = {}
-        agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
-        for agency in agencies:
-            sentiment = agency.todays_compound()
-            sentiment = round(sentiment, 2) if not np.isnan(sentiment) else "N/A"
-            data.append([agency.name, agency.credibility.value, agency.bias.value, sentiment])
-            urls[agency.name] = f"{agency.name}.html"
 
-    with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
-        f.write(template.render(
-            title='Home',
-            agencies=agencies,
-            nav=get_navbar(),
-            footer=get_footer(),
-            tabledata=data,
-            bias=Bias.to_dict(),
-            credibility=Credibility.to_dict(),
-            urls=urls
-        ))
-    logger.info(f"Generated homepage")
+    def __init__(self):
+        self.data = []
+        self.urls = {}
+        self.agencies = []
+
+    def generate(self):
+        logger.info("Generating home page...")
+        self.generate_home_wordcloud()
+        self.generate_home_data()
+        self.render_home_page()
+        logger.info("...done")
+
+    def render_home_page(self):
+        with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
+            f.write(self.template.render(
+                title='Home',
+                agencies=self.agencies,
+                tabledata=self.data,
+                urls=self.urls
+            ))
+
+    def generate_home_data(self):
+        with Session() as s:
+            self.agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
+            for agency in self.agencies:
+                sentiment = agency.todays_compound()
+                sentiment = round(sentiment, 2) if not np.isnan(sentiment) else "N/A"
+                self.data.append([agency.name, agency.credibility.value, agency.bias.value, sentiment])
+                self.urls[agency.name] = f"{agency.name}.html"
+
+    def generate_home_wordcloud(self):
+        with Session() as s:
+            generate_wordcloud(
+                s.query(Headline).filter(
+                    Headline.first_accessed > TimeConstants.midnight,
+                    Headline.last_accessed > TimeConstants.last_hour
+                ).all(),
+                os.path.join(Config.build, 'wordcloud.png')
+            )
 
 
 def copy_assets():
@@ -168,6 +176,6 @@ def move_to_public():
 
 def build_site():
     generate_agency_pages()
-    generate_homepage()
+    HomePage().generate()
     copy_assets()
     move_to_public()
