@@ -1,7 +1,6 @@
 import os
 import shutil
 import string
-from datetime import datetime as dt, timedelta as td, timezone as tz
 from typing import Optional
 
 import nltk
@@ -36,13 +35,6 @@ STOPWORDS.extend([
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 
 
-class TimeConstants:
-    last_hour = dt.now()
-    last_hour = last_hour.replace(hour=last_hour.hour - 1)
-    midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    yesterday = midnight - td(days=1)
-    timezone = tz(td(hours=-5))
-
 
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
     if parts_of_speech is None:
@@ -73,7 +65,8 @@ class AgencyHeadlineShiftPages:
     def generate(self):
         articles = self.s.query(Article).filter(Article.agency_id == self.agency.id)\
                     .join(Headline, Article.id == Headline.article_id)\
-                    .filter(Headline.first_accessed > TimeConstants.yesterday, Headline.last_accessed > TimeConstants.midnight)\
+                    .filter(Headline.first_accessed > Constants.TimeConstants.yesterday,
+                            Headline.last_accessed > Constants.TimeConstants.midnight)\
                     .having(func.count(Headline.id) > 5).group_by(Article.id).all()
 
         for article in articles:
@@ -86,7 +79,8 @@ class AgencyHeadlineShiftPages:
                 continue
             self.generate_plot(df, article)
 
-    def generate_plot(self, df: pd.DataFrame, article: Article):
+    @staticmethod
+    def generate_plot(df: pd.DataFrame, article: Article):
         sns.lineplot(data=df, x='date', y='sentiment')
         ax = plt.gca()
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
@@ -122,8 +116,8 @@ class AgencyPage:
         s = self.s
         headlines = s.query(Headline) \
             .join(Article, Article.id == Headline.article_id) \
-            .filter(Article.first_accessed > TimeConstants.yesterday,
-                    Article.last_accessed > TimeConstants.midnight,
+            .filter(Article.first_accessed > Constants.TimeConstants.yesterday,
+                    Article.last_accessed > Constants.TimeConstants.midnight,
                     Article.agency_id == self.agency.id) \
             .order_by(Headline.last_accessed.desc()).all()
         tabledata = []
@@ -194,8 +188,8 @@ class HomePage:
         with Session() as s:
             generate_wordcloud(
                 s.query(Headline).filter(
-                    Headline.first_accessed > TimeConstants.midnight,
-                    Headline.last_accessed > TimeConstants.last_hour
+                    Headline.first_accessed > Constants.TimeConstants.midnight,
+                    Headline.last_accessed > Constants.TimeConstants.last_hour
                 ).all(),
                 os.path.join(Config.build, self.wordcloud_filename)
             )
