@@ -12,15 +12,7 @@ class DrudgeReport(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.drudgereport.com/'
     agency: str = "Drudge Report"
-    headline_only = True
-    strip = []
-
-
     def setup(self, soup: Soup):
         # Drudge has a lot of non story links, but tbh who cares if they get added
         # I'm not going to filter them out
         self.downstream.extend([(a['href'], a.text.strip()) for a in soup.find_all('a', {'href': True})])
-
-
-    def consume(self, page: Soup, href: str, title: str):
-        pass  # headline only

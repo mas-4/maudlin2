@@ -14,19 +14,5 @@ class DailyBeast(Scraper):
     url: str = 'https://www.thedailybeast.com/'
     agency: str = "The Daily Beast"
     strip: list[str] = []
-
-
     def setup(self, soup: Soup):
         pass
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find('article').find_all('p'):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

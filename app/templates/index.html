@@ -28,7 +28,7 @@
                     formatter: (cell) => bias[cell],
                 },
                 {
-                    name: "Headline",
+                    name: "Sentiment",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
                     attributes: (cell) => {
                         return {
@@ -36,19 +36,6 @@
                         }
                     }
                 },
-                {
-                    name: "Article",
-                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
-                    attributes: (cell) => {
-                        return {
-                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
-                        }
-                    },
-                    sort: {
-                        compare: nacompare
-                    }
-
-                }
             ],
             data: data,
             sort: true
@@ -63,7 +50,6 @@
         <th>Credibility</th>
         <th>Bias</th>
         <th>Today's Headline Sentiment</th>
-        <th>Today's Article Sentiment</th>
         <th>Agency Page</th>
     </tr>
     </thead>
@@ -74,12 +60,7 @@
         <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
         <td>{{ agency.credibility }}</td>
         <td>{{ agency.bias }}</td>
-        <td>{{ sentiment[0] | round(2) }}</td>
-        {% if not agency.headline_only %}
-        <td>{{ sentiment[1] | round(2)}}</td>
-        {% else %}
-        <td>Headline Only</td>
-        {% endif %}
+        <td>{{ sentiment | round(2) }}</td>
         <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
     </tr>
     {% endfor %}

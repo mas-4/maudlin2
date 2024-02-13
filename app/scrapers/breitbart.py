@@ -14,8 +14,6 @@ class Breitbart(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.breitbart.com/'
     agency: str = "Breitbart"
-    strip: list[str] = ["https", "Breitbart", "outlet", "article", "source", "place"]
-
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/\d{4}/\d{2}/\d{2}/')}):
@@ -23,17 +21,3 @@ class Breitbart(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        article = page.find('article')
-        article.footer.decompose()
-        for p in article.find_all(['p', 'ul', 'blockquote']):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

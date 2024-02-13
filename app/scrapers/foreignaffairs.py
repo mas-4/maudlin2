@@ -14,8 +14,6 @@ class ForeignAffairs(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.foreignaffairs.com'
     agency: str = "Foreign Affairs"
-    strip: list[str] = []
-
 
     def setup(self, soup: Soup):
         for a in soup.find('div', {'class': 'content'}
@@ -27,6 +25,3 @@ class ForeignAffairs(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        pass

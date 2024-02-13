@@ -14,7 +14,6 @@ class NBC(Scraper):
     agency: str = "NBC News"
     bias: Bias = Bias.left_center
     credibility: Credibility = Credibility.high
-    strip: list[str] = []
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a',
@@ -26,13 +25,3 @@ class NBC(Scraper):
             href = a['href']
             title = a.text.strip()
             self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find("div", class_="article-body__content").find_all('p'):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })

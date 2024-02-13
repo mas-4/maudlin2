@@ -14,8 +14,6 @@ class FoxBusiness(Scraper):
     agency: str = "Fox Business"
     bias: Bias = Bias.right_center
     credibility: Credibility = Credibility.mixed
-    strip: list[str] = ["Fox Business"]
-    parser: str = 'lxml'
 
     def setup(self, soup: Soup):
         for item in soup.find('div', {'class': 'page'}).find_all(
@@ -30,16 +28,3 @@ class FoxBusiness(Scraper):
             if not (title := item.text.strip()):
                 continue
             self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find('div', {'class': 'article-body'}).find_all('p'):
-            if a := p.find('a'):
-                if a.text.strip() == p.text.strip():
-                    continue
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })

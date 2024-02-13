@@ -14,15 +14,9 @@ class Barrons(Scraper):  # Disabled because they're assholes
     credibility = Credibility.high
     url: str = 'https://www.barrons.com'
     agency: str = "Barron's"
-    headline_only = True
-    strip = []
-
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/articles/')}):
             href = a['href']
             title = a.text.strip()
             self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        pass  # headline only

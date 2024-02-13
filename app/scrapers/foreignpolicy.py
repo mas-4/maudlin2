@@ -14,9 +14,6 @@ class ForeignPolicy(Scraper):
     credibility = Credibility.high
     url: str = 'https://foreignpolicy.com/'
     agency: str = "Foreign Policy"
-    strip: list[str] = []
-    headline_only = True
-
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
@@ -24,8 +21,3 @@ class ForeignPolicy(Scraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        pass  # headline only
-
-

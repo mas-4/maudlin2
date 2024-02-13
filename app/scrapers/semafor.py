@@ -11,31 +11,9 @@ class Semafor(Scraper):
     credibility = Credibility.high
     url: str = 'https://www.semafor.com'
     agency: str = "Semafor"
-    strip: list[str] = [
-        "Sign up for Semafor Principals",
-        "What the White House is reading",
-        "Read it now",
-        r"Sign up for.*\. Read it now.",
-        "In this article:",
-        "Sign",
-        "Semaphor"
-    ]
-
     def setup(self, soup: Soup):
         for a in soup.find('div', {'class': re.compile('styles_grid')}).find_all(
                 'a', { 'href': re.compile(".*/article/.*")}):
             href = self.url + a['href']
             title = a.find('h2').text.strip()
             self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find_all('p'):
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
-
-

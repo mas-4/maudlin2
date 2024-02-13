@@ -14,28 +14,6 @@ class Fox(Scraper):
     agency: str = "Fox News"
     bias: Bias = Bias.right
     credibility: Credibility = Credibility.mixed
-    strip: list[str] = [
-        "This material may not be published, broadcast, rewritten,",
-        "or redistributed. ©2024 FOX News Network, LLC. All rights reserved.",
-        "Quotes displayed in real-time or delayed by at least 15 minutes",
-        "Market data provided by",
-        "Factset",
-        "Powered and implemented by",
-        "FactSet Digital Solutions",
-        "Legal Statement. Mutual Fund and ETF data provided by",
-        "Refinitiv Lipper"
-        "Fox News Flash top headlines are here"
-        "Check out what's clicking on Foxnews.com",
-        "CLICK TO GET THE FOX NEWS APP",
-        "CLICK HERE TO GET THE FOX NEWS APP",
-        "You've successfully subscribed to this newsletter!",
-        "Subscribed",
-        "Get all the stories you need-to-know from the most powerful name in news delivered first thing every morning to your inbox",
-        "Fox",
-        "Fox News",
-        "News"
-    ]
-    parser: str = 'lxml'
 
     def setup(self, soup: Soup):
         for item in soup.find('div', {'class': 'page'}).find_all(
@@ -50,16 +28,3 @@ class Fox(Scraper):
             if not (title := item.text.strip()):
                 continue
             self.downstream.append((href, title))
-
-    def consume(self, page: Soup, href: str, title: str):
-        story = []
-        for p in page.find_all('p'):
-            if a := p.find('a'):
-                if a.text.strip() == p.text.strip():
-                    continue
-            story.append(p.text.strip())
-        self.results.append({
-            'body': '\n'.join(story),
-            'title': title,
-            'url': href
-        })
