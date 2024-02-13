@@ -3,6 +3,13 @@ import shutil
 import string
 from datetime import datetime as dt, timedelta as td, timezone as tz
 from typing import Optional
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+
+import pandas as pd
+from sqlalchemy import func
 
 import nltk
 import numpy as np
@@ -56,6 +63,40 @@ def generate_wordcloud(headlines: list[Headline], path: str):
     wc.generate(filter_words(text, ['NN', 'NNS', 'NNP', 'NNPS']))
     logger.debug("Saving wordcloud to %s", path)
     wc.to_file(path)
+
+class AgencyHeadlineShiftPages:
+    template = j2env.get_template('agency-shift.html')
+
+    def __init__(self, agency: Agency, s: Session):
+        self.agency = agency
+        self.s: Session = s
+
+    def generate(self):
+        articles = self.s.query(Article).filter(Article.agency_id == self.agency.id)\
+                    .join(Headline, Article.id == Headline.article_id)\
+                    .filter(Headline.first_accessed > TimeConstants.yesterday, Headline.last_accessed > TimeConstants.midnight)\
+                    .having(func.count(Headline.id) > 5).group_by(Article.id).all()
+
+        for article in articles:
+            df = pd.DataFrame([{
+                'sentiment': h.headcompound,
+                'date': h.first_accessed,
+                'title': h.title,
+            } for h in article.headlines])
+            if df.sentiment.nunique() <= 1:
+                continue
+            self.generate_plot(df, article)
+
+    def generate_plot(self, df: pd.DataFrame, article: Article):
+        sns.lineplot(data=df, x='date', y='sentiment')
+        ax = plt.gca()
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
+        plt.xticks(rotation=45)
+        plt.title(f"Sentiment Shift for {article.url}")
+        plt.tight_layout()
+        filename = article.url.replace('/', '_')
+        plt.savefig(os.path.join(Config.build, f"{filename}.png"))
+        plt.clf()
 
 
 class AgencyPage:
