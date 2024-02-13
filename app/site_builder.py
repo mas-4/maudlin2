@@ -22,7 +22,7 @@ STOPWORDS = list(STOPWORDS)
 # clean some default words
 STOPWORDS.extend([
     'say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month', "years",
-    "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group", 
+    "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group",
     "state", "country", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
     "home", "effort", "product", "part", "cup", "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sep", "Sept",
     "Oct", "Nov", "Dec", "company", "companies", "business"
@@ -30,15 +30,21 @@ STOPWORDS.extend([
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 
-midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
-timezone = tz(td(hours=-5))
+
+class TimeConstants:
+    last_hour = dt.now()
+    last_hour = last_hour.replace(hour=last_hour.hour - 1)
+    midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday = midnight - td(days=1)
+    timezone = tz(td(hours=-5))
 
 
 def get_navbar():
     return j2env.get_template('nav.html').render()
 
+
 def get_footer():
-    return j2env.get_template('footer.html').render(now=dt.now(timezone).strftime('%m-%d-%Y %H:%M:%S'))
+    return j2env.get_template('footer.html').render(now=dt.now(TimeConstants.timezone).strftime('%m-%d-%Y %H:%M:%S'))
 
 
 def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
@@ -79,9 +85,11 @@ def generate_agency_pages():
 
 
 def get_variables(agency):
-    articles = agency.articles\
-        .filter(Article.last_accessed > midnight, Article.failure == False)\
-        .order_by(Article.last_accessed.desc()).all()
+    articles = agency.articles.filter(
+        Article.first_accessed > TimeConstants.yesterday,
+        Article.last_accessed > TimeConstants.midnight,
+        Article.failure == False
+    ).order_by(Article.last_accessed.desc()).all()
     tabledata = []
     urls = {}
     for article in articles:
@@ -112,15 +120,17 @@ def generate_homepage():
     logger.info(f"Generating homepage")
     template = j2env.get_template('index.html')
     with Session() as s:
-        agencies = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
-        last_hour = dt.now()
-        last_hour = last_hour.replace(hour=last_hour.hour - 1)
         generate_wordcloud(
-            s.query(Article).filter(Article.last_accessed > last_hour, Article.failure == False).all(),
+            s.query(Article).filter(
+                Article.first_accessed > TimeConstants.midnight,
+                Article.last_accessed > TimeConstants.last_hour,
+                Article.failure == False
+            ).all(),
             os.path.join(Config.build, 'wordcloud.png')
         )
         data = []
         urls = {}
+        agencies = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
         for agency in agencies:
             headline, article = agency.todays_compound()
             headline = round(headline, 2) if not np.isnan(headline) else "N/A"
@@ -146,6 +156,7 @@ def copy_assets():
     for file in os.listdir(Config.assets):
         logger.debug(f"Copying %s", file)
         shutil.copy(os.path.join(Config.assets, file), Config.build)
+
 
 def move_to_public():
     server_location = os.environ.get('SERVER_LOCATION', None)
