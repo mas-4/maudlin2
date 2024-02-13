@@ -80,34 +80,55 @@ class Agency(Base):
     def country(self, value):
         self._country = value.value
 
-class Article(Base):
-    __tablename__ = "article"
-    id: Mapped[int] = mapped_column(primary_key=True)
+class AccessTimeMixin:
     first_accessed: Mapped[dt] = mapped_column(DateTime())
     last_accessed: Mapped[dt] = mapped_column(DateTime())
+
+    def update_last_accessed(self):
+        self.last_accessed = dt.now()  # noqa bad pycharm typing
+
+
+class Article(Base, AccessTimeMixin):
+    __tablename__ = "article"
+    id: Mapped[int] = mapped_column(primary_key=True)
     agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
-    title: Mapped[str] = mapped_column(String(254), nullable=True)
     url: Mapped[str] = mapped_column(String(254))
     failure: Mapped[bool] = mapped_column(Boolean(), default=False)
+    headlines: Mapped[list["Headline"]] = relationship("Headline", back_populates="article")
+
+    def __init__(self, **kwargs):
+        super().__init__(first_accessed=dt.now(), last_accessed=dt.now(), **kwargs)
+
+    def __repr__(self) -> str:
+        return f"Article(id={self.id!r}, agency={self.agency.name!r}, url={self.url!r})"
+
+    def __str__(self) -> str:
+        return self.url
+
+
+
+class Headline(Base):
+    __tablename__ = "headline"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("article.id"))
+    title: Mapped[str] = mapped_column(Text())
 
     headneg: Mapped[float] = mapped_column(Float(), nullable=True)
     headneu: Mapped[float] = mapped_column(Float(), nullable=True)
     headpos: Mapped[float] = mapped_column(Float(), nullable=True)
     headcompound: Mapped[float] = mapped_column(Float(), nullable=True)
 
+    article: Mapped["Article"] = relationship(Article, back_populates="headline")
+
     def __init__(self, **kwargs):
         super().__init__(first_accessed=dt.now(), last_accessed=dt.now(), **kwargs)
 
-    def update_last_accessed(self):
-        self.last_accessed = dt.now()  # noqa bad pycharm typing
-
     def __repr__(self) -> str:
-        return f"Article(id={self.id!r}, agency={self.agency.name!r}, title={self.title!r})"
+        return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.title!r})"
 
     def __str__(self) -> str:
-        if self.agency.headline_only:
-            return self.title
+        return self.title
 
 
 
