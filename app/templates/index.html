@@ -1,10 +1,10 @@
 {% extends "page.html" %}
 
 {% block content %}
-<img alt="Word Cloud" src="wordcloud.png">
+<img alt="Word Cloud" src="{{ wordcloud }}">
+<br><br>
+
 <script type="text/javascript">
-
-
     document.addEventListener("DOMContentLoaded", function () {
         var data = {{tabledata|safe}};
         var urls = {{urls|safe}};
