@@ -19,6 +19,9 @@ class ABC(Scraper):
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/story\?id=')}):
             href = a['href']
-            title = a.text.strip()
+            if h := a.find(['h1', 'h2', 'h3', 'h4']):
+                title = h.text.strip()
+            else:
+                title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
