@@ -44,7 +44,9 @@ class Agency(Base):
         numbers = s.query(
             *[getattr(Headline, column) for column in self.columns]
         ).join(Article, Article.id == Headline.article_id) \
-            .filter_by(agency_id=self.id).filter(Article.last_accessed > dt.now().date()).all()
+            .filter_by(agency_id=self.id).filter(
+                Article.first_accessed > dt.now().date()
+            ).all()
         if close:
             s.close()
         return pd.DataFrame(numbers, columns=self.columns).mean().to_frame().T.reset_index(drop=True)
@@ -54,7 +56,7 @@ class Agency(Base):
             numbers = s.query(Headline.headcompound) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
-                .filter(Article.last_accessed > dt.now().date()) \
+                .filter(Article.first_accessed > dt.now().date()) \
                 .all()
         return np.mean(numbers)
 
