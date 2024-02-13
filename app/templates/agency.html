@@ -21,7 +21,7 @@
                     "First Accessed",
                     "Last Accessed",
                     {
-                        name: "Headline",
+                        name: "Sentiment",
                         formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
                         attributes: (cell) => {
                             return {
@@ -29,19 +29,6 @@
                             }
                         }
                     },
-                    {
-                        name: "Article",
-                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
-                        attributes: (cell) => {
-                            return {
-                                style: `background-color: ${getColorForValue(cell)}; text-align: center;`
-                            }
-                        },
-                        sort: {
-                            compare: nacompare
-                        }
-
-                    }
                 ],
                 data: data,
                 sort: true
@@ -55,34 +42,22 @@
         <th>Article</th>
         <th>First Accessed</th>
         <th>Last Accessed</th>
-        <th>Headline Pos</th>
-        <th>Neg</th>
-        <th>Neu</th>
-        <th>Compound</th>
-        <th>Article Pos</th>
-        <th>Neg</th>
-        <th>Neu</th>
+        <th>Positive</th>
+        <th>Negative</th>
+        <th>Neutral</th>
         <th>Compound</th>
     </tr>
     </thead>
     <tbody>
-    {% for article in articles %}
+    {% for headline in headlines %}
     <tr>
-        <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
-        <td>{{ article.first_accessed | date }}</td>
-        <td>{{ article.last_accessed | date }}</td>
-        <td>{{ article.headpos | round(2) }}</td>
-        <td>{{ article.headneg | round(2) }}</td>
-        <td>{{ article.headneu | round(2) }}</td>
-        <td>{{ article.headcompound | round(2)}}</td>
-        {% if headline_only %}
-        <td colspan="4">Headline Only</td>
-        {% else %}
-        <td>{{ article.artpos | round(2)}}</td>
-        <td>{{ article.artneg | round(2)}}</td>
-        <td>{{ article.artneu | round(2)}}</td>
-        <td>{{ article.artcompound | round(2)}}</td>
-        {% endif %}
+        <td><a href="{{ headline.article.url }}" target="_blank">{{ headline.title }}</a></td>
+        <td>{{ headline.first_accessed | date }}</td>
+        <td>{{ headline.last_accessed | date }}</td>
+        <td>{{ headline.headpos | round(2) }}</td>
+        <td>{{ headline.headneg | round(2) }}</td>
+        <td>{{ headline.headneu | round(2) }}</td>
+        <td>{{ headline.headcompound | round(2)}}</td>
     </tr>
     {% endfor %}
     </tbody>

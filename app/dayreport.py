@@ -14,14 +14,15 @@ class DayReport:
     def __init__(self, agency: str):
         self.agency = agency
         with lock:
-            if not os.path.exists(Config.dayreport_file):
-                self.dump(self.init({}))
-            else:
+            try:
                 self.dump(self.init(self.load()))
+            except:  # noqa
+                os.remove(Config.dayreport_file)
+                self.dump(self.init({}))
 
     def init(self, data):
         if self.agency not in data:
-            data[self.agency] = {'exceptions': [], 'articles': 0}
+            data[self.agency] = {'exceptions': [], 'articles': 0, 'headlines': 0}
         return data
 
     @staticmethod
@@ -40,10 +41,16 @@ class DayReport:
             data[self.agency]['exceptions'].append({'msg': message, 'tb': traceback, 'time': dt.now().isoformat()})
             self.dump(data)
 
-    def added(self, count: int):
+    def articles(self, count: int):
         with lock:
             data = self.load()
             data[self.agency]['articles'] += count
+            self.dump(data)
+
+    def headlines(self, count: int):
+        with lock:
+            data = self.load()
+            data[self.agency]['headlines'] += count
             self.dump(data)
 
     @staticmethod

@@ -1,29 +1,22 @@
-import re
-import time
 import traceback as tb
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from threading import Thread, Lock
 
 import requests as rq
 from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-from app.config import Config
 from app.constants import Credibility, Bias, Country
-from app.logger import get_logger
-from app.models import Session, Article, Agency
 from app.dayreport import DayReport
+from app.logger import get_logger
+from app.models import Session, Article, Agency, Headline
 
 logger = get_logger(__name__)
 
-STRIPS = [
-    "News Digital",
-    "News",
-    "Getty Images", "Getty",
-    "Refinitiv", "Lipper",
-    "Associated Press", "AP",
-    "AP Images",
-]
+
+ArticlePair = namedtuple('ArticlePair', ['href', 'title'])
+STRIPS = ['\xad', '\xa0', '\n', '\t', '\r']
 
 
 class Scraper(ABC, Thread):
@@ -39,7 +32,8 @@ class Scraper(ABC, Thread):
 
     def __init__(self):
         super().__init__()
-        self.added = 0
+        self.articles = 0
+        self.headlines = 0
         if not self.agency:
             raise ValueError("Agency name must be set")
         if not self.url:
@@ -66,21 +60,23 @@ class Scraper(ABC, Thread):
     def setup(self, soup: Soup):
         pass
 
-    def process(self):
+    def process(self, art_pair: ArticlePair):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         with Session() as session, self.sql_lock:
-            for result in self.results:
-                result.update({f"head{k}": v for k, v in sid.polarity_scores(result['title']).items()})
-                session.add(article := Article(**result, agency_id=self.agency_id))
-                session.commit()
-                logger.info(f"Adding to database: %r", article)
-                self.added += 1
-        self.results = []
+            results = {f"head{k}": v for k, v in sid.polarity_scores(art_pair.title).items()}
+            results['title'] = art_pair.title
 
-    def add_stub(self, href: str, title: str):
-        with Session() as session, self.sql_lock:
-            session.add(Article(title=title, url=href, agency_id=self.agency_id, failure=True))
+            if (article := session.query(Article).filter_by(url=art_pair.href).first()) is None:
+                article = Article(url=art_pair.href, agency_id=self.agency_id)
+                session.add(article)
+                session.commit()
+                logger.info(f"Added to database: %r", article)
+                self.articles += 1
+
+            session.add(headline := Headline(**results, article_id=article.id))
             session.commit()
+            logger.info(f"Added to database: %r", headline)
+            self.headlines += 1
 
     def get_page(self, url: str):
         response: rq.Response = rq.get(url, headers=self.headers)
@@ -94,32 +90,40 @@ class Scraper(ABC, Thread):
         self.downstream = list(filter(lambda x: x[1], set(self.downstream)))  # no empties and no dupes
         with Session() as s, self.sql_lock:
             titles = [x[1] for x in self.downstream]
-            articles = s.query(Article).filter(Article.title.in_(titles))
-            for article in articles:
-                article.update_last_accessed()
-                logger.info("Article already exists, updating last_accessed: %r", article)
+            headlines = s.query(Headline).filter(Headline.title.in_(titles))
+            for headline in headlines:
+                headline.update_last_accessed()
+                headline.article.update_last_accessed()
+                logger.info("Headline already exists, updating last_accessed: %r", headline)
             s.commit()
-            self.downstream = list(set(self.downstream) - set((article.url, article.title) for article in articles))
+            self.downstream = list(set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
 
     def run(self):
         self.run_setup()
         self.run_processing()
-        self.dayreport.added(self.added)
-        logger.info("Done with %s, added %d articles", self.agency, self.added)
+        self.dayreport.headlines(self.headlines)
+        self.dayreport.articles(self.articles)
+        logger.info("Done with %s, added %d articles and %d headlines", self.agency, self.articles, self.headlines)
         self.done = True
+
+    @staticmethod
+    def strip(text: str):
+        for strip in STRIPS:
+            text = text.replace(strip, '')
+        return text
 
     def run_processing(self):
         while self.downstream:
             href, title = self.downstream.pop()
+            title = self.strip(title)
+            art_pair = ArticlePair(href, title)
             try:
-                self.results.append({'title': title, 'url': href})
-                self.process()
+                self.process(art_pair)
             except Exception as e:  # noqa
                 Session.rollback()
-                msg = f"Failed to get page: {(href, title)}: {e}"
+                msg = f"Failed to process link: {art_pair}: {e}"
                 self.dayreport.add_exception(msg, tb.format_exc())
                 logger.exception(msg)
-                self.add_stub(href, title)
 
     def run_setup(self):
         try:
