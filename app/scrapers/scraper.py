@@ -64,6 +64,13 @@ class Scraper(ABC, Thread):
     def process(self, art_pair: ArticlePair):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         with Session() as session, self.sql_lock:
+            if (headline := s.query(Headline).filter(Headline.title == art_pair.title).first()) is not None:
+                # we're going to double check this headline hasn't been seen before
+                headline.update_last_accessed()
+                headline.article.update_last_accessed()
+                s.commit()
+                return
+
             results = {f"head{k}": v for k, v in sid.polarity_scores(art_pair.title).items()}
             results['title'] = art_pair.title
 
