@@ -57,12 +57,14 @@ def generate_wordcloud(headlines: list[Headline], path: str):
     logger.debug("Saving wordcloud to %s", path)
     wc.to_file(path)
 
+
 class AgencyPage:
     template = j2env.get_template('agency.html')
 
     def __init__(self, agency: Agency, s: Session):
         self.agency = agency
         self.s: Session = s
+        self.wordcloud_filename = f'{self.agency.name}.png'
 
     def generate(self):
         logger.info("Generating page for %s...", self.agency.name)
@@ -102,7 +104,7 @@ class AgencyPage:
             'tabledata': tabledata,
             'title': self.agency.name,
             'urls': urls,
-            'wordcloud': f'{self.agency.name}.png',
+            'wordcloud': self.wordcloud_filename
         }
 
 
@@ -120,6 +122,7 @@ class HomePage:
         self.data = []
         self.urls = {}
         self.agencies = []
+        self.wordcloud_filename = 'wordcloud.png'
 
     def generate(self):
         logger.info("Generating home page...")
@@ -134,7 +137,8 @@ class HomePage:
                 title='Home',
                 agencies=self.agencies,
                 tabledata=self.data,
-                urls=self.urls
+                urls=self.urls,
+                wordcloud=self.wordcloud_filename
             ))
 
     def generate_home_data(self):
@@ -153,7 +157,7 @@ class HomePage:
                     Headline.first_accessed > TimeConstants.midnight,
                     Headline.last_accessed > TimeConstants.last_hour
                 ).all(),
-                os.path.join(Config.build, 'wordcloud.png')
+                os.path.join(Config.build, self.wordcloud_filename)
             )
 
 
