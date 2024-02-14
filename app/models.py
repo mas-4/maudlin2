@@ -56,8 +56,10 @@ class Agency(Base):
             numbers = s.query(Headline.headcompound) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
-                .filter(Article.first_accessed > dt.now().date()) \
-                .all()
+                .filter(
+                    Article.first_accessed > dt.now().date() - td(day=1),
+                    Article.last_accessed > dt.now() - td(hour=1)
+                ).all()
         return np.mean(numbers)
 
     @property
