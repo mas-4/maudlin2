@@ -33,34 +33,42 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 ## Sites to add
 
-If you know of a good source not on this list please open an issue!
+If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-- [X] Al Jazeera
-- [X] BBC
-- [X] Barron's
-- [ ] Bloomberg
-- [X] Daily mail
-- [X] FT
+
+- [ ] 1945
+- [ ] Chicago Tribune
+- [ ] Der Spiegel
+- [ ] Economist
 - [ ] Forbes
-- [X] Foreign Affairs
-- [X] Global Times
-- [X] India Times
+- [ ] France 24
+- [ ] Japan Times
+- [ ] LA Times
+- [ ] Le Figaro
+- [ ] Le Monde
 - [ ] MSNBC
 - [ ] Mother Jones
+- [ ] National Review
+- [ ] New Republic
+- [ ] New York Magazine
 - [ ] New York Post
 - [ ] New Yorker
 - [ ] Newsweek
 - [ ] PBS News Hour
 - [ ] Politico
+- [ ] Quillette
+- [ ] RT
 - [ ] Reuters
 - [ ] Salon
 - [ ] Slate
 - [ ] South China Morning Post
+- [ ] Star Tribune
 - [ ] Tampa Bay Times
 - [ ] Telegraph
-- [ ] The Atlantic?
+- [ ] The Atlantic
 - [ ] The Blaze
 - [ ] The Daily Wire
+- [ ] The Epoch Times
 - [ ] The Guardian
 - [ ] The Hill
 - [ ] The Independent
@@ -71,26 +79,36 @@ If you know of a good source not on this list please open an issue!
 - [ ] Vanity Fair
 - [ ] Vice
 - [ ] Vox
+- [ ] Vox
 - [ ] WSJ
 - [ ] Wapo
 - [ ] Xinhua
 - [-] Axios
 - [-] Daily Beast
 - [X] ABC News
+- [X] Al Jazeera
 - [X] Associated Press
+- [X] BBC
+- [X] Barron's
+- [X] Bloomberg
 - [X] Breitbart
 - [X] Business Insider
 - [X] CBS News
 - [X] CNBC
 - [X] CNN
 - [X] Daily Kos
+- [X] Daily mail
+- [X] FT
+- [X] Foreign Affairs
 - [X] Foreign Policy
 - [X] Fortune
 - [X] Fox Business
+- [X] Fox News
+- [X] Global Times
 - [X] Huffington Post
+- [X] India Times
 - [X] Jacobin
 - [X] NBC
 - [X] NPR
 - [X] Semafor
-- [X] The New York Times (Disabled for legality)
-- [x] Fox News
+- [X] The New York Times
