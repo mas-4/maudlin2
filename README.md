@@ -35,21 +35,6 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-
-- [-] Al Arabiya
-- [X] Caixin Global
-- [X] Chicago Tribune
-- [X] Der Spiegel
-- [X] Economist
-- [-] El Pais (Need multilingual support)
-- [-] Forbes (Needs chromium headless)
-- [-] France 24 (Chromium)
-- [-] Hindustan Times (Chromium)
-- [ ] Japan Times
-- [ ] LA Times
-- [ ] Le Figaro
-- [ ] Le Monde
-- [ ] MSNBC
 - [ ] Monocle
 - [ ] Mother Jones
 - [ ] National Review
@@ -94,8 +79,17 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] WSJ
 - [ ] Wapo
 - [ ] Xinhua
+- [-] Al Arabiya
 - [-] Axios
 - [-] Daily Beast
+- [-] El Pais (Need multilingual support)
+- [-] Forbes (Needs chromium headless)
+- [-] France 24 (Chromium)
+- [-] Hindustan Times (Chromium)
+- [-] Japan Times (Chromium)
+- [-] LA Times (Chromium)
+- [-] Le Figaro (In french)
+- [-] MSNBC (requires more sophisticated filtering)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
@@ -107,8 +101,12 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] CBS News
 - [X] CNBC
 - [X] CNN
+- [X] Caixin Global
+- [X] Chicago Tribune
 - [X] Daily Kos
 - [X] Daily mail
+- [X] Der Spiegel
+- [X] Economist
 - [X] FT
 - [X] Foreign Affairs
 - [X] Foreign Policy
@@ -119,7 +117,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Huffington Post
 - [X] India Times
 - [X] Jacobin
+- [X] Le Monde
 - [X] NBC
 - [X] NPR
 - [X] Semafor
 - [X] The New York Times
+
