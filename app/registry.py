@@ -6,6 +6,7 @@ from app.scrapers.bloomberg import Bloomberg
 from app.scrapers.breitbart import Breitbart
 from app.scrapers.businessinsider import BusinessInsider
 from app.scrapers.caixinglobal import CaixinGlobal
+from app.scrapers.chicagotribune import ChicagoTribune
 from app.scrapers.cbs import CBS
 from app.scrapers.cnbc import CNBC
 from app.scrapers.cnn import CNN
@@ -36,6 +37,7 @@ Scrapers = [
     Breitbart,
     BusinessInsider,
     CaixinGlobal,
+    ChicagoTribune,
     CBS,
     CNBC,
     CNN,
