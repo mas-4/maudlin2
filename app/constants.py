@@ -45,6 +45,7 @@ class Country(Enum):
     in_ = 4
     sa = 5
     de = 6
+    fr = 7
 
     def __str__(self):
         return country_pretty[self]
@@ -57,6 +58,7 @@ country_pretty = {
     Country.in_: 'India',
     Country.sa: 'Saudi Arabia',
     Country.de: 'Germany',
+    Country.fr: 'France'
 }
 
 class Constants:

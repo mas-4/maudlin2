@@ -43,7 +43,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Economist
 - [-] El Pais (Need multilingual support)
 - [-] Forbes (Needs chromium headless)
-- [ ] France 24
+- [-] France 24 (Chromium)
 - [ ] Hindustan Times
 - [ ] Japan Times
 - [ ] LA Times
