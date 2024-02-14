@@ -37,16 +37,21 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [ ] 1945
+- [ ] Al Arabiya
+- [ ] Caixin Global
 - [ ] Chicago Tribune
 - [ ] Der Spiegel
 - [ ] Economist
+- [ ] El Pais
 - [ ] Forbes
 - [ ] France 24
+- [ ] Hindustan Times
 - [ ] Japan Times
 - [ ] LA Times
 - [ ] Le Figaro
 - [ ] Le Monde
 - [ ] MSNBC
+- [ ] Monocle
 - [ ] Mother Jones
 - [ ] National Review
 - [ ] New Republic
@@ -54,6 +59,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] New York Post
 - [ ] New Yorker
 - [ ] Newsweek
+- [ ] Nikkei Asia
 - [ ] PBS News Hour
 - [ ] Politico
 - [ ] Quillette
@@ -63,16 +69,22 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] Slate
 - [ ] South China Morning Post
 - [ ] Star Tribune
+- [ ] Sydney Morning Herald
 - [ ] Tampa Bay Times
 - [ ] Telegraph
 - [ ] The Atlantic
 - [ ] The Blaze
 - [ ] The Daily Wire
 - [ ] The Epoch Times
+- [ ] The Federalist
+- [ ] The Globe and Mail
 - [ ] The Guardian
 - [ ] The Hill
 - [ ] The Independent
 - [ ] The Intercept
+- [ ] The Strait Times
+- [ ] The Times of India
+- [ ] The Week
 - [ ] Time
 - [ ] USA Today
 - [ ] VOA
