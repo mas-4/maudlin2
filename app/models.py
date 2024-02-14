@@ -51,14 +51,14 @@ class Agency(Base):
             s.close()
         return pd.DataFrame(numbers, columns=self.columns).mean().to_frame().T.reset_index(drop=True)
 
-    def todays_compound(self) -> float:
+    def current_compound(self) -> float:
         with (Session() as s):
             numbers = s.query(Headline.headcompound) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
                     Article.first_accessed > dt.now().date() - td(days=1),
-                    Article.last_accessed > dt.now() - td(hours=1)
+                    Article.last_accessed > dt.now() - td(minutes=5)  # we want current articles!
                 ).all()
         return np.mean(numbers)
 

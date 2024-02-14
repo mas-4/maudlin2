@@ -52,7 +52,7 @@
     </div>
     <div class="metric">
         <div class="metric-name">Partisan Happiness Index</div>
-        <div class="metric-value">{{metrics['partisan_mean']|round(3)}} (-left/+right)</div>
+        <div class="metric-value">{{metrics['partisan_mean']|round(3)}}<br>(-left/+right)</div>
     </div>
 </div>
 <div id="wrapper"></div>
@@ -72,7 +72,7 @@
         <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
         <td>{{ agency.credibility }}</td>
         <td>{{ agency.bias }}</td>
-        <td>{{ agency.todays_compound() | round(2) }}</td>
+        <td>{{ agency.current_compound() | round(2) }}</td>
         <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
     </tr>
     {% endfor %}

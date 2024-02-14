@@ -71,4 +71,5 @@ class Constants:
         yesterday = midnight - td(days=1)
         timezone = tz(td(hours=-5))
         now = dt.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
+        five_minutes_ago = dt.now() - td(minutes=5)
 
