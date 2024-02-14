@@ -182,7 +182,10 @@ class HomePage:
             self.agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
             for agency in self.agencies:
                 sentiment = agency.todays_compound()
-                sentiment = round(sentiment, 2) if not np.isnan(sentiment) else "N/A"
+                if np.isnan(sentiment):
+                    logger.warn("Sentiment is na for %r.", agency)
+                    sentiment = 0
+                sentiment = round(sentiment, 2)
                 self.data.append([agency.name, agency.credibility.value, agency.bias.value, sentiment])
                 self.urls[agency.name] = f"{agency.name}.html"
         df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Sentiment'])
