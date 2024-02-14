@@ -1,4 +1,4 @@
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 
 import numpy as np
 import pandas as pd
@@ -57,8 +57,8 @@ class Agency(Base):
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
-                    Article.first_accessed > dt.now().date() - td(day=1),
-                    Article.last_accessed > dt.now() - td(hour=1)
+                    Article.first_accessed > dt.now().date() - td(days=1),
+                    Article.last_accessed > dt.now() - td(hours=1)
                 ).all()
         return np.mean(numbers)
 

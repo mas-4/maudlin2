@@ -41,6 +41,20 @@
         }).render(document.getElementById('wrapper'));
     });
 </script>
+<div id="metrics">
+    <div class="metric">
+        <div class="metric-name">Median Sentiment</div>
+        <div class="metric-value">{{metrics['median']|round(2)}}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-name">Mean Sentiment</div>
+        <div class="metric-value">{{metrics['mean']|round(3)}}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-name">Partisan Happiness Index</div>
+        <div class="metric-value">{{metrics['partisan_mean']|round(3)}} (-left/+right)</div>
+    </div>
+</div>
 <div id="wrapper"></div>
 <table id="maintable">
     <thead>

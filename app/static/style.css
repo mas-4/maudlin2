@@ -73,3 +73,44 @@ blockquote::before, blockquote::after, q::before, q::after {
     content: '';
     content: none;
 }
+
+/* Metrics */
+
+#metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px; /* Adjust the space between cards */
+  padding: 20px; /* Padding around the container */
+  justify-content: center; /* Center the cards */
+}
+
+.metric {
+  display: flex; /* Enable Flexbox */
+  flex-direction: column; /* Stack children vertically */
+  justify-content: space-between; /* Distribute space around items */
+  align-items: center; /* Center align items horizontally */
+  background-color: #f0f0f0; /* Light grey background */
+  border: 1px solid #ddd; /* Light grey border */
+  border-radius: 8px; /* Rounded corners */
+  padding: 15px; /* Padding inside each card */
+  width: 200px; /* Fixed width, but you can make it responsive */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  height: 150px; /* Set a fixed height to ensure enough space for vertical centering */
+}
+
+.metric-name, .metric-value {
+  text-align: center; /* Center text horizontally */
+}
+
+.metric-name {
+  font-size: 1.2em; /* Larger font size for the name */
+  font-weight: bold; /* Make the name stand out */
+}
+
+/* If you want the .value div specifically centered both ways, you can apply flex styles directly to it, assuming it doesn't have flex children itself */
+.metric-value {
+  flex-grow: 1; /* Allow the value div to fill available space */
+  display: flex; /* Enable Flexbox */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+}

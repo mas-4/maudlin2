@@ -156,6 +156,7 @@ class HomePage:
         self.data = []
         self.urls = {}
         self.agencies = []
+        self.metrics = {}
         self.wordcloud_filename = 'wordcloud.png'
 
     def generate(self):
@@ -172,7 +173,8 @@ class HomePage:
                 agencies=self.agencies,
                 tabledata=self.data,
                 urls=self.urls,
-                wordcloud=self.wordcloud_filename
+                wordcloud=self.wordcloud_filename,
+                metrics=self.metrics
             ))
 
     def generate_home_data(self):
@@ -183,6 +185,10 @@ class HomePage:
                 sentiment = round(sentiment, 2) if not np.isnan(sentiment) else "N/A"
                 self.data.append([agency.name, agency.credibility.value, agency.bias.value, sentiment])
                 self.urls[agency.name] = f"{agency.name}.html"
+        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Sentiment'])
+        self.metrics['median'] = df['Sentiment'].median()
+        self.metrics['mean'] = df['Sentiment'].mean()
+        self.metrics['partisan_mean'] = (df['Bias'] * df['Sentiment']).mean()
 
     def generate_home_wordcloud(self):
         with Session() as s:
