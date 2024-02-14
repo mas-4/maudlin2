@@ -38,7 +38,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 - [-] Al Arabiya
 - [X] Caixin Global
-- [ ] Chicago Tribune
+- [X] Chicago Tribune
 - [ ] Der Spiegel
 - [ ] Economist
 - [ ] El Pais
