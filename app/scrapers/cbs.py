@@ -19,8 +19,6 @@ class CBS(Scraper):
             if not a:
                 continue
             href = a['href']
-            if '/video/' in href or '/live/' in href:
-                continue
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))

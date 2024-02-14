@@ -19,8 +19,6 @@ class CNBC(Scraper):
             href = a['href']
             if not href.startswith('http'):
                 href = f'{self.url}{href}'
-            if '/video/' in href:
-                continue
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
