@@ -44,7 +44,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] El Pais (Need multilingual support)
 - [-] Forbes (Needs chromium headless)
 - [-] France 24 (Chromium)
-- [ ] Hindustan Times
+- [-] Hindustan Times (Chromium)
 - [ ] Japan Times
 - [ ] LA Times
 - [ ] Le Figaro
