@@ -28,8 +28,10 @@ from app.scrapers.nbc import NBC
 from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
+from app.scrapers.economist import Economist
 
 Scrapers = [
+    Economist,
     ABC,
     AlJazeera,
     AP,

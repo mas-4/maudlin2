@@ -40,9 +40,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Caixin Global
 - [X] Chicago Tribune
 - [X] Der Spiegel
-- [ ] Economist
-- [ ] El Pais
-- [ ] Forbes
+- [X] Economist
+- [-] El Pais (Need multilingual support)
+- [-] Forbes (Needs chromium headless)
 - [ ] France 24
 - [ ] Hindustan Times
 - [ ] Japan Times
