@@ -89,7 +89,7 @@ class Scraper(ABC, Thread):
     def get_page(self, url: str):
         response: rq.Response = rq.get(url, headers=self.headers)
         if not response.ok:
-            raise ValueError("Bad response")
+            raise ValueError("Bad response for %s: %s" % (url, response.status_code))
         else:
             logger.info(f"Downloaded {url}")
         return Soup(response.content, self.parser)
@@ -139,7 +139,7 @@ class Scraper(ABC, Thread):
             self.filter_seen()
         except Exception as e:  # noqa
             Session.rollback()
-            msg = f"Failed to setup: {e}"
+            msg = f"Failed to setup: {e} for {self.url}"
             logger.exception(msg)
             self.dayreport.add_exception(msg, tb.format_exc())
             raise

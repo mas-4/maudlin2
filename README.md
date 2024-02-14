@@ -36,8 +36,7 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
-- [ ] 1945
-- [ ] Al Arabiya
+- [-] Al Arabiya
 - [ ] Caixin Global
 - [ ] Chicago Tribune
 - [ ] Der Spiegel

@@ -43,6 +43,7 @@ class Country(Enum):
     qa = 2
     cn = 3
     in_ = 4
+    sa = 5
 
     def __str__(self):
         return country_pretty[self]
@@ -52,7 +53,8 @@ country_pretty = {
     Country.gb: 'Great Britain',
     Country.qa: 'Qatar',
     Country.cn: 'China',
-    Country.in_: 'India'
+    Country.in_: 'India',
+    Country.sa: 'Saudi Arabia'
 }
 
 class Constants:
