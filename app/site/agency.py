@@ -35,17 +35,19 @@ class AgencyPage:
         headlines = s.query(Headline) \
             .join(Article, Article.id == Headline.article_id) \
             .filter(Article.first_accessed > Constants.TimeConstants.yesterday,
-                    Article.last_accessed > Constants.TimeConstants.midnight,
+                    Article.last_accessed > Constants.TimeConstants.five_minutes_ago,
                     Article.agency_id == self.agency.id) \
             .order_by(Headline.last_accessed.desc()).all()
         tabledata = []
         urls = {}
         for headline in headlines:
+            if headline.last_accessed < Constants.TimeConstants.five_minutes_ago:
+                continue
             urls[headline.title] = headline.article.url
             tabledata.append([
                 headline.title,
-                headline.article.first_accessed.strftime('%Y-%m-%d %H:%M:%S'),
-                headline.article.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+                headline.first_accessed.strftime('%Y-%m-%d %H:%M:%S'),
+                headline.last_accessed.strftime('%Y-%m-%d %H:%M:%S'),
                 headline.headcompound
             ])
         return {

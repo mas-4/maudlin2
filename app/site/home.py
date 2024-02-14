@@ -50,12 +50,15 @@ class HomePage:
                     logger.warning("Sentiment is na for %r.", agency)
                     sentiment = 0
                 sentiment = round(sentiment, 2)
-                self.data.append([agency.name, agency.credibility.value, agency.bias.value, sentiment])
+                self.data.append(
+                    [agency.name, agency.credibility.value, agency.bias.value, str(agency.country), sentiment]
+                )
                 self.urls[agency.name] = f"{agency.name}.html"
-        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Sentiment'])
-        self.metrics['median'] = df['Sentiment'].median()
-        self.metrics['mean'] = df['Sentiment'].mean()
-        self.metrics['partisan_mean'] = (df['Bias'] * df['Sentiment']).mean()
+        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Sentiment'])
+        us = df[df['Country'] == "United States"]
+        self.metrics['median'] = us['Sentiment'].median()
+        self.metrics['mean'] = us['Sentiment'].mean()
+        self.metrics['partisan_mean'] = (us['Bias'] * us['Sentiment']).mean()
 
     def generate_home_wordcloud(self):
         with Session() as s:

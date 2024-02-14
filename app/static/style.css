@@ -24,6 +24,31 @@ body {
   padding: 2em 1em;
 }
 
+.navbar {
+  background-color: #fff; /* White background to match your site */
+  overflow: hidden; /* Ensures the content is contained within the navigation bar */
+  border-bottom: 1px solid #ddd; /* A subtle bottom border for a touch of separation */
+  padding: 10px 0; /* Vertical padding */
+}
+
+.navbar a {
+  color: #333; /* Dark text color for contrast */
+  padding: 10px 20px; /* Padding around the links for clickable area */
+  text-decoration: none; /* Removes the underline from links */
+  font-size: 16px; /* Sets a standard font size for the links */
+  display: inline-block; /* Aligns links in a row */
+}
+
+.navbar a:hover {
+  background-color: #f2f2f2; /* Light grey background on hover for visual feedback */
+}
+
+/* Additional style to align the nav bar content to the left */
+.navbar {
+  text-align: left; /* Aligns the nav links to the left */
+}
+
+
 h1 {
   font-size: 2.5em
 }

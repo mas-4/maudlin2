@@ -44,7 +44,6 @@ class Country(Enum):
     cn = 3
     in_ = 4
 
-
     def __str__(self):
         return country_pretty[self]
 

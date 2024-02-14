@@ -26,6 +26,7 @@
                     name: "Bias",
                     formatter: (cell) => bias[cell],
                 },
+                "Country",
                 {
                     name: "Sentiment",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
@@ -41,6 +42,7 @@
         }).render(document.getElementById('wrapper'));
     });
 </script>
+<h3>These metrics exclude non-US media sources.</h3>
 <div id="metrics">
     <div class="metric">
         <div class="metric-name">Median Sentiment</div>
@@ -55,6 +57,7 @@
         <div class="metric-value">{{metrics['partisan_mean']|round(3)}}<br>(-left/+right)</div>
     </div>
 </div>
+<h3>The below sentiment values only include currently displayed stories.</h3>
 <div id="wrapper"></div>
 <table id="maintable">
     <thead>
