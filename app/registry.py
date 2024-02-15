@@ -1,3 +1,4 @@
+from app.scrapers.rawstory import RawStory
 from app.scrapers.salon import Salon
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
@@ -43,6 +44,7 @@ from app.scrapers.rt import RT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    RawStory,
     Salon,
     ABC,
     AP,
