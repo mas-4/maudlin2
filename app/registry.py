@@ -1,3 +1,4 @@
+from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.nikkeiasia import NikkeiAsia
 from app.scrapers.newyorker import NewYorker
 from app.scrapers.newyorkpost import NewYorkPost
@@ -39,6 +40,7 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    PBSNewsHour,
     NikkeiAsia,
     NewYorker,
     NewYorkPost,
