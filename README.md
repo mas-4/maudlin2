@@ -44,7 +44,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] New York Magazine
 - [X] Current Affairs
 - [X] New York Post
-- [ ] New Yorker
+- [X] New Yorker
 - [ ] Newsweek
 - [ ] Nikkei Asia
 - [ ] PBS News Hour
