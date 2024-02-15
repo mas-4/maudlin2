@@ -30,8 +30,10 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 from app.scrapers.economist import Economist
 from app.scrapers.lemonde import LeMonde
+from app.scrapers.motherjones import MotherJones
 
 Scrapers = [
+    MotherJones,
     LeMonde,
     Economist,
     ABC,
