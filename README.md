@@ -45,8 +45,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Current Affairs
 - [X] New York Post
 - [X] New Yorker
-- [ ] Newsweek
-- [ ] Nikkei Asia
+- [-] Newsweek (403)
+- [X] Nikkei Asia
 - [ ] PBS News Hour
 - [ ] Politico
 - [ ] Quillette

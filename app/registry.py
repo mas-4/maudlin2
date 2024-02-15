@@ -1,3 +1,4 @@
+from app.scrapers.nikkeiasia import NikkeiAsia
 from app.scrapers.newyorker import NewYorker
 from app.scrapers.newyorkpost import NewYorkPost
 from app.scrapers.currentaffairs import CurrentAffairs
@@ -38,6 +39,7 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    NikkeiAsia,
     NewYorker,
     NewYorkPost,
     CurrentAffairs,
