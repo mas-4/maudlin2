@@ -1,11 +1,3 @@
-from app.scrapers.quillette import Quillette
-from app.scrapers.pbsnewshour import PBSNewsHour
-from app.scrapers.nikkeiasia import NikkeiAsia
-from app.scrapers.newyorker import NewYorker
-from app.scrapers.newyorkpost import NewYorkPost
-from app.scrapers.currentaffairs import CurrentAffairs
-from app.scrapers.newyorkmagazine import NewYorkMagazine
-from app.scrapers.newrepublic import NewRepublic
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -18,6 +10,7 @@ from app.scrapers.cbs import CBS
 from app.scrapers.chicagotribune import ChicagoTribune
 from app.scrapers.cnbc import CNBC
 from app.scrapers.cnn import CNN
+from app.scrapers.currentaffairs import CurrentAffairs
 from app.scrapers.dailykos import DailyKos
 from app.scrapers.dailymail import DailyMail
 from app.scrapers.derspiegel import DerSpiegel
@@ -36,19 +29,19 @@ from app.scrapers.jacobin import Jacobin
 from app.scrapers.lemonde import LeMonde
 from app.scrapers.motherjones import MotherJones
 from app.scrapers.nbc import NBC
+from app.scrapers.newrepublic import NewRepublic
+from app.scrapers.newyorker import NewYorker
+from app.scrapers.newyorkmagazine import NewYorkMagazine
+from app.scrapers.newyorkpost import NewYorkPost
+from app.scrapers.nikkeiasia import NikkeiAsia
 from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
+from app.scrapers.pbsnewshour import PBSNewsHour
+from app.scrapers.quillette import Quillette
+from app.scrapers.rt import RT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
-    Quillette,
-    PBSNewsHour,
-    NikkeiAsia,
-    NewYorker,
-    NewYorkPost,
-    CurrentAffairs,
-    NewYorkMagazine,
-    NewRepublic,
     ABC,
     AP,
     AlJazeera,
@@ -61,6 +54,7 @@ Scrapers = [
     CNN,
     CaixinGlobal,
     ChicagoTribune,
+    CurrentAffairs,
     DailyKos,
     DailyMail,
     DerSpiegel,
@@ -81,5 +75,13 @@ Scrapers = [
     NBC,
     NPR,
     NYT,
+    NewRepublic,
+    NewYorkMagazine,
+    NewYorkPost,
+    NewYorker,
+    NikkeiAsia,
+    PBSNewsHour,
+    Quillette,
+    RT,
     Semafor,
 ]

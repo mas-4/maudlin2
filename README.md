@@ -35,21 +35,6 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-- [-] Monocle (No data from MBFC)
-- [X] Mother Jones
-- [-] National Interest
-- [-] National Review (Chromium)
-- [X] New Republic
-- [-] Infowars (403)
-- [X] New York Magazine
-- [X] Current Affairs
-- [X] New York Post
-- [X] New Yorker
-- [-] Newsweek (403)
-- [X] Nikkei Asia
-- [X] PBS News Hour
-- [-] Politico (chromium)
-- [X] Quillette
 - [ ] RT
 - [ ] Reuters
 - [ ] Salon
@@ -89,10 +74,16 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Forbes (Needs chromium headless)
 - [-] France 24 (Chromium)
 - [-] Hindustan Times (Chromium)
+- [-] Infowars (403)
 - [-] Japan Times (Chromium)
 - [-] LA Times (Chromium)
 - [-] Le Figaro (In french)
 - [-] MSNBC (requires more sophisticated filtering)
+- [-] Monocle (No data from MBFC)
+- [-] National Interest
+- [-] National Review (Chromium)
+- [-] Newsweek (403)
+- [-] Politico (chromium)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
@@ -106,6 +97,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] CNN
 - [X] Caixin Global
 - [X] Chicago Tribune
+- [X] Current Affairs
 - [X] Daily Kos
 - [X] Daily mail
 - [X] Der Spiegel
@@ -121,8 +113,16 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] India Times
 - [X] Jacobin
 - [X] Le Monde
+- [X] Mother Jones
 - [X] NBC
 - [X] NPR
+- [X] New Republic
+- [X] New York Magazine
+- [X] New York Post
+- [X] New Yorker
+- [X] Nikkei Asia
+- [X] PBS News Hour
+- [X] Quillette
 - [X] Semafor
 - [X] The New York Times
 
