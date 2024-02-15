@@ -13,7 +13,7 @@ class NewYorker(Scraper):
     bias = Bias.left
     credibility = Credibility.high
     url: str = 'https://www.newyorker.com/'
-    agency: str = "The New Yorker"
+    agency: str = "New Yorker"
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/news/')}):

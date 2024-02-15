@@ -28,8 +28,8 @@ def move_to_public():
 
 
 def build_site():
-    generate_agency_pages()
     HomePage().generate()
+    generate_agency_pages()
     Blog().generate()
     copy_assets()
     move_to_public()
