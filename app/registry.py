@@ -1,5 +1,3 @@
-from app.scrapers.rawstory import RawStory
-from app.scrapers.salon import Salon
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -40,12 +38,12 @@ from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
 from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.quillette import Quillette
+from app.scrapers.rawstory import RawStory
 from app.scrapers.rt import RT
+from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
-    RawStory,
-    Salon,
     ABC,
     AP,
     AlJazeera,
@@ -87,5 +85,7 @@ Scrapers = [
     PBSNewsHour,
     Quillette,
     RT,
+    RawStory,
+    Salon,
     Semafor,
 ]

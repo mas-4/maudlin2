@@ -35,10 +35,8 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-- [X] RT
-- [-] Reuters (401)
-- [a] Salon
-- [ ] Raw Story
+
+
 - [ ] Real Clear Politics
 - [ ] Reason
 - [ ] Red State
@@ -88,6 +86,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] National Review (Chromium)
 - [-] Newsweek (403)
 - [-] Politico (chromium)
+- [-] Reuters (401)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
@@ -127,6 +126,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Nikkei Asia
 - [X] PBS News Hour
 - [X] Quillette
+- [X] RT
+- [X] Raw Story
+- [X] Salon
 - [X] Semafor
 - [X] The New York Times
-
