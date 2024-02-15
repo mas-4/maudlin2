@@ -1,5 +1,7 @@
 import os
 
+import pandas as pd
+
 from app import j2env
 from app.config import Config
 from app.constants import Constants
@@ -29,6 +31,9 @@ class AgencyPage:
             )
         with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
             f.write(self.template.render(**variables))
+        df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', 'Last Accessed', 'Sentiment'])
+        df['url'] = df['Title'].map(variables['urls'])
+        df.to_csv(os.path.join(Config.build, f'{self.agency.name}.csv'), index=False)
         logger.info("Done")
 
     def get_variables(self):
