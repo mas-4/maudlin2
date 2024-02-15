@@ -1,5 +1,7 @@
 import os
 import sys
+import re
+
 from app.constants import Constants
 
 template = """import re
@@ -28,12 +30,32 @@ class {cls}(Scraper):
 
 """
 
+
 def main(site_name, url):
+    class_name = site_name.replace(' ', '')
+    file_name = site_name.lower().replace(' ', '') + '.py'
+    generate_scraper(site_name, url, class_name, file_name)
+    register_scraper(class_name, file_name)
+
+
+def register_scraper(class_name, file_name):
+    registry_path = os.path.join(Constants.Paths.ROOT, 'app', 'registry.py')
+    with open(registry_path, 'rt') as f:
+        registry = f.read()
+    registry = f"from app.scrapers.{file_name.replace('.py', '')} import {class_name}\n" + registry
+    registry = re.sub(r"Scrapers = \[", f"Scrapers = [\n    {class_name},", registry)
+    with open(registry_path, 'wt') as f:
+        f.write(registry)
+
+
+
+def generate_scraper(site_name, url, class_name, file_name):
     print(f"Generating scraper for {site_name} at {url}")
-    path = os.path.join(Constants.Paths.ROOT, 'app', 'scrapers', f"{site_name.lower().replace(' ', '')}.py")
+    path = os.path.join(Constants.Paths.ROOT, 'app', 'scrapers', file_name)
     with open(path, "wt") as f:
-        f.write(template.format(cls=site_name.replace(' ', ''), url=url, site_name=site_name))
+        f.write(template.format(cls=class_name, url=url, site_name=site_name))
     print(f"Generated scraper for {site_name} at {url}")
+
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2])

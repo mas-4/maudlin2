@@ -37,6 +37,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 - [-] Monocle (No data from MBFC)
 - [X] Mother Jones
+- [-] National Interest
 - [ ] National Review
 - [ ] New Republic
 - [ ] New York Magazine
