@@ -35,9 +35,13 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-- [ ] RT
-- [ ] Reuters
-- [ ] Salon
+- [X] RT
+- [-] Reuters (401)
+- [a] Salon
+- [ ] Raw Story
+- [ ] Real Clear Politics
+- [ ] Reason
+- [ ] Red State
 - [ ] Slate
 - [ ] South China Morning Post
 - [ ] Star Tribune
