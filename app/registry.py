@@ -1,3 +1,4 @@
+from app.scrapers.quillette import Quillette
 from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.nikkeiasia import NikkeiAsia
 from app.scrapers.newyorker import NewYorker
@@ -40,6 +41,7 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    Quillette,
     PBSNewsHour,
     NikkeiAsia,
     NewYorker,

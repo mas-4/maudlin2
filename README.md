@@ -48,8 +48,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Newsweek (403)
 - [X] Nikkei Asia
 - [X] PBS News Hour
-- [ ] Politico
-- [ ] Quillette
+- [-] Politico (chromium)
+- [X] Quillette
 - [ ] RT
 - [ ] Reuters
 - [ ] Salon
