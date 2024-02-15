@@ -40,7 +40,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] National Interest
 - [-] National Review (Chromium)
 - [X] New Republic
-- [ ] New York Magazine
+- [ ] Infowars
+- [X] New York Magazine
+- [ ] Current Affairs
 - [ ] New York Post
 - [ ] New Yorker
 - [ ] Newsweek

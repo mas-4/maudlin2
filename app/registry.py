@@ -1,3 +1,4 @@
+from app.scrapers.newyorkmagazine import NewYorkMagazine
 from app.scrapers.newrepublic import NewRepublic
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
@@ -34,6 +35,7 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    NewYorkMagazine,
     NewRepublic,
     ABC,
     AP,
