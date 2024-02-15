@@ -1,6 +1,5 @@
 import os
 import pathlib
-from datetime import datetime as dt
 from random import random
 
 import mistune
@@ -11,7 +10,7 @@ from app.constants import Constants, Credibility, Bias
 
 class Config:
     use_color = True
-    logging_level = 'DEBUG'
+    logging_level = 'INFO'
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False

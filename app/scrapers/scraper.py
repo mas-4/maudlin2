@@ -35,6 +35,7 @@ class Scraper(ABC, Thread):
         super().__init__()
         self.articles = 0
         self.headlines = 0
+        self.updated = 0
         if not self.agency:
             raise ValueError("Agency name must be set")
         if not self.url:
@@ -65,9 +66,10 @@ class Scraper(ABC, Thread):
         sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         with Session() as s, self.sql_lock:
             if (headline := s.query(Headline).filter(Headline.title == art_pair.title).first()) is not None:
-                # we're going to double check this headline hasn't been seen before
+                # we're going to double-check this headline hasn't been seen before
                 headline.update_last_accessed()
                 headline.article.update_last_accessed()
+                self.updated += 1
                 s.commit()
                 return
 
@@ -81,6 +83,7 @@ class Scraper(ABC, Thread):
                 logger.debug(f"Added to database: %r", article)
                 self.articles += 1
 
+            article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
             s.add(headline := Headline(**results, article_id=article.id))
             s.commit()
             logger.debug(f"Added to database: %r", headline)
@@ -102,6 +105,7 @@ class Scraper(ABC, Thread):
             for headline in headlines:
                 headline.update_last_accessed()
                 headline.article.update_last_accessed()
+                self.updated += 1
                 logger.debug("Headline already exists, updating last_accessed: %r", headline)
             s.commit()
             self.downstream = list(set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
@@ -111,7 +115,8 @@ class Scraper(ABC, Thread):
         self.run_processing()
         self.dayreport.headlines(self.headlines)
         self.dayreport.articles(self.articles)
-        logger.info("Done with %s, added %d articles and %d headlines", self.agency, self.articles, self.headlines)
+        logger.info("Done with %s, added %d articles and %d headlines, updated %d headlines",
+                    self.agency, self.articles, self.headlines, self.updated)
         self.done = True
 
     @staticmethod
