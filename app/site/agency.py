@@ -6,6 +6,7 @@ from app.constants import Constants
 from app.logger import get_logger
 from app.models import Agency, Session, Headline, Article
 from app.site.common import generate_wordcloud
+from app.registry import Scrapers
 
 logger = get_logger(__name__)
 
@@ -64,6 +65,8 @@ class AgencyPage:
 
 def generate_agency_pages():
     s = Session()
+    agencies = [scraper.agency for scraper in Scrapers]
     for agency in s.query(Agency).filter(Agency.articles.any()).all():
-        AgencyPage(agency, s).generate()
+        if agency.name in agencies:
+            AgencyPage(agency, s).generate()
     s.close()

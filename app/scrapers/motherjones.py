@@ -18,6 +18,8 @@ class MotherJones(Scraper):
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/\d{4}/\d{2}/')}):
             href = a['href']
+            if not href.startswith('http'):
+                continue
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))

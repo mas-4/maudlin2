@@ -78,12 +78,12 @@ class Scraper(ABC, Thread):
                 article = Article(url=art_pair.href, agency_id=self.agency_id)
                 s.add(article)
                 s.commit()
-                logger.info(f"Added to database: %r", article)
+                logger.debug(f"Added to database: %r", article)
                 self.articles += 1
 
             s.add(headline := Headline(**results, article_id=article.id))
             s.commit()
-            logger.info(f"Added to database: %r", headline)
+            logger.debug(f"Added to database: %r", headline)
             self.headlines += 1
 
     def get_page(self, url: str):
@@ -102,7 +102,7 @@ class Scraper(ABC, Thread):
             for headline in headlines:
                 headline.update_last_accessed()
                 headline.article.update_last_accessed()
-                logger.info("Headline already exists, updating last_accessed: %r", headline)
+                logger.debug("Headline already exists, updating last_accessed: %r", headline)
             s.commit()
             self.downstream = list(set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
 
