@@ -1,3 +1,4 @@
+from app.scrapers.newyorkpost import NewYorkPost
 from app.scrapers.currentaffairs import CurrentAffairs
 from app.scrapers.newyorkmagazine import NewYorkMagazine
 from app.scrapers.newrepublic import NewRepublic
@@ -36,6 +37,7 @@ from app.scrapers.nyt import NYT
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    NewYorkPost,
     CurrentAffairs,
     NewYorkMagazine,
     NewRepublic,

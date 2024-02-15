@@ -43,7 +43,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Infowars (403)
 - [X] New York Magazine
 - [X] Current Affairs
-- [ ] New York Post
+- [X] New York Post
 - [ ] New Yorker
 - [ ] Newsweek
 - [ ] Nikkei Asia
