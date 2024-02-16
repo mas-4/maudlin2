@@ -7,7 +7,7 @@ from threading import Thread, Lock
 import requests as rq
 from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 from selenium import webdriver
 
 from app.constants import Credibility, Bias, Country
@@ -159,8 +159,8 @@ class SeleniumResourceManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             options = Options()
-            options.add_argument("--headless=new")
-            cls._instance._driver = webdriver.Chrome(options=options)
+            options.add_argument("--headless")
+            cls._instance._driver = webdriver.Firefox(options=options)
         return cls._instance
 
     def __del__(self):
