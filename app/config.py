@@ -14,6 +14,7 @@ class Config:
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False
+    run_selenium = False
 
     root = pathlib.Path(__file__).parent.parent.absolute()
     output_dir = os.path.join(root, 'data')
