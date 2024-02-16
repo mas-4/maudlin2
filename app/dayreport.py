@@ -17,7 +17,8 @@ class DayReport:
             try:
                 self.dump(self.init(self.load()))
             except:  # noqa
-                os.remove(Config.dayreport_file)
+                if os.path.exists(Config.dayreport_file):
+                    os.remove(Config.dayreport_file)
                 self.dump(self.init({}))
 
     def init(self, data):
