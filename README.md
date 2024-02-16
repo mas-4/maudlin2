@@ -47,7 +47,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] News.Google.Com
 - [X] Political Wire
 - [X] Radio Free Europe
-- [ ] Real Clear Politics
+- [-] Real Clear Politics (Assholes)
 - [ ] Reason
 - [ ] Red State
 - [ ] Scripps

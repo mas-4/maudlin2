@@ -2,6 +2,7 @@ import os
 import sys
 import re
 
+from app.config import Config
 from app.constants import Constants
 
 template = """import re
@@ -58,4 +59,6 @@ def generate_scraper(site_name, url, class_name, file_name):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    with open(os.path.join(Config.output_dir, 'generate.txt'), 'rt') as f:
+        url, name = f.read().strip().splitlines()
+    main(name, url)
