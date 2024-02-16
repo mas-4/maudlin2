@@ -49,7 +49,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Radio Free Europe
 - [-] Real Clear Politics (Assholes)
 - [X] Reason
-- [ ] Red State
+- [X] Red State
 - [ ] Scripps
 - [ ] Sky News
 - [ ] Slate
