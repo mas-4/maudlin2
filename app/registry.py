@@ -1,9 +1,9 @@
+from app.scrapers.slate import Slate
 from app.scrapers.skynews import SkyNews
 from app.scrapers.scrippsnews import ScrippsNews
 from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.redstate import RedState
 from app.scrapers.reason import Reason
-from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
 from app.scrapers.politicalwire import PoliticalWire
@@ -62,6 +62,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    Slate,
     SkyNews,
     ScrippsNews,
     PunchbowlNews,
@@ -124,30 +125,8 @@ Scrapers = [
     TheStraitsTimes,
 ]
 
-TradScrapers = [
-    SkyNews,
-    ScrippsNews,
-    PunchbowlNews,
-    RedState,
-    Reason,
-    RealClearPolitics,
-    RealClearPolitics,
-    RadioFreeEuropeRadioLiberty,
-    PoliticalWire,
-    NationalPost,
-    TheMoscowTimes,]
-SeleniumScrapers = [
-    SkyNews,
-    ScrippsNews,
-    PunchbowlNews,
-    RedState,
-    Reason,
-    RealClearPolitics,
-    RealClearPolitics,
-    RadioFreeEuropeRadioLiberty,
-    PoliticalWire,
-    NationalPost,
-    TheMoscowTimes,]
+TradScrapers = []
+SeleniumScrapers = []
 
 for scraper in Scrapers:
     if issubclass(scraper, SeleniumScraper):

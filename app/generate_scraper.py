@@ -4,7 +4,7 @@ import re
 from app.config import Config
 from app.constants import Constants
 
-template = """import re
+TEMPLATE = """import re
 
 from bs4 import BeautifulSoup as Soup
 
@@ -28,8 +28,8 @@ class {cls}(Scraper):
                 title = a.text.strip()
                 self.downstream.append((href, title))
             except Exception as e:
-                logger.error(f"{self.agency}: Error parsing link: {e}")
-                logger.exception(f"{self.agency}: Link: {a}")
+                logger.error(f"{{self.agency}}: Error parsing link: {{e}}")
+                logger.exception(f"{{self.agency}}: Link: {{a}}")
                 continue
 
 """
@@ -47,7 +47,7 @@ def register_scraper(class_name, file_name):
     with open(registry_path, 'rt') as f:
         registry = f.read()
     registry = f"from app.scrapers.{file_name.replace('.py', '')} import {class_name}\n" + registry
-    registry = re.sub(r"Scrapers = \[", f"Scrapers = [\n    {class_name},", registry)
+    registry = re.sub(r"Scrapers = \[", f"Scrapers = [\n    {class_name},", registry, count=1)
     with open(registry_path, 'wt') as f:
         f.write(registry)
 
@@ -56,8 +56,8 @@ def register_scraper(class_name, file_name):
 def generate_scraper(site_name, url, class_name, file_name):
     print(f"Generating scraper for {site_name} at {url}")
     path = os.path.join(Constants.Paths.ROOT, 'app', 'scrapers', file_name)
-    with open(path, "wt") as f:
-        f.write(template.format(cls=class_name, url=url, site_name=site_name))
+    with open(path, "wt") as f_scraper:
+        f_scraper.write(TEMPLATE.format(cls=class_name, url=url, site_name=site_name))
     print(f"Generated scraper for {site_name} at {url}")
 
 

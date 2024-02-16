@@ -39,7 +39,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Punchbowl
 - [X] Scripps
 - [X] Sky News
-- [ ] Slate
+- [X] Slate
 - [ ] South China Morning Post
 - [ ] Star Tribune
 - [ ] Sydney Morning Herald
