@@ -36,6 +36,9 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
+- [ ] Strait Times
+- [ ] Kyiv Independent
+- [ ] Taipei Times
 - [ ] CBC
 - [ ] Crooks and Liars
 - [ ] Military.com
@@ -64,6 +67,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] The Guardian
 - [ ] The Hill
 - [ ] The Independent
+- [ ] Punchbowl
 - [ ] The Intercept
 - [ ] The Strait Times
 - [ ] The Sun
