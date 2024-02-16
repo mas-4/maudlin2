@@ -35,21 +35,8 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-
-- [X] Strait Times
-- [X] Kyiv Independent
-- [X] Taipei Times
-- [X] CBC
-- [X] Crooks and Liars
-- [X] Military.com
-- [X] Moscow Times
-- [X] National Post
 - [ ] News.Google.Com
-- [X] Political Wire
-- [X] Radio Free Europe
-- [-] Real Clear Politics (Assholes)
-- [X] Reason
-- [X] Red State
+- [ ] Punchbowl
 - [ ] Scripps
 - [ ] Sky News
 - [ ] Slate
@@ -67,7 +54,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] The Guardian
 - [ ] The Hill
 - [ ] The Independent
-- [ ] Punchbowl
 - [ ] The Intercept
 - [ ] The Strait Times
 - [ ] The Sun
@@ -107,6 +93,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] National Review (Chromium)
 - [-] Newsweek (403)
 - [-] Politico (chromium)
+- [-] Real Clear Politics (Assholes)
 - [-] Reuters (401)
 - [X] ABC News
 - [X] Al Jazeera
@@ -116,11 +103,13 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Bloomberg
 - [X] Breitbart
 - [X] Business Insider
+- [X] CBC
 - [X] CBS News
 - [X] CNBC
 - [X] CNN
 - [X] Caixin Global
 - [X] Chicago Tribune
+- [X] Crooks and Liars
 - [X] Current Affairs
 - [X] Daily Kos
 - [X] Daily mail
@@ -136,20 +125,29 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Huffington Post
 - [X] India Times
 - [X] Jacobin
+- [X] Kyiv Independent
 - [X] Le Monde
+- [X] Military.com
+- [X] Moscow Times
 - [X] Mother Jones
 - [X] NBC
 - [X] NPR
+- [X] National Post
 - [X] New Republic
 - [X] New York Magazine
 - [X] New York Post
 - [X] New Yorker
 - [X] Nikkei Asia
 - [X] PBS News Hour
+- [X] Political Wire
 - [X] Quillette
 - [X] RT
+- [X] Radio Free Europe
 - [X] Raw Story
+- [X] Reason
+- [X] Red State
 - [X] Salon
 - [X] Semafor
+- [X] Strait Times
+- [X] Taipei Times
 - [X] The New York Times
-
