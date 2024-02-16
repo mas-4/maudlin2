@@ -4,6 +4,7 @@ from app.config import Config
 from app.logger import get_logger
 from app.registry import Scrapers
 from app.site_builder import build_site
+from app.scrapers.scraper import SeleniumScraper, SeleniumResourceManager
 from app.dayreport import DayReport
 
 logger = get_logger(__name__)
@@ -11,18 +12,29 @@ logger = get_logger(__name__)
 
 class Queue:
     def __init__(self):
-        self.scrapers = []
+        self.threads = []
+        self.seleniums = []
 
     def run(self):
-        for scraper in self.scrapers:
+        print("Running threads:", self.threads)
+        for scraper in self.threads:
             scraper.start()
         
-        for scraper in self.scrapers:
+        for scraper in self.threads:
             scraper.join()
 
-    def add(self, scraper):
-        self.scrapers.append(scraper())
+        print("Running seleniums:", self.seleniums)
+        for sel in self.seleniums:
+            scraper = sel()
+            scraper.run()
+        SeleniumResourceManager().quit()
 
+    def add(self, scraper):
+        if issubclass(scraper, SeleniumScraper):
+            self.seleniums.append(scraper)
+        else:
+            print("scraper:", scraper.agency)
+            self.threads.append(scraper())
 
 def scrape(scrapers):
     if not len(scrapers):

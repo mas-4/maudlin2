@@ -162,11 +162,14 @@ class SeleniumResourceManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             options = Options()
-            options.add_argument("--headless")
+            # options.add_argument("--headless")
             cls._instance._driver = webdriver.Firefox(options=options)
         return cls._instance
 
     def __del__(self):
+        self.quit()
+
+    def quit(self):
         self._driver.quit()
 
     def get_html(self, url):
