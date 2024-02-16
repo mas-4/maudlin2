@@ -45,8 +45,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Moscow Times
 - [X] National Post
 - [ ] News.Google.Com
-- [ ] Political Wire
-- [ ] Radio Free Europe
+- [X] Political Wire
+- [X] Radio Free Europe
 - [ ] Real Clear Politics
 - [ ] Reason
 - [ ] Red State
