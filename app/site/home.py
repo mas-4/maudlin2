@@ -9,7 +9,7 @@ from app.constants import Constants
 from app.models import Session, Agency, Headline
 from app.site.common import generate_wordcloud
 from app.logger import get_logger
-from app.registry import Scrapers
+from app.registry import SeleniumScrapers, TradScrapers
 
 logger = get_logger(__name__)
 
@@ -44,10 +44,13 @@ class HomePage:
 
     def generate_home_data(self):
         with Session() as s:
-            self.agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any()).order_by(Agency.name).all()
+            scrapers = TradScrapers
+            if Config.run_selenium:
+                scrapers += SeleniumScrapers
+            agency_names = [x.agency for x in scrapers]
+            self.agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any(), Agency.name.in_(agency_names))\
+                .order_by(Agency.name).all()
             for agency in self.agencies:
-                if agency.name not in [x.agency for x in Scrapers]:
-                    continue
                 sentiment = agency.current_compound()
                 if np.isnan(sentiment):
                     logger.warning("Sentiment is na for %r.", agency)

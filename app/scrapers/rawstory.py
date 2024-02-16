@@ -1,19 +1,20 @@
-import re
-
 from bs4 import BeautifulSoup as Soup
 
-from app.constants import Bias, Credibility, Country
+from app.constants import Bias, Credibility, Constants
 from app.logger import get_logger
-from app.scrapers.scraper import SeleniumScraper
+from app.scrapers.scraper import Scraper
 
 logger = get_logger(__name__)
 
 
-class RawStory(SeleniumScraper):
+class RawStory(Scraper):
     bias = Bias.left
     credibility = Credibility.high
     url: str = 'https://www.rawstory.com'
     agency: str = "Raw Story"
+    headers = {
+        'User-Agent': Constants.Headers.UserAgents.maudlin
+    }
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'aria-label': True}):

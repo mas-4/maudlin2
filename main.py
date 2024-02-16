@@ -16,7 +16,7 @@ class Queue:
         self.seleniums = []
 
     def run(self):
-        logger.info("Running threads:", self.threads)
+        logger.info("Running threads")
         for scraper in self.threads:
             scraper.start()
         
@@ -24,7 +24,7 @@ class Queue:
             scraper.join()
 
         if Config.run_selenium:
-            logger.info("Running seleniums:", self.seleniums)
+            logger.info("Running seleniums")
             for sel in self.seleniums:
                 scraper = sel()
                 scraper.run()
@@ -34,7 +34,6 @@ class Queue:
         if issubclass(scraper, SeleniumScraper):
             self.seleniums.append(scraper)
         else:
-            print("scraper:", scraper.agency)
             self.threads.append(scraper())
 
 def scrape(scrapers):

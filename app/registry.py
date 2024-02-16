@@ -1,6 +1,6 @@
 from app.scrapers.military_com import MilitaryCom
+from app.scrapers.scraper import SeleniumScraper
 from app.scrapers.crooksandliars import CrooksandLiars
-from app.scrapers.cbc import CBC
 from app.scrapers.cbc import CBC
 from app.scrapers.taipeitimes import TaipeiTimes
 from app.scrapers.thekyivindependent import TheKyivIndependent
@@ -96,10 +96,19 @@ Scrapers = [
     PBSNewsHour,
     Quillette,
     RT,
-    # RawStory, Ridiculous amounts of javascript. Takes way way way too long to scrape.
+    RawStory,
     Salon,
     Semafor,
     TaipeiTimes,
     TheKyivIndependent,
     TheStraitsTimes,
 ]
+
+TradScrapers = []
+SeleniumScrapers = []
+
+for scraper in Scrapers:
+    if issubclass(scraper, SeleniumScraper):
+        SeleniumScrapers.append(scraper)
+    else:
+        TradScrapers.append(scraper)
