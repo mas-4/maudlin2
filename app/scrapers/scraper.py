@@ -5,6 +5,7 @@ from collections import namedtuple
 from threading import Thread, Lock
 
 import requests as rq
+import validators
 from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
 from selenium.webdriver.firefox.options import Options
@@ -133,10 +134,12 @@ class Scraper(ABC, Thread):
             title = self.strip(title)
             art_pair = ArticlePair(href, title)
             try:
+                if not (err := validators.url(art_pair.href)):
+                    raise err
                 self.process(art_pair)
             except Exception as e:  # noqa
                 Session.rollback()
-                msg = f"Failed to process link: {art_pair}: {e}"
+                msg = f"Failed to process link: {self.agency}: {art_pair} {e}"
                 self.dayreport.add_exception(msg, tb.format_exc())
                 logger.exception(msg)
 

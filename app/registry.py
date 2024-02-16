@@ -1,3 +1,7 @@
+from app.scrapers.crooksandliars import CrooksandLiars
+from app.scrapers.cbc import CBC
+from app.scrapers.cbc import CBC
+from app.scrapers.taipeitimes import TaipeiTimes
 from app.scrapers.thekyivindependent import TheKyivIndependent
 from app.scrapers.thestraitstimes import TheStraitsTimes
 from app.scrapers.abc import ABC
@@ -46,6 +50,10 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    CrooksandLiars,
+    CBC,
+    CBC,
+    TaipeiTimes,
     TheKyivIndependent,
     TheStraitsTimes,
     ABC,

@@ -19,6 +19,8 @@ class FT(SeleniumScraper):
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/content/')}):
             href = a['href']
+            if href.startswith('/'):
+                href = self.url + href
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))

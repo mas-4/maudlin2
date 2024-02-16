@@ -37,10 +37,10 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [X] Strait Times
-- [ ] Kyiv Independent
-- [ ] Taipei Times
-- [ ] CBC
-- [ ] Crooks and Liars
+- [X] Kyiv Independent
+- [X] Taipei Times
+- [X] CBC
+- [X] Crooks and Liars
 - [ ] Military.com
 - [ ] Moscow Times
 - [ ] National Post

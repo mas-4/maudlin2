@@ -4,7 +4,6 @@ import pathlib
 import nltk
 from jinja2 import Environment, FileSystemLoader
 
-nltk.download('tokenizers/punkt.zip')
 nltk.download('vader_lexicon')
 nltk.download('averaged_perceptron_tagger')
 
