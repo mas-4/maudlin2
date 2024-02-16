@@ -112,7 +112,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Al Jazeera
 - [X] Associated Press
 - [X] BBC
-- [X] Barron's
+- [X] Barron't
 - [X] Bloomberg
 - [X] Breitbart
 - [X] Business Insider
@@ -126,7 +126,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Daily mail
 - [X] Der Spiegel
 - [X] Economist
-- [X] FT
+- [-] FT
 - [X] Foreign Affairs
 - [X] Foreign Policy
 - [X] Fortune
@@ -148,8 +148,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] PBS News Hour
 - [X] Quillette
 - [X] RT
-- [X] Raw Story
-- [X] Salon
+- [-] Raw Story
+- [-] Salon
 - [X] Semafor
 - [X] The New York Times
 

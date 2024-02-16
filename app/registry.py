@@ -62,7 +62,6 @@ Scrapers = [
     DerSpiegel,
     DrudgeReport,
     Economist,
-    FT,
     ForeignAffairs,
     ForeignPolicy,
     Fortune,
@@ -85,7 +84,5 @@ Scrapers = [
     PBSNewsHour,
     Quillette,
     RT,
-    RawStory,
-    Salon,
     Semafor,
 ]
