@@ -19,6 +19,8 @@ class TheKyivIndependent(Scraper):
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'rel': 'dofollow', 'href': re.compile(r'^/.*') }):
             href = a['href']
+            if href.startswith('/'):
+                href = self.url + href
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))

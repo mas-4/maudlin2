@@ -1,3 +1,4 @@
+from app.scrapers.military_com import MilitaryCom
 from app.scrapers.crooksandliars import CrooksandLiars
 from app.scrapers.cbc import CBC
 from app.scrapers.cbc import CBC
@@ -50,6 +51,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    MilitaryCom,
     CrooksandLiars,
     CBC,
     CBC,
