@@ -38,7 +38,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] News.Google.Com
 - [X] Punchbowl
 - [X] Scripps
-- [ ] Sky News
+- [X] Sky News
 - [ ] Slate
 - [ ] South China Morning Post
 - [ ] Star Tribune
