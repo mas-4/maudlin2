@@ -36,8 +36,8 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 - [ ] News.Google.Com
-- [ ] Punchbowl
-- [ ] Scripps
+- [X] Punchbowl
+- [X] Scripps
 - [ ] Sky News
 - [ ] Slate
 - [ ] South China Morning Post
