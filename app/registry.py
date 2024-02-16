@@ -1,3 +1,4 @@
+from app.scrapers.skynews import SkyNews
 from app.scrapers.scrippsnews import ScrippsNews
 from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.redstate import RedState
@@ -61,6 +62,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    SkyNews,
     ScrippsNews,
     PunchbowlNews,
     RedState,
@@ -123,6 +125,7 @@ Scrapers = [
 ]
 
 TradScrapers = [
+    SkyNews,
     ScrippsNews,
     PunchbowlNews,
     RedState,
@@ -134,6 +137,7 @@ TradScrapers = [
     NationalPost,
     TheMoscowTimes,]
 SeleniumScrapers = [
+    SkyNews,
     ScrippsNews,
     PunchbowlNews,
     RedState,

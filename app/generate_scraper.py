@@ -1,5 +1,4 @@
 import os
-import sys
 import re
 
 from app.config import Config
@@ -9,7 +8,7 @@ template = """import re
 
 from bs4 import BeautifulSoup as Soup
 
-from app.constants import Bias, Credibility, Country
+from app.constants import Bias, Credibility, Country, Constants
 from app.logger import get_logger
 from app.scrapers.scraper import Scraper
 
@@ -24,15 +23,19 @@ class {cls}(Scraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a'):
-            href = a['href']
-            title = a.text.strip()
-            if title:
+            try:
+                href = a['href']
+                title = a.text.strip()
                 self.downstream.append((href, title))
+            except Exception as e:
+                logger.error(f"{self.agency}: Error parsing link: {e}")
+                logger.exception(f"{self.agency}: Link: {a}")
+                continue
 
 """
 
 
-def main(site_name, url):
+def main(site_name, url):  # noqa
     class_name = site_name.replace(' ', '')
     file_name = site_name.lower().replace(' ', '') + '.py'
     generate_scraper(site_name, url, class_name, file_name)
