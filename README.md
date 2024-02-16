@@ -36,17 +36,19 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
-
-- [ ] Sky News
-- [ ] Political Wire
-- [ ] Crooks and Liars
-- [ ] National Post
-- [ ] Scripps
 - [ ] CBC
-- [ ] Winnipeg Free Press
+- [ ] Crooks and Liars
+- [ ] Military.com
+- [ ] Moscow Times
+- [ ] National Post
+- [ ] News.Google.Com
+- [ ] Political Wire
+- [ ] Radio Free Europe
 - [ ] Real Clear Politics
 - [ ] Reason
 - [ ] Red State
+- [ ] Scripps
+- [ ] Sky News
 - [ ] Slate
 - [ ] South China Morning Post
 - [ ] Star Tribune
@@ -54,11 +56,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] Tampa Bay Times
 - [ ] Telegraph
 - [ ] The Atlantic
-- [ ] Toronto Sun
 - [ ] The Blaze
 - [ ] The Daily Wire
 - [ ] The Epoch Times
-- [ ] Military.com
 - [ ] The Federalist
 - [ ] The Globe and Mail
 - [ ] The Guardian
@@ -66,9 +66,11 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] The Independent
 - [ ] The Intercept
 - [ ] The Strait Times
+- [ ] The Sun
 - [ ] The Times of India
 - [ ] The Week
 - [ ] Time
+- [ ] Toronto Sun
 - [ ] USA Today
 - [ ] VOA
 - [ ] Vanity Fair
@@ -76,7 +78,14 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] Vox
 - [ ] Wall Street Journal
 - [ ] Washington Post
+- [ ] Winnipeg Free Press
 - [ ] Xinhua
+- [ ] indianexpress.com
+- [ ] livemint.com
+- [ ] msn.com
+- [ ] ndtv.com
+- [ ] news.yahoo.com
+- [ ] news18.com
 - [-] Al Arabiya
 - [-] Axios
 - [-] Daily Beast
@@ -139,3 +148,4 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Salon
 - [X] Semafor
 - [X] The New York Times
+
