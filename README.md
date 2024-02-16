@@ -37,6 +37,13 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 
+- [ ] Sky News
+- [ ] Political Wire
+- [ ] Crooks and Liars
+- [ ] National Post
+- [ ] Scripps
+- [ ] CBC
+- [ ] Winnipeg Free Press
 - [ ] Real Clear Politics
 - [ ] Reason
 - [ ] Red State
@@ -47,9 +54,11 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] Tampa Bay Times
 - [ ] Telegraph
 - [ ] The Atlantic
+- [ ] Toronto Sun
 - [ ] The Blaze
 - [ ] The Daily Wire
 - [ ] The Epoch Times
+- [ ] Military.com
 - [ ] The Federalist
 - [ ] The Globe and Mail
 - [ ] The Guardian
@@ -65,9 +74,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] Vanity Fair
 - [ ] Vice
 - [ ] Vox
-- [ ] Vox
-- [ ] WSJ
-- [ ] Wapo
+- [ ] Wall Street Journal
+- [ ] Washington Post
 - [ ] Xinhua
 - [-] Al Arabiya
 - [-] Axios
