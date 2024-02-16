@@ -1,3 +1,4 @@
+from app.scrapers.politicalwire import PoliticalWire
 from app.scrapers.nationalpost import NationalPost
 from app.scrapers.themoscowtimes import TheMoscowTimes
 from app.scrapers.military_com import MilitaryCom
@@ -53,6 +54,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    PoliticalWire,
     NationalPost,
     TheMoscowTimes,
     ABC,
@@ -109,9 +111,11 @@ Scrapers = [
 ]
 
 TradScrapers = [
+    PoliticalWire,
     NationalPost,
     TheMoscowTimes,]
 SeleniumScrapers = [
+    PoliticalWire,
     NationalPost,
     TheMoscowTimes,]
 
