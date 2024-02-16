@@ -35,12 +35,8 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
+
 - [ ] News.Google.Com
-- [X] Punchbowl
-- [X] Scripps
-- [X] Sky News
-- [X] Slate
-- [X] South China Morning Post
 - [ ] Star Tribune
 - [ ] Sydney Morning Herald
 - [ ] Tampa Bay Times
@@ -140,6 +136,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Nikkei Asia
 - [X] PBS News Hour
 - [X] Political Wire
+- [X] Punchbowl
 - [X] Quillette
 - [X] RT
 - [X] Radio Free Europe
@@ -147,7 +144,12 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Reason
 - [X] Red State
 - [X] Salon
+- [X] Scripps
 - [X] Semafor
+- [X] Sky News
+- [X] Slate
+- [X] South China Morning Post
 - [X] Strait Times
 - [X] Taipei Times
 - [X] The New York Times
+- 
