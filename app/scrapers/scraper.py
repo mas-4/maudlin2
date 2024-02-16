@@ -7,6 +7,8 @@ from threading import Thread, Lock
 import requests as rq
 from bs4 import BeautifulSoup as Soup
 from nltk.sentiment import SentimentIntensityAnalyzer
+from selenium.webdriver.firefox.options import Options
+from selenium import webdriver
 
 from app.constants import Credibility, Bias, Country
 from app.dayreport import DayReport
@@ -148,3 +150,38 @@ class Scraper(ABC, Thread):
             logger.exception(msg)
             self.dayreport.add_exception(msg, tb.format_exc())
             raise
+
+
+class SeleniumResourceManager:
+    _instance = None
+    lock = Lock()
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+
+            cls._instance._driver = webdriver.Firefox(options = Options().add_argument("--headless"))
+        return cls._instance
+
+    def __del__(self):
+        self._driver.quit()
+
+    def get_html(self, url):
+        with self.lock:
+            self._driver.get(url)
+            return self._driver.page_source
+
+
+class SeleniumScraper(Scraper):
+    def __init__(self):
+        super().__init__()
+        self.srs = SeleniumResourceManager()
+    def get_page(self, url: str):
+        try:
+            soup = Soup(self.srs.get_html(url), self.parser)
+        except Exception as e:  # noqa
+            raise ValueError(f"Failed to get page: {e}")
+        return soup
+
+    @abstractmethod
+    def setup(self, soup: Soup):
+        pass

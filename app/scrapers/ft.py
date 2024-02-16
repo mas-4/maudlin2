@@ -4,12 +4,12 @@ from bs4 import BeautifulSoup as Soup
 
 from app.constants import Bias, Credibility, Country
 from app.logger import get_logger
-from app.scrapers.scraper import Scraper
+from app.scrapers.scraper import SeleniumScraper
 
 logger = get_logger(__name__)
 
 
-class FT(Scraper):
+class FT(SeleniumScraper):
     bias = Bias.unbiased
     credibility = Credibility.high
     url: str = 'https://www.ft.com'
