@@ -41,9 +41,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Taipei Times
 - [X] CBC
 - [X] Crooks and Liars
-- [ ] Military.com
-- [ ] Moscow Times
-- [ ] National Post
+- [X] Military.com
+- [X] Moscow Times
+- [X] National Post
 - [ ] News.Google.Com
 - [ ] Political Wire
 - [ ] Radio Free Europe

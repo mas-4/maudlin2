@@ -1,3 +1,5 @@
+from app.scrapers.nationalpost import NationalPost
+from app.scrapers.themoscowtimes import TheMoscowTimes
 from app.scrapers.military_com import MilitaryCom
 from app.scrapers.scraper import SeleniumScraper
 from app.scrapers.crooksandliars import CrooksandLiars
@@ -51,6 +53,8 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    NationalPost,
+    TheMoscowTimes,
     ABC,
     AP,
     AlJazeera,
@@ -104,8 +108,12 @@ Scrapers = [
     TheStraitsTimes,
 ]
 
-TradScrapers = []
-SeleniumScrapers = []
+TradScrapers = [
+    NationalPost,
+    TheMoscowTimes,]
+SeleniumScrapers = [
+    NationalPost,
+    TheMoscowTimes,]
 
 for scraper in Scrapers:
     if issubclass(scraper, SeleniumScraper):
