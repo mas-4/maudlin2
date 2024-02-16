@@ -40,7 +40,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Scripps
 - [X] Sky News
 - [X] Slate
-- [ ] South China Morning Post
+- [X] South China Morning Post
 - [ ] Star Tribune
 - [ ] Sydney Morning Herald
 - [ ] Tampa Bay Times

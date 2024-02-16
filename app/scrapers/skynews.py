@@ -14,6 +14,7 @@ class SkyNews(Scraper):
     credibility = Credibility.high
     url: str = 'https://news.sky.com'
     agency: str = "Sky News"
+    country: str = Country.gb
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'.*-\d+$')}):

@@ -1,3 +1,4 @@
+from app.scrapers.southchinamorningpost import SouthChinaMorningPost
 from app.scrapers.slate import Slate
 from app.scrapers.skynews import SkyNews
 from app.scrapers.scrippsnews import ScrippsNews
@@ -62,6 +63,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    SouthChinaMorningPost,
     Slate,
     SkyNews,
     ScrippsNews,
