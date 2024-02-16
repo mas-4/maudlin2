@@ -36,7 +36,7 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
-- [ ] Strait Times
+- [X] Strait Times
 - [ ] Kyiv Independent
 - [ ] Taipei Times
 - [ ] CBC
@@ -126,7 +126,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Daily mail
 - [X] Der Spiegel
 - [X] Economist
-- [-] FT
+- [X] FT
 - [X] Foreign Affairs
 - [X] Foreign Policy
 - [X] Fortune
@@ -148,8 +148,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] PBS News Hour
 - [X] Quillette
 - [X] RT
-- [-] Raw Story
-- [-] Salon
+- [X] Raw Story
+- [X] Salon
 - [X] Semafor
 - [X] The New York Times
 

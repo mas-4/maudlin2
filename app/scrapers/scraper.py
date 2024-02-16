@@ -158,8 +158,9 @@ class SeleniumResourceManager:
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-
-            cls._instance._driver = webdriver.Firefox(options = Options().add_argument("--headless"))
+            options = Options()
+            options.add_argument("--headless")
+            cls._instance._driver = webdriver.Firefox(options=options)
         return cls._instance
 
     def __del__(self):

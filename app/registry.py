@@ -1,3 +1,5 @@
+from app.scrapers.thekyivindependent import TheKyivIndependent
+from app.scrapers.thestraitstimes import TheStraitsTimes
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -44,6 +46,8 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    TheKyivIndependent,
+    TheStraitsTimes,
     ABC,
     AP,
     AlJazeera,
