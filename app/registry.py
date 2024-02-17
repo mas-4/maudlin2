@@ -1,13 +1,3 @@
-from app.scrapers.voa import VOA
-from app.scrapers.usatoday import USAToday
-from app.scrapers.torontosun import TorontoSun
-from app.scrapers.time import Time
-from app.scrapers.week import Week
-from app.scrapers.timesofindia import TimesofIndia
-from app.scrapers.sun import Sun
-from app.scrapers.intercept import Intercept
-from app.scrapers.independent import Independent
-from app.scrapers.hill import Hill
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -42,8 +32,11 @@ from app.scrapers.ft import FT
 from app.scrapers.globaltimes import GlobalTimes
 from app.scrapers.globeandmail import GlobeAndMail
 from app.scrapers.guardian import Guardian
+from app.scrapers.hill import Hill
 from app.scrapers.huffpost import HuffPost
+from app.scrapers.independent import Independent
 from app.scrapers.indiatimes import IndiaTimes
+from app.scrapers.intercept import Intercept
 from app.scrapers.jacobin import Jacobin
 from app.scrapers.kyivindependent import KyivIndependent
 from app.scrapers.lemonde import LeMonde
@@ -77,22 +70,20 @@ from app.scrapers.slate import Slate
 from app.scrapers.southchinamorningpost import SouthChinaMorningPost
 from app.scrapers.startribune import StarTribune
 from app.scrapers.straitstimes import StraitsTimes
+from app.scrapers.sun import Sun
 from app.scrapers.sydneymorningherald import SydneyMorningHerald
 from app.scrapers.taipeitimes import TaipeiTimes
 from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.telegraph import Telegraph
+from app.scrapers.time import Time
+from app.scrapers.timesofindia import TimesofIndia
+from app.scrapers.torontosun import TorontoSun
+from app.scrapers.usatoday import USAToday
+from app.scrapers.vanityfair import VanityFair
+from app.scrapers.voa import VOA
+from app.scrapers.week import Week
 
 Scrapers = [
-    VOA,
-    USAToday,
-    TorontoSun,
-    Time,
-    Week,
-    TimesofIndia,
-    Sun,
-    Intercept,
-    Independent,
-    Hill,
     ABC,
     AP,
     AlJazeera,
@@ -128,8 +119,11 @@ Scrapers = [
     GlobalTimes,
     GlobeAndMail,
     Guardian,
+    Hill,
     HuffPost,
+    Independent,
     IndiaTimes,
+    Intercept,
     Jacobin,
     KyivIndependent,
     LeMonde,
@@ -162,10 +156,18 @@ Scrapers = [
     SouthChinaMorningPost,
     StarTribune,
     StraitsTimes,
+    Sun,
     SydneyMorningHerald,
     TaipeiTimes,
     TampaBayTimes,
     Telegraph,
+    Time,
+    TimesofIndia,
+    TorontoSun,
+    USAToday,
+    VOA,
+    VanityFair,
+    Week,
 ]
 
 TradScrapers = []
