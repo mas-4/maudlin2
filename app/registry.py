@@ -1,3 +1,4 @@
+from app.scrapers.thedailywire import TheDailyWire
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -70,6 +71,7 @@ from app.scrapers.thetelegraph import TheTelegraph
 
 
 Scrapers = [
+    TheDailyWire,
     ABC,
     AP,
     AlJazeera,

@@ -43,7 +43,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Telegraph
 - [X] The Atlantic
 - [X] The Blaze
-- [ ] The Daily Wire
+- [X] The Daily Wire
 - [ ] The Epoch Times
 - [ ] The Federalist
 - [ ] The Globe and Mail
