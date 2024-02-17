@@ -43,9 +43,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Japan Times (Chromium)
 - [-] Le Figaro (In french)
 - [-] Monocle (No data from MBFC)
-- [-] National Interest
+- [X] National Interest
 - [-] National Review (Chromium)
-- [-] Newsweek (403)
+- [X] Newsweek (403)
 - [-] Politico (chromium)
 - [-] Real Clear Politics (Assholes)
 - [-] Reuters (401)

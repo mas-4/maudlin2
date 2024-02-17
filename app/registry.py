@@ -1,3 +1,4 @@
+from app.scrapers.newsweek import Newsweek
 from app.scrapers.nationalinterest import NationalInterest
 from app.scrapers.japantimes import JapanTimes
 from app.scrapers.losangelestimes import LosAngelesTimes
@@ -102,6 +103,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    Newsweek,
     NationalInterest,
     JapanTimes,
     LosAngelesTimes,
