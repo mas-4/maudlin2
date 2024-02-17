@@ -1,5 +1,6 @@
 import os
 import re
+import webbrowser
 
 from app.config import Config
 from app.constants import Constants
@@ -59,6 +60,9 @@ def generate_scraper(site_name, url, class_name, file_name):
     with open(path, "wt") as f_scraper:
         f_scraper.write(TEMPLATE.format(cls=class_name, url=url, site_name=site_name))
     print(f"Generated scraper for {site_name} at {url}")
+    print(f"Opening web browser")
+    url = f"https://www.google.com/search?q={site_name.replace(' ', '+')}+mediabiasfactcheck"
+    webbrowser.open(url)
 
 
 if __name__ == '__main__':

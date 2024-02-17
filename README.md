@@ -37,7 +37,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [ ] News.Google.Com
-- [ ] Star Tribune
+- [X] Star Tribune
 - [ ] Sydney Morning Herald
 - [ ] Tampa Bay Times
 - [ ] Telegraph

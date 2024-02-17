@@ -1,3 +1,4 @@
+from app.scrapers.startribune import StarTribune
 from app.scrapers.southchinamorningpost import SouthChinaMorningPost
 from app.scrapers.slate import Slate
 from app.scrapers.skynews import SkyNews
@@ -5,7 +6,6 @@ from app.scrapers.scrippsnews import ScrippsNews
 from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.redstate import RedState
 from app.scrapers.reason import Reason
-from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
 from app.scrapers.politicalwire import PoliticalWire
 from app.scrapers.nationalpost import NationalPost
@@ -63,6 +63,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    StarTribune,
     SouthChinaMorningPost,
     Slate,
     SkyNews,
