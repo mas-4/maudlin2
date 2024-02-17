@@ -53,7 +53,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Intercept
 - [X] The Sun
 - [X] The Times of India
-- [ ] The Week
+- [X] The Week
 - [ ] Time
 - [ ] Toronto Sun
 - [ ] USA Today
