@@ -1,3 +1,4 @@
+from app.scrapers.hill import Hill
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -73,6 +74,7 @@ from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.telegraph import Telegraph
 
 Scrapers = [
+    Hill,
     ABC,
     AP,
     AlJazeera,

@@ -47,7 +47,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Epoch Times
 - [X] The Federalist
 - [X] The Globe and Mail
-- [ ] The Guardian
+- [X] The Guardian
 - [ ] The Hill
 - [ ] The Independent
 - [ ] The Intercept
