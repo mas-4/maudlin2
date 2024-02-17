@@ -44,8 +44,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Atlantic
 - [X] The Blaze
 - [X] The Daily Wire
-- [ ] The Epoch Times
-- [ ] The Federalist
+- [X] The Epoch Times
+- [X] The Federalist
 - [ ] The Globe and Mail
 - [ ] The Guardian
 - [ ] The Hill

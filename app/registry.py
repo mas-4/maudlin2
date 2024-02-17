@@ -1,3 +1,4 @@
+from app.scrapers.thefederalist import TheFederalist
 from app.scrapers.theepochtimes import TheEpochTimes
 from app.scrapers.theepochtimes import TheEpochTimes
 from app.scrapers.thedailywire import TheDailyWire
@@ -73,6 +74,7 @@ from app.scrapers.thetelegraph import TheTelegraph
 
 
 Scrapers = [
+    TheFederalist,
     TheEpochTimes,
     TheEpochTimes,
     TheDailyWire,
