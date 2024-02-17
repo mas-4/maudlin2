@@ -50,9 +50,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Guardian
 - [X] The Hill
 - [X] The Independent
-- [ ] The Intercept
-- [ ] The Strait Times
-- [ ] The Sun
+- [X] The Intercept
+- [X] The Sun
 - [ ] The Times of India
 - [ ] The Week
 - [ ] Time

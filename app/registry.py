@@ -1,3 +1,5 @@
+from app.scrapers.sun import Sun
+from app.scrapers.intercept import Intercept
 from app.scrapers.independent import Independent
 from app.scrapers.hill import Hill
 from app.scrapers.abc import ABC
@@ -75,6 +77,8 @@ from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.telegraph import Telegraph
 
 Scrapers = [
+    Sun,
+    Intercept,
     Independent,
     Hill,
     ABC,
