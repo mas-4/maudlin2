@@ -73,7 +73,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] news.yahoo.com
 - [ ] news18.com
 - [-] Al Arabiya
-- [-] Axios
+- [X] Axios
 - [-] Daily Beast
 - [-] El Pais (Need multilingual support)
 - [-] Forbes (Needs chromium headless)
