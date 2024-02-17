@@ -49,9 +49,10 @@ class Scraper(ABC, Thread):
         self.done: bool = False
         self.results: list[dict[str, str]] = []
         with Session() as session, self.sql_lock:
-            agency = session.query(Agency).filter_by(name=self.agency).first()
+            agency = session.query(Agency).filter_by(url=self.url).first()
             if not agency:
-                agency = Agency(name=self.agency, url=self.url)
+                agency = Agency(url=self.url)
+            agency.name = self.agency
             agency.bias = self.bias
             agency.credibility = self.credibility
             agency.country = self.country

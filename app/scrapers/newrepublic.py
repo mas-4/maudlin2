@@ -13,7 +13,7 @@ class NewRepublic(Scraper):
     bias = Bias.left
     credibility = Credibility.high
     url: str = 'https://newrepublic.com'
-    agency: str = "New Republic"
+    agency: str = "The New Republic"
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/post/\d+/')}):

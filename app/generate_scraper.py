@@ -37,8 +37,8 @@ class {cls}(Scraper):
 
 
 def main(site_name, url):  # noqa
-    class_name = site_name.replace(' ', '')
-    file_name = site_name.lower().replace(' ', '') + '.py'
+    class_name = site_name.replace(' ', '').replace('The', '')
+    file_name = site_name.lower().replace(' ', '').replace('the', '') + '.py'
     generate_scraper(site_name, url, class_name, file_name)
     register_scraper(class_name, file_name)
 
@@ -51,7 +51,6 @@ def register_scraper(class_name, file_name):
     registry = re.sub(r"Scrapers = \[", f"Scrapers = [\n    {class_name},", registry, count=1)
     with open(registry_path, 'wt') as f:
         f.write(registry)
-
 
 
 def generate_scraper(site_name, url, class_name, file_name):

@@ -9,7 +9,7 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class TheStraitsTimes(Scraper):
+class StraitsTimes(Scraper):
     bias = Bias.right_center
     credibility = Credibility.mostly_factual
     url: str = 'https://www.straitstimes.com/global'

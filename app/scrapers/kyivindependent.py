@@ -9,7 +9,7 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class TheKyivIndependent(Scraper):
+class KyivIndependent(Scraper):
     bias = Bias.left_center
     credibility = Credibility.high
     url: str = 'https://kyivindependent.com'

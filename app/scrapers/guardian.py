@@ -9,7 +9,7 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class TheGuardian(Scraper):
+class Guardian(Scraper):
     bias = Bias.left_center
     credibility = Credibility.mixed
     url: str = 'https://www.theguardian.com/us'

@@ -9,18 +9,18 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class TheFederalist(Scraper):
-    bias = Bias.extreme_right
+class DailyWire(Scraper):
+    bias = Bias.right
     credibility = Credibility.mixed
-    url: str = 'https://thefederalist.com/'
-    agency: str = "The Federalist"
-    headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}
+    url: str = 'https://www.dailywire.com/'
+    agency: str = "The Daily Wire"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for art in soup.find_all('article'):
             try:
+                a = art.find('a')
                 href = a['href']
-                title = a.text.strip()
+                title = a.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']).text.strip()
                 self.downstream.append((href, title))
             except Exception as e:
                 logger.error(f"{self.agency}: Error parsing link: {e}")

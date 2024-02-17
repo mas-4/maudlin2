@@ -1,9 +1,9 @@
-from app.scrapers.theguardian import TheGuardian
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
-from app.scrapers.axios import Axios
+from app.scrapers.atlantic import Atlantic
 from app.scrapers.bbc import BBC
+from app.scrapers.blaze import Blaze
 from app.scrapers.bloomberg import Bloomberg
 from app.scrapers.breitbart import Breitbart
 from app.scrapers.businessinsider import BusinessInsider
@@ -17,9 +17,12 @@ from app.scrapers.crooksandliars import CrooksandLiars
 from app.scrapers.currentaffairs import CurrentAffairs
 from app.scrapers.dailykos import DailyKos
 from app.scrapers.dailymail import DailyMail
+from app.scrapers.dailywire import DailyWire
 from app.scrapers.derspiegel import DerSpiegel
 from app.scrapers.drudgereport import DrudgeReport
 from app.scrapers.economist import Economist
+from app.scrapers.epochtimes import EpochTimes
+from app.scrapers.federalist import Federalist
 from app.scrapers.foreignaffairs import ForeignAffairs
 from app.scrapers.foreignpolicy import ForeignPolicy
 from app.scrapers.fortune import Fortune
@@ -27,11 +30,15 @@ from app.scrapers.fox import Fox
 from app.scrapers.foxbusiness import FoxBusiness
 from app.scrapers.ft import FT
 from app.scrapers.globaltimes import GlobalTimes
+from app.scrapers.globeandmail import GlobeAndMail
+from app.scrapers.guardian import Guardian
 from app.scrapers.huffpost import HuffPost
 from app.scrapers.indiatimes import IndiaTimes
 from app.scrapers.jacobin import Jacobin
+from app.scrapers.kyivindependent import KyivIndependent
 from app.scrapers.lemonde import LeMonde
 from app.scrapers.military_com import MilitaryCom
+from app.scrapers.moscowtimes import MoscowTimes
 from app.scrapers.motherjones import MotherJones
 from app.scrapers.nationalpost import NationalPost
 from app.scrapers.nbc import NBC
@@ -59,27 +66,19 @@ from app.scrapers.skynews import SkyNews
 from app.scrapers.slate import Slate
 from app.scrapers.southchinamorningpost import SouthChinaMorningPost
 from app.scrapers.startribune import StarTribune
+from app.scrapers.straitstimes import StraitsTimes
 from app.scrapers.sydneymorningherald import SydneyMorningHerald
 from app.scrapers.taipeitimes import TaipeiTimes
 from app.scrapers.tampabaytimes import TampaBayTimes
-from app.scrapers.theatlantic import TheAtlantic
-from app.scrapers.theblaze import TheBlaze
-from app.scrapers.thedailywire import TheDailyWire
-from app.scrapers.theepochtimes import TheEpochTimes
-from app.scrapers.thefederalist import TheFederalist
-from app.scrapers.theglobeandmail import TheGlobeandMail
-from app.scrapers.thekyivindependent import TheKyivIndependent
-from app.scrapers.themoscowtimes import TheMoscowTimes
-from app.scrapers.thestraitstimes import TheStraitsTimes
-from app.scrapers.thetelegraph import TheTelegraph
-
+from app.scrapers.telegraph import Telegraph
 
 Scrapers = [
-    TheGuardian,
     ABC,
     AP,
     AlJazeera,
+    Atlantic,
     BBC,
+    Blaze,
     Bloomberg,
     Breitbart,
     BusinessInsider,
@@ -94,21 +93,28 @@ Scrapers = [
     CurrentAffairs,
     DailyKos,
     DailyMail,
+    DailyWire,
     DerSpiegel,
     DrudgeReport,
     Economist,
+    EpochTimes,
     FT,
+    Federalist,
     ForeignAffairs,
     ForeignPolicy,
     Fortune,
     Fox,
     FoxBusiness,
     GlobalTimes,
+    GlobeAndMail,
+    Guardian,
     HuffPost,
     IndiaTimes,
     Jacobin,
+    KyivIndependent,
     LeMonde,
     MilitaryCom,
+    MoscowTimes,
     MotherJones,
     NBC,
     NPR,
@@ -135,20 +141,11 @@ Scrapers = [
     Slate,
     SouthChinaMorningPost,
     StarTribune,
+    StraitsTimes,
     SydneyMorningHerald,
     TaipeiTimes,
     TampaBayTimes,
-    TheAtlantic,
-    TheBlaze,
-    TheDailyWire,
-    TheEpochTimes,
-    TheEpochTimes,
-    TheFederalist,
-    TheGlobeandMail,
-    TheKyivIndependent,
-    TheMoscowTimes,
-    TheStraitsTimes,
-    TheTelegraph,
+    Telegraph,
 ]
 
 TradScrapers = []

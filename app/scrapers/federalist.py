@@ -9,14 +9,15 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class TheAtlantic(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
-    url: str = 'https://www.theatlantic.com/'
-    agency: str = "The Atlantic"
+class Federalist(Scraper):
+    bias = Bias.extreme_right
+    credibility = Credibility.mixed
+    url: str = 'https://thefederalist.com/'
+    agency: str = "The Federalist"
+    headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile(r'.*/archive/\d{4}/\d{2}/.*')}):
+        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
             try:
                 href = a['href']
                 title = a.text.strip()

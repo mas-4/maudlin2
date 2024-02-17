@@ -9,15 +9,14 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class TheTelegraph(Scraper):
-    bias = Bias.right
+class Blaze(Scraper):
+    bias = Bias.extreme_right
     credibility = Credibility.mixed
-    url: str = 'https://www.telegraph.co.uk/us'
-    agency: str = "The Telegraph"
-    country: Country = Country.gb
+    url: str = 'https://www.theblaze.com'
+    agency: str = "The Blaze"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for a in soup.find_all('a', {'class': re.compile('headline')}):
             try:
                 href = a['href']
                 title = a.text.strip()
