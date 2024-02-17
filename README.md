@@ -56,8 +56,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Week
 - [X] Time
 - [X] Toronto Sun
-- [ ] USA Today
-- [ ] VOA
+- [X] USA Today
+- [X] VOA
 - [ ] Vanity Fair
 - [ ] Vice
 - [ ] Vox

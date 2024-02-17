@@ -1,3 +1,4 @@
+from app.scrapers.voa import VOA
 from app.scrapers.usatoday import USAToday
 from app.scrapers.torontosun import TorontoSun
 from app.scrapers.time import Time
@@ -82,6 +83,7 @@ from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.telegraph import Telegraph
 
 Scrapers = [
+    VOA,
     USAToday,
     TorontoSun,
     Time,
