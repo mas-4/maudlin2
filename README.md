@@ -54,7 +54,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Sun
 - [X] The Times of India
 - [X] The Week
-- [ ] Time
+- [X] Time
 - [ ] Toronto Sun
 - [ ] USA Today
 - [ ] VOA

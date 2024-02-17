@@ -2,7 +2,8 @@ import os
 import pathlib
 import re
 from enum import Enum
-from datetime import datetime as dt, timedelta as td, timezone as tz
+from datetime import datetime as dt, timedelta as td
+import pytz
 
 
 class Bias(Enum):
@@ -84,11 +85,11 @@ class Constants:
         DATE_URL = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')
 
     class TimeConstants:
+        timezone = pytz.timezone('America/New_York')
         last_hour = dt.now()
         last_hour = last_hour.replace(hour=last_hour.hour - 1)
         midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday = midnight - td(days=1)
-        timezone = tz(td(hours=-5))
         now = dt.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
         five_minutes_ago = dt.now() - td(minutes=5)
 

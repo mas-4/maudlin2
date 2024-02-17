@@ -1,8 +1,8 @@
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt
 
 import numpy as np
-import pandas as pd
-from sqlalchemy import ForeignKey, String, create_engine, func
+import pytz
+from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
 
@@ -66,11 +66,11 @@ class Agency(Base):
 
 
 class AccessTimeMixin:
-    first_accessed: Mapped[dt] = mapped_column(DateTime(), default=func.now())
-    last_accessed: Mapped[dt] = mapped_column(DateTime(), default=func.now())
+    first_accessed: Mapped[dt] = mapped_column(DateTime(), default=dt.now(pytz.UTC))
+    last_accessed: Mapped[dt] = mapped_column(DateTime(), default=dt.now(pytz.UTC))
 
     def update_last_accessed(self):
-        self.last_accessed = dt.now()  # noqa bad pycharm typing
+        self.last_accessed = dt.now(pytz.UTC) # noqa type: ignore
 
 
 class Article(Base, AccessTimeMixin):
