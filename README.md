@@ -36,18 +36,12 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
-- [X] Google News
 - [-] Al Arabiya
-- [X] Daily Beast
 - [-] El Pais (Need multilingual support)
-- [X] Forbes
-- [X] France 24
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
 - [-] Japan Times (Chromium)
-- [X] LA Times
 - [-] Le Figaro (In french)
-- [-] MSNBC (requires more sophisticated filtering)
 - [-] Monocle (No data from MBFC)
 - [-] National Interest
 - [-] National Review (Chromium)
@@ -55,6 +49,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Politico (chromium)
 - [-] Real Clear Politics (Assholes)
 - [-] Reuters (401)
+- [-] Wall Street Journal (401/403)
 - [-] msn.com (javascript)
 - [X] ABC News
 - [X] Al Jazeera
@@ -73,22 +68,28 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Chicago Tribune
 - [X] Crooks and Liars
 - [X] Current Affairs
+- [X] Daily Beast
 - [X] Daily Kos
 - [X] Daily mail
 - [X] Der Spiegel
 - [X] Economist
 - [X] FT
+- [X] Forbes
 - [X] Foreign Affairs
 - [X] Foreign Policy
 - [X] Fortune
 - [X] Fox Business
 - [X] Fox News
+- [X] France 24
 - [X] Global Times
+- [X] Google News
 - [X] Huffington Post
 - [X] India Times
 - [X] Jacobin
 - [X] Kyiv Independent
+- [X] LA Times
 - [X] Le Monde
+- [X] MSNBC (requires more sophisticated filtering)
 - [X] Military.com
 - [X] Moscow Times
 - [X] Mother Jones
@@ -142,7 +143,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Vanity Fair
 - [X] Vice
 - [X] Vox
-- [-] Wall Street Journal
 - [X] Washington Post
 - [X] Winnipeg Free Press
 - [X] Xinhua
@@ -151,3 +151,4 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] ndtv.com
 - [X] news.yahoo.com
 - [X] news18.com
+

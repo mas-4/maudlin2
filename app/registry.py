@@ -1,5 +1,6 @@
 from app.scrapers.losangelestimes import LosAngelesTimes
 from app.scrapers.forbes import Forbes
+from app.scrapers.msnbc import MSNBC
 from app.scrapers.france24 import France24
 from app.scrapers.dailybeast import DailyBeast
 from app.scrapers.googlenews import GoogleNews
@@ -198,6 +199,7 @@ Scrapers = [
     VanityFair,
     Week,
     France24,
+    MSNBC,
 ]
 
 TradScrapers = []

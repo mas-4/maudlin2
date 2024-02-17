@@ -1,4 +1,5 @@
 import re
+import nltk
 
 from bs4 import BeautifulSoup as Soup
 
@@ -14,13 +15,16 @@ class MSNBC(Scraper):
     credibility = Credibility.mixed
     url: str = 'https://www.msnbc.com'
     agency: str = "MSNBC"
+    stopwords = ["AD Choices", "AP", "Getty Images", ";", ]
 
     def setup(self, soup: Soup):
-        header_end = soup.find('div', {'id': 'header-end'})
-        main_content = header_end.find_next('div')
-        for a in main_content.find_all('a'):
+        for a in soup.find_all('a', {'href': re.compile(r'\d+$')}):
             href = a['href']
             title = a.text.strip()
-            if title:
-                self.downstream.append((href, title))
+            if '/' in title:
+                continue
+            # basically if it's nothing but personal nouns ignore it
+            if not list(filter(lambda x: x[1] != 'NNP', nltk.pos_tag(nltk.word_tokenize(title)))):
+                continue
+            self.downstream.append((href, title))
 
