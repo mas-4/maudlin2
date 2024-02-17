@@ -1,3 +1,4 @@
+from app.scrapers.mint import Mint
 from app.scrapers.indianexpress import IndianExpress
 from app.scrapers.xinhua import Xinhua
 from app.scrapers.winnipegfreepress import WinnipegFreePress
@@ -90,6 +91,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    Mint,
     IndianExpress,
     Xinhua,
     WinnipegFreePress,

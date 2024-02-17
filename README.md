@@ -43,7 +43,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Winnipeg Free Press
 - [X] Xinhua
 - [X] indianexpress.com
-- [ ] livemint.com
+- [X] livemint.com
 - [ ] msn.com
 - [ ] ndtv.com
 - [ ] news.yahoo.com
