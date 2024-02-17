@@ -40,16 +40,11 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] El Pais (Need multilingual support)
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
-- [X] Japan Times
 - [-] Le Figaro (In french)
 - [-] Monocle (No data from MBFC)
-- [X] National Interest
 - [-] National Review (javascript only)
-- [X] Newsweek (403)
-- [X] Rolling Stone
 - [-] Politico (javascript)
 - [-] Real Clear Politics (Assholes)
-- [-] Reuters (401)
 - [-] Wall Street Journal (401/403)
 - [-] msn.com (javascript)
 - [X] ABC News
@@ -87,6 +82,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Huffington Post
 - [X] India Times
 - [X] Jacobin
+- [X] Japan Times
 - [X] Kyiv Independent
 - [X] LA Times
 - [X] Le Monde
@@ -96,11 +92,13 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Mother Jones
 - [X] NBC
 - [X] NPR
+- [X] National Interest
 - [X] National Post
 - [X] New Republic
 - [X] New York Magazine
 - [X] New York Post
 - [X] New Yorker
+- [X] Newsweek (403)
 - [X] Nikkei Asia
 - [X] PBS News Hour
 - [X] Political Wire
@@ -111,6 +109,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Raw Story
 - [X] Reason
 - [X] Red State
+- [X] Reuters (401?)
+- [X] Rolling Stone
 - [X] Salon
 - [X] Scripps
 - [X] Semafor
