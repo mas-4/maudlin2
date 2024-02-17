@@ -1,3 +1,5 @@
+from app.scrapers.tampabaytimes import TampaBayTimes
+from app.scrapers.sydneymorningherald import SydneyMorningHerald
 from app.scrapers.startribune import StarTribune
 from app.scrapers.southchinamorningpost import SouthChinaMorningPost
 from app.scrapers.slate import Slate
@@ -63,6 +65,8 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    TampaBayTimes,
+    SydneyMorningHerald,
     StarTribune,
     SouthChinaMorningPost,
     Slate,
