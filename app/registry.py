@@ -1,3 +1,5 @@
+from app.scrapers.theepochtimes import TheEpochTimes
+from app.scrapers.theepochtimes import TheEpochTimes
 from app.scrapers.thedailywire import TheDailyWire
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
@@ -71,6 +73,8 @@ from app.scrapers.thetelegraph import TheTelegraph
 
 
 Scrapers = [
+    TheEpochTimes,
+    TheEpochTimes,
     TheDailyWire,
     ABC,
     AP,
