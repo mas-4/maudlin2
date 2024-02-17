@@ -40,7 +40,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Al Arabiya
 - [X] Daily Beast
 - [-] El Pais (Need multilingual support)
-- [-] Forbes (Needs chromium headless)
+- [X] Forbes (Needs chromium headless)
 - [-] France 24 (Chromium)
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
@@ -142,7 +142,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Vanity Fair
 - [X] Vice
 - [X] Vox
-- [X] Wall Street Journal
+- [-] Wall Street Journal
 - [X] Washington Post
 - [X] Winnipeg Free Press
 - [X] Xinhua
