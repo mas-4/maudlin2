@@ -17,7 +17,7 @@ class Economist(Scraper):
     country: Country = Country.gb
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = a['href']
             if not href.startswith('http'):
                 href = self.url + href

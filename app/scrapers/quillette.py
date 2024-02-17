@@ -16,7 +16,7 @@ class Quillette(Scraper):
     agency: str = "Quillette"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = self.url + a['href']
             title = a.text.strip()
             if title:

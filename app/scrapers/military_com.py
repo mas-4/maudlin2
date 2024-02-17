@@ -16,7 +16,7 @@ class MilitaryCom(Scraper):
     agency: str = "Military.com"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = self.url + a['href']
             title = a.find('span', {'property': 'schema:name'})
             if title:

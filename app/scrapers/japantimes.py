@@ -9,11 +9,12 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class Vox(Scraper):
-    bias = Bias.left
+class JapanTimes(Scraper):
+    bias = Bias.unbiased
     credibility = Credibility.high
-    url: str = 'https://www.vox.com/'
-    agency: str = "Vox"
+    url: str = 'https://www.japantimes.co.jp/'
+    agency: str = "The Japan Times"
+    country = Country.jp
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):

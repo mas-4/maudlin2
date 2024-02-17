@@ -16,7 +16,7 @@ class ForeignPolicy(Scraper):
     agency: str = "Foreign Policy"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = a['href']
             if href.startswith('/'):
                 href = f'{self.url}{href}'

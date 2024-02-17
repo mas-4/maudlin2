@@ -17,7 +17,7 @@ class TaipeiTimes(Scraper):
     country: str = Country.tw
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.DATE_URL}):
+        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = a['href']
             title = a.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
             if title:

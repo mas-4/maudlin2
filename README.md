@@ -40,7 +40,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] El Pais (Need multilingual support)
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
-- [-] Japan Times (Chromium)
+- [X] Japan Times (Chromium)
 - [-] Le Figaro (In french)
 - [-] Monocle (No data from MBFC)
 - [-] National Interest

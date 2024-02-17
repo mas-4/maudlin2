@@ -85,7 +85,7 @@ class Constants:
         EMAIL_CREDS = os.path.join(ROOT, '.creds')
 
     class Patterns:
-        DATE_URL = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')
+        SLASH_DATE = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')
         BUNCH_OF_NUMBERS_DOT_HTML = re.compile(r'\d+\.html')
         DASH_DATE = re.compile(r'\d{4}-\d{1,2}-\d{1,2}')
 
