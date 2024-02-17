@@ -19,27 +19,29 @@ STOPWORDS.extend([
     "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group",
     "state", "country", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
     "home", "effort", "product", "part", "cup", "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sep", "Sept",
-    "Oct", "Nov", "Dec", "company", "companies", "business"
+    "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"'
 ])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
+STOPWORDS.extend([c for c in string.punctuation])
 
 
-def filter_words(text: str, parts_of_speech: Optional[list[str]] = None):
+def filter_words(headlines: list[str], parts_of_speech: Optional[list[str]] = None) -> list[str]:
     if parts_of_speech is None:
         parts_of_speech = POS
-    words = filter(lambda word: word[1] in parts_of_speech, nltk.pos_tag(nltk.word_tokenize(text)))
-    return ' '.join([word[0] for word in words])
+    words: list[tuple[str, str]] = list(filter(lambda word: word[1] in parts_of_speech,
+                                               nltk.pos_tag(nltk.word_tokenize(' '.join(headlines)))))
+    return [word[0] for word in words]
 
 
 def generate_wordcloud(headlines: list[Headline], path: str):
-    wc = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
+    wc: WordCloud = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
     logger.debug("Generating wordcloud for %s articles", len(headlines))
-    text = ' '.join([headline.title for headline in headlines])
-    logger.debug("There are %d words", text.count(' '))
-    if not text.strip():
-        logger.warning("No text to generate wordcloud")
-        return
-    wc.generate(filter_words(text, ['NN', 'NNS', 'NNP', 'NNPS']))
+    frequencies = get_frequencies(headlines)
+    wc.generate_from_frequencies(frequencies)
     logger.debug("Saving wordcloud to %s", path)
     wc.to_file(path)
+
+def get_frequencies(headlines: list[Headline]):
+    headlines: list[str] = [headline.title for headline in headlines]
+    return nltk.FreqDist(filter_words(headlines))
