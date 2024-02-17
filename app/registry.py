@@ -1,3 +1,5 @@
+from app.scrapers.news18 import News18
+from app.scrapers.yahoonews import YahooNews
 from app.scrapers.ndtv import NDTV
 from app.scrapers.mint import Mint
 from app.scrapers.indianexpress import IndianExpress
@@ -92,6 +94,8 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    News18,
+    YahooNews,
     NDTV,
     Mint,
     IndianExpress,

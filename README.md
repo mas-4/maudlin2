@@ -37,17 +37,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [ ] News.Google.Com
-- [X] Vox
-- [X] Wall Street Journal
-- [X] Washington Post
-- [X] Winnipeg Free Press
-- [X] Xinhua
-- [X] indianexpress.com
-- [X] livemint.com
-- [-] msn.com (javascript)
-- [X] ndtv.com
-- [ ] news.yahoo.com
-- [ ] news18.com
 - [-] Al Arabiya
 - [-] Daily Beast
 - [-] El Pais (Need multilingual support)
@@ -66,6 +55,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Politico (chromium)
 - [-] Real Clear Politics (Assholes)
 - [-] Reuters (401)
+- [-] msn.com (javascript)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
@@ -151,3 +141,13 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] VOA
 - [X] Vanity Fair
 - [X] Vice
+- [X] Vox
+- [X] Wall Street Journal
+- [X] Washington Post
+- [X] Winnipeg Free Press
+- [X] Xinhua
+- [X] indianexpress.com
+- [X] livemint.com
+- [X] ndtv.com
+- [X] news.yahoo.com
+- [X] news18.com
