@@ -1,3 +1,4 @@
+from app.scrapers.timesofindia import TimesofIndia
 from app.scrapers.sun import Sun
 from app.scrapers.intercept import Intercept
 from app.scrapers.independent import Independent
@@ -77,6 +78,7 @@ from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.telegraph import Telegraph
 
 Scrapers = [
+    TimesofIndia,
     Sun,
     Intercept,
     Independent,
