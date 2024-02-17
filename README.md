@@ -37,7 +37,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [ ] News.Google.Com
-- [ ] Vox
+- [X] Vox
 - [ ] Wall Street Journal
 - [ ] Washington Post
 - [ ] Winnipeg Free Press

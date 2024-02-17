@@ -1,3 +1,4 @@
+from app.scrapers.vox import Vox
 from app.scrapers.vice import Vice
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
@@ -85,6 +86,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    Vox,
     Vice,
     ABC,
     AP,
