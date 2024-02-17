@@ -29,36 +29,14 @@ class Agency(Base):
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
 
-    def average_sentiment(self):
-        with Session() as s:
-            numbers = s.query(
-                *[getattr(Headline, column) for column in self.columns]
-            ).join(Article, Article.id == Headline.article_id).filter_by(agency_id=self.id).all()
-        return pd.DataFrame(numbers, columns=self.columns).mean()
-
-    def todays_sentiment(self, s=None):
-        close = False
-        if s is None:
-            s = Session()
-            close = True
-        numbers = s.query(
-            *[getattr(Headline, column) for column in self.columns]
-        ).join(Article, Article.id == Headline.article_id) \
-            .filter_by(agency_id=self.id).filter(
-                Article.first_accessed > dt.now().date()
-            ).all()
-        if close:
-            s.close()
-        return pd.DataFrame(numbers, columns=self.columns).mean().to_frame().T.reset_index(drop=True)
-
     def current_compound(self) -> float:
         with (Session() as s):
             numbers = s.query(Headline.headcompound) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
-                    Article.first_accessed > dt.now().date() - td(days=1),
-                    Article.last_accessed > dt.now() - td(minutes=5)  # we want current articles!
+                    Article.first_accessed > Config.first_accessed,
+                    Article.last_accessed > Config.last_accessed# we want current articles!
                 ).all()
         return np.mean(numbers)
 

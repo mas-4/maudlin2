@@ -54,12 +54,13 @@ class HomePage:
                 sentiment = agency.current_compound()
                 if np.isnan(sentiment):
                     logger.warning("Sentiment is na for %r.", agency)
-                    sentiment = 0
+                    continue
                 sentiment = round(sentiment, 2)
                 self.data.append(
                     [agency.name, agency.credibility.value, agency.bias.value, str(agency.country), sentiment]
                 )
                 self.urls[agency.name] = f"{agency.name}.html"
+        self.data.sort(key=lambda x: x[4])
         df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Sentiment'])
         us = df[df['Country'] == "United States"]
         self.metrics['median'] = us['Sentiment'].median()

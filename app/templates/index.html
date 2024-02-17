@@ -17,6 +17,14 @@
                 {
                     name: "Agency Name",
                     formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                    sort: {
+                        compare: (a, b) => {
+                            // strip The from the beginning of the name
+                            a = a.replace(/^The /, '');
+                            b = b.replace(/^The /, '');
+                            return a.localeCompare(b);
+                        }
+                    }
                 },
                 {
                     name: "Credibility",

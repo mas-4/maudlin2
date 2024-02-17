@@ -1,6 +1,7 @@
 import os
 import pathlib
 from random import random
+from datetime import datetime as dt, timedelta as td
 
 import mistune
 
@@ -15,6 +16,12 @@ class Config:
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False
     run_selenium = False
+
+    # We want to exclude perpetual links that are not distinguishable by html (like on Drudge) but capture articles
+    # that have sat on the web page for days, like on Current Affairs. The age of the database is the primary filter
+    # here. So resets cause drudge to get dumb.
+    first_accessed = dt.now() - td(days=3)
+    last_accessed = Constants.TimeConstants.five_minutes_ago
 
     root = pathlib.Path(__file__).parent.parent.absolute()
     output_dir = os.path.join(root, 'data')
