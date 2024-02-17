@@ -131,6 +131,8 @@ class Scraper(ABC, Thread):
     def run_processing(self):
         while self.downstream:
             href, title = self.downstream.pop()
+            if title.strip().count(' ') == 0:
+                continue  # obviously a headline without spaces isn't a headline
             if href.startswith('//'):
                 href = 'https:' + href
             elif href.startswith('/'):

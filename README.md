@@ -95,7 +95,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Al Jazeera
 - [X] Associated Press
 - [X] BBC
-- [X] Barron't
+- [X] Barron
 - [X] Bloomberg
 - [X] Breitbart
 - [X] Business Insider
@@ -152,4 +152,3 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Strait Times
 - [X] Taipei Times
 - [X] The New York Times
-- 
