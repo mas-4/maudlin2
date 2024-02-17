@@ -48,8 +48,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Federalist
 - [X] The Globe and Mail
 - [X] The Guardian
-- [ ] The Hill
-- [ ] The Independent
+- [X] The Hill
+- [X] The Independent
 - [ ] The Intercept
 - [ ] The Strait Times
 - [ ] The Sun
