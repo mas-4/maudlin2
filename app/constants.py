@@ -22,6 +22,7 @@ class Bias(Enum):
     def to_dict(cls):
         return {str(e.value): str(e) for e in cls}
 
+
 class Credibility(Enum):
     very_low = 0
     low = 1
@@ -58,6 +59,7 @@ class Country(Enum):
     def __str__(self):
         return country_pretty[self]
 
+
 country_pretty = {
     Country.us: 'United States',
     Country.gb: 'Great Britain',
@@ -75,6 +77,7 @@ country_pretty = {
     Country.ca: 'Canada',
     Country.au: 'Australia'
 }
+
 
 class Constants:
     class Paths:
@@ -108,4 +111,13 @@ class Constants:
             windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15'
 
-
+        minimal_set = {
+            'Accept': 'text/html',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'cross-site',
+        }

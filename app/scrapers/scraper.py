@@ -36,6 +36,7 @@ class Scraper(ABC, Thread):
 
     def __init__(self):
         super().__init__()
+        self.rq = rq.Session()
         self.articles = 0
         self.headlines = 0
         self.updated = 0
@@ -94,7 +95,7 @@ class Scraper(ABC, Thread):
             self.headlines += 1
 
     def get_page(self, url: str):
-        response: rq.Response = rq.get(url, headers=self.headers)
+        response: rq.Response = self.rq.get(url, headers=self.headers)
         if not response.ok:
             raise ValueError("Bad response for %s: %s" % (url, response.status_code))
         else:
