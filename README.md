@@ -42,7 +42,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Tampa Bay Times
 - [X] Telegraph
 - [X] The Atlantic
-- [ ] The Blaze
+- [X] The Blaze
 - [ ] The Daily Wire
 - [ ] The Epoch Times
 - [ ] The Federalist

@@ -1,3 +1,4 @@
+from app.scrapers.theblaze import TheBlaze
 from app.scrapers.theatlantic import TheAtlantic
 from app.scrapers.thetelegraph import TheTelegraph
 from app.scrapers.tampabaytimes import TampaBayTimes
@@ -67,6 +68,7 @@ from app.scrapers.salon import Salon
 from app.scrapers.semafor import Semafor
 
 Scrapers = [
+    TheBlaze,
     TheAtlantic,
     TheTelegraph,
     TampaBayTimes,
