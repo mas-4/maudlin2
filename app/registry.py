@@ -1,4 +1,5 @@
 from app.scrapers.forbes import Forbes
+from app.scrapers.france24 import France24
 from app.scrapers.dailybeast import DailyBeast
 from app.scrapers.googlenews import GoogleNews
 from app.scrapers.news18 import News18
@@ -194,6 +195,7 @@ Scrapers = [
     VOA,
     VanityFair,
     Week,
+    France24,
 ]
 
 TradScrapers = []

@@ -40,8 +40,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Al Arabiya
 - [X] Daily Beast
 - [-] El Pais (Need multilingual support)
-- [X] Forbes (Needs chromium headless)
-- [-] France 24 (Chromium)
+- [X] Forbes
+- [X] France 24
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
 - [-] Japan Times (Chromium)

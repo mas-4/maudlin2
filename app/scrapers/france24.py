@@ -2,7 +2,7 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
-from app.constants import Bias, Credibility, Country
+from app.constants import Bias, Credibility, Country, Constants
 from app.logger import get_logger
 from app.scrapers.scraper import Scraper
 
@@ -15,6 +15,9 @@ class France24(Scraper):
     url: str = 'https://www.france24.com/en'
     agency: str = "France24"
     country: Country = Country.fr
+    headers = {
+        'User-Agent': Constants.Headers.UserAgents.maudlin
+    }
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/en/.*/\d{8}-.*')}):
