@@ -38,8 +38,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 - [ ] News.Google.Com
 - [X] Vox
-- [ ] Wall Street Journal
-- [ ] Washington Post
+- [X] Wall Street Journal
+- [X] Washington Post
 - [ ] Winnipeg Free Press
 - [ ] Xinhua
 - [ ] indianexpress.com
