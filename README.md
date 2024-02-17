@@ -37,29 +37,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [ ] News.Google.Com
-- [X] Star Tribune
-- [X] Sydney Morning Herald
-- [X] Tampa Bay Times
-- [X] Telegraph
-- [X] The Atlantic
-- [X] The Blaze
-- [X] The Daily Wire
-- [X] The Epoch Times
-- [X] The Federalist
-- [X] The Globe and Mail
-- [X] The Guardian
-- [X] The Hill
-- [X] The Independent
-- [X] The Intercept
-- [X] The Sun
-- [X] The Times of India
-- [X] The Week
-- [X] Time
-- [X] Toronto Sun
-- [X] USA Today
-- [X] VOA
-- [X] Vanity Fair
-- [ ] Vice
 - [ ] Vox
 - [ ] Wall Street Journal
 - [ ] Washington Post
@@ -72,7 +49,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [ ] news.yahoo.com
 - [ ] news18.com
 - [-] Al Arabiya
-- [X] Axios
 - [-] Daily Beast
 - [-] El Pais (Need multilingual support)
 - [-] Forbes (Needs chromium headless)
@@ -93,6 +69,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
+- [X] Axios
 - [X] BBC
 - [X] Barron
 - [X] Bloomberg
@@ -148,6 +125,29 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Sky News
 - [X] Slate
 - [X] South China Morning Post
+- [X] Star Tribune
 - [X] Strait Times
+- [X] Sydney Morning Herald
 - [X] Taipei Times
+- [X] Tampa Bay Times
+- [X] Telegraph
+- [X] The Atlantic
+- [X] The Blaze
+- [X] The Daily Wire
+- [X] The Epoch Times
+- [X] The Federalist
+- [X] The Globe and Mail
+- [X] The Guardian
+- [X] The Hill
+- [X] The Independent
+- [X] The Intercept
 - [X] The New York Times
+- [X] The Sun
+- [X] The Times of India
+- [X] The Week
+- [X] Time
+- [X] Toronto Sun
+- [X] USA Today
+- [X] VOA
+- [X] Vanity Fair
+- [X] Vice
