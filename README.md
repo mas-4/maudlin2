@@ -40,7 +40,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Star Tribune
 - [X] Sydney Morning Herald
 - [X] Tampa Bay Times
-- [ ] Telegraph
+- [X] Telegraph
 - [ ] The Atlantic
 - [ ] The Blaze
 - [ ] The Daily Wire
