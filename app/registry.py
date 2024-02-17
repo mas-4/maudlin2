@@ -1,3 +1,4 @@
+from app.scrapers.theguardian import TheGuardian
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -74,10 +75,10 @@ from app.scrapers.thetelegraph import TheTelegraph
 
 
 Scrapers = [
+    TheGuardian,
     ABC,
     AP,
     AlJazeera,
-    Axios,
     BBC,
     Bloomberg,
     Breitbart,
