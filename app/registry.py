@@ -1,4 +1,4 @@
-from app.scrapers.infowars import InfoWars
+from app.scrapers.losangelestimes import LosAngelesTimes
 from app.scrapers.forbes import Forbes
 from app.scrapers.france24 import France24
 from app.scrapers.dailybeast import DailyBeast
@@ -99,7 +99,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
-    InfoWars,
+    LosAngelesTimes,
     Forbes,
     DailyBeast,
     GoogleNews,

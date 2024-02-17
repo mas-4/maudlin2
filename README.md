@@ -45,7 +45,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
 - [-] Japan Times (Chromium)
-- [-] LA Times (Chromium)
+- [X] LA Times
 - [-] Le Figaro (In french)
 - [-] MSNBC (requires more sophisticated filtering)
 - [-] Monocle (No data from MBFC)

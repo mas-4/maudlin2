@@ -87,6 +87,7 @@ class Constants:
     class Patterns:
         DATE_URL = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')
         BUNCH_OF_NUMBERS_DOT_HTML = re.compile(r'\d+\.html')
+        DASH_DATE = re.compile(r'\d{4}-\d{1,2}-\d{1,2}')
 
     class TimeConstants:
         timezone = pytz.timezone('America/New_York')
