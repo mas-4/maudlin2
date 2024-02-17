@@ -1,7 +1,3 @@
-from app.scrapers.thefederalist import TheFederalist
-from app.scrapers.theepochtimes import TheEpochTimes
-from app.scrapers.theepochtimes import TheEpochTimes
-from app.scrapers.thedailywire import TheDailyWire
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
@@ -67,6 +63,10 @@ from app.scrapers.taipeitimes import TaipeiTimes
 from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.theatlantic import TheAtlantic
 from app.scrapers.theblaze import TheBlaze
+from app.scrapers.thedailywire import TheDailyWire
+from app.scrapers.theepochtimes import TheEpochTimes
+from app.scrapers.thefederalist import TheFederalist
+from app.scrapers.theglobeandmail import TheGlobeandMail
 from app.scrapers.thekyivindependent import TheKyivIndependent
 from app.scrapers.themoscowtimes import TheMoscowTimes
 from app.scrapers.thestraitstimes import TheStraitsTimes
@@ -74,10 +74,6 @@ from app.scrapers.thetelegraph import TheTelegraph
 
 
 Scrapers = [
-    TheFederalist,
-    TheEpochTimes,
-    TheEpochTimes,
-    TheDailyWire,
     ABC,
     AP,
     AlJazeera,
@@ -143,6 +139,11 @@ Scrapers = [
     TampaBayTimes,
     TheAtlantic,
     TheBlaze,
+    TheDailyWire,
+    TheEpochTimes,
+    TheEpochTimes,
+    TheFederalist,
+    TheGlobeandMail,
     TheKyivIndependent,
     TheMoscowTimes,
     TheStraitsTimes,
