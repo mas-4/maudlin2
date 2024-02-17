@@ -9,15 +9,15 @@ from app.scrapers.scraper import Scraper
 logger = get_logger(__name__)
 
 
-class Xinhua(Scraper):
-    bias = Bias.left
+class IndianExpress(Scraper):
+    bias = Bias.left_center
     credibility = Credibility.mixed
-    url: str = 'https://english.news.cn/'
-    agency: str = "Xinhua"
-    country = Country.cn
+    url: str = 'https://indianexpress.com/'
+    agency: str = "The Indian Express"
+    country = Country.in_
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile(r'/\d{8}/')}):
+        for a in soup.find_all('a', {'href': re.compile(r'/article/.*')}):
             try:
                 href = a['href']
                 title = a.text.strip()

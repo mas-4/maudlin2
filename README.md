@@ -42,7 +42,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Washington Post
 - [X] Winnipeg Free Press
 - [X] Xinhua
-- [ ] indianexpress.com
+- [X] indianexpress.com
 - [ ] livemint.com
 - [ ] msn.com
 - [ ] ndtv.com
