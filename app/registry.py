@@ -1,3 +1,4 @@
+from app.scrapers.torontosun import TorontoSun
 from app.scrapers.time import Time
 from app.scrapers.week import Week
 from app.scrapers.timesofindia import TimesofIndia
@@ -80,6 +81,7 @@ from app.scrapers.tampabaytimes import TampaBayTimes
 from app.scrapers.telegraph import Telegraph
 
 Scrapers = [
+    TorontoSun,
     Time,
     Week,
     TimesofIndia,

@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+import pytz
 
 from app import j2env
 from app.config import Config
@@ -50,11 +51,11 @@ class AgencyPage:
             if headline.last_accessed < Constants.TimeConstants.five_minutes_ago:
                 continue
             urls[headline.title] = headline.article.url
-            strftime = '%b %-d %-I:%M:%S %p'
+            strftime = '%b %-d %-I:%M %p'
             tabledata.append([
                 headline.title,
-                headline.first_accessed.astimezone(tz=Constants.TimeConstants.timezone).strftime(strftime),
-                headline.last_accessed.astimezone(tz=Constants.TimeConstants.timezone).strftime(strftime),
+                headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(strftime),
+                headline.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(strftime),
                 headline.headcompound
             ])
         return {
