@@ -1,3 +1,4 @@
+from app.scrapers.ndtv import NDTV
 from app.scrapers.mint import Mint
 from app.scrapers.indianexpress import IndianExpress
 from app.scrapers.xinhua import Xinhua
@@ -91,6 +92,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    NDTV,
     Mint,
     IndianExpress,
     Xinhua,

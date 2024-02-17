@@ -44,8 +44,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Xinhua
 - [X] indianexpress.com
 - [X] livemint.com
-- [ ] msn.com
-- [ ] ndtv.com
+- [-] msn.com (javascript)
+- [X] ndtv.com
 - [ ] news.yahoo.com
 - [ ] news18.com
 - [-] Al Arabiya
