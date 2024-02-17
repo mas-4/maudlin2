@@ -1,3 +1,4 @@
+from app.scrapers.xinhua import Xinhua
 from app.scrapers.winnipegfreepress import WinnipegFreePress
 from app.scrapers.washingtonpost import WashingtonPost
 from app.scrapers.vox import Vox
@@ -88,6 +89,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    Xinhua,
     WinnipegFreePress,
     WashingtonPost,
     Vox,

@@ -41,7 +41,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Wall Street Journal
 - [X] Washington Post
 - [X] Winnipeg Free Press
-- [] Xinhua
+- [X] Xinhua
 - [ ] indianexpress.com
 - [ ] livemint.com
 - [ ] msn.com
