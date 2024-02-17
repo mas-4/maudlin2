@@ -40,8 +40,8 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Vox
 - [X] Wall Street Journal
 - [X] Washington Post
-- [ ] Winnipeg Free Press
-- [ ] Xinhua
+- [X] Winnipeg Free Press
+- [] Xinhua
 - [ ] indianexpress.com
 - [ ] livemint.com
 - [ ] msn.com

@@ -139,6 +139,7 @@ class Scraper(ABC, Thread):
                 href = 'https:' + href
             elif href.startswith('/'):
                 href = self.url.strip('/') + href
+            href = href.strip()
             title = self.strip(title)
             art_pair = ArticlePair(href, title)
             try:
