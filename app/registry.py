@@ -1,3 +1,4 @@
+from app.scrapers.dailybeast import DailyBeast
 from app.scrapers.googlenews import GoogleNews
 from app.scrapers.news18 import News18
 from app.scrapers.yahoonews import YahooNews
@@ -95,6 +96,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    DailyBeast,
     GoogleNews,
     News18,
     YahooNews,

@@ -38,7 +38,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 - [X] Google News
 - [-] Al Arabiya
-- [-] Daily Beast
+- [X] Daily Beast
 - [-] El Pais (Need multilingual support)
 - [-] Forbes (Needs chromium headless)
 - [-] France 24 (Chromium)
