@@ -31,7 +31,7 @@ class Agency(Base):
 
     def current_compound(self) -> float:
         with (Session() as s):
-            numbers = s.query(Headline.headcompound) \
+            numbers = s.query(Headline.comp) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
@@ -96,10 +96,10 @@ class Headline(Base, AccessTimeMixin):
     article: Mapped["Article"] = relationship(Article, back_populates="headlines")
     title: Mapped[str] = mapped_column(Text())
 
-    headneg: Mapped[float] = mapped_column(Float(), nullable=True)
-    headneu: Mapped[float] = mapped_column(Float(), nullable=True)
-    headpos: Mapped[float] = mapped_column(Float(), nullable=True)
-    headcompound: Mapped[float] = mapped_column(Float(), nullable=True)
+    neg: Mapped[float] = mapped_column(Float(), nullable=True)
+    neu: Mapped[float] = mapped_column(Float(), nullable=True)
+    pos: Mapped[float] = mapped_column(Float(), nullable=True)
+    comp: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.title!r})"
