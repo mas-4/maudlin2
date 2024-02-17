@@ -40,13 +40,14 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [-] El Pais (Need multilingual support)
 - [-] Hindustan Times (Chromium)
 - [-] Infowars (403)
-- [X] Japan Times (Chromium)
+- [X] Japan Times
 - [-] Le Figaro (In french)
 - [-] Monocle (No data from MBFC)
 - [X] National Interest
-- [-] National Review (Chromium)
+- [-] National Review (javascript only)
 - [X] Newsweek (403)
-- [-] Politico (chromium)
+- [X] Rolling Stone
+- [-] Politico (javascript)
 - [-] Real Clear Politics (Assholes)
 - [-] Reuters (401)
 - [-] Wall Street Journal (401/403)

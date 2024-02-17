@@ -95,7 +95,10 @@ class Scraper(ABC, Thread):
             self.headlines += 1
 
     def get_page(self, url: str):
-        response: rq.Response = self.rq.get(url, headers=self.headers)
+        try:
+            response: rq.Response = self.rq.get(url, headers=self.headers)
+        except Exception as e:  # noqa
+            raise ValueError(f"Failed to get page: {url} {e}")
         if not response.ok:
             raise ValueError("Bad response for %s: %s" % (url, response.status_code))
         else:

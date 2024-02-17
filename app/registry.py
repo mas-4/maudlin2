@@ -1,3 +1,5 @@
+from app.scrapers.reuters import Reuters
+from app.scrapers.rollingstone import RollingStone
 from app.scrapers.newsweek import Newsweek
 from app.scrapers.nationalinterest import NationalInterest
 from app.scrapers.japantimes import JapanTimes
@@ -103,6 +105,8 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    Reuters,
+    RollingStone,
     Newsweek,
     NationalInterest,
     JapanTimes,
