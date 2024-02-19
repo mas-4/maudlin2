@@ -103,7 +103,7 @@ class HomePage:
         fig.set_size_inches(10, 8)
         sns.lineplot(x='Date', y='Sentiment mean', data=agg, ax=ax[0, 0], label='Mean Sentiment')
         sns.lineplot(x='Date', y='Sentiment median', data=agg, ax=ax[0, 1], label='Median Sentiment')
-        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1, 0], label='Mean Partisan Sentiment Index')
+        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1, 0], label='Partisan Sentiment Index (PSI)')
         sns.scatterplot(x='PSI mean', y='Sentiment mean', data=agg, ax=ax[1, 1], label='Mean Sentiment vs PSI')
         for i in range(2):
             for j in range(2):
@@ -112,7 +112,6 @@ class HomePage:
                 ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
                 ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
                 ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
-        ax[1, 1].set_title('Mean Sentiment vs PSI')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, FileNames.graphs))
 
