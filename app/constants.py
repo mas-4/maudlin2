@@ -93,7 +93,10 @@ class Constants:
     class TimeConstants:
         timezone = pytz.timezone('America/New_York')
         last_hour = dt.now()
-        last_hour = last_hour.replace(hour=last_hour.hour - 1)
+        try:
+            last_hour = last_hour.replace(hour=last_hour.hour - 1)
+        except ValueError:
+            last_hour = last_hour.replace(day=last_hour.day - 1, hour=23)
         midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday = midnight - td(days=1)
         now = dt.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
