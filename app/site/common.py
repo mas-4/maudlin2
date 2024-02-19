@@ -22,7 +22,7 @@ STOPWORDS.extend([
     "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"', "go",
     "new", "January", "February", "March", "April", "June", "July", "August", "September", "October", "November",
     "December", "time", "year", "week", "month", "years", "people", "life", "day", "thing", "something", "number",
-    "Subscribe", "EST", "READ", "News", "New", "York", "Images"
+    "Subscribe", "EST", "READ", "News", "New", "York", "Images", "Politics", "newsletter"
 ])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
