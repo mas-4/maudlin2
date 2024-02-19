@@ -19,11 +19,15 @@ STOPWORDS.extend([
     "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group",
     "state", "country", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
     "home", "effort", "product", "part", "cup", "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sep", "Sept",
-    "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"'
+    "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"', "go",
+    "new", "January", "February", "March", "April", "June", "July", "August", "September", "October", "November",
+    "December", "time", "year", "week", "month", "years", "people", "life", "day", "thing", "something", "number",
+    "Subscribe", "EST", "READ", "News", "New", "York", "Images"
 ])
 # strip stray letters
 STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
 STOPWORDS.extend([c for c in string.punctuation])
+STOPWORDS = [word.lower() for word in STOPWORDS]
 
 
 def filter_words(headlines: list[str], parts_of_speech: Optional[list[str]] = None) -> list[str]:
@@ -31,7 +35,8 @@ def filter_words(headlines: list[str], parts_of_speech: Optional[list[str]] = No
         parts_of_speech = POS
     words: list[tuple[str, str]] = list(filter(lambda word: word[1] in parts_of_speech,
                                                nltk.pos_tag(nltk.word_tokenize(' '.join(headlines)))))
-    return [word[0] for word in words]
+    filtered_words = [word[0] for word in words if word[0].lower() not in STOPWORDS and len(word[0]) > 2]
+    return filtered_words
 
 
 def generate_wordcloud(headlines: list[Headline], path: str):

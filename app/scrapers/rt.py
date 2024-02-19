@@ -18,8 +18,7 @@ class RT(Scraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/(russia|news)/.+')}):
-            href = self.url + a['href']
+            href = a['href']
             title = a.text.strip()
-            if title:
-                self.downstream.append((href, title))
+            self.downstream.append((href, title))
 

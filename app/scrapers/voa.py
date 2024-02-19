@@ -16,7 +16,7 @@ class VOA(Scraper):
     agency: str = "Voice of America"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', re.compile(r'/a/')):
+        for a in soup.find_all('a', {'href': re.compile(r'/a/')}):
             try:
                 href = a['href']
                 title = a.text.strip()
