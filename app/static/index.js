@@ -35,7 +35,6 @@ function getColorForValue(value) {
     let a = recenter(value);
     let b = 120 * a;
     let c = clamp(b, 0, 120);
-    console.log(c);
 
     // Return a CSS HSL string
     return 'hsl(' + c + ', 100%, 50%)';
