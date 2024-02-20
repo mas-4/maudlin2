@@ -91,31 +91,29 @@ class HomePage:
         with Session() as s:
             data = s.query(Headline.comp, Headline.last_accessed, Agency._bias)\
                 .join(Headline.article).join(Article.agency).all()
-        df = pd.DataFrame(data, columns=['Sentiment', 'Last Accessed', 'Bias'])
-        df['Last Accessed'] = pd.to_datetime(df['Last Accessed'])
-        df['PSI'] = df['Sentiment'] * df['Bias']
-        agg = df.set_index('Last Accessed').groupby(pd.Grouper(freq='D'))\
-            .agg({'Sentiment': ['mean', 'median'], 'PSI': 'mean'}).dropna().reset_index()
-        agg.columns = [' '.join(col).strip() for col in agg.columns.values]  # noqa
-        agg.rename(columns={'Last Accessed': 'Date'}, inplace=True)
+        self.generate_graphs(self.aggregate_data(data))
 
-        fig, ax = plt.subplots(2, 2)
-        fig.set_size_inches(10, 8)
-        sns.lineplot(x='Date', y='Sentiment mean', data=agg, ax=ax[0, 0], label='Mean Sentiment')
-        sns.lineplot(x='Date', y='Sentiment median', data=agg, ax=ax[0, 1], label='Median Sentiment')
-        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1, 0], label='Partisan Sentiment Index (PSI)')
-        sns.scatterplot(x='PSI mean', y='Sentiment mean', data=agg, ax=ax[1, 1], label='Mean Sentiment vs PSI')
+    def generate_graphs(self, agg):
+        fig, ax = plt.subplots(1, 2)
+        fig.set_size_inches(9, 4)
+        sns.lineplot(x='Date', y='Sentiment mean', data=agg, ax=ax[0], label='Mean Sentiment')
+        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1], label='Partisan Sentiment Index (PSI)')
         for i in range(2):
-            for j in range(2):
-                if i == 1 and j == 1:
-                    continue
-                ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-                ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
-                ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
+            ax[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax[i].set_xticks(ax[i].get_xticks()[::2])
+            ax[i].set_xticklabels(ax[i].get_xticklabels(), rotation=45)
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, FileNames.graphs))
 
-
+    def aggregate_data(self, data):
+        df = pd.DataFrame(data, columns=['Sentiment', 'Last Accessed', 'Bias'])
+        df['Last Accessed'] = pd.to_datetime(df['Last Accessed'])
+        df['PSI'] = df['Sentiment'] * df['Bias']
+        agg = df.set_index('Last Accessed').groupby(pd.Grouper(freq='D')) \
+            .agg({'Sentiment': ['mean', 'median'], 'PSI': 'mean'}).dropna().reset_index()
+        agg.columns = [' '.join(col).strip() for col in agg.columns.values]  # noqa
+        agg.rename(columns={'Last Accessed': 'Date'}, inplace=True)
+        return agg
 
 
 if __name__ == "__main__":
