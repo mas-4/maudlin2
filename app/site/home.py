@@ -97,7 +97,7 @@ class HomePage:
         fig, ax = plt.subplots(1, 2)
         fig.set_size_inches(9, 4)
         sns.lineplot(x='Date', y='Sentiment mean', data=agg, ax=ax[0], label='Mean Sentiment')
-        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1], label='Partisan Sentiment Index (PSI)')
+        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1], label='PSI (-left/+right)')
         for i in range(2):
             ax[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
             ax[i].set_xticks(ax[i].get_xticks()[::2])
