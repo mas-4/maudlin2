@@ -20,6 +20,8 @@ class JapanTimes(Scraper):
         for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             try:
                 href = a['href']
+                if href.strip() == "https://www.japantimes.co.jp/archive/" + dt.now().strftime("%Y/%m/%d/"):
+                    continue  # this is just a calendar
                 title = a.text.strip()
                 self.downstream.append((href, title))
             except Exception as e:
