@@ -20,6 +20,8 @@ class Time(Scraper):
             try:
                 href = a['href']
                 title = a.text.strip()
+                if "Go to item" in title:
+                    continue
                 self.downstream.append((href, title))
             except Exception as e:
                 logger.error(f"{self.agency}: Error parsing link: {e}")
