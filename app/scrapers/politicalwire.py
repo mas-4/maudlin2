@@ -22,6 +22,7 @@ class PoliticalWire(Scraper):
         for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = a['href']
             title = a.text.strip()
-            if title:
-                self.downstream.append((href, title))
+            if "Quote of the Day" in title:
+                continue
+            self.downstream.append((href, title))
 
