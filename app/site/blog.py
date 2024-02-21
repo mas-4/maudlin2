@@ -3,10 +3,7 @@ import string
 
 import yaml
 
-from app import j2env
-from app.config import Config
-from app.constants import Constants
-from app.logger import get_logger
+from app import j2env, Config, Constants, get_logger
 
 logger = get_logger(__name__)
 

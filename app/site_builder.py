@@ -1,9 +1,8 @@
 import os
 import shutil
 
-from app.blog import Blog
-from app.config import Config
-from app.logger import get_logger
+from app import Config, get_logger
+from app.site.blog import Blog
 from app.site.agency import generate_agency_pages
 from app.site.home import HomePage
 from app.site.headlines import HeadlinesPage

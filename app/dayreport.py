@@ -4,8 +4,7 @@ import shutil
 from datetime import datetime as dt
 from threading import Lock
 
-from app import j2env
-from app.config import Config
+from app import j2env, Config
 from app.emailer import send_notification
 
 lock = Lock()

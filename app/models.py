@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
 
-from app.config import Config
+from app import Config
 from app.constants import Bias, Credibility, Country
 
 

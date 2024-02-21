@@ -1,13 +1,9 @@
 import smtplib
-import shutil
-from datetime import datetime as dt
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from app.config import Config
-from app.constants import Constants
-from app.logger import get_logger
+from app import Config, get_logger
 
 logger = get_logger(__name__)
 

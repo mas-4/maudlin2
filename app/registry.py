@@ -114,7 +114,6 @@ Scrapers = [
     Breitbart,
     BusinessInsider,
     CBC,
-    CBC,
     CBS,
     CNBC,
     CNN,
