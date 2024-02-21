@@ -58,21 +58,27 @@ class HomePage:
             self.agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any(), Agency.name.in_(agency_names))\
                 .order_by(Agency.name).all()
             for agency in self.agencies:
-                sentiment = agency.current_compound()
-                if np.isnan(sentiment):
+                vader = round(agency.current_vader(), 2)
+                afinn = round(agency.current_afinn(), 2)
+                if np.isnan(vader):
                     logger.warning("Sentiment is na for %r.", agency)
                     continue
-                sentiment = round(sentiment, 2)
+                if np.isnan(afinn):
+                    logger.warning("Afinn is na for %r.", agency)
+                    continue
                 self.data.append(
-                    [agency.name, agency.credibility.value, agency.bias.value, str(agency.country), sentiment]
+                    [agency.name, agency.credibility.value, agency.bias.value, str(agency.country), vader, afinn]
                 )
                 self.urls[agency.name] = f"{agency.name}.html"
         self.data.sort(key=lambda x: x[4])
-        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Sentiment'])
+        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Vader', 'Afinn'])
         us = df[df['Country'] == "United States"]
-        self.metrics['median'] = us['Sentiment'].median()
-        self.metrics['mean'] = us['Sentiment'].mean()
-        self.metrics['partisan_mean'] = (us['Bias'] * us['Sentiment']).mean()
+        self.metrics['median_vader'] = us['Vader'].median()
+        self.metrics['mean_vader'] = us['Vader'].mean()
+        self.metrics['partisan_mean_vader'] = (us['Bias'] * us['Vader']).mean()
+        self.metrics['median_afinn'] = us['Afinn'].median()
+        self.metrics['mean_afinn'] = us['Afinn'].mean()
+        self.metrics['partisan_mean_afinn'] = (us['Bias'] * us['Afinn']).mean()
 
     @staticmethod
     def generate_home_wordcloud():
@@ -87,30 +93,33 @@ class HomePage:
 
     def render_sentiment_graphs(self):
         with Session() as s:
-            data = s.query(Headline.vader_compound, Headline.last_accessed, Agency._bias)\
+            data = s.query(Headline.vader_compound, Headline.afinn, Headline.last_accessed, Agency._bias)\
                 .join(Headline.article).join(Article.agency).all()
         self.generate_graphs(self.aggregate_data(data))
 
     def generate_graphs(self, agg):
-        fig, ax = plt.subplots(1, 2)
-        fig.set_size_inches(9, 4)
-        sns.lineplot(x='Date', y='Sentiment mean', data=agg, ax=ax[0], label='Mean Sentiment')
-        sns.lineplot(x='Date', y='PSI mean', data=agg, ax=ax[1], label='PSI (-left/+right)')
+        fig, ax = plt.subplots(2, 2)
+        fig.set_size_inches(9, 8)
+        sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0,0], label='Mean VADER')
+        sns.lineplot(x='Date', y='PVI', data=agg, ax=ax[0,1], label='PVI (-left/+right)')
+        sns.lineplot(x='Date', y='Afinn', data=agg, ax=ax[1,0], label='Mean AFINN')
+        sns.lineplot(x='Date', y='PAI', data=agg, ax=ax[1,1], label='PAI (-left/+right)')
         for i in range(2):
-            ax[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-            ax[i].set_xticks(ax[i].get_xticks()[::2])
-            ax[i].set_xticklabels(ax[i].get_xticklabels(), rotation=45)
+            for j in range(2):
+                ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+                ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
+                ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, FileNames.graphs))
 
     def aggregate_data(self, data):
-        df = pd.DataFrame(data, columns=['Sentiment', 'Last Accessed', 'Bias'])
-        df['Last Accessed'] = pd.to_datetime(df['Last Accessed'])
-        df['PSI'] = df['Sentiment'] * df['Bias']
-        agg = df.set_index('Last Accessed').groupby(pd.Grouper(freq='D')) \
-            .agg({'Sentiment': ['mean', 'median'], 'PSI': 'mean'}).dropna().reset_index()
-        agg.columns = [' '.join(col).strip() for col in agg.columns.values]  # noqa
-        agg.rename(columns={'Last Accessed': 'Date'}, inplace=True)
+        df = pd.DataFrame(data, columns=['Vader', 'Afinn', 'Date', 'Bias'])
+        df['Date'] = pd.to_datetime(df['Date'])
+        df['PVI'] = df['Vader'] * df['Bias']
+        df['PAI'] = df['Afinn'] * df['Bias']
+        cols = ['Vader', 'Afinn', 'PVI', 'PAI']
+        agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
+            .agg({col: 'mean' for col in cols}).dropna().reset_index()
         return agg
 
 

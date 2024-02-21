@@ -121,6 +121,7 @@ blockquote::before, blockquote::after, q::before, q::after {
   width: 200px; /* Fixed width, but you can make it responsive */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
   height: 150px; /* Set a fixed height to ensure enough space for vertical centering */
+  flex-basis: 25%; /* idk but it works to limit 3 per row */
 }
 
 .metric-name, .metric-value {

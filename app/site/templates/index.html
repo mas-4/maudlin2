@@ -36,7 +36,7 @@
                 },
                 "Country",
                 {
-                    name: "Sentiment",
+                    name: "VADER",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
                     attributes: (cell) => {
                         return {
@@ -44,6 +44,16 @@
                         }
                     }
                 },
+                 {
+                    name: "AFINN",
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    attributes: (cell) => {
+                        return {
+                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                        }
+                    }
+                },
+
             ],
             data: data,
             sort: true,
@@ -52,18 +62,37 @@
     });
 </script>
 <h3>These metrics exclude non-US media sources.</h3>
+<h4>
+    <a href="https://github.com/nltk/nltk/blob/develop/nltk/sentiment/vader.py">VADER</a>
+    and
+    <a href="http://corpustext.com/reference/sentiment_afinn.html">AFINN</a>
+    are sentiment lexicons.
+</h4>
 <div id="metrics">
     <div class="metric">
-        <div class="metric-name">Median Sentiment</div>
-        <div class="metric-value">{{metrics['median']|round(2)}}</div>
+        <div class="metric-name">Median VADER</div>
+        <div class="metric-value">{{metrics['median_vader']|round(2)}}</div>
     </div>
     <div class="metric">
-        <div class="metric-name">Mean Sentiment</div>
-        <div class="metric-value">{{metrics['mean']|round(3)}}</div>
+        <div class="metric-name">Mean VADER</div>
+        <div class="metric-value">{{metrics['mean_vader']|round(3)}}</div>
     </div>
     <div class="metric">
-        <div class="metric-name">Partisan Sentiment Index (PSI)</div>
-        <div class="metric-value">{{metrics['partisan_mean']|round(3)}}<br>(-left/+right)</div>
+        <div class="metric-name">Partisan VADER Index (PVI)</div>
+        <div class="metric-value">{{metrics['partisan_mean_vader']|round(3)}}<br>(-left/+right)</div>
+    </div>
+
+    <div class="metric">
+        <div class="metric-name">Median AFINN</div>
+        <div class="metric-value">{{metrics['median_afinn']|round(2)}}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-name">Mean AFINN</div>
+        <div class="metric-value">{{metrics['mean_afinn']|round(3)}}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-name">Partisan AFINN Index (PAI)</div>
+        <div class="metric-value">{{metrics['partisan_mean_afinn']|round(3)}}<br>(-left/+right)</div>
     </div>
 </div>
 <div id="metric-graphs">
@@ -77,7 +106,7 @@
         <th>Agency</th>
         <th>Credibility</th>
         <th>Bias</th>
-        <th>Today's Headline Sentiment</th>
+        <th>Vader</th>
         <th>Agency Page</th>
     </tr>
     </thead>
@@ -87,7 +116,7 @@
         <td><a href="{{ agency.name }}.html">{{ agency.name }}'s Page</a></td>
         <td>{{ agency.credibility }}</td>
         <td>{{ agency.bias }}</td>
-        <td>{{ agency.current_compound() | round(2) }}</td>
+        <td>{{ agency.current_vader() | round(2) }}</td>
         <td><a href="{{ agency.url }}">{{ agency.name }}</a></td>
     </tr>
     {% endfor %}

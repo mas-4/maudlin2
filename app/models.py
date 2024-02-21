@@ -28,19 +28,27 @@ class Agency(Base):
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
 
-    def current_compound(self) -> float:
+    def current(self, col) -> float:
         with (Session() as s):
             first_date = s.query(Article.first_accessed) \
                 .filter_by(agency_id=self.id) \
                 .order_by(Article.first_accessed.asc()).first()[0]
-            numbers = s.query(Headline.vader_compound) \
+            numbers = s.query(col) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
                     Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
                     Article.last_accessed > Config.last_accessed# we want current articles!
                 ).all()
-        return np.mean(numbers)
+        return np.mean(numbers)  # noqa
+
+    def current_vader(self) -> float:
+        return self.current(Headline.vader_compound)
+
+    def current_afinn(self) -> float:
+        return self.current(Headline.afinn)
+
+
 
     @property
     def bias(self):
