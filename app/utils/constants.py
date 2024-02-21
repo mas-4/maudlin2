@@ -81,7 +81,7 @@ country_pretty = {
 
 class Constants:
     class Paths:
-        ROOT = str(pathlib.Path(__file__).parent.parent)
+        ROOT = str(pathlib.Path(__file__).parent.parent.parent)
         EMAIL_CREDS = os.path.join(ROOT, '.creds')
 
     class Patterns:

@@ -6,12 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 
-from app import j2env
-from app.config import Config
-from app.constants import Constants
+from app.site import j2env
+from app.utils import Config, Constants, get_logger
 from app.models import Session, Agency, Headline, Article
 from app.site.common import generate_wordcloud
-from app.logger import get_logger
 from app.registry import SeleniumScrapers, TradScrapers
 
 logger = get_logger(__name__)

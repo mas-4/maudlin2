@@ -9,12 +9,7 @@
 # {{ agency }}
 {{ agency }} had {{ agency_data['exceptions']|length }} exceptions
 
-{% for exception in agency_data['exceptions'] %}
 {{ exception['msg'] }}
-
-{{ exception['time'] }}
-
-{{ exception['tb'] }}
 
 {% endfor %}
 {% endif %}

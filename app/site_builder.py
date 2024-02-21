@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from app import Config, get_logger
+from app.utils import Config, get_logger
 from app.site.blog import Blog
 from app.site.agency import generate_agency_pages
 from app.site.home import HomePage

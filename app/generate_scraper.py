@@ -2,8 +2,7 @@ import os
 import re
 import webbrowser
 
-from app.config import Config
-from app.constants import Constants
+from app.utils import Config, Constants
 
 TEMPLATE = """import re
 

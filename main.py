@@ -1,10 +1,10 @@
 import argparse
 
-from app.config import Config
-from app.logger import get_logger
+from app.utils.config import Config
+from app.utils.logger import get_logger
 from app.registry import Scrapers
 from app.site_builder import build_site
-from app.scrapers.scraper import SeleniumScraper, SeleniumResourceManager
+from app.scraper import SeleniumScraper, SeleniumResourceManager
 from app.dayreport import DayReport
 
 logger = get_logger(__name__)

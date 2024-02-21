@@ -2,8 +2,8 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
-from app.constants import Bias, Credibility
-from app.scrapers.scraper import Scraper
+from app.utils.constants import Bias, Credibility
+from app.scraper import Scraper
 
 
 class Semafor(Scraper):

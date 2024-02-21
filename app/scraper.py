@@ -11,9 +11,9 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from selenium.webdriver.firefox.options import Options
 from selenium import webdriver
 
-from app.constants import Credibility, Bias, Country
+from app.utils.constants import Credibility, Bias, Country
 from app.dayreport import DayReport
-from app.logger import get_logger
+from app.utils.logger import get_logger
 from app.models import Session, Article, Agency, Headline
 
 logger = get_logger(__name__)

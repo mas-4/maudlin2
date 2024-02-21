@@ -1,12 +1,11 @@
 import os
-import pathlib
 from random import random
 from datetime import datetime as dt, timedelta as td
 
 import mistune
 
-from app import j2env
-from app.constants import Constants, Credibility, Bias
+from app.site import j2env
+from app.utils.constants import Constants, Credibility, Bias
 
 
 class Config:
@@ -23,14 +22,13 @@ class Config:
     first_accessed = dt.now() - td(days=3)
     last_accessed = Constants.TimeConstants.five_minutes_ago
 
-    root = pathlib.Path(__file__).parent.parent.absolute()
-    output_dir = os.path.join(root, 'data')
+    output_dir = os.path.join(Constants.Paths.ROOT, 'data')
     log_file = f'{output_dir}/app.log'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     dayreport_file = os.path.join(output_dir, 'day-report.json')
-    assets = os.path.join(root, 'app', 'static')
-    build = os.path.join(root, 'build')
+    assets = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'static')
+    build = os.path.join(Constants.Paths.ROOT, 'build')
     if not os.path.exists(build):
         os.makedirs(build)
 
@@ -66,5 +64,5 @@ def date(value):
 
 
 j2env.filters['date'] = date
-j2env.filters['markdown'] = lambda text: mistune.markdown(text)
+j2env.filters['markdown'] = mistune.markdown
 # </editor-fold>

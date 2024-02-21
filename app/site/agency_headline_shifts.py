@@ -6,8 +6,8 @@ from matplotlib import pyplot as plt, dates as mdates
 from sqlalchemy import func
 
 from app import j2env
-from app.config import Config
-from app.constants import Constants
+from app.utils.config import Config
+from app.utils.constants import Constants
 from app.models import Agency, Session, Article, Headline
 
 

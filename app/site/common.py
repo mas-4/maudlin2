@@ -5,7 +5,7 @@ import nltk
 from wordcloud import STOPWORDS
 from wordcloud import WordCloud
 
-from app.logger import get_logger
+from app.utils.logger import get_logger
 from app.models import Headline
 
 logger = get_logger(__name__)

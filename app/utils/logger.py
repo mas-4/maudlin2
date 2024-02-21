@@ -21,7 +21,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 
-from app import Config
+from app.utils.config import Config
 
 
 class Colors:

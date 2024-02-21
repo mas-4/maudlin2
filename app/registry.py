@@ -82,7 +82,7 @@ from app.scrapers.reason import Reason
 from app.scrapers.redstate import RedState
 from app.scrapers.rt import RT
 from app.scrapers.salon import Salon
-from app.scrapers.scraper import SeleniumScraper
+from app.scraper import SeleniumScraper
 from app.scrapers.scrippsnews import ScrippsNews
 from app.scrapers.semafor import Semafor
 from app.scrapers.skynews import SkyNews

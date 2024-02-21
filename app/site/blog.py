@@ -3,7 +3,8 @@ import string
 
 import yaml
 
-from app import j2env, Config, Constants, get_logger
+from app.site import j2env
+from app.utils import Config, Constants, get_logger
 
 logger = get_logger(__name__)
 
@@ -23,7 +24,7 @@ class Blog:
         logger.info("...done")
 
     def load_posts(self):
-        path = os.path.join(Constants.Paths.ROOT, 'app', 'posts')
+        path = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'posts')
         for file in os.listdir(path):
             with open(os.path.join(path, file), 'rt') as f:
                 frontmatter, post = self.read_frontmatter(f.read())
