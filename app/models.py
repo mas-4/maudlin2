@@ -1,4 +1,4 @@
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 
 import numpy as np
 import pytz
@@ -30,11 +30,14 @@ class Agency(Base):
 
     def current_compound(self) -> float:
         with (Session() as s):
+            first_date = s.query(Article.first_accessed) \
+                .filter_by(agency_id=self.id) \
+                .order_by(Article.first_accessed.asc()).first()[0]
             numbers = s.query(Headline.vader_compound) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
-                    Article.first_accessed > Config.first_accessed,
+                    Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
                     Article.last_accessed > Config.last_accessed# we want current articles!
                 ).all()
         return np.mean(numbers)

@@ -217,3 +217,5 @@ for scraper in Scrapers:
         SeleniumScrapers.append(scraper)
     else:
         TradScrapers.append(scraper)
+
+ScraperDict = {scraper.agency: scraper for scraper in Scrapers}

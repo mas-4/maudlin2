@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta as td
 
 import pandas as pd
 import pytz
@@ -37,9 +38,11 @@ class AgencyPage:
 
     def get_variables(self):
         s = self.s
+        first_accessed = s.query(Article.first_accessed) \
+            .filter(Article.agency_id == self.agency.id).order_by(Article.first_accessed.asc()).first()[0]
         headlines = s.query(Headline) \
             .join(Article, Article.id == Headline.article_id) \
-            .filter(Article.first_accessed > Config.first_accessed,
+            .filter(Article.first_accessed > first_accessed + td(days=1),  # This is to eliminate permanent links
                     Article.last_accessed > Config.last_accessed,
                     Article.agency_id == self.agency.id) \
             .order_by(Headline.last_accessed.desc()).all()
@@ -52,7 +55,8 @@ class AgencyPage:
             strftime = '%b %-d %-I:%M %p'
             tabledata.append([
                 headline.title,
-                headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(strftime),
+                headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(
+                    tz=Constants.TimeConstants.timezone).strftime(strftime),
                 headline.vader_compound
             ])
         return {
