@@ -16,7 +16,7 @@ class Time(Scraper):
     agency: str = "Time"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile('/\d+/.*')}):
+        for a in soup.find_all('a', {'href': re.compile(r'/\d+/.*')}):
             try:
                 href = a['href']
                 title = a.text.strip()

@@ -6,6 +6,7 @@ from app.config import Config
 from app.logger import get_logger
 from app.site.agency import generate_agency_pages
 from app.site.home import HomePage
+from app.site.headlines import HeadlinesPage
 
 logger = get_logger(__name__)
 
@@ -29,7 +30,8 @@ def move_to_public():
 
 def build_site():
     HomePage().generate()
-    generate_agency_pages()
     Blog().generate()
+    HeadlinesPage().generate()
+    generate_agency_pages()
     copy_assets()
     move_to_public()
