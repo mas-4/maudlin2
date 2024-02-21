@@ -78,9 +78,7 @@ class Scraper(ABC, Thread):
                 s.commit()
                 return
 
-            results = {k: v for k, v in sid.polarity_scores(art_pair.title).items()}
-            results['comp'] = results['compound']
-            del results['compound']
+            results = {f'vader_{k}': v for k, v in sid.polarity_scores(art_pair.title).items()}
             results['title'] = art_pair.title
 
             if (article := s.query(Article).filter_by(url=art_pair.href).first()) is None:

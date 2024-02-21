@@ -1,8 +1,8 @@
 """Rename headline sentiment values
 
-Revision ID: 6c26d871053e
-Revises: 49d362b5456c
-Create Date: 2024-02-17 14:04:21.230505
+Revision ID: e3eef3e22106
+Revises: 6c26d871053e
+Create Date: 2024-02-21 15:55:01.048219
 
 """
 from typing import Sequence, Union
@@ -12,29 +12,28 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6c26d871053e'
-down_revision: Union[str, None] = '49d362b5456c'
+revision: str = 'e3eef3e22106'
+down_revision: Union[str, None] = '6c26d871053e'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-columns = {
-    'headneg': 'neg',
-    'headneu': 'neu',
-    'headpos': 'pos',
-    'headcompound': 'comp'
+column_changes = {
+    'pos': 'vader_pos',
+    'neg': 'vader_neg',
+    'neu': 'vader_neu',
+    'comp': 'vader_compound'
 }
 
 def upgrade() -> None:
-    # need to create new column, copy data, drop old column
-    for old, new in columns.items():
+    # for sqlite we have to create the new column, copy the data, and then drop the old:
+    for old, new in column_changes.items():
         op.add_column('headline', sa.Column(new, sa.Float(), nullable=True))
         op.execute(f'UPDATE headline SET {new} = {old}')
         op.drop_column('headline', old)
 
 
-
 def downgrade() -> None:
-    for new, old in columns.items():
+    for new, old in column_changes.items():
         op.add_column('headline', sa.Column(old, sa.Float(), nullable=True))
         op.execute(f'UPDATE headline SET {old} = {new}')
         op.drop_column('headline', new)

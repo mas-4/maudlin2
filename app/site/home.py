@@ -87,7 +87,7 @@ class HomePage:
 
     def render_sentiment_graphs(self):
         with Session() as s:
-            data = s.query(Headline.comp, Headline.last_accessed, Agency._bias)\
+            data = s.query(Headline.vader_compound, Headline.last_accessed, Agency._bias)\
                 .join(Headline.article).join(Article.agency).all()
         self.generate_graphs(self.aggregate_data(data))
 

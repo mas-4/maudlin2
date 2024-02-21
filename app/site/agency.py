@@ -53,7 +53,7 @@ class AgencyPage:
             tabledata.append([
                 headline.title,
                 headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(strftime),
-                headline.comp
+                headline.vader_compound
             ])
         return {
             'agency_name': self.agency.name,

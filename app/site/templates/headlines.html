@@ -58,10 +58,10 @@
         <td><a href="{{ headline.article.url }}" target="_blank">{{ headline.title }}</a></td>
         <td>{{ headline.first_accessed | date }}</td>
         <td>{{ headline.last_accessed | date }}</td>
-        <td>{{ headline.pos | round(2) }}</td>
-        <td>{{ headline.neg | round(2) }}</td>
-        <td>{{ headline.neu | round(2) }}</td>
-        <td>{{ headline.comp | round(2)}}</td>
+        <td>{{ headline.vader_pos | round(2) }}</td>
+        <td>{{ headline.vader_neg | round(2) }}</td>
+        <td>{{ headline.vader_neu | round(2) }}</td>
+        <td>{{ headline.vader_compound | round(2)}}</td>
     </tr>
     {% endfor %}
     </tbody>

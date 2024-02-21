@@ -27,7 +27,7 @@ class AgencyHeadlineShiftPages:
 
         for article in articles:
             df = pd.DataFrame([{
-                'sentiment': h.comp,
+                'sentiment': h.vader_compound,
                 'date': h.first_accessed,
                 'title': h.title,
             } for h in article.headlines])

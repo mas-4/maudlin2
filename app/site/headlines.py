@@ -32,7 +32,7 @@ class HeadlinesPage:
                         .strftime('%b %-d %-I:%M %p'),
                     h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone) \
                         .strftime('%-I:%M %p'),
-                    h.comp,
+                    h.vader_compound,
                 ])
                 urls[h.title] = h.article.url
                 agency_urls[h.article.agency.name] = h.article.agency.url
