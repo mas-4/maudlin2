@@ -7,7 +7,6 @@ from threading import Thread, Lock
 import requests as rq
 import validators
 from bs4 import BeautifulSoup as Soup
-from nltk.sentiment import SentimentIntensityAnalyzer
 from selenium.webdriver.firefox.options import Options
 from selenium import webdriver
 
@@ -15,6 +14,7 @@ from app.utils.constants import Credibility, Bias, Country
 from app.dayreport import DayReport
 from app.utils.logger import get_logger
 from app.models import Session, Article, Agency, Headline
+from app import metrics
 
 logger = get_logger(__name__)
 
@@ -68,7 +68,6 @@ class Scraper(ABC, Thread):
         pass
 
     def process(self, art_pair: ArticlePair):
-        sid: SentimentIntensityAnalyzer = SentimentIntensityAnalyzer()
         with Session() as s, self.sql_lock:
             if (headline := s.query(Headline).filter(Headline.title == art_pair.title).first()) is not None:
                 # we're going to double-check this headline hasn't been seen before
@@ -78,9 +77,6 @@ class Scraper(ABC, Thread):
                 s.commit()
                 return
 
-            results = {f'vader_{k}': v for k, v in sid.polarity_scores(art_pair.title).items()}
-            results['title'] = art_pair.title
-
             if (article := s.query(Article).filter_by(url=art_pair.href).first()) is None:
                 article = Article(url=art_pair.href, agency_id=self.agency_id)
                 s.add(article)
@@ -89,7 +85,8 @@ class Scraper(ABC, Thread):
                 self.articles += 1
 
             article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
-            s.add(headline := Headline(**results, article_id=article.id))
+            metrics.apply(headline := Headline(title=art_pair.title, article_id=article.id))
+            s.add(headline)
             s.commit()
             logger.debug(f"Added to database: %r", headline)
             self.headlines += 1
