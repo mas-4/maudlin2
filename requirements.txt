@@ -1,3 +1,4 @@
+afinn==0.1
 alembic==1.13.1
 annotated-types==0.6.0
 anyascii==0.3.2
@@ -35,6 +36,7 @@ fastjsonschema==2.19.1
 floret==0.10.5
 fonttools==4.47.2
 fqdn==1.5.1
+gensim==4.3.2
 h11==0.14.0
 idna==3.6
 iniconfig==2.0.0

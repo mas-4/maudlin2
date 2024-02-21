@@ -102,6 +102,7 @@ class Headline(Base, AccessTimeMixin):
     vader_neu: Mapped[float] = mapped_column(Float(), nullable=True)
     vader_pos: Mapped[float] = mapped_column(Float(), nullable=True)
     vader_compound: Mapped[float] = mapped_column(Float(), nullable=True)
+    afinn: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.title!r})"
