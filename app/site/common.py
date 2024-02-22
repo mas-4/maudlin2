@@ -6,7 +6,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from textacy.preprocessing import normalize as tnorm, remove as trem
 from wordcloud import WordCloud
 
-from app.models import Headline
 from app.pipelines import (
     prepare,
     split_camelcase,
@@ -58,12 +57,12 @@ pipeline = [
 ]
 
 
-def generate_wordcloud(headlines: list[Headline], path: str):
+def generate_wordcloud(headlines: list[str], path: str):
     logger.debug("Generating wordcloud for %s articles", len(headlines))
-    text = pd.DataFrame([headline.title for headline in headlines], columns=['title'])
-    text['title'] = text['title'].apply(prepare, pipeline=pipeline)
+    text = pd.DataFrame(headlines, columns=['title'])
+    text['cleaned'] = text['title'].apply(prepare, pipeline=pipeline)
     tfidf = TfidfVectorizer(ngram_range=(1, 3), lowercase=False)
-    tfidf_matrix = tfidf.fit_transform(text['title'])
+    tfidf_matrix = tfidf.fit_transform(text['cleaned'])
     df = pd.DataFrame(tfidf_matrix.todense().tolist(), columns=(tfidf.get_feature_names_out()))
     wc: WordCloud = WordCloud(background_color="white", max_words=100, width=800, height=400)
     wc.generate_from_frequencies(df.T.sum(axis=1))

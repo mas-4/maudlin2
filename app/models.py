@@ -6,8 +6,9 @@ from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
 
-from app.utils import Config, Bias, Credibility, Country
+from app.utils import Config, Bias, Credibility, Country, get_logger
 
+logger = get_logger(__name__)
 
 class Base(DeclarativeBase):
     pass
@@ -33,14 +34,16 @@ class Agency(Base):
             first_date = s.query(Article.first_accessed) \
                 .filter_by(agency_id=self.id) \
                 .order_by(Article.first_accessed.asc()).first()[0]
-            numbers = s.query(col) \
+            numbers = np.array(s.query(col) \
                 .join(Article, Article.id == Headline.article_id) \
                 .filter_by(agency_id=self.id) \
                 .filter(
                     Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
-                    Article.last_accessed > Config.last_accessed# we want current articles!
-                ).all()
-        return np.mean(numbers)  # noqa
+                    Article.last_accessed > Config.last_accessed  # we want current articles!
+                ).all()).flatten()
+        if np.isnan(np.mean(numbers)):
+            logger.warning("No %s data for %r.", col, self)
+        return np.mean(numbers[~np.isnan(numbers)])
 
     def current_vader(self) -> float:
         return self.current(Headline.vader_compound)

@@ -26,7 +26,7 @@ class AgencyPage:
         variables = self.get_variables()
         if variables['headlines']:
             generate_wordcloud(
-                variables['headlines'],
+                [h.title for h in variables['headlines']],
                 str(os.path.join(Config.build, variables['wordcloud']))
             )
         with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:

@@ -54,16 +54,15 @@ class HomePage:
             scrapers = TradScrapers
             if Config.run_selenium:
                 scrapers += SeleniumScrapers
-            agency_names = [x.agency for x in scrapers]
-            self.agencies: list[Agency] = s.query(Agency).filter(Agency.articles.any(), Agency.name.in_(agency_names))\
-                .order_by(Agency.name).all()
+            self.agencies: list[Agency] = s.query(Agency).filter(
+                Agency.articles.any(),
+                Agency.name.in_([x.agency for x in scrapers])
+            ).order_by(Agency.name).all()
             for agency in self.agencies:
-                vader = round(agency.current_vader(), 2)
-                afinn = round(agency.current_afinn(), 2)
-                if np.isnan(vader):
-                    logger.warning("Sentiment is na for %r.", agency)
+                if np.isnan(vader := round(agency.current_vader(), 2)):
+                    logger.warning("Vader is na for %r.", agency)
                     continue
-                if np.isnan(afinn):
+                if np.isnan(afinn := round(agency.current_afinn(), 2)):
                     logger.warning("Afinn is na for %r.", agency)
                     continue
                 self.data.append(
@@ -83,13 +82,13 @@ class HomePage:
     @staticmethod
     def generate_home_wordcloud():
         with Session() as s:
-            generate_wordcloud(
-                s.query(Headline).filter(
-                    Headline.first_accessed > Constants.TimeConstants.midnight,
-                    Headline.last_accessed > Constants.TimeConstants.five_minutes_ago
-                ).all(),
-                str(os.path.join(Config.build, FileNames.wordcloud))
-            )
+            logger.info("Querying data for home wordcloud...")
+            titles = s.query(Headline.title).filter(
+                Headline.first_accessed > Constants.TimeConstants.midnight,
+                Headline.last_accessed > Constants.TimeConstants.five_minutes_ago
+            ).all()
+            logger.info("...done")
+            generate_wordcloud(titles, str(os.path.join(Config.build, FileNames.wordcloud)))
 
     def render_sentiment_graphs(self):
         with Session() as s:
