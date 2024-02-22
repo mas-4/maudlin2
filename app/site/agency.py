@@ -31,7 +31,7 @@ class AgencyPage:
             )
         with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
             f.write(self.template.render(**variables))
-        df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', 'Sentiment'])
+        df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', 'Vader', 'Afinn'])
         df['url'] = df['Title'].map(variables['urls'])
         df.to_csv(os.path.join(Config.build, f'{self.agency.name}.csv'), index=False)
         logger.info("Done")
@@ -57,7 +57,8 @@ class AgencyPage:
                 headline.title,
                 headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(
                     tz=Constants.TimeConstants.timezone).strftime(strftime),
-                headline.vader_compound
+                headline.vader_compound,
+                headline.afinn
             ])
         return {
             'agency_name': self.agency.name,

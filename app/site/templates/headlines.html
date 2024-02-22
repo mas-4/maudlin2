@@ -23,7 +23,7 @@
                 "First Accessed",
                 "Last Accessed",
                 {
-                    name: "Sentiment",
+                    name: "VADER",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
                     attributes: (cell) => {
                         return {
@@ -31,6 +31,15 @@
                         }
                     }
                 },
+                {
+                    name: "AFINN",
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    attributes: (cell) => {
+                        return {
+                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                        }
+                    }
+                }
             ],
             data: data,
             sort: true,

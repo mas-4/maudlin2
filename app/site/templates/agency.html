@@ -6,8 +6,8 @@
 <br><br>
 <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function () {
-        const data = {{tabledata|safe}};
-        const urls = {{urls|safe}};
+        const data = {{ tabledata | safe }};
+        const urls = {{ urls | safe }};
 
         document.getElementById('maintable').remove()
 
@@ -19,7 +19,7 @@
                 },
                 "First Accessed",
                 {
-                    name: "Sentiment",
+                    name: "VADER",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
                     attributes: (cell) => {
                         return {
@@ -27,6 +27,16 @@
                         }
                     }
                 },
+                {
+                    name: "AFINN",
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    attributes: (cell) => {
+                        return {
+                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                        }
+                    }
+                },
+
             ],
             data: data,
             sort: true,
