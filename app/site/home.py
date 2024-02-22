@@ -88,7 +88,10 @@ class HomePage:
                 Headline.last_accessed > Constants.TimeConstants.five_minutes_ago
             ).all()
             logger.info("...done")
-            generate_wordcloud(titles, str(os.path.join(Config.build, FileNames.wordcloud)))
+            path = str(os.path.join(Config.build, FileNames.wordcloud))
+            logger.info("Calling generate_wordcloud...")
+            generate_wordcloud(titles, path)
+            logger.info("..done")
 
     def render_sentiment_graphs(self):
         with Session() as s:
