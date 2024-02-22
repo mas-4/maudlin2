@@ -4,7 +4,7 @@ from datetime import datetime as dt, timedelta as td
 import pytz
 
 from app.site import j2env
-from app.utils import Config, Constants, get_logger
+from app.utils import Config, Constants, get_logger, Country
 from app.models import Session, Headline
 
 logger = get_logger(__name__)
@@ -26,6 +26,14 @@ class HeadlinesPage:
             urls = {}
             agency_urls = {}
             for h in headlines:
+                if h.article.agency.country not in [Country.us, Country.gb]:
+                    continue
+                if h.article.agency.country == Country.gb and h.article.agency.name not in [
+                    "The Economist",
+                    "BBC",
+                    "The Guardian",
+                ]:
+                    continue
                 data.append([
                     h.title,
                     h.article.agency.name,
