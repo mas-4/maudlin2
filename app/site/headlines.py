@@ -1,4 +1,5 @@
 import os
+from datetime import datetime as dt, timedelta as td
 
 import pytz
 
@@ -16,8 +17,8 @@ class HeadlinesPage:
         logger.info("Generating headlines page...")
         with Session() as s:
             headlines: list[Headline] = s.query(Headline) \
-                .filter(Headline.last_accessed > Constants.TimeConstants.midnight,
-                        Headline.first_accessed > Config.first_accessed) \
+                .filter(Headline.last_accessed > Constants.TimeConstants.five_minutes_ago,
+                        Headline.first_accessed > dt.now() - td(days=1)) \
                 .order_by(Headline.first_accessed.desc(),
                           Headline.last_accessed.desc()) \
                 .all()
