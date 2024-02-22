@@ -1,12 +1,23 @@
 import string
-from typing import Optional
+from functools import partial
 
-import nltk
-from wordcloud import STOPWORDS
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from textacy.preprocessing import normalize as tnorm, remove as trem
 from wordcloud import WordCloud
 
-from app.utils.logger import get_logger
 from app.models import Headline
+from app.pipelines import (
+    prepare,
+    split_camelcase,
+    tokenize,
+    lemmatize,
+    pos_filter,
+    remove_stop,
+    expand_contractions,
+    STOPWORDS
+)
+from app.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,31 +33,39 @@ STOPWORDS.extend([
     "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"', "go",
     "new", "January", "February", "March", "April", "June", "July", "August", "September", "October", "November",
     "December", "time", "year", "week", "month", "years", "people", "life", "day", "thing", "something", "number",
-    "Subscribe", "EST", "READ", "News", "New", "York", "Images", "Politics", "newsletter"
+    "Subscribe", "EST", "READ", "News", "New", "York", "Images", "Politics", "newsletter", "ago"
 ])
 # strip stray letters
-STOPWORDS.extend([l for l in string.ascii_lowercase + string.ascii_uppercase])
-STOPWORDS.extend([c for c in string.punctuation])
-STOPWORDS = [word.lower() for word in STOPWORDS]
+STOPWORDS.extend(list(string.ascii_lowercase))
+STOPWORDS.extend(list(string.ascii_uppercase))
+STOPWORDS.extend(list(string.punctuation))
 
-
-def filter_words(headlines: list[str], parts_of_speech: Optional[list[str]] = None) -> list[str]:
-    if parts_of_speech is None:
-        parts_of_speech = POS
-    words: list[tuple[str, str]] = list(filter(lambda word: word[1] in parts_of_speech,
-                                               nltk.pos_tag(nltk.word_tokenize(' '.join(headlines)))))
-    filtered_words = [word[0] for word in words if word[0].lower() not in STOPWORDS and len(word[0]) > 2]
-    return filtered_words
+pipeline = [
+    split_camelcase,
+    tnorm.hyphenated_words,
+    tnorm.quotation_marks,
+    tnorm.unicode,
+    tnorm.whitespace,
+    trem.accents,
+    trem.brackets,
+    trem.punctuation,
+    tokenize,
+    expand_contractions,
+    partial(remove_stop, stopwords=STOPWORDS),
+    lemmatize,
+    pos_filter,
+    lambda x: ' '.join(x)
+]
 
 
 def generate_wordcloud(headlines: list[Headline], path: str):
-    wc: WordCloud = WordCloud(background_color="white", max_words=100, width=800, height=400, stopwords=STOPWORDS)
     logger.debug("Generating wordcloud for %s articles", len(headlines))
-    frequencies = get_frequencies(headlines)
-    wc.generate_from_frequencies(frequencies)
+    text = pd.DataFrame([headline.title for headline in headlines], columns=['title'])
+    text['title'] = text['title'].apply(prepare, pipeline=pipeline)
+    tfidf = TfidfVectorizer(ngram_range=(1, 3), lowercase=False)
+    tfidf_matrix = tfidf.fit_transform(text['title'])
+    df = pd.DataFrame(tfidf_matrix.todense().tolist(), columns=(tfidf.get_feature_names_out()))
+    wc: WordCloud = WordCloud(background_color="white", max_words=100, width=800, height=400)
+    wc.generate_from_frequencies(df.T.sum(axis=1))
     logger.debug("Saving wordcloud to %s", path)
     wc.to_file(path)
-
-def get_frequencies(headlines: list[Headline]):
-    headlines: list[str] = [headline.title for headline in headlines]
-    return nltk.FreqDist(filter_words(headlines))

@@ -1,5 +1,5 @@
 import regex as re
-from textacy.preprocessing import normalize as tnorm, remove as trem, replace as trep
+from textacy.preprocessing import normalize as tnorm, remove as trem
 import string
 import nltk
 from functools import partial
@@ -50,8 +50,18 @@ CONTRACTION_MAP: dict[str, str] = {
     "she'll": "she will",
     "she's": "she is",
     "shouldn't": "should not",
-
 }
+
+CONTRACTION_EXPANSION_FROM_TOKEN: dict[str, str] = {
+    're': 'are',
+    's': 'is',
+    't': 'not',
+    'd': 'would',
+    'll': 'will'
+}
+
+def expand_contractions(tokens: list[str]):
+    return [CONTRACTION_MAP.get(tok, tok) for tok in tokens]
 
 def tokenize(text: str) -> list[str]:
     return re.findall(r'[\w-]*\p{L}[\w-]*', text)
