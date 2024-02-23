@@ -35,7 +35,7 @@ jobs:
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "$SERVER_DIRECTORY/venv/bin/pip install -r $SERVER_DIRECTORY/requirements.txt"
           echo "Writing creds"
           echo "$EMAIL_CREDS" > .creds
-          scp -i ~/.ssh/id_rsa .creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/ -P "$SERVER_PORT"
+          scp -i ~/.ssh/id_rsa -P "$SERVER_PORT" .creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
           echo "Running Migrations"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "cd $SERVER_DIRECTORY && ./venv/bin/alembic upgrade head"
           
