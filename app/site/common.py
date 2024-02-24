@@ -2,7 +2,7 @@ import string
 from functools import partial
 
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 from textacy.preprocessing import normalize as tnorm, remove as trem
 from wordcloud import WordCloud
 
@@ -63,10 +63,10 @@ def generate_wordcloud(headlines: list[str], path: str):
     logger.info("Cleaning text...")
     text['cleaned'] = text['title'].apply(prepare, pipeline=pipeline)
     logger.info("Vectorizing text...")
-    tfidf = TfidfVectorizer(ngram_range=(1, 3), lowercase=False)
-    tfidf_matrix = tfidf.fit_transform(text['cleaned'])
+    vec = CountVectorizer(ngram_range=(1, 3), lowercase=False)
+    mat = vec.fit_transform(text['cleaned'])
     logger.info("Creating dataframe from vector...")
-    df = pd.DataFrame(tfidf_matrix.todense().tolist(), columns=(tfidf.get_feature_names_out()))
+    df = pd.DataFrame(mat.todense().tolist(), columns=(vec.get_feature_names_out()))
     logger.info("Generating wordcloud for real this time...")
     wc: WordCloud = WordCloud(background_color="white", max_words=100, width=800, height=400)
     wc.generate_from_frequencies(df.T.sum(axis=1))

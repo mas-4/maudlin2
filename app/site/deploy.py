@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 
 from app.utils import get_logger, Config, Constants
 
@@ -21,7 +22,13 @@ def publish_to_netlify():
     if Config.netlify:
         logger.info("Publishing to netlify")
         os.environ['NETLIFY_AUTH_TOKEN'] = Config.netlify
-        os.system(f'cd {Constants.Paths.ROOT} && netlify deploy --dir={Config.build} --prod')
+        # Check output
+        output = subprocess.check_output([
+            'cd', Constants.Paths.ROOT,
+            '&&',
+            'netlify', 'deploy', f'--dir={Config.build}', '--prod'],
+            text=True)
+        logger.info(output)
         return
     logger.warning("No netlify credentials found, not publishing to netlify")
     move_to_public()
