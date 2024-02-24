@@ -10,9 +10,8 @@ from bs4 import BeautifulSoup as Soup
 from selenium.webdriver.firefox.options import Options
 from selenium import webdriver
 
-from app.utils.constants import Credibility, Bias, Country
+from app.utils import Credibility, Bias, Country, get_logger, Config
 from app.dayreport import DayReport
-from app.utils.logger import get_logger
 from app.models import Session, Article, Agency, Headline
 from app import metrics
 
@@ -93,7 +92,7 @@ class Scraper(ABC, Thread):
 
     def get_page(self, url: str):
         try:
-            response: rq.Response = self.rq.get(url, headers=self.headers)
+            response: rq.Response = self.rq.get(url, headers=self.headers, timeout=Config.timeout)
         except Exception as e:  # noqa
             raise ValueError(f"Failed to get page: {url} {e}")
         if not response.ok:
