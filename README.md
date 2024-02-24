@@ -36,11 +36,7 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
-
-- [X] National Review (javascript only)
-- [X] Politico (javascript)
 - [-] msn.com (javascript)
-- [X] Reuters (401?)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
@@ -90,6 +86,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] NPR
 - [X] National Interest
 - [X] National Post
+- [X] National Review (javascript only)
 - [X] New Republic
 - [X] New York Magazine
 - [X] New York Post
@@ -98,6 +95,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Nikkei Asia
 - [X] PBS News Hour
 - [X] Political Wire
+- [X] Politico (javascript)
 - [X] Punchbowl
 - [X] Quillette
 - [X] RT
@@ -106,6 +104,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Real Clear Politics (Assholes)
 - [X] Reason
 - [X] Red State
+- [X] Reuters (401?)
 - [X] Rolling Stone
 - [X] Salon
 - [X] Scripps
@@ -149,3 +148,4 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] ndtv.com
 - [X] news.yahoo.com
 - [X] news18.com
+- 
