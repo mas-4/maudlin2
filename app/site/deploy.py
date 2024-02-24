@@ -23,11 +23,8 @@ def publish_to_netlify():
         logger.info("Publishing to netlify")
         os.environ['NETLIFY_AUTH_TOKEN'] = Config.netlify
         # Check output
-        output = subprocess.check_output([
-            'cd', Constants.Paths.ROOT,
-            '&&',
-            'netlify', 'deploy', f'--dir={Config.build}', '--prod'],
-            text=True)
+        os.chdir(Constants.Paths.ROOT)
+        output = subprocess.check_output(['netlify', 'deploy', f'--dir={Config.build}', '--prod'], text=True)
         logger.info(output)
         return
     logger.warning("No netlify credentials found, not publishing to netlify")
