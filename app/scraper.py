@@ -199,6 +199,7 @@ class SeleniumScraper(Scraper):
         self.srs = SeleniumResourceManager()
     def get_page(self, url: str):
         try:
+            logger.info("Downloading %s...", url)
             soup = Soup(self.srs.get_html(url), self.parser)
             logger.info("Downloaded %s", url)
         except Exception as e:  # noqa
