@@ -16,7 +16,7 @@ class Sun(Scraper):
     agency: str = "The Sun"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'class': re.compile(r'/news/\d+/')}):
+        for a in soup.find_all('a', {'href': re.compile(r'/news/\d+/')}):
             try:
                 href = a['href']
                 title = a.text.strip()

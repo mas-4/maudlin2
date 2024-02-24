@@ -37,10 +37,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 
-- [-] Al Arabiya
-- [-] El Pais (Need multilingual support)
-- [-] Le Figaro (In french)
-- [-] Monocle (No data from MBFC)
 - [-] National Review (javascript only)
 - [-] Politico (javascript)
 - [-] msn.com (javascript)
