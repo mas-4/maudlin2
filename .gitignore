@@ -163,3 +163,5 @@ cython_debug/
 .creds
 data/
 dev/
+# Local Netlify folder
+.netlify
