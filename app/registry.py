@@ -1,34 +1,9 @@
-from app.scrapers.nationalreview import NationalReview
-from app.scrapers.politico import Politico
-from app.scrapers.hindustantimes import HindustanTimes
-from app.scrapers.infowars import InfoWars
-from app.scrapers.realclearpolitics import RealClearPolitics
-from app.scrapers.reuters import Reuters
-from app.scrapers.rollingstone import RollingStone
-from app.scrapers.newsweek import Newsweek
-from app.scrapers.nationalinterest import NationalInterest
-from app.scrapers.japantimes import JapanTimes
-from app.scrapers.losangelestimes import LosAngelesTimes
-from app.scrapers.forbes import Forbes
-from app.scrapers.msnbc import MSNBC
-from app.scrapers.france24 import France24
-from app.scrapers.dailybeast import DailyBeast
-from app.scrapers.googlenews import GoogleNews
-from app.scrapers.news18 import News18
-from app.scrapers.wallstreetjournal import WallStreetJournal
-from app.scrapers.yahoonews import YahooNews
-from app.scrapers.ndtv import NDTV
-from app.scrapers.mint import Mint
-from app.scrapers.indianexpress import IndianExpress
-from app.scrapers.xinhua import Xinhua
-from app.scrapers.winnipegfreepress import WinnipegFreePress
-from app.scrapers.washingtonpost import WashingtonPost
-from app.scrapers.vox import Vox
-from app.scrapers.vice import Vice
+from app.scraper import SeleniumScraper
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
 from app.scrapers.atlantic import Atlantic
+from app.scrapers.axios import Axios
 from app.scrapers.bbc import BBC
 from app.scrapers.blaze import Blaze
 from app.scrapers.bloomberg import Bloomberg
@@ -42,6 +17,7 @@ from app.scrapers.cnbc import CNBC
 from app.scrapers.cnn import CNN
 from app.scrapers.crooksandliars import CrooksandLiars
 from app.scrapers.currentaffairs import CurrentAffairs
+from app.scrapers.dailybeast import DailyBeast
 from app.scrapers.dailykos import DailyKos
 from app.scrapers.dailymail import DailyMail
 from app.scrapers.dailywire import DailyWire
@@ -50,29 +26,44 @@ from app.scrapers.drudgereport import DrudgeReport
 from app.scrapers.economist import Economist
 from app.scrapers.epochtimes import EpochTimes
 from app.scrapers.federalist import Federalist
+from app.scrapers.forbes import Forbes
 from app.scrapers.foreignaffairs import ForeignAffairs
 from app.scrapers.foreignpolicy import ForeignPolicy
 from app.scrapers.fortune import Fortune
 from app.scrapers.fox import Fox
 from app.scrapers.foxbusiness import FoxBusiness
+from app.scrapers.france24 import France24
 from app.scrapers.ft import FT
 from app.scrapers.globaltimes import GlobalTimes
 from app.scrapers.globeandmail import GlobeAndMail
+from app.scrapers.googlenews import GoogleNews
 from app.scrapers.guardian import Guardian
 from app.scrapers.hill import Hill
+from app.scrapers.hindustantimes import HindustanTimes
 from app.scrapers.huffpost import HuffPost
 from app.scrapers.independent import Independent
+from app.scrapers.indianexpress import IndianExpress
 from app.scrapers.indiatimes import IndiaTimes
+from app.scrapers.infowars import InfoWars
 from app.scrapers.intercept import Intercept
 from app.scrapers.jacobin import Jacobin
+from app.scrapers.japantimes import JapanTimes
 from app.scrapers.kyivindependent import KyivIndependent
 from app.scrapers.lemonde import LeMonde
+from app.scrapers.losangelestimes import LosAngelesTimes
 from app.scrapers.military_com import MilitaryCom
+from app.scrapers.mint import Mint
 from app.scrapers.moscowtimes import MoscowTimes
 from app.scrapers.motherjones import MotherJones
+from app.scrapers.msnbc import MSNBC
+from app.scrapers.nationalinterest import NationalInterest
 from app.scrapers.nationalpost import NationalPost
+from app.scrapers.nationalreview import NationalReview
 from app.scrapers.nbc import NBC
+from app.scrapers.ndtv import NDTV
 from app.scrapers.newrepublic import NewRepublic
+from app.scrapers.news18 import News18
+from app.scrapers.newsweek import Newsweek
 from app.scrapers.newyorker import NewYorker
 from app.scrapers.newyorkmagazine import NewYorkMagazine
 from app.scrapers.newyorkpost import NewYorkPost
@@ -81,15 +72,18 @@ from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
 from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.politicalwire import PoliticalWire
+from app.scrapers.politico import Politico
 from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.quillette import Quillette
 from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
 from app.scrapers.rawstory import RawStory
+from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.reason import Reason
 from app.scrapers.redstate import RedState
+from app.scrapers.reuters import Reuters
+from app.scrapers.rollingstone import RollingStone
 from app.scrapers.rt import RT
 from app.scrapers.salon import Salon
-from app.scraper import SeleniumScraper
 from app.scrapers.scrippsnews import ScrippsNews
 from app.scrapers.semafor import Semafor
 from app.scrapers.skynews import SkyNews
@@ -107,16 +101,22 @@ from app.scrapers.timesofindia import TimesofIndia
 from app.scrapers.torontosun import TorontoSun
 from app.scrapers.usatoday import USAToday
 from app.scrapers.vanityfair import VanityFair
+from app.scrapers.vice import Vice
 from app.scrapers.voa import VOA
+from app.scrapers.vox import Vox
+from app.scrapers.wallstreetjournal import WallStreetJournal
+from app.scrapers.washingtonpost import WashingtonPost
 from app.scrapers.week import Week
+from app.scrapers.winnipegfreepress import WinnipegFreePress
+from app.scrapers.xinhua import Xinhua
+from app.scrapers.yahoonews import YahooNews
 
 Scrapers = [
-    NationalReview,
-    Politico,
     ABC,
     AP,
     AlJazeera,
     Atlantic,
+    Axios,
     BBC,
     Blaze,
     Bloomberg,
@@ -175,6 +175,7 @@ Scrapers = [
     NYT,
     NationalInterest,
     NationalPost,
+    NationalReview,
     NewRepublic,
     NewYorkMagazine,
     NewYorkPost,
@@ -184,15 +185,16 @@ Scrapers = [
     NikkeiAsia,
     PBSNewsHour,
     PoliticalWire,
+    Politico,
     PunchbowlNews,
     Quillette,
-    Reuters,
     RT,
     RadioFreeEuropeRadioLiberty,
     RawStory,
     RealClearPolitics,
     Reason,
     RedState,
+    Reuters,
     RollingStone,
     Salon,
     ScrippsNews,
