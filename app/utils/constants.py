@@ -101,8 +101,11 @@ class Constants:
         midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday = midnight - td(days=1)
         now = dt.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
-        now_func = lambda: dt.now(Constants.TimeConstants.timezone).strftime('%Y-%m-%d %H:%M:%S')
         five_minutes_ago = dt.now() - td(minutes=5)
+
+        @staticmethod
+        def now_func():
+            return dt.now(Constants.TimeConstants.timezone).strftime('%Y-%m-%d %H:%M:%S')
 
     class Headers:
         class UserAgents:
