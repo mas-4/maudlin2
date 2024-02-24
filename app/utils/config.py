@@ -1,6 +1,7 @@
 import os
 from random import random
 from datetime import datetime as dt, timedelta as td
+import logging
 
 import mistune
 
@@ -10,7 +11,7 @@ from app.utils.constants import Constants, Credibility, Bias
 
 class Config:
     use_color = True
-    logging_level = 'DEBUG'
+    logging_level = logging.INFO
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False
