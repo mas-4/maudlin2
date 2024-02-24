@@ -43,7 +43,7 @@ jobs:
           scp -i ~/.ssh/id_rsa -P "$SERVER_PORT" .creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
           
           echo "Writing Netlify Creds"
-          echo "$NETLIFY" > .netlify
+          echo "$NETLIFY" > .netlify_creds
           scp -i ~/.ssh/id_rsa -P "$SERVER_PORT" .netlify_creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
           
           

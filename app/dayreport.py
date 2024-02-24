@@ -45,18 +45,24 @@ class DayReport:
     def articles(self, count: int):
         with lock:
             data = self.load()
+            if not 'articles' in data[self.agency]:
+                data[self.agency]['articles'] = 0
             data[self.agency]['articles'] += count
             self.dump(data)
 
     def headlines(self, count: int):
         with lock:
             data = self.load()
+            if not 'headlines' in data[self.agency]:
+                data[self.agency]['headlines'] = 0
             data[self.agency]['headlines'] += count
             self.dump(data)
 
     def updated(self, count: int):
         with lock:
             data = self.load()
+            if not 'updated' in data[self.agency]:
+                data[self.agency]['updated'] = 0
             data[self.agency]['updated'] += count
             self.dump(data)
 
