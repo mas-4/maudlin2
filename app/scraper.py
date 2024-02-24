@@ -198,6 +198,7 @@ class SeleniumScraper(Scraper):
     def get_page(self, url: str):
         try:
             soup = Soup(self.srs.get_html(url), self.parser)
+            logger.info("Downloaded %s", url)
         except Exception as e:  # noqa
             raise ValueError(f"Failed to get page: {e}")
         return soup

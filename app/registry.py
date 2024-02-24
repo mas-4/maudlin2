@@ -1,6 +1,8 @@
+from app.scrapers.politico import Politico
 from app.scrapers.hindustantimes import HindustanTimes
 from app.scrapers.infowars import InfoWars
 from app.scrapers.realclearpolitics import RealClearPolitics
+from app.scrapers.reuters import Reuters
 from app.scrapers.rollingstone import RollingStone
 from app.scrapers.newsweek import Newsweek
 from app.scrapers.nationalinterest import NationalInterest
@@ -108,6 +110,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    Politico,
     ABC,
     AP,
     AlJazeera,
@@ -181,6 +184,7 @@ Scrapers = [
     PoliticalWire,
     PunchbowlNews,
     Quillette,
+    Reuters,
     RT,
     RadioFreeEuropeRadioLiberty,
     RawStory,

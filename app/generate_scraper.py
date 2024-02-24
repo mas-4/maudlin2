@@ -8,9 +8,8 @@ TEMPLATE = """import re
 
 from bs4 import BeautifulSoup as Soup
 
-from app.constants import Bias, Credibility, Country, Constants
-from app.logger import get_logger
-from app.scrapers.scraper import Scraper
+from app.utils import Bias, Credibility, Country, Constants, get_logger
+from app.scraper import Scraper
 
 logger = get_logger(__name__)
 

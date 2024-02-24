@@ -38,8 +38,9 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 - [-] National Review (javascript only)
-- [-] Politico (javascript)
+- [X] Politico (javascript)
 - [-] msn.com (javascript)
+- [X] Reuters (401?)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
@@ -105,7 +106,6 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Real Clear Politics (Assholes)
 - [X] Reason
 - [X] Red State
-- [X] Reuters (401?)
 - [X] Rolling Stone
 - [X] Salon
 - [X] Scripps
