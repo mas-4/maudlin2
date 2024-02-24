@@ -23,7 +23,7 @@ class DayReport:
 
     def init(self, data):
         if self.agency not in data:
-            data[self.agency] = {'exceptions': [], 'articles': 0, 'headlines': 0}
+            data[self.agency] = {'exceptions': [], 'articles': 0, 'headlines': 0, 'updated': 0}
         return data
 
     @staticmethod
@@ -52,6 +52,12 @@ class DayReport:
         with lock:
             data = self.load()
             data[self.agency]['headlines'] += count
+            self.dump(data)
+
+    def updated(self, count: int):
+        with lock:
+            data = self.load()
+            data[self.agency]['updated'] += count
             self.dump(data)
 
     @staticmethod

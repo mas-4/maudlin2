@@ -119,6 +119,7 @@ class Scraper(ABC, Thread):
         self.run_processing()
         self.dayreport.headlines(self.headlines)
         self.dayreport.articles(self.articles)
+        self.dayreport.updated(self.updated)
         logger.info("Done with %s, added %d articles and %d headlines, updated %d headlines",
                     self.agency, self.articles, self.headlines, self.updated)
         self.done = True

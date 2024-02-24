@@ -1,5 +1,5 @@
 {% for agency, agency_data in data.items() %}
-        {{ agency }} added {{ agency_data['articles'] }} new articles and {{ agency_data['headlines'] }} headlines
+        {{ agency }}: ({{ agency_data['articles'] }},{{ agency_data['headlines'] }},{{ agency_data['updated'] }})
 {% endfor %}
 
 {% for agency, agency_data in data.items() %}
