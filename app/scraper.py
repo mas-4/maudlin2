@@ -18,7 +18,7 @@ from app import metrics
 logger = get_logger(__name__)
 
 
-ArticlePair = namedtuple('ArticlePair', ['href', 'title'])
+ArticlePair = namedtuple('ArticlePair', ['href', 'title', 'pos'])
 STRIPS = {'\xad': ' ', '\xa0': ' ', '\n': ' ', '\t': ' ', '\r': ' ', '  +': ' '}
 
 
@@ -84,7 +84,7 @@ class Scraper(ABC, Thread):
                 self.articles += 1
 
             article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
-            metrics.apply(headline := Headline(title=art_pair.title, article_id=article.id))
+            metrics.apply(headline := Headline(title=art_pair.title, position=art_pair.pos, article_id=article.id))
             s.add(headline)
             s.commit()
             logger.debug(f"Added to database: %r", headline)
@@ -133,6 +133,7 @@ class Scraper(ABC, Thread):
         return text
 
     def run_processing(self):
+        pos = 0
         while self.downstream:
             href, title = self.downstream.pop()
             if title.strip().count(' ') == 0:
@@ -145,7 +146,8 @@ class Scraper(ABC, Thread):
                 href = self.url.strip('/') + '/' + href
             href = href.strip()
             title = self.strip(title)
-            art_pair = ArticlePair(href, title)
+            art_pair = ArticlePair(href, title, pos)
+            pos += 1
             try:
                 if not (err := validators.url(art_pair.href)):
                     raise err
