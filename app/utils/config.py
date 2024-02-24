@@ -60,7 +60,7 @@ class Config:
 j2env.globals['Config'] = Config
 j2env.globals['bias'] = Bias.to_dict()
 j2env.globals['credibility'] = Credibility.to_dict()
-j2env.globals['now'] = Constants.TimeConstants.now
+j2env.globals['now'] = Constants.TimeConstants.now_func
 
 j2env.globals['nav'] = j2env.get_template('nav.html').render()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
