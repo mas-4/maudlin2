@@ -1,3 +1,4 @@
+from app.scrapers.nationalreview import NationalReview
 from app.scrapers.politico import Politico
 from app.scrapers.hindustantimes import HindustanTimes
 from app.scrapers.infowars import InfoWars
@@ -110,6 +111,7 @@ from app.scrapers.voa import VOA
 from app.scrapers.week import Week
 
 Scrapers = [
+    NationalReview,
     Politico,
     ABC,
     AP,

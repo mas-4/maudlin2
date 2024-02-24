@@ -37,7 +37,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 
 
 
-- [-] National Review (javascript only)
+- [X] National Review (javascript only)
 - [X] Politico (javascript)
 - [-] msn.com (javascript)
 - [X] Reuters (401?)
