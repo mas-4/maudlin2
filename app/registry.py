@@ -1,3 +1,6 @@
+from app.scrapers.hindustantimes import HindustanTimes
+from app.scrapers.infowars import InfoWars
+from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.rollingstone import RollingStone
 from app.scrapers.newsweek import Newsweek
 from app.scrapers.nationalinterest import NationalInterest
@@ -9,6 +12,7 @@ from app.scrapers.france24 import France24
 from app.scrapers.dailybeast import DailyBeast
 from app.scrapers.googlenews import GoogleNews
 from app.scrapers.news18 import News18
+from app.scrapers.wallstreetjournal import WallStreetJournal
 from app.scrapers.yahoonews import YahooNews
 from app.scrapers.ndtv import NDTV
 from app.scrapers.mint import Mint
@@ -143,10 +147,12 @@ Scrapers = [
     GoogleNews,
     Guardian,
     Hill,
+    HindustanTimes,
     HuffPost,
     Independent,
     IndiaTimes,
     IndianExpress,
+    InfoWars,
     Intercept,
     Jacobin,
     JapanTimes,
@@ -178,6 +184,7 @@ Scrapers = [
     RT,
     RadioFreeEuropeRadioLiberty,
     RawStory,
+    RealClearPolitics,
     Reason,
     RedState,
     RollingStone,
@@ -202,6 +209,7 @@ Scrapers = [
     VanityFair,
     Vice,
     Vox,
+    WallStreetJournal,
     WashingtonPost,
     Week,
     WinnipegFreePress,

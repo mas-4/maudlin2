@@ -4,12 +4,12 @@ from bs4 import BeautifulSoup as Soup
 
 from app.utils.constants import Bias, Credibility, Constants
 from app.utils.logger import get_logger
-from app.scraper import Scraper
+from app.scraper import SeleniumScraper
 
 logger = get_logger(__name__)
 
 
-class InfoWars(Scraper):
+class InfoWars(SeleniumScraper):
     bias = Bias.extreme_right
     credibility = Credibility.very_low
     url: str = 'https://www.infowars.com/'

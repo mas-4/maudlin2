@@ -2,12 +2,12 @@ from bs4 import BeautifulSoup as Soup
 
 from app.utils.constants import Bias, Credibility, Country
 from app.utils.logger import get_logger
-from app.scraper import Scraper
+from app.scraper import SeleniumScraper
 
 logger = get_logger(__name__)
 
 
-class HindustanTimes(Scraper):
+class HindustanTimes(SeleniumScraper):
     bias = Bias.left_center
     credibility = Credibility.mixed
     url: str = 'https://www.hindustantimes.com'

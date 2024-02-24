@@ -36,16 +36,13 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
 
+
 - [-] Al Arabiya
 - [-] El Pais (Need multilingual support)
-- [-] Hindustan Times (Chromium)
-- [-] Infowars (403)
 - [-] Le Figaro (In french)
 - [-] Monocle (No data from MBFC)
 - [-] National Review (javascript only)
 - [-] Politico (javascript)
-- [-] Real Clear Politics (Assholes)
-- [-] Wall Street Journal (401/403)
 - [-] msn.com (javascript)
 - [X] ABC News
 - [X] Al Jazeera
@@ -79,8 +76,10 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] France 24
 - [X] Global Times
 - [X] Google News
+- [X] Hindustan Times (Chromium)
 - [X] Huffington Post
 - [X] India Times
+- [X] Infowars (403)
 - [X] Jacobin
 - [X] Japan Times
 - [X] Kyiv Independent
@@ -107,6 +106,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] RT
 - [X] Radio Free Europe
 - [X] Raw Story
+- [X] Real Clear Politics (Assholes)
 - [X] Reason
 - [X] Red State
 - [X] Reuters (401?)
@@ -144,6 +144,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] Vanity Fair
 - [X] Vice
 - [X] Vox
+- [X] Wall Street Journal (401/403)
 - [X] Washington Post
 - [X] Winnipeg Free Press
 - [X] Xinhua
@@ -152,4 +153,3 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] ndtv.com
 - [X] news.yahoo.com
 - [X] news18.com
-

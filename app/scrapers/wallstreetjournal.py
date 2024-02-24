@@ -2,12 +2,12 @@ from bs4 import BeautifulSoup as Soup
 
 from app.utils.constants import Bias, Credibility, Constants
 from app.utils.logger import get_logger
-from app.scraper import Scraper
+from app.scraper import SeleniumScraper
 
 logger = get_logger(__name__)
 
 
-class WallStreetJournal(Scraper):
+class WallStreetJournal(SeleniumScraper):
     bias = Bias.right_center
     credibility = Credibility.mostly_factual
     url: str = 'https://www.wsj.com/'
