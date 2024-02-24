@@ -58,12 +58,16 @@ pipeline = [
 
 
 def generate_wordcloud(headlines: list[str], path: str):
-    logger.debug("Generating wordcloud for %s articles", len(headlines))
+    logger.debug("Generating wordcloud for %s articles...", len(headlines))
     text = pd.DataFrame(headlines, columns=['title'])
+    logger.debug("Cleaning text...")
     text['cleaned'] = text['title'].apply(prepare, pipeline=pipeline)
+    logger.debug("Vectorizing text...")
     tfidf = TfidfVectorizer(ngram_range=(1, 3), lowercase=False)
     tfidf_matrix = tfidf.fit_transform(text['cleaned'])
+    logger.debug("Creating dataframe from vector...")
     df = pd.DataFrame(tfidf_matrix.todense().tolist(), columns=(tfidf.get_feature_names_out()))
+    logger.debug("Generating wordcloud for real this time...")
     wc: WordCloud = WordCloud(background_color="white", max_words=100, width=800, height=400)
     wc.generate_from_frequencies(df.T.sum(axis=1))
     logger.debug("Saving wordcloud to %s", path)

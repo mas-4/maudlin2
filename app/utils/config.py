@@ -10,7 +10,7 @@ from app.utils.constants import Constants, Credibility, Bias
 
 class Config:
     use_color = True
-    logging_level = 'INFO'
+    logging_level = 'DEBUG'
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False

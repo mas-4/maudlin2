@@ -120,7 +120,9 @@ class Scraper(ABC, Thread):
         self.dayreport.headlines(self.headlines)
         self.dayreport.articles(self.articles)
         self.dayreport.updated(self.updated)
-        logger.info("Done with %s, added %d articles and %d headlines, updated %d headlines",
+        # If we didn't get anything we want to warn!
+        bugle = logger.info if self.articles + self.headlines + self.updated else logger.warning
+        bugle("Done with %s, added %d articles and %d headlines, updated %d headlines",
                     self.agency, self.articles, self.headlines, self.updated)
         self.done = True
 
