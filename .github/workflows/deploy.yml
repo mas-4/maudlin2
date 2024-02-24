@@ -20,6 +20,7 @@ jobs:
           SERVER_USER: ${{ secrets.USERNAME }}
           SERVER_DIRECTORY: ${{ secrets.DIRECTORY }}
           EMAIL_CREDS: ${{ secrets.EMAIL_CRED_FILE }}
+          NETLIFY: ${{ secrets.NETLIFY }}
         run: |
           echo "Making ssh directory"
           mkdir -p ~/.ssh
@@ -29,13 +30,20 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           echo "Adding server to known hosts"
           ssh-keyscan -p "$SERVER_PORT" -H "$SERVER_IP" > ~/.ssh/known_hosts
+          
           echo "Copying repository to server"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "git -C $SERVER_DIRECTORY pull origin main "
           echo "Installing requirements"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "$SERVER_DIRECTORY/venv/bin/pip install -r $SERVER_DIRECTORY/requirements.txt"
+          echo "Running Migrations"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "cd $SERVER_DIRECTORY && ./venv/bin/alembic upgrade head"
+          
           echo "Writing creds"
           echo "$EMAIL_CREDS" > .creds
           scp -i ~/.ssh/id_rsa -P "$SERVER_PORT" .creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
-          echo "Running Migrations"
-          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "cd $SERVER_DIRECTORY && ./venv/bin/alembic upgrade head"
+          
+          echo "Writing Netlify Creds"
+          echo "$NETLIFY" > .netlify
+          scp -i ~/.ssh/id_rsa -P "$SERVER_PORT" .netlify_creds "$SERVER_USER"@"$SERVER_IP":/home/maudlin/maudlin2/
+          
           

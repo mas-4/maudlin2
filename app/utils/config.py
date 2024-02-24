@@ -49,6 +49,11 @@ class Config:
             emails, domain, email, pw = f_in.read().strip().splitlines()
             emails_to_notify = emails.split(',')
 
+    netlify = ''
+    if os.path.exists(Constants.Paths.NETLIFY_CREDS):
+        with open(Constants.Paths.NETLIFY_CREDS, 'rt') as f_in:
+            netlify = f_in.read().strip()
+
 
 # <editor-fold desc="Jinja2 Environment Stuff">
 j2env.globals['Config'] = Config

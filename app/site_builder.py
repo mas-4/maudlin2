@@ -6,6 +6,7 @@ from app.site.blog import Blog
 from app.site.agency import generate_agency_pages
 from app.site.home import HomePage
 from app.site.headlines import HeadlinesPage
+from app.site.deploy import publish_to_netlify
 
 logger = get_logger(__name__)
 
@@ -16,21 +17,10 @@ def copy_assets():
         shutil.copy(os.path.join(Config.assets, file), Config.build)
 
 
-def move_to_public():
-    server_location = os.environ.get('SERVER_LOCATION', None)
-    if server_location is None:
-        logger.warning("No server location specified, not moving files")
-        return
-
-    for file in os.listdir(Config.build):
-        logger.debug(f"Moving %s", file)
-        shutil.move(os.path.join(Config.build, file), os.path.join(server_location, file))
-
-
 def build_site():
     HomePage().generate()
     Blog().generate()
     HeadlinesPage().generate()
     generate_agency_pages()
     copy_assets()
-    move_to_public()
+    publish_to_netlify()
