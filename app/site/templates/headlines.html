@@ -3,25 +3,26 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <script type="text/javascript">
+    const data = {{tabledata|safe}};
+    const urls = {{urls|safe}};
+    const agencyurls = {{agencyurls|safe}};
     document.addEventListener("DOMContentLoaded", function () {
-        const data = {{tabledata|safe}};
-        const urls = {{urls|safe}};
-        const agencyurls = {{agencyurls|safe}};
 
         document.getElementById('maintable').remove()
 
         new gridjs.Grid({
             columns: [
                 {
-                    name: "Agency",
-                    formatter: (cell) => gridjs.html(`<a href="${agencyurls[cell]}">${cell}</a>`),
-                },
-                {
                     name: "Title",
                     formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
                 },
+                {
+                    name: "Agency",
+                    formatter: (cell) => gridjs.html(`<a href="${agencyurls[cell]}">${cell}</a>`)
+                },
                 "First Accessed",
                 "Last Accessed",
+                "Index",
                 {
                     name: "VADER",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
