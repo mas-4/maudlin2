@@ -64,7 +64,7 @@ def generate_wordcloud(headlines: list[str], path: str):
     logger.info("Cleaning text...")
     text['cleaned'] = text['title'].apply(prepare, pipeline=pipeline)
     logger.info("Vectorizing text...")
-    vec = CountVectorizer(ngram_range=(1, 3), lowercase=False)
+    vec = CountVectorizer(ngram_range=(1, 3), lowercase=False, max_features=1000)
     mat = vec.fit_transform(text['cleaned'])
     logger.info("Creating dataframe from vector...")
     df = pd.DataFrame(mat.todense().tolist(), columns=(vec.get_feature_names_out()))
