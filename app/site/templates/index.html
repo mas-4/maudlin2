@@ -5,9 +5,11 @@
 <br><br>
 
 <script type="text/javascript">
+    const data = {{tabledata|safe}};
+    const urls = {{urls|safe}};
+    const bias_dict = {{bias|safe}};
+    const credibility_dict = {{credibility|safe}};
     document.addEventListener("DOMContentLoaded", function () {
-        var data = {{tabledata|safe}};
-        var urls = {{urls|safe}};
 
         document.getElementById('maintable').remove()
 
@@ -28,11 +30,15 @@
                 },
                 {
                     name: "Credibility",
-                    formatter: (cell) => credibility[cell],
+                    sort: {
+                        compare: (a, b) => credibility_dict[a] - credibility_dict[b]
+                    }
                 },
                 {
                     name: "Bias",
-                    formatter: (cell) => bias[cell],
+                    sort: {
+                        compare: (a, b) => bias_dict[a] - bias_dict[b]
+                    }
                 },
                 "Country",
                 {

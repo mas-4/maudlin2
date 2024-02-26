@@ -7,7 +7,7 @@ import matplotlib.dates as mdates
 import seaborn as sns
 
 from app.site import j2env
-from app.utils import Config, Constants, get_logger
+from app.utils import Config, Constants, get_logger, Bias, Credibility
 from app.models import Session, Agency, Headline, Article
 from app.site.common import generate_wordcloud
 from app.registry import SeleniumScrapers, TradScrapers
@@ -46,7 +46,9 @@ class HomePage:
                 tabledata=self.data,
                 urls=self.urls,
                 metrics=self.metrics,
-                FileNames=FileNames
+                FileNames=FileNames,
+                bias={str(b): b.value for b in list(Bias)},
+                credibility={str(c): c.value for c in list(Credibility)}
             ))
 
     def generate_home_data(self):
@@ -58,6 +60,7 @@ class HomePage:
                 Agency.articles.any(),
                 Agency.name.in_([x.agency for x in scrapers])
             ).order_by(Agency.name).all()
+            self.data = []
             for agency in self.agencies:
                 if np.isnan(vader := round(agency.current_vader(), 2)):
                     logger.warning("Vader is na for %r.", agency)
@@ -66,11 +69,13 @@ class HomePage:
                     logger.warning("Afinn is na for %r.", agency)
                     continue
                 self.data.append(
-                    [agency.name, agency.credibility.value, agency.bias.value, str(agency.country), vader, afinn]
+                    [agency.name, str(agency.credibility), str(agency.bias), str(agency.country), vader, afinn]
                 )
                 self.urls[agency.name] = f"{agency.name}.html"
         self.data.sort(key=lambda x: x[4])
         df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Vader', 'Afinn'])
+        df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
+        df['Credibility'] = df['Credibility'].map({str(c): c.value for c in list(Credibility)})
         us = df[df['Country'] == "United States"]
         self.metrics['median_vader'] = us['Vader'].median()
         self.metrics['mean_vader'] = us['Vader'].mean()
@@ -95,11 +100,13 @@ class HomePage:
 
     def render_sentiment_graphs(self):
         with Session() as s:
-            data = s.query(Headline.vader_compound, Headline.afinn, Headline.last_accessed, Agency._bias)\
-                .join(Headline.article).join(Article.agency).all()
+            data = s.query(
+                Headline.vader_compound, Headline.afinn, Headline.last_accessed, Agency._bias  # noqa protected
+            ).join(Headline.article).join(Article.agency).all()
         self.generate_graphs(self.aggregate_data(data))
 
-    def generate_graphs(self, agg):
+    @staticmethod
+    def generate_graphs(agg):
         fig, ax = plt.subplots(2, 2)
         fig.set_size_inches(9, 8)
         sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0,0], label='Mean VADER')
@@ -114,7 +121,8 @@ class HomePage:
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, FileNames.graphs))
 
-    def aggregate_data(self, data):
+    @staticmethod
+    def aggregate_data(data):
         df = pd.DataFrame(data, columns=['Vader', 'Afinn', 'Date', 'Bias'])
         df['Date'] = pd.to_datetime(df['Date'])
         df['PVI'] = df['Vader'] * df['Bias']
