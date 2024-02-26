@@ -1,3 +1,4 @@
+import os
 import re
 import traceback as tb
 from abc import ABC, abstractmethod
@@ -186,6 +187,8 @@ class SeleniumResourceManager:
 
     def quit(self):
         self._driver.quit()
+        # force kill the driver
+        os.system(f"kill -9 {self._driver.service.process.pid}")
 
     def get_html(self, url):
         with self.lock:
