@@ -1,17 +1,11 @@
 {% for agency, agency_data in data.items() %}
-        {{ agency }}: ({{ agency_data['articles'] }},{{ agency_data['headlines'] }},{{ agency_data['updated'] }})
+{{ agency }}: ({{ agency_data['articles'] }},{{ agency_data['headlines'] }},{{ agency_data['updated'] }})
 {% endfor %}
 
 {% for agency, agency_data in data.items() %}
-
-{% if agency_data['exceptions'] %}
-
+    {% if agency_data['exceptions'] %}
 # {{ agency }}
 {{ agency }} had {{ agency_data['exceptions']|length }} exceptions
-
 {{ exception['msg'] }}
-
-{% endfor %}
-{% endif %}
-
+    {% endif %}
 {% endfor %}
