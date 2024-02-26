@@ -19,7 +19,8 @@ STOPWORDS -= exclude_stopwords
 def remove_stop(tokens: list[str], stopwords=None):
     if stopwords is None:
         stopwords = STOPWORDS
-    return [tok for tok in tokens if tok not in stopwords]
+    stopwords = [stop.lower() for stop in stopwords]
+    return [tok for tok in tokens if tok.lower() not in stopwords]
 
 
 POS = ['NN', 'NNS', 'NNP', 'NNPS']
