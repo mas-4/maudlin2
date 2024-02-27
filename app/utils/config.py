@@ -15,7 +15,7 @@ class Config:
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False
-    run_selenium = True
+    run_selenium = False
     timeout = 30  # seconds for requests
 
     # We want to exclude perpetual links that are not distinguishable by html (like on Drudge) but capture articles
