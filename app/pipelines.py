@@ -80,7 +80,7 @@ def ngrams(tokens, n=2, sep=' ', stopwords=None):
     return [sep.join(ngram) for ngram in zip(*[tokens[i:] for i in range(n)]) if not any(tok in stopwords for tok in ngram)]
 
 def split_camelcase(text: str):
-    return re.sub(r'(?<!\bMc)([a-z])([A-Z])', r'\1 \2', tokens) 
+    return re.sub(r'(?<!\bMc)([a-z])([A-Z])', r'\1 \2', text)
 
 
 default_pipeline = [
