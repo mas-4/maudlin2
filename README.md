@@ -3,7 +3,7 @@
 Maudlin is a news aggregator and sentiment analyzer. It scrapes the front page of most news sites and analyzes the
 sentiment in each story.
 
-The current app is available at http://maudlin.standingwater.io
+The current app is available at https://maudlin.news or https://maudlin.netlify.app
 
 ## Basic Premise
 
