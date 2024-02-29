@@ -113,7 +113,7 @@ from app.scrapers.yahoonews import YahooNews
 
 Scrapers = [
     Axios,
-    # DailyWire,
+    DailyWire,
     # HindustanTimes,
     # InfoWars,
     # NationalInterest,
