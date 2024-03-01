@@ -21,6 +21,7 @@ class CaixinGlobal(Scraper):
             href = a['href']
             if href.startswith('//'):
                 href = 'https:' + href
+            href = re.sub(r'\n\?.*', '', href)
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
