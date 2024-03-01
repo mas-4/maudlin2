@@ -115,7 +115,7 @@ Scrapers = [
     Axios,
     DailyWire,
     # HindustanTimes,
-    # InfoWars,
+    InfoWars,
     # NationalInterest,
     # NationalReview,
     # Politico,
