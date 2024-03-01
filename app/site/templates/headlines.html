@@ -2,6 +2,10 @@
 
 {% block content %}
 <h1>{{ title }}</h1>
+
+<img alt="Word Cloud" src="wordcloud.png">
+<br><br>
+
 <script type="text/javascript">
     const data = {{tabledata|safe}};
     const urls = {{urls|safe}};
