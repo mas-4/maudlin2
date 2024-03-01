@@ -9,7 +9,6 @@
 <script type="text/javascript">
     const data = {{tabledata|safe}};
     const urls = {{urls|safe}};
-    const agencyurls = {{agencyurls|safe}};
     function truncateString(str, num) {
         if (str.length > num) {
             return str.slice(0, num) + '...';
@@ -27,13 +26,10 @@
                     name: "Title",
                     formatter: (cell) => gridjs.html(`<a title="${cell}" class="headline" href="${urls[cell]}">${truncateString(cell, 127)}</a>`),
                 },
-                {
-                    name: "Agency",
-                    formatter: (cell) => gridjs.html(`<a href="${agencyurls[cell]}">${cell}</a>`)
-                },
                 "First Accessed",
                 "Last Accessed",
                 "Index",
+                "XKeyscore",
                 {
                     name: "VADER",
                     formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),

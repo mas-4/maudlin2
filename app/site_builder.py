@@ -24,3 +24,7 @@ def build_site():
     generate_agency_pages()
     copy_assets()
     publish_to_netlify()
+
+
+if __name__ == '__main__':
+    build_site()
