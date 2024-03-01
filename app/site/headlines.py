@@ -42,24 +42,19 @@ class HeadlinesPage:
             Headline.first_accessed.desc()
         ).all()
 
-        N=1000
+        n_features = 1000
         df = pd.DataFrame([[h.title, h] for h in headlines], columns=['title', 'headline'])
         df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=pipeline))
-        vectorizer = CountVectorizer(max_features=N, ngram_range=(1, 3), lowercase=False)
-        X = vectorizer.fit_transform(df['prepared'])
-        dense = X.todense()
-        word_scores = np.sum(dense, axis=0).A1
-        top_indices = np.argsort(word_scores)[-N:]
+        dense = CountVectorizer(max_features=n_features, ngram_range=(1, 3), lowercase=False).fit_transform(
+            df['prepared']).todense()
+        top_indices = np.argsort(np.sum(dense, axis=0).A1)[-n_features:]
 
         headline_scores = []
         for doc_idx, doc in enumerate(dense):
-            score = sum(doc[0, i] for i in top_indices if doc[0, i] > 0)
-            headline_scores.append(score)
+            headline_scores.append(sum(doc[0, i] for i in top_indices if doc[0, i] > 0))
 
         df['score'] = headline_scores
-        df_sorted = df.sort_values(by='score', ascending=False)
-        headlines = df_sorted['headline'].tolist()
-        return headlines
+        return df.sort_values(by='score', ascending=False)['headline'].tolist()
 
     def get_dicts(self, headlines):
         data = []
