@@ -8,7 +8,7 @@ nltk.download('stopwords')
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
 include_stopwords = {'dear', 'New York Times', 'Getty Images',
                      'AP', "'s", "’", "``", "''", "—", "–", "“", "”", "‘", "’",
-                     "the", "of", "in"}
+                     "the", "of", "in", "ago"}
 include_stopwords.update(string.punctuation)
 exclude_stopwords = {'not', 'no', 'nor', 'none', 'neither', 'never', 'nothing',
                      'nowhere', 'nobody', 'noone', 'nought', 'nay', 'nix', 'nil', 'negatory', 'nay', 'nope', 'nah',
