@@ -49,7 +49,7 @@ class AgencyPage:
         tabledata = []
         urls = {}
         for headline in headlines:
-            if headline.last_accessed < Constants.TimeConstants.five_minutes_ago:
+            if headline.last_accessed < Constants.TimeConstants.ten_minutes_ago:
                 continue
             urls[headline.title] = headline.article.url
             strftime = '%b %-d %-I:%M %p'

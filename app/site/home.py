@@ -90,7 +90,7 @@ class HomePage:
             logger.info("Querying data for home wordcloud...")
             titles = s.query(Headline.title).filter(
                 Headline.first_accessed > Constants.TimeConstants.midnight,
-                Headline.last_accessed > Constants.TimeConstants.five_minutes_ago
+                Headline.last_accessed > Constants.TimeConstants.ten_minutes_ago
             ).all()
             logger.info("...done")
             path = str(os.path.join(Config.build, FileNames.wordcloud))

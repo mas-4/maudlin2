@@ -34,7 +34,7 @@ class HeadlinesPage:
 
     def get_headlines(self, s):
         headlines: list[Headline] = s.query(Headline).filter(
-            Headline.last_accessed > Constants.TimeConstants.five_minutes_ago,
+            Headline.last_accessed > Constants.TimeConstants.ten_minutes_ago,
             Headline.first_accessed > dt.now() - td(days=1),
             Headline.position < 25,
         ).order_by(
@@ -46,14 +46,10 @@ class HeadlinesPage:
         df = pd.DataFrame([[h.title, h] for h in headlines], columns=['title', 'headline'])
         df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=pipeline))
         dense = CountVectorizer(max_features=n_features, ngram_range=(1, 3), lowercase=False).fit_transform(
-            df['prepared']).todense()
+            df['prepared']
+        ).todense()
         top_indices = np.argsort(np.sum(dense, axis=0).A1)[-n_features:]
-
-        headline_scores = []
-        for doc_idx, doc in enumerate(dense):
-            headline_scores.append(sum(doc[0, i] for i in top_indices if doc[0, i] > 0))
-
-        df['score'] = headline_scores
+        df['score'] = [sum(doc[0, i] for i in top_indices if doc[0, i] > 0) for doc in dense]
         return df.sort_values(by='score', ascending=False)['headline'].tolist()
 
     def get_dicts(self, headlines):

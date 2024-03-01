@@ -101,7 +101,7 @@ class Constants:
         midnight = dt.now().replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday = midnight - td(days=1)
         now = dt.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
-        five_minutes_ago = (dt.now(pytz.UTC) - td(minutes=20)).replace(tzinfo=None)
+        ten_minutes_ago = (dt.now(pytz.UTC) - td(minutes=10)).replace(tzinfo=None)
 
         @staticmethod
         def now_func():
