@@ -10,6 +10,13 @@
     const data = {{tabledata|safe}};
     const urls = {{urls|safe}};
     const agencyurls = {{agencyurls|safe}};
+    function truncateString(str, num) {
+        if (str.length > num) {
+            return str.slice(0, num) + '...';
+        } else {
+            return str;
+        }
+    }
     document.addEventListener("DOMContentLoaded", function () {
 
         document.getElementById('maintable').remove()
@@ -18,7 +25,7 @@
             columns: [
                 {
                     name: "Title",
-                    formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                    formatter: (cell) => gridjs.html(`<a class="headline" href="${urls[cell]}">${truncateString(cell, 255)}</a>`),
                 },
                 {
                     name: "Agency",
