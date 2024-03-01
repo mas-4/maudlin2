@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 
 from app.site import j2env
-from app.utils import Config, Constants, get_logger, Country
+from app.utils import Config, Constants, get_logger
 from app.models import Session, Headline
 from app.pipelines import prepare
 from app.site.common import pipeline
@@ -21,18 +21,22 @@ class HeadlinesPage:
     def generate(self):
         logger.info("Generating headlines page...")
         with Session() as s:
-            headlines = self.get_headlines(s)
-            agency_urls, data, urls = self.get_dicts(headlines)
+            headline_df = self.get_headlines(s)
+        urls = headline_df.set_index('title')['url'].to_dict()
+        headline_df = headline_df[
+            ['title', 'first_accessed', 'last_accessed', 'position', 'score', 'vader_compound', 'afinn']
+        ]
+        headline_df.sort_values(by='score', ascending=False, inplace=True)
         with open(os.path.join(Config.build, 'headlines.html'), 'wt') as f:
             f.write(self.template.render(
                 title='Headlines',
-                tabledata=data,
+                tabledata=headline_df.values.tolist(),
                 urls=urls,
-                agencyurls=agency_urls
             ))
         logger.info("...done")
 
-    def get_headlines(self, s):
+    @staticmethod
+    def get_headlines(s):
         headlines: list[Headline] = s.query(Headline).filter(
             Headline.last_accessed > Constants.TimeConstants.ten_minutes_ago,
             Headline.first_accessed > dt.now() - td(days=1),
@@ -42,42 +46,46 @@ class HeadlinesPage:
             Headline.first_accessed.desc()
         ).all()
 
+        df = pd.DataFrame([[
+            h.title,
+            h.article.agency.name,
+            h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime('%b %-d %-I:%M %p'),
+            h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime('%-I:%M %p'),
+            h.position,
+            h.vader_compound,
+            h.afinn,
+            h.article.url,
+            h.article.agency.country.name
+        ] for h in headlines],
+            columns=[
+                'title',
+                'agency',
+                'first_accessed',
+                'last_accessed',
+                'position',
+                'vader_compound',
+                'afinn',
+                'url',
+                'country'
+            ])
+        return HeadlinesPage.filter_score_sort(df)
+
+    @staticmethod
+    def filter_score_sort(df):
         n_features = 1000
-        df = pd.DataFrame([[h.title, h] for h in headlines], columns=['title', 'headline'])
+        df = df[df['country'].isin(['us', 'gb'])]
+        # drop rows where country == gb and agency != The Economist, BBC, The Guardian
+        df = df[~((df['country'] == 'gb') & (~df['agency'].isin(['The Economist', 'BBC', 'The Guardian'])))]
+        # drop the sun
+        df = df[~(df['agency'] == 'The Sun')]
         df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=pipeline))
         dense = CountVectorizer(max_features=n_features, ngram_range=(1, 3), lowercase=False).fit_transform(
             df['prepared']
         ).todense()
         top_indices = np.argsort(np.sum(dense, axis=0).A1)[-n_features:]
         df['score'] = [sum(doc[0, i] for i in top_indices if doc[0, i] > 0) for doc in dense]
-        return df.sort_values(by='score', ascending=False)['headline'].tolist()
-
-    def get_dicts(self, headlines):
-        data = []
-        urls = {}
-        agency_urls = {}
-        for h in headlines:
-            if h.article.agency.country not in [Country.us, Country.gb]:
-                continue
-            if h.article.agency.country == Country.gb and h.article.agency.name not in [
-                "The Economist",
-                "BBC",
-                "The Guardian",
-            ]:
-                continue
-            if h.article.agency.name in ["The Sun", ]:
-                continue
-            data.append([
-                h.title,
-                h.article.agency.name,
-                h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone) \
-                    .strftime('%b %-d %-I:%M %p'),
-                h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone) \
-                    .strftime('%-I:%M %p'),
-                h.position,
-                h.vader_compound,
-                h.afinn
-            ])
-            urls[h.title] = h.article.url
-            agency_urls[h.article.agency.name] = h.article.agency.url
-        return agency_urls, data, urls
+        df = df.sort_values(by='score', ascending=False)
+        df.drop('prepared', axis=1, inplace=True)
+        # combine agency name and title Agency - Title
+        df['title'] = df['agency'] + ' - ' + df['title']
+        return df
