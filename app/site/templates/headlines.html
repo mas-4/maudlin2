@@ -25,7 +25,7 @@
             columns: [
                 {
                     name: "Title",
-                    formatter: (cell) => gridjs.html(`<a title="${cell}" class="headline" href="${urls[cell]}">${truncateString(cell, 255)}</a>`),
+                    formatter: (cell) => gridjs.html(`<a title="${cell}" class="headline" href="${urls[cell]}">${truncateString(cell, 127)}</a>`),
                 },
                 {
                     name: "Agency",
