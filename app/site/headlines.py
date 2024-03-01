@@ -10,7 +10,7 @@ from app.site import j2env
 from app.utils import Config, Constants, get_logger
 from app.models import Session, Headline
 from app.pipelines import prepare
-from app.site.common import pipeline
+from app.site.common import pipeline, calculate_xkeyscore
 
 logger = get_logger(__name__)
 
@@ -72,20 +72,13 @@ class HeadlinesPage:
 
     @staticmethod
     def filter_score_sort(df):
-        n_features = 1000
         df = df[df['country'].isin(['us', 'gb'])]
         # drop rows where country == gb and agency != The Economist, BBC, The Guardian
         df = df[~((df['country'] == 'gb') & (~df['agency'].isin(['The Economist', 'BBC', 'The Guardian'])))]
         # drop the sun
         df = df[~(df['agency'] == 'The Sun')]
-        df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=pipeline))
-        dense = CountVectorizer(max_features=n_features, ngram_range=(1, 3), lowercase=False).fit_transform(
-            df['prepared']
-        ).todense()
-        top_indices = np.argsort(np.sum(dense, axis=0).A1)[-n_features:]
-        df['score'] = [sum(doc[0, i] for i in top_indices if doc[0, i] > 0) for doc in dense]
-        df = df.sort_values(by='score', ascending=False)
-        df.drop('prepared', axis=1, inplace=True)
+        df = calculate_xkeyscore(df)
         # combine agency name and title Agency - Title
         df['title'] = df['agency'] + ' - ' + df['title']
         return df
+
