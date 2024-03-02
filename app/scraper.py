@@ -8,18 +8,17 @@ from threading import Thread, Lock
 import requests as rq
 import validators
 from bs4 import BeautifulSoup as Soup
-from selenium.webdriver.firefox.options import Options
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 
-from app.utils.constants import Credibility, Bias, Country
-from app.utils.logger import get_logger
-from app.utils.config import Config
+from app import metrics
 from app.dayreport import DayReport
 from app.models import Session, Article, Agency, Headline
-from app import metrics
+from app.utils.config import Config
+from app.utils.constants import Credibility, Bias, Country
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
 
 ArticlePair = namedtuple('ArticlePair', ['href', 'title', 'pos'])
 STRIPS = {'\xad': ' ', '\xa0': ' ', '\n': ' ', '\t': ' ', '\r': ' ', '  +': ' '}
@@ -115,7 +114,8 @@ class Scraper(ABC, Thread):
                 self.updated += 1
                 logger.debug("Headline already exists, updating last_accessed: %r", headline)
             s.commit()
-            self.downstream = list(set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
+            self.downstream = list(
+                set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
 
     def run(self):
         self.run_setup()
@@ -126,7 +126,7 @@ class Scraper(ABC, Thread):
         # If we didn't get anything we want to warn!
         bugle = logger.info if self.articles + self.headlines + self.updated else logger.warning
         bugle("Done with %s, added %d articles and %d headlines, updated %d headlines",
-                    self.agency, self.articles, self.headlines, self.updated)
+              self.agency, self.articles, self.headlines, self.updated)
         self.done = True
 
     @staticmethod
@@ -176,6 +176,7 @@ class Scraper(ABC, Thread):
 class SeleniumResourceManager:
     _instance = None
     lock = Lock()
+
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -202,6 +203,7 @@ class SeleniumScraper(Scraper):
     def __init__(self):
         super().__init__()
         self.srs = SeleniumResourceManager()
+
     def get_page(self, url: str):
         try:
             logger.info("Downloading %s...", url)

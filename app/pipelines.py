@@ -1,8 +1,9 @@
+import string
+from functools import partial
+
+import nltk
 import regex as re
 from textacy.preprocessing import normalize as tnorm, remove as trem
-import string
-import nltk
-from functools import partial
 
 nltk.download('stopwords')
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
@@ -16,6 +17,7 @@ exclude_stopwords = {'not', 'no', 'nor', 'none', 'neither', 'never', 'nothing',
 STOPWORDS |= include_stopwords
 STOPWORDS -= exclude_stopwords
 
+
 def remove_stop(tokens: list[str], stopwords=None):
     if stopwords is None:
         stopwords = STOPWORDS
@@ -25,8 +27,10 @@ def remove_stop(tokens: list[str], stopwords=None):
 
 POS = ['NN', 'NNS', 'NNP', 'NNPS']
 
-def pos_filter(text, pos=POS): # noqa
+
+def pos_filter(text, pos=POS):  # noqa
     return [word for word, tag in nltk.pos_tag(text) if tag in pos]
+
 
 CONTRACTION_MAP: dict[str, str] = {
     "aren't": "are not",
@@ -61,23 +65,30 @@ CONTRACTION_EXPANSION_FROM_TOKEN: dict[str, str] = {
     'll': 'will'
 }
 
+
 def expand_contractions(tokens: list[str]):
     return [CONTRACTION_MAP.get(tok, tok) for tok in tokens]
+
 
 def tokenize(text: str) -> list[str]:
     return re.findall(r'[\w-]*\p{L}[\w-]*', text)
 
+
 def decontract(tokens: list[str]):
     return [CONTRACTION_MAP.get(tok, tok) for tok in tokens]
+
 
 def lemmatize(tokens: list[str]):
     lemmatizer = nltk.WordNetLemmatizer()
     return [lemmatizer.lemmatize(tok) for tok in tokens]
 
+
 def ngrams(tokens, n=2, sep=' ', stopwords=None):
     if stopwords is None:
         stopwords = set()
-    return [sep.join(ngram) for ngram in zip(*[tokens[i:] for i in range(n)]) if not any(tok in stopwords for tok in ngram)]
+    return [sep.join(ngram) for ngram in zip(*[tokens[i:] for i in range(n)]) if
+            not any(tok in stopwords for tok in ngram)]
+
 
 def split_camelcase(text: str):
     return re.sub(r'(?<!\bMc)([a-z])([A-Z])', r'\1 \2', text)

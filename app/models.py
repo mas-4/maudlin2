@@ -12,6 +12,7 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class Base(DeclarativeBase):
     pass
 
@@ -37,12 +38,12 @@ class Agency(Base):
                 .filter_by(agency_id=self.id) \
                 .order_by(Article.first_accessed.asc()).first()[0]
             numbers = np.array(s.query(col) \
-                .join(Article, Article.id == Headline.article_id) \
-                .filter_by(agency_id=self.id) \
-                .filter(
-                    Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
-                    Article.last_accessed > Config.last_accessed  # we want current articles!
-                ).all()).flatten()
+                               .join(Article, Article.id == Headline.article_id) \
+                               .filter_by(agency_id=self.id) \
+                               .filter(
+                Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
+                Article.last_accessed > Config.last_accessed  # we want current articles!
+            ).all()).flatten()
         if np.isnan(np.mean(numbers)):
             logger.warning("No %s data for %r.", col, self)
         return np.mean(numbers[~np.isnan(numbers)])
@@ -52,8 +53,6 @@ class Agency(Base):
 
     def current_afinn(self) -> float:
         return self.current(Headline.afinn)
-
-
 
     @property
     def bias(self):
@@ -85,7 +84,7 @@ class AccessTimeMixin:
     last_accessed: Mapped[dt] = mapped_column(DateTime(), default=dt.now(pytz.UTC))
 
     def update_last_accessed(self):
-        self.last_accessed = dt.now(pytz.UTC) # noqa type: ignore
+        self.last_accessed = dt.now(pytz.UTC)  # noqa type: ignore
 
 
 class Article(Base, AccessTimeMixin):
@@ -95,7 +94,6 @@ class Article(Base, AccessTimeMixin):
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
     url: Mapped[str] = mapped_column(String(254))
     headlines: Mapped[list["Headline"]] = relationship("Headline", back_populates="article")
-
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, url={self.url!r})"

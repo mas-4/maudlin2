@@ -1,9 +1,11 @@
-from app.models import Headline
-from nltk.sentiment import SentimentIntensityAnalyzer
 from afinn import Afinn
+from nltk.sentiment import SentimentIntensityAnalyzer
+
+from app.models import Headline
 
 SID = SentimentIntensityAnalyzer()
 AFINN = Afinn()
+
 
 def vader_lexicon(headline: Headline):
     results = {f'vader_{k}': v for k, v in SID.polarity_scores(headline.title).items()}

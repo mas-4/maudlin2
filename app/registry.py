@@ -39,7 +39,6 @@ from app.scrapers.globeandmail import GlobeAndMail
 from app.scrapers.googlenews import GoogleNews
 from app.scrapers.guardian import Guardian
 from app.scrapers.hill import Hill
-from app.scrapers.hindustantimes import HindustanTimes
 from app.scrapers.huffpost import HuffPost
 from app.scrapers.independent import Independent
 from app.scrapers.indianexpress import IndianExpress
@@ -56,9 +55,7 @@ from app.scrapers.mint import Mint
 from app.scrapers.moscowtimes import MoscowTimes
 from app.scrapers.motherjones import MotherJones
 from app.scrapers.msnbc import MSNBC
-from app.scrapers.nationalinterest import NationalInterest
 from app.scrapers.nationalpost import NationalPost
-from app.scrapers.nationalreview import NationalReview
 from app.scrapers.nbc import NBC
 from app.scrapers.ndtv import NDTV
 from app.scrapers.newrepublic import NewRepublic
@@ -72,15 +69,12 @@ from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
 from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.politicalwire import PoliticalWire
-from app.scrapers.politico import Politico
 from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.quillette import Quillette
 from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
 from app.scrapers.rawstory import RawStory
-from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.reason import Reason
 from app.scrapers.redstate import RedState
-from app.scrapers.reuters import Reuters
 from app.scrapers.rollingstone import RollingStone
 from app.scrapers.rt import RT
 from app.scrapers.salon import Salon
@@ -90,7 +84,6 @@ from app.scrapers.skynews import SkyNews
 from app.scrapers.slate import Slate
 from app.scrapers.southchinamorningpost import SouthChinaMorningPost
 from app.scrapers.startribune import StarTribune
-from app.scrapers.straitstimes import StraitsTimes
 from app.scrapers.sun import Sun
 from app.scrapers.sydneymorningherald import SydneyMorningHerald
 from app.scrapers.taipeitimes import TaipeiTimes
@@ -104,7 +97,6 @@ from app.scrapers.vanityfair import VanityFair
 from app.scrapers.vice import Vice
 from app.scrapers.voa import VOA
 from app.scrapers.vox import Vox
-from app.scrapers.wallstreetjournal import WallStreetJournal
 from app.scrapers.washingtonpost import WashingtonPost
 from app.scrapers.week import Week
 from app.scrapers.winnipegfreepress import WinnipegFreePress
