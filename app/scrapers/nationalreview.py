@@ -1,9 +1,8 @@
-import re
-
 from bs4 import BeautifulSoup as Soup
 
-from app.utils import Bias, Credibility, Country, Constants, get_logger
 from app.scraper import SeleniumScraper
+from app.utils.constants import Bias, Credibility
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

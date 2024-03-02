@@ -1,16 +1,15 @@
 import os
 from datetime import datetime as dt, timedelta as td
 
-import numpy as np
-import pytz
-from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
+import pytz
 
-from app.site import j2env
-from app.utils import Config, Constants, get_logger
 from app.models import Session, Headline
-from app.pipelines import prepare
-from app.site.common import pipeline, calculate_xkeyscore
+from app.site import j2env
+from app.site.common import calculate_xkeyscore
+from app.utils.config import Config
+from app.utils.constants import Constants
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

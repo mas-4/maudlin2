@@ -1,5 +1,5 @@
 import os
-from app.utils import Constants
+from app.utils.constants import Constants
 
 from jinja2 import Environment, FileSystemLoader
 

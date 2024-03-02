@@ -4,7 +4,9 @@ import string
 import yaml
 
 from app.site import j2env
-from app.utils import Config, Constants, get_logger
+from app.utils.config import Config
+from app.utils.constants import Constants
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

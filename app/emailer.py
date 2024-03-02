@@ -3,7 +3,8 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from app.utils import Config, get_logger
+from app.utils.config import Config
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

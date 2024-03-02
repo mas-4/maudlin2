@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as Soup
 
-from app.utils import Bias, Credibility, Country, get_logger
+from app.utils.constants import Bias, Credibility, Country
+from app.utils.logger import get_logger
 from app.scraper import Scraper
 
 logger = get_logger(__name__)

@@ -17,7 +17,7 @@ from app.pipelines import (
     expand_contractions,
     STOPWORDS
 )
-from app.utils import get_logger
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

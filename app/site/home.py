@@ -7,7 +7,9 @@ import matplotlib.dates as mdates
 import seaborn as sns
 
 from app.site import j2env
-from app.utils import Config, Constants, get_logger, Bias, Credibility
+from app.utils.config import Config
+from app.utils.constants import Constants, Bias, Credibility
+from app.utils.logger import get_logger
 from app.models import Session, Agency, Headline, Article
 from app.site.common import generate_wordcloud
 from app.registry import SeleniumScrapers, TradScrapers

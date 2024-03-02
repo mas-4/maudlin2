@@ -4,7 +4,7 @@ from flask import Flask
 from app.models import Session, Headline, Article, Agency
 from app.site import j2env
 from app.site.common import calculate_xkeyscore
-from app.utils import Constants
+from app.utils.constants import Constants
 import cachetools.func
 
 app = Flask(__name__)

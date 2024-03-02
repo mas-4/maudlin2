@@ -2,7 +2,9 @@ import os
 import shutil
 import subprocess
 
-from app.utils import get_logger, Config, Constants
+from app.utils.logger import get_logger
+from app.utils.config import Config
+from app.utils.constants import Constants
 
 logger = get_logger(__name__)
 
