@@ -2,7 +2,7 @@
 
 {% block content %}
 <h1>{{ title }}</h1>
-
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <script type="text/javascript">
     const data = {{tabledata|safe}};
     const urls = {{urls|safe}};
@@ -17,6 +17,16 @@
 
         new gridjs.Grid({
             columns: [
+                {
+                    name: "ID",
+                    formatter(cell) {
+                        return gridjs.html(`
+                        <form action="/admin/mark" method="post">
+                            <input type="checkbox" name="id" value="${cell}">
+                        </form>
+                        `);
+                    }
+                },
                 {
                     name: "Title",
                     formatter: (cell) => gridjs.html(`<a title="${cell}" class="headline" href="${urls[cell]}">${truncateString(cell, 127)}</a>`),
