@@ -160,9 +160,7 @@ cython_debug/
 .idea/
 .DS_Store
 *.db
-.creds
 data/
 dev/
 # Local Netlify folder
-.netlify
-.netlify_creds
+.*creds

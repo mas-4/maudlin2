@@ -8,6 +8,11 @@ import mistune
 from app.site import j2env
 from app.utils.constants import Constants, Credibility, Bias
 
+def read_creds(path):
+    if os.path.exists(path):
+        with open(path, 'rt') as f_in:
+            return f_in.read().strip()
+    return ''
 
 class Config:
     use_color = True
@@ -34,7 +39,9 @@ class Config:
     if not os.path.exists(build):
         os.makedirs(build)
 
-    connection_string = f'sqlite:///{output_dir}/data.db'
+    db_file_name = 'data.db'
+    db_file_path = str(os.path.join(output_dir, db_file_name))
+    connection_string = 'sqlite:///' + db_file_path
 
     @staticmethod
     def time_between_requests() -> float:  # this is a function so that we can make it random if necessary
@@ -50,10 +57,11 @@ class Config:
             emails, domain, email, pw = f_in.read().strip().splitlines()
             emails_to_notify = emails.split(',')
 
-    netlify = ''
-    if os.path.exists(Constants.Paths.NETLIFY_CREDS):
-        with open(Constants.Paths.NETLIFY_CREDS, 'rt') as f_in:
-            netlify = f_in.read().strip()
+    netlify = read_creds(Constants.Paths.NETLIFY_CREDS)
+    dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
+
+
+
 
 
 # <editor-fold desc="Jinja2 Environment Stuff">

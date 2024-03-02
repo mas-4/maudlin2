@@ -84,6 +84,7 @@ class Constants:
         ROOT = str(pathlib.Path(__file__).parent.parent.parent)
         EMAIL_CREDS = os.path.join(ROOT, '.creds')
         NETLIFY_CREDS = os.path.join(ROOT, '.netlify_creds')
+        DROPBOX_CREDS = os.path.join(ROOT, '.dropbox_creds')
 
     class Patterns:
         SLASH_DATE = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')
