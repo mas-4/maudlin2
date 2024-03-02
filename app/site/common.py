@@ -1,6 +1,7 @@
 import string
 from functools import partial
 
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from textacy.preprocessing import normalize as tnorm, remove as trem
@@ -75,3 +76,15 @@ def generate_wordcloud(headlines: list[str], path: str):
     wc.generate_from_frequencies(freq_dict)
     logger.info("Saving wordcloud to %s", path)
     wc.to_file(path)
+
+def calculate_xkeyscore(df):
+    n_features = 1000
+    df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=pipeline))
+    dense = CountVectorizer(max_features=n_features, ngram_range=(1, 3), lowercase=False).fit_transform(
+        df['prepared']
+    ).todense()
+    top_indices = np.argsort(np.sum(dense, axis=0).A1)[-n_features:]
+    df['score'] = [sum(doc[0, i] for i in top_indices if doc[0, i] > 0) for doc in dense]
+    df = df.sort_values(by='score', ascending=False)
+    df.drop('prepared', axis=1, inplace=True)
+    return df
