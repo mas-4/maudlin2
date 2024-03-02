@@ -18,19 +18,7 @@ STOPWORDS |= include_stopwords
 STOPWORDS -= exclude_stopwords
 
 
-def remove_stop(tokens: list[str], stopwords=None):
-    if stopwords is None:
-        stopwords = STOPWORDS
-    stopwords = [stop.lower() for stop in stopwords]
-    return [tok for tok in tokens if tok.lower() not in stopwords]
-
-
 POS = ['NN', 'NNS', 'NNP', 'NNPS']
-
-
-def pos_filter(text, pos=POS):  # noqa
-    return [word for word, tag in nltk.pos_tag(text) if tag in pos]
-
 
 CONTRACTION_MAP: dict[str, str] = {
     "aren't": "are not",
@@ -66,36 +54,57 @@ CONTRACTION_EXPANSION_FROM_TOKEN: dict[str, str] = {
 }
 
 
-def expand_contractions(tokens: list[str]):
-    return [CONTRACTION_MAP.get(tok, tok) for tok in tokens]
+def prepare(text, pipeline=None):
+    if pipeline is None:
+        pipeline = default_pipeline
+    for transform in pipeline:
+        text = transform(text)
+    return text
 
 
-def tokenize(text: str) -> list[str]:
-    return re.findall(r'[\w-]*\p{L}[\w-]*', text)
+class Pipelines:
+    @staticmethod
+    def remove_stop(tokens: list[str], stopwords=None):
+        if stopwords is None:
+            stopwords = STOPWORDS
+        stopwords = [stop.lower() for stop in stopwords]
+        return [tok for tok in tokens if tok.lower() not in stopwords]
 
+    @staticmethod
+    def pos_filter(text, pos=POS):  # noqa
+        return [word for word, tag in nltk.pos_tag(text) if tag in pos]
 
-def decontract(tokens: list[str]):
-    return [CONTRACTION_MAP.get(tok, tok) for tok in tokens]
+    @staticmethod
+    def expand_contractions(tokens: list[str]):
+        return [CONTRACTION_MAP.get(tok, tok) for tok in tokens]
 
+    @staticmethod
+    def tokenize(text: str) -> list[str]:
+        return re.findall(r'[\w-]*\p{L}[\w-]*', text)
 
-def lemmatize(tokens: list[str]):
-    lemmatizer = nltk.WordNetLemmatizer()
-    return [lemmatizer.lemmatize(tok) for tok in tokens]
+    @staticmethod
+    def lemmatize(tokens: list[str]):
+        lemmatizer = nltk.WordNetLemmatizer()
+        return [lemmatizer.lemmatize(tok) for tok in tokens]
 
+    @staticmethod
+    def ngrams(tokens, n=2, sep=' ', stopwords=None):
+        if stopwords is None:
+            stopwords = set()
+        return [sep.join(ngram) for ngram in zip(*[tokens[i:] for i in range(n)]) if
+                not any(tok in stopwords for tok in ngram)]
 
-def ngrams(tokens, n=2, sep=' ', stopwords=None):
-    if stopwords is None:
-        stopwords = set()
-    return [sep.join(ngram) for ngram in zip(*[tokens[i:] for i in range(n)]) if
-            not any(tok in stopwords for tok in ngram)]
+    @staticmethod
+    def split_camelcase(text: str):
+        return re.sub(r'(?<!\bMc)([a-z])([A-Z])', r'\1 \2', text)
 
-
-def split_camelcase(text: str):
-    return re.sub(r'(?<!\bMc)([a-z])([A-Z])', r'\1 \2', text)
+    @staticmethod
+    def decontract(tokens: list[str]):
+        return [CONTRACTION_EXPANSION_FROM_TOKEN.get(tok, tok) for tok in tokens]
 
 
 default_pipeline = [
-    split_camelcase,
+    Pipelines.split_camelcase,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
     tnorm.unicode,
@@ -104,15 +113,6 @@ default_pipeline = [
     trem.brackets,
     trem.punctuation,
     str.lower,
-    tokenize,
-    decontract,
-    partial(remove_stop, stopwords=string.ascii_lowercase)
+    Pipelines.tokenize,
+    Pipelines.decontract,
 ]
-
-
-def prepare(text, pipeline=None):
-    if pipeline is None:
-        pipeline = default_pipeline
-    for transform in pipeline:
-        text = transform(text)
-    return text

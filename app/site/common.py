@@ -4,19 +4,9 @@ from functools import partial
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
-from textacy.preprocessing import normalize as tnorm, remove as trem
 from wordcloud import WordCloud
 
-from app.pipelines import (
-    prepare,
-    split_camelcase,
-    tokenize,
-    lemmatize,
-    pos_filter,
-    remove_stop,
-    expand_contractions,
-    STOPWORDS
-)
+from app.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,7 +33,7 @@ STOPWORDS.extend(list(string.ascii_uppercase))
 STOPWORDS.extend(list(string.punctuation))
 
 pipeline = [
-    split_camelcase,
+    Pipelines.split_camelcase,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
     tnorm.unicode,
@@ -51,11 +41,11 @@ pipeline = [
     trem.accents,
     trem.brackets,
     trem.punctuation,
-    tokenize,
-    expand_contractions,
-    partial(remove_stop, stopwords=STOPWORDS),
-    lemmatize,
-    pos_filter,
+    Pipelines.tokenize,
+    Pipelines.expand_contractions,
+    partial(Pipelines.remove_stop, stopwords=STOPWORDS),
+    Pipelines.lemmatize,
+    Pipelines.pos_filter,
     lambda x: ' '.join(x)
 ]
 

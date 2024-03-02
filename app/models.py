@@ -101,6 +101,12 @@ class Article(Base, AccessTimeMixin):
     def __str__(self) -> str:
         return self.url
 
+    def single_doc(self):
+        return '\n\n'.join([h.title for h in self.headlines])
+
+    def most_recent_headline(self):
+        return max(self.headlines, key=lambda h: h.last_accessed)
+
 
 class Headline(Base, AccessTimeMixin):
     __tablename__ = "headline"

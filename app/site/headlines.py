@@ -5,6 +5,7 @@ import pandas as pd
 import pytz
 
 from app.models import Session, Headline
+from app.queries import Queries
 from app.site import j2env
 from app.site.common import calculate_xkeyscore
 from app.utils.config import Config
@@ -36,11 +37,7 @@ class HeadlinesPage:
 
     @staticmethod
     def get_headlines(s):
-        headlines: list[Headline] = s.query(Headline).filter(
-            Headline.last_accessed > Constants.TimeConstants.ten_minutes_ago,
-            Headline.first_accessed > dt.now() - td(days=1),
-            Headline.position < 25,
-        ).order_by(
+        headlines: list[Headline] = Queries.get_current_headlines(s).order_by(
             Headline.position.asc(),  # prominence
             Headline.first_accessed.desc()
         ).all()
