@@ -1,3 +1,4 @@
+import cachetools.func
 import pandas as pd
 from flask import Flask
 
@@ -5,7 +6,6 @@ from app.models import Session, Headline, Article, Agency
 from app.site import j2env
 from app.site.common import calculate_xkeyscore
 from app.utils.constants import Constants
-import cachetools.func
 
 app = Flask(__name__)
 
@@ -21,7 +21,7 @@ def home():
     )
 
 
-@cachetools.func.ttl_cache(maxsize=1, ttl=60*10)
+@cachetools.func.ttl_cache(maxsize=1, ttl=60 * 10)
 def get_data():
     columns = {
         'id': Article.id,

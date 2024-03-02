@@ -6,9 +6,9 @@ from matplotlib import pyplot as plt, dates as mdates
 from sqlalchemy import func
 
 from app import j2env
+from app.models import Agency, Session, Article, Headline
 from app.utils.config import Config
 from app.utils.constants import Constants
-from app.models import Agency, Session, Article, Headline
 
 
 class AgencyHeadlineShiftPages:
@@ -19,11 +19,11 @@ class AgencyHeadlineShiftPages:
         self.s: Session = s
 
     def generate(self):
-        articles = self.s.query(Article).filter(Article.agency_id == self.agency.id)\
-                    .join(Headline, Article.id == Headline.article_id)\
-                    .filter(Headline.first_accessed > Constants.TimeConstants.yesterday,
-                            Headline.last_accessed > Constants.TimeConstants.midnight)\
-                    .having(func.count(Headline.id) > 5).group_by(Article.id).all()
+        articles = self.s.query(Article).filter(Article.agency_id == self.agency.id) \
+            .join(Headline, Article.id == Headline.article_id) \
+            .filter(Headline.first_accessed > Constants.TimeConstants.yesterday,
+                    Headline.last_accessed > Constants.TimeConstants.midnight) \
+            .having(func.count(Headline.id) > 5).group_by(Article.id).all()
 
         for article in articles:
             df = pd.DataFrame([{

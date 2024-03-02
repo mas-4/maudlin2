@@ -33,7 +33,8 @@ STOPWORDS.extend([
     "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"', "go",
     "new", "January", "February", "March", "April", "June", "July", "August", "September", "October", "November",
     "December", "time", "year", "week", "month", "years", "people", "life", "day", "thing", "something", "number",
-    "Subscribe", "EST", "READ", "News", "New", "York", "Images", "Politics", "newsletter", "ago", "live", "updates", "exclusive",
+    "Subscribe", "EST", "READ", "News", "New", "York", "Images", "Politics", "newsletter", "ago", "live", "updates",
+    "exclusive",
     "producers", "hour"
 ])
 # strip stray letters
@@ -76,6 +77,7 @@ def generate_wordcloud(headlines: list[str], path: str):
     wc.generate_from_frequencies(freq_dict)
     logger.info("Saving wordcloud to %s", path)
     wc.to_file(path)
+
 
 def calculate_xkeyscore(df):
     n_features = 1000

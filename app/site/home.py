@@ -1,20 +1,21 @@
 import os
 
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import seaborn as sns
 
+from app.models import Session, Agency, Headline, Article
+from app.registry import SeleniumScrapers, TradScrapers
 from app.site import j2env
+from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Constants, Bias, Credibility
 from app.utils.logger import get_logger
-from app.models import Session, Agency, Headline, Article
-from app.site.common import generate_wordcloud
-from app.registry import SeleniumScrapers, TradScrapers
 
 logger = get_logger(__name__)
+
 
 class FileNames:
     wordcloud = 'wordcloud.png'
@@ -37,8 +38,6 @@ class HomePage:
         self.render_sentiment_graphs()
         self.render_home_page()
         logger.info("...done")
-
-
 
     def render_home_page(self):
         with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
@@ -111,10 +110,10 @@ class HomePage:
     def generate_graphs(agg):
         fig, ax = plt.subplots(2, 2)
         fig.set_size_inches(9, 8)
-        sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0,0], label='Mean VADER')
-        sns.lineplot(x='Date', y='PVI', data=agg, ax=ax[0,1], label='PVI (-left/+right)')
-        sns.lineplot(x='Date', y='Afinn', data=agg, ax=ax[1,0], label='Mean AFINN')
-        sns.lineplot(x='Date', y='PAI', data=agg, ax=ax[1,1], label='PAI (-left/+right)')
+        sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0, 0], label='Mean VADER')
+        sns.lineplot(x='Date', y='PVI', data=agg, ax=ax[0, 1], label='PVI (-left/+right)')
+        sns.lineplot(x='Date', y='Afinn', data=agg, ax=ax[1, 0], label='Mean AFINN')
+        sns.lineplot(x='Date', y='PAI', data=agg, ax=ax[1, 1], label='PAI (-left/+right)')
         for i in range(2):
             for j in range(2):
                 ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))

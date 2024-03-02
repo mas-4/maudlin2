@@ -48,8 +48,10 @@ class HeadlinesPage:
         df = pd.DataFrame([[
             h.title,
             h.article.agency.name,
-            h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime('%b %-d %-I:%M %p'),
-            h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime('%-I:%M %p'),
+            h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(
+                '%b %-d %-I:%M %p'),
+            h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(
+                '%-I:%M %p'),
             h.position,
             h.vader_compound,
             h.afinn,
@@ -80,4 +82,3 @@ class HeadlinesPage:
         # combine agency name and title Agency - Title
         df['title'] = df['agency'] + ' - ' + df['title']
         return df
-

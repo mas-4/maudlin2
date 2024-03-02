@@ -4,13 +4,13 @@ from datetime import timedelta as td
 import pandas as pd
 import pytz
 
-from app.site import j2env
-from app.utils.logger import get_logger
-from app.utils.constants import Constants
-from app.utils.config import Config
 from app.models import Agency, Session, Headline, Article
-from app.site.common import generate_wordcloud
 from app.registry import Scrapers
+from app.site import j2env
+from app.site.common import generate_wordcloud
+from app.utils.config import Config
+from app.utils.constants import Constants
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
