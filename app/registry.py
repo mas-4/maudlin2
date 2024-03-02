@@ -56,6 +56,7 @@ from app.scrapers.moscowtimes import MoscowTimes
 from app.scrapers.motherjones import MotherJones
 from app.scrapers.msnbc import MSNBC
 from app.scrapers.nationalpost import NationalPost
+from app.scrapers.nationalreview import NationalReview
 from app.scrapers.nbc import NBC
 from app.scrapers.ndtv import NDTV
 from app.scrapers.newrepublic import NewRepublic
@@ -109,7 +110,7 @@ Scrapers = [
     # HindustanTimes,
     InfoWars,
     # NationalInterest,
-    # NationalReview,
+    NationalReview,
     # Politico,
     # RealClearPolitics,
     # Reuters,
