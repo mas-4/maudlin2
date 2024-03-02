@@ -25,4 +25,3 @@ class Blaze(Scraper):
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")
                 continue
-

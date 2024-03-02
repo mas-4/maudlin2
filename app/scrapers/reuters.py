@@ -2,9 +2,9 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
+from app.scraper import SeleniumScraper
 from app.utils.constants import Bias, Credibility, Country, Constants
 from app.utils.logger import get_logger
-from app.scraper import SeleniumScraper
 
 logger = get_logger(__name__)
 
@@ -27,4 +27,3 @@ class Reuters(SeleniumScraper):
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")
                 continue
-

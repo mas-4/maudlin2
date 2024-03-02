@@ -2,9 +2,9 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
+from app.scraper import Scraper
 from app.utils.constants import Bias, Credibility, Country
 from app.utils.logger import get_logger
-from app.scraper import Scraper
 
 logger = get_logger(__name__)
 
@@ -22,4 +22,3 @@ class LeMonde(Scraper):
             if title := a.find(['h1', 'h2', 'h3'], {'class': re.compile('article__title')}):
                 if title := title.text.strip():
                     self.downstream.append((href, title))
-

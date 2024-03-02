@@ -27,4 +27,3 @@ class MSNBC(Scraper):
             if not list(filter(lambda x: x[1] != 'NNP', nltk.pos_tag(nltk.word_tokenize(title)))):
                 continue
             self.downstream.append((href, title))
-

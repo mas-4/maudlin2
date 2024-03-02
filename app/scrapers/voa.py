@@ -2,9 +2,9 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
+from app.scraper import Scraper
 from app.utils.constants import Bias, Credibility
 from app.utils.logger import get_logger
-from app.scraper import Scraper
 
 logger = get_logger(__name__)
 
@@ -25,4 +25,3 @@ class VOA(Scraper):
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")
                 continue
-

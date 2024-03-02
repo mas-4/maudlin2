@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup as Soup
 
+from app.scraper import Scraper
 from app.utils.constants import Bias, Credibility, Country
 from app.utils.logger import get_logger
-from app.scraper import Scraper
 
 logger = get_logger(__name__)
 
@@ -21,8 +21,8 @@ class BBC(Scraper):
                 continue
             if not href.startswith('http'):
                 href = self.url + href
-            if not(title := a.find('h2', {'data-testid': 'card-headline'})):
+            if not (title := a.find('h2', {'data-testid': 'card-headline'})):
                 continue
-            if not(title := title.text.strip()):
+            if not (title := title.text.strip()):
                 continue
             self.downstream.append((href, title))

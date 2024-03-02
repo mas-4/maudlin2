@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup as Soup
 
+from app.scraper import SeleniumScraper
 from app.utils.constants import Bias, Credibility, Country, Constants
 from app.utils.logger import get_logger
-from app.scraper import SeleniumScraper
 
 logger = get_logger(__name__)
 
@@ -23,4 +23,3 @@ class StraitsTimes(SeleniumScraper):
             title = a.text.strip()
             if title:
                 self.downstream.append((href, title))
-
