@@ -164,3 +164,4 @@ data/
 dev/
 # Local Netlify folder
 .*creds
+.netlify
