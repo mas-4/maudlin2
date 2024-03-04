@@ -111,9 +111,13 @@ class HomePage:
         fig, ax = plt.subplots(2, 2)
         fig.set_size_inches(9, 8)
         sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0, 0], label='Mean VADER')
+        sns.lineplot(x='Date', y='Vader MA', data=agg, ax=ax[0, 0], label='Moving Average')
         sns.lineplot(x='Date', y='PVI', data=agg, ax=ax[0, 1], label='PVI (-left/+right)')
+        sns.lineplot(x='Date', y='PVI MA', data=agg, ax=ax[0, 1], label='Moving Average')
         sns.lineplot(x='Date', y='Afinn', data=agg, ax=ax[1, 0], label='Mean AFINN')
+        sns.lineplot(x='Date', y='Afinn MA', data=agg, ax=ax[1, 0], label='Moving Average')
         sns.lineplot(x='Date', y='PAI', data=agg, ax=ax[1, 1], label='PAI (-left/+right)')
+        sns.lineplot(x='Date', y='PAI MA', data=agg, ax=ax[1, 1], label='Moving Average')
         for i in range(2):
             for j in range(2):
                 ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
@@ -131,6 +135,11 @@ class HomePage:
         cols = ['Vader', 'Afinn', 'PVI', 'PAI']
         agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
             .agg({col: 'mean' for col in cols}).dropna().reset_index()
+        # moving averages for vader and afinn
+        agg['Vader MA'] = agg['Vader'].rolling(window=7).mean()
+        agg['Afinn MA'] = agg['Afinn'].rolling(window=7).mean()
+        agg['PVI MA'] = agg['PVI'].rolling(window=7).mean()
+        agg['PAI MA'] = agg['PAI'].rolling(window=7).mean()
         return agg
 
 
