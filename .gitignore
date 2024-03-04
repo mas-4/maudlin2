@@ -161,7 +161,5 @@ cython_debug/
 .DS_Store
 *.db
 data/
-dev/
-# Local Netlify folder
 .*creds
 .netlify
