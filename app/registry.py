@@ -70,6 +70,7 @@ from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
 from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.politicalwire import PoliticalWire
+from app.scrapers.politico import Politico
 from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.quillette import Quillette
 from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
@@ -111,7 +112,7 @@ Scrapers = [
     InfoWars,
     # NationalInterest,
     NationalReview,
-    # Politico,
+    Politico,
     # RealClearPolitics,
     # Reuters,
     # StraitsTimes,
