@@ -9,30 +9,30 @@ const bias = {
 };
 const credibility = {'0': 'Very Low', '1': 'Low', '2': 'Mixed', '3': 'Mostly Factual', '4': 'High', '5': 'Very High'};
 
-function determineSmiley(value) {
-    if (value > 0.1) {
+function determineSmiley(value, bias) {
+    if (value > bias) {
         return '😊';
-    } else if (value < -0.1) {
+    } else if (value < -bias) {
         return '😭';
     }
     return '';
 }
 
-function recenter(value) {
-    return (value + 0.2) / (2 * 0.2);
+function recenter(value, bias, range) {
+    return (value + bias) / (range * bias);
 }
 
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 
-function getColorForValue(value) {
+function getColorForValue(value, bias, range) {
     if (value === 'N/A')
         return 'white';
     if (value == null)
         return '#f9fafb';
 
-    let a = recenter(value);
+    let a = recenter(value, bias, range);
     let b = 120 * a;
     let c = clamp(b, 0, 120);
 

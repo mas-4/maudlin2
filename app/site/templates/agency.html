@@ -20,19 +20,19 @@
                 "First Accessed",
                 {
                     name: "VADER",
-                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.1)}</span>`),
                     attributes: (cell) => {
                         return {
-                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                            style: `background-color: ${getColorForValue(cell, 0.2, 2)}; text-align: center;`
                         }
                     }
                 },
                 {
                     name: "AFINN",
-                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell)}</span>`),
+                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.75)}</span>`),
                     attributes: (cell) => {
                         return {
-                            style: `background-color: ${getColorForValue(cell)}; text-align: center;`
+                            style: `background-color: ${getColorForValue(cell, 0.5, 5)}; text-align: center;`
                         }
                     }
                 },
