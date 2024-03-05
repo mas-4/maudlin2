@@ -77,6 +77,7 @@ from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
 from app.scrapers.rawstory import RawStory
 from app.scrapers.reason import Reason
 from app.scrapers.redstate import RedState
+from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.rollingstone import RollingStone
 from app.scrapers.rt import RT
 from app.scrapers.salon import Salon
@@ -113,7 +114,7 @@ Scrapers = [
     # NationalInterest,
     NationalReview,
     Politico,
-    # RealClearPolitics,
+    RealClearPolitics,
     # Reuters,
     # StraitsTimes,
     # WallStreetJournal,
