@@ -105,6 +105,8 @@ from app.scrapers.week import Week
 from app.scrapers.winnipegfreepress import WinnipegFreePress
 from app.scrapers.xinhua import Xinhua
 from app.scrapers.yahoonews import YahooNews
+from app.scrapers.wallstreetjournal import WallStreetJournal
+from app.scrapers.reuters import Reuters
 
 Scrapers = [
     Axios,
@@ -115,9 +117,9 @@ Scrapers = [
     NationalReview,
     Politico,
     RealClearPolitics,
-    # Reuters,
+    Reuters,
     # StraitsTimes,
-    # WallStreetJournal,
+    WallStreetJournal,
     ABC,
     AP,
     AlJazeera,
