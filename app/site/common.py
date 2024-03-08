@@ -17,8 +17,7 @@ STOPWORDS = list(STOPWORDS)
 # clean some default words
 STOPWORDS.extend([
     'say', 'said', 'says', "n't", 'Mr', 'Ms', 'Mrs', 'time', 'year', 'week', 'month', "years",
-    "people", "life", "day", "thing", "something", "number", "system", "video", "months", "group",
-    "state", "country", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+    "life", "day", "thing", "something", "number", "system", "video", "months", "group",
     "home", "effort", "product", "part", "cup", "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sep", "Sept",
     "Oct", "Nov", "Dec", "company", "companies", "business", "’", "'", '"', "go",
     "new", "January", "February", "March", "April", "June", "July", "August", "September", "October", "November",
