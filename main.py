@@ -25,7 +25,11 @@ class Queue:
             logger.info("Running seleniums")
             for sel in self.seleniums:
                 scraper = sel()
-                scraper.run()
+                try:
+                    scraper.run()
+                except Exception as e:
+                    logger.exception(f"Failed to run {scraper}: {e}")
+                    continue
             SeleniumResourceManager().quit()
 
         for scraper in self.threads:

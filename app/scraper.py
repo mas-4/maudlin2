@@ -183,6 +183,7 @@ class SeleniumResourceManager:
             options = Options()
             options.add_argument("--headless")
             cls._instance._driver = webdriver.Firefox(options=options)
+            cls._instance._driver.set_page_load_timeout(Config.timeout)
         return cls._instance
 
     def __del__(self):
