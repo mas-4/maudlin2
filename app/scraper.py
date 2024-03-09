@@ -86,8 +86,10 @@ class Scraper(ABC, Thread):
                 self.articles += 1
 
             article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
-            metrics.apply(headline := Headline(title=art_pair.title, position=art_pair.pos, article_id=article.id))
+            headline = Headline(title=art_pair.title, position=art_pair.pos, article_id=article.id)
             s.add(headline)
+            s.commit()
+            metrics.apply(headline)
             s.commit()
             logger.debug(f"Added to database: %r", headline)
             self.headlines += 1

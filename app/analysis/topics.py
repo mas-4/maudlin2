@@ -49,9 +49,11 @@ def load_and_update_topics():
             session.expunge(topic)
     return topics
 
+def prepare_for_topic(headline: str):
+    return prepare(headline, pipeline)
 
 def score_headline(headline: str, topic: Topic):
-    h = prepare(headline, pipeline)
+    h = prepare_for_topic(headline)
     ngrams = Pipelines.ngrams(h, n=2, stopwords=STOPWORDS)
     return sum(1 for word in h + ngrams if word in topic.keywords) / (len(h) + 1)
 
@@ -92,7 +94,7 @@ def analyze_all_topics(reset=False):
         logger.info("Analyzing %d headlines for %d topics", len(headlines), len(topics))
 
         df = pd.DataFrame([(h.article_id, h.title) for h in headlines], columns=['id', 'title'])
-        df['prepared'] = df['title'].apply(partial(prepare, pipeline=pipeline))
+        df['prepared'] = df['title'].apply(prepare_for_topic)
         for topic in topics:
             df[topic.id] = df['prepared'].apply(partial(score_tokens, topic=topic))
 
