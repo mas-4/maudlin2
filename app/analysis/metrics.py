@@ -8,10 +8,12 @@ from app.analysis.topics import score_tokens, prepare_for_topic, load_and_update
 SID = SentimentIntensityAnalyzer()
 AFINN = Afinn()
 
-topics = load_and_update_topics()
-
+topics = None
 
 def apply_topic_scoring(headline: Headline):
+    global topics
+    if topics is None:
+        topics = load_and_update_topics()
     if headline.article.topic_id is not None:
         return
     tokens = prepare_for_topic(headline.title)
@@ -29,7 +31,7 @@ def apply_vader(headline: Headline):
 
 
 def apply_afinn(headline: Headline):
-    headline.afinn = AFINN.score(headline.title)
+    headline.afinn = AFINN.score(headline.title) / len(headline.title.split())
 
 
 def apply(headline: Headline):
