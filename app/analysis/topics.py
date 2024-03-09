@@ -49,34 +49,15 @@ def load_and_update_topics():
             session.expunge(topic)
     return topics
 
+
 def prepare_for_topic(headline: str):
     return prepare(headline, pipeline)
 
-def score_headline(headline: str, topic: Topic):
-    h = prepare_for_topic(headline)
-    ngrams = Pipelines.ngrams(h, n=2, stopwords=STOPWORDS)
-    return sum(1 for word in h + ngrams if word in topic.keywords) / (len(h) + 1)
 
 def score_tokens(tokens: list[str], topic: Topic):
     ngrams = Pipelines.ngrams(tokens, n=2, stopwords=STOPWORDS)
     return sum(1 for word in tokens + ngrams if word in topic.keywords) / (len(tokens) + 1)
 
-
-def analyze_topic(topic: Topic):
-    with Session() as s:
-        headlines = s.query(Headline).join(Headline.article).filter(
-            or_(*[Headline.title.like(f"%{word}%") for word in topic.essential]),
-            Article.topic_id == None
-        ).all()
-        df = pd.DataFrame([(h.article_id, h.title) for h in headlines], columns=['id', 'title'])
-        logger.info("Analyzing %d headlines for topic %s", len(df), topic.name)
-        df['score'] = df['title'].apply(partial(score_headline, topic=topic))
-        ids = list(set(df[df['score'] > Constants.Thresholds.topic_score]['id'].tolist()))
-        logger.info("Found %d articles for topic %s", len(ids), topic.name)
-        logger.info("Updating database with topic %s", topic.name)
-        s.query(Article).filter(Article.id.in_(ids)).update({Article.topic_id: topic.id}, synchronize_session=False)
-        s.commit()
-        logger.info("Done.")
 
 def analyze_all_topics(reset=False):
     topics = load_and_update_topics()
@@ -108,7 +89,6 @@ def analyze_all_topics(reset=False):
 
         logger.info("Found %d articles for %d topics", len(filtered), len(topic_ids))
         logger.info("Updating database with topics")
-        ids = filtered['id'].tolist()
         topic_updates = filtered[['id', 'max_topic_id']].set_index('id').to_dict()['max_topic_id']
 
         for article_id, topic_id in topic_updates.items():
