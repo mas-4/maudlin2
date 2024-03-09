@@ -5,12 +5,16 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
 import seaborn as sns
+from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
-from app.models import Topic, Session, Article, Headline
+from app.models import Topic, Session, Article, Headline, Agency
 from app.site import j2env
 from app.site.common import generate_wordcloud
 from app.utils.config import Config
+from app.utils.constants import Country
+
+stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
 PIPELINE = [
     Pipelines.split_camelcase,
@@ -23,7 +27,7 @@ PIPELINE = [
     trem.punctuation,
     Pipelines.tokenize,
     Pipelines.expand_contractions,
-    partial(Pipelines.remove_stop, stopwords=STOPWORDS),
+    partial(Pipelines.remove_stop, stopwords=stopwords),
     Pipelines.lemmatize,
     lambda x: ' '.join(x)
 ]
@@ -90,8 +94,15 @@ class TopicsPage:
             'first_accessed': Article.first_accessed,
             'last_accessed': Article.last_accessed,
         }
-        with Session() as session:
-            data = session.query(*list(columns.values())).join(Headline.article).join(Article.topic).all()
+        with (Session() as session):
+            data = session.query(*list(columns.values())).join(
+                Headline.article
+            ).join(Article.topic).join(Article.agency).filter(
+                or_(
+                    Agency._country == Country.us.value,
+                    Agency.name.in_(["The Economist", "BBC", "The Guardian"])
+                )
+            ).all()
         df = pd.DataFrame(data, columns=list(columns.keys()))
         df['duration'] = (df['last_accessed'] - df['first_accessed']).dt.days + 1
         df['sentiment'] = df[['afinn', 'vader']].mean(axis=1)
