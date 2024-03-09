@@ -33,7 +33,6 @@ def load_and_update_topics():
     with (open(Constants.Paths.TOPICS_FILE, 'rt') as f):
         topic_dict: dict = yaml.safe_load(f)
     with Session() as session:
-        topics = []  # noqa
         for top_d in topic_dict:
             topic: Topic = session.query(Topic).filter(Topic.name == top_d['name']).first()
             if topic is None:
@@ -42,7 +41,6 @@ def load_and_update_topics():
                 session.add(topic)
             topic.keywords = top_d['keywords']
             topic.essential = top_d['essential']
-            topics.append(topic)
         session.commit()
         topics = session.query(Topic).all()
         for topic in topics:
