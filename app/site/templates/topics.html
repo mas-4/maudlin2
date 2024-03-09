@@ -1,18 +1,17 @@
-{% extends 'page.html %}
+{% extends 'page.html' %}
 
 {% block content %}
 <h1>Topics</h1>
 <img src="{{ graphs_path }}" alt="Graphs">
 {% for topic in topics %}
   <div class="topic">
-    <h2>{{ topic.title }}</h2>
+    <h2>{{ topic.name }}</h2>
       <ul style="column-count:3">
-          {% for keyword in topic.keywords + topic.essentials %}
+          {% for keyword in topic.keywords + topic.essential %}
             <li>{{ keyword }}</li>
           {% endfor %}
       </ul>
       <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
-      <img src="{{ topic.history }}" alt="{{ topic.title }} History Graph">
   </div>
 {% endfor %}
 {% endblock %}

@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
-from app.models import Session, Topic, Headline, Article
+from app.models import Session, Topic, Headline, Article, SqlLock
 from app.utils.constants import Constants
 from app.utils.logger import get_logger
 
@@ -32,7 +32,7 @@ pipeline = [
 def load_and_update_topics():
     with (open(Constants.Paths.TOPICS_FILE, 'rt') as f):
         topic_dict: dict = yaml.safe_load(f)
-    with Session() as session:
+    with Session() as session, SqlLock:
         for top_d in topic_dict:
             topic: Topic = session.query(Topic).filter(Topic.name == top_d['name']).first()
             if topic is None:

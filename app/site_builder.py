@@ -8,6 +8,7 @@ from app.site.headlines import HeadlinesPage
 from app.site.home import HomePage
 from app.utils.config import Config
 from app.utils.logger import get_logger
+from app.site.topics import TopicsPage
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,7 @@ def build_site():
     HomePage().generate()
     Blog().generate()
     HeadlinesPage().generate()
+    TopicsPage().generate()
     generate_agency_pages()
     copy_assets()
     publish_to_netlify()

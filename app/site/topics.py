@@ -1,6 +1,33 @@
-from app.site import j2env
-from app.models import Topic, Session, Article, Headline
+import os
+from functools import partial
+
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import pandas as pd
+import seaborn as sns
+
+from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
+from app.models import Topic, Session, Article, Headline
+from app.site import j2env
+from app.site.common import generate_wordcloud
+from app.utils.config import Config
+
+PIPELINE = [
+    Pipelines.split_camelcase,
+    tnorm.hyphenated_words,
+    tnorm.quotation_marks,
+    tnorm.unicode,
+    tnorm.whitespace,
+    trem.accents,
+    trem.brackets,
+    trem.punctuation,
+    Pipelines.tokenize,
+    Pipelines.expand_contractions,
+    partial(Pipelines.remove_stop, stopwords=STOPWORDS),
+    Pipelines.lemmatize,
+    lambda x: ' '.join(x)
+]
+
 
 class TopicsPage:
     template = j2env.get_template('topics.html')
@@ -11,15 +38,49 @@ class TopicsPage:
             topics = session.query(Topic).all()
             for topic in topics:
                 self.generate_topic_wordcloud(topic)
-                session.expunge(topic)
         self.generate_graphs()
-        return self.template.render(topics=topics, graph_path=self.graph_path)
+        with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
+            f.write(self.template.render(topics=topics, graphs_path=self.graph_path))
 
-
-    def generate_topic_wordcloud(self, topic: Topic):
-        pass
+    @staticmethod
+    def generate_topic_wordcloud(topic: Topic):
+        with Session() as session:
+            headlines = session.query(Headline.title).join(Headline.article).filter(Article.topic_id == topic.id).all()
+            topic.wordcloud = os.path.join(Config.build, f'{topic.name}_wordcloud.png')
+            headlines = [h[0] for h in headlines]
+            generate_wordcloud(headlines, topic.wordcloud, pipeline=PIPELINE)  # noqa added wordcloud attr
 
     def generate_graphs(self):
+        df = self.get_data()
+        # 4 subplots, 2 rows, 2 columns
+        fig, axs = plt.subplots(2, figsize=(9, 8))
+        for topic in df['topic'].unique():
+            topic_df = df[df['topic'] == topic]
+            topic_df['day'] = topic_df['first_accessed'].dt.date
+
+            # group by day and calculate average sentiment, emphasis, and number of articles
+            topic_df = topic_df.groupby('day').agg({
+                'sentiment': 'mean',
+                'emphasis': 'mean',
+                'afinn': 'count'
+            })
+
+            topic_df = topic_df.rename(columns={'afinn': 'articles'})
+            sns.lineplot(data=topic_df, x=topic_df.index, y='sentiment', ax=axs[0], label=topic)
+            sns.lineplot(data=topic_df, x=topic_df.index, y='articles', ax=axs[1], label=topic)
+
+        axs[0].set_title('Sentiment')
+        axs[1].set(yscale='log')
+        axs[1].set_title('Number of Articles')
+        for ax in axs:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax.set_xticks(ax.get_xticks()[::2])
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+        plt.tight_layout()
+        plt.savefig(os.path.join(Config.build, self.graph_path))
+
+    @staticmethod
+    def get_data():
         columns = {
             'afinn': Headline.afinn,
             'vader': Headline.vader_compound,
@@ -30,7 +91,16 @@ class TopicsPage:
             'last_accessed': Article.last_accessed,
         }
         with Session() as session:
-            data = session.query(*list(columns.values())).all()
+            data = session.query(*list(columns.values())).join(Headline.article).join(Article.topic).all()
         df = pd.DataFrame(data, columns=list(columns.keys()))
-        df['duration'] = (df['last_accessed'] - df['first_accessed']).dt.days
+        df['duration'] = (df['last_accessed'] - df['first_accessed']).dt.days + 1
         df['sentiment'] = df[['afinn', 'vader']].mean(axis=1)
+        df['position'] = 1 / (1 + df['position'])
+        df['emphasis'] = df['position'] * df['duration']
+        # normalize emphasis
+        df['emphasis'] = (df['emphasis'] - df['emphasis'].min()) / (df['emphasis'].max() - df['emphasis'].min())
+        # group by topic and last_accessed and calculate average sentiment, emphasis, and number of articles
+        return df
+
+if __name__ == '__main__':
+    TopicsPage().generate()

@@ -13,7 +13,7 @@ from selenium.webdriver.firefox.options import Options
 
 from app.analysis import metrics
 from utils.dayreport import DayReport
-from app.models import Session, Article, Agency, Headline
+from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils.config import Config
 from app.utils.constants import Credibility, Bias, Country
 from app.utils.logger import get_logger
@@ -33,7 +33,7 @@ class Scraper(ABC, Thread):
     parser: str = 'lxml'
     country = Country.us
     day_lock = Lock()
-    sql_lock = Lock()
+    sql_lock = SqlLock
 
     def __init__(self):
         super().__init__()
@@ -89,10 +89,10 @@ class Scraper(ABC, Thread):
             headline = Headline(title=art_pair.title, position=art_pair.pos, article_id=article.id)
             s.add(headline)
             s.commit()
-            metrics.apply(headline)
-            s.commit()
             logger.debug(f"Added to database: %r", headline)
-            self.headlines += 1
+            s.expunge(headline)
+        metrics.apply(headline)
+        self.headlines += 1
 
     def get_page(self, url: str):
         try:

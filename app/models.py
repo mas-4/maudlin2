@@ -1,11 +1,12 @@
 from datetime import datetime as dt, timedelta as td
+from threading import Lock
+from typing import cast
 
 import numpy as np
 import pytz
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
-from typing import cast
 
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility, Country
@@ -28,8 +29,6 @@ class Agency(Base):
     _credibility: Mapped[int] = mapped_column(Integer())
     _country: Mapped[int] = mapped_column(Integer())
 
-    columns = ["headneg", "headneu", "headpos", "headcompound"]
-
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
 
@@ -38,13 +37,12 @@ class Agency(Base):
             first_date = s.query(Article.first_accessed) \
                 .filter_by(agency_id=self.id) \
                 .order_by(Article.first_accessed.asc()).first()[0]
-            numbers = np.array(s.query(col) \
-                               .join(Article, Article.id == Headline.article_id) \
-                               .filter_by(agency_id=self.id) \
-                               .filter(
-                Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
-                Article.last_accessed > Config.last_accessed  # we want current articles!
-            ).all()).flatten()
+            numbers = np.array(
+                s.query(col).join(Article, Article.id == Headline.article_id).filter_by(agency_id=self.id).filter(
+                    Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
+                    Article.last_accessed > Config.last_accessed  # we want current articles!
+                ).all()
+            ).flatten()
         if np.isnan(np.mean(numbers)):
             logger.warning("No %s data for %r.", col, self)
         return np.mean(numbers[~np.isnan(numbers)])
@@ -159,9 +157,6 @@ class Topic(Base, AccessTimeMixin):
         self._essential = cast(Mapped[str], ','.join(value))
 
 
-
-
-
 engine = create_engine(Config.connection_string)
 # Keeping this after migrating to alembic
 # Running this would create the tables in the database but not mark alembic upgrades
@@ -170,3 +165,4 @@ engine = create_engine(Config.connection_string)
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
+SqlLock = Lock()
