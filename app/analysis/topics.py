@@ -55,6 +55,10 @@ def score_headline(headline: str, topic: Topic):
     ngrams = Pipelines.ngrams(h, n=2, stopwords=STOPWORDS)
     return sum(1 for word in h + ngrams if word in topic.keywords) / (len(h) + 1)
 
+def score_tokens(tokens: list[str], topic: Topic):
+    ngrams = Pipelines.ngrams(tokens, n=2, stopwords=STOPWORDS)
+    return sum(1 for word in tokens + ngrams if word in topic.keywords) / (len(tokens) + 1)
+
 
 def analyze_topic(topic: Topic):
     with Session() as s:
@@ -63,11 +67,53 @@ def analyze_topic(topic: Topic):
             Article.topic_id == None
         ).all()
         df = pd.DataFrame([(h.article_id, h.title) for h in headlines], columns=['id', 'title'])
+        logger.info("Analyzing %d headlines for topic %s", len(df), topic.name)
         df['score'] = df['title'].apply(partial(score_headline, topic=topic))
         ids = list(set(df[df['score'] > Constants.Thresholds.topic_score]['id'].tolist()))
-        # Update all articles with these headline_ids to have the topic_id
+        logger.info("Found %d articles for topic %s", len(ids), topic.name)
+        logger.info("Updating database with topic %s", topic.name)
         s.query(Article).filter(Article.id.in_(ids)).update({Article.topic_id: topic.id}, synchronize_session=False)
+        s.commit()
+        logger.info("Done.")
+
+def analyze_all_topics(reset=False):
+    topics = load_and_update_topics()
+    with Session() as s:
+        if reset:
+            logger.info("Resetting all topics")
+            s.query(Article).update({Article.topic_id: None})
+            s.commit()
+        # make a flattened list of all essentials
+        essentials = [word for topic in topics for word in topic.essential]
+        headlines = s.query(Headline).join(Headline.article).filter(
+            or_(*[Headline.title.like(f"%{word}%") for word in essentials]),
+            Article.topic_id == None
+        ).all()
+        logger.info("Analyzing %d headlines for %d topics", len(headlines), len(topics))
+
+        df = pd.DataFrame([(h.article_id, h.title) for h in headlines], columns=['id', 'title'])
+        df['prepared'] = df['title'].apply(partial(prepare, pipeline=pipeline))
+        for topic in topics:
+            df[topic.id] = df['prepared'].apply(partial(score_tokens, topic=topic))
+
+        threshold = Constants.Thresholds.topic_score
+        topic_ids = [topic.id for topic in topics]
+
+        df['max_score'] = df[topic_ids].max(axis=1)
+        df['max_topic_id'] = df[topic_ids].idxmax(axis=1)
+
+        filtered = df[df['max_score'] > threshold]
+
+        logger.info("Found %d articles for %d topics", len(filtered), len(topic_ids))
+        logger.info("Updating database with topics")
+        ids = filtered['id'].tolist()
+        topic_updates = filtered[['id', 'max_topic_id']].set_index('id').to_dict()['max_topic_id']
+
+        for article_id, topic_id in topic_updates.items():
+            s.query(Article).filter(Article.id == article_id).update({Article.topic_id: topic_id}, synchronize_session=False)
+
+        s.commit()
+
 
 if __name__ == "__main__":
-    topics = load_and_update_topics()
-    print(topics)
+    analyze_all_topics(True)
