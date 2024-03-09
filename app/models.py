@@ -94,6 +94,8 @@ class Article(Base, AccessTimeMixin):
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
     url: Mapped[str] = mapped_column(String(254))
     headlines: Mapped[list["Headline"]] = relationship("Headline", back_populates="article")
+    topic_id: Mapped[int] = mapped_column(ForeignKey("topic.id"), nullable=True)
+    topic: Mapped["Topic"] = relationship("Topic")
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, url={self.url!r})"
@@ -127,6 +129,14 @@ class Headline(Base, AccessTimeMixin):
 
     def __str__(self) -> str:
         return self.title
+
+
+class Topic(Base, AccessTimeMixin):
+    __tablename__ = "topic"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    keywords: Mapped[str] = mapped_column(Text())
+    essential: Mapped[str] = mapped_column(Text())
 
 
 engine = create_engine(Config.connection_string)

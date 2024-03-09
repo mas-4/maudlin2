@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from wordcloud import WordCloud
 
-from app.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
+from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

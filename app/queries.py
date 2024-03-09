@@ -1,4 +1,4 @@
-from app.models import Headline, Agency, Article
+from app.models import Headline, Article
 from app.utils.constants import Constants
 from datetime import datetime as dt, timedelta as td
 

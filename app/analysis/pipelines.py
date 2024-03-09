@@ -1,5 +1,4 @@
 import string
-from functools import partial
 
 import nltk
 import regex as re

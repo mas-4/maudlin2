@@ -11,8 +11,8 @@ from bs4 import BeautifulSoup as Soup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
-from app import metrics
-from app.dayreport import DayReport
+from app.analysis import metrics
+from utils.dayreport import DayReport
 from app.models import Session, Article, Agency, Headline
 from app.utils.config import Config
 from app.utils.constants import Credibility, Bias, Country
