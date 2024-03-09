@@ -80,6 +80,9 @@ country_pretty = {
 
 
 class Constants:
+    class Thresholds:
+        topic_score = 0.05
+
     class Paths:
         ROOT = str(pathlib.Path(__file__).parent.parent.parent)
         EMAIL_CREDS = os.path.join(ROOT, '.creds')

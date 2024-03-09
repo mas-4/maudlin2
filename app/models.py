@@ -5,6 +5,7 @@ import pytz
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
+from typing import cast
 
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility, Country
@@ -135,8 +136,30 @@ class Topic(Base, AccessTimeMixin):
     __tablename__ = "topic"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
-    keywords: Mapped[str] = mapped_column(Text())
-    essential: Mapped[str] = mapped_column(Text())
+    _keywords: Mapped[str] = mapped_column(Text())
+    _essential: Mapped[str] = mapped_column(Text())
+
+    def __repr__(self):
+        return f"Topic(id={self.id!r}, name={self.name!r})"
+
+    @property
+    def keywords(self) -> list[str]:
+        return self._keywords.split(',')
+
+    @keywords.setter
+    def keywords(self, value: list[str]):
+        self._keywords = cast(Mapped[str], ','.join(value))
+
+    @property
+    def essential(self) -> list[str]:
+        return self._essential.split(',')
+
+    @essential.setter
+    def essential(self, value: list[str]):
+        self._essential = cast(Mapped[str], ','.join(value))
+
+
+
 
 
 engine = create_engine(Config.connection_string)

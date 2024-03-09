@@ -4,7 +4,6 @@ import nltk
 import regex as re
 from textacy.preprocessing import normalize as tnorm, remove as trem
 
-nltk.download('stopwords')
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
 include_stopwords = {'dear', 'New York Times', 'Getty Images',
                      'AP', "'s", "’", "``", "''", "—", "–", "“", "”", "‘", "’",
