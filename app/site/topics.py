@@ -50,7 +50,7 @@ class TopicsPage:
     def generate_topic_wordcloud(topic: Topic):
         with Session() as session:
             headlines = session.query(Headline.title).join(Headline.article).filter(Article.topic_id == topic.id).all()
-            topic.wordcloud = f'{topic.name.replace(' ', '_')}_wordcloud.png'
+            topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
             headlines = [h[0] for h in headlines]
             generate_wordcloud(headlines, os.path.join(Config.build, topic.wordcloud), pipeline=PIPELINE)  # noqa added wordcloud attr
 
