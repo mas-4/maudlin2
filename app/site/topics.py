@@ -46,7 +46,9 @@ class TopicsPage:
             topics = session.query(Topic).all()
             for topic in topics:
                 self.generate_topic_wordcloud(topic)
-        self.generate_graphs()
+        df = self.get_data()
+        self.generate_graphs(df)
+        self.generate_topic_graphs(df, topics)
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
             f.write(self.template.render(topics=topics, graphs_path=self.graph_path))
 
@@ -58,8 +60,40 @@ class TopicsPage:
             headlines = [h[0] for h in headlines]
             generate_wordcloud(headlines, os.path.join(Config.build, topic.wordcloud), pipeline=PIPELINE)  # noqa added wordcloud attr
 
-    def generate_graphs(self):
-        df = self.get_data()
+    def generate_topic_graphs(self, df, topics):
+        for topic in topics:
+            topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
+            topic_df = df[df['topic'] == topic.name]
+            topic_df['day'] = topic_df['first_accessed'].dt.date
+            topic_df = topic_df.groupby('day').agg({
+                'sentiment': 'mean',
+                'afinn': 'count'
+            })
+            topic_df = topic_df.rename(columns={'afinn': 'articles'})
+            fig, ax = plt.subplots(figsize=(9, 4))
+            ax.plot(topic_df.index, topic_df.sentiment, 'r-', label='Sentiment')
+            ax.set_xlabel('Date')
+            ax.set_ylabel('Sentiment', color='r')
+            ax.tick_params(axis='y', labelcolor='r')
+            ax2 = ax.twinx()
+            ax2.plot(topic_df.index, topic_df.articles, 'b--', label='Articles')
+            ax2.set_ylabel('Number of Articles', color='b')
+            ax2.tick_params(axis='y', labelcolor='b')
+
+            ax.set_title(f'{topic.name} Sentiment and Number of Articles')
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            # rotate x-axis labels
+            ax.set_xticks(ax.get_xticks()[::2])
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+            for date_str, event in SPECIAL_DATES.items():
+                date = dt.strptime(date_str, '%Y-%m-%d').date()
+                ax.axvline(date, color='k', linestyle='--', lw=2)
+                ax.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
+            plt.tight_layout()
+            plt.savefig(os.path.join(Config.build, topic.graph))
+
+    def generate_graphs(self, df):
         # 4 subplots, 2 rows, 2 columns
         fig, axs = plt.subplots(2, figsize=(9, 8))
         styles = ['r-', 'b--', 'g-.', 'y:']

@@ -70,6 +70,7 @@
       {% endfor %}
     </ul>
     <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
+    <img src="{{ topic.graph }}" alt="{{ topic.title }} Graph">
 </div>
 {% for topic in topics[1:] %}
     <div id="{{topic.name}}" class="tab-content">
@@ -80,6 +81,7 @@
           {% endfor %}
         </ul>
         <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
+        <img src="{{ topic.graph }}" alt="{{ topic.title }} Graph">
     </div>
 {% endfor %}
 {% endblock %}
