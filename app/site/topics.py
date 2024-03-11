@@ -1,4 +1,5 @@
 import os
+from datetime import datetime as dt
 from functools import partial
 
 import matplotlib.pyplot as plt
@@ -12,6 +13,10 @@ from app.site import j2env
 from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Country
+
+SPECIAL_DATES = {
+    '2024-03-07': "SOTU"
+}
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
@@ -83,6 +88,10 @@ class TopicsPage:
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             ax.legend()
+            for date_str, event in SPECIAL_DATES.items():
+                date = dt.strptime(date_str, '%Y-%m-%d').date()
+                ax.axvline(date, color='k', linestyle='--', lw=2)
+                ax.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
 
