@@ -1,12 +1,13 @@
 import string
 from functools import partial
+from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from wordcloud import WordCloud
 
-from app.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
+from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -31,7 +32,7 @@ STOPWORDS.extend(list(string.ascii_lowercase))
 STOPWORDS.extend(list(string.ascii_uppercase))
 STOPWORDS.extend(list(string.punctuation))
 
-pipeline = [
+PIPELINE = [
     Pipelines.split_camelcase,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
@@ -49,7 +50,9 @@ pipeline = [
 ]
 
 
-def generate_wordcloud(headlines: list[str], path: str):
+def generate_wordcloud(headlines: list[str], path: str, pipeline: Optional[list[Callable]] = None):
+    if pipeline is None:
+        pipeline = PIPELINE
     logger.info("Generating wordcloud for %s articles...", len(headlines))
     text = pd.DataFrame(headlines, columns=['title'])
     logger.info("Cleaning text...")
@@ -70,7 +73,7 @@ def generate_wordcloud(headlines: list[str], path: str):
 
 def calculate_xkeyscore(df):
     n_features = 1000
-    df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=pipeline))
+    df['prepared'] = df['title'].apply(lambda x: prepare(x, pipeline=PIPELINE))
     dense = CountVectorizer(max_features=n_features, ngram_range=(1, 3), lowercase=False).fit_transform(
         df['prepared']
     ).todense()

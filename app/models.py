@@ -1,4 +1,6 @@
 from datetime import datetime as dt, timedelta as td
+from threading import Lock
+from typing import cast
 
 import numpy as np
 import pytz
@@ -27,8 +29,6 @@ class Agency(Base):
     _credibility: Mapped[int] = mapped_column(Integer())
     _country: Mapped[int] = mapped_column(Integer())
 
-    columns = ["headneg", "headneu", "headpos", "headcompound"]
-
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
 
@@ -37,13 +37,12 @@ class Agency(Base):
             first_date = s.query(Article.first_accessed) \
                 .filter_by(agency_id=self.id) \
                 .order_by(Article.first_accessed.asc()).first()[0]
-            numbers = np.array(s.query(col) \
-                               .join(Article, Article.id == Headline.article_id) \
-                               .filter_by(agency_id=self.id) \
-                               .filter(
-                Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
-                Article.last_accessed > Config.last_accessed  # we want current articles!
-            ).all()).flatten()
+            numbers = np.array(
+                s.query(col).join(Article, Article.id == Headline.article_id).filter_by(agency_id=self.id).filter(
+                    Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
+                    Article.last_accessed > Config.last_accessed  # we want current articles!
+                ).all()
+            ).flatten()
         if np.isnan(np.mean(numbers)):
             logger.warning("No %s data for %r.", col, self)
         return np.mean(numbers[~np.isnan(numbers)])
@@ -94,6 +93,8 @@ class Article(Base, AccessTimeMixin):
     agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
     url: Mapped[str] = mapped_column(String(254))
     headlines: Mapped[list["Headline"]] = relationship("Headline", back_populates="article")
+    topic_id: Mapped[int] = mapped_column(ForeignKey("topic.id"), nullable=True)
+    topic: Mapped["Topic"] = relationship("Topic")
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, url={self.url!r})"
@@ -129,6 +130,33 @@ class Headline(Base, AccessTimeMixin):
         return self.title
 
 
+class Topic(Base, AccessTimeMixin):
+    __tablename__ = "topic"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    _keywords: Mapped[str] = mapped_column(Text())
+    _essential: Mapped[str] = mapped_column(Text())
+
+    def __repr__(self):
+        return f"Topic(id={self.id!r}, name={self.name!r})"
+
+    @property
+    def keywords(self) -> list[str]:
+        return self._keywords.split(',')
+
+    @keywords.setter
+    def keywords(self, value: list[str]):
+        self._keywords = cast(Mapped[str], ','.join(value))
+
+    @property
+    def essential(self) -> list[str]:
+        return self._essential.split(',')
+
+    @essential.setter
+    def essential(self, value: list[str]):
+        self._essential = cast(Mapped[str], ','.join(value))
+
+
 engine = create_engine(Config.connection_string)
 # Keeping this after migrating to alembic
 # Running this would create the tables in the database but not mark alembic upgrades
@@ -137,3 +165,4 @@ engine = create_engine(Config.connection_string)
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
+SqlLock = Lock()

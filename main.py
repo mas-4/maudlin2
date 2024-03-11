@@ -5,7 +5,7 @@ from app.utils.logger import get_logger
 from app.registry import Scrapers
 from app.site_builder import build_site
 from app.scraper import SeleniumScraper, SeleniumResourceManager
-from app.dayreport import DayReport
+from utils.dayreport import DayReport
 
 logger = get_logger(__name__)
 
