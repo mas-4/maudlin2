@@ -4,7 +4,6 @@ from functools import partial
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
-import seaborn as sns
 from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
@@ -58,7 +57,9 @@ class TopicsPage:
         df = self.get_data()
         # 4 subplots, 2 rows, 2 columns
         fig, axs = plt.subplots(2, figsize=(9, 8))
-        for topic in df['topic'].unique():
+        styles = ['r-', 'b--', 'g-.', 'y:']
+
+        for topic, style in zip(df['topic'].unique(), styles):
             topic_df = df[df['topic'] == topic]
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
@@ -70,16 +71,18 @@ class TopicsPage:
             })
 
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
-            sns.lineplot(data=topic_df, x=topic_df.index, y='sentiment', ax=axs[0], label=topic)
-            sns.lineplot(data=topic_df, x=topic_df.index, y='articles', ax=axs[1], label=topic)
+            axs[0].plot(topic_df.index, topic_df.sentiment, style, label=topic)
+            axs[1].plot(topic_df.index, topic_df.articles, style, label=topic)
 
         axs[0].set_title('Sentiment')
         axs[1].set(yscale='log')
         axs[1].set_title('Number of Articles')
         for ax in axs:
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+            ax.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
 
@@ -99,7 +102,7 @@ class TopicsPage:
                 Headline.article
             ).join(Article.topic).join(Article.agency).filter(
                 or_(
-                    Agency._country == Country.us.value,
+                    Agency._country == Country.us.value,  # noqa
                     Agency.name.in_(["The Economist", "BBC", "The Guardian"])
                 )
             ).all()
