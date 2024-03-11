@@ -96,7 +96,7 @@ class TopicsPage:
     def generate_graphs(self, df):
         # 4 subplots, 2 rows, 2 columns
         fig, axs = plt.subplots(2, figsize=(9, 8))
-        styles = ['r-', 'b--', 'g-.', 'y:']
+        styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.', 'b:']
 
         for topic, style in zip(df['topic'].unique(), styles):
             topic_df = df[df['topic'] == topic]
