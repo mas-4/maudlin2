@@ -65,7 +65,7 @@
 <div id="{{topic.name}}" class="tab-content active" style="display:block">
     <h2>{{ topic.name }}</h2>
     <ul style="column-count:3">
-      {% for keyword in topic.keywords + topic.essential %}
+      {% for keyword in topic.keywords %}
         <li>{{ keyword }}</li>
       {% endfor %}
     </ul>
@@ -76,7 +76,7 @@
     <div id="{{topic.name}}" class="tab-content">
         <h2>{{ topic.name }}</h2>
         <ul style="column-count:3">
-          {% for keyword in topic.keywords + topic.essential %}
+          {% for keyword in topic.keywords %}
             <li>{{ keyword }}</li>
           {% endfor %}
         </ul>
