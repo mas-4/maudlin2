@@ -2,6 +2,7 @@ import argparse
 
 from app.utils.config import Config
 from app.utils.logger import get_logger
+from app.analysis.topics import analyze_all_topics
 from app.registry import Scrapers
 from app.site_builder import build_site
 from app.scraper import SeleniumScraper, SeleniumResourceManager
@@ -53,6 +54,9 @@ def scrape(args, scrapers):
     queue.run()
 
 def main(args: argparse.Namespace):
+    if args.analyze_topics:
+        analyze_all_topics()
+        return
     if args.email_report:
         DayReport.report_turnover()
         return
@@ -69,6 +73,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--scraper', type=str, default=None)
     parser.add_argument('--email-report', action='store_true')
     parser.add_argument('--run-selenium', action='store_true')
+    parser.add_argument('--analyze-topics', action='store_true')
     args = parser.parse_args()
     Config.dev_mode = args.dev
     return args
