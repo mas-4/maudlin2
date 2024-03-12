@@ -15,6 +15,7 @@
     - "health"
     - "gaffe"
     - "hur"
+    - "memory"
   essential:
     - "biden"
 - name: "Biden Impeachment"
@@ -48,6 +49,10 @@
     - "unhinged"
     - "truth social"
     - "rant"
+    - "hitler"
+    - "mock"
+    - "cruel"
+    - "extreme"
   essential:
     - "trump"
 - name: "Trump Trial"
