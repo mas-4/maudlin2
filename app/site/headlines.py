@@ -50,8 +50,8 @@ class HeadlinesPage:
             h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(
                 '%-I:%M %p'),
             h.position,
-            h.vader_compound,
-            h.afinn,
+            round(h.vader_compound, 2),
+            round(h.afinn, 2),
             h.article.url,
             h.article.agency.country.name
         ] for h in headlines],

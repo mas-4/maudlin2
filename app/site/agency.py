@@ -59,8 +59,8 @@ class AgencyPage:
                 headline.title,
                 headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(
                     tz=Constants.TimeConstants.timezone).strftime(strftime),
-                headline.vader_compound,
-                headline.afinn
+                round(headline.vader_compound, 2),
+                round(headline.afinn, 2)
             ])
         return {
             'agency_name': self.agency.name,
