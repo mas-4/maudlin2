@@ -58,12 +58,15 @@ def score_tokens(tokens: list[str], topic: Topic):
 
 
 def analyze_all_topics(reset=False):
-    topics = load_and_update_topics()
     with Session() as s:
         if reset:
-            logger.info("Resetting all topics")
+            logger.info("Resetting all topic assignments")
             s.query(Article).update({Article.topic_id: None})
             s.commit()
+            logger.info("Deleting all topics")
+            s.query(Topic).delete()
+            s.commit()
+        topics = load_and_update_topics()
         # make a flattened list of all essentials
         essentials = [word for topic in topics for word in topic.essential]
         headlines = s.query(Headline).join(Headline.article).filter(

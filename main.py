@@ -55,7 +55,7 @@ def scrape(args, scrapers):
 
 def main(args: argparse.Namespace):
     if args.analyze_topics:
-        analyze_all_topics()
+        analyze_all_topics(True)
         return
     if args.email_report:
         DayReport.report_turnover()
