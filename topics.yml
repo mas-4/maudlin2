@@ -82,6 +82,10 @@
     - "chaos"
     - "crisis"
     - "border bill"
+    - "invasion"
+    - "patrol"
+    - "cbp"
+    - "wall"
   essential:
     - "border"
 - name: "Ukraine"
