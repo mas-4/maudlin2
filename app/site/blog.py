@@ -51,9 +51,9 @@ class Blog:
 
     def render_blog_index(self):
         with open(os.path.join(Config.build, 'blog.html'), 'wt') as f:
-            f.write(self.index.render(posts=self.posts))
+            f.write(self.index.render(posts=self.posts, title='Blog'))
 
     def render_blog(self):
         for post in self.posts:
             with open(os.path.join(Config.build, post['url']), 'wt') as f:
-                f.write(self.page.render(post=post))
+                f.write(self.page.render(post=post, title=post['title']))

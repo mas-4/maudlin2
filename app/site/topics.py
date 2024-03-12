@@ -50,7 +50,7 @@ class TopicsPage:
         self.generate_graphs(df)
         self.generate_topic_graphs(df, topics)
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
-            f.write(self.template.render(topics=topics, graphs_path=self.graph_path))
+            f.write(self.template.render(topics=topics, graphs_path=self.graph_path, title='Topic Analysis'))
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
