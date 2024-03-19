@@ -213,7 +213,7 @@ Scrapers = [
     USAToday,
     VOA,
     VanityFair,
-    Vice,
+    # Vice, out of business
     Vox,
     WashingtonPost,
     Week,
