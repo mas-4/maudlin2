@@ -1,5 +1,7 @@
 from app.scraper import SeleniumScraper
 from app.scrapers.abc import ABC
+from app.scrapers.oann import OneAmericaNewsNetwork
+from app.scrapers.newsmax import Newsmax
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
 from app.scrapers.atlantic import Atlantic
@@ -97,7 +99,6 @@ from app.scrapers.timesofindia import TimesofIndia
 from app.scrapers.torontosun import TorontoSun
 from app.scrapers.usatoday import USAToday
 from app.scrapers.vanityfair import VanityFair
-from app.scrapers.vice import Vice
 from app.scrapers.voa import VOA
 from app.scrapers.vox import Vox
 from app.scrapers.washingtonpost import WashingtonPost
@@ -213,13 +214,14 @@ Scrapers = [
     USAToday,
     VOA,
     VanityFair,
-    # Vice, out of business
     Vox,
     WashingtonPost,
     Week,
     WinnipegFreePress,
     Xinhua,
     YahooNews,
+    OneAmericaNewsNetwork,
+    Newsmax,
 ]
 
 TradScrapers = []
