@@ -1,76 +1,49 @@
 {% extends "page.html" %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<img alt="{{ title }}" src="{{ wordcloud }}">
-<br><br>
-<script type="text/javascript">
-    document.addEventListener("DOMContentLoaded", function () {
-        const data = {{ tabledata | safe }};
-        const urls = {{ urls | safe }};
+    <h1>{{ title }}</h1>
+    <img alt="{{ title }}" src="{{ wordcloud }}">
+    <br><br>
+    <script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function () {
+            const data = {{ tabledata | safe }};
+            const urls = {{ urls | safe }};
 
-        document.getElementById('maintable').remove()
-
-        new gridjs.Grid({
-            columns: [
-                {
-                    name: "Title",
-                    formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
-                },
-                "First Accessed",
-                {
-                    name: "VADER",
-                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
-                    attributes: (cell) => {
-                        return {
-                            style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
+            new gridjs.Grid({
+                columns: [
+                    {
+                        name: "Title",
+                        formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                    },
+                    "First Accessed",
+                    "# Headlines",
+                    {
+                        name: "VADER",
+                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
+                        attributes: (cell) => {
+                            return {
+                                style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
+                            }
                         }
-                    }
-                },
-                {
-                    name: "AFINN",
-                    formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
-                    attributes: (cell) => {
-                        return {
-                            style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
+                    },
+                    {
+                        name: "AFINN",
+                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
+                        attributes: (cell) => {
+                            return {
+                                style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
+                            }
                         }
-                    }
-                },
+                    },
 
-            ],
-            data: data,
-            sort: true,
-            search: true,
-            fixedHeader: true,
-        }).render(document.getElementById('wrapper'));
-    });
-</script>
-<h3>All articles were available on the homepage as of last update</h3>
-<div id="wrapper"></div>
-<table id="maintable">
-    <thead>
-    <tr>
-        <th>Article</th>
-        <th>First Accessed</th>
-        <th>Last Accessed</th>
-        <th>Positive</th>
-        <th>Negative</th>
-        <th>Neutral</th>
-        <th>Compound</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for headline in headlines %}
-    <tr>
-        <td><a href="{{ headline.article.url }}" target="_blank">{{ headline.title }}</a></td>
-        <td>{{ headline.first_accessed | date }}</td>
-        <td>{{ headline.last_accessed | date }}</td>
-        <td>{{ headline.vader_pos | round(2) }}</td>
-        <td>{{ headline.vader_neg | round(2) }}</td>
-        <td>{{ headline.vader_neu | round(2) }}</td>
-        <td>{{ headline.vader_compound | round(2)}}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+                ],
+                data: data,
+                sort: true,
+                search: true,
+                fixedHeader: true,
+            }).render(document.getElementById('wrapper'));
+        });
+    </script>
+    <h3>All articles were available on the homepage as of last update</h3>
+    <div id="wrapper"></div>
 {% endblock content %}

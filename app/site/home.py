@@ -73,7 +73,7 @@ class HomePage:
                      round(agency.todays_churn(s), 2), vader, afinn]
                 )
                 self.urls[agency.name] = f"{agency.name}.html"
-        self.data.sort(key=lambda x: x[4])
+        self.data.sort(key=lambda x: x[-1])
         df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn'])
         df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
         df['Credibility'] = df['Credibility'].map({str(c): c.value for c in list(Credibility)})
@@ -91,7 +91,7 @@ class HomePage:
             logger.info("Querying data for home wordcloud...")
             titles = s.query(Headline.title).filter(
                 Headline.first_accessed > Constants.TimeConstants.midnight,
-                Headline.last_accessed > Constants.TimeConstants.ten_minutes_ago
+                Headline.last_accessed > Config.last_accessed
             ).all()
             logger.info("...done")
             path = str(os.path.join(Config.build, FileNames.wordcloud))

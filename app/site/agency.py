@@ -33,7 +33,7 @@ class AgencyPage:
             )
         with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
             f.write(self.template.render(**variables))
-        df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', 'Vader', 'Afinn'])
+        df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', '# Headlines', 'Vader', 'Afinn'])
         df['url'] = df['Title'].map(variables['urls'])
         df.to_csv(os.path.join(Config.build, f'{self.agency.name}.csv'), index=False)
         logger.info("Done")
@@ -51,7 +51,7 @@ class AgencyPage:
         tabledata = []
         urls = {}
         for headline in headlines:
-            if headline.last_accessed < Constants.TimeConstants.ten_minutes_ago:
+            if headline.last_accessed < Config.last_accessed:
                 continue
             urls[headline.title] = headline.article.url
             strftime = '%b %-d %-I:%M %p'
@@ -59,6 +59,7 @@ class AgencyPage:
                 headline.title,
                 headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(
                     tz=Constants.TimeConstants.timezone).strftime(strftime),
+                len(headline.article.headlines),
                 round(headline.vader_compound, 2),
                 round(headline.afinn, 2)
             ])
