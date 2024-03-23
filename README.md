@@ -35,8 +35,8 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-- [ ] One America News
-- [ ] Newsmax
+- [x] One America News
+- [x] Newsmax
 - [-] msn.com (javascript)
 - [X] ABC News
 - [X] Al Jazeera
