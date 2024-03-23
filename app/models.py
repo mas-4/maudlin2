@@ -9,7 +9,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship,
 from sqlalchemy.types import Text, Float, DateTime, Integer
 
 from app.utils.config import Config
-from app.utils.constants import Bias, Credibility, Country
+from app.utils.constants import Bias, Credibility, Country, Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -52,6 +52,24 @@ class Agency(Base):
 
     def current_afinn(self) -> float:
         return self.current(Headline.afinn)
+
+    def todays_churn(self, s) -> float:
+        # divide todays headlines by todays articles
+        first_date = dt.now(pytz.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        articles = s.query(Article).filter(
+            Article.agency_id == self.id,
+            Article.first_accessed > first_date,
+            Article.last_accessed > Constants.TimeConstants.midnight
+        ).count()
+        headlines = s.query(Headline).join(Article).filter(
+            Article.agency_id == self.id,
+            Headline.first_accessed > first_date,
+            Headline.last_accessed > Constants.TimeConstants.midnight
+        ).count()
+        return headlines / articles if articles else 1
+
+
+
 
     @property
     def bias(self):

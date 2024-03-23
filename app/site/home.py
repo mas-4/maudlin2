@@ -43,7 +43,6 @@ class HomePage:
         with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
             f.write(self.template.render(
                 title='Home',
-                agencies=self.agencies,
                 tabledata=self.data,
                 urls=self.urls,
                 metrics=self.metrics,
@@ -70,11 +69,12 @@ class HomePage:
                     logger.warning("Afinn is na for %r.", agency)
                     continue
                 self.data.append(
-                    [agency.name, str(agency.credibility), str(agency.bias), str(agency.country), vader, afinn]
+                    [agency.name, str(agency.credibility), str(agency.bias), str(agency.country),
+                     round(agency.todays_churn(s), 2), vader, afinn]
                 )
                 self.urls[agency.name] = f"{agency.name}.html"
         self.data.sort(key=lambda x: x[4])
-        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Vader', 'Afinn'])
+        df = pd.DataFrame(self.data, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn'])
         df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
         df['Credibility'] = df['Credibility'].map({str(c): c.value for c in list(Credibility)})
         us = df[df['Country'] == "United States"]
