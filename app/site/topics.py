@@ -80,7 +80,7 @@ class TopicsPage:
             ax.set_ylabel('Sentiment', color='r')
             ax.tick_params(axis='y', labelcolor='r')
             ax2 = ax.twinx()
-            ax2.plot(topic_df.index, topic_df.articles, 'b--', label='Articles')
+            ax2.bar(topic_df.index, topic_df.articles, color='blue', label='Articles')
             ax2.set_ylabel('Number of Articles', color='b')
             ax2.tick_params(axis='y', labelcolor='b')
 
@@ -115,10 +115,10 @@ class TopicsPage:
 
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             axs[0].plot(topic_df.index, topic_df.sentiment, style, label=topic)
-            axs[1].plot(topic_df.index, topic_df.articles, style, label=topic)
+            axs[1].bar(topic_df.index, topic_df.articles, label=topic)
 
         axs[0].set_title('Sentiment')
-        axs[1].set(yscale='log')
+        # axs[1].set(yscale='log')
         axs[1].set_title('Number of Articles')
         for ax in axs:
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
