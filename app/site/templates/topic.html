@@ -1,0 +1,65 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
+    <img src="{{ topic.graph }}" alt="{{ topic.title }} Graph">
+    <br><br>
+    <h2>Required Keywords</h2>
+    <ul style="columns: 3">
+        {% for keyword in topic.essential %}
+            <li>{{ keyword }}</li>
+        {% endfor %}
+    </ul>
+    <h2>Scorable Keywords</h2>
+    <ul style="columns: 3">
+        {% for keyword in topic.keywords %}
+            <li>{{ keyword }}</li>
+        {% endfor %}
+    </ul>
+    <script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function () {
+            const data = {{ tabledata | safe }};
+
+            new gridjs.Grid({
+                columns: [
+                    {
+                        name: "Title",
+                        formatter: (cell) => gridjs.html(cell)
+                    },
+                    "First Accessed",
+                    "Position",
+                    "Duration",
+                    {
+                        name: "VADER",
+                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
+                        attributes: (cell) => {
+                            return {
+                                style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
+                            }
+                        }
+                    },
+                    {
+                        name: "AFINN",
+                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
+                        attributes: (cell) => {
+                            return {
+                                style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
+                            }
+                        }
+                    },
+
+                ],
+                data: data,
+                sort: true,
+                search: true,
+                fixedHeader: true,
+                pagination: {
+                    limit: 25
+                }
+            }).render(document.getElementById('wrapper'));
+        });
+    </script>
+    <h3>All articles were available on the homepage as of last update</h3>
+    <div id="wrapper"></div>
+{% endblock content %}

@@ -63,7 +63,7 @@
 </div>
 {% set topic = topics[0] %}
 <div id="{{topic.name}}" class="tab-content active" style="display:block">
-    <h2>{{ topic.name }}</h2>
+    <h2><a href="{{ topic.name.replace(' ', '_')}}.html">{{ topic.name }}</a></h2>
     <ul style="column-count:3">
       {% for keyword in topic.keywords %}
         <li>{{ keyword }}</li>
@@ -74,7 +74,7 @@
 </div>
 {% for topic in topics[1:] %}
     <div id="{{topic.name}}" class="tab-content">
-        <h2>{{ topic.name }}</h2>
+        <h2><a href="{{ topic.name.replace(' ', '_') }}.html">{{ topic.name }}</a></h2>
         <ul style="column-count:3">
           {% for keyword in topic.keywords %}
             <li>{{ keyword }}</li>

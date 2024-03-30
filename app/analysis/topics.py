@@ -54,6 +54,8 @@ def prepare_for_topic(headline: str):
 
 def score_tokens(tokens: list[str], topic: Topic):
     ngrams = Pipelines.ngrams(tokens, n=2, stopwords=STOPWORDS)
+    if not any(k in tokens for k in topic.essential):
+        return 0
     return sum(1 for word in tokens + ngrams if word in topic.keywords) / (len(tokens) + 1)
 
 
