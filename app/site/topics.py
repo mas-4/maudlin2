@@ -39,6 +39,7 @@ PIPELINE = [
 
 class TopicsPage:
     template = j2env.get_template('topics.html')
+    topic_template = j2env.get_template('topic.html')
     graph_path = 'topics_graph.png'
 
     def generate(self):
@@ -49,8 +50,10 @@ class TopicsPage:
         df = self.get_data()
         self.generate_graphs(df)
         self.generate_topic_graphs(df, topics)
+        self.generate_topic_pages(df, topics)
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
             f.write(self.template.render(topics=topics, graphs_path=self.graph_path, title='Topic Analysis'))
+
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
@@ -60,10 +63,11 @@ class TopicsPage:
             headlines = [h[0] for h in headlines]
             generate_wordcloud(headlines, os.path.join(Config.build, topic.wordcloud), pipeline=PIPELINE)  # noqa added wordcloud attr
 
-    def generate_topic_graphs(self, df, topics):
+    @staticmethod
+    def generate_topic_graphs(df, topics):
         for topic in topics:
             topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
-            topic_df = df[df['topic'] == topic.name]
+            topic_df = df[df['topic'] == topic.name].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
             topic_df = topic_df.groupby('day').agg({
                 'sentiment': 'mean',
@@ -99,7 +103,7 @@ class TopicsPage:
         styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.', 'b:']
 
         for topic, style in zip(df['topic'].unique(), styles):
-            topic_df = df[df['topic'] == topic]
+            topic_df = df[df['topic'] == topic].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             # group by day and calculate average sentiment, emphasis, and number of articles
@@ -132,6 +136,8 @@ class TopicsPage:
     @staticmethod
     def get_data():
         columns = {
+            'headline': Headline.title,
+            'url': Article.url,
             'afinn': Headline.afinn,
             'vader': Headline.vader_compound,
             'position': Headline.position,
@@ -152,12 +158,24 @@ class TopicsPage:
         df = pd.DataFrame(data, columns=list(columns.keys()))
         df['duration'] = (df['last_accessed'] - df['first_accessed']).dt.days + 1
         df['sentiment'] = df[['afinn', 'vader']].mean(axis=1)
-        df['position'] = 1 / (1 + df['position'])
-        df['emphasis'] = df['position'] * df['duration']
+        df['positionnorm'] = 1 / (1 + df['position'])
+        df['emphasis'] = df['positionnorm'] * df['duration']
         # normalize emphasis
         df['emphasis'] = (df['emphasis'] - df['emphasis'].min()) / (df['emphasis'].max() - df['emphasis'].min())
-        # group by topic and last_accessed and calculate average sentiment, emphasis, and number of articles
         return df
+
+    def generate_topic_pages(self, df, topics):
+        for topic in topics:
+            topic_df = df[df['topic'] == topic.name]
+            # Sort by last accessed date
+            topic_df = topic_df.sort_values('last_accessed', ascending=False)
+            topic_df['first_accessed'] = topic_df['first_accessed'].dt.strftime('%Y-%m-%d')
+            topic_df['title'] = topic_df.apply(lambda x: f'<a href="{x.url}">{x.headline}</a>', axis=1)
+            topic_df['vader'] = topic_df['vader'].round(2)
+            topic_df['afinn'] = topic_df['afinn'].round(2)
+            topic_df = topic_df[['title', 'first_accessed', 'position', 'duration', 'vader', 'afinn']]
+            with open(os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html'), 'wt') as f:
+                f.write(self.topic_template.render(topic=topic, tabledata=topic_df.values.tolist(), title=topic.name))
 
 if __name__ == '__main__':
     TopicsPage().generate()
