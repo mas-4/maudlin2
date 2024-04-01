@@ -15,7 +15,8 @@ from app.utils.config import Config
 from app.utils.constants import Country
 
 SPECIAL_DATES = {
-    '2024-03-07': "SOTU"
+    '2024-03-07': "SOTU",
+    '2024-03-12': "Hur Testimony"
 }
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -94,6 +95,8 @@ class TopicsPage:
                 date = dt.strptime(date_str, '%Y-%m-%d').date()
                 ax.axvline(date, color='k', linestyle='--', lw=2)
                 ax.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
+                ax2.axvline(date, color='k', linestyle='--', lw=2)
+                ax2.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
 
