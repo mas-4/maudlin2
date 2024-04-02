@@ -2,6 +2,7 @@ import os
 from datetime import datetime as dt
 from functools import partial
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
@@ -74,14 +75,17 @@ class TopicsPage:
                 'sentiment': 'mean',
                 'afinn': 'count'
             })
+            topic_df['sentiment'] = topic_df['sentiment'].rolling(window=7).mean()
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             fig, ax = plt.subplots(figsize=(9, 4))
             ax.plot(topic_df.index, topic_df.sentiment, 'r-', label='Sentiment')
             ax.set_xlabel('Date')
-            ax.set_ylabel('Sentiment', color='r')
+            ax.set_ylabel('Sentiment Moving Average', color='r')
             ax.tick_params(axis='y', labelcolor='r')
             ax2 = ax.twinx()
-            ax2.bar(topic_df.index, topic_df.articles, color='blue', label='Articles')
+            norm = plt.Normalize(topic_df['sentiment'].min(), topic_df['sentiment'].max())
+            ax2.bar(topic_df.index, topic_df.articles,
+                    color=matplotlib.colormaps["inferno"](norm(topic_df['sentiment'])), label='Articles', alpha=0.5)
             ax2.set_ylabel('Number of Articles', color='b')
             ax2.tick_params(axis='y', labelcolor='b')
 
@@ -91,12 +95,8 @@ class TopicsPage:
             # rotate x-axis labels
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            for date_str, event in SPECIAL_DATES.items():
-                date = dt.strptime(date_str, '%Y-%m-%d').date()
-                ax.axvline(date, color='k', linestyle='--', lw=2)
-                ax.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
-                ax2.axvline(date, color='k', linestyle='--', lw=2)
-                ax2.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
+            TopicsPage.apply_special_dates(ax)
+            TopicsPage.apply_special_dates(ax2)
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
 
@@ -115,12 +115,13 @@ class TopicsPage:
                 'emphasis': 'mean',
                 'afinn': 'count'
             })
+            topic_df['sentiment'] = topic_df['sentiment'].rolling(window=7).mean()
 
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             axs[0].plot(topic_df.index, topic_df.sentiment, style, label=topic)
             axs[1].bar(topic_df.index, topic_df.articles, label=topic)
 
-        axs[0].set_title('Sentiment')
+        axs[0].set_title('Sentiment Moving Average')
         # axs[1].set(yscale='log')
         axs[1].set_title('Number of Articles')
         for ax in axs:
@@ -129,12 +130,16 @@ class TopicsPage:
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             ax.legend()
-            for date_str, event in SPECIAL_DATES.items():
-                date = dt.strptime(date_str, '%Y-%m-%d').date()
-                ax.axvline(date, color='k', linestyle='--', lw=2)
-                ax.annotate(event, xy=(date, 20), xytext=(date, 25), ha='center')
+            self.apply_special_dates(ax)
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
+
+    @staticmethod
+    def apply_special_dates(ax):
+        for i, (date_str, event) in enumerate(SPECIAL_DATES.items()):
+            date = dt.strptime(date_str, '%Y-%m-%d').date()
+            ax.axvline(date, color='k', linestyle='--', lw=2)
+            ax.annotate(event, xy=(date, (i+1)*100), ha='center')
 
     @staticmethod
     def get_data():
