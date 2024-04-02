@@ -23,6 +23,7 @@
 
             new gridjs.Grid({
                 columns: [
+                    "id",
                     {
                         name: "Title",
                         formatter: (cell) => gridjs.html(cell)
@@ -30,6 +31,7 @@
                     "First Accessed",
                     "Position",
                     "Duration",
+                    "Score",
                     {
                         name: "VADER",
                         formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),

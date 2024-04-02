@@ -54,7 +54,9 @@
                 data: data,
                 sort: true,
                 search: true,
-                pagination: true,
+                pagination: {
+                    limit: 25
+                },
                 fixexedHeader: true
             }).render(document.getElementById('wrapper'));
         });

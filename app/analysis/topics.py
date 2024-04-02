@@ -63,7 +63,7 @@ def analyze_all_topics(reset=False):
     with Session() as s:
         if reset:
             logger.info("Resetting all topic assignments")
-            s.query(Article).update({Article.topic_id: None})
+            s.query(Article).update({Article.topic_id: None, Article.topic_score: None})
             s.commit()
             logger.info("Deleting all topics")
             s.query(Topic).delete()
@@ -92,10 +92,12 @@ def analyze_all_topics(reset=False):
 
         logger.info("Found %d articles for %d topics", len(filtered), len(topic_ids))
         logger.info("Updating database with topics")
-        topic_updates = filtered[['id', 'max_topic_id']].set_index('id').to_dict()['max_topic_id']
+        topic_updates = filtered[['id', 'max_topic_id', 'max_score']].to_dict(orient='records')
 
-        for article_id, topic_id in topic_updates.items():
-            s.query(Article).filter(Article.id == article_id).update({Article.topic_id: topic_id}, synchronize_session=False)
+        for update in topic_updates:
+            s.query(Article).filter(Article.id == update['id']).update(
+                {Article.topic_id: update['max_topic_id'], Article.topic_score: update['max_score']},
+                synchronize_session=False)
 
         s.commit()
 

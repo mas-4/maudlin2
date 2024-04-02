@@ -113,6 +113,7 @@ class Article(Base, AccessTimeMixin):
     headlines: Mapped[list["Headline"]] = relationship("Headline", back_populates="article")
     topic_id: Mapped[int] = mapped_column(ForeignKey("topic.id"), nullable=True)
     topic: Mapped["Topic"] = relationship("Topic")
+    topic_score: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, url={self.url!r})"

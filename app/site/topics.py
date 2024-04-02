@@ -144,7 +144,10 @@ class TopicsPage:
     @staticmethod
     def get_data():
         columns = {
+            'id': Article.id,
             'headline': Headline.title,
+            'agency': Agency.name,
+            'bias': Agency._bias,
             'url': Article.url,
             'afinn': Headline.afinn,
             'vader': Headline.vader_compound,
@@ -153,6 +156,7 @@ class TopicsPage:
             'topic': Topic.name,
             'first_accessed': Article.first_accessed,
             'last_accessed': Article.last_accessed,
+            'score': Article.topic_score
         }
         with (Session() as session):
             data = session.query(*list(columns.values())).join(
@@ -178,10 +182,10 @@ class TopicsPage:
             # Sort by last accessed date
             topic_df = topic_df.sort_values('last_accessed', ascending=False)
             topic_df['first_accessed'] = topic_df['first_accessed'].dt.strftime('%Y-%m-%d')
-            topic_df['title'] = topic_df.apply(lambda x: f'<a href="{x.url}">{x.headline}</a>', axis=1)
-            topic_df['vader'] = topic_df['vader'].round(2)
-            topic_df['afinn'] = topic_df['afinn'].round(2)
-            topic_df = topic_df[['title', 'first_accessed', 'position', 'duration', 'vader', 'afinn']]
+            topic_df['title'] = topic_df.apply(lambda x: f'<a href="{x.url}">{x.agency} - {x.headline}</a>', axis=1)
+            for col in ['afinn', 'vader', 'score']:
+                topic_df[col] = topic_df[col].round(2)
+            topic_df = topic_df[['id', 'title', 'first_accessed', 'position', 'duration', 'score', 'vader', 'afinn']]
             with open(os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html'), 'wt') as f:
                 f.write(self.topic_template.render(topic=topic, tabledata=topic_df.values.tolist(), title=topic.name))
 

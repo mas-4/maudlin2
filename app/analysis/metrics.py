@@ -25,6 +25,7 @@ def apply_topic_scoring(headline: Headline):
     max_topic_id = max(scores, key=scores.get)
     if max_score > Constants.Thresholds.topic_score:
         headline.article.topic_id = max_topic_id
+        headline.article.topic_score = max_score
 
 
 def apply_vader(headline: Headline):
