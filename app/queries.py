@@ -1,15 +1,22 @@
-from app.models import Headline, Article
+from app.models import Headline, Article, Agency
 from app.utils.config import Config
+from app.utils.constants import Country
 from datetime import datetime as dt, timedelta as td
+from sqlalchemy import or_
 
 class Queries:
     @staticmethod
     def get_current_headlines(session):
-        return session.query(Headline).filter(
+        return (session.query(Headline).join(Headline.article).join(Article.agency)
+        .filter(
+            or_(
+                Agency._country == Country.us.value,  # noqa
+                Agency.name.in_(["The Economist", "BBC", "The Guardian"])
+            ),
             Headline.last_accessed > Config.last_accessed,
             Headline.first_accessed > dt.now() - td(days=1),
             Headline.position < 25,
-        )
+        ))
 
     @staticmethod
     def get_current_articles(session):

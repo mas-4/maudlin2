@@ -29,6 +29,7 @@ class Config:
     first_accessed = dt.now() - td(days=3)
     last_accessed = Constants.TimeConstants.twentyfive_minutes_ago
 
+
     output_dir = os.path.join(Constants.Paths.ROOT, 'data')
     log_file = f'{output_dir}/app.log'
     if not os.path.exists(output_dir):

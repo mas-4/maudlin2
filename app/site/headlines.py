@@ -1,5 +1,4 @@
 import os
-from datetime import datetime as dt, timedelta as td
 
 import pandas as pd
 import pytz
@@ -21,17 +20,18 @@ class HeadlinesPage:
     def generate(self):
         logger.info("Generating headlines page...")
         with Session() as s:
-            headline_df = self.get_headlines(s)
-        urls = headline_df.set_index('title')['url'].to_dict()
-        headline_df = headline_df[
-            ['title', 'first_accessed', 'last_accessed', 'position', 'score', 'vader_compound', 'afinn']
+            df = self.get_headlines(s)
+        df['titletrunc'] = df['title'].apply(lambda x: x[:255] + '...' if len(x) > 255 else x)
+        df['title'] = df.apply(lambda x: f'<a title="{x.title}" href="{x.url}">{x.agency} - {x.titletrunc}</a>', axis=1)
+        # Truncate headline_df['title'] to 255 characters and append a ... if it is longer
+        df = df[
+            ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
         ]
-        headline_df.sort_values(by='score', ascending=False, inplace=True)
+        df.sort_values(by='score', ascending=False, inplace=True)
         with open(os.path.join(Config.build, 'headlines.html'), 'wt') as f:
             f.write(self.template.render(
                 title='Headlines',
-                tabledata=headline_df.values.tolist(),
-                urls=urls,
+                tabledata=df.values.tolist(),
             ))
         logger.info("...done")
 
@@ -53,7 +53,9 @@ class HeadlinesPage:
             round(h.vader_compound, 2),
             round(h.afinn, 2),
             h.article.url,
-            h.article.agency.country.name
+            h.article.agency.country.name,
+            '' if not h.article.topic else h.article.topic.name,
+            '' if not h.article.topic else round(h.article.topic_score, 2)
         ] for h in headlines],
             columns=[
                 'title',
@@ -64,18 +66,22 @@ class HeadlinesPage:
                 'vader_compound',
                 'afinn',
                 'url',
-                'country'
+                'country',
+                'topic',
+                'topic_score'
             ])
         return HeadlinesPage.filter_score_sort(df)
 
     @staticmethod
     def filter_score_sort(df):
-        df = df[df['country'].isin(['us', 'gb'])]
+        # df = df[df['country'].isin(['us', 'gb'])] Taken care of by query
         # drop rows where country == gb and agency != The Economist, BBC, The Guardian
-        df = df[~((df['country'] == 'gb') & (~df['agency'].isin(['The Economist', 'BBC', 'The Guardian'])))]
+        # df = df[~((df['country'] == 'gb') & (~df['agency'].isin(['The Economist', 'BBC', 'The Guardian'])))]
         # drop the sun
         df = df[~(df['agency'] == 'The Sun')]
-        df = calculate_xkeyscore(df)
+        df = calculate_xkeyscore(df.copy())
         # combine agency name and title Agency - Title
-        df['title'] = df['agency'] + ' - ' + df['title']
         return df
+
+if __name__ == '__main__':
+    HeadlinesPage().generate()
