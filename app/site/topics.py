@@ -183,15 +183,17 @@ class TopicsPage:
         return df
 
     def generate_topic_pages(self, df, topics):
+        def formattitle(x):
+            t = x.headline.replace("'", "").replace('"', '')
+            t_trunc = x.headline[:Config.headline_cutoff] + '...' if len(
+                x.headline) > Config.headline_cutoff else x.headline
+            return f'<a title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
+
         for topic in topics:
             topic_df = df[df['topic'] == topic.name]
             # Sort by last accessed date
             topic_df = topic_df.sort_values('first_accessed', ascending=False)
             topic_df['first_accessed'] = topic_df['first_accessed'].dt.strftime('%Y-%m-%d')
-            def formattitle(x):
-                t = x.headline.replace("'", "").replace('"', '')
-                t_trunc = x.headline[:255] + '...' if len(x.headline) > 255 else x.headline
-                return f'<a title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
             topic_df['title'] = topic_df.apply(formattitle, axis=1)
             for col in ['afinn', 'vader', 'score']:
                 topic_df[col] = topic_df[col].round(2)

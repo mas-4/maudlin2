@@ -29,6 +29,7 @@ class Config:
     first_accessed = dt.now() - td(days=3)
     last_accessed = Constants.TimeConstants.twentyfive_minutes_ago
     exempted_foreign_media = ["The Economist", "BBC", "The Guardian", "Financial Times", "Reuters", "The Independent"]
+    headline_cutoff = 128
 
     output_dir = os.path.join(Constants.Paths.ROOT, 'data')
     log_file = f'{output_dir}/app.log'

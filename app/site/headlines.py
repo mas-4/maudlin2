@@ -23,7 +23,7 @@ class HeadlinesPage:
             df = self.get_headlines(s)
         def formattitle(x):
             t = x.title.replace("'", "").replace('"', '')
-            t_trunc = t[:255] + '...' if len(t) > 255 else t
+            t_trunc = t[:Config.headline_cutoff] + '...' if len(t) > Config.headline_cutoff else t
             return f'<a title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
         df['title'] = df.apply(formattitle, axis=1)
         def formattopic(x):
