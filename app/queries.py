@@ -11,7 +11,7 @@ class Queries:
         .filter(
             or_(
                 Agency._country == Country.us.value,  # noqa
-                Agency.name.in_(["The Economist", "BBC", "The Guardian"])
+                Agency.name.in_(Config.exempted_foreign_media)
             ),
             Headline.last_accessed > Config.last_accessed,
             Headline.first_accessed > dt.now() - td(days=1),

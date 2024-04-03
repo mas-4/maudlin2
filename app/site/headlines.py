@@ -22,7 +22,14 @@ class HeadlinesPage:
         with Session() as s:
             df = self.get_headlines(s)
         df['titletrunc'] = df['title'].apply(lambda x: x[:255] + '...' if len(x) > 255 else x)
-        df['title'] = df.apply(lambda x: f'<a title="{x.title}" href="{x.url}">{x.agency} - {x.titletrunc}</a>', axis=1)
+        df['title'] = df.apply(
+            lambda x: f'<a title="{x.title.replace('"', '').replace("'", '')}" href="{x.url}">{x.agency} - {x.titletrunc}</a>',
+            axis=1
+        )
+        df['topic'] = df.apply(
+            lambda x: f'<a href="{x.topic.replace(' ', '_')}.html">{x.topic}</a>' if x.topic else '',
+            axis=1
+        )
         # Truncate headline_df['title'] to 255 characters and append a ... if it is longer
         df = df[
             ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
