@@ -26,10 +26,12 @@ class HeadlinesPage:
             t_trunc = t[:255] + '...' if len(t) > 255 else t
             return f'<a title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
         df['title'] = df.apply(formattitle, axis=1)
-        df['topic'] = df.apply(
-            lambda x: f'<a href="{x.topic.replace(' ', '_')}.html">{x.topic}</a>' if x.topic else '',
-            axis=1
-        )
+        def formattopic(x):
+            if not x.topic:
+                return ''
+            topicfile = x.topic.replace(' ', '_') + '.html'
+            return f'<a href="{topicfile}.html">{x.topic}</a>'
+        df['topic'] = df.apply(formattopic, axis=1)
         # Truncate headline_df['title'] to 255 characters and append a ... if it is longer
         df = df[
             ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
