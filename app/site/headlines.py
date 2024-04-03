@@ -21,11 +21,11 @@ class HeadlinesPage:
         logger.info("Generating headlines page...")
         with Session() as s:
             df = self.get_headlines(s)
-        df['titletrunc'] = df['title'].apply(lambda x: x[:255] + '...' if len(x) > 255 else x)
-        df['title'] = df.apply(
-            lambda x: f'<a title="{x.title.replace('"', '').replace("'", '')}" href="{x.url}">{x.agency} - {x.titletrunc}</a>',
-            axis=1
-        )
+        def formattitle(x):
+            t = x.title.replace("'", "").replace('"', '')
+            t_trunc = t[:255] + '...' if len(t) > 255 else t
+            return f'<a title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
+        df['title'] = df.apply(formattitle, axis=1)
         df['topic'] = df.apply(
             lambda x: f'<a href="{x.topic.replace(' ', '_')}.html">{x.topic}</a>' if x.topic else '',
             axis=1
