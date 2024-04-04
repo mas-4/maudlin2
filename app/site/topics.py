@@ -16,12 +16,12 @@ from app.utils.config import Config
 from app.utils.constants import Country
 
 SPECIAL_DATES = {
-    '2024-03-07': "SOTU",
-    '2024-03-12': "Hur Testimony",
-    '2024-03-16': "Bloodbath Rally",
-    '2024-03-26': "SCOTUS Abortion\nPill Hearing",
-    '2024-04-01': "Florida Abortion Ruling",
-    '2024-04-01': "Gaza aid\nworkers killed"
+    "SOTU": '2024-03-07',
+    "Hur Testimony": '2024-03-12',
+    "Bloodbath Rally": '2024-03-16',
+    "SCOTUS Abortion\nPill Hearing": '2024-03-26',
+    "Florida Abortion Ruling": '2024-04-01',
+    "Gaza aid\nworkers killed": '2024-04-01',
 }
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -142,7 +142,7 @@ class TopicsPage:
     @staticmethod
     def apply_special_dates(ax: plt.Axes):
         ymin, ymax = ax.get_ylim()
-        for i, (date_str, event) in enumerate(SPECIAL_DATES.items()):
+        for i, (event, date_str) in enumerate(SPECIAL_DATES.items()):
             date = dt.strptime(date_str, '%Y-%m-%d').date()
             ax.axvline(date, color='k', linestyle='--', lw=2)  # noqa date for float
             offset = (i % 3) * ((ymax + ymin) / 3)
