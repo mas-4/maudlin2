@@ -19,7 +19,7 @@ SPECIAL_DATES = {
     '2024-03-07': "SOTU",
     '2024-03-12': "Hur Testimony",
     '2024-03-16': "Bloodbath Rally",
-    '2024-03-26': "SCOTUS Abortion Pill Hearing",
+    '2024-03-26': "SCOTUS Abortion\nPill Hearing",
     '2024-04-01': "Florida Abortion Ruling",
 }
 
@@ -65,7 +65,8 @@ class TopicsPage:
             headlines = session.query(Headline.title).join(Headline.article).filter(Article.topic_id == topic.id).all()
             topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
             headlines = [h[0] for h in headlines]
-            generate_wordcloud(headlines, os.path.join(Config.build, topic.wordcloud),
+            generate_wordcloud(headlines,
+                               os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
                                pipeline=PIPELINE)  # noqa added wordcloud attr
 
     @staticmethod
@@ -98,13 +99,11 @@ class TopicsPage:
             # rotate x-axis labels
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            TopicsPage.apply_special_dates(ax)
             TopicsPage.apply_special_dates(ax2)
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     def generate_graphs(self, df):
-        # 4 subplots, 2 rows, 2 columns
         fig, axs = plt.subplots(2, figsize=(9, 8))
         styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.',
                   'b:']
@@ -133,20 +132,22 @@ class TopicsPage:
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            ax.legend()
+            ax.legend(loc='upper left')
+        self.apply_special_dates(axs[0])
         self.apply_special_dates(axs[1])
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
 
     @staticmethod
-    def apply_special_dates(ax):
+    def apply_special_dates(ax: plt.Axes):
+        ymin, ymax = ax.get_ylim()
         for i, (date_str, event) in enumerate(SPECIAL_DATES.items()):
             date = dt.strptime(date_str, '%Y-%m-%d').date()
-            ax.axvline(date, color='k', linestyle='--', lw=2)
-            offset = ((i % 3) + 1) * 200
+            ax.axvline(date, color='k', linestyle='--', lw=2)  # noqa date for float
+            offset = (i % 3) * ((ymax + ymin) / 3)
             ax.annotate(
                 event,
-                xy=(date, offset),
+                xy=(date, offset),  # noqa date for float
                 xytext=(0, 20),
                 textcoords='offset points',
                 ha='right',
@@ -166,7 +167,7 @@ class TopicsPage:
             'id': Article.id,
             'headline': Headline.title,
             'agency': Agency.name,
-            'bias': Agency._bias,
+            'bias': Agency._bias,  # noqa prot attr
             'url': Article.url,
             'afinn': Headline.afinn,
             'vader': Headline.vader_compound,
