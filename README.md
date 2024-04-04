@@ -33,6 +33,8 @@ I'm working on incorporating hugging face and TinyBERT. Or another similarly sma
 I've actually read the better part of two books in the course of making this thing, [Blueprints for Text Analytics Using Python: Machine Learning-Based Solutions for Common Real World (NLP) Applications](https://www.amazon.com/gp/product/149207408X/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1) and [The Handbook of NLP with Gensim: Leverage topic modeling to uncover hidden patterns, themes, and valuable insights within textual data
 ](https://www.amazon.com/gp/product/1803244941/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
 
+Oh! And the site is hosted on netlify. It's just a bunch of flat files I upload to netlify.
+
 ## Testing
 
 Not really sure how to do testing. I guess the site builder could be tested but meh. I'm a pretty TDD guy but kinda hard to test scrapers. I had a test suite and have abandoned it. Sites change, scrapers have to be updated. I'd rather add in some features to get a good sense of what's going wrong. I have a daily report system that gets emailed to me every morning and I keep extensive logs and daily backups. Over the weekend (end of March) my entire machine went down so I missed a day of articles. But that's what happens when you run this thing out of your garage.
