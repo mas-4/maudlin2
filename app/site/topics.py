@@ -21,6 +21,7 @@ SPECIAL_DATES = {
     '2024-03-16': "Bloodbath Rally",
     '2024-03-26': "SCOTUS Abortion\nPill Hearing",
     '2024-04-01': "Florida Abortion Ruling",
+    '2024-04-01': "Gaza aid\nworkers killed"
 }
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
