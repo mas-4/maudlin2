@@ -3,8 +3,8 @@ from datetime import datetime as dt
 from functools import partial
 
 import matplotlib
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import pandas as pd
 from sqlalchemy import or_
 
@@ -18,7 +18,9 @@ from app.utils.constants import Country
 SPECIAL_DATES = {
     '2024-03-07': "SOTU",
     '2024-03-12': "Hur Testimony",
-    '2024-03-16': "Bloodbath Rally"
+    '2024-03-16': "Bloodbath Rally",
+    '2024-03-26': "SCOTUS Abortion Pill Hearing",
+    '2024-04-01': "Florida Abortion Ruling",
 }
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -57,14 +59,14 @@ class TopicsPage:
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
             f.write(self.template.render(topics=topics, graphs_path=self.graph_path, title='Topic Analysis'))
 
-
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
         with Session() as session:
             headlines = session.query(Headline.title).join(Headline.article).filter(Article.topic_id == topic.id).all()
             topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
             headlines = [h[0] for h in headlines]
-            generate_wordcloud(headlines, os.path.join(Config.build, topic.wordcloud), pipeline=PIPELINE)  # noqa added wordcloud attr
+            generate_wordcloud(headlines, os.path.join(Config.build, topic.wordcloud),
+                               pipeline=PIPELINE)  # noqa added wordcloud attr
 
     @staticmethod
     def generate_topic_graphs(df, topics):
@@ -104,7 +106,8 @@ class TopicsPage:
     def generate_graphs(self, df):
         # 4 subplots, 2 rows, 2 columns
         fig, axs = plt.subplots(2, figsize=(9, 8))
-        styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.', 'b:']
+        styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.',
+                  'b:']
 
         for topic, style in zip(df['topic'].unique(), styles):
             topic_df = df[df['topic'] == topic].copy()
@@ -131,7 +134,7 @@ class TopicsPage:
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             ax.legend()
-            self.apply_special_dates(ax)
+        self.apply_special_dates(axs[1])
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
 
@@ -140,12 +143,22 @@ class TopicsPage:
         for i, (date_str, event) in enumerate(SPECIAL_DATES.items()):
             date = dt.strptime(date_str, '%Y-%m-%d').date()
             ax.axvline(date, color='k', linestyle='--', lw=2)
-            offset = ((i%3) + 1) * 200
-            ax.annotate(event,
-                        xy=(date, offset), xytext=(0, 20),
-                        textcoords='offset points',
-                        ha='right', fontsize=12, color='black', fontweight='bold',
-                        arrowprops=dict(facecolor='red', arrowstyle='->', linewidth=2))
+            offset = ((i % 3) + 1) * 200
+            ax.annotate(
+                event,
+                xy=(date, offset),
+                xytext=(0, 20),
+                textcoords='offset points',
+                ha='right',
+                fontsize=12,
+                color='black',
+                fontweight='bold',
+                arrowprops=dict(
+                    facecolor='red',
+                    arrowstyle='->',
+                    linewidth=2
+                )
+            )
 
     @staticmethod
     def get_data():
@@ -200,6 +213,7 @@ class TopicsPage:
             topic_df = topic_df[['id', 'title', 'first_accessed', 'position', 'duration', 'score', 'vader', 'afinn']]
             with open(os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html'), 'wt') as f:
                 f.write(self.topic_template.render(topic=topic, tabledata=topic_df.values.tolist(), title=topic.name))
+
 
 if __name__ == '__main__':
     TopicsPage().generate()
