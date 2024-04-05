@@ -96,7 +96,7 @@ class TopicsPage:
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     def generate_graphs(self, df):
-        fig, axs = plt.subplots(2, figsize=(9, 8))
+        fig, axs = plt.subplots(2, figsize=(10, 8))
         styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.',
                   'b:']
 

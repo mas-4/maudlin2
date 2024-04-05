@@ -1,12 +1,30 @@
+- name: "Alabama\nIVF Ruling"
+  date: 2024-02-16
+  topic: "Abortion Post-Dobbs"
+- name: "James Biden\nTestifies"
+  date: 2024-02-21
+  topic: "Biden Impeachment"
+- name: "Hunter Deposition Released"
+  date: 2024-02-28
+  topic: "Biden Impeachment"
 - name: SOTU
   date: 2024-03-07
   topic: "Biden is old"
 - name: Hur Testimony
   date: 2024-03-12
   topic: "Biden is old"
+- name: Fani Willis\nGeorgia Ruling
+  date: 2024-03-15
+  topic: "Trump Trial"
+- name: Hush Money\nCase Delay
+  date: 2024-03-15
+  topic: "Trump Trial"
 - name: Bloodbath Rally
   date: 2024-03-16
   topic: "Trump is unfit"
+- name: NY Bond\nReduction
+  date: 2024-03-25
+  topic: "Trump Trial"
 - name: "SCOTUS Abortion\nPill Hearing"
   date: 2024-03-26
   topic: "Abortion Post-Dobbs"
@@ -16,3 +34,6 @@
 - name: "Gaza aid\nworkers killed"
   date: 2024-04-01
   topic: "War in Gaza"
+- name: "Trump Posts Bond"
+  date: 2024-04-02
+  topic: "Trump Trial"
