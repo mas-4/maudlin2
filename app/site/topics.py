@@ -96,6 +96,8 @@ class TopicsPage:
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     def generate_header_graph(self, df):
+        plt.cla()
+        plt.clf()
         fig, ax = plt.gcf(), plt.gca()
         fig.set_size_inches(13, 7)
 
