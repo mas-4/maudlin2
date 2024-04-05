@@ -8,6 +8,10 @@ from sqlalchemy import or_
 from app.analysis.topics import score_tokens, prepare_for_topic, load_and_update_topics
 from app.models import Headline, Topic, Session, SqlLock
 from app.utils.constants import Constants
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 SID = SentimentIntensityAnalyzer()
 AFINN = Afinn()
@@ -53,19 +57,14 @@ def apply(headline: Headline):
 
 def reapply_sent():
     with Session() as s, SqlLock:
-        headlines = s.query(Headline.id, Headline.title).filter(
-            or_(
-                Headline.vader_neg.is_(None),
-                Headline.vader_neu.is_(None),
-                Headline.vader_pos.is_(None),
-                Headline.vader_compound.is_(None),
-                Headline.afinn.is_(None)
-            )
-        ).all()
+        headlines = s.query(Headline.id, Headline.title).all()
+        count = len(headlines)
+        logger.debug('Reapplying sentiment to %i headlines', count)
         df = pd.DataFrame(headlines, columns=['id', 'title'])
         df['afinn'] = df['title'].apply(lambda x: AFINN.score(x) / len(x.split()))
         df['vader'] = df['title'].apply(lambda x: SID.polarity_scores(x))
-        for row in df.itertuples():
+        logger.debug("Sentiment calculated, now updating database.")
+        for i, row in enumerate(df.itertuples()):
             s.query(Headline).update(
                 {
                     Headline.afinn: row.afinn,
@@ -76,7 +75,11 @@ def reapply_sent():
                 },
                 synchronize_session=False
             )
+            if i % 1000 == 0:
+                logger.debug('Updating %i of %i', i, count)
+        logger.debug('Committing changes to database.')
         s.commit()
+        logger.debug('Sentiment reapplication complete.')
 
 if __name__ == '__main__':
     reapply_sent()

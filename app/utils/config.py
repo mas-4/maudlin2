@@ -27,7 +27,7 @@ class SpecialDate:
 
 class Config:
     use_color = True
-    logging_level = logging.INFO
+    logging_level = logging.DEBUG
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     dev_mode = False
