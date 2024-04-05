@@ -1,18 +1,29 @@
-import os
-from random import random
-from datetime import datetime as dt, timedelta as td
 import logging
+import os
+from datetime import datetime as dt, timedelta as td
+from random import random
+from typing import Any
 
 import mistune
+import yaml
 
 from app.site import j2env
 from app.utils.constants import Constants, Credibility, Bias
+
 
 def read_creds(path):
     if os.path.exists(path):
         with open(path, 'rt') as f_in:
             return f_in.read().strip()
     return ''
+
+
+class SpecialDate:
+    def __init__(self, rawdict: dict[str, Any]):
+        self.name: str = rawdict['name']
+        self.date: dt = rawdict['date']  # had no idea yaml automatically converted this
+        self.topic: str = rawdict['topic']
+
 
 class Config:
     use_color = True
@@ -62,8 +73,9 @@ class Config:
     netlify = read_creds(Constants.Paths.NETLIFY_CREDS)
     dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
 
-
-
+    with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
+        special_dates = [SpecialDate(x) for x in yaml.safe_load(f_in)]
+        special_dates.sort(key=lambda x: x.date)
 
 
 # <editor-fold desc="Jinja2 Environment Stuff">

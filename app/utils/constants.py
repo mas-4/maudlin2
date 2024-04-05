@@ -89,6 +89,7 @@ class Constants:
         NETLIFY_CREDS = os.path.join(ROOT, '.netlify_creds')
         DROPBOX_CREDS = os.path.join(ROOT, '.dropbox_creds')
         TOPICS_FILE = os.path.join(ROOT, 'topics.yml')
+        SPECIAL_DATES = os.path.join(ROOT, 'special-dates.yml')
 
     class Patterns:
         SLASH_DATE = re.compile(r'/\d{4}/\d{1,2}/\d{1,2}/')

@@ -1,5 +1,4 @@
 import os
-from datetime import datetime as dt
 from functools import partial
 
 import matplotlib
@@ -15,14 +14,6 @@ from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Country
 
-SPECIAL_DATES = {
-    "SOTU": '2024-03-07',
-    "Hur Testimony": '2024-03-12',
-    "Bloodbath Rally": '2024-03-16',
-    "SCOTUS Abortion\nPill Hearing": '2024-03-26',
-    "Florida Abortion Ruling": '2024-04-01',
-    "Gaza aid\nworkers killed": '2024-04-01',
-}
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
@@ -100,7 +91,7 @@ class TopicsPage:
             # rotate x-axis labels
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            TopicsPage.apply_special_dates(ax2)
+            TopicsPage.apply_special_dates(ax2, topic.name)
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
 
@@ -134,21 +125,22 @@ class TopicsPage:
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             ax.legend(loc='upper left')
-        self.apply_special_dates(axs[0])
-        self.apply_special_dates(axs[1])
+        self.apply_special_dates(axs[0], 'all')
+        self.apply_special_dates(axs[1], 'all')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
 
     @staticmethod
-    def apply_special_dates(ax: plt.Axes):
+    def apply_special_dates(ax: plt.Axes, topic):
         ymin, ymax = ax.get_ylim()
-        for i, (event, date_str) in enumerate(SPECIAL_DATES.items()):
-            date = dt.strptime(date_str, '%Y-%m-%d').date()
-            ax.axvline(date, color='k', linestyle='--', lw=2)  # noqa date for float
+        for i, spdate in enumerate(Config.special_dates):
+            if topic != 'all' and spdate.topic != topic:
+                continue
+            ax.axvline(spdate.date, color='k', linestyle='--', lw=2)  # noqa date for float
             offset = (i % 3) * ((ymax + ymin) / 3)
             ax.annotate(
-                event,
-                xy=(date, offset),  # noqa date for float
+                spdate.name,
+                xy=(spdate.date, offset),  # noqa date for float
                 xytext=(0, 20),
                 textcoords='offset points',
                 ha='right',
