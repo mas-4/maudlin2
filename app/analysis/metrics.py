@@ -3,7 +3,7 @@ from typing import Optional
 import pandas as pd
 from afinn import Afinn
 from nltk.sentiment import SentimentIntensityAnalyzer
-from sqlalchemy import or_
+from sqlalchemy import or_, update
 
 from app.analysis.topics import score_tokens, prepare_for_topic, load_and_update_topics
 from app.models import Headline, Topic, Session, SqlLock
@@ -74,23 +74,17 @@ def reapply_sent(applyall=False):
         df = pd.DataFrame(headlines, columns=['id', 'title'])
         df['afinn'] = df['title'].apply(lambda x: AFINN.score(x) / len(x.split()))
         df['vader'] = df['title'].apply(lambda x: SID.polarity_scores(x))
+        df['vader_neg'] = df['vader'].apply(lambda x: x['neg'])
+        df['vader_neu'] = df['vader'].apply(lambda x: x['neu'])
+        df['vader_pos'] = df['vader'].apply(lambda x: x['pos'])
+        df['vader_compound'] = df['vader'].apply(lambda x: x['compound'])
+        updates = df[['id', 'afinn', 'vader_neg', 'vader_neu', 'vader_pos', 'vader_compound']].to_dict(orient='records')
         logger.debug("Sentiment calculated, now updating database.")
-        for i, row in enumerate(df.itertuples()):
-            s.query(Headline).update(
-                {
-                    Headline.afinn: row.afinn,
-                    Headline.vader_neg: row.vader['neg'],
-                    Headline.vader_neu: row.vader['neu'],
-                    Headline.vader_pos: row.vader['pos'],
-                    Headline.vader_compound: row.vader['compound']
-                },
-                synchronize_session=False
-            )
-            if i % 100 == 0:
-                logger.debug('Updating %i of %i', i, count)
+        s.execute(update(Headline), updates)
         logger.debug('Committing changes to database.')
         s.commit()
         logger.debug('Sentiment reapplication complete.')
+
 
 if __name__ == '__main__':
     reapply_sent()
