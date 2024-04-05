@@ -114,7 +114,7 @@ class Scraper(ABC, Thread):
                 headline.update_last_accessed()
                 headline.article.update_last_accessed()
                 self.updated += 1
-                logger.debug("Headline already exists, updating last_accessed: %r", headline)
+                logger.debug("Updating existing headline: %r", headline)
             s.commit()
             self.downstream = list(
                 set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
