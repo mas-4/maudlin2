@@ -58,8 +58,8 @@ def main(args: argparse.Namespace):
     if args.analyze_topics:
         analyze_all_topics(True)
         return
-    if args.analyze_sentiment:
-        reapply_sent()
+    if args.analyze_sentiment is not None:
+        reapply_sent('all' in args.analyze_sentiment)
         return
     if args.email_report:
         DayReport.report_turnover()
@@ -78,7 +78,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--email-report', action='store_true')
     parser.add_argument('--run-selenium', action='store_true')
     parser.add_argument('--analyze-topics', action='store_true')
-    parser.add_argument('--analyze-sentiment', action='store_true')
+    parser.add_argument('--analyze-sentiment', action='store', type=str)
     args = parser.parse_args()
     Config.dev_mode = args.dev
     return args
