@@ -86,7 +86,7 @@ def reapply_sent(applyall=False):
                 },
                 synchronize_session=False
             )
-            if i % 1000 == 0:
+            if i % 100 == 0:
                 logger.debug('Updating %i of %i', i, count)
         logger.debug('Committing changes to database.')
         s.commit()
