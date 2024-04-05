@@ -45,7 +45,7 @@ class TopicsPage:
             for topic in topics:
                 self.generate_topic_wordcloud(topic)
         df = self.get_data()
-        self.generate_graphs(df)
+        self.generate_header_graph(df)
         self.generate_topic_graphs(df, topics)
         self.generate_topic_pages(df, topics)
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
@@ -95,49 +95,40 @@ class TopicsPage:
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
 
-    def generate_graphs(self, df):
-        fig, axs = plt.subplots(2, figsize=(10, 8))
-        styles = ['r-', 'b--', 'g-.', 'y:', 'c-', 'm--', 'k-.', 'r:', 'b-', 'g--', 'y-.', 'c:', 'm-', 'k--', 'r-.',
-                  'b:']
+    def generate_header_graph(self, df):
+        fig, ax = plt.gcf(), plt.gca()
+        fig.set_size_inches(13, 7)
 
-        for topic, style in zip(df['topic'].unique(), styles):
+        for topic in df['topic'].unique():
             topic_df = df[df['topic'] == topic].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             # group by day and calculate average sentiment, emphasis, and number of articles
-            topic_df = topic_df.groupby('day').agg({
-                'sentiment': 'mean',
-                'emphasis': 'mean',
-                'afinn': 'count'
-            })
-            topic_df['sentiment'] = topic_df['sentiment'].rolling(window=7).mean()
+            topic_df = topic_df.groupby('day').agg({'afinn': 'count'})
 
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
-            axs[0].plot(topic_df.index, topic_df.sentiment, style, label=topic)
-            axs[1].bar(topic_df.index, topic_df.articles, label=topic)
+            ax.bar(topic_df.index, topic_df.articles, label=topic)
 
-        axs[0].set_title('Sentiment Moving Average')
-        # axs[1].set(yscale='log')
-        axs[1].set_title('Number of Articles')
-        for ax in axs:
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            ax.set_xticks(ax.get_xticks()[::2])
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            ax.legend(loc='upper left')
-        self.apply_special_dates(axs[0], 'all')
-        self.apply_special_dates(axs[1], 'all')
+        ax.set_title('Number of Articles by Topic Published Per Day')
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        ax.set_xticks(ax.get_xticks()[::2])
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+        ax.legend(loc='upper left')
+        self.apply_special_dates(ax, 'all')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
 
     @staticmethod
     def apply_special_dates(ax: plt.Axes, topic):
         ymin, ymax = ax.get_ylim()
+        rot = 4
         for i, spdate in enumerate(Config.special_dates):
             if topic != 'all' and spdate.topic != topic:
                 continue
             ax.axvline(spdate.date, color='k', linestyle='--', lw=2)  # noqa date for float
-            offset = (i % 3) * ((ymax + ymin) / 3)
+
+            offset = (i % rot) * ((ymax + ymin - 20) / rot)
             ax.annotate(
                 spdate.name,
                 xy=(spdate.date, offset),  # noqa date for float
