@@ -55,9 +55,20 @@ def apply(headline: Headline):
         pass
 
 
-def reapply_sent():
+def reapply_sent(applyall=False):
     with Session() as s, SqlLock:
-        headlines = s.query(Headline.id, Headline.title).all()
+        if not applyall:
+            headlines = s.query(Headline.id, Headline.title).filter(
+                or_(
+                    Headline.vader_neg.is_(None),
+                    Headline.vader_neu.is_(None),
+                    Headline.vader_pos.is_(None),
+                    Headline.vader_compound.is_(None),
+                    Headline.afinn.is_(None)
+                )
+            ).all()
+        else:
+            headlines = s.query(Headline.id, Headline.title).all()
         count = len(headlines)
         logger.debug('Reapplying sentiment to %i headlines', count)
         df = pd.DataFrame(headlines, columns=['id', 'title'])

@@ -35,6 +35,7 @@
     - "smirnov"
     - "witness"
   essential:
+    - "biden"
 - name: "Trump is unfit"
   keywords:
     - "authoritarian"
