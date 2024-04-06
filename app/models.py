@@ -134,6 +134,7 @@ class Headline(Base, AccessTimeMixin):
     article_id: Mapped[int] = mapped_column(ForeignKey("article.id"))
     article: Mapped["Article"] = relationship(Article, back_populates="headlines")
     title: Mapped[str] = mapped_column(Text())
+    processed: Mapped[str] = mapped_column(Text(), nullable=True)
     position: Mapped[int] = mapped_column(Integer(), default=0, nullable=True)
 
     vader_neg: Mapped[float] = mapped_column(Float(), nullable=True)

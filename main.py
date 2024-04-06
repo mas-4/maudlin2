@@ -1,12 +1,13 @@
 import argparse
 
+from app.analysis.metrics import reapply_sent
+from app.analysis.preprocessing import reprocess_headlines
+from app.analysis.topics import analyze_all_topics
+from app.registry import Scrapers
+from app.scraper import SeleniumScraper, SeleniumResourceManager
+from app.site_builder import build_site
 from app.utils.config import Config
 from app.utils.logger import get_logger
-from app.analysis.topics import analyze_all_topics
-from app.analysis.metrics import reapply_sent
-from app.registry import Scrapers
-from app.site_builder import build_site
-from app.scraper import SeleniumScraper, SeleniumResourceManager
 from utils.dayreport import DayReport
 
 logger = get_logger(__name__)
@@ -61,6 +62,9 @@ def main(args: argparse.Namespace):
     if args.analyze_sentiment is not None:
         reapply_sent('all' in args.analyze_sentiment)
         return
+    if args.reprocess:
+        reprocess_headlines()
+        return
     if args.email_report:
         DayReport.report_turnover()
         return
@@ -79,6 +83,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--run-selenium', action='store_true')
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
+    parser.add_argument('--reprocess', action='store_true')
     args = parser.parse_args()
     Config.dev_mode = args.dev
     return args
