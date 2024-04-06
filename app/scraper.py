@@ -1,5 +1,4 @@
 import os
-import re
 import traceback as tb
 from abc import ABC, abstractmethod
 from collections import namedtuple
@@ -17,11 +16,11 @@ from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils.config import Config
 from app.utils.constants import Credibility, Bias, Country
 from app.utils.logger import get_logger
+from app.analysis.preprocessing import preprocess
 
 logger = get_logger(__name__)
 
-ArticlePair = namedtuple('ArticlePair', ['href', 'title', 'pos'])
-STRIPS = {'\xad': ' ', '\xa0': ' ', '\n': ' ', '\t': ' ', '\r': ' ', '  +': ' '}
+ArticleTuple = namedtuple('ArticlePair', ['href', 'title', 'processed', 'pos'])
 
 
 class Scraper(ABC, Thread):
@@ -68,9 +67,9 @@ class Scraper(ABC, Thread):
     def setup(self, soup: Soup):
         pass
 
-    def process(self, art_pair: ArticlePair):
+    def process(self, art: ArticleTuple):
         with Session() as s, self.sql_lock:
-            if (headline := s.query(Headline).filter(Headline.title == art_pair.title).first()) is not None:
+            if (headline := s.query(Headline).filter(Headline.processed == art.processed).first()) is not None:
                 # we're going to double-check this headline hasn't been seen before
                 headline.update_last_accessed()
                 headline.article.update_last_accessed()
@@ -78,15 +77,16 @@ class Scraper(ABC, Thread):
                 s.commit()
                 return
 
-            if (article := s.query(Article).filter_by(url=art_pair.href).first()) is None:
-                article = Article(url=art_pair.href, agency_id=self.agency_id)
+            if (article := s.query(Article).filter_by(url=art.href).first()) is None:
+                article = Article(url=art.href, agency_id=self.agency_id)
                 s.add(article)
                 s.commit()
                 logger.debug(f"Added to database: %r", article)
                 self.articles += 1
 
             article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
-            headline = Headline(title=art_pair.title, position=art_pair.pos, article_id=article.id)
+            headline = Headline(title=art.title, processed=art.processed,
+                                position=art.pos, article_id=article.id)
             s.add(headline)
             s.commit()
             logger.debug(f"Added to database: %r", headline)
@@ -131,37 +131,32 @@ class Scraper(ABC, Thread):
               self.agency, self.articles, self.headlines, self.updated)
         self.done = True
 
-    @staticmethod
-    def strip(text: str):
-        for pattern, replacement in STRIPS.items():
-            text = re.sub(pattern, replacement, text)
-        return text
-
     def run_processing(self):
         pos = 0
         while self.downstream:
             href, title = self.downstream.pop()
             if title.strip().count(' ') == 0:
                 continue  # obviously a headline without spaces isn't a headline
-            if href.startswith('//'):
-                href = 'https:' + href
-            elif href.startswith('/'):
-                href = self.url.strip('/') + href
-            elif not href.startswith('http'):
-                href = self.url.strip('/') + '/' + href
-            href = href.strip()
-            title = self.strip(title)
-            art_pair = ArticlePair(href, title, pos)
+            art = ArticleTuple(self.clean_href(href).strip(), title, preprocess(title), pos)
             pos += 1
             try:
-                if not (err := validators.url(art_pair.href)):
+                if not (err := validators.url(art.href)):
                     raise err
-                self.process(art_pair)
+                self.process(art)
             except Exception as e:  # noqa
                 Session.rollback()
-                msg = f"Failed to process link: {self.agency}: {art_pair} {e}"
+                msg = f"Failed to process link: {self.agency}: {art} {e}"
                 self.dayreport.add_exception(msg, tb.format_exc())
                 logger.exception(msg)
+
+    def clean_href(self, href):
+        if href.startswith('//'):
+            href = 'https:' + href
+        elif href.startswith('/'):
+            href = self.url.strip('/') + href
+        elif not href.startswith('http'):
+            href = self.url.strip('/') + '/' + href
+        return href
 
     def run_setup(self):
         try:

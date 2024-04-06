@@ -70,7 +70,7 @@ def reapply_sent(applyall=False):
         else:
             headlines = s.query(Headline.id, Headline.title).all()
         count = len(headlines)
-        logger.debug('Reapplying sentiment to %i headlines', count)
+        logger.info('Reapplying sentiment to %i headlines', count)
         df = pd.DataFrame(headlines, columns=['id', 'title'])
         df['afinn'] = df['title'].apply(lambda x: AFINN.score(x) / len(x.split()))
         df['vader'] = df['title'].apply(lambda x: SID.polarity_scores(x))
@@ -79,11 +79,11 @@ def reapply_sent(applyall=False):
         df['vader_pos'] = df['vader'].apply(lambda x: x['pos'])
         df['vader_compound'] = df['vader'].apply(lambda x: x['compound'])
         updates = df[['id', 'afinn', 'vader_neg', 'vader_neu', 'vader_pos', 'vader_compound']].to_dict(orient='records')
-        logger.debug("Sentiment calculated, now updating database.")
+        logger.info("Sentiment calculated, now updating database.")
         s.execute(update(Headline), updates)
-        logger.debug('Committing changes to database.')
+        logger.info('Committing changes to database.')
         s.commit()
-        logger.debug('Sentiment reapplication complete.')
+        logger.info('Sentiment reapplication complete.')
 
 
 if __name__ == '__main__':

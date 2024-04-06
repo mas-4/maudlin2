@@ -23,12 +23,24 @@ replacements: dict[str, str] = {
     "<br/>": " ",
     "<br />": " ",
     "  +": " ",
+    '\xad': ' ',
+    '\xa0': ' ',
+    '\n': ' ',
+    '\t': ' ',
+    '\r': ' ',
+    r'\s+': ' ',
 }
+
+STRIPS = {}
 
 def initial_cleaning(headline):
     for pat, repl in replacements.items():
         headline = re.sub(pat, repl, headline)
     return headline.strip()
+
+def preprocess(text: str):
+    text = initial_cleaning(text)
+    return text
 
 def deduplicate(df):
     # Take the first first_accessed and last last_accessed for each duplicate set of titles
@@ -51,20 +63,20 @@ def deduplicate(df):
 
 def reprocess_headlines(all_headlines: bool = False):
     df = get_headlines(all_headlines)
-    logger.debug("Processing %i headlines", len(df))
+    logger.info("Processing %i headlines", len(df))
     if len(df) == 0:
         return
-    df['processed'] = df['title'].apply(initial_cleaning)
+    df['processed'] = df['title'].apply(preprocess)
     updates, deletes = deduplicate(df)
     with Session() as s:
         if len(updates):
-            logger.debug("Updating %i headlines", len(updates))
+            logger.info("Updating %i headlines", len(updates))
             s.execute(update(Headline), updates)
         if len(deletes):
-            logger.debug("Deleting %i headlines", len(deletes))
+            logger.info("Deleting %i headlines", len(deletes))
             s.execute(delete(Headline).where(Headline.id.in_(deletes)))
         s.commit()
-    logger.debug("Headline reprocessing complete")
+    logger.info("Headline reprocessing complete")
 
 
 def get_headlines(all_headlines):

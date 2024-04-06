@@ -36,7 +36,7 @@ def load_and_update_topics():
         for top_d in topic_dict:
             topic: Topic = session.query(Topic).filter(Topic.name == top_d['name']).first()
             if topic is None:
-                logger.debug("Adding topic %s", top_d['name'])
+                logger.info("Adding topic %s", top_d['name'])
                 topic = Topic(name=top_d['name'])
                 session.add(topic)
             topic.keywords = top_d['keywords']
