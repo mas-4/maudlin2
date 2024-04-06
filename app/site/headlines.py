@@ -51,14 +51,19 @@ class HeadlinesPage:
     @staticmethod
     def get_headlines(s):
         headlines: list[Headline] = Queries.get_current_headlines(s).all()
+        # if windows:
+        if os.name == 'nt':
+            fa_str = '%b %d %I:%M %p'
+            la_str = '%I:%M %p'
+        else:
+            fa_str = '%b %-d %-I:%M %p'
+            la_str = '%-I:%M %p'
 
         df = pd.DataFrame([[
-            h.title,
+            h.processed,
             h.article.agency.name,
-            h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(
-                '%b %-d %-I:%M %p'),
-            h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(
-                '%-I:%M %p'),
+            h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(fa_str),
+            h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(la_str),
             h.position,
             round(h.vader_compound, 2),
             round(h.afinn, 2),
@@ -87,6 +92,7 @@ class HeadlinesPage:
         # drop the sun
         df = df[~(df['agency'] == 'The Sun')]
         return calculate_xkeyscore(df.copy())
+
 
 if __name__ == '__main__':
     HeadlinesPage().generate()

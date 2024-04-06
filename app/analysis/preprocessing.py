@@ -97,7 +97,8 @@ def deduplicate(df):
         keep['last_accessed'] = group['last_accessed'].max()
         updates.append(keep[['id', 'processed', 'first_accessed', 'last_accessed']])
         deletes.extend(group[~group['id'].eq(keep['id'])]['id'])
-    updates = pd.concat(updates, axis=1).T.to_dict(orient='records')
+    if updates:
+        updates = pd.concat(updates, axis=1).T.to_dict(orient='records')
     deletes = list(set(deletes))
     return updates, deletes
 
@@ -114,6 +115,12 @@ def reprocess_headlines(all_headlines: bool = False):
     df = df[df['processed'] != '']
     updates, deletes = deduplicate(df)
     deletes.extend(empty)
+    # drop all deletes from df
+    df = df[~df['id'].isin(deletes)]
+    # drop all updates from df
+    df = df[~df['id'].isin([u['id'] for u in updates])]
+    # add remaining from df to updates
+    updates.extend(df[['id', 'processed', 'first_accessed', 'last_accessed']].to_dict(orient='records'))
     with Session() as s:
         if len(updates):
             logger.info("Updating %i headlines", len(updates))
