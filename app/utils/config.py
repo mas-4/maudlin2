@@ -28,9 +28,9 @@ class SpecialDate:
 class Config:
     use_color = True
     logging_level = logging.DEBUG
+    debug: bool = False
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
-    dev_mode = False
     run_selenium = True
     timeout = 15  # seconds for requests
 

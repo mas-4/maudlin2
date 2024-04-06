@@ -76,7 +76,6 @@ def main(args: argparse.Namespace):
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dev', action='store_true')
     parser.add_argument('--skip-scrape', action='store_true')
     parser.add_argument('--scraper', type=str, default=None)
     parser.add_argument('--email-report', action='store_true')
@@ -84,8 +83,9 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
     parser.add_argument('--reprocess', action='store_true')
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    Config.dev_mode = args.dev
+    Config.debug = args.debug
     return args
 
 

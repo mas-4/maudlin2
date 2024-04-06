@@ -89,10 +89,16 @@ class HomePage:
     def generate_home_wordcloud():
         with Session() as s:
             logger.info("Querying data for home wordcloud...")
-            titles = s.query(Headline.title).filter(
-                Headline.first_accessed > Constants.TimeConstants.midnight,
-                Headline.last_accessed > Config.last_accessed
-            ).all()
+            if Config.debug:
+                titles = []
+                base_query = s.query(Headline.title).join(Headline.article).order_by(Headline.last_accessed.desc())
+                for aid in s.query(Agency.id):
+                    titles.extend(base_query.filter(Article.agency_id==aid[0]).limit(10).all())
+            else:
+                titles = s.query(Headline.title).filter(
+                    Headline.first_accessed > Constants.TimeConstants.midnight,
+                    Headline.last_accessed > Config.last_accessed
+                ).all()
             logger.info("...done")
             path = str(os.path.join(Config.build, FileNames.wordcloud))
             logger.info("Calling generate_wordcloud...")

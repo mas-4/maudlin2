@@ -40,18 +40,21 @@ class AgencyPage:
 
     def get_variables(self):
         s = self.s
-        first_accessed = s.query(Article.first_accessed) \
-            .filter(Article.agency_id == self.agency.id).order_by(Article.first_accessed.asc()).first()[0]
-        headlines = s.query(Headline) \
-            .join(Article, Article.id == Headline.article_id) \
-            .filter(Article.first_accessed > first_accessed + td(days=1),  # This is to eliminate permanent links
-                    Article.last_accessed > Config.last_accessed,
-                    Article.agency_id == self.agency.id) \
-            .order_by(Headline.last_accessed.desc()).all()
+        agency_filter = Article.agency_id == self.agency.id
+        first_accessed_filter = Article.first_accessed > s.query(Article.first_accessed).filter(agency_filter).order_by(
+            Article.first_accessed.asc()
+        ).first()[0] + td(days=1)  # To filter out permanent links
+        base_query = s.query(Headline).join(Article, Article.id == Headline.article_id) \
+            .order_by(Headline.last_accessed.desc()).filter(first_accessed_filter, agency_filter)
+        if Config.debug:
+            headlines = base_query.limit(10).all()
+        else:
+            headlines = base_query.filter(Article.last_accessed > Config.last_accessed).all()
         tabledata = []
         urls = {}
         for headline in headlines:
-            if headline.last_accessed < Config.last_accessed:
+            # I don't remember why this is necessary, but I'll leave it for now because it should help - M 2024-04-06
+            if not Config.debug and headline.last_accessed < Config.last_accessed:
                 continue
             urls[headline.title] = headline.article.url
             strftime = '%b %-d %-I:%M %p'

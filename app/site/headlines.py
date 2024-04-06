@@ -21,17 +21,21 @@ class HeadlinesPage:
         logger.info("Generating headlines page...")
         with Session() as s:
             df = self.get_headlines(s)
-        def formattitle(x):
+
+        def format_title(x):
             t = x.title.replace("'", "").replace('"', '')
             t_trunc = t[:Config.headline_cutoff] + '...' if len(t) > Config.headline_cutoff else t
             return f'<a title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
-        df['title'] = df.apply(formattitle, axis=1)
-        def formattopic(x):
+
+        df['title'] = df.apply(format_title, axis=1)
+
+        def format_topic(x):
             if not x.topic:
                 return ''
-            topicfile = x.topic.replace(' ', '_') + '.html'
-            return f'<a href="{topicfile}.html">{x.topic}</a>'
-        df['topic'] = df.apply(formattopic, axis=1)
+            topic_file = x.topic.replace(' ', '_') + '.html'
+            return f'<a href="{topic_file}.html">{x.topic}</a>'
+
+        df['topic'] = df.apply(format_topic, axis=1)
         # Truncate headline_df['title'] to 255 characters and append a ... if it is longer
         df = df[
             ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
@@ -46,10 +50,7 @@ class HeadlinesPage:
 
     @staticmethod
     def get_headlines(s):
-        headlines: list[Headline] = Queries.get_current_headlines(s).order_by(
-            Headline.position.asc(),  # prominence
-            Headline.first_accessed.desc()
-        ).all()
+        headlines: list[Headline] = Queries.get_current_headlines(s).all()
 
         df = pd.DataFrame([[
             h.title,
@@ -83,14 +84,9 @@ class HeadlinesPage:
 
     @staticmethod
     def filter_score_sort(df):
-        # df = df[df['country'].isin(['us', 'gb'])] Taken care of by query
-        # drop rows where country == gb and agency != The Economist, BBC, The Guardian
-        # df = df[~((df['country'] == 'gb') & (~df['agency'].isin(['The Economist', 'BBC', 'The Guardian'])))]
         # drop the sun
         df = df[~(df['agency'] == 'The Sun')]
-        df = calculate_xkeyscore(df.copy())
-        # combine agency name and title Agency - Title
-        return df
+        return calculate_xkeyscore(df.copy())
 
 if __name__ == '__main__':
     HeadlinesPage().generate()

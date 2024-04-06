@@ -34,15 +34,15 @@ class Agency(Base):
 
     def current(self, col) -> float:
         with (Session() as s):
-            first_date = s.query(Article.first_accessed) \
-                .filter_by(agency_id=self.id) \
-                .order_by(Article.first_accessed.asc()).first()[0]
-            numbers = np.array(
-                s.query(col).join(Article, Article.id == Headline.article_id).filter_by(agency_id=self.id).filter(
-                    Article.first_accessed > first_date + td(days=1),  # This is to eliminate permanent links
-                    Article.last_accessed > Config.last_accessed  # we want current articles!
-                ).all()
-            ).flatten()
+            first_date_filter = Article.first_accessed > s.query(Article.first_accessed).filter_by(agency_id=self.id) \
+                .order_by(Article.first_accessed.asc()).first()[0] + td(days=1)  # to eliminate permanent links
+            base_query = s.query(col).join(Article, Article.id == Headline.article_id).filter_by(
+                agency_id=self.id).filter(first_date_filter).order_by(Headline.last_accessed.desc())
+            if Config.debug:
+                data = base_query.limit(10).all()
+            else:
+                data = base_query.filter(Headline.last_accessed > Config.last_accessed).all()
+            numbers = np.array(data).flatten()
         if np.isnan(np.mean(numbers)):
             logger.warning("No %s data for %r.", col, self)
         return np.mean(numbers[~np.isnan(numbers)])
