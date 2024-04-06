@@ -1,7 +1,6 @@
 import os
 from functools import partial
 
-import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -12,7 +11,7 @@ from app.models import Topic, Session, Article, Headline, Agency
 from app.site import j2env
 from app.site.common import generate_wordcloud
 from app.utils.config import Config
-from app.utils.constants import Country
+from app.utils.constants import Country, Bias
 
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -41,8 +40,8 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            for topic in topics:
-                self.generate_topic_wordcloud(topic)
+            #for topic in topics:
+            #    self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_topic_graphs(df, topics)
@@ -63,25 +62,29 @@ class TopicsPage:
 
     @staticmethod
     def generate_topic_graphs(df, topics):
+        colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
         for topic in topics:
             topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
             topic_df = df[df['topic'] == topic.name].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
-            topic_df = topic_df.groupby('day').agg({
+            topic_df = topic_df.groupby(['bias', 'day']).agg({
                 'sentiment': 'mean',
                 'afinn': 'count'
             })
             topic_df['sentiment'] = topic_df['sentiment'].rolling(window=7).mean()
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
-            fig, ax = plt.subplots(figsize=(9, 4))
-            ax.plot(topic_df.index, topic_df.sentiment, 'r-', label='Sentiment')
+            fig, ax = plt.subplots(figsize=(13, 6))
+            for bias in topic_df.index.levels[0]:
+                gdf = topic_df.loc[bias]
+                ax.plot(gdf.index, gdf.sentiment, color=colors[bias+3], label='Sentiment')
             ax.set_xlabel('Date')
             ax.set_ylabel('Sentiment Moving Average', color='r')
             ax.tick_params(axis='y', labelcolor='r')
             ax2 = ax.twinx()
-            norm = plt.Normalize(topic_df['sentiment'].min(), topic_df['sentiment'].max())
-            ax2.bar(topic_df.index, topic_df.articles,
-                    color=matplotlib.colormaps["inferno"](norm(topic_df['sentiment'])), label='Articles', alpha=0.5)
+            for bias in topic_df.index.levels[0]:
+                gdf = topic_df.loc[bias]
+                enum = Bias(bias)
+                ax2.bar(gdf.index, gdf.articles, color=colors[bias+3], alpha=0.75, label=str(enum))
             ax2.set_ylabel('Number of Articles', color='b')
             ax2.tick_params(axis='y', labelcolor='b')
 
@@ -92,6 +95,7 @@ class TopicsPage:
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             TopicsPage.apply_special_dates(ax2, topic.name)
+            plt.legend(loc='upper left')
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
 

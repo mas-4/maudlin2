@@ -54,6 +54,7 @@ class AgencyPage:
         urls = {}
         for headline in headlines:
             # I don't remember why this is necessary, but I'll leave it for now because it should help - M 2024-04-06
+            # TODO: this loop is insanely time consuming and can be sped up by just not doing it.
             if not Config.debug and headline.last_accessed < Config.last_accessed:
                 continue
             urls[headline.processed] = headline.article.url
