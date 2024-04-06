@@ -33,7 +33,6 @@ STOPWORDS.extend(list(string.ascii_uppercase))
 STOPWORDS.extend(list(string.punctuation))
 
 PIPELINE = [
-    Pipelines.split_camelcase,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
     tnorm.unicode,

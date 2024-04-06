@@ -15,7 +15,6 @@ logger = get_logger(__name__)
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
 
 pipeline = [
-    Pipelines.split_camelcase,
     str.lower,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,

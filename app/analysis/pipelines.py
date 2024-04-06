@@ -93,8 +93,8 @@ class Pipelines:
                 not any(tok in stopwords for tok in ngram)]
 
     @staticmethod
-    def split_camelcase(text: str):
-        return re.sub(r'(?<!\bMc)([a-z])([A-Z])', r'\1 \2', text)
+    def split_camelcase(text: str):  # invalidated function
+        return text
 
     @staticmethod
     def decontract(tokens: list[str]):
@@ -102,7 +102,6 @@ class Pipelines:
 
 
 default_pipeline = [
-    Pipelines.split_camelcase,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
     tnorm.unicode,

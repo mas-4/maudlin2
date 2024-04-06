@@ -18,7 +18,6 @@ from app.utils.constants import Country
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
 PIPELINE = [
-    Pipelines.split_camelcase,
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
     tnorm.unicode,
@@ -54,7 +53,8 @@ class TopicsPage:
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
         with Session() as session:
-            headlines = session.query(Headline.title).join(Headline.article).filter(Article.topic_id == topic.id).all()
+            headlines = session.query(Headline.processed).join(Headline.article).filter(
+                Article.topic_id == topic.id).all()
             topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
             headlines = [h[0] for h in headlines]
             generate_wordcloud(headlines,
@@ -151,7 +151,7 @@ class TopicsPage:
     def get_data():
         columns = {
             'id': Article.id,
-            'headline': Headline.title,
+            'headline': Headline.processed,
             'agency': Agency.name,
             'bias': Agency._bias,  # noqa prot attr
             'url': Article.url,

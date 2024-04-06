@@ -28,7 +28,7 @@ class AgencyPage:
         variables = self.get_variables()
         if variables['headlines']:
             generate_wordcloud(
-                [h.title for h in variables['headlines']],
+                [h.processed for h in variables['headlines']],
                 str(os.path.join(Config.build, variables['wordcloud']))
             )
         with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
@@ -56,10 +56,10 @@ class AgencyPage:
             # I don't remember why this is necessary, but I'll leave it for now because it should help - M 2024-04-06
             if not Config.debug and headline.last_accessed < Config.last_accessed:
                 continue
-            urls[headline.title] = headline.article.url
+            urls[headline.processed] = headline.article.url
             strftime = '%b %-d %-I:%M %p'
             tabledata.append([
-                headline.title,
+                headline.processed,
                 headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(
                     tz=Constants.TimeConstants.timezone).strftime(strftime),
                 len(headline.article.headlines),

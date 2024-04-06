@@ -138,6 +138,8 @@ class Scraper(ABC, Thread):
             if title.strip().count(' ') == 0:
                 continue  # obviously a headline without spaces isn't a headline
             art = ArticleTuple(self.clean_href(href).strip(), title, preprocess(title), pos)
+            if not art.processed:
+                continue
             pos += 1
             try:
                 if not (err := validators.url(art.href)):

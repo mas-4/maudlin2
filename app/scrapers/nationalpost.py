@@ -26,5 +26,7 @@ class NationalPost(Scraper):
             if href.startswith('/'):
                 href = self.url + href
             title = span.text.strip()
+            if "horoscope" in title.lower():
+                continue
             if title:
                 self.downstream.append((href, title))
