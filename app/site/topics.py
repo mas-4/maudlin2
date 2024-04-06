@@ -40,8 +40,8 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            #for topic in topics:
-            #    self.generate_topic_wordcloud(topic)
+            for topic in topics:
+                self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_topic_graphs(df, topics)
@@ -77,6 +77,8 @@ class TopicsPage:
             for bias in topic_df.index.levels[0]:
                 gdf = topic_df.loc[bias]
                 ax.plot(gdf.index, gdf.sentiment, color=colors[bias+3], label='Sentiment')
+            # plot a black line at 0
+            ax.axhline(0, color='k', linestyle='dotted', lw=1)
             ax.set_xlabel('Date')
             ax.set_ylabel('Sentiment Moving Average', color='r')
             ax.tick_params(axis='y', labelcolor='r')
