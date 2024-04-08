@@ -64,36 +64,15 @@ class TopicsPage:
     @staticmethod
     def generate_topic_graphs(df, topics):
         colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
+        df['leftcenter'] = df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
         for topic in topics:
             topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
             topic_df = df[df['topic'] == topic.name].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
-            bottom = TopicsPage.get_bottom(topic_df)
-            topic_df = topic_df.groupby(['bias', 'day']).agg({
-                'sentiment': 'mean',
-                'afinn': 'count'
-            })
-            topic_df['sentiment'] = topic_df['sentiment'].rolling(window=7).mean()
-            topic_df = topic_df.rename(columns={'afinn': 'articles'})
+
             fig, ax = plt.subplots(figsize=(13, 6))
-            for bias in topic_df.index.levels[0]:
-                gdf = topic_df.loc[bias]
-                ax.plot(gdf.index, gdf.sentiment, color=colors[bias+3], label='Sentiment')
-            # plot a black line at 0
-            ax.axhline(0, color='k', linestyle='dotted', lw=1)
-            ax.set_xlabel('Date')
-            ax.set_ylabel('Sentiment Moving Average', color='r')
-            ax.tick_params(axis='y', labelcolor='r')
-            ax2 = ax.twinx()
-            for bias in topic_df.index.levels[0]:
-                gdf = topic_df.loc[bias]
-                enum = Bias(bias)
-                if len(gdf) < len(bottom):
-                    gdf = gdf.reindex(bottom.index, fill_value=0)
-                ax2.bar(gdf.index, gdf.articles, color=colors[bias+3], alpha=0.75, label=str(enum))
-                bottom['bot'] += gdf.articles
-            ax2.set_ylabel('Number of Articles', color='b')
-            ax2.tick_params(axis='y', labelcolor='b')
+            TopicsPage.graph_articles_topic(ax, colors, topic_df)
+            TopicsPage.graph_sentiment_lines_topic(ax.twinx(), topic_df)
 
             ax.set_title(f'{topic.name} Sentiment and Number of Articles')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
@@ -101,10 +80,41 @@ class TopicsPage:
             # rotate x-axis labels
             ax.set_xticks(ax.get_xticks()[::2])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            TopicsPage.apply_special_dates(ax2, topic.name)
+            TopicsPage.apply_special_dates(ax, topic.name)
             plt.legend(loc='upper left')
             plt.tight_layout()
             plt.savefig(os.path.join(Config.build, topic.graph))
+
+    @staticmethod
+    def graph_articles_topic(ax, colors, topic_df):
+        bottom = TopicsPage.get_bottom(topic_df)
+        bias_df = topic_df.groupby(['bias', 'day']).agg({
+            'afinn': 'count'
+        })
+        bias_df = bias_df.rename(columns={'afinn': 'articles'})
+        # plot a black line at 0
+        for bias in bias_df.index.levels[0]:
+            gdf = bias_df.loc[bias]
+            enum = Bias(bias)
+            if len(gdf) < len(bottom):
+                gdf = gdf.reindex(bottom.index, fill_value=0)
+            ax.bar(gdf.index, gdf.articles, color=colors[bias + 3], alpha=0.75, label=str(enum))
+            bottom['bot'] += gdf.articles
+        ax.set_ylabel('Number of Articles', color='b')
+        ax.tick_params(axis='y', labelcolor='b')
+
+    @staticmethod
+    def graph_sentiment_lines_topic(ax, topic_df):
+        ax.axhline(0, color='k', linestyle='dotted', lw=1)
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Sentiment Moving Average', color='r')
+        ax.tick_params(axis='y', labelcolor='r')
+        colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
+        df = topic_df.groupby(['leftcenter', 'day']).agg({'sentiment': 'mean'})
+        df['sentiment'] = df['sentiment'].rolling(window=7).mean()
+        for group in df.index.levels[0]:
+            gdf = df.loc[group]
+            ax.plot(gdf.index, gdf.sentiment, color=colors[group], label='Sentiment')
 
     def generate_header_graph(self, df):
         plt.cla()
