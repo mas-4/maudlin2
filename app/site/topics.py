@@ -1,4 +1,5 @@
 import os
+from datetime import datetime as dt
 from functools import partial
 
 import matplotlib.dates as mdates
@@ -40,8 +41,8 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            for topic in topics:
-                self.generate_topic_wordcloud(topic)
+            # for topic in topics:
+            #     self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_topic_graphs(df, topics)
@@ -67,6 +68,7 @@ class TopicsPage:
             topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
             topic_df = df[df['topic'] == topic.name].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
+            bottom = TopicsPage.get_bottom(topic_df)
             topic_df = topic_df.groupby(['bias', 'day']).agg({
                 'sentiment': 'mean',
                 'afinn': 'count'
@@ -86,7 +88,10 @@ class TopicsPage:
             for bias in topic_df.index.levels[0]:
                 gdf = topic_df.loc[bias]
                 enum = Bias(bias)
+                if len(gdf) < len(bottom):
+                    gdf = gdf.reindex(bottom.index, fill_value=0)
                 ax2.bar(gdf.index, gdf.articles, color=colors[bias+3], alpha=0.75, label=str(enum))
+                bottom['bot'] += gdf.articles
             ax2.set_ylabel('Number of Articles', color='b')
             ax2.tick_params(axis='y', labelcolor='b')
 
@@ -107,15 +112,19 @@ class TopicsPage:
         fig, ax = plt.gcf(), plt.gca()
         fig.set_size_inches(13, 7)
 
+        bottom = TopicsPage.get_bottom(df)
         for topic in df['topic'].unique():
             topic_df = df[df['topic'] == topic].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             # group by day and calculate average sentiment, emphasis, and number of articles
             topic_df = topic_df.groupby('day').agg({'afinn': 'count'})
-
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
-            ax.bar(topic_df.index, topic_df.articles, label=topic)
+            if len(topic_df) < len(bottom):
+                topic_df = topic_df.reindex(bottom.index, fill_value=0)
+            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'])
+            bottom['bot'] += topic_df.articles
+
 
         ax.set_title('Number of Articles by Topic Published Per Day')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
@@ -126,6 +135,16 @@ class TopicsPage:
         self.apply_special_dates(ax, 'all')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
+
+    @staticmethod
+    def get_bottom(df):
+        days = (dt.now() - df['first_accessed'].min()).days
+        bottom = pd.DataFrame(pd.date_range(df['first_accessed'].min(), periods=days, freq='D'), columns=['dt'])
+        bottom['days'] = bottom['dt'].dt.date
+        bottom = bottom.set_index('days')
+        bottom['bot'] = 0
+        bottom = bottom[['bot']]
+        return bottom
 
     @staticmethod
     def apply_special_dates(ax: plt.Axes, topic):
