@@ -41,8 +41,8 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            # for topic in topics:
-            #     self.generate_topic_wordcloud(topic)
+            for topic in topics:
+                self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_topic_graphs(df, topics)
@@ -123,7 +123,8 @@ class TopicsPage:
         fig.set_size_inches(13, 7)
 
         bottom = TopicsPage.get_bottom(df)
-        for topic in df['topic'].unique():
+        sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
+        for i, topic in enumerate(sorted_topics.index):
             topic_df = df[df['topic'] == topic].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
@@ -141,7 +142,8 @@ class TopicsPage:
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
         ax.set_xticks(ax.get_xticks()[::2])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-        ax.legend(loc='upper left')
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1])
         self.apply_special_dates(ax, 'all')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.graph_path))
