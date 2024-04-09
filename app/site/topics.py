@@ -101,7 +101,7 @@ class TopicsPage:
             enum = Bias(bias)
             if len(gdf) < len(bottom):
                 gdf = gdf.reindex(bottom.index, fill_value=0)
-            ax.bar(gdf.index, gdf.articles, color=colors[bias + 3], alpha=0.75, label=str(enum))
+            ax.bar(gdf.index, gdf.articles, color=colors[bias + 3], label=str(enum))
             bottom['bot'] += gdf.articles
         ax.set_ylabel('Number of Articles', color='b')
         ax.tick_params(axis='y', labelcolor='b')
