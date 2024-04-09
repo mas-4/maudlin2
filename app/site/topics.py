@@ -75,8 +75,8 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            # for topic in topics:
-            #     self.generate_topic_wordcloud(topic)
+            for topic in topics:
+                self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_current_articles(df)
