@@ -113,7 +113,7 @@ class TopicsPage:
         df['sentiment'] = df['sentiment'].rolling(window=7).mean()
         for group in df.index.levels[0]:
             gdf = df.loc[group]
-            ax.plot(gdf.index, gdf.sentiment, color=colors[group], label='Sentiment')
+            ax.plot(gdf.index, gdf.sentiment, color=colors[group], label=group.title())
         ax.axhline(0, color='k', linestyle='dotted', lw=1)
         ax.tick_params(axis='y', labelcolor='r')
         ax.set_xlabel('Date')
