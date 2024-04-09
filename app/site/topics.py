@@ -136,7 +136,6 @@ class TopicsPage:
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
-            logger.info('Topic len: %i, Bottom len: %i', len(topic_df), len(bottom))
             ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'])
             bottom['bot'] += topic_df.articles
 
