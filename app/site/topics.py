@@ -18,10 +18,27 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def agency_bias_normals():
+    with Session() as session:
+        agencies = session.query(Agency.name, Agency._bias).filter(
+            or_(
+                Agency._country == Country.us.value,  # noqa
+                Agency.name.in_(Config.exempted_foreign_media)
+            )
+        ).all()
+        df = pd.DataFrame(agencies, columns=['name', 'bias'])
+    # group by bias and calculate the number of agencies
+    df = df.groupby('bias').size().reset_index(name='count')
+    # normalize the count
+    df['count'] = (df['count'] - df['count'].min()) / (df['count'].max() - df['count'].min())
+    df['count'] = df['count'].apply(lambda x: max(0.1, x))
+    return dict(zip(df['bias'], df['count']))
+
+
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
 colors = {
-    'War in Gaza': '#1f77b4',           # blue
+    'War in Gaza': '#005EB8',           # '#1f77b4',           # blue
     'Trump Trial': '#ff7f0e',           # orange
     'Inflation': '#2ca02c',             # green
     'Trump is unfit': '#d62728',        # red
@@ -29,7 +46,7 @@ colors = {
     'Biden Impeachment': '#8c564b',     # brown
     'Abortion Post-Dobbs': '#e377c2',   # pink
     'Biden is old': '#7f7f7f',          # grey
-    'Ukraine': '#bcbd22',               # yellow
+    'Ukraine': '#FFDD00',               # '#bcbd22',               # yellow
     # '#17becf'  # light blue
 }
 
@@ -58,8 +75,8 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            for topic in topics:
-                self.generate_topic_wordcloud(topic)
+            # for topic in topics:
+            #     self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_current_articles(df)
@@ -140,6 +157,7 @@ class TopicsPage:
         fig, ax = plt.subplots(figsize=(13, 6))
         for bias in range(-3, 4):
             ax.axhline(bias, color='k', linestyle='dotted', lw=1)
+        normals = agency_bias_normals()
         for i, topic in enumerate(today_df['topic'].unique()):
             topic_df = today_df[today_df['topic'] == topic].copy()
             # count the number of articles per bias at a given time
@@ -147,13 +165,18 @@ class TopicsPage:
             topic_df = topic_df.groupby(['hour', 'bias']).agg({'afinn': 'count'})
             topic_df = topic_df.rename(columns={'afinn': 'articles'}).reset_index()
             topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
-            topic_df['bias'] += i * 0.1
-            ax.scatter(topic_df['hour'], topic_df['bias'], s=(topic_df['articles']*2)**2, label=topic, color=colors[topic])
+            bias = topic_df['bias'].iloc[0]
+            topic_df['bias'] += i * 0.2
+            ax.scatter(topic_df['hour'], topic_df['bias'],
+                       s=((topic_df['articles']/normals[bias])*2)**2, label=topic,
+                       color=colors[topic], alpha=0.75, edgecolor='none')
         # set horizontal lines at each bias level
         ax.set_title("Today's Articles")
         # x-axis should start at 0:00 and end at 23:59
         ax.yaxis.set_ticks(range(-3, 4))
         ax.yaxis.set_ticklabels([str(Bias(bias)) for bias in range(-3, 4)])
+        # rotate y-axis labels
+        ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
         # set x-axis to last night at 11:00 to tonight at 11:00
         ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
@@ -167,6 +190,7 @@ class TopicsPage:
         plt.clf()
         fig, ax = plt.gcf(), plt.gca()
         fig.set_size_inches(13, 7)
+        fig.subplots_adjust(bottom=0.2)
 
         bottom = TopicsPage.get_bottom(df)
         sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
@@ -211,7 +235,8 @@ class TopicsPage:
         for i, spdate in enumerate(Config.special_dates):
             if topic != 'all' and spdate.topic != topic:
                 continue
-            ax.axvline(spdate.date, color='k', linestyle='--', lw=2)  # noqa date for float
+
+            ax.axvline(spdate.date, color=colors[spdate.topic], linestyle='-', lw=1)  # noqa date for float
 
             offset = (i % rot) * ((ymax + ymin - 20) / rot)
             ax.annotate(
