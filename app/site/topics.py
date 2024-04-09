@@ -162,8 +162,6 @@ class TopicsPage:
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.articles_path))
 
-
-
     def generate_header_graph(self, df):
         plt.cla()
         plt.clf()
