@@ -13,6 +13,9 @@ from app.site import j2env
 from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Country, Bias
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -105,16 +108,16 @@ class TopicsPage:
 
     @staticmethod
     def graph_sentiment_lines_topic(ax, topic_df):
-        ax.axhline(0, color='k', linestyle='dotted', lw=1)
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Sentiment Moving Average', color='r')
-        ax.tick_params(axis='y', labelcolor='r')
         colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
         df = topic_df.groupby(['leftcenter', 'day']).agg({'sentiment': 'mean'})
         df['sentiment'] = df['sentiment'].rolling(window=7).mean()
         for group in df.index.levels[0]:
             gdf = df.loc[group]
             ax.plot(gdf.index, gdf.sentiment, color=colors[group], label='Sentiment')
+        ax.axhline(0, color='k', linestyle='dotted', lw=1)
+        ax.tick_params(axis='y', labelcolor='r')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Sentiment Moving Average', color='r')
 
     def generate_header_graph(self, df):
         plt.cla()
@@ -133,6 +136,7 @@ class TopicsPage:
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
+            logger.info('Topic len: %i, Bottom len: %i', len(topic_df), len(bottom))
             ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'])
             bottom['bot'] += topic_df.articles
 
@@ -150,7 +154,7 @@ class TopicsPage:
 
     @staticmethod
     def get_bottom(df):
-        days = (dt.now() - df['first_accessed'].min()).days
+        days = (dt.now().date() - df['first_accessed'].min().date()).days + 1
         bottom = pd.DataFrame(pd.date_range(df['first_accessed'].min(), periods=days, freq='D'), columns=['dt'])
         bottom['days'] = bottom['dt'].dt.date
         bottom = bottom.set_index('days')
