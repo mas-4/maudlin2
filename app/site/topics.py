@@ -75,8 +75,9 @@ class TopicsPage:
     def generate(self):
         with Session() as session:
             topics = session.query(Topic).all()
-            for topic in topics:
-                self.generate_topic_wordcloud(topic)
+            if not Config.debug:
+                for topic in topics:
+                    self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
         self.generate_current_articles(df)
@@ -153,6 +154,9 @@ class TopicsPage:
         ax.set_ylabel('Sentiment Moving Average', color='r')
 
     def generate_current_articles(self, df):
+        df = df.copy()
+        # adjust timezone for first_accessed from naive utc to eastern
+        df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed', ascending=False).copy()
         fig, ax = plt.subplots(figsize=(13, 6))
         for bias in range(-3, 4):
@@ -168,8 +172,8 @@ class TopicsPage:
             bias = topic_df['bias'].iloc[0]
             topic_df['bias'] += i * 0.2
             ax.scatter(topic_df['hour'], topic_df['bias'],
-                       s=((topic_df['articles']/normals[bias])*2)**2, label=topic,
-                       color=colors[topic], alpha=0.75, edgecolor='none')
+                       s=((topic_df['articles']/normals[bias])*0.3)**2, label=topic,
+                       color=colors[topic], alpha=0.85, edgecolor='none')
         # set horizontal lines at each bias level
         ax.set_title("Today's Articles")
         # x-axis should start at 0:00 and end at 23:59
@@ -181,7 +185,7 @@ class TopicsPage:
         ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-        ax.legend(loc='lower right')
+        ax.legend(loc='upper left')
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.articles_path))
 
@@ -311,4 +315,5 @@ class TopicsPage:
 
 
 if __name__ == '__main__':
+    Config.debug = True
     TopicsPage().generate()
