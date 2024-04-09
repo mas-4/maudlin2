@@ -1,0 +1,110 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <img alt="Word Cloud" src="{{ FileNames.wordcloud }}">
+    <br><br>
+
+    <script type="text/javascript">
+        const data = {{tabledata|safe}};
+        const urls = {{urls|safe}};
+        const bias_dict = {{bias|safe}};
+        const credibility_dict = {{credibility|safe}};
+        document.addEventListener("DOMContentLoaded", function () {
+
+            new gridjs.Grid({
+
+                columns: [
+                    {
+                        name: "Agency Name",
+                        formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                        sort: {
+                            compare: (a, b) => {
+                                // strip The from the beginning of the name
+                                a = a.replace(/^The /, '');
+                                b = b.replace(/^The /, '');
+                                return a.localeCompare(b);
+                            }
+                        }
+                    },
+                    {
+                        name: "Credibility",
+                        sort: {
+                            compare: (a, b) => credibility_dict[a] - credibility_dict[b]
+                        }
+                    },
+                    {
+                        name: "Bias",
+                        sort: {
+                            compare: (a, b) => bias_dict[a] - bias_dict[b]
+                        }
+                    },
+                    "Country",
+                    "Churn",
+                    {
+                        name: "VADER",
+                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.15)}</span>`),
+                        attributes: (cell) => {
+                            return {
+                                style: `background-color: ${getColorForValue(cell, 0.2, 2)}; text-align: center;`
+                            }
+                        }
+                    },
+                    {
+                        name: "AFINN",
+                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.1)}</span>`),
+                        attributes: (cell) => {
+                            return {
+                                style: `background-color: ${getColorForValue(cell, 0.2, 2)}; text-align: center;`
+                            }
+                        }
+                    },
+
+                ],
+                data: data,
+                sort: true,
+                search: true,
+                fixedHeader: true
+            }).render(document.getElementById('wrapper'));
+        });
+    </script>
+    <h3>These metrics exclude non-US media sources.</h3>
+    <h4>
+        <a href="https://github.com/nltk/nltk/blob/develop/nltk/sentiment/vader.py">VADER</a>
+        and
+        <a href="http://corpustext.com/reference/sentiment_afinn.html">AFINN</a>
+        are sentiment lexicons.
+    </h4>
+    <div id="metrics">
+        <div class="metric">
+            <div class="metric-name">Median VADER</div>
+            <div class="metric-value">{{ metrics['median_vader']|round(2) }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-name">Mean VADER</div>
+            <div class="metric-value">{{ metrics['mean_vader']|round(3) }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-name">Partisan VADER Index (PVI)</div>
+            <div class="metric-value">{{ metrics['partisan_mean_vader']|round(3) }}<br>(-left/+right)</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-name">Median AFINN</div>
+            <div class="metric-value">{{ metrics['median_afinn']|round(2) }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-name">Mean AFINN</div>
+            <div class="metric-value">{{ metrics['mean_afinn']|round(3) }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-name">Partisan AFINN Index (PAI)</div>
+            <div class="metric-value">{{ metrics['partisan_mean_afinn']|round(3) }}<br>(-left/+right)</div>
+        </div>
+    </div>
+    <div id="metric-graphs">
+        <img alt="Sentiment Statistics" src="{{ FileNames.graphs }}">
+    </div>
+    <h3>The below sentiment values only include currently displayed stories.</h3>
+    <div id="wrapper"></div>
+
+{% endblock content %}

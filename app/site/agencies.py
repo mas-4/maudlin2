@@ -22,8 +22,8 @@ class FileNames:
     graphs = 'graphs.png'
 
 
-class HomePage:
-    template = j2env.get_template('index.html')
+class AgenciesPage:
+    template = j2env.get_template('agencies.html')
 
     def __init__(self):
         self.data = []
@@ -32,7 +32,7 @@ class HomePage:
         self.metrics = {}
 
     def generate(self):
-        logger.info("Generating home page...")
+        logger.info("Generating agencies page...")
         self.generate_home_wordcloud()
         self.generate_home_data()
         self.render_sentiment_graphs()
@@ -40,7 +40,7 @@ class HomePage:
         logger.info("...done")
 
     def render_home_page(self):
-        with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
+        with open(os.path.join(Config.build, 'agencies.html'), 'wt') as f:
             f.write(self.template.render(
                 title='Home',
                 tabledata=self.data,
@@ -150,4 +150,4 @@ class HomePage:
 
 
 if __name__ == "__main__":
-    HomePage().generate()
+    AgenciesPage().generate()

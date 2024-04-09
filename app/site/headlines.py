@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 
 class HeadlinesPage:
-    template = j2env.get_template('headlines.html')
+    template = j2env.get_template('index.html')
 
     def generate(self):
         logger.info("Generating headlines page...")
@@ -40,10 +40,10 @@ class HeadlinesPage:
         df = df[
             ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
         ]
-        df.sort_values(by='score', ascending=False, inplace=True)
-        with open(os.path.join(Config.build, 'headlines.html'), 'wt') as f:
+        df.sort_values(by='first_accessed', ascending=False, inplace=True)
+        with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
             f.write(self.template.render(
-                title='Headlines',
+                title='Current Headlines',
                 tabledata=df.values.tolist(),
             ))
         logger.info("...done")
@@ -95,4 +95,5 @@ class HeadlinesPage:
 
 
 if __name__ == '__main__':
+    Config.debug = True
     HeadlinesPage().generate()
