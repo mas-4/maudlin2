@@ -96,12 +96,11 @@ class TopicsPage:
         })
         bias_df = bias_df.rename(columns={'afinn': 'articles'})
         # plot a black line at 0
-        for bias in bias_df.index.levels[0]:
+        for bias in range(-3, 4):
             gdf = bias_df.loc[bias]
-            enum = Bias(bias)
             if len(gdf) < len(bottom):
                 gdf = gdf.reindex(bottom.index, fill_value=0)
-            ax.bar(gdf.index, gdf.articles, color=colors[bias + 3], label=str(enum))
+            ax.bar(gdf.index, gdf.articles, color=colors[bias + 3], label=str(Bias(bias)))
             bottom['bot'] += gdf.articles
         ax.set_ylabel('Number of Articles', color='b')
         ax.tick_params(axis='y', labelcolor='b')
