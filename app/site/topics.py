@@ -1,5 +1,5 @@
 import os
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 from functools import partial
 
 import matplotlib.dates as mdates
@@ -19,6 +19,19 @@ logger = get_logger(__name__)
 
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
+
+colors = {
+    'War in Gaza': '#1f77b4',           # blue
+    'Trump Trial': '#ff7f0e',           # orange
+    'Inflation': '#2ca02c',             # green
+    'Trump is unfit': '#d62728',        # red
+    'Border Chaos': '#9467bd',          # purplish
+    'Biden Impeachment': '#8c564b',     # brown
+    'Abortion Post-Dobbs': '#e377c2',   # pink
+    'Biden is old': '#7f7f7f',          # grey
+    'Ukraine': '#bcbd22',               # yellow
+    # '#17becf'  # light blue
+}
 
 PIPELINE = [
     tnorm.hyphenated_words,
@@ -40,6 +53,7 @@ class TopicsPage:
     template = j2env.get_template('topics.html')
     topic_template = j2env.get_template('topic.html')
     graph_path = 'topics_graph.png'
+    articles_path = 'current_articles.png'
 
     def generate(self):
         with Session() as session:
@@ -48,10 +62,12 @@ class TopicsPage:
                 self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df)
+        self.generate_current_articles(df)
         self.generate_topic_graphs(df, topics)
         self.generate_topic_pages(df, topics)
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
-            f.write(self.template.render(topics=topics, graphs_path=self.graph_path, title='Topic Analysis'))
+            f.write(self.template.render(topics=topics, graphs_path=self.graph_path, articles_path=self.articles_path,
+                                         title='Topic Analysis'))
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
@@ -66,6 +82,7 @@ class TopicsPage:
 
     @staticmethod
     def generate_topic_graphs(df, topics):
+        # blue to red
         colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
         df['leftcenter'] = df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
         for topic in topics:
@@ -118,6 +135,35 @@ class TopicsPage:
         ax.set_xlabel('Date')
         ax.set_ylabel('Sentiment Moving Average', color='r')
 
+    def generate_current_articles(self, df):
+        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed', ascending=False).copy()
+        fig, ax = plt.subplots(figsize=(13, 6))
+        for bias in range(-3, 4):
+            ax.axhline(bias, color='k', linestyle='dotted', lw=1)
+        for i, topic in enumerate(today_df['topic'].unique()):
+            topic_df = today_df[today_df['topic'] == topic].copy()
+            # count the number of articles per bias at a given time
+            topic_df['hour'] = topic_df['first_accessed'].dt.hour
+            topic_df = topic_df.groupby(['hour', 'bias']).agg({'afinn': 'count'})
+            topic_df = topic_df.rename(columns={'afinn': 'articles'}).reset_index()
+            topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
+            topic_df['bias'] += i * 0.1
+            ax.scatter(topic_df['hour'], topic_df['bias'], s=(topic_df['articles']*2)**2, label=topic, color=colors[topic])
+        # set horizontal lines at each bias level
+        ax.set_title("Today's Articles")
+        # x-axis should start at 0:00 and end at 23:59
+        ax.yaxis.set_ticks(range(-3, 4))
+        ax.yaxis.set_ticklabels([str(Bias(bias)) for bias in range(-3, 4)])
+        # set x-axis to last night at 11:00 to tonight at 11:00
+        ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+        ax.legend(loc='lower right')
+        plt.tight_layout()
+        plt.savefig(os.path.join(Config.build, self.articles_path))
+
+
+
     def generate_header_graph(self, df):
         plt.cla()
         plt.clf()
@@ -135,7 +181,7 @@ class TopicsPage:
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
-            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'])
+            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=colors[topic])
             bottom['bot'] += topic_df.articles
 
 
