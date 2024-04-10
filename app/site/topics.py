@@ -156,7 +156,6 @@ class TopicsPage:
     def generate_current_articles(self, df):
         df = df.copy()
         # adjust timezone for first_accessed from naive utc to eastern
-        df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed', ascending=False).copy()
         fig, ax = plt.subplots(figsize=(13, 6))
         for bias in range(-3, 4):
@@ -292,6 +291,8 @@ class TopicsPage:
         df['emphasis'] = df['positionnorm'] * df['duration']
         # normalize emphasis
         df['emphasis'] = (df['emphasis'] - df['emphasis'].min()) / (df['emphasis'].max() - df['emphasis'].min())
+        # normalize date from utc
+        df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         return df
 
     def generate_topic_pages(self, df, topics):
