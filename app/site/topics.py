@@ -18,25 +18,10 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def agency_bias_normals():
-    with Session() as session:
-        agencies = session.query(Agency.name, Agency._bias).filter(  # noqa prot attr
-            or_(
-                Agency._country == Country.us.value,  # noqa
-                Agency.name.in_(Config.exempted_foreign_media)
-            )
-        ).all()
-        df = pd.DataFrame(agencies, columns=['name', 'bias'])
-    # group by bias and calculate the number of agencies
-    df = df.groupby('bias').size().reset_index(name='count')
-    # normalize the count
-    df['count'] = (df['count'] - df['count'].min()) / (df['count'].max() - df['count'].min())
-    df['count'] = df['count'].apply(lambda x: max(0.1, x))
-    return dict(zip(df['bias'], df['count']))
-
 
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
+side_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
 colors = {
     'War in Gaza': '#005EB8',  # '#1f77b4',           # blue
     'Trump Trial': '#ff7f0e',  # orange
@@ -82,7 +67,7 @@ class TopicsPage:
                     self.generate_topic_wordcloud(topic)
         df = self.get_data()
         self.generate_header_graph(df.copy())
-        self.generate_current_articles(df.copy())
+        self.generate_article_scatter(df.copy())
         self.generate_topic_graphs(df, topics)
         self.generate_topic_pages(df, topics)
         self.generate_day_topic_bar_chart(df.copy())
@@ -144,7 +129,6 @@ class TopicsPage:
 
     @staticmethod
     def graph_sentiment_lines_topic(ax, topic_df):
-        side_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
         df = topic_df.groupby(['leftcenter', 'day']).agg({'sentiment': 'mean'})
         df['sentiment'] = df['sentiment'].rolling(window=7).mean()
         for group in df.index.levels[0]:
@@ -173,31 +157,28 @@ class TopicsPage:
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.today_topic_path))
 
-    def generate_current_articles(self, df):
+    def generate_article_scatter(self, df):
         # adjust timezone for first_accessed from naive utc to eastern
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
                                                                                    ascending=False).copy()
         fig, ax = plt.subplots(figsize=(13, 6))
-        normals = agency_bias_normals()
-        today_df['group'] = today_df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
+        today_df['side'] = today_df['bias'].apply(lambda x: -1 if x < 0 else 1 if x > 0 else 0)
 
         for i, topic in enumerate(today_df['topic'].unique()):
             topic_df = today_df[today_df['topic'] == topic].copy()
             # count the number of articles per bias at a given time
             topic_df['hour'] = topic_df['first_accessed'].dt.hour
-            topic_df = topic_df.groupby(['hour', 'bias']).agg({'afinn': 'count'})
+            topic_df = topic_df.groupby(['hour', 'side']).agg({'afinn': 'count'})
             topic_df = topic_df.rename(columns={'afinn': 'articles'}).reset_index()
             topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
-            bias = topic_df['bias'].iloc[0]
-            topic_df['bias'] += i * 0.2
-            ax.scatter(topic_df['hour'], topic_df['bias'],
-                       s=((topic_df['articles'] / normals[bias]) * 0.3) ** 2, label=topic,
+            topic_df['side'] += i * 0.2
+            ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 2) ** 2, label=topic,
                        color=colors[topic], alpha=0.85, edgecolor='none')
         # set horizontal lines at each bias level
         ax.set_title("Today's Articles")
         # x-axis should start at 0:00 and end at 23:59
-        ax.yaxis.set_ticks(range(-3, 4))
-        ax.yaxis.set_ticklabels([str(Bias(bias)) for bias in range(-3, 4)])
+        ax.yaxis.set_ticks(range(-1,2))
+        ax.yaxis.set_ticklabels(['left', 'center', 'right'])
         # rotate y-axis labels
         ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
         # set x-axis to last night at 11:00 to tonight at 11:00
