@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 def agency_bias_normals():
     with Session() as session:
-        agencies = session.query(Agency.name, Agency._bias).filter(
+        agencies = session.query(Agency.name, Agency._bias).filter(  # noqa prot attr
             or_(
                 Agency._country == Country.us.value,  # noqa
                 Agency.name.in_(Config.exempted_foreign_media)
@@ -38,17 +38,18 @@ def agency_bias_normals():
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
 colors = {
-    'War in Gaza': '#005EB8',           # '#1f77b4',           # blue
-    'Trump Trial': '#ff7f0e',           # orange
-    'Inflation': '#2ca02c',             # green
-    'Trump is unfit': '#d62728',        # red
-    'Border Chaos': '#9467bd',          # purplish
-    'Biden Impeachment': '#8c564b',     # brown
-    'Abortion Post-Dobbs': '#e377c2',   # pink
-    'Biden is old': '#7f7f7f',          # grey
-    'Ukraine': '#FFDD00',               # '#bcbd22',               # yellow
+    'War in Gaza': '#005EB8',  # '#1f77b4',           # blue
+    'Trump Trial': '#ff7f0e',  # orange
+    'Inflation': '#2ca02c',  # green
+    'Trump is unfit': '#d62728',  # red
+    'Border Chaos': '#9467bd',  # purplish
+    'Biden Impeachment': '#8c564b',  # brown
+    'Abortion Post-Dobbs': '#e377c2',  # pink
+    'Biden is old': '#7f7f7f',  # grey
+    'Ukraine': '#FFDD00',  # '#bcbd22',               # yellow
     # '#17becf'  # light blue
 }
+bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
 
 PIPELINE = [
     tnorm.hyphenated_words,
@@ -71,6 +72,7 @@ class TopicsPage:
     topic_template = j2env.get_template('topic.html')
     graph_path = 'topics_graph.png'
     articles_path = 'current_articles.png'
+    today_topic_path = 'current_topics.png'
 
     def generate(self):
         with Session() as session:
@@ -79,13 +81,14 @@ class TopicsPage:
                 for topic in topics:
                     self.generate_topic_wordcloud(topic)
         df = self.get_data()
-        self.generate_header_graph(df)
-        self.generate_current_articles(df)
+        self.generate_header_graph(df.copy())
+        self.generate_current_articles(df.copy())
         self.generate_topic_graphs(df, topics)
         self.generate_topic_pages(df, topics)
+        self.generate_day_topic_bar_chart(df.copy())
         with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
             f.write(self.template.render(topics=topics, graphs_path=self.graph_path, articles_path=self.articles_path,
-                                         title='Topic Analysis'))
+                                         today_topic_path=self.today_topic_path, title='Topic Analysis'))
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
@@ -101,7 +104,6 @@ class TopicsPage:
     @staticmethod
     def generate_topic_graphs(df, topics):
         # blue to red
-        colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
         df['leftcenter'] = df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
         for topic in topics:
             topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
@@ -109,7 +111,7 @@ class TopicsPage:
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             fig, ax = plt.subplots(figsize=(13, 6))
-            TopicsPage.graph_articles_topic(ax, colors, topic_df)
+            TopicsPage.graph_articles_topic(ax, topic_df)
             TopicsPage.graph_sentiment_lines_topic(ax.twinx(), topic_df)
 
             ax.set_title(f'{topic.name} Sentiment and Number of Articles')
@@ -124,7 +126,7 @@ class TopicsPage:
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     @staticmethod
-    def graph_articles_topic(ax, colors, topic_df):
+    def graph_articles_topic(ax, topic_df):
         bottom = TopicsPage.get_bottom(topic_df)
         bias_df = topic_df.groupby(['bias', 'day']).agg({
             'afinn': 'count'
@@ -135,32 +137,50 @@ class TopicsPage:
             gdf = bias_df.loc[bias]
             if len(gdf) < len(bottom):
                 gdf = gdf.reindex(bottom.index, fill_value=0)
-            ax.bar(gdf.index, gdf.articles, color=colors[bias + 3], label=str(Bias(bias)))
+            ax.bar(gdf.index, gdf.articles, color=bias_colors[bias + 3], label=str(Bias(bias)))
             bottom['bot'] += gdf.articles
         ax.set_ylabel('Number of Articles', color='b')
         ax.tick_params(axis='y', labelcolor='b')
 
     @staticmethod
     def graph_sentiment_lines_topic(ax, topic_df):
-        colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
+        side_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
         df = topic_df.groupby(['leftcenter', 'day']).agg({'sentiment': 'mean'})
         df['sentiment'] = df['sentiment'].rolling(window=7).mean()
         for group in df.index.levels[0]:
             gdf = df.loc[group]
-            ax.plot(gdf.index, gdf.sentiment, color=colors[group], label=group.title())
+            ax.plot(gdf.index, gdf.sentiment, color=side_colors[group], label=group.title())
         ax.axhline(0, color='k', linestyle='dotted', lw=1)
         ax.tick_params(axis='y', labelcolor='r')
         ax.set_xlabel('Date')
         ax.set_ylabel('Sentiment Moving Average', color='r')
 
-    def generate_current_articles(self, df):
-        df = df.copy()
+    def generate_day_topic_bar_chart(self, df):
         # adjust timezone for first_accessed from naive utc to eastern
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed', ascending=False).copy()
+        today_df = today_df.groupby(['bias', 'topic']).agg({'afinn': 'count'}).reset_index()
         fig, ax = plt.subplots(figsize=(13, 6))
+        left = pd.Series(0, index=today_df['topic'].unique()).sort_index()
         for bias in range(-3, 4):
-            ax.axhline(bias, color='k', linestyle='dotted', lw=1)
+            gdf = today_df[today_df['bias'] == bias][['topic', 'afinn']].set_index('topic').sort_values('topic')
+            if len(gdf) < len(left):
+                gdf = gdf.reindex(left.index, fill_value=0)
+            ax.barh(gdf.index, gdf['afinn'], color=bias_colors[bias + 3], label=str(Bias(bias)), left=left)
+            left += gdf['afinn']
+        # set horizontal lines at each bias level
+        ax.set_title("Today's Topics")
+        ax.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(Config.build, self.today_topic_path))
+
+    def generate_current_articles(self, df):
+        # adjust timezone for first_accessed from naive utc to eastern
+        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
+                                                                                   ascending=False).copy()
+        fig, ax = plt.subplots(figsize=(13, 6))
         normals = agency_bias_normals()
+        today_df['group'] = today_df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
+
         for i, topic in enumerate(today_df['topic'].unique()):
             topic_df = today_df[today_df['topic'] == topic].copy()
             # count the number of articles per bias at a given time
@@ -171,7 +191,7 @@ class TopicsPage:
             bias = topic_df['bias'].iloc[0]
             topic_df['bias'] += i * 0.2
             ax.scatter(topic_df['hour'], topic_df['bias'],
-                       s=((topic_df['articles']/normals[bias])*0.3)**2, label=topic,
+                       s=((topic_df['articles'] / normals[bias]) * 0.3) ** 2, label=topic,
                        color=colors[topic], alpha=0.85, edgecolor='none')
         # set horizontal lines at each bias level
         ax.set_title("Today's Articles")
@@ -208,7 +228,6 @@ class TopicsPage:
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
             ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=colors[topic])
             bottom['bot'] += topic_df.articles
-
 
         ax.set_title('Number of Articles by Topic Published Per Day')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
