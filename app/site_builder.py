@@ -18,8 +18,14 @@ def copy_assets():
         logger.debug(f"Copying %s", file)
         shutil.copy(os.path.join(Config.assets, file), Config.build)
 
+def clear_build():
+    for file in os.listdir(Config.build):
+        logger.debug(f"Removing %s", file)
+        os.remove(os.path.join(Config.build, file))
+
 
 def build_site():
+    clear_build()
     HeadlinesPage().generate()
     AgenciesPage().generate()
     # Blog().generate()
