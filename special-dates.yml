@@ -16,7 +16,7 @@
 - name: "Hur Testimony"
   date: 2024-03-12
   topic: "Biden is old"
-- name: "Surprise\nInflation\nReport"
+- name: "3.2% Inflation Report"
   date: 2024-03-12
   topic: "Inflation"
 - name: "Fani Willis\nGeorgia Ruling"
@@ -49,3 +49,6 @@
 - name: "Arizona\nAbortion\nRuling"
   date: 2024-04-09
   topic: "Abortion Post-Dobbs"
+- name: "3.5% Inflation Report"
+  date: 2024-04-10
+  topic: "Inflation"
