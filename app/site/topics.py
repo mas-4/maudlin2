@@ -172,7 +172,7 @@ class TopicsPage:
             topic_df = topic_df.rename(columns={'afinn': 'articles'}).reset_index()
             topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
             topic_df['side'] += i * 0.2
-            ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 2) ** 2, label=topic,
+            ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 20), label=topic,
                        color=colors[topic], alpha=0.85, edgecolor='none')
         # set horizontal lines at each bias level
         ax.set_title("Today's Articles")

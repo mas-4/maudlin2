@@ -22,7 +22,7 @@ def copy_assets():
 def build_site():
     HeadlinesPage().generate()
     AgenciesPage().generate()
-    Blog().generate()
+    # Blog().generate()
     TopicsPage().generate()
     generate_agency_pages()
     copy_assets()
