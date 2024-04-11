@@ -7,7 +7,6 @@ import pytz
 from app.models import Agency, Session, Headline, Article
 from app.registry import Scrapers
 from app.site import j2env
-from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Constants
 from app.utils.logger import get_logger
@@ -21,16 +20,10 @@ class AgencyPage:
     def __init__(self, agency: Agency, s: Session):
         self.agency = agency
         self.s: Session = s
-        self.wordcloud_filename = f'{self.agency.name}.png'
 
     def generate(self):
         logger.info("Generating page for %s...", self.agency.name)
         variables = self.get_variables()
-        if variables['headlines']:
-            generate_wordcloud(
-                [h.processed for h in variables['headlines']],
-                str(os.path.join(Config.build, variables['wordcloud']))
-            )
         with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
             f.write(self.template.render(**variables))
         df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', '# Headlines', 'Vader', 'Afinn'])
@@ -75,7 +68,6 @@ class AgencyPage:
             'tabledata': tabledata,
             'title': self.agency.name,
             'urls': urls,
-            'wordcloud': self.wordcloud_filename
         }
 
 

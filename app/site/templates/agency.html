@@ -2,8 +2,6 @@
 
 {% block content %}
     <h1>{{ title }}</h1>
-    <img alt="{{ title }}" src="{{ wordcloud }}">
-    <br><br>
     <script type="text/javascript">
         document.addEventListener("DOMContentLoaded", function () {
             const data = {{ tabledata | safe }};
