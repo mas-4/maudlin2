@@ -185,7 +185,7 @@ class TopicsPage:
         ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-        ax.legend(loc='upper left')
+        ax.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(Config.build, self.articles_path))
 
