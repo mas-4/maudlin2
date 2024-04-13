@@ -15,7 +15,6 @@ exclude_stopwords = {'not', 'no', 'nor', 'none', 'neither', 'never', 'nothing',
 STOPWORDS |= include_stopwords
 STOPWORDS -= exclude_stopwords
 
-
 POS = ['NN', 'NNS', 'NNP', 'NNPS']
 
 CONTRACTION_MAP: dict[str, str] = {

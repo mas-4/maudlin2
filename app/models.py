@@ -68,9 +68,6 @@ class Agency(Base):
         ).count()
         return headlines / articles if articles else 1
 
-
-
-
     @property
     def bias(self):
         return Bias(self._bias)

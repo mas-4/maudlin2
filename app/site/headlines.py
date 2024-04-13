@@ -29,6 +29,7 @@ pipeline = [
     ' '.join
 ]
 
+
 class HeadlinesPage:
     template = j2env.get_template('index.html')
 
@@ -41,7 +42,7 @@ class HeadlinesPage:
         cosine_sim = prepare_cosine(df['processed'])
         clusters = form_clusters(cosine_sim, min_samples=5, threshold=0.5)
         df = label_clusters(df, clusters)
-        grouped = df[df['cluster']!=-1].groupby('cluster')
+        grouped = df[df['cluster'] != -1].groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
         table_df = self.process_headlines(df)

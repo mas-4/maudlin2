@@ -1,7 +1,10 @@
 import gzip
 import shutil
+
 import dropbox
+
 from app.utils.config import Config
+
 
 def gzip_file(source, destination):
     with open(source, 'rb') as f_in, gzip.open(destination, 'wb') as f_out:
@@ -20,6 +23,7 @@ def backup():
     gzip_file(Config.db_file_path, backup_path)
     push_to_dropbox(backup_path, f'/Apps/maudlin/{backup_name}', Config.dropbox)
     print('Backup complete')
+
 
 if __name__ == '__main__':
     backup()

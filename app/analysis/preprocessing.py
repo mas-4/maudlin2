@@ -1,7 +1,9 @@
-from app.models import Session, Headline
+import re
+
 import pandas as pd
 from sqlalchemy import update, delete
-import re
+
+from app.models import Session, Headline
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -47,7 +49,8 @@ def remove_stops(headline):
 
 PATRONYMS: list[str] = ["mc", "mac", "van", "von", "de", "la", "le", "el", "al", "di", "da", "du", "del", "della",
                         "delle", "delli", "dello"]
-WHITELIST: list[str] = ["mRNA", ".com", ".io", ".net", ".org", ".gov", ".edu", ".mil", ".int", ".tv", ".uk", ".us", ".uk"]
+WHITELIST: list[str] = ["mRNA", ".com", ".io", ".net", ".org", ".gov", ".edu", ".mil", ".int", ".tv", ".uk", ".us",
+                        ".uk"]
 
 
 def split_camelcases(text):

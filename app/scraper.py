@@ -11,12 +11,12 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
 from app.analysis import metrics
-from utils.dayreport import DayReport
+from app.analysis.preprocessing import preprocess
 from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils.config import Config
 from app.utils.constants import Credibility, Bias, Country
 from app.utils.logger import get_logger
-from app.analysis.preprocessing import preprocess
+from utils.dayreport import DayReport
 
 logger = get_logger(__name__)
 

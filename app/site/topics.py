@@ -17,8 +17,6 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-
-
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
 
 side_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
@@ -141,7 +139,8 @@ class TopicsPage:
 
     def generate_day_topic_bar_chart(self, df):
         # adjust timezone for first_accessed from naive utc to eastern
-        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed', ascending=False).copy()
+        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
+                                                                                   ascending=False).copy()
         today_df = today_df.groupby(['bias', 'topic']).agg({'afinn': 'count'}).reset_index()
         fig, ax = plt.subplots(figsize=(13, 6))
         left = pd.Series(0, index=today_df['topic'].unique()).sort_index()
@@ -177,7 +176,7 @@ class TopicsPage:
         # set horizontal lines at each bias level
         ax.set_title("Today's Articles")
         # x-axis should start at 0:00 and end at 23:59
-        ax.yaxis.set_ticks(range(-1,2))
+        ax.yaxis.set_ticks(range(-1, 2))
         ax.yaxis.set_ticklabels(['left', 'center', 'right'])
         # rotate y-axis labels
         ax.set_yticklabels(ax.get_yticklabels(), rotation=45)

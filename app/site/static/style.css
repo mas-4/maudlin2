@@ -3,11 +3,11 @@
  */
 
 :root {
-  --color-hi: #f56a6a;
+    --color-hi: #f56a6a;
 }
 
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 img {
@@ -16,82 +16,82 @@ img {
 }
 
 body {
-  color: #555;
-  margin: 0 auto;
-  max-width: 90em;
-  font-family: "Helvetica", "Arial", sans-serif;
-  line-height: 1.5;
-  padding: 2em 1em;
+    color: #555;
+    margin: 0 auto;
+    max-width: 90em;
+    font-family: "Helvetica", "Arial", sans-serif;
+    line-height: 1.5;
+    padding: 2em 1em;
 }
 
 .navbar {
-  background-color: #fff; /* White background to match your site */
-  overflow: hidden; /* Ensures the content is contained within the navigation bar */
-  border-bottom: 1px solid #ddd; /* A subtle bottom border for a touch of separation */
-  padding: 10px 0; /* Vertical padding */
+    background-color: #fff; /* White background to match your site */
+    overflow: hidden; /* Ensures the content is contained within the navigation bar */
+    border-bottom: 1px solid #ddd; /* A subtle bottom border for a touch of separation */
+    padding: 10px 0; /* Vertical padding */
 }
 
 .navbar a {
-  color: #333; /* Dark text color for contrast */
-  padding: 10px 20px; /* Padding around the links for clickable area */
-  text-decoration: none; /* Removes the underline from links */
-  font-size: 16px; /* Sets a standard font size for the links */
-  display: inline-block; /* Aligns links in a row */
+    color: #333; /* Dark text color for contrast */
+    padding: 10px 20px; /* Padding around the links for clickable area */
+    text-decoration: none; /* Removes the underline from links */
+    font-size: 16px; /* Sets a standard font size for the links */
+    display: inline-block; /* Aligns links in a row */
 }
 
 .navbar a:hover {
-  background-color: #f2f2f2; /* Light grey background on hover for visual feedback */
+    background-color: #f2f2f2; /* Light grey background on hover for visual feedback */
 }
 
 /* Additional style to align the nav bar content to the left */
 .navbar {
-  text-align: left; /* Aligns the nav links to the left */
+    text-align: left; /* Aligns the nav links to the left */
 }
 
 
 h1 {
-  font-size: 2.5em
+    font-size: 2.5em
 }
 
 h2 {
-  font-size: 2em;
+    font-size: 2em;
 }
 
 h3 {
-  font-size: 1.5em
+    font-size: 1.5em
 }
 
 h2, h3 {
-  margin-top: 1.5em;
+    margin-top: 1.5em;
 }
 
 h1, h2, strong {
-  color: #333;
+    color: #333;
 }
 
 code, pre {
-  background: #eee;
+    background: #eee;
 }
 
 code {
-  padding: 2px 4px;
-  vertical-align: text-bottom;
+    padding: 2px 4px;
+    vertical-align: text-bottom;
 }
 
 pre {
-  border-left: 2px solid #bbb;
-  padding: 1em;
+    border-left: 2px solid #bbb;
+    padding: 1em;
 }
 
 a {
-  color: var(--color-hi);
+    color: var(--color-hi);
 }
 
 blockquote, q {
-  border-left: solid 4px #bbb;
-  font-style: italic;
-  margin: 0 0 2em 0;
-  padding: 0.5em 0 0.5em 2em;
+    border-left: solid 4px #bbb;
+    font-style: italic;
+    margin: 0 0 2em 0;
+    padding: 0.5em 0 0.5em 2em;
 }
 
 blockquote::before, blockquote::after, q::before, q::after {
@@ -102,43 +102,43 @@ blockquote::before, blockquote::after, q::before, q::after {
 /* Metrics */
 
 #metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px; /* Adjust the space between cards */
-  padding: 20px; /* Padding around the container */
-  justify-content: center; /* Center the cards */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Adjust the space between cards */
+    padding: 20px; /* Padding around the container */
+    justify-content: center; /* Center the cards */
 }
 
 .metric {
-  display: flex; /* Enable Flexbox */
-  flex-direction: column; /* Stack children vertically */
-  justify-content: space-between; /* Distribute space around items */
-  align-items: center; /* Center align items horizontally */
-  background-color: #f0f0f0; /* Light grey background */
-  border: 1px solid #ddd; /* Light grey border */
-  border-radius: 8px; /* Rounded corners */
-  padding: 15px; /* Padding inside each card */
-  width: 200px; /* Fixed width, but you can make it responsive */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-  height: 150px; /* Set a fixed height to ensure enough space for vertical centering */
-  flex-basis: 25%; /* idk but it works to limit 3 per row */
+    display: flex; /* Enable Flexbox */
+    flex-direction: column; /* Stack children vertically */
+    justify-content: space-between; /* Distribute space around items */
+    align-items: center; /* Center align items horizontally */
+    background-color: #f0f0f0; /* Light grey background */
+    border: 1px solid #ddd; /* Light grey border */
+    border-radius: 8px; /* Rounded corners */
+    padding: 15px; /* Padding inside each card */
+    width: 200px; /* Fixed width, but you can make it responsive */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    height: 150px; /* Set a fixed height to ensure enough space for vertical centering */
+    flex-basis: 25%; /* idk but it works to limit 3 per row */
 }
 
 .metric-name, .metric-value {
-  text-align: center; /* Center text horizontally */
+    text-align: center; /* Center text horizontally */
 }
 
 .metric-name {
-  font-size: 1.2em; /* Larger font size for the name */
-  font-weight: bold; /* Make the name stand out */
+    font-size: 1.2em; /* Larger font size for the name */
+    font-weight: bold; /* Make the name stand out */
 }
 
 /* If you want the .value div specifically centered both ways, you can apply flex styles directly to it, assuming it doesn't have flex children itself */
 .metric-value {
-  flex-grow: 1; /* Allow the value div to fill available space */
-  display: flex; /* Enable Flexbox */
-  justify-content: center; /* Center horizontally */
-  align-items: center; /* Center vertically */
+    flex-grow: 1; /* Allow the value div to fill available space */
+    display: flex; /* Enable Flexbox */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
 }
 
 
@@ -158,7 +158,7 @@ blockquote::before, blockquote::after, q::before, q::after {
     margin-bottom: 10px;
     padding: 10px;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .story li {

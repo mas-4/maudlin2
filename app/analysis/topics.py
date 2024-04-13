@@ -1,8 +1,8 @@
 from functools import partial
 
 import nltk
-import yaml
 import pandas as pd
+import yaml
 from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
@@ -27,6 +27,7 @@ pipeline = [
     Pipelines.lemmatize,
     partial(Pipelines.remove_stop, stopwords=STOPWORDS)
 ]
+
 
 def load_and_update_topics():
     with (open(Constants.Paths.TOPICS_FILE, 'rt') as f):

@@ -1,7 +1,5 @@
 from app.scraper import SeleniumScraper
 from app.scrapers.abc import ABC
-from app.scrapers.oann import OneAmericaNewsNetwork
-from app.scrapers.newsmax import Newsmax
 from app.scrapers.aljazeera import AlJazeera
 from app.scrapers.ap import AP
 from app.scrapers.atlantic import Atlantic
@@ -63,6 +61,7 @@ from app.scrapers.nbc import NBC
 from app.scrapers.ndtv import NDTV
 from app.scrapers.newrepublic import NewRepublic
 from app.scrapers.news18 import News18
+from app.scrapers.newsmax import Newsmax
 from app.scrapers.newsweek import Newsweek
 from app.scrapers.newyorker import NewYorker
 from app.scrapers.newyorkmagazine import NewYorkMagazine
@@ -70,6 +69,7 @@ from app.scrapers.newyorkpost import NewYorkPost
 from app.scrapers.nikkeiasia import NikkeiAsia
 from app.scrapers.npr import NPR
 from app.scrapers.nyt import NYT
+from app.scrapers.oann import OneAmericaNewsNetwork
 from app.scrapers.pbsnewshour import PBSNewsHour
 from app.scrapers.politicalwire import PoliticalWire
 from app.scrapers.politico import Politico
@@ -77,9 +77,10 @@ from app.scrapers.punchbowlnews import PunchbowlNews
 from app.scrapers.quillette import Quillette
 from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
 from app.scrapers.rawstory import RawStory
+from app.scrapers.realclearpolitics import RealClearPolitics
 from app.scrapers.reason import Reason
 from app.scrapers.redstate import RedState
-from app.scrapers.realclearpolitics import RealClearPolitics
+from app.scrapers.reuters import Reuters
 from app.scrapers.rollingstone import RollingStone
 from app.scrapers.rt import RT
 from app.scrapers.salon import Salon
@@ -101,13 +102,12 @@ from app.scrapers.usatoday import USAToday
 from app.scrapers.vanityfair import VanityFair
 from app.scrapers.voa import VOA
 from app.scrapers.vox import Vox
+from app.scrapers.wallstreetjournal import WallStreetJournal
 from app.scrapers.washingtonpost import WashingtonPost
 from app.scrapers.week import Week
 from app.scrapers.winnipegfreepress import WinnipegFreePress
 from app.scrapers.xinhua import Xinhua
 from app.scrapers.yahoonews import YahooNews
-from app.scrapers.wallstreetjournal import WallStreetJournal
-from app.scrapers.reuters import Reuters
 
 Scrapers = [
     Axios,
