@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 def build_site():
     clear_build()
     HeadlinesPage().generate()
-    AgenciesPage().generate()
+    # AgenciesPage().generate()
     # Blog().generate()
     TopicsPage().generate()
     generate_agency_pages()
