@@ -1,27 +1,12 @@
-import os
-import shutil
-
+from app.site.agencies import AgenciesPage
 from app.site.agency import generate_agency_pages
-from app.site.blog import Blog
+from app.site.common import copy_assets, clear_build
 from app.site.deploy import publish_to_netlify
 from app.site.headlines import HeadlinesPage
-from app.site.agencies import AgenciesPage
-from app.utils.config import Config
-from app.utils.logger import get_logger
 from app.site.topics import TopicsPage
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-def copy_assets():
-    for file in os.listdir(Config.assets):
-        logger.debug(f"Copying %s", file)
-        shutil.copy(os.path.join(Config.assets, file), Config.build)
-
-def clear_build():
-    for file in os.listdir(Config.build):
-        logger.debug(f"Removing %s", file)
-        os.remove(os.path.join(Config.build, file))
 
 
 def build_site():

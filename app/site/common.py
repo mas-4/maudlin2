@@ -1,3 +1,5 @@
+import os
+import shutil
 import string
 from functools import partial
 from typing import Callable, Optional
@@ -8,6 +10,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from wordcloud import WordCloud
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
+from app.utils.config import Config
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -81,3 +84,15 @@ def calculate_xkeyscore(df):
     df = df.sort_values(by=['first_accessed', 'score'], ascending=False)
     df.drop('prepared', axis=1, inplace=True)
     return df
+
+
+def copy_assets():
+    for file in os.listdir(Config.assets):
+        logger.debug(f"Copying %s", file)
+        shutil.copy(os.path.join(Config.assets, file), Config.build)
+
+
+def clear_build():
+    for file in os.listdir(Config.build):
+        logger.debug(f"Removing %s", file)
+        os.remove(os.path.join(Config.build, file))

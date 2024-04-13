@@ -9,11 +9,11 @@ class Queries:
     def get_current_headlines(session):
         base_query = session.query(Headline).join(Headline.article).join(Article.agency)
         ordering = [
-            Headline.position.asc(),  # prominence
-            Headline.first_accessed.desc()
+            Headline.first_accessed.desc(),
+            Headline.position.asc()  # prominence
         ]
         if Config.debug:
-            return base_query.filter(Headline.position < 25).order_by(*ordering).limit(100)
+            return base_query.filter(Headline.position < 25).order_by(*ordering).limit(1000)
         return base_query.filter(
             Headline.last_accessed > Config.last_accessed,
             Headline.first_accessed > dt.now() - td(days=1),

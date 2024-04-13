@@ -24,7 +24,7 @@ class AgencyPage:
     def generate(self):
         logger.info("Generating page for %s...", self.agency.name)
         variables = self.get_variables()
-        with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt') as f:
+        with open(os.path.join(Config.build, f'{self.agency.name}.html'), 'wt', encoding='utf8') as f:
             f.write(self.template.render(**variables))
         df = pd.DataFrame(variables['tabledata'], columns=['Title', 'First Accessed', '# Headlines', 'Vader', 'Afinn'])
         df['url'] = df['Title'].map(variables['urls'])
@@ -45,13 +45,16 @@ class AgencyPage:
             headlines = base_query.filter(Article.last_accessed > Config.last_accessed).all()
         tabledata = []
         urls = {}
+        if os.name == 'nt':
+            strftime = '%b %d %I:%M %p'
+        else:
+            strftime = '%b %-d %-I:%M %p'
         for headline in headlines:
             # I don't remember why this is necessary, but I'll leave it for now because it should help - M 2024-04-06
             # TODO: this loop is insanely time consuming and can be sped up by just not doing it.
             if not Config.debug and headline.last_accessed < Config.last_accessed:
                 continue
             urls[headline.processed] = headline.article.url
-            strftime = '%b %-d %-I:%M %p'
             tabledata.append([
                 headline.processed,
                 headline.first_accessed.replace(tzinfo=pytz.UTC).astimezone(

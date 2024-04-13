@@ -86,6 +86,7 @@ j2env.globals['now'] = Constants.TimeConstants.now_func
 
 j2env.globals['nav'] = j2env.get_template('nav.html').render()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
+j2env.globals['enumerate'] = enumerate
 
 
 def date(value):

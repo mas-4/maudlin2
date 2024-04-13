@@ -311,7 +311,7 @@ class TopicsPage:
             for col in ['afinn', 'vader', 'score']:
                 topic_df[col] = topic_df[col].round(2)
             topic_df = topic_df[['id', 'title', 'first_accessed', 'position', 'duration', 'score', 'vader', 'afinn']]
-            with open(os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html'), 'wt') as f:
+            with open(os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html'), 'wt', encoding='utf8') as f:
                 f.write(self.topic_template.render(topic=topic, tabledata=topic_df.values.tolist(), title=topic.name))
 
 

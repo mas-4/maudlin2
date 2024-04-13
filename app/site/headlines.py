@@ -3,16 +3,31 @@ import os
 import pandas as pd
 import pytz
 
+from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
+from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
 from app.models import Session, Headline
 from app.queries import Queries
 from app.site import j2env
-from app.site.common import calculate_xkeyscore
+from app.site.common import calculate_xkeyscore, copy_assets
 from app.utils.config import Config
 from app.utils.constants import Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+pipeline = [
+    tnorm.hyphenated_words,
+    tnorm.quotation_marks,
+    tnorm.unicode,
+    tnorm.whitespace,
+    trem.accents,
+    trem.brackets,
+    trem.punctuation,
+    str.lower,
+    Pipelines.tokenize,
+    Pipelines.decontract,
+    ' '.join
+]
 
 class HeadlinesPage:
     template = j2env.get_template('index.html')
@@ -22,6 +37,24 @@ class HeadlinesPage:
         with Session() as s:
             df = self.get_headlines(s)
 
+        df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
+        cosine_sim = prepare_cosine(df['processed'])
+        clusters = form_clusters(cosine_sim, min_samples=5, threshold=0.5)
+        df = label_clusters(df, clusters)
+        grouped = df[df['cluster']!=-1].groupby('cluster')
+        clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
+        clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
+        table_df = self.process_headlines(df)
+
+        with open(os.path.join(Config.build, 'index.html'), 'wt', encoding='utf8') as f:
+            f.write(self.template.render(
+                title='Current Headlines',
+                tabledata=table_df.values.tolist(),
+                clusters=clusters_list
+            ))
+        logger.info("...done")
+
+    def process_headlines(self, df):
         def format_title(x):
             t = x.title.replace("'", "").replace('"', '')
             t_trunc = t[:Config.headline_cutoff] + '...' if len(t) > Config.headline_cutoff else t
@@ -40,13 +73,8 @@ class HeadlinesPage:
         df = df[
             ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
         ]
-        df.sort_values(by='first_accessed', ascending=False, inplace=True)
-        with open(os.path.join(Config.build, 'index.html'), 'wt') as f:
-            f.write(self.template.render(
-                title='Current Headlines',
-                tabledata=df.values.tolist(),
-            ))
-        logger.info("...done")
+        df = df.copy().sort_values(by='first_accessed', ascending=False)
+        return df
 
     @staticmethod
     def get_headlines(s):
@@ -97,3 +125,4 @@ class HeadlinesPage:
 if __name__ == '__main__':
     Config.debug = True
     HeadlinesPage().generate()
+    copy_assets()
