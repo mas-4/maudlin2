@@ -16,7 +16,7 @@
                 columns: [
                     {
                         name: "Agency Name",
-                        formatter: (cell) => gridjs.html(`<a href="${urls[cell]}">${cell}</a>`),
+                        formatter: (cell) => gridjs.html(`${cell}`),
                         sort: {
                             compare: (a, b) => {
                                 // strip The from the beginning of the name
