@@ -26,9 +26,11 @@ I've started analyzing articles for handcrafted topics, focusing on topics relev
 
 And jinja2 is used for templating.
 
-There's a lot of pandas and numpy in there at this point. Some gensim I think. And textacy/spacy. Matplotlib and Seaborn of course. gridJS for tables. ChatGPT Plus for css styling and general debugging.
+There's a lot of pandas and numpy in there at this point. Some gensim I think. And textacy/spacy. Matplotlib and Seaborn of course. gridJS for tables. ChatGPT Plus came up with css styling and general debugging.
 
-I'm working on incorporating hugging face and TinyBERT. Or another similarly small large language model mostly for preprocessing headlines at first, then gradually I want to incorporate it into a topic assignment confirmation pipeline.
+I've experimented with a lot of different models for toppic modeling and story discovery. Finally got story discovery working by using an agglomerative approach with cosine_similarity (sklearn) and strict cluster requirements (at least n number of samples from different news agencies with cosine similarity scores over 0.5).
+
+I plan on adding some more sophisticated sentiment scoring, and using hugging face models for text preprocessing and summarization.
 
 I've actually read the better part of two books in the course of making this thing, [Blueprints for Text Analytics Using Python: Machine Learning-Based Solutions for Common Real World (NLP) Applications](https://www.amazon.com/gp/product/149207408X/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1) and [The Handbook of NLP with Gensim: Leverage topic modeling to uncover hidden patterns, themes, and valuable insights within textual data
 ](https://www.amazon.com/gp/product/1803244941/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
@@ -43,9 +45,16 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
+- [ ] The Daily Caller
+- [ ] Gateway Pundit
+- [ ] Washington Free Beacon
+- [ ] The Washington Times
+- [ ] Townhall
+- [ ] Washington Examiner
+- [ ] Independent Journal Review
+- [ ] alternet
 - [x] One America News
 - [x] Newsmax
-- [-] msn.com (javascript)
 - [X] ABC News
 - [X] Al Jazeera
 - [X] Associated Press
