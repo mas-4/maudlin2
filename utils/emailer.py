@@ -54,3 +54,4 @@ def send_notification(message: str):
 
     with SMTPWrapper(Config.domain, Config.email, Config.pw) as server:
         server.send_mail(from_addr=Config.email, to_addrs=Config.emails, msg=message, subject="Maudlin Daily Report")
+

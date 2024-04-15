@@ -55,6 +55,7 @@ class Config:
     db_file_name = 'data.db'
     db_file_path = str(os.path.join(output_dir, db_file_name))
     connection_string = 'sqlite:///' + db_file_path
+    newsletter = os.path.join(output_dir, 'newsletter.html')
 
     @staticmethod
     def time_between_requests() -> float:  # this is a function so that we can make it random if necessary

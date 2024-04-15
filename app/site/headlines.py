@@ -35,6 +35,7 @@ pipeline = [
 
 class HeadlinesPage:
     template = j2env.get_template('index.html')
+    newsletter = j2env.get_template('newsletter.html')
 
     def generate(self):
         logger.info("Generating headlines page...")
@@ -43,6 +44,9 @@ class HeadlinesPage:
 
         clusters_list, df, summaries, agency_lists = self.get_summaries(df)
         table_df = self.process_headlines(df)
+
+        with open(Config.newsletter, 'wt', encoding='utf8') as f:
+            f.write(self.newsletter.render(clusters=clusters_list, summaries=summaries, agency_lists=agency_lists))
 
         with open(os.path.join(Config.build, 'index.html'), 'wt', encoding='utf8') as f:
             f.write(self.template.render(

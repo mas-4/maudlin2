@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h3 style="font-family: Arial, sans-serif; color: #555;">Today's Top Stories</h3>
+    <div style="font-family: Arial, sans-serif;">
+        {% for i, cluster in enumerate(clusters) %}
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #666;">Story {{ i+1 }} - {{ summaries[cluster['cluster']] }}</h4>
+            <p style="color: #777;">{{ agency_lists[cluster['cluster']]|safe }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

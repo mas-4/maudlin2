@@ -9,6 +9,7 @@ from app.site_builder import build_site
 from app.utils.config import Config
 from app.utils.logger import get_logger
 from utils.dayreport import DayReport
+from utils.emailer import send_notification
 
 logger = get_logger(__name__)
 
@@ -44,6 +45,7 @@ class Queue:
         else:
             self.threads.append(scraper())
 
+
 def scrape(args, scrapers):
     if not len(scrapers):
         raise ValueError("No scrapers provided")
@@ -54,6 +56,7 @@ def scrape(args, scrapers):
         queue.add(scraper)
 
     queue.run()
+
 
 def main(args: argparse.Namespace):
     if args.analyze_topics:
@@ -68,6 +71,9 @@ def main(args: argparse.Namespace):
     if args.email_report:
         DayReport.report_turnover()
         return
+    if args.email_newsletter:
+        with open(Config.newsletter, 'rt') as f:
+            send_notification(f.read())
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
@@ -79,6 +85,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--skip-scrape', action='store_true')
     parser.add_argument('--scraper', type=str, default=None)
     parser.add_argument('--email-report', action='store_true')
+    parser.add_argument('--email-newsletter', action='store_true')
     parser.add_argument('--run-selenium', action='store_true')
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
