@@ -74,6 +74,7 @@ def main(args: argparse.Namespace):
     if args.email_newsletter:
         with open(Config.newsletter, 'rt') as f:
             send_notification(f.read())
+        return
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
