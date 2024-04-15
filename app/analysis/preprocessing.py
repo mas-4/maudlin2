@@ -19,7 +19,6 @@ REPLACEMENTS: dict[str, str] = {
     "–": "--",
     "−": "--",
     'Just now': '',
-    r'\d+ mins? ago': ' ',
     r'updated \d+[Mm] ago': ' ',
     r'about \d+ hours? ago': ' ',
     r"updated \d+[Hh] ago": " ",
@@ -29,6 +28,9 @@ REPLACEMENTS: dict[str, str] = {
     r'\d+[Hh] ago': ' ',
     r'\d+ hours? ago': ' ',
     r'\d+ minutes? ago': ' ',
+    r'\d+ hrs? ago': ' ',
+    r'\d+ days? ago': ' ',
+    r'\d+ mins? ago': ' ',
     "<br>": " ",
     "<br/>": " ",
     "<br />": " ",
@@ -50,7 +52,7 @@ def remove_stops(headline):
 PATRONYMS: list[str] = ["mc", "mac", "van", "von", "de", "la", "le", "el", "al", "di", "da", "du", "del", "della",
                         "delle", "delli", "dello"]
 WHITELIST: list[str] = ["mRNA", ".com", ".io", ".net", ".org", ".gov", ".edu", ".mil", ".int", ".tv", ".uk", ".us",
-                        ".uk"]
+                        ".uk", "iPhone"]
 
 
 def split_camelcases(text):

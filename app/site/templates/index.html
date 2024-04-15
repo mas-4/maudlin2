@@ -10,12 +10,10 @@
     <h3>Today's Top Stories</h3>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
-            <h4>Story {{ i+1 }}</h4>
-            <ul class="story">
-                {% for row in cluster['data'] %}
-                    <li><a href="{{ row['url'] }}">{{ row['agency'] }} - {{ row['title'] }}</a></li>
-                {% endfor %}
-            </ul>
+            <div class="story">
+                <h4>Story {{ i+1 }} - {{ summaries[cluster['cluster']] }}</h4>
+                <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
+            </div>
         {% endfor %}
     </div>
 

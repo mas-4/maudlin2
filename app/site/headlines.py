@@ -2,6 +2,7 @@ import os
 
 import pandas as pd
 import pytz
+from transformers import pipeline as hf_pipeline
 
 from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
@@ -14,6 +15,8 @@ from app.utils.constants import Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+summarizer = hf_pipeline('summarization', model='facebook/bart-large-cnn')
 
 pipeline = [
     tnorm.hyphenated_words,
@@ -38,11 +41,30 @@ class HeadlinesPage:
         with Session() as s:
             df = self.get_headlines(s)
 
+        clusters_list, df, summaries, agency_lists = self.get_summaries(df)
+        table_df = self.process_headlines(df)
+
+        with open(os.path.join(Config.build, 'index.html'), 'wt', encoding='utf8') as f:
+            f.write(self.template.render(
+                title='Current Headlines',
+                tabledata=table_df.values.tolist(),
+                clusters=clusters_list,
+                summaries=summaries,
+                agency_lists=agency_lists
+            ))
+        logger.info("...done")
+
+    def get_summaries(self, df):
         n_samples_per_cluster = 5
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
         cosine_sim = prepare_cosine(df['processed'])
         clusters = form_clusters(cosine_sim, min_samples=n_samples_per_cluster, threshold=0.5)
         df = label_clusters(df, clusters)
+        # group each cluster, concatenate the processed text, and summarize with nlp
+        summaries = {}
+        for key, group in df.groupby('cluster'):
+            text = ' '.join(group['title'])[:1024]
+            summaries[key] = summarizer(text, min_length=10, max_length=20)[0]['summary_text']
         df['text_length'] = df['processed'].str.len()
         df.sort_values(by='text_length', ascending=False, inplace=True)
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
@@ -50,15 +72,14 @@ class HeadlinesPage:
         grouped = df[df['cluster'] != -1].groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
-        table_df = self.process_headlines(df)
-
-        with open(os.path.join(Config.build, 'index.html'), 'wt', encoding='utf8') as f:
-            f.write(self.template.render(
-                title='Current Headlines',
-                tabledata=table_df.values.tolist(),
-                clusters=clusters_list
-            ))
-        logger.info("...done")
+        agency_lists = {}
+        for cluster in clusters_list:
+            cluster['data'].sort(key=lambda x: x['agency'])
+            hrefs = []
+            for a in sorted(cluster['data'], key=lambda x: x['agency']):
+                hrefs.append(f'<a href="{a["url"]}">{a["agency"]}</a>')
+            agency_lists[cluster['cluster']] = ', '.join(hrefs)
+        return clusters_list, df, summaries, agency_lists
 
     @staticmethod
     def process_headlines(df):
