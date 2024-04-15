@@ -38,10 +38,15 @@ class HeadlinesPage:
         with Session() as s:
             df = self.get_headlines(s)
 
+        n_samples_per_cluster = 5
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
         cosine_sim = prepare_cosine(df['processed'])
-        clusters = form_clusters(cosine_sim, min_samples=5, threshold=0.5)
+        clusters = form_clusters(cosine_sim, min_samples=n_samples_per_cluster, threshold=0.3)
         df = label_clusters(df, clusters)
+        df['text_length'] = df['processed'].str.len()
+        df.sort_values(by='text_length', ascending=False, inplace=True)
+        df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
+        df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
         grouped = df[df['cluster'] != -1].groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
@@ -55,7 +60,8 @@ class HeadlinesPage:
             ))
         logger.info("...done")
 
-    def process_headlines(self, df):
+    @staticmethod
+    def process_headlines(df):
         def format_title(x):
             t = x.title.replace("'", "").replace('"', '')
             t_trunc = t[:Config.headline_cutoff] + '...' if len(t) > Config.headline_cutoff else t
