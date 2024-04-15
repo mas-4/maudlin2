@@ -41,7 +41,7 @@ class HeadlinesPage:
         n_samples_per_cluster = 5
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
         cosine_sim = prepare_cosine(df['processed'])
-        clusters = form_clusters(cosine_sim, min_samples=n_samples_per_cluster, threshold=0.3)
+        clusters = form_clusters(cosine_sim, min_samples=n_samples_per_cluster, threshold=0.5)
         df = label_clusters(df, clusters)
         df['text_length'] = df['processed'].str.len()
         df.sort_values(by='text_length', ascending=False, inplace=True)
