@@ -68,7 +68,7 @@ class HeadlinesPage:
         summaries = {}
         for key, group in df.groupby('cluster'):
             text = ' '.join(group['title'])[:1024]
-            summaries[key] = summarizer(text, min_length=10, max_length=20)[0]['summary_text']
+            summaries[key] = summarizer(text, min_length=10, max_length=30)[0]['summary_text']
         df['text_length'] = df['processed'].str.len()
         df.sort_values(by='text_length', ascending=False, inplace=True)
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
