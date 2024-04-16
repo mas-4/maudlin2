@@ -52,7 +52,7 @@ def remove_stops(headline):
 PATRONYMS: list[str] = ["mc", "mac", "van", "von", "de", "la", "le", "el", "al", "di", "da", "du", "del", "della",
                         "delle", "delli", "dello"]
 WHITELIST: list[str] = ["mRNA", ".com", ".io", ".net", ".org", ".gov", ".edu", ".mil", ".int", ".tv", ".uk", ".us",
-                        ".uk", "iPhone"]
+                        ".uk", "iPhone", "U.S.", "U.S.A.", "U.K."]
 
 
 def split_camelcases(text):
