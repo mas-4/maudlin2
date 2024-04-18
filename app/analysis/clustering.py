@@ -7,8 +7,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # Function to form clusters
 def form_clusters(cosine_sim, min_samples=10, threshold=0.5):
+    # zero out diagonal
+    np.fill_diagonal(cosine_sim, 0)
+    # drop everything less than threshold
+    cosine_sim[cosine_sim < threshold] = 0
     clusters = []
-    last_n = 0
     while np.any(cosine_sim):
         # Start with the first available row
         first_index = np.where(np.any(cosine_sim, axis=1))[0][0]
@@ -30,9 +33,7 @@ def form_clusters(cosine_sim, min_samples=10, threshold=0.5):
         # Store the cluster
         if len(cluster) >= min_samples:
             clusters.append(cluster)
-        if len(clusters) > last_n:
-            last_n = len(clusters)
-            print(f"Clusters formed: {len(clusters)}")
+            print(f"Cluster len: {len(cluster)}, clusters formed: {len(clusters)}")
     return clusters
 
 
