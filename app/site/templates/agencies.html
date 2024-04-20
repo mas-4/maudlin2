@@ -1,7 +1,7 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <img alt="Word Cloud" src="{{ FileNames.wordcloud }}">
+    <img alt="Word Cloud" src="{{ FileNames.main_wordcloud }}">
     <br><br>
 
     <script type="text/javascript">
@@ -102,7 +102,7 @@
         </div>
     </div>
     <div id="metric-graphs">
-        <img alt="Sentiment Statistics" src="{{ FileNames.graphs }}">
+        <img alt="Sentiment Statistics" src="{{ FileNames.sentiment_graphs }}">
     </div>
     <h3>The below sentiment values only include currently displayed stories.</h3>
     <div id="wrapper"></div>

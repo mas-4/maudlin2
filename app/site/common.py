@@ -75,3 +75,20 @@ def clear_build():
     for file in os.listdir(Config.build):
         logger.debug(f"Removing %s", file)
         os.remove(os.path.join(Config.build, file))
+
+
+class PathHandler:
+    class FileNames:
+        main_wordcloud = 'wordcloud.png'
+        sentiment_graphs = 'sentiment-graphs.png'
+
+    def __init__(self, filename: str):
+        self.filename = filename
+
+    @property
+    def build(self):
+        return os.path.join(Config.build, self.filename)
+
+    @property
+    def path(self):
+        return self.filename

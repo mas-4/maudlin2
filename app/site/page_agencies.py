@@ -1,5 +1,3 @@
-import os
-
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,28 +6,28 @@ import seaborn as sns
 
 from app.models import Session, Agency, Headline, Article
 from app.registry import SeleniumScrapers, TradScrapers
-from app.site.common import copy_assets, TemplateHandler
+from app.site.common import copy_assets, TemplateHandler, PathHandler
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
-from app.utils.constants import Constants, Bias, Credibility
+from app.utils.constants import Bias, Credibility
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class FileNames:
-    wordcloud = 'wordcloud.png'
-    graphs = 'graphs.png'
-
-
 class AgenciesPage:
-
     def __init__(self):
         self.data = []
         self.urls = {}
         self.agencies = []
         self.metrics = {}
         self.template = TemplateHandler('agencies.html')
+        self.context = {
+            'title': 'Agencies',
+            'FileNames': PathHandler.FileNames,
+            'bias': {str(b): b.value for b in list(Bias)},
+            'credibility': {str(c): c.value for c in list(Credibility)}
+        }
 
     def generate(self):
         logger.info("Generating agencies page...")
@@ -40,16 +38,12 @@ class AgenciesPage:
         logger.info("...done")
 
     def render_home_page(self):
-        data = {
-            'title': 'Home',
+        self.context.update({
             'tabledata': self.data,
             'urls': self.urls,
             'metrics': self.metrics,
-            'FileNames': FileNames,
-            'bias': {str(b): b.value for b in list(Bias)},
-            'credibility': {str(c): c.value for c in list(Credibility)}
-        }
-        self.template.write(data)
+        })
+        self.template.write(self.context)
 
     def generate_home_data(self):
         with Session() as s:
@@ -87,23 +81,12 @@ class AgenciesPage:
 
     @staticmethod
     def generate_home_wordcloud():
+        logger.info("Generating current headlines wordcloud...")
         with Session() as s:
-            logger.info("Querying data for home wordcloud...")
-            if Config.debug:
-                titles = []
-                base_query = s.query(Headline.processed).join(Headline.article).order_by(Headline.last_accessed.desc())
-                for aid in s.query(Agency.id):
-                    titles.extend(base_query.filter(Article.agency_id == aid[0]).limit(10).all())
-            else:
-                titles = s.query(Headline.processed).filter(
-                    Headline.first_accessed > Constants.TimeConstants.midnight,
-                    Headline.last_accessed > Config.last_accessed
-                ).all()
-            logger.info("...done")
-            path = str(os.path.join(Config.build, FileNames.wordcloud))
-            logger.info("Calling generate_wordcloud...")
-            generate_wordcloud(titles, path)
-            logger.info("..done")
+            titles = s.query(Headline.processed).filter(
+                Headline.last_accessed > Config.last_accessed
+            ).all()
+            generate_wordcloud(titles, PathHandler(PathHandler.FileNames.main_wordcloud).build)
 
     def render_sentiment_graphs(self):
         with Session() as s:
@@ -130,7 +113,7 @@ class AgenciesPage:
                 ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
                 ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
         plt.tight_layout()
-        plt.savefig(os.path.join(Config.build, FileNames.graphs))
+        plt.savefig(PathHandler(PathHandler.FileNames.sentiment_graphs).build)
 
     @staticmethod
     def aggregate_data(data):

@@ -75,3 +75,13 @@ class Config:
     with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
         special_dates = [SpecialDate(x) for x in yaml.safe_load(f_in)]
         special_dates.sort(key=lambda x: x.date)
+
+    @classmethod
+    def set_debug(cls):
+        cls.debug = True
+        cls.logging_level = logging.DEBUG
+        from app.models import Session, Headline
+        with Session() as s:
+            last_accessed = s.query(Headline.last_accessed).order_by(Headline.last_accessed.desc()).first()[0]
+        cls.last_accessed = last_accessed - td(minutes=25)
+        cls.first_accessed = last_accessed - td(days=3)

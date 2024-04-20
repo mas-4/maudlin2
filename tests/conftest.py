@@ -11,4 +11,5 @@ def pytest_addoption(parser):
 def pytest_sessionstart(session):
     if session.config.getoption('--setup-db'):
         os.rename(os.path.join(Constants.Paths.ROOT, 'tests', 'test.db'), Config.db_file_path)
-    Config.debug = True
+    Config.set_debug()
+    assert Config.debug
