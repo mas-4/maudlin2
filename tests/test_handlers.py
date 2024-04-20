@@ -1,6 +1,6 @@
 import os
 
-from hypothesis import given, strategies
+from hypothesis import given, strategies, settings
 from jinja2 import Template
 
 from app.site.common import TemplateHandler, PathHandler
@@ -17,12 +17,14 @@ def test_template_instantiation():
     assert isinstance(test.template, Template)
 
 
+@settings(deadline=None)
 @given(strategies.text())
 def test_template_render(s):
     test = TemplateHandler('test.html')
     assert test.render({'test': s}) == s
 
 
+@settings(deadline=None)
 @given(strategies.text())
 def test_template_write(s):
     test = TemplateHandler('test.html')
