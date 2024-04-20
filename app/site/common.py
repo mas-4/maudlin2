@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import mistune
 import numpy as np
 from jinja2 import Environment, FileSystemLoader
 from sklearn.feature_extraction.text import CountVectorizer
@@ -8,11 +9,30 @@ from sklearn.feature_extraction.text import CountVectorizer
 from app.analysis.pipelines import prepare
 from app.site.wordcloudgen import PIPELINE, logger
 from app.utils.config import Config
-from app.utils.constants import Constants
+from app.utils.constants import Constants, Bias, Credibility
 
-
+# <editor-fold desc="Jinja2 Environment Stuff">
 j2env = Environment(loader=FileSystemLoader(os.path.join(Constants.Paths.ROOT, 'app', 'site', 'templates')),
                     trim_blocks=True)
+
+j2env.globals['Config'] = Config
+j2env.globals['bias'] = Bias.to_dict()
+j2env.globals['credibility'] = Credibility.to_dict()
+j2env.globals['now'] = Constants.TimeConstants.now_func
+
+j2env.globals['nav'] = j2env.get_template('nav.html').render()
+j2env.globals['footer'] = j2env.get_template('footer.html').render()
+j2env.globals['enumerate'] = enumerate
+
+
+def date(value):
+    return value.strftime(Config.strf)
+
+
+j2env.filters['date'] = date
+j2env.filters['markdown'] = mistune.markdown
+# </editor-fold>
+
 
 class TemplateHandler:
     def __init__(self, template_name):
@@ -23,7 +43,7 @@ class TemplateHandler:
         return self.template.render(**context)
 
     def write(self, context, path):
-        with open(path, 'wt', encoding='utf8') as f:
+        with open(path, 'w', encoding='utf8') as f:
             f.write(self.render(context))
 
 
