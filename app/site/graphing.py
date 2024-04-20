@@ -1,16 +1,16 @@
 import os
-from app.site.common import PathHandler
 from datetime import datetime as dt, timedelta as td
-from matplotlib import dates as mdates
-from app.utils.constants import Bias
+
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib import dates as mdates
+
+from app.site.common import PathHandler
 from app.utils.config import Config
+from app.utils.constants import Bias
 from app.utils.logger import get_logger
 
-
 logger = get_logger(__name__)
-
 
 aisle_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
 bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
