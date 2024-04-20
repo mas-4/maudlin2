@@ -14,6 +14,7 @@ from app.utils.constants import Constants, Bias, Credibility
 j2env = Environment(loader=FileSystemLoader(os.path.join(Constants.Paths.ROOT, 'app', 'site', 'templates')),
                     trim_blocks=True)
 
+
 class TemplateHandler:
     def __init__(self, template_name: str, name: str = None):
         self.template_name = template_name
@@ -96,4 +97,3 @@ def date(value):
 j2env.filters['date'] = date
 j2env.filters['markdown'] = mistune.markdown
 # </editor-fold>
-

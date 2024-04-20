@@ -3,8 +3,8 @@ from datetime import datetime as dt, timedelta as td
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib import dates as mdates
 import seaborn as sns
+from matplotlib import dates as mdates
 
 from app.site.common import PathHandler
 from app.utils.config import Config

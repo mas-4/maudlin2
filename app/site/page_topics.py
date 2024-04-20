@@ -2,12 +2,12 @@ import os
 from functools import partial
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
-from app.models import Topic, Session
+from app.models import Topic
 from app.site.common import copy_assets, TemplateHandler
+from app.site.data import DataHandler, DataTypes
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
 from app.utils.logger import get_logger
-from app.site.data import DataHandler, DataTypes
 
 logger = get_logger(__name__)
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -43,15 +43,14 @@ class TopicsPage:
         self.template.write(self.context)
 
     def generate_topic_wordcloud(self, topic: Topic):
-        with Session() as session:
-            headlines = self.dh.topic_df[self.dh.topic_df['topic'] == topic.name]['headline']
-            if not headlines:
-                return
-            topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
-            headlines = [h[0] for h in headlines]
-            generate_wordcloud(headlines,
-                               os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
-                               pipeline=PIPELINE)  # noqa added wordcloud attr
+        headlines = self.dh.topic_df[self.dh.topic_df['topic'] == topic.name]['headline']
+        if not headlines.any():
+            return
+        topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
+        headlines = [h[0] for h in headlines]
+        generate_wordcloud(headlines,
+                           os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
+                           pipeline=PIPELINE)  # noqa added wordcloud attr
 
     def generate_topic_pages(self, df, topics):
         def formattitle(x):
