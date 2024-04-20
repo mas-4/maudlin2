@@ -23,13 +23,13 @@ class FileNames:
 
 
 class AgenciesPage:
-    template = TemplateHandler('agencies.html')
 
     def __init__(self):
         self.data = []
         self.urls = {}
         self.agencies = []
         self.metrics = {}
+        self.template = TemplateHandler('agencies.html')
 
     def generate(self):
         logger.info("Generating agencies page...")

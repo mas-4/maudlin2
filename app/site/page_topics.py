@@ -83,6 +83,8 @@ class TopicsPage:
         with Session() as session:
             headlines = session.query(Headline.processed).join(Headline.article).filter(
                 Article.topic_id == topic.id).all()
+            if not headlines:
+                return
             topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
             headlines = [h[0] for h in headlines]
             generate_wordcloud(headlines,
@@ -96,6 +98,9 @@ class TopicsPage:
         for topic in topics:
             topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
             topic_df = df[df['topic'] == topic.name].copy()
+            if topic_df.empty:
+                logger.warning(f"Empty dataframe for {topic.name}")
+                continue
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             fig, ax = plt.subplots(figsize=(13, 6))
@@ -120,8 +125,9 @@ class TopicsPage:
             'afinn': 'count'
         })
         bias_df = bias_df.rename(columns={'afinn': 'articles'})
-        # plot a black line at 0
         for bias in range(-3, 4):
+            if bias not in bias_df.index.levels[0]:
+                continue
             gdf = bias_df.loc[bias]
             if len(gdf) < len(bottom):
                 gdf = gdf.reindex(bottom.index, fill_value=0)
@@ -308,6 +314,9 @@ class TopicsPage:
 
         for topic in topics:
             topic_df = df[df['topic'] == topic.name]
+            if topic_df.empty:
+                logger.warning(f"Empty dataframe for {topic.name}")
+                continue
             # Sort by last accessed date
             topic_df = topic_df.sort_values('first_accessed', ascending=False)
             topic_df['first_accessed'] = topic_df['first_accessed'].dt.strftime('%Y-%m-%d')

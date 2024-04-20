@@ -19,7 +19,7 @@ def push_to_dropbox(file, destination, token):
 
 def backup():
     backup_name = Config.db_file_name + '.gz'
-    backup_path = f'{Config.output_dir}/{backup_name}'
+    backup_path = f'{Config.data}/{backup_name}'
     gzip_file(Config.db_file_path, backup_path)
     push_to_dropbox(backup_path, f'/Apps/maudlin/{backup_name}', Config.dropbox)
     print('Backup complete')

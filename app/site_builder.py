@@ -1,8 +1,8 @@
-from app.site.agencies import AgenciesPage
 from app.site.common import copy_assets, clear_build
 from app.site.deploy import publish_to_netlify
-from app.site.headlines import HeadlinesPage
-from app.site.topics import TopicsPage
+from app.site.page_agencies import AgenciesPage
+from app.site.page_headlines import HeadlinesPage
+from app.site.page_topics import TopicsPage
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
