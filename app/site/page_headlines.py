@@ -33,7 +33,7 @@ pipeline = [
 
 
 class HeadlinesPage:
-    template = TemplateHandler('index.html')
+    template = TemplateHandler('headlines.html', 'index.html')
     newsletter = TemplateHandler('newsletter.html')
 
     def generate(self):
@@ -46,7 +46,6 @@ class HeadlinesPage:
 
         self.newsletter.write(
             dict(clusters=clusters_list, summaries=summaries, agency_lists=agency_lists),
-            Config.newsletter
         )
         self.template.write(
             dict(title='Current Headlines',
@@ -54,7 +53,6 @@ class HeadlinesPage:
                  clusters=clusters_list,
                  summaries=summaries,
                  agency_lists=agency_lists),
-            os.path.join(Config.build, 'index.html')
         )
         logger.info("...done")
 

@@ -49,7 +49,7 @@ class AgenciesPage:
             'bias': {str(b): b.value for b in list(Bias)},
             'credibility': {str(c): c.value for c in list(Credibility)}
         }
-        self.template.write(data, os.path.join(Config.build, 'agencies.html'))
+        self.template.write(data)
 
     def generate_home_data(self):
         with Session() as s:

@@ -76,7 +76,7 @@ class TopicsPage:
             'today_topic_path': self.today_topic_path,
             'title': 'Topic Analysis'
         }
-        self.template.write(context, os.path.join(Config.build, 'topics.html'))
+        self.template.write(context)
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):

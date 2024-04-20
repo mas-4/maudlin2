@@ -35,14 +35,19 @@ j2env.filters['markdown'] = mistune.markdown
 
 
 class TemplateHandler:
-    def __init__(self, template_name):
+    def __init__(self, template_name: str, name: str = None):
         self.template_name = template_name
         self.template = j2env.get_template(template_name)
+        if name is None:
+            name = template_name
+        self.path = os.path.join(Config.build, name)
 
     def render(self, context):
         return self.template.render(**context)
 
-    def write(self, context, path):
+    def write(self, context, path: str = None):
+        if path is None:
+            path = self.path
         with open(path, 'w', encoding='utf-8') as f:
             f.write(self.render(context))
 

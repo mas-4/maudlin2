@@ -1,7 +1,7 @@
-from app.site.common import TemplateHandler
-from jinja2 import Template
 from hypothesis import given, strategies
-import tempfile
+from jinja2 import Template
+
+from app.site.common import TemplateHandler
 
 
 def test_instantiation():
@@ -21,9 +21,10 @@ def test_render(s):
 @given(strategies.text())
 def test_write(s):
     test = TemplateHandler('test.html')
-    with tempfile.TemporaryDirectory() as tmpdir:
-        test.write({'test': s}, f'{tmpdir}/test.html')
-        with open(f'{tmpdir}/test.html', 'rt', encoding='utf-8') as f_in:
-            # Mac changes \r to \n in text files. Very weird. Not much on Google about it.
-            replace = lambda s: s.replace('\r', '\n')
-            assert replace(f_in.read()) == replace(s)
+    test.write({'test': s})
+
+    def replace(x): return x.replace('\r', '\n')
+
+    with open(test.path, 'rt', encoding='utf-8') as f_in:
+        # Mac changes \r to \n in text files. Very weird. Not much on Google about it.
+        assert replace(f_in.read()) == replace(s)
