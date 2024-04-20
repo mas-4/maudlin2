@@ -147,11 +147,6 @@ class DataHandler:
         return df
 
     @staticmethod
-    def get_topics():
-        with Session() as session:
-            return session.query(Topic).all()
-
-    @staticmethod
     def get_main_headline_df():
         cols = {
             'article_id': Article.id,
