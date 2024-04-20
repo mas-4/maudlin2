@@ -1,5 +1,4 @@
 import os
-from app.site.common import copy_assets
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -10,6 +9,7 @@ import seaborn as sns
 from app.models import Session, Agency, Headline, Article
 from app.registry import SeleniumScrapers, TradScrapers
 from app.site import j2env
+from app.site.common import copy_assets
 from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Constants, Bias, Credibility

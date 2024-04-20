@@ -1,7 +1,6 @@
 import os
 from datetime import datetime as dt, timedelta as td
 from functools import partial
-from app.site.common import copy_assets
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -11,6 +10,7 @@ from sqlalchemy import or_
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
 from app.models import Topic, Session, Article, Headline, Agency
 from app.site import j2env
+from app.site.common import copy_assets
 from app.site.common import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Country, Bias
