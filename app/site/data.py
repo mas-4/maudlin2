@@ -174,7 +174,7 @@ class DataHandler:
             ).order_by(
                 Headline.first_accessed.desc(),
                 Headline.position.asc()  # prominence
-            )
+            ).all()
         df = pd.DataFrame(data, columns=list(cols.keys()))
 
         df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
