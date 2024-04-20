@@ -5,6 +5,8 @@ from jinja2 import Template
 
 from app.site.common import TemplateHandler, PathHandler
 from app.utils.config import Config
+from app.builder import gen_plots
+from app.site.data import DataHandler
 
 
 def test_template_instantiation():
@@ -38,3 +40,7 @@ def test_pathhandler():
     assert isinstance(ph, PathHandler)
     assert ph.path == 'test.png'
     assert ph.build == os.path.join(Config.build, 'test.png')
+
+
+def test_plotting(data_handler: DataHandler):
+    gen_plots(data_handler)

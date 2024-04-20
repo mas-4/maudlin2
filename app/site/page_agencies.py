@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from app.models import Session, Agency, Headline, Article
+from app.models import Session, Agency, Headline
 from app.registry import SeleniumScrapers, TradScrapers
 from app.site.common import copy_assets, TemplateHandler, PathHandler
-from app.site.graphing import Plots
+from app.site.data import DataHandler
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility
@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 
 class AgenciesPage:
-    def __init__(self):
+    def __init__(self, data: DataHandler):
         self.urls = {}
         self.agencies = []
         self.template = TemplateHandler('agencies.html')
@@ -23,12 +23,12 @@ class AgenciesPage:
             'bias': {str(b): b.value for b in list(Bias)},
             'credibility': {str(c): c.value for c in list(Credibility)}
         }
+        self.data: DataHandler = data
 
     def generate(self):
         logger.info("Generating agencies page...")
         self.generate_home_wordcloud()
         self.tabledata()
-        self.render_sentiment_graphs()
         self.render_home_page()
         logger.info("...done")
 
@@ -79,31 +79,9 @@ class AgenciesPage:
             ).all()
             generate_wordcloud(titles, PathHandler(PathHandler.FileNames.main_wordcloud).build)
 
-    def render_sentiment_graphs(self):
-        with Session() as s:
-            data = s.query(
-                Headline.vader_compound, Headline.afinn, Headline.last_accessed, Agency._bias  # noqa protected
-            ).join(Headline.article).join(Article.agency).all()
-        Plots.sentiment_graphs(self.aggregate_data(data))
-
-    @staticmethod
-    def aggregate_data(data):
-        df = pd.DataFrame(data, columns=['Vader', 'Afinn', 'Date', 'Bias'])
-        df['Date'] = pd.to_datetime(df['Date'])
-        df['PVI'] = df['Vader'] * df['Bias']
-        df['PAI'] = df['Afinn'] * df['Bias']
-        cols = ['Vader', 'Afinn', 'PVI', 'PAI']
-        agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
-            .agg({col: 'mean' for col in cols}).dropna().reset_index()
-        # moving averages for vader and afinn
-        agg['Vader MA'] = agg['Vader'].rolling(window=7).mean()
-        agg['Afinn MA'] = agg['Afinn'].rolling(window=7).mean()
-        agg['PVI MA'] = agg['PVI'].rolling(window=7).mean()
-        agg['PAI MA'] = agg['PAI'].rolling(window=7).mean()
-        return agg
-
 
 if __name__ == "__main__":
     Config.set_debug()
     copy_assets()
-    AgenciesPage().generate()
+    dh: DataHandler = DataHandler()
+    AgenciesPage(dh).generate()
