@@ -1,39 +1,20 @@
 import os
-from datetime import datetime as dt, timedelta as td
 from functools import partial
 
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import pandas as pd
 from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
 from app.models import Topic, Session, Article, Headline, Agency
-from app.site.common import copy_assets, TemplateHandler, PathHandler
+from app.site.common import copy_assets, TemplateHandler
+from app.site.graphing import Plots
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
-from app.utils.constants import Country, Bias
+from app.utils.constants import Country
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
-
-side_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
-colors = {
-    'War in Gaza': '#005EB8',  # '#1f77b4',           # blue
-    'Trump Trial': '#ff7f0e',  # orange
-    'Inflation': '#2ca02c',  # green
-    'Trump is unfit': '#d62728',  # red
-    'Border Chaos': '#9467bd',  # purplish
-    'Biden Impeachment': '#8c564b',  # brown
-    'Abortion Post-Dobbs': '#e377c2',  # pink
-    'Biden is old': '#7f7f7f',  # grey
-    'Ukraine': '#FFDD00',  # '#bcbd22',               # yellow
-    # '#17becf'  # light blue
-}
-bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
-
 PIPELINE = [
     tnorm.hyphenated_words,
     tnorm.quotation_marks,
@@ -51,26 +32,24 @@ PIPELINE = [
 
 
 class TopicsPage:
-    template = TemplateHandler('topics.html')
-    topic_template = TemplateHandler('topic.html')
+    def __init__(self):
+        self.context = {'title': 'Topic Analysis'}
+        self.template = TemplateHandler('topics.html')
+        self.topic_template = TemplateHandler('topic.html')
 
     def generate(self):
         with Session() as session:
-            topics = session.query(Topic).all()
+            self.context['topics'] = session.query(Topic).all()
             if not Config.debug:
-                for topic in topics:
+                for topic in self.context['topics']:
                     self.generate_topic_wordcloud(topic)
         df = self.get_data()
-        self.topic_history_bar_graph(df.copy())
-        self.topic_today_bubble_graph(df.copy())
-        self.generate_topic_graphs(df, topics)
-        self.generate_topic_pages(df, topics)
-        self.generate_day_topic_bar_chart(df.copy())
-        context = {
-            'topics': topics,
-            'title': 'Topic Analysis'
-        }
-        self.template.write(context)
+        Plots.topic_history_bar_graph(df.copy())
+        Plots.topic_today_bubble_graph(df.copy())
+        Plots.topic_today_bar_graph(df.copy())
+        Plots.generate_topic_graphs(df, self.context['topics'])
+        self.generate_topic_pages(df, self.context['topics'])
+        self.template.write(self.context)
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
@@ -84,183 +63,6 @@ class TopicsPage:
             generate_wordcloud(headlines,
                                os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
                                pipeline=PIPELINE)  # noqa added wordcloud attr
-
-    @staticmethod
-    def generate_topic_graphs(df, topics):
-        # blue to red
-        df['leftcenter'] = df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
-        for topic in topics:
-            topic.graph = f"{topic.name.replace(' ', '_')}_graph.png"
-            topic_df = df[df['topic'] == topic.name].copy()
-            if topic_df.empty:
-                logger.warning(f"Empty dataframe for {topic.name}")
-                continue
-            topic_df['day'] = topic_df['first_accessed'].dt.date
-
-            fig, ax = plt.subplots(figsize=(13, 6))
-            TopicsPage.graph_articles_topic(ax, topic_df)
-            TopicsPage.graph_sentiment_lines_topic(ax.twinx(), topic_df)
-
-            ax.set_title(f'{topic.name} Sentiment and Number of Articles')
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            # rotate x-axis labels
-            ax.set_xticks(ax.get_xticks()[::2])
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-            TopicsPage.apply_special_dates(ax, topic.name)
-            plt.legend(loc='upper left')
-            plt.tight_layout()
-            plt.savefig(os.path.join(Config.build, topic.graph))
-
-    @staticmethod
-    def graph_articles_topic(ax, topic_df):
-        bottom = TopicsPage.get_bottom(topic_df)
-        bias_df = topic_df.groupby(['bias', 'day']).agg({
-            'afinn': 'count'
-        })
-        bias_df = bias_df.rename(columns={'afinn': 'articles'})
-        for bias in range(-3, 4):
-            if bias not in bias_df.index.levels[0]:
-                continue
-            gdf = bias_df.loc[bias]
-            if len(gdf) < len(bottom):
-                gdf = gdf.reindex(bottom.index, fill_value=0)
-            ax.bar(gdf.index, gdf.articles, color=bias_colors[bias + 3], label=str(Bias(bias)))
-            bottom['bot'] += gdf.articles
-        ax.set_ylabel('Number of Articles', color='b')
-        ax.tick_params(axis='y', labelcolor='b')
-
-    @staticmethod
-    def graph_sentiment_lines_topic(ax, topic_df):
-        df = topic_df.groupby(['leftcenter', 'day']).agg({'sentiment': 'mean'})
-        df['sentiment'] = df['sentiment'].rolling(window=7).mean()
-        for group in df.index.levels[0]:
-            gdf = df.loc[group]
-            ax.plot(gdf.index, gdf.sentiment, color=side_colors[group], label=group.title())
-        ax.axhline(0, color='k', linestyle='dotted', lw=1)
-        ax.tick_params(axis='y', labelcolor='r')
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Sentiment Moving Average', color='r')
-
-    def generate_day_topic_bar_chart(self, df):
-        # adjust timezone for first_accessed from naive utc to eastern
-        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
-                                                                                   ascending=False).copy()
-        today_df = today_df.groupby(['bias', 'topic']).agg({'afinn': 'count'}).reset_index()
-        fig, ax = plt.subplots(figsize=(13, 6))
-        left = pd.Series(0, index=today_df['topic'].unique()).sort_index()
-        for bias in range(-3, 4):
-            gdf = today_df[today_df['bias'] == bias][['topic', 'afinn']].set_index('topic').sort_values('topic')
-            if len(gdf) < len(left):
-                gdf = gdf.reindex(left.index, fill_value=0)
-            ax.barh(gdf.index, gdf['afinn'], color=bias_colors[bias + 3], label=str(Bias(bias)), left=left)
-            left += gdf['afinn']
-        # set horizontal lines at each bias level
-        ax.set_title("Today's Topics")
-        ax.legend()
-        plt.tight_layout()
-        plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bar_graph).build)
-
-    def topic_today_bubble_graph(self, df):
-        # adjust timezone for first_accessed from naive utc to eastern
-        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
-                                                                                   ascending=False).copy()
-        fig, ax = plt.subplots(figsize=(13, 6))
-        today_df['side'] = today_df['bias'].apply(lambda x: -1 if x < 0 else 1 if x > 0 else 0)
-
-        for i, topic in enumerate(today_df['topic'].unique()):
-            topic_df = today_df[today_df['topic'] == topic].copy()
-            # count the number of articles per bias at a given time
-            topic_df['hour'] = topic_df['first_accessed'].dt.hour
-            topic_df = topic_df.groupby(['hour', 'side']).agg({'afinn': 'count'})
-            topic_df = topic_df.rename(columns={'afinn': 'articles'}).reset_index()
-            topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
-            topic_df['side'] += i * 0.1
-            ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 20), label=topic,
-                       color=colors[topic], alpha=0.85, edgecolor='none')
-        # set horizontal lines at each bias level
-        ax.set_title("Today's Articles")
-        # x-axis should start at 0:00 and end at 23:59
-        ax.yaxis.set_ticks(range(-1, 2))
-        ax.yaxis.set_ticklabels(['left', 'center', 'right'])
-        # rotate y-axis labels
-        ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
-        # set x-axis to last night at 11:00 to tonight at 11:00
-        ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-        ax.legend()
-        plt.tight_layout()
-        plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bubble_graph).build)
-
-    def topic_history_bar_graph(self, df):
-        plt.cla()
-        plt.clf()
-        fig, ax = plt.gcf(), plt.gca()
-        fig.set_size_inches(13, 7)
-        fig.subplots_adjust(bottom=0.2)
-
-        bottom = TopicsPage.get_bottom(df)
-        sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
-        for i, topic in enumerate(sorted_topics.index):
-            topic_df = df[df['topic'] == topic].copy()
-            topic_df['day'] = topic_df['first_accessed'].dt.date
-
-            # group by day and calculate average sentiment, emphasis, and number of articles
-            topic_df = topic_df.groupby('day').agg({'afinn': 'count'})
-            topic_df = topic_df.rename(columns={'afinn': 'articles'})
-            if len(topic_df) < len(bottom):
-                topic_df = topic_df.reindex(bottom.index, fill_value=0)
-            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=colors[topic])
-            bottom['bot'] += topic_df.articles
-
-        ax.set_title('Number of Articles by Topic Published Per Day')
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-        ax.set_xticks(ax.get_xticks()[::2])
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles[::-1], labels[::-1])
-        self.apply_special_dates(ax, 'all')
-        plt.tight_layout()
-        plt.savefig(PathHandler(PathHandler.FileNames.topic_history_bar_graph).build)
-
-    @staticmethod
-    def get_bottom(df):
-        days = (dt.now().date() - df['first_accessed'].min().date()).days + 1
-        bottom = pd.DataFrame(pd.date_range(df['first_accessed'].min(), periods=days, freq='D'), columns=['dt'])
-        bottom['days'] = bottom['dt'].dt.date
-        bottom = bottom.set_index('days')
-        bottom['bot'] = 0
-        bottom = bottom[['bot']]
-        return bottom
-
-    @staticmethod
-    def apply_special_dates(ax: plt.Axes, topic):
-        ymin, ymax = ax.get_ylim()
-        rot = 4
-        for i, spdate in enumerate(Config.special_dates):
-            if topic != 'all' and spdate.topic != topic:
-                continue
-
-            ax.axvline(spdate.date, color=colors[spdate.topic], linestyle='-', lw=1)  # noqa date for float
-
-            offset = (i % rot) * ((ymax + ymin - 20) / rot)
-            ax.annotate(
-                spdate.name,
-                xy=(spdate.date, offset),  # noqa date for float
-                xytext=(0, 20),
-                textcoords='offset points',
-                ha='right',
-                fontsize=12,
-                color='black',
-                fontweight='bold',
-                arrowprops=dict(
-                    facecolor='red',
-                    arrowstyle='->',
-                    linewidth=2
-                )
-            )
 
     @staticmethod
     def get_data():
