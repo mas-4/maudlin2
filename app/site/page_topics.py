@@ -47,8 +47,7 @@ class TopicsPage:
         if not headlines.any():
             return
         topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
-        headlines = [h[0] for h in headlines]
-        generate_wordcloud(headlines,
+        generate_wordcloud(headlines.tolist(),
                            os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
                            pipeline=PIPELINE)  # noqa added wordcloud attr
 

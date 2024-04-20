@@ -32,9 +32,6 @@ class DataHandler:
         if DataTypes.agency in types:
             self.all_sentiment_data = self.aggregate_sentiment_data()
             self.current_processed_headlines = self.main_headline_df['title'].tolist()
-            print(self.current_processed_headlines)
-            print("***")
-            print(self.main_headline_df['title'])
             self.agency_data = self.get_agency_data()
             self.agency_metrics = self.agency_metrics(self.agency_data)
         if DataTypes.topics in types:
