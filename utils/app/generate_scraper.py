@@ -63,6 +63,6 @@ def generate_scraper(site_name, url, class_name, file_name):
 
 
 if __name__ == '__main__':
-    with open(os.path.join(Config.output_dir, 'generate.txt'), 'rt') as f:
+    with open(os.path.join(Config.data, 'generate.txt'), 'rt') as f:
         url, name = f.read().strip().splitlines()
     main(name, url)

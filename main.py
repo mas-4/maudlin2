@@ -5,7 +5,7 @@ from app.analysis.preprocessing import reprocess_headlines
 from app.analysis.topics import analyze_all_topics
 from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager
-from app.site_builder import build_site
+from app.builder import build
 from app.utils.config import Config
 from app.utils.logger import get_logger
 from utils.dayreport import DayReport
@@ -78,7 +78,7 @@ def main(args: argparse.Namespace):
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
-    build_site()
+    build()
 
 
 def get_args() -> argparse.Namespace:
@@ -93,7 +93,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--reprocess', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    Config.debug = args.debug
+    if args.debug:
+        Config.set_debug()
     return args
 
 

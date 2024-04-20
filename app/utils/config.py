@@ -40,20 +40,20 @@ class Config:
     exempted_foreign_media = ["The Economist", "BBC", "The Guardian", "Financial Times", "Reuters", "The Independent"]
     headline_cutoff = 128
 
-    output_dir = os.path.join(Constants.Paths.ROOT, 'data')
-    log_file = f'{output_dir}/app.log'
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    dayreport_file = os.path.join(output_dir, 'day-report.json')
+    data = os.path.join(Constants.Paths.ROOT, 'data')
+    log_file = f'{data}/app.log'
+    if not os.path.exists(data):
+        os.makedirs(data)
+    dayreport_file = os.path.join(data, 'day-report.json')
     assets = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'static')
     build = os.path.join(Constants.Paths.ROOT, 'build')
     if not os.path.exists(build):
         os.makedirs(build)
 
     db_file_name = 'data.db'
-    db_file_path = str(os.path.join(output_dir, db_file_name))
+    db_file_path = str(os.path.join(data, db_file_name))
     connection_string = 'sqlite:///' + db_file_path
-    newsletter = os.path.join(output_dir, 'newsletter.html')
+    newsletter = os.path.join(data, 'newsletter.html')
 
     @staticmethod
     def time_between_requests() -> float:  # this is a function so that we can make it random if necessary
@@ -75,3 +75,13 @@ class Config:
     with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
         special_dates = [SpecialDate(x) for x in yaml.safe_load(f_in)]
         special_dates.sort(key=lambda x: x.date)
+
+    @classmethod
+    def set_debug(cls):
+        cls.debug = True
+        cls.logging_level = logging.DEBUG
+        from app.models import Session, Headline
+        with Session() as s:
+            last_accessed = s.query(Headline.last_accessed).order_by(Headline.last_accessed.desc()).first()[0]
+        cls.last_accessed = last_accessed - td(minutes=25)
+        cls.first_accessed = last_accessed - td(days=3)
