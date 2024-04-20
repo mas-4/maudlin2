@@ -23,7 +23,7 @@ def test_write(s):
     test = TemplateHandler('test.html')
     with tempfile.TemporaryDirectory() as tmpdir:
         test.write({'test': s}, f'{tmpdir}/test.html')
-        with open(f'{tmpdir}/test.html', 'rt') as f_in:
+        with open(f'{tmpdir}/test.html', 'rt', encoding='utf-8') as f_in:
             # Mac changes \r to \n in text files. Very weird. Not much on Google about it.
             replace = lambda s: s.replace('\r', '\n')
             assert replace(f_in.read()) == replace(s)

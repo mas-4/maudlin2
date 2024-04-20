@@ -43,7 +43,7 @@ class TemplateHandler:
         return self.template.render(**context)
 
     def write(self, context, path):
-        with open(path, 'w', encoding='utf8') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             f.write(self.render(context))
 
 
