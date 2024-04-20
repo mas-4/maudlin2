@@ -1,7 +1,8 @@
 import os
+
+from app.site.page_agencies import AgenciesPage
 from app.site.page_headlines import HeadlinesPage
 from app.site.page_topics import TopicsPage
-from app.site.page_agencies import AgenciesPage
 
 
 def test_headlines_page():

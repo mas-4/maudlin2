@@ -8,7 +8,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def build_site():
+def build():
     clear_build()
     HeadlinesPage().generate()
     AgenciesPage().generate()
@@ -18,4 +18,4 @@ def build_site():
 
 
 if __name__ == '__main__':
-    build_site()
+    build()
