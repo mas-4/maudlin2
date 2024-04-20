@@ -150,4 +150,5 @@ class AgenciesPage:
 
 
 if __name__ == "__main__":
+    Config.debug = True
     AgenciesPage().generate()

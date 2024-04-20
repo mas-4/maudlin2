@@ -34,15 +34,14 @@ class Agency(Base):
 
     def current(self, col) -> float:
         with (Session() as s):
+            last_accessed = Config.last_accessed
+            if Config.debug:
+                last_accessed = s.query(Headline.last_accessed).order_by(Headline.last_accessed.desc()).first()[0]
+                last_accessed = last_accessed - td(minutes=25)
             first_date_filter = Article.first_accessed > s.query(Article.first_accessed).filter_by(agency_id=self.id) \
                 .order_by(Article.first_accessed.asc()).first()[0] + td(days=1)  # to eliminate permanent links
             base_query = s.query(col).join(Article, Article.id == Headline.article_id).filter_by(
                 agency_id=self.id).filter(first_date_filter).order_by(Headline.last_accessed.desc())
-            if Config.debug:
-                last_accessed = s.query(Headline.last_accessed)\
-                    .filter_by(agency_id=self.id).order_by(Headline.last_accessed.desc()).first()[0]
-            else:
-                last_accessed = Config.last_accessed
             data = base_query.filter(Headline.last_accessed > last_accessed).all()
             numbers = np.array(data).flatten()
         if np.isnan(np.mean(numbers)):
