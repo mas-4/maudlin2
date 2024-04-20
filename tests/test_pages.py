@@ -12,8 +12,8 @@ def test_headlines_page():
     assert os.path.exists(page.template.path)
 
 
-def test_topics_page():
-    page = TopicsPage()
+def test_topics_page(data_handler):
+    page = TopicsPage(data_handler)
     page.generate()
     assert os.path.exists(page.template.path)
 

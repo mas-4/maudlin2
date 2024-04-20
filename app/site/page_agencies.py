@@ -22,17 +22,11 @@ class AgenciesPage:
 
     def generate(self):
         logger.info("Generating agencies page...")
-        self.generate_home_wordcloud()
-        self.render_home_page()
-        logger.info("...done")
-
-    def render_home_page(self):
-        self.template.write(self.context)
-
-    def generate_home_wordcloud(self):
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.current_processed_headlines,
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)
+        self.template.write(self.context)
+        logger.info("...done")
 
 
 if __name__ == "__main__":
