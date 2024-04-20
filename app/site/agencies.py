@@ -1,4 +1,5 @@
 import os
+from app.site.common import copy_assets
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -151,4 +152,5 @@ class AgenciesPage:
 
 if __name__ == "__main__":
     Config.debug = True
+    copy_assets()
     AgenciesPage().generate()

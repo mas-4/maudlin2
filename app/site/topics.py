@@ -1,6 +1,7 @@
 import os
 from datetime import datetime as dt, timedelta as td
 from functools import partial
+from app.site.common import copy_assets
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -316,4 +317,5 @@ class TopicsPage:
 
 if __name__ == '__main__':
     Config.debug = True
+    copy_assets()
     TopicsPage().generate()
