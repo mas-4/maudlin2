@@ -7,13 +7,16 @@ from app.utils.config import Config
 class Queries:
     @staticmethod
     def get_current_headlines(session):
+        # get most recent headline date
+        last_accessed = session.query(Headline.last_accessed).order_by(Headline.last_accessed.desc()).first()[0]
         base_query = session.query(Headline).join(Headline.article).join(Article.agency)
         ordering = [
             Headline.first_accessed.desc(),
             Headline.position.asc()  # prominence
         ]
         if Config.debug:
-            return base_query.filter(Headline.position < 25).order_by(*ordering).limit(1000)
+            return base_query.filter(Headline.position < 25,
+                                     Headline.last_accessed > last_accessed - td(minutes=25)).order_by(*ordering)
         return base_query.filter(
             Headline.last_accessed > Config.last_accessed,
             Headline.first_accessed > dt.now() - td(days=1),

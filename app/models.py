@@ -39,9 +39,11 @@ class Agency(Base):
             base_query = s.query(col).join(Article, Article.id == Headline.article_id).filter_by(
                 agency_id=self.id).filter(first_date_filter).order_by(Headline.last_accessed.desc())
             if Config.debug:
-                data = base_query.limit(10).all()
+                last_accessed = s.query(Headline.last_accessed)\
+                    .filter_by(agency_id=self.id).order_by(Headline.last_accessed.desc()).first()[0]
             else:
-                data = base_query.filter(Headline.last_accessed > Config.last_accessed).all()
+                last_accessed = Config.last_accessed
+            data = base_query.filter(Headline.last_accessed > last_accessed).all()
             numbers = np.array(data).flatten()
         if np.isnan(np.mean(numbers)):
             logger.warning("No %s data for %r.", col, self)
