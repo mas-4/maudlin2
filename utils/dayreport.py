@@ -5,7 +5,7 @@ from datetime import datetime as dt
 from threading import Lock
 
 from utils.emailer import send_notification
-from app.site import j2env
+from app.site.common import j2env
 from app.utils.config import Config
 
 lock = Lock()

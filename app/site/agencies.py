@@ -8,9 +8,8 @@ import seaborn as sns
 
 from app.models import Session, Agency, Headline, Article
 from app.registry import SeleniumScrapers, TradScrapers
-from app.site import j2env
-from app.site.common import copy_assets
-from app.site.common import generate_wordcloud
+from app.site.common import copy_assets, TemplateHandler
+from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Constants, Bias, Credibility
 from app.utils.logger import get_logger
@@ -24,7 +23,7 @@ class FileNames:
 
 
 class AgenciesPage:
-    template = j2env.get_template('agencies.html')
+    template = TemplateHandler('agencies.html')
 
     def __init__(self):
         self.data = []
@@ -41,16 +40,16 @@ class AgenciesPage:
         logger.info("...done")
 
     def render_home_page(self):
-        with open(os.path.join(Config.build, 'agencies.html'), 'wt') as f:
-            f.write(self.template.render(
-                title='Home',
-                tabledata=self.data,
-                urls=self.urls,
-                metrics=self.metrics,
-                FileNames=FileNames,
-                bias={str(b): b.value for b in list(Bias)},
-                credibility={str(c): c.value for c in list(Credibility)}
-            ))
+        data = {
+            'title': 'Home',
+            'tabledata': self.data,
+            'urls': self.urls,
+            'metrics': self.metrics,
+            'FileNames': FileNames,
+            'bias': {str(b): b.value for b in list(Bias)},
+            'credibility': {str(c): c.value for c in list(Credibility)}
+        }
+        self.template.write(data, os.path.join(Config.build, 'agencies.html'))
 
     def generate_home_data(self):
         with Session() as s:

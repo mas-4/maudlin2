@@ -7,7 +7,7 @@ from typing import Any
 import mistune
 import yaml
 
-from app.site import j2env
+from app.site.common import j2env
 from app.utils.constants import Constants, Credibility, Bias
 
 

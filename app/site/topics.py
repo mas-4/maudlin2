@@ -9,9 +9,8 @@ from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
 from app.models import Topic, Session, Article, Headline, Agency
-from app.site import j2env
-from app.site.common import copy_assets
-from app.site.common import generate_wordcloud
+from app.site.common import copy_assets, TemplateHandler
+from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Country, Bias
 from app.utils.logger import get_logger
@@ -52,8 +51,8 @@ PIPELINE = [
 
 
 class TopicsPage:
-    template = j2env.get_template('topics.html')
-    topic_template = j2env.get_template('topic.html')
+    template = TemplateHandler('topics.html')
+    topic_template = TemplateHandler('topic.html')
     graph_path = 'topics_graph.png'
     articles_path = 'current_articles.png'
     today_topic_path = 'current_topics.png'
@@ -70,9 +69,14 @@ class TopicsPage:
         self.generate_topic_graphs(df, topics)
         self.generate_topic_pages(df, topics)
         self.generate_day_topic_bar_chart(df.copy())
-        with open(os.path.join(Config.build, 'topics.html'), 'wt') as f:
-            f.write(self.template.render(topics=topics, graphs_path=self.graph_path, articles_path=self.articles_path,
-                                         today_topic_path=self.today_topic_path, title='Topic Analysis'))
+        context = {
+            'topics': topics,
+            'graphs_path': self.graph_path,
+            'articles_path': self.articles_path,
+            'today_topic_path': self.today_topic_path,
+            'title': 'Topic Analysis'
+        }
+        self.template.write(context, os.path.join(Config.build, 'topics.html'))
 
     @staticmethod
     def generate_topic_wordcloud(topic: Topic):
@@ -311,8 +315,13 @@ class TopicsPage:
             for col in ['afinn', 'vader', 'score']:
                 topic_df[col] = topic_df[col].round(2)
             topic_df = topic_df[['id', 'title', 'first_accessed', 'position', 'duration', 'score', 'vader', 'afinn']]
-            with open(os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html'), 'wt', encoding='utf8') as f:
-                f.write(self.topic_template.render(topic=topic, tabledata=topic_df.values.tolist(), title=topic.name))
+            path = os.path.join(Config.build, f'{topic.name.replace(" ", "_")}.html')
+            context = {
+                'topic': topic,
+                'tabledata': topic_df.values.tolist(),
+                'title': topic.name
+            }
+            self.topic_template.write(context, path)
 
 
 if __name__ == '__main__':

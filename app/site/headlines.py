@@ -8,8 +8,7 @@ from app.analysis.clustering import prepare_cosine, form_clusters, label_cluster
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
 from app.models import Session, Headline
 from app.queries import Queries
-from app.site import j2env
-from app.site.common import calculate_xkeyscore, copy_assets
+from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.utils.config import Config
 from app.utils.constants import Constants
 from app.utils.logger import get_logger
@@ -34,8 +33,8 @@ pipeline = [
 
 
 class HeadlinesPage:
-    template = j2env.get_template('index.html')
-    newsletter = j2env.get_template('newsletter.html')
+    template = TemplateHandler('index.html')
+    newsletter = TemplateHandler('newsletter.html')
 
     def generate(self):
         logger.info("Generating headlines page...")
@@ -45,17 +44,18 @@ class HeadlinesPage:
         clusters_list, df, summaries, agency_lists = self.get_summaries(df)
         table_df = self.process_headlines(df)
 
-        with open(Config.newsletter, 'wt', encoding='utf8') as f:
-            f.write(self.newsletter.render(clusters=clusters_list, summaries=summaries, agency_lists=agency_lists))
-
-        with open(os.path.join(Config.build, 'index.html'), 'wt', encoding='utf8') as f:
-            f.write(self.template.render(
-                title='Current Headlines',
-                tabledata=table_df.values.tolist(),
-                clusters=clusters_list,
-                summaries=summaries,
-                agency_lists=agency_lists
-            ))
+        self.newsletter.write(
+            dict(clusters=clusters_list, summaries=summaries, agency_lists=agency_lists),
+            Config.newsletter
+        )
+        self.template.write(
+            dict(title='Current Headlines',
+                 tabledata=table_df.values.tolist(),
+                 clusters=clusters_list,
+                 summaries=summaries,
+                 agency_lists=agency_lists),
+            os.path.join(Config.build, 'index.html')
+        )
         logger.info("...done")
 
     def get_summaries(self, df):
