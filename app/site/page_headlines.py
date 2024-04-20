@@ -33,8 +33,9 @@ pipeline = [
 
 
 class HeadlinesPage:
-    template = TemplateHandler('headlines.html', 'index.html')
-    newsletter = TemplateHandler('newsletter.html')
+    def __init__(self):
+        self.template = TemplateHandler('headlines.html', 'index.html')
+        self.newsletter = TemplateHandler('newsletter.html')
 
     def generate(self):
         logger.info("Generating headlines page...")

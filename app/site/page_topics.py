@@ -9,7 +9,7 @@ from sqlalchemy import or_
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
 from app.models import Topic, Session, Article, Headline, Agency
-from app.site.common import copy_assets, TemplateHandler
+from app.site.common import copy_assets, TemplateHandler, PathHandler
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Country, Bias
@@ -53,9 +53,6 @@ PIPELINE = [
 class TopicsPage:
     template = TemplateHandler('topics.html')
     topic_template = TemplateHandler('topic.html')
-    graph_path = 'topics_graph.png'
-    articles_path = 'current_articles.png'
-    today_topic_path = 'current_topics.png'
 
     def generate(self):
         with Session() as session:
@@ -64,16 +61,13 @@ class TopicsPage:
                 for topic in topics:
                     self.generate_topic_wordcloud(topic)
         df = self.get_data()
-        self.generate_header_graph(df.copy())
-        self.generate_article_scatter(df.copy())
+        self.topic_history_bar_graph(df.copy())
+        self.topic_today_bubble_graph(df.copy())
         self.generate_topic_graphs(df, topics)
         self.generate_topic_pages(df, topics)
         self.generate_day_topic_bar_chart(df.copy())
         context = {
             'topics': topics,
-            'graphs_path': self.graph_path,
-            'articles_path': self.articles_path,
-            'today_topic_path': self.today_topic_path,
             'title': 'Topic Analysis'
         }
         self.template.write(context)
@@ -165,9 +159,9 @@ class TopicsPage:
         ax.set_title("Today's Topics")
         ax.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join(Config.build, self.today_topic_path))
+        plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bar_graph).build)
 
-    def generate_article_scatter(self, df):
+    def topic_today_bubble_graph(self, df):
         # adjust timezone for first_accessed from naive utc to eastern
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
                                                                                    ascending=False).copy()
@@ -197,9 +191,9 @@ class TopicsPage:
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
         ax.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join(Config.build, self.articles_path))
+        plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bubble_graph).build)
 
-    def generate_header_graph(self, df):
+    def topic_history_bar_graph(self, df):
         plt.cla()
         plt.clf()
         fig, ax = plt.gcf(), plt.gca()
@@ -229,7 +223,7 @@ class TopicsPage:
         ax.legend(handles[::-1], labels[::-1])
         self.apply_special_dates(ax, 'all')
         plt.tight_layout()
-        plt.savefig(os.path.join(Config.build, self.graph_path))
+        plt.savefig(PathHandler(PathHandler.FileNames.topic_history_bar_graph).build)
 
     @staticmethod
     def get_bottom(df):

@@ -11,28 +11,8 @@ from app.site.wordcloudgen import PIPELINE, logger
 from app.utils.config import Config
 from app.utils.constants import Constants, Bias, Credibility
 
-# <editor-fold desc="Jinja2 Environment Stuff">
 j2env = Environment(loader=FileSystemLoader(os.path.join(Constants.Paths.ROOT, 'app', 'site', 'templates')),
                     trim_blocks=True)
-
-j2env.globals['Config'] = Config
-j2env.globals['bias'] = Bias.to_dict()
-j2env.globals['credibility'] = Credibility.to_dict()
-j2env.globals['now'] = Constants.TimeConstants.now_func
-
-j2env.globals['nav'] = j2env.get_template('nav.html').render()
-j2env.globals['footer'] = j2env.get_template('footer.html').render()
-j2env.globals['enumerate'] = enumerate
-
-
-def date(value):
-    return value.strftime(Config.strf)
-
-
-j2env.filters['date'] = date
-j2env.filters['markdown'] = mistune.markdown
-# </editor-fold>
-
 
 class TemplateHandler:
     def __init__(self, template_name: str, name: str = None):
@@ -81,6 +61,9 @@ class PathHandler:
     class FileNames:
         main_wordcloud = 'wordcloud.png'
         sentiment_graphs = 'sentiment-graphs.png'
+        topic_history_bar_graph = 'topic_history_bar_graph.png'
+        topic_today_bubble_graph = 'topic_today_bubble_graph.png'
+        topic_today_bar_graph = 'topic_today_bar_graph.png'
 
     def __init__(self, filename: str):
         self.filename = filename
@@ -92,3 +75,25 @@ class PathHandler:
     @property
     def path(self):
         return self.filename
+
+
+# <editor-fold desc="Jinja2 Environment Stuff">
+j2env.globals['Config'] = Config
+j2env.globals['bias'] = Bias.to_dict()
+j2env.globals['credibility'] = Credibility.to_dict()
+j2env.globals['now'] = Constants.TimeConstants.now_func
+
+j2env.globals['nav'] = j2env.get_template('nav.html').render()
+j2env.globals['footer'] = j2env.get_template('footer.html').render()
+j2env.globals['enumerate'] = enumerate
+j2env.globals['FileNames'] = PathHandler.FileNames
+
+
+def date(value):
+    return value.strftime(Config.strf)
+
+
+j2env.filters['date'] = date
+j2env.filters['markdown'] = mistune.markdown
+# </editor-fold>
+

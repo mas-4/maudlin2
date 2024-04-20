@@ -24,7 +24,6 @@ class AgenciesPage:
         self.template = TemplateHandler('agencies.html')
         self.context = {
             'title': 'Agencies',
-            'FileNames': PathHandler.FileNames,
             'bias': {str(b): b.value for b in list(Bias)},
             'credibility': {str(c): c.value for c in list(Credibility)}
         }
