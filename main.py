@@ -93,7 +93,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--reprocess', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    Config.debug = args.debug
+    if args.debug:
+        Config.set_debug()
     return args
 
 

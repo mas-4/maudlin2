@@ -89,6 +89,7 @@ class Plots:
 
     @staticmethod
     def topic_today_bubble_graph(df: pd.DataFrame):
+        df = df[df['topic'] != '']
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
                                                                                    ascending=False).copy()
         fig, ax = plt.subplots(figsize=(13, 6))
@@ -121,6 +122,7 @@ class Plots:
 
     @staticmethod
     def topic_history_bar_graph(df: pd.DataFrame):
+        df = df[df['topic'] != '']
         fig, ax = plt.subplots()
         fig.set_size_inches(13, 7)
         fig.subplots_adjust(bottom=0.2)

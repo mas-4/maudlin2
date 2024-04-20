@@ -29,16 +29,16 @@ class DataHandler:
         t = time.time()
         if types is None:
             types = list(DataTypes)
+        self.main_headline_df = self.get_main_headline_df()
         if DataTypes.agency in types:
             self.all_sentiment_data = self.aggregate_sentiment_data()
-            self.current_processed_headlines = self.get_current_headlines()
+            self.current_processed_headlines = self.main_headline_df['title'].tolist()
             self.agency_data = self.get_agency_data()
             self.agency_metrics = self.agency_metrics(self.agency_data)
         if DataTypes.topics in types:
             self.topic_df = self.get_topic_data()
             self.topics = self.get_topics()
-        if DataTypes.headlines in types:
-            self.main_headline_df = self.get_main_headline_df()
+
         logger.info("DataHandler initialized in %i seconds.", time.time() - t)
 
     @staticmethod
@@ -105,6 +105,11 @@ class DataHandler:
                 'partisan_mean_afinn': (us['Bias'] * us['Afinn']).mean()}
 
     @staticmethod
+    def get_topics():
+        with Session() as session:
+            return session.query(Topic).all()
+
+    @staticmethod
     def get_topic_data():
         columns = {
             'id': Article.id,
@@ -149,15 +154,18 @@ class DataHandler:
     @staticmethod
     def get_main_headline_df():
         cols = {
+            'article_id': Article.id,
             'title': Headline.processed,
             'agency': Agency.name,
+            'bias': Agency._bias,  # noqa prot attr
             'first_accessed': Headline.first_accessed,
             'last_accessed': Headline.last_accessed,
             'position': Headline.position,
             'vader_compound': Headline.vader_compound,
             'afinn': Headline.afinn,
             'url': Article.url,
-            'country': Agency._country, # noqa prot attr
+            'country': Agency._country,  # noqa prot attr
+            'topic_id': Article.topic_id,
             'topic': Topic.name,
             'topic_score': Article.topic_score
         }
@@ -175,20 +183,11 @@ class DataHandler:
             )
         df = pd.DataFrame(data, columns=list(cols.keys()))
 
-        # if windows:
-        if os.name == 'nt':
-            fa_str = '%b %d %I:%M %p'
-            la_str = '%I:%M %p'
-        else:
-            fa_str = '%b %-d %-I:%M %p'
-            la_str = '%-I:%M %p'
         df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         df['last_accessed'] = df['last_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
-        df['first_accessed'] = df['first_accessed'].dt.strftime(fa_str)
-        df['last_accessed'] = df['last_accessed'].dt.strftime(la_str)
         df['vader_compound'] = df['vader_compound'].round(2)
         df['afinn'] = df['afinn'].round(2)
-        df['country'] = df['country'].map({c.value: c.name for c in list(Country)})
+
         df['topic'] = df['topic'].fillna('')
         df['topic_score'] = df['topic_score'].round(2)
         return df

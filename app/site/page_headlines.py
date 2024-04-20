@@ -1,3 +1,4 @@
+import os
 from transformers import pipeline as hf_pipeline
 
 from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
@@ -6,6 +7,7 @@ from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.utils.config import Config
 from app.utils.logger import get_logger
+from app.utils.constants import Country
 
 logger = get_logger(__name__)
 
@@ -106,6 +108,15 @@ class HeadlinesPage:
 
     @staticmethod
     def filter_score_sort(df):
+        # if windows:
+        fa_str = '%b %-d %-I:%M %p'
+        la_str = '%-I:%M %p'
+        if os.name == 'nt':  # Windows doesn't like the whole dash thing.
+            fa_str = fa_str.replace('-', '')
+            la_str = la_str.replace('-', '')
+        df['country'] = df['country'].map({c.value: c.name for c in list(Country)})
+        df['first_accessed'] = df['first_accessed'].dt.strftime(fa_str)
+        df['last_accessed'] = df['last_accessed'].dt.strftime(la_str)
         # drop the sun
         df = df[~(df['agency'] == 'The Sun')]
         return calculate_xkeyscore(df.copy())
