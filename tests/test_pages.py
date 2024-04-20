@@ -6,8 +6,8 @@ from app.site.page_topics import TopicsPage
 from app.site.data import DataHandler
 
 
-def test_headlines_page():
-    page = HeadlinesPage()
+def test_headlines_page(data_handler):
+    page = HeadlinesPage(data_handler)
     page.generate()
     assert os.path.exists(page.template.path)
 

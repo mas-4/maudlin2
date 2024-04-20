@@ -1,15 +1,18 @@
+import os
 import time
+from datetime import timedelta as td
+from enum import Enum
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-
 from sqlalchemy import or_
+
 from app.models import Session, Agency, Headline, Topic, Article
 from app.registry import SeleniumScrapers, TradScrapers
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility, Country
 from app.utils.logger import get_logger
-from typing import Optional
-from enum import Enum
 
 logger = get_logger(__name__)
 
@@ -34,6 +37,8 @@ class DataHandler:
         if DataTypes.topics in types:
             self.topic_df = self.get_topic_data()
             self.topics = self.get_topics()
+        if DataTypes.headlines in types:
+            self.main_headline_df = self.get_main_headline_df()
         logger.info("DataHandler initialized in %i seconds.", time.time() - t)
 
     @staticmethod
@@ -140,6 +145,53 @@ class DataHandler:
     def get_topics():
         with Session() as session:
             return session.query(Topic).all()
+
+    @staticmethod
+    def get_main_headline_df():
+        cols = {
+            'title': Headline.processed,
+            'agency': Agency.name,
+            'first_accessed': Headline.first_accessed,
+            'last_accessed': Headline.last_accessed,
+            'position': Headline.position,
+            'vader_compound': Headline.vader_compound,
+            'afinn': Headline.afinn,
+            'url': Article.url,
+            'country': Agency._country, # noqa prot attr
+            'topic': Topic.name,
+            'topic_score': Article.topic_score
+        }
+        with Session() as session:
+            data = session.query(
+                *list(cols.values())
+            ).join(Headline.article).join(Article.agency).join(Article.topic, isouter=True) \
+                .filter(
+                Headline.last_accessed > Config.last_accessed,
+                Headline.first_accessed > Config.last_accessed - td(days=1),
+                Headline.position < 25,
+            ).order_by(
+                Headline.first_accessed.desc(),
+                Headline.position.asc()  # prominence
+            )
+        df = pd.DataFrame(data, columns=list(cols.keys()))
+
+        # if windows:
+        if os.name == 'nt':
+            fa_str = '%b %d %I:%M %p'
+            la_str = '%I:%M %p'
+        else:
+            fa_str = '%b %-d %-I:%M %p'
+            la_str = '%-I:%M %p'
+        df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
+        df['last_accessed'] = df['last_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
+        df['first_accessed'] = df['first_accessed'].dt.strftime(fa_str)
+        df['last_accessed'] = df['last_accessed'].dt.strftime(la_str)
+        df['vader_compound'] = df['vader_compound'].round(2)
+        df['afinn'] = df['afinn'].round(2)
+        df['country'] = df['country'].map({c.value: c.name for c in list(Country)})
+        df['topic'] = df['topic'].fillna('')
+        df['topic_score'] = df['topic_score'].round(2)
+        return df
 
 
 if __name__ == '__main__':

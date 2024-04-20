@@ -1,16 +1,10 @@
-import os
-
-import pandas as pd
-import pytz
 from transformers import pipeline as hf_pipeline
 
 from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
-from app.models import Session, Headline
-from app.queries import Queries
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
+from app.site.data import DataHandler, DataTypes
 from app.utils.config import Config
-from app.utils.constants import Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -33,15 +27,14 @@ pipeline = [
 
 
 class HeadlinesPage:
-    def __init__(self):
+    def __init__(self, dh: DataHandler):
+        self.dh = dh
         self.template = TemplateHandler('headlines.html', 'index.html')
         self.newsletter = TemplateHandler('newsletter.html')
 
     def generate(self):
         logger.info("Generating headlines page...")
-        with Session() as s:
-            df = self.get_headlines(s)
-
+        df = self.filter_score_sort(self.dh.main_headline_df.copy())
         clusters_list, df, summaries, agency_lists = self.get_summaries(df)
         table_df = self.process_headlines(df)
 
@@ -57,7 +50,8 @@ class HeadlinesPage:
         )
         logger.info("...done")
 
-    def get_summaries(self, df):
+    @staticmethod
+    def get_summaries(df):
         n_samples_per_cluster = 5
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
         cosine_sim = prepare_cosine(df['processed'])
@@ -108,45 +102,6 @@ class HeadlinesPage:
         return df
 
     @staticmethod
-    def get_headlines(s):
-        headlines: list[Headline] = Queries.get_current_headlines(s).all()
-        # if windows:
-        if os.name == 'nt':
-            fa_str = '%b %d %I:%M %p'
-            la_str = '%I:%M %p'
-        else:
-            fa_str = '%b %-d %-I:%M %p'
-            la_str = '%-I:%M %p'
-
-        df = pd.DataFrame([[
-            h.processed,
-            h.article.agency.name,
-            h.first_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(fa_str),
-            h.last_accessed.replace(tzinfo=pytz.UTC).astimezone(tz=Constants.TimeConstants.timezone).strftime(la_str),
-            h.position,
-            round(h.vader_compound, 2),
-            round(h.afinn, 2),
-            h.article.url,
-            h.article.agency.country.name,
-            '' if not h.article.topic else h.article.topic.name,
-            '' if not h.article.topic else round(h.article.topic_score, 2)
-        ] for h in headlines],
-            columns=[
-                'title',
-                'agency',
-                'first_accessed',
-                'last_accessed',
-                'position',
-                'vader_compound',
-                'afinn',
-                'url',
-                'country',
-                'topic',
-                'topic_score'
-            ])
-        return HeadlinesPage.filter_score_sort(df)
-
-    @staticmethod
     def filter_score_sort(df):
         # drop the sun
         df = df[~(df['agency'] == 'The Sun')]
@@ -154,6 +109,6 @@ class HeadlinesPage:
 
 
 if __name__ == '__main__':
-    Config.debug = True
-    HeadlinesPage().generate()
+    Config.set_debug()
+    HeadlinesPage(DataHandler([DataTypes.headlines])).generate()
     copy_assets()

@@ -24,7 +24,7 @@ def build():
     gen_plots(dh)
     pages = [HeadlinesPage, AgenciesPage, TopicsPage]
     for page in pages:
-        page().generate()
+        page(dh).generate()
     copy_assets()
     publish_to_netlify()
 
