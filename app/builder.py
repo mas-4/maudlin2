@@ -10,9 +10,9 @@ logger = get_logger(__name__)
 
 def build():
     clear_build()
-    HeadlinesPage().generate()
-    AgenciesPage().generate()
-    TopicsPage().generate()
+    pages = [HeadlinesPage, AgenciesPage, TopicsPage]
+    for page in pages:
+        page().generate()
     copy_assets()
     publish_to_netlify()
 

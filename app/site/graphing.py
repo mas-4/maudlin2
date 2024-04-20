@@ -4,6 +4,7 @@ from datetime import datetime as dt, timedelta as td
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import dates as mdates
+import seaborn as sns
 
 from app.site.common import PathHandler
 from app.utils.config import Config
@@ -150,7 +151,7 @@ class Plots:
         plt.savefig(PathHandler(PathHandler.FileNames.topic_history_bar_graph).build)
 
     @classmethod
-    def generate_topic_graphs(cls, df, topics):
+    def individual_topic_graphs(cls, df, topics):
         # blue to red
         df['aisle'] = df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
         for topic in topics:
@@ -162,8 +163,8 @@ class Plots:
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             fig, ax = plt.subplots(figsize=(13, 6))
-            cls.graph_articles_topic(ax, topic_df)
-            cls.graph_sentiment_lines_topic(ax.twinx(), topic_df)
+            cls.individual_topic_article_bar_graph(ax, topic_df)
+            cls.individual_topic_sentiment_lines(ax.twinx(), topic_df)
 
             ax.set_title(f'{topic.name} Sentiment and Number of Articles')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
@@ -177,7 +178,7 @@ class Plots:
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     @staticmethod
-    def graph_articles_topic(ax: plt.Axes, topic_df: pd.DataFrame):
+    def individual_topic_article_bar_graph(ax: plt.Axes, topic_df: pd.DataFrame):
         bottom = get_bottom(topic_df)
         bias_df = topic_df.groupby(['bias', 'day']).agg({
             'afinn': 'count'
@@ -195,7 +196,7 @@ class Plots:
         ax.tick_params(axis='y', labelcolor='b')
 
     @staticmethod
-    def graph_sentiment_lines_topic(ax: plt.Axes, topic_df: pd.DataFrame):
+    def individual_topic_sentiment_lines(ax: plt.Axes, topic_df: pd.DataFrame):
         df = topic_df.groupby(['aisle', 'day']).agg({'sentiment': 'mean'})
         df['sentiment'] = df['sentiment'].rolling(window=7).mean()
         for group in df.index.levels[0]:
@@ -205,3 +206,23 @@ class Plots:
         ax.tick_params(axis='y', labelcolor='r')
         ax.set_xlabel('Date')
         ax.set_ylabel('Sentiment Moving Average', color='r')
+
+    @staticmethod
+    def sentiment_graphs(agg):
+        fig, ax = plt.subplots(2, 2)
+        fig.set_size_inches(9, 8)
+        sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0, 0], label='Mean VADER')
+        sns.lineplot(x='Date', y='Vader MA', data=agg, ax=ax[0, 0], label='Moving Average')
+        sns.lineplot(x='Date', y='PVI', data=agg, ax=ax[0, 1], label='PVI (-left/+right)')
+        sns.lineplot(x='Date', y='PVI MA', data=agg, ax=ax[0, 1], label='Moving Average')
+        sns.lineplot(x='Date', y='Afinn', data=agg, ax=ax[1, 0], label='Mean AFINN')
+        sns.lineplot(x='Date', y='Afinn MA', data=agg, ax=ax[1, 0], label='Moving Average')
+        sns.lineplot(x='Date', y='PAI', data=agg, ax=ax[1, 1], label='PAI (-left/+right)')
+        sns.lineplot(x='Date', y='PAI MA', data=agg, ax=ax[1, 1], label='Moving Average')
+        for i in range(2):
+            for j in range(2):
+                ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+                ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
+                ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.sentiment_graphs).build)

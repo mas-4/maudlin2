@@ -47,7 +47,7 @@ class TopicsPage:
         Plots.topic_history_bar_graph(df.copy())
         Plots.topic_today_bubble_graph(df.copy())
         Plots.topic_today_bar_graph(df.copy())
-        Plots.generate_topic_graphs(df, self.context['topics'])
+        Plots.individual_topic_graphs(df, self.context['topics'])
         self.generate_topic_pages(df, self.context['topics'])
         self.template.write(self.context)
 
