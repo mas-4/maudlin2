@@ -1,17 +1,13 @@
 import os
 from functools import partial
 
-import pandas as pd
-from sqlalchemy import or_
-
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
-from app.models import Topic, Session, Article, Headline, Agency
+from app.models import Topic, Session
 from app.site.common import copy_assets, TemplateHandler
-from app.site.graphing import Plots
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
-from app.utils.constants import Country
 from app.utils.logger import get_logger
+from app.site.data import DataHandler, DataTypes
 
 logger = get_logger(__name__)
 stopwords = list(STOPWORDS) + ['ago', 'Ago']
@@ -32,30 +28,23 @@ PIPELINE = [
 
 
 class TopicsPage:
-    def __init__(self):
-        self.context = {'title': 'Topic Analysis'}
+    def __init__(self, dh: DataHandler):
+        self.dh = dh
+        self.context = {'title': 'Topic Analysis', 'topics': self.dh.topics}
         self.template = TemplateHandler('topics.html')
         self.topic_template = TemplateHandler('topic.html')
 
     def generate(self):
-        with Session() as session:
-            self.context['topics'] = session.query(Topic).all()
-            if not Config.debug:
-                for topic in self.context['topics']:
-                    self.generate_topic_wordcloud(topic)
-        df = self.get_data()
-        Plots.topic_history_bar_graph(df.copy())
-        Plots.topic_today_bubble_graph(df.copy())
-        Plots.topic_today_bar_graph(df.copy())
-        Plots.individual_topic_graphs(df, self.context['topics'])
+        if not Config.debug:
+            for topic in self.context['topics']:
+                self.generate_topic_wordcloud(topic)
+        df = self.dh.topic_df
         self.generate_topic_pages(df, self.context['topics'])
         self.template.write(self.context)
 
-    @staticmethod
-    def generate_topic_wordcloud(topic: Topic):
+    def generate_topic_wordcloud(self, topic: Topic):
         with Session() as session:
-            headlines = session.query(Headline.processed).join(Headline.article).filter(
-                Article.topic_id == topic.id).all()
+            headlines = self.dh.topic_df[self.dh.topic_df['topic'] == topic.name]['headline']
             if not headlines:
                 return
             topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
@@ -63,43 +52,6 @@ class TopicsPage:
             generate_wordcloud(headlines,
                                os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
                                pipeline=PIPELINE)  # noqa added wordcloud attr
-
-    @staticmethod
-    def get_data():
-        columns = {
-            'id': Article.id,
-            'headline': Headline.processed,
-            'agency': Agency.name,
-            'bias': Agency._bias,  # noqa prot attr
-            'url': Article.url,
-            'afinn': Headline.afinn,
-            'vader': Headline.vader_compound,
-            'position': Headline.position,
-            'topic_id': Article.topic_id,
-            'topic': Topic.name,
-            'first_accessed': Article.first_accessed,
-            'last_accessed': Article.last_accessed,
-            'score': Article.topic_score
-        }
-        with (Session() as session):
-            data = session.query(*list(columns.values())).join(
-                Headline.article
-            ).join(Article.topic).join(Article.agency).filter(
-                or_(
-                    Agency._country == Country.us.value,  # noqa
-                    Agency.name.in_(Config.exempted_foreign_media)
-                )
-            ).all()
-        df = pd.DataFrame(data, columns=list(columns.keys()))
-        df['duration'] = (df['last_accessed'] - df['first_accessed']).dt.days + 1
-        df['sentiment'] = df[['afinn', 'vader']].mean(axis=1)
-        df['positionnorm'] = 1 / (1 + df['position'])
-        df['emphasis'] = df['positionnorm'] * df['duration']
-        # normalize emphasis
-        df['emphasis'] = (df['emphasis'] - df['emphasis'].min()) / (df['emphasis'].max() - df['emphasis'].min())
-        # normalize date from utc
-        df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
-        return df
 
     def generate_topic_pages(self, df, topics):
         def formattitle(x):
@@ -130,6 +82,6 @@ class TopicsPage:
 
 
 if __name__ == '__main__':
-    Config.debug = True
+    Config.set_debug()
     copy_assets()
-    TopicsPage().generate()
+    TopicsPage(DataHandler([DataTypes.topics])).generate()

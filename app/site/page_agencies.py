@@ -1,5 +1,5 @@
 from app.site.common import copy_assets, TemplateHandler, PathHandler
-from app.site.data import DataHandler
+from app.site.data import DataHandler, DataTypes
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility
@@ -38,5 +38,5 @@ class AgenciesPage:
 if __name__ == "__main__":
     Config.set_debug()
     copy_assets()
-    dh: DataHandler = DataHandler(['agency'])
+    dh: DataHandler = DataHandler([DataTypes.agency])
     AgenciesPage(dh).generate()
