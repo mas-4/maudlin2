@@ -12,9 +12,7 @@ def build_site():
     clear_build()
     HeadlinesPage().generate()
     AgenciesPage().generate()
-    # Blog().generate()
     TopicsPage().generate()
-    # generate_agency_pages()
     copy_assets()
     publish_to_netlify()
 

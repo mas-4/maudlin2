@@ -1,9 +1,0 @@
-{% extends "page.html" %}
-
-{% block content %}
-    <h2>{{ post['title'] }}</h2>
-    <h3>{{ post['date'] }}</h3>
-    <div class="content">
-        {{ post['body']|markdown|safe }}
-    </div>
-{% endblock %}
