@@ -4,11 +4,9 @@ from datetime import datetime as dt, timedelta as td
 from random import random
 from typing import Any
 
-import mistune
 import yaml
 
-from app.site.common import j2env
-from app.utils.constants import Constants, Credibility, Bias
+from app.utils.constants import Constants
 
 
 def read_creds(path):
@@ -77,23 +75,3 @@ class Config:
     with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
         special_dates = [SpecialDate(x) for x in yaml.safe_load(f_in)]
         special_dates.sort(key=lambda x: x.date)
-
-
-# <editor-fold desc="Jinja2 Environment Stuff">
-j2env.globals['Config'] = Config
-j2env.globals['bias'] = Bias.to_dict()
-j2env.globals['credibility'] = Credibility.to_dict()
-j2env.globals['now'] = Constants.TimeConstants.now_func
-
-j2env.globals['nav'] = j2env.get_template('nav.html').render()
-j2env.globals['footer'] = j2env.get_template('footer.html').render()
-j2env.globals['enumerate'] = enumerate
-
-
-def date(value):
-    return value.strftime(Config.strf)
-
-
-j2env.filters['date'] = date
-j2env.filters['markdown'] = mistune.markdown
-# </editor-fold>
