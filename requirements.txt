@@ -1,4 +1,4 @@
-afinn==0.1
+afinn @ git+https://github.com/fnielsen/afinn@1d6dfd2b2b8a604eafdd2d175b7a682a0ea0217d
 alembic==1.13.1
 annotated-types==0.6.0
 attrs==23.2.0
