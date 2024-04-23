@@ -78,8 +78,14 @@ class HeadlinesPage:
         # group each cluster, concatenate the processed text, and summarize with nlp
         summaries = {}
         for key, group in df.groupby('cluster'):
-            text = ' '.join(group['title'])[:1024]
-            summaries[key] = summarizer(text, min_length=10, max_length=50, do_sample=True)[0]['summary_text']
+            # average length of the text in the cluster
+            # estimate number of tokens
+            summaries[key] = summarizer(
+                ' '.join(group['title'])[:1024],
+                min_length=10,
+                max_length=round(group['processed'].str.len().mean() * 0.75),
+                do_sample=True
+            )[0]['summary_text']
         self.context['summaries'] = summaries
 
     @staticmethod
