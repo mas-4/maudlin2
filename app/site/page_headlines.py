@@ -6,9 +6,7 @@ from app.analysis.clustering import prepare_cosine, form_clusters, label_cluster
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
-from app.utils.config import Config
-from app.utils.constants import Country
-from app.utils.logger import get_logger
+from app.utils import Config, Country, get_logger
 
 logger = get_logger(__name__)
 
