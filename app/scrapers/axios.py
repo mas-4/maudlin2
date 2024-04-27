@@ -21,4 +21,4 @@ class Axios(SeleniumScraper):
             title = a.text.strip()
             if "Go deeper" in title:
                 continue
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))

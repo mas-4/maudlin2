@@ -23,6 +23,6 @@ class BBC(Scraper):
                 href = self.url + href
             if not (title := a.find('h2', {'data-testid': 'card-headline'})):
                 continue
-            if not (title := title.text.strip()):
+            if not title.text.strip():
                 continue
             self.downstream.append((href, title))

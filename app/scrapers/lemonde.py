@@ -20,5 +20,5 @@ class LeMonde(Scraper):
         for a in soup.find_all('a', {'href': re.compile('/article/')}):
             href = a['href']
             if title := a.find(['h1', 'h2', 'h3'], {'class': re.compile('article__title')}):
-                if title := title.text.strip():
+                if title.text.strip():
                     self.downstream.append((href, title))

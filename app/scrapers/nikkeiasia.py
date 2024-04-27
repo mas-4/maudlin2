@@ -23,4 +23,4 @@ class NikkeiAsia(Scraper):
                 href = self.url + href
             title = a.text.strip()
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

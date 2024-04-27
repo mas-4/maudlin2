@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from app.models import Session, Agency, Headline, Topic, Article
 from app.registry import SeleniumScrapers, TradScrapers
@@ -72,22 +72,26 @@ class DataHandler:
             scrapers = TradScrapers
             if Config.run_selenium:
                 scrapers += SeleniumScrapers
-            agencies: list[Agency] = s.query(Agency).filter(
-                Agency.articles.any(),
-                Agency.name.in_([x.agency for x in scrapers])
-            ).order_by(Agency.name).all()
-            tabledata = []
-            for agency in agencies:
-                if np.isnan(vader := round(agency.current_vader(), 2)):
-                    logger.warning("Vader is na for %r.", agency)
-                    continue
-                if np.isnan(afinn := round(agency.current_afinn(), 2)):
-                    logger.warning("Afinn is na for %r.", agency)
-                    continue
-                tabledata.append(
-                    [agency.name, str(agency.credibility), str(agency.bias), str(agency.country),
-                     round(agency.todays_churn(s), 2), vader, afinn]
-                )
+            df = pd.DataFrame(
+                s.query(
+                    Agency.name, Agency._credibility, Agency._bias, Agency._country,
+                    (func.count(Headline.id) / func.count(func.distinct(Article.id))).label('churn'),
+                    func.avg(Headline.vader_compound).label('vader'),
+                    func.avg(Headline.afinn).label('afinn')
+                ).join(Agency.articles).join(Article.headlines).filter(
+                    Agency.name.in_([x.agency for x in scrapers])
+                ).group_by(Agency.name).order_by(Agency.name).all(),
+                columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn']
+            )
+        df['Bias'] = df['Bias'].map({b.value: str(b) for b in list(Bias)})
+        df['Credibility'] = df['Credibility'].map({c.value: str(c) for c in list(Credibility)})
+        df['Country'] = df['Country'].map({c.value: str(c) for c in list(Country)})
+        # cast churn as a float
+        df['Churn'] = df['Churn'].astype(np.float64)
+        df['Churn'] = df['Churn'].round(2)
+        df['Vader'] = df['Vader'].round(2)
+        df['Afinn'] = df['Afinn'].round(2)
+        tabledata = df.values.tolist()
         tabledata.sort(key=lambda x: x[-1])
         return tabledata
 

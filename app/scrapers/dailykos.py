@@ -20,8 +20,7 @@ class DailyKos(Scraper):
             h3 = a.find('h3')
             if not h3:
                 continue
-            title = h3.text.strip()
             href = a['href']
             if not href.startswith('http'):
                 href = f'{self.url}{href}'
-            self.downstream.append((href, title))
+            self.downstream.append((href, h3))

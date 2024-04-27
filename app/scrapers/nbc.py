@@ -21,5 +21,4 @@ class NBC(Scraper):
             if '/select/' in a['href']:
                 continue
             href = a['href']
-            title = a.text.strip()
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))

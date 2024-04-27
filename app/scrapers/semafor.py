@@ -16,5 +16,5 @@ class Semafor(Scraper):
         for a in soup.find('div', {'class': re.compile('styles_grid')}).find_all(
                 'a', {'href': re.compile(".*/article/.*")}):
             href = self.url + a['href']
-            title = a.find('h2').text.strip()
+            title = a.find('h2')
             self.downstream.append((href, title))

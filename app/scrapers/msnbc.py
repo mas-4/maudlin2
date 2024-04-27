@@ -26,4 +26,4 @@ class MSNBC(Scraper):
             # basically if it's nothing but personal nouns ignore it
             if not list(filter(lambda x: x[1] != 'NNP', nltk.pos_tag(nltk.word_tokenize(title)))):
                 continue
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))

@@ -19,9 +19,8 @@ class WallStreetJournal(SeleniumScraper):
             try:
                 a = art.find('a')
                 href = a['href']
-                title = a.text.strip()
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))
             except Exception as e:
                 logger.error(f"{self.agency}: Error parsing link: {e}")
-                logger.exception(f"{self.agency}: Link: {a}")
+                logger.exception(f"{self.agency}: Link: {a}")  # noqa not ref
                 continue

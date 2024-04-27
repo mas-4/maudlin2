@@ -20,4 +20,4 @@ class RadioFreeEuropeRadioLiberty(Scraper):
             href = self.url + a['href']
             title = a.text.strip()
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

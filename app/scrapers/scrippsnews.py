@@ -14,10 +14,10 @@ class ScrippsNews(Scraper):
     agency: str = "Scripps News"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'class': 'link-target'}):
+        for a in soup.find_all('a', {'class': 'promo__link'}):
             href = a['href']
             if href.startswith('/'):
                 href = self.url + href
             title = a.text.strip()
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))
