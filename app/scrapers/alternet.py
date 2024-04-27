@@ -13,7 +13,7 @@ class Alternet(Scraper):
     agency: str = "Alternet"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'aria-label': True}):
+        for a in soup.find_all('a', {'aria-label': True, 'href': True}):
             try:
                 self.downstream.append((a['href'], a))
             except Exception as e:

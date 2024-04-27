@@ -8,9 +8,7 @@ from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
 
-from app.utils.config import Config
-from app.utils.constants import Bias, Credibility, Country, Constants
-from app.utils.logger import get_logger
+from app.utils import Config, Bias, Credibility, Country, Constants, get_logger
 
 logger = get_logger(__name__)
 

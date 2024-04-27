@@ -6,8 +6,7 @@ from app.analysis.topics import analyze_all_topics
 from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager
 from app.builder import build
-from app.utils.config import Config
-from app.utils.logger import get_logger
+from app.utils import Config, get_logger
 from utils.dayreport import DayReport
 from utils.emailer import send_notification
 
@@ -27,6 +26,7 @@ class Queue:
 
         if Config.run_selenium and self.args.run_selenium:
             logger.info("Running seleniums")
+
             for sel in self.seleniums:
                 scraper = sel()
                 try:

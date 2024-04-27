@@ -2,7 +2,6 @@ import os
 from datetime import datetime as dt, timedelta as td
 
 import matplotlib.pyplot as plt
-from matplotlib import patheffects as pe
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -278,7 +277,7 @@ class Plots:
         for label, color in zip(ax1.get_xticklabels(), bias_colors):
             label.set_color(color)
 
-        ax1.set_title("Credibility Gap")
+        ax1.set_title("Credibility Gap", fontdict={'fontsize': 20})
 
         ####################
         # Plot the mean credibility within each bias group
@@ -312,7 +311,7 @@ class Plots:
         ax2.set_xticks([0, 20, 40, 60, 80, 100])
         ax2.set_xticklabels(['0%', '20%', '40%', '60%', '80%', '100%'])
 
-        ax2.set_title("A Biased Dataset")
+        ax2.set_title("A Biased Dataset", fontdict={'fontsize': 20})
 
         ax2.set_xlim(0, 100)
 

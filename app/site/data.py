@@ -74,12 +74,15 @@ class DataHandler:
                 scrapers += SeleniumScrapers
             df = pd.DataFrame(
                 s.query(
-                    Agency.name, Agency._credibility, Agency._bias, Agency._country,
+                    Agency.name, Agency._credibility, Agency._bias, Agency._country,  # noqa protected
                     (func.count(Headline.id) / func.count(func.distinct(Article.id))).label('churn'),
                     func.avg(Headline.vader_compound).label('vader'),
                     func.avg(Headline.afinn).label('afinn')
                 ).join(Agency.articles).join(Article.headlines).filter(
                     Agency.name.in_([x.agency for x in scrapers])
+                ).filter(
+                    Headline.last_accessed > Config.last_accessed,
+                    Headline.first_accessed > Config.last_accessed - td(days=1),
                 ).group_by(Agency.name).order_by(Agency.name).all(),
                 columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn']
             )
@@ -92,7 +95,6 @@ class DataHandler:
         df['Vader'] = df['Vader'].round(2)
         df['Afinn'] = df['Afinn'].round(2)
         return df
-        return tabledata
 
     @staticmethod
     def agency_metrics(tabledata):
