@@ -65,6 +65,7 @@ class PathHandler:
         topic_history_bar_graph = 'topic_history_bar_graph.png'
         topic_today_bubble_graph = 'topic_today_bubble_graph.png'
         topic_today_bar_graph = 'topic_today_bar_graph.png'
+        agency_distribution = 'agency_distribution.png'
 
     def __init__(self, filename: str):
         self.filename = filename

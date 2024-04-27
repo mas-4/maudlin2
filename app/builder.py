@@ -12,10 +12,11 @@ logger = get_logger(__name__)
 
 def gen_plots(dh: DataHandler):
     Plots.sentiment_graphs(dh.all_sentiment_data)
-    Plots.topic_history_bar_graph(dh.topic_df.copy())
-    Plots.topic_today_bubble_graph(dh.topic_df.copy())
-    Plots.topic_today_bar_graph(dh.topic_df.copy())
-    Plots.individual_topic_graphs(dh.topic_df.copy(), dh.topics)
+    Plots.topic_history_bar(dh.topic_df.copy())
+    Plots.topic_today_bubble(dh.topic_df.copy())
+    Plots.topic_today_bar(dh.topic_df.copy())
+    Plots.individual_topic(dh.topic_df.copy(), dh.topics)
+    Plots.agency_distribution(dh.agency_data.copy())
 
 
 def build():

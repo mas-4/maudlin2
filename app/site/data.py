@@ -91,8 +91,7 @@ class DataHandler:
         df['Churn'] = df['Churn'].round(2)
         df['Vader'] = df['Vader'].round(2)
         df['Afinn'] = df['Afinn'].round(2)
-        tabledata = df.values.tolist()
-        tabledata.sort(key=lambda x: x[-1])
+        return df
         return tabledata
 
     @staticmethod

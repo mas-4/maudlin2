@@ -2,19 +2,22 @@ import os
 from datetime import datetime as dt, timedelta as td
 
 import matplotlib.pyplot as plt
+from matplotlib import patheffects as pe
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import dates as mdates
 
 from app.site.common import PathHandler
 from app.utils.config import Config
-from app.utils.constants import Bias
+from app.utils.constants import Bias, Credibility
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 aisle_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
 bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
+credibility_colors = ["#FF0000", "#FF4500", "#FFA500", "#FFFF00", "#9ACD32", "#008000"]
 topic_colors = {
     'War in Gaza': '#005EB8',  # '#1f77b4',           # blue
     'Trump Trial': '#ff7f0e',  # orange
@@ -68,7 +71,7 @@ def apply_special_dates(ax: plt.Axes, topic):
 
 class Plots:
     @staticmethod
-    def topic_today_bar_graph(df: pd.DataFrame):
+    def topic_today_bar(df: pd.DataFrame):
         # adjust timezone for first_accessed from naive utc to eastern
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
                                                                                    ascending=False).copy()
@@ -88,7 +91,7 @@ class Plots:
         plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bar_graph).build)
 
     @staticmethod
-    def topic_today_bubble_graph(df: pd.DataFrame):
+    def topic_today_bubble(df: pd.DataFrame):
         df = df[df['topic'] != '']
         today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
                                                                                    ascending=False).copy()
@@ -121,7 +124,7 @@ class Plots:
         plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bubble_graph).build)
 
     @staticmethod
-    def topic_history_bar_graph(df: pd.DataFrame):
+    def topic_history_bar(df: pd.DataFrame):
         df = df[df['topic'] != '']
         fig, ax = plt.subplots()
         fig.set_size_inches(13, 7)
@@ -153,7 +156,7 @@ class Plots:
         plt.savefig(PathHandler(PathHandler.FileNames.topic_history_bar_graph).build)
 
     @classmethod
-    def individual_topic_graphs(cls, df, topics):
+    def individual_topic(cls, df, topics):
         # blue to red
         df['aisle'] = df['bias'].apply(lambda x: 'left' if x < 0 else 'right' if x > 0 else 'center')
         for topic in topics:
@@ -165,7 +168,7 @@ class Plots:
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
             fig, ax = plt.subplots(figsize=(13, 6))
-            cls.individual_topic_article_bar_graph(ax, topic_df)
+            cls.individual_topic_article_bar(ax, topic_df)
             cls.individual_topic_sentiment_lines(ax.twinx(), topic_df)
 
             ax.set_title(f'{topic.name} Sentiment and Number of Articles')
@@ -180,7 +183,7 @@ class Plots:
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     @staticmethod
-    def individual_topic_article_bar_graph(ax: plt.Axes, topic_df: pd.DataFrame):
+    def individual_topic_article_bar(ax: plt.Axes, topic_df: pd.DataFrame):
         bottom = get_bottom(topic_df)
         bias_df = topic_df.groupby(['bias', 'day']).agg({
             'afinn': 'count'
@@ -228,3 +231,99 @@ class Plots:
                 ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.sentiment_graphs).build)
+
+    @staticmethod
+    def agency_distribution(df):
+        df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
+        df['Credibility'] = df['Credibility'].map({str(b): b.value for b in list(Credibility)})
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5), gridspec_kw={'height_ratios': [5, 1]})
+
+        ###############
+        # Plot the credibility groupings
+        ###############
+
+        total_counts_by_bias = df['Bias'].value_counts().sort_index()
+        # the bottom should start at 0.1
+        bottom = pd.Series(np.zeros(len(df['Bias'].unique())), index=df['Bias'].sort_values().unique())
+        # Loop through each credibility level
+        for n in sorted(df['Credibility'].unique()):
+            # Get the counts of bias within this credibility level
+            bias_counts = df[df['Credibility'] == n]['Bias'].value_counts().sort_index()
+            # Reindex bias_counts to ensure it includes all bias levels (fills missing levels with 0)
+            bias_counts = bias_counts.reindex(total_counts_by_bias.index, fill_value=0)
+            # Convert counts to percentages of the total counts for each bias level
+            percentages = (bias_counts / total_counts_by_bias) * 100
+
+            # Plotting
+            ax1.bar(bias_counts.index, percentages, edgecolor='black', bottom=bottom, color=credibility_colors[n],
+                    label=str(Credibility(n)), clip_on=False)
+
+            # Update the bottom for the next stack
+            bottom += percentages
+
+        # Add a legend to the left
+        plt.subplots_adjust(right=1)
+        handles, labels = ax1.get_legend_handles_labels()
+
+        # Reverse the order
+        handles.reverse()
+        labels.reverse()
+        ax1.legend(handles, labels, loc='center right', bbox_to_anchor=(0, 0.5), frameon=True, facecolor='lightgray',
+                   edgecolor='black', framealpha=0.9, fontsize='medium', title='Credibility',
+                   title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
+
+        bias_labels = {b.value: str(b) for b in Bias}
+        ax1.set_xticks(list(bias_labels.keys()))
+        ax1.set_xticklabels(list(bias_labels.values()), fontsize='large')
+        for label, color in zip(ax1.get_xticklabels(), bias_colors):
+            label.set_color(color)
+
+        ax1.set_title("Credibility Gap")
+
+        ####################
+        # Plot the mean credibility within each bias group
+        ####################
+
+        # Get the mean credibility for each bias group
+        mean_credibility = df.groupby('Bias')['Credibility'].mean()
+        # Set a second y-axis with twinx for the credibility that is keyed to the max credibility
+        ax3 = ax1.twinx()
+        ax3.set_ylim(0, 5)
+        # Iterate through the points, plotting a scatter point with the mean credibility of a bias_color
+        for i, credibility in mean_credibility.items():
+            ax3.scatter(i, credibility, color=bias_colors[i + 3], s=500, edgecolor='black', zorder=10)
+
+        ##########################
+        # Plot the bias bar
+        ##########################
+
+        base = 0  # Since we only have a single axis we only need a single left value, right?
+        bias_counts = df['Bias'].value_counts().sort_index()
+        for i in bias_counts.index:
+            n = bias_counts[i]
+            n = n / bias_counts.sum() * 100  # Get the percentage of the whole
+            ax2.barh(' ', n, color=bias_colors[i + 3], edgecolor='black', height=0.5, left=base, label=str(Bias(i)))
+            base += n
+
+        # Removing y-ticks
+        ax2.set_yticks([])
+
+        # Setting the x-ticks to be percentages
+        ax2.set_xticks([0, 20, 40, 60, 80, 100])
+        ax2.set_xticklabels(['0%', '20%', '40%', '60%', '80%', '100%'])
+
+        ax2.set_title("A Biased Dataset")
+
+        ax2.set_xlim(0, 100)
+
+        for spine in ['right', 'top', 'left', 'bottom']:
+            ax1.spines[spine].set_visible(False)
+            ax2.spines[spine].set_visible(False)
+            ax3.spines[spine].set_visible(False)
+        ax1.yaxis.set_visible(False)
+        ax2.yaxis.set_visible(False)
+        ax3.yaxis.set_visible(False)
+
+        plt.tight_layout()
+
+        plt.savefig(PathHandler(PathHandler.FileNames.agency_distribution).build)
