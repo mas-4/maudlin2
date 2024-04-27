@@ -1,10 +1,9 @@
 import re
 
-
 from bs4 import BeautifulSoup as Soup
 
-from app.utils import Bias, Credibility, Country, Constants, get_logger
 from app.scraper import Scraper
+from app.utils import Bias, Credibility, get_logger
 
 logger = get_logger(__name__)
 
@@ -23,4 +22,3 @@ class WashingtonExaminer(Scraper):
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")
                 continue
-

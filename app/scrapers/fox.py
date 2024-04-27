@@ -28,4 +28,3 @@ class Fox(Scraper):
             if not item.text.strip():
                 continue
             self.downstream.append((href, item))
-
