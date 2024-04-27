@@ -48,11 +48,11 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] The Daily Caller
 - [X] Gateway Pundit
 - [X] Washington Free Beacon
-- [ ] The Washington Times
-- [ ] Townhall
-- [ ] Washington Examiner
-- [ ] Independent Journal Review
-- [ ] alternet
+- [X] The Washington Times
+- [X] Townhall
+- [X] Washington Examiner
+- [X] Independent Journal Review
+- [X] alternet
 - [x] One America News
 - [x] Newsmax
 - [X] ABC News

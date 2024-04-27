@@ -1,3 +1,8 @@
+from app.scrapers.alternet import Alternet
+from app.scrapers.independentjournalreview import IndependentJournalReview
+from app.scrapers.washingtonexaminer import WashingtonExaminer
+from app.scrapers.townhall import Townhall
+from app.scrapers.washingtontimes import WashingtonTimes
 from app.scrapers.washingtonfreebeacon import WashingtonFreeBeacon
 from app.scrapers.gatewaypundit import GatewayPundit
 from app.scrapers.dailycaller import DailyCaller
@@ -113,6 +118,11 @@ from app.scrapers.xinhua import Xinhua
 from app.scrapers.yahoonews import YahooNews
 
 Scrapers = [
+    Alternet,
+    IndependentJournalReview,
+    WashingtonExaminer,
+    Townhall,
+    WashingtonTimes,
     WashingtonFreeBeacon,
     GatewayPundit,
     DailyCaller,
