@@ -1,3 +1,6 @@
+from app.scrapers.washingtonfreebeacon import WashingtonFreeBeacon
+from app.scrapers.gatewaypundit import GatewayPundit
+from app.scrapers.dailycaller import DailyCaller
 from app.scraper import SeleniumScraper
 from app.scrapers.abc import ABC
 from app.scrapers.aljazeera import AlJazeera
@@ -110,6 +113,9 @@ from app.scrapers.xinhua import Xinhua
 from app.scrapers.yahoonews import YahooNews
 
 Scrapers = [
+    WashingtonFreeBeacon,
+    GatewayPundit,
+    DailyCaller,
     Axios,
     DailyWire,
     # HindustanTimes,

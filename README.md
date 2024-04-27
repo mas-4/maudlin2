@@ -45,9 +45,9 @@ Not really sure how to do testing. I guess the site builder could be tested but 
 
 If you know of a good source not on this list please open an issue or a PR! Feel free to make new scrapers!
 
-- [ ] The Daily Caller
-- [ ] Gateway Pundit
-- [ ] Washington Free Beacon
+- [X] The Daily Caller
+- [X] Gateway Pundit
+- [X] Washington Free Beacon
 - [ ] The Washington Times
 - [ ] Townhall
 - [ ] Washington Examiner

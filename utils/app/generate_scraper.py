@@ -4,7 +4,7 @@ import webbrowser
 
 from app.utils import Config, Constants
 
-TEMPLATE = """import re
+TEMPLATE = """
 
 from bs4 import BeautifulSoup as Soup
 
@@ -23,9 +23,7 @@ class {cls}(Scraper):
     def setup(self, soup: Soup):
         for a in soup.find_all('a'):
             try:
-                href = a['href']
-                title = a.text.strip()
-                self.downstream.append((href, title))
+                self.downstream.append((a['href'], a))
             except Exception as e:
                 logger.error(f"{{self.agency}}: Error parsing link: {{e}}")
                 logger.exception(f"{{self.agency}}: Link: {{a}}")
