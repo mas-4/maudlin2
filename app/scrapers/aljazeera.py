@@ -22,4 +22,4 @@ class AlJazeera(Scraper):
                 href = self.url + href
             title = a.text.strip().replace('\xad', '')
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

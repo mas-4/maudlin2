@@ -22,8 +22,7 @@ class JapanTimes(Scraper):
                 href = a['href']
                 if href.strip() == "https://www.japantimes.co.jp/archive/" + dt.now().strftime("%Y/%m/%d/"):
                     continue  # this is just a calendar
-                title = a.text.strip()
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))
             except Exception as e:
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")

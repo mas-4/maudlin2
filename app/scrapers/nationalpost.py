@@ -29,4 +29,4 @@ class NationalPost(Scraper):
             if "horoscope" in title.lower():
                 continue
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

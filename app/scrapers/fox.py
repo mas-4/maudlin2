@@ -25,6 +25,7 @@ class Fox(Scraper):
             href = item['href']
             if href.startswith('//'):
                 href = f'https:{href}'
-            if not (title := item.text.strip()):
+            if not item.text.strip():
                 continue
-            self.downstream.append((href, title))
+            self.downstream.append((href, item))
+

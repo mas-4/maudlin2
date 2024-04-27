@@ -19,9 +19,9 @@ class TaipeiTimes(Scraper):
             href = a['href']
             title = a.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
             if title:
-                title = title.text.strip()
+                title = title
             elif a.text:
-                title = a.text.strip()
+                title = a
             else:
                 continue
             self.downstream.append((href, title))

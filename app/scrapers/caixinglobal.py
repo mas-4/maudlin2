@@ -24,4 +24,4 @@ class CaixinGlobal(Scraper):
             href = re.sub(r'\n\?.*', '', href)
             title = a.text.strip()
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

@@ -6,7 +6,7 @@ from threading import Thread, Lock
 
 import requests as rq
 import validators
-from bs4 import BeautifulSoup as Soup
+from bs4 import BeautifulSoup as Soup, Tag, NavigableString  # noqa not declared in __all__
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
@@ -20,7 +20,34 @@ from utils.dayreport import DayReport
 
 logger = get_logger(__name__)
 
-ArticleTuple = namedtuple('ArticlePair', ['href', 'title', 'processed', 'pos'])
+ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos'])
+
+
+def extract_text(html_content):
+    # Parse the HTML content using BeautifulSoup
+    soup = Soup(html_content, 'lxml').find()
+
+    # Initialize the stack with the root of the document
+    stack = [soup]
+
+    # List to hold all extracted texts
+    extracted_texts = []
+
+    # Process each element in the stack
+    while stack:
+        # Pop the top element from the stack
+        current_element = stack.pop()
+
+        # Check if current element has text and add it to the list
+        if isinstance(current_element, NavigableString):
+            extracted_texts.append(current_element.string.strip())
+            continue
+
+        # Add children of the current element to the stack
+        for child in current_element.children:
+            stack.append(child)
+
+    return extracted_texts
 
 
 class Scraper(ABC, Thread):
@@ -46,7 +73,7 @@ class Scraper(ABC, Thread):
             raise ValueError("URL must be set")
         if self.bias is None or self.credibility is None:
             raise ValueError("Bias and credibility must be set")
-        self.downstream: list[tuple[str, str]] = []
+        self.downstream: list[tuple[str, Tag]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
         with Session() as session, self.sql_lock:
@@ -85,8 +112,13 @@ class Scraper(ABC, Thread):
                 self.articles += 1
 
             article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
-            headline = Headline(title=art.title, processed=art.processed,
-                                position=art.pos, article_id=article.id)
+            headline = Headline(
+                title=art.title,
+                raw=art.raw,
+                processed=art.processed,
+                position=art.pos,
+                article_id=article.id
+            )
             s.add(headline)
             s.commit()
             logger.debug(f"Added to database: %r", headline)
@@ -105,20 +137,6 @@ class Scraper(ABC, Thread):
             logger.info(f"Downloaded {url}")
         return Soup(response.content, self.parser)
 
-    def filter_seen(self):
-        self.downstream = list(filter(lambda x: x[1], set(self.downstream)))  # no empties and no dupes
-        with Session() as s, self.sql_lock:
-            titles = [x[1] for x in self.downstream]
-            headlines = s.query(Headline).filter(Headline.title.in_(titles))
-            for headline in headlines:
-                headline.update_last_accessed()
-                headline.article.update_last_accessed()
-                self.updated += 1
-                logger.debug("Updating existing headline: %r", headline)
-            s.commit()
-            self.downstream = list(
-                set(self.downstream) - set((headline.article.url, headline.title) for headline in headlines))
-
     def run(self):
         self.run_setup()
         self.run_processing()
@@ -132,12 +150,15 @@ class Scraper(ABC, Thread):
         self.done = True
 
     def run_processing(self):
+        logger.info("Processing %s, %i upstream headlines", self.agency, len(self.downstream))
         pos = 0
         while self.downstream:
-            href, title = self.downstream.pop()
+            href, raw = self.downstream.pop()
+            raw = str(raw)
+            title = ' '.join(extract_text(raw))
             if title.strip().count(' ') == 0:
                 continue  # obviously a headline without spaces isn't a headline
-            art = ArticleTuple(self.clean_href(href).strip(), title, preprocess(title), pos)
+            art = ArticleTuple(self.clean_href(href).strip(), str(raw), title, preprocess(title), pos)
             if not art.processed:
                 continue
             pos += 1
@@ -163,7 +184,7 @@ class Scraper(ABC, Thread):
     def run_setup(self):
         try:
             self.setup(self.get_page(self.url))
-            self.filter_seen()
+            # self.filter_seen()
         except Exception as e:  # noqa
             Session.rollback()
             msg = f"Failed to setup: {e} for {self.url}"

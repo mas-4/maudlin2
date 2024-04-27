@@ -29,8 +29,8 @@ class NYT(Scraper):
             if section in ignore:
                 continue
             try:
-                title = a.find('p', {'class': 'indicate-hover'}).text.strip()
-            except:
+                title = a.find('p', {'class': 'indicate-hover'})
+            except:  # noqa exc
                 logger.exception(a)
-                raise
+                continue
             self.downstream.append((href, title))

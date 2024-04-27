@@ -19,10 +19,8 @@ class Intercept(Scraper):
                 href = a['href']
                 title = a.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
                 if title:
-                    title = title.text.strip()
-                else:
-                    title = a.text.strip()
-                self.downstream.append((href, title))
+                    a = title
+                self.downstream.append((href, a))
             except Exception as e:
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")

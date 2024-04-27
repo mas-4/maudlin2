@@ -18,5 +18,4 @@ class Barrons(Scraper):  # Disabled because they're assholes
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/articles/')}):
             href = a['href']
-            title = a.text.strip()
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))

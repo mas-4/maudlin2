@@ -23,4 +23,4 @@ class DailyMail(Scraper):
             href = re.sub('#.*', '', 'https://dailymail.co.uk' + a['href'])
             title = a.text.strip()
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

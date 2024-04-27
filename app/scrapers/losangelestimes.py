@@ -18,8 +18,7 @@ class LosAngelesTimes(Scraper):
         for a in soup.find_all('a', {'href': Constants.Patterns.DASH_DATE}):
             try:
                 href = a['href']
-                title = a.text.strip()
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))
             except Exception as e:
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")

@@ -16,5 +16,4 @@ class NPR(Scraper):
     def setup(self, soup: Soup):
         for a in soup.find_all('a', class_='topic-title'):
             href = self.url + a.get('href')[1:]
-            title = a.text.strip()
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))

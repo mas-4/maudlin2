@@ -23,4 +23,4 @@ class CBC(Scraper):
                 continue
             title = title.text.strip()
             if title:
-                self.downstream.append((href, title))
+                self.downstream.append((href, a))

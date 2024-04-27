@@ -20,5 +20,4 @@ class CNN(Scraper):
                 continue
             if '/wbd/' in href:
                 continue
-            title = a.text.strip()
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))

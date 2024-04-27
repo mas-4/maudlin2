@@ -22,4 +22,4 @@ class PoliticalWire(Scraper):
             title = a.text.strip()
             if "Quote of the Day" in title:
                 continue
-            self.downstream.append((href, title))
+            self.downstream.append((href, a))
