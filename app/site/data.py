@@ -33,7 +33,7 @@ class DataHandler:
             self.all_sentiment_data = self.aggregate_sentiment_data()
             self.current_processed_headlines = self.main_headline_df['title'].tolist()
             self.agency_data = self.get_agency_data()
-            self.agency_metrics = self.agency_metrics(self.agency_data)
+            self.agency_metrics = self.get_agency_metrics(self.agency_data)
         if DataTypes.topics in types:
             self.topic_df = self.get_topic_data()
             self.topics = self.get_topics()
@@ -82,7 +82,7 @@ class DataHandler:
                     Agency.name.in_([x.agency for x in scrapers])
                 ).filter(
                     Headline.last_accessed > Config.last_accessed,
-                    Headline.first_accessed > Config.last_accessed - td(days=1),
+                    Headline.first_accessed > Config.last_accessed - td(days=3),
                 ).group_by(Agency.name).order_by(Agency.name).all(),
                 columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn']
             )
@@ -97,8 +97,7 @@ class DataHandler:
         return df
 
     @staticmethod
-    def agency_metrics(tabledata):
-        df = pd.DataFrame(tabledata, columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn'])
+    def get_agency_metrics(df):
         df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
         df['Credibility'] = df['Credibility'].map({str(c): c.value for c in list(Credibility)})
         us = df[df['Country'] == "United States"]
@@ -174,7 +173,7 @@ class DataHandler:
             ).join(Headline.article).join(Article.agency).join(Article.topic, isouter=True) \
                 .filter(
                 Headline.last_accessed > Config.last_accessed,
-                Headline.first_accessed > Config.last_accessed - td(days=1),
+                Headline.first_accessed > Config.last_accessed - td(days=3),
                 Headline.position < 25,
             ).order_by(
                 Headline.first_accessed.desc(),
