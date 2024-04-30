@@ -233,8 +233,6 @@ class Plots:
 
     @staticmethod
     def agency_distribution(df):
-        df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
-        df['Credibility'] = df['Credibility'].map({str(b): b.value for b in list(Credibility)})
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5), gridspec_kw={'height_ratios': [5, 1]})
 
         ###############
