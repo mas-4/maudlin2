@@ -46,6 +46,15 @@ class HeadlinesPage:
 
     def cluster_and_summarize(self, df):
         n_samples_per_cluster = 5
+        df = df[
+            (df['country'] == Country.us.name)
+            |
+            (
+                    (df['country'] == Country.gb.name)
+                    &
+                    (df['agency'].isin(Config.exempted_foreign_media))
+            )
+            ].copy()
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
         df = label_clusters(
             df,
@@ -55,12 +64,14 @@ class HeadlinesPage:
                 threshold=0.5
             )
         )
-        self.summarize(df)
-        df['text_length'] = df['processed'].str.len()
-        df.sort_values(by='text_length', ascending=False, inplace=True)
+        df = df[df['cluster'] != -1].copy()
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
+        df['text_length'] = df['title'].str.len()
+        df.sort_values(by='text_length', ascending=False, inplace=True)
         df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
-        grouped = df[df['cluster'] != -1].groupby('cluster')
+        logger.info("%i clusters left after filtering", df['cluster'].nunique())
+        self.summarize(df)
+        grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
         agency_lists = {}
@@ -77,15 +88,41 @@ class HeadlinesPage:
     def summarize(self, df):
         # group each cluster, concatenate the processed text, and summarize with nlp
         summaries = {}
+        logger.info("Summarizing all clusters")
+        i = 0
         for key, group in df.groupby('cluster'):
-            # average length of the text in the cluster
-            # estimate number of tokens
+            # sort the group by title length
+            group['text_length'] = group['title'].str.len()
+            group = group.sort_values(by='text_length', ascending=False)
+
+            # Take only full headlines adding up to 1024
+            length = 0
+            strings = []
+            while length < 1024 and not group.empty:
+                length += len(group.iloc[0]['title'])
+                if length >= 1024:
+                    break
+                strings.append(group.iloc[0]['title'])
+                group = group.iloc[1:]
+            mean_char = sum([len(x) for x in strings]) / len(strings)
+            mean_tok = mean_char / 2
+            text = ' '.join(strings)
+
+            # Estimate the number of tokens by either by whichever is smaller, the mean or 75% of the total length
+            # Otherwise summarizer nags about input_length being shorter than max_length
+            # You'd think these bastards would give us a way to just count the tokens
+            est_tok = round(min(mean_tok, len(text.split()) * 0.9))
+
             summaries[key] = summarizer(
-                ' '.join(group['title'])[:1024],
-                min_length=10,
-                max_length=round(group['processed'].str.len().mean() * 0.75),
-                do_sample=True
+                ' '.join(strings),
+                min_length=int(est_tok / 2),
+                max_new_tokens=est_tok,
+                do_sample=True,
+                early_stopping=True
             )[0]['summary_text']
+
+            i += 1
+            logger.info("Summarized cluster %i: %s", i, summaries[key])
         self.context['summaries'] = summaries
 
     @staticmethod
@@ -105,9 +142,7 @@ class HeadlinesPage:
             return f'<a href="{topic_file}.html">{x.topic}</a>'
 
         df['topic'] = df.apply(format_topic, axis=1)
-        df = df[
-            ['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']
-        ]
+        df = df[['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']]
         df = df.copy().sort_values(by='first_accessed', ascending=False)
         return df
 

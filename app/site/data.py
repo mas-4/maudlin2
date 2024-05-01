@@ -184,11 +184,10 @@ class DataHandler:
 
         df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         df['last_accessed'] = df['last_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
-        df['vader_compound'] = df['vader_compound'].round(2)
-        df['afinn'] = df['afinn'].round(2)
-
+        roundcol = ['vader_compound', 'afinn', 'topic_score']
+        for col in roundcol:
+            df[col] = df[col].round(2)
         df['topic'] = df['topic'].fillna('')
-        df['topic_score'] = df['topic_score'].round(2)
         return df
 
 
