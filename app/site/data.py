@@ -86,6 +86,7 @@ class DataHandler:
                 ).group_by(Agency.name).order_by(Agency.name).all(),
                 columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn']
             )
+        logger.info("Queried %i agencies for agency df.", len(df))
         df['Bias'] = df['Bias'].map({b.value: str(b) for b in list(Bias)})
         df['Credibility'] = df['Credibility'].map({c.value: str(c) for c in list(Credibility)})
         df['Country'] = df['Country'].map({c.value: str(c) for c in list(Country)})
@@ -139,6 +140,7 @@ class DataHandler:
                 )
             ).all()
         df = pd.DataFrame(data, columns=list(columns.keys()))
+        logger.info("Queried %i headlines for topic df.", len(df))
         df['duration'] = (df['last_accessed'] - df['first_accessed']).dt.days + 1
         df['sentiment'] = df[['afinn', 'vader']].mean(axis=1)
         df['positionnorm'] = 1 / (1 + df['position'])
@@ -170,16 +172,15 @@ class DataHandler:
         with Session() as session:
             data = session.query(
                 *list(cols.values())
-            ).join(Headline.article).join(Article.agency).join(Article.topic, isouter=True) \
-                .filter(
+            ).join(Headline.article).join(Article.agency).join(Article.topic, isouter=True).filter(
                 Headline.last_accessed > Config.last_accessed,
                 Headline.first_accessed > Config.last_accessed - td(days=3),
-                Headline.position < 25,
             ).order_by(
                 Headline.first_accessed.desc(),
                 Headline.position.asc()  # prominence
             ).all()
         df = pd.DataFrame(data, columns=list(cols.keys()))
+        logger.info("Queried %i headlines for main df.", len(df))
 
         df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         df['last_accessed'] = df['last_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')

@@ -84,7 +84,7 @@ def preprocess(text: str):
     if not (text := strip_story_attributions(text)):
         return ""
     text = remove_stops(text)
-    text = split_camelcases(text)
+    # text = split_camelcases(text) # Using the raw filtering technique we don't need this anymore
     return text.strip('.').strip()
 
 

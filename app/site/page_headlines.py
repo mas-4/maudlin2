@@ -122,8 +122,6 @@ class HeadlinesPage:
         df['country'] = df['country'].map({c.value: c.name for c in list(Country)})
         df['first_accessed'] = df['first_accessed'].dt.strftime(fa_str)
         df['last_accessed'] = df['last_accessed'].dt.strftime(la_str)
-        # drop the sun
-        df = df[~(df['agency'] == 'The Sun')]
         return calculate_xkeyscore(df.copy())
 
 

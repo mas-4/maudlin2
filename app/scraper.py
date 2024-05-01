@@ -13,8 +13,7 @@ from selenium.webdriver.firefox.options import Options
 from app.analysis import metrics
 from app.analysis.preprocessing import preprocess
 from app.models import Session, Article, Agency, Headline, SqlLock
-from app.utils.config import Config
-from app.utils.constants import Credibility, Bias, Country
+from app.utils import Config, Credibility, Bias, Country, Constants
 from app.utils.logger import get_logger
 from utils.dayreport import DayReport
 
@@ -67,6 +66,7 @@ class Scraper(ABC, Thread):
         self.articles = 0
         self.headlines = 0
         self.updated = 0
+        self.found = 0
         if not self.agency:
             raise ValueError("Agency name must be set")
         if not self.url:
@@ -127,6 +127,9 @@ class Scraper(ABC, Thread):
         self.headlines += 1
 
     def get_page(self, url: str):
+        if not self.headers:
+            self.headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}
+
         try:
             response: rq.Response = self.rq.get(url, headers=self.headers, timeout=Config.timeout)
         except Exception as e:  # noqa
@@ -145,12 +148,13 @@ class Scraper(ABC, Thread):
         self.dayreport.updated(self.updated)
         # If we didn't get anything we want to warn!
         bugle = logger.info if self.articles + self.headlines + self.updated else logger.warning
-        bugle("Done with %s, added %d articles and %d headlines, updated %d headlines",
-              self.agency, self.articles, self.headlines, self.updated)
+        bugle("Done with %s, from %d found, added %d articles and %d headlines, updated %d headlines",
+              self.agency, self.found, self.articles, self.headlines, self.updated)
         self.done = True
 
     def run_processing(self):
-        logger.info("Processing %s, %i upstream headlines", self.agency, len(self.downstream))
+        self.found = len(self.downstream)
+        logger.info("Processing %s, %i upstream headlines", self.agency, self.found)
         pos = 0
         while self.downstream:
             href, raw = self.downstream.pop()
