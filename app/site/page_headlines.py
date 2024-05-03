@@ -45,7 +45,7 @@ class HeadlinesPage:
         logger.info("...done")
 
     def cluster_and_summarize(self, df):
-        n_samples_per_cluster = 5
+        n_samples_per_cluster = 10
         df = df[
             (df['country'] == Country.us.name)
             |
