@@ -37,7 +37,7 @@ class HeadlinesPage:
     def generate(self):
         logger.info("Generating headlines page...")
         df = self.filter_score_sort(self.dh.main_headline_df.copy())
-        df = self.cluster_and_summarize(df)
+        self.cluster_and_summarize(df.copy())
         table_df = self.process_headlines(df)
         self.context['tabledata'] = table_df.values.tolist()
         self.newsletter.write(self.context)
@@ -83,7 +83,6 @@ class HeadlinesPage:
             agency_lists[cluster['cluster']] = ', '.join(hrefs)
         self.context['clusters'] = clusters_list
         self.context['agency_lists'] = agency_lists
-        return df
 
     def summarize(self, df):
         # group each cluster, concatenate the processed text, and summarize with nlp
