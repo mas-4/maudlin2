@@ -67,7 +67,7 @@ def apply(headline: Headline, s: Optional[Session] = None):
 def reapply_sent(applyall=False):
     with Session() as s, SqlLock:
         if not applyall:
-            headlines = s.query(Headline.id, Headline.title).filter(
+            headlines = s.query(Headline.id, Headline.processed).filter(
                 or_(
                     Headline.vader_neg.is_(None),
                     Headline.vader_neu.is_(None),
@@ -81,8 +81,8 @@ def reapply_sent(applyall=False):
         count = len(headlines)
         logger.info('Reapplying sentiment to %i headlines', count)
         df = pd.DataFrame(headlines, columns=['id', 'title'])
-        df['afinn'] = df['processed'].apply(lambda x: AFINN.score(x) / max(len(x.split()), 1))
-        df['vader'] = df['processed'].apply(lambda x: SID.polarity_scores(x))
+        df['afinn'] = df['title'].apply(lambda x: AFINN.score(x) / max(len(x.split()), 1))
+        df['vader'] = df['title'].apply(lambda x: SID.polarity_scores(x))
         df['vader_neg'] = df['vader'].apply(lambda x: x['neg'])
         df['vader_neu'] = df['vader'].apply(lambda x: x['neu'])
         df['vader_pos'] = df['vader'].apply(lambda x: x['pos'])
