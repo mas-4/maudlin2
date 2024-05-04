@@ -38,9 +38,7 @@ def apply_vader(headline: Headline):
 
 
 def apply_afinn(headline: Headline):
-    length = len(headline.processed.split())
-    length = 1 if length == 0 else length
-    headline.afinn = AFINN.score(headline.processed) / length
+    headline.afinn = AFINN.score(headline.processed) / max(len(headline.processed.split()), 1)
 
 
 def apply(headline: Headline, s: Optional[Session] = None):
