@@ -2,14 +2,14 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
-from app.scraper import Scraper
+from app.scraper import SeleniumScraper
 from app.utils.constants import Bias, Credibility, Country
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class CBC(Scraper):
+class CBC(SeleniumScraper):
     bias = Bias.left_center
     credibility = Credibility.high
     url: str = 'https://www.cbc.ca'

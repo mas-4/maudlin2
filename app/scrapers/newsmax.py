@@ -1,13 +1,13 @@
 from bs4 import BeautifulSoup as Soup
 
-from app.scraper import Scraper
+from app.scraper import SeleniumScraper
 from app.utils.constants import Bias, Credibility, Country, Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class Newsmax(Scraper):
+class Newsmax(SeleniumScraper):
     bias = Bias.extreme_right
     credibility = Credibility.low
     url: str = 'https://www.newsmax.com'
