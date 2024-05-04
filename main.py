@@ -9,7 +9,6 @@ from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
 from app.builder import build
 from app.utils import Config, get_logger
-from utils.dayreport import DayReport
 from utils.emailer import send_notification
 import threading
 
@@ -97,9 +96,6 @@ def main(args: argparse.Namespace):
     if args.reprocess:
         reprocess_headlines()
         return
-    if args.email_report:
-        DayReport.report_turnover()
-        return
     if args.email_newsletter:
         with open(Config.newsletter, 'rt') as f:
             send_notification(f.read())
@@ -115,7 +111,6 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--skip-scrape', action='store_true')
     parser.add_argument('--scraper', type=str, default=None)
-    parser.add_argument('--email-report', action='store_true')
     parser.add_argument('--email-newsletter', action='store_true')
     parser.add_argument('--run-selenium', action='store_true')
     parser.add_argument('--analyze-topics', action='store_true')

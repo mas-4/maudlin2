@@ -17,7 +17,6 @@ from app.analysis import metrics
 from app.analysis.preprocessing import preprocess
 from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
-from utils.dayreport import DayReport
 
 logger = get_logger(__name__)
 
@@ -80,7 +79,6 @@ class Scraper(ABC, Thread):
                 session.add(agency)
             session.commit()
             self.agency_id = agency.id
-        self.dayreport = DayReport(self.agency, use_lock=False)
 
     @abstractmethod
     def setup(self, soup: Soup):
@@ -112,9 +110,6 @@ class Scraper(ABC, Thread):
         t = time.time()
         self.run_processing()
         runtime = time.time() - t
-        self.dayreport.headlines(self.headlines)
-        self.dayreport.articles(self.articles)
-        self.dayreport.updated(self.updated)
         meantime = 0
         if self.found:
             meantime = runtime / self.found

@@ -37,7 +37,7 @@ class Config:
     # that have sat on the web page for days, like on Current Affairs. The age of the database is the primary filter
     # here. So resets cause drudge to get dumb.
     first_accessed = dt.now() - td(days=3)
-    last_accessed = Constants.TimeConstants.twentyfive_minutes_ago
+    last_accessed = Constants.TimeConstants.ten_minutes_ago
     exempted_foreign_media = ["The Economist", "BBC", "The Guardian", "Financial Times", "Reuters", "The Independent"]
     headline_cutoff = 128
 
