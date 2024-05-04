@@ -1,11 +1,12 @@
 import argparse
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.analysis.metrics import reapply_sent
 from app.analysis.preprocessing import reprocess_headlines
 from app.analysis.topics import analyze_all_topics
 from app.registry import Scrapers
-from app.scraper import SeleniumScraper, SeleniumResourceManager
+from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
 from app.builder import build
 from app.utils import Config, get_logger
 from utils.dayreport import DayReport
@@ -27,7 +28,7 @@ class SeleniumThread(threading.Thread):
             try:
                 scraper.run()
             except Exception as e:
-                logger.exception(f"Failed to run {scraper}: {e}")
+                logger.error(f"Failed to run {scraper}: {e}")
                 continue
             else:
                 self.scrapers.append(scraper)
@@ -47,20 +48,19 @@ class Queue:
         self.args = args
 
     def run(self):
-        logger.info("Running threads")
-        for scraper in self.threads:
-            scraper.start()
-
         seleniumthread = SeleniumThread(self.seleniums)
         if Config.run_selenium and self.args.run_selenium:
             logger.info("Running seleniums")
             seleniumthread.start()
 
         num = len(self.threads)
-        for i, scraper in enumerate(self.threads):
-            scraper.join()
-            scraper.post_run()
-            logger.info(f"Finished {scraper} ({i + 1} of {num})")
+        with ThreadPoolExecutor(max_workers=Config.max_threads) as executor:
+            futures = {executor.submit(scraper.run): scraper for scraper in self.threads}
+            for i, future in enumerate(as_completed(futures)):
+                scraper: Scraper = futures[future]
+                if scraper.success:
+                    scraper.post_run()
+                    logger.info(f"Finished {scraper} ({i + 1} of {num})")
 
         if Config.run_selenium and self.args.run_selenium:
             logger.info("Waiting for seleniums")

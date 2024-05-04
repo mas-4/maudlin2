@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Optional
 
 import nltk
 import pandas as pd
@@ -29,22 +30,29 @@ pipeline = [
 ]
 
 
-def load_and_update_topics():
+def load_and_update_topics(s: Optional[Session] = None):
     with (open(Constants.Paths.TOPICS_FILE, 'rt') as f):
         topic_dict: dict = yaml.safe_load(f)
-    with Session() as session, SqlLock:
-        for top_d in topic_dict:
-            topic: Topic = session.query(Topic).filter(Topic.name == top_d['name']).first()
-            if topic is None:
-                logger.info("Adding topic %s", top_d['name'])
-                topic = Topic(name=top_d['name'])
-                session.add(topic)
-            topic.keywords = top_d['keywords']
-            topic.essential = top_d['essential']
-        session.commit()
-        topics = session.query(Topic).all()
-        for topic in topics:
-            session.expunge(topic)
+    commit = False
+    if s is None:
+        s = Session()
+        commit = True
+        SqlLock.acquire()
+    for top_d in topic_dict:
+        topic: Topic = s.query(Topic).filter(Topic.name == top_d['name']).first()
+        if topic is None:
+            logger.info("Adding topic %s", top_d['name'])
+            topic = Topic(name=top_d['name'])
+            s.add(topic)
+        topic.keywords = top_d['keywords']
+        topic.essential = top_d['essential']
+    s.commit()
+    topics = s.query(Topic).all()
+    for topic in topics:
+        s.expunge(topic)
+    if commit:
+        s.close()
+        SqlLock.release()
     return topics
 
 

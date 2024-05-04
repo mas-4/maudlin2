@@ -90,8 +90,9 @@ class HeadlinesPage:
                     last_bias = a['bias']
                 mean_sentiment = (a['afinn'] + a['vader_compound']) / 2
                 smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
+                bias = a['bias'] + 3
                 hrefs.append(
-                    f'<a class="storylink" style="background-color: {bias_colors[a['bias'] + 3]}"'
+                    f'<a class="storylink" style="background-color: {bias_colors[bias]}"'
                     f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
                 )
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
