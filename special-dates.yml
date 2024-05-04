@@ -1,16 +1,16 @@
-- name: "Alabama\nIVF Ruling"
+- name: "Alabama IVF Ruling"
   date: 2024-02-16
   topic: "Abortion Post-Dobbs"
-- name: "James Biden\nTestifies"
+- name: "James Biden Testifies"
   date: 2024-02-21
   topic: "Biden Impeachment"
-- name: "Hunter\nDeposition\nReleased"
+- name: "Hunter Deposition Released"
   date: 2024-02-28
   topic: "Biden Impeachment"
-- name: "Biden\nVisits\nBorder"
+- name: "Biden Visits Border"
   date: 2024-02-29
   topic: "Border Chaos"
-- name: "State\nof the\nUnion"
+- name: "State of the Union"
   date: 2024-03-07
   topic: "Biden is old"
 - name: "Hur Testimony"
@@ -19,51 +19,51 @@
 - name: "3.2% Inflation Report"
   date: 2024-03-12
   topic: "Inflation"
-- name: "Fani Willis\nGeorgia Ruling"
+- name: "Fani Willis Georgia Ruling"
   date: 2024-03-15
   topic: "Trump Trial"
-- name: "Hush Money\nCase Delay"
+- name: "Hush Money Case Delay"
   date: 2024-03-15
   topic: "Trump Trial"
-- name: "Bloodbath\nRally"
+- name: "Bloodbath Rally"
   date: 2024-03-16
   topic: "Trump is unfit"
-- name: "NY Bond\nReduction"
+- name: "NY Bond Reduction"
   date: 2024-03-25
   topic: "Trump Trial"
-- name: "Lev Parnas\nTestifies"
+- name: "Lev Parnas Testifies"
   date: 2024-03-20
   topic: "Biden Impeachment"
-- name: "SCOTUS\nAbortion\nPill Hearing"
+- name: "SCOTUS Abortion Pill Hearing"
   date: 2024-03-26
   topic: "Abortion Post-Dobbs"
-- name: "Florida\nAbortion\nRuling"
+- name: "Florida Abortion Ruling"
   date: 2024-04-01
   topic: "Abortion Post-Dobbs"
-- name: "Gaza aid\nworkers\nkilled"
+- name: "Gaza aid workers killed"
   date: 2024-04-01
   topic: "War in Gaza"
-- name: "Trump\nPosts\nBond"
+- name: "Trump Posts Bond"
   date: 2024-04-02
   topic: "Trump Trial"
-- name: "Arizona\nAbortion\nRuling"
+- name: "Arizona Abortion Ruling"
   date: 2024-04-09
   topic: "Abortion Post-Dobbs"
-- name: "3.5% Inflation\nReport"
+- name: "3.5% Inflation Report"
   date: 2024-04-10
   topic: "Inflation"
-- name: "Iran Drone\nAttack"
+- name: "Iran Drone Attack"
   date: 2024-04-13
   topic: "War in Gaza"
-- name: "Hush Money\nTrial Begins"
+- name: "Hush Money Trial Begins"
   date: 2024-04-15
   topic: "Trump Trial"
-- name: "Israel\nStrikes Back"
+- name: "Israel Strikes Back"
   date: 2024-04-18
   topic: "War in Gaza"
-- name: "Campus Protests\nHeat Up"
+- name: "Campus Protests Heat Up"
   date: 2024-04-22
   topic: "War in Gaza"
-- name: "Hush Money\nOpening\nArguments"
+- name: "Hush Money Opening Arguments"
   date: 2024-04-22
   topic: "Trump Trial"

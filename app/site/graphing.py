@@ -42,29 +42,31 @@ def get_bottom(df):
 
 
 def apply_special_dates(ax: plt.Axes, topic):
-    ymin, ymax = ax.get_ylim()
-    rot = 4
-    for i, spdate in enumerate(Config.special_dates):
+    ymin, _ = ax.get_ylim()  # Get the minimum y value
+    rot = 10  # Adjust rotation if necessary
+    for i, spdate in enumerate(sorted(Config.special_dates, key=lambda x: x.date, reverse=False)):
         if topic != 'all' and spdate.topic != topic:
             continue
 
-        ax.axvline(spdate.date, color=topic_colors[spdate.topic], linestyle='-', lw=1)  # noqa date for float
+        # Plot the vertical line at the date
+        ax.axvline(spdate.date, color="black", linestyle='-', lw=1)
 
-        offset = (i % rot) * ((ymax + ymin - 20) / rot)
+        # Calculate offset for text positioning below the x-axis
+        # Offset needs to be negative to move the text below the axis
+        # Adjust the multiplier (-40, -20 etc.) to position the text appropriately
+        offset = -50 - (i % rot) * 15
+
+        # Annotate below the axis
         ax.annotate(
             spdate.name,
-            xy=(spdate.date, offset),  # noqa date for float
-            xytext=(0, 20),
+            xy=(spdate.date, ymin),  # Position at the bottom of the plot
+            xytext=(0, offset),  # Offset text below the x-axis
             textcoords='offset points',
-            ha='right',
+            color=topic_colors[spdate.topic],
+            ha='left',
             fontsize=12,
-            color='black',
             fontweight='bold',
-            arrowprops=dict(
-                facecolor='red',
-                arrowstyle='->',
-                linewidth=2
-            )
+            alpha=0.8,
         )
 
 
@@ -138,8 +140,8 @@ class Plots:
     def topic_history_bar(df: pd.DataFrame):
         df = df[df['topic'] != '']
         fig, ax = plt.subplots()
-        fig.set_size_inches(13, 7)
-        fig.subplots_adjust(bottom=0.2)
+        fig.subplots_adjust(bottom=0.6, right=0.7)
+        fig.set_size_inches(13, 10)
 
         bottom = get_bottom(df)
         sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
@@ -157,12 +159,16 @@ class Plots:
             bottom['bot'] += topic_df.articles
 
         ax.set_title('Number of Articles by Topic Published Per Day')
+        # xticks should start at the day6 before the earliest date and end at day before the latest date
+        ax.set_xlim(bottom.index[0] - td(days=6), bottom.index[-1] + td(days=1))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
         ax.set_xticks(ax.get_xticks()[::2])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, labels, frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9,
+        # put the legend to the right of the graph
+        ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5),
+                  frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9,
                   fontsize='medium', title='Topic', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
                   labelspacing=1.5)
         for spine in ['right', 'top', 'left', 'bottom']:
