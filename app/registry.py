@@ -1,3 +1,11 @@
+from app.scrapers.dispatch import Dispatch
+from app.scrapers.bulwark import Bulwark
+from app.scrapers.christiansciencemonitor import ChristianScienceMonitor
+from app.scrapers.postmillennial import PostMillennial
+from app.scrapers.newsnation import NewsNation
+from app.scrapers.marketwatch import MarketWatch
+from app.scrapers.propublica import ProPublica
+from app.scrapers.nation import Nation
 from app.scrapers.alternet import Alternet
 from app.scrapers.independentjournalreview import IndependentJournalReview
 from app.scrapers.washingtonexaminer import WashingtonExaminer
@@ -117,6 +125,14 @@ from app.scrapers.xinhua import Xinhua
 from app.scrapers.yahoonews import YahooNews
 
 Scrapers = [
+    Dispatch,
+    Bulwark,
+    ChristianScienceMonitor,
+    PostMillennial,
+    NewsNation,
+    MarketWatch,
+    ProPublica,
+    Nation,
     # HindustanTimes,
     # InfoWars,
     # NationalInterest,
