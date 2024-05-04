@@ -30,7 +30,7 @@ class Config:
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
     run_selenium = True
-    timeout = 15  # seconds for requests
+    timeout = 60  # seconds for requests
 
     # We want to exclude perpetual links that are not distinguishable by html (like on Drudge) but capture articles
     # that have sat on the web page for days, like on Current Affairs. The age of the database is the primary filter

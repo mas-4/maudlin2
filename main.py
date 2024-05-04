@@ -1,4 +1,5 @@
 import argparse
+import time
 
 from app.analysis.metrics import reapply_sent
 from app.analysis.preprocessing import reprocess_headlines
@@ -9,8 +10,34 @@ from app.builder import build
 from app.utils import Config, get_logger
 from utils.dayreport import DayReport
 from utils.emailer import send_notification
+import threading
 
 logger = get_logger(__name__)
+
+
+class SeleniumThread(threading.Thread):
+    def __init__(self, seleniums):
+        self.seleniums = seleniums
+        threading.Thread.__init__(self)
+        self.scrapers = []
+
+    def run(self):
+        for sel in self.seleniums:
+            scraper = sel()
+            try:
+                scraper.run()
+            except Exception as e:
+                logger.exception(f"Failed to run {scraper}: {e}")
+                continue
+            else:
+                self.scrapers.append(scraper)
+        SeleniumResourceManager().quit()
+
+    def post_run(self):
+        num = len(self.scrapers)
+        for i, sel in enumerate(self.scrapers):
+            sel.post_run()
+            logger.info(f"Finished {sel} ({i + 1} of {num})")
 
 
 class Queue:
@@ -24,20 +51,21 @@ class Queue:
         for scraper in self.threads:
             scraper.start()
 
+        seleniumthread = SeleniumThread(self.seleniums)
         if Config.run_selenium and self.args.run_selenium:
             logger.info("Running seleniums")
+            seleniumthread.start()
 
-            for sel in self.seleniums:
-                scraper = sel()
-                try:
-                    scraper.run()
-                except Exception as e:
-                    logger.exception(f"Failed to run {scraper}: {e}")
-                    continue
-            SeleniumResourceManager().quit()
+        num = len(self.threads)
+        for i, scraper in enumerate(self.threads):
+            scraper.join()
+            scraper.post_run()
+            logger.info(f"Finished {scraper} ({i + 1} of {num})")
 
-        for scraper in self.threads:
-            scraper.join()  # make sure to wait for everything to finish
+        if Config.run_selenium and self.args.run_selenium:
+            logger.info("Waiting for seleniums")
+            seleniumthread.join()
+            seleniumthread.post_run()
 
     def add(self, scraper):
         if issubclass(scraper, SeleniumScraper):
@@ -59,6 +87,7 @@ def scrape(args, scrapers):
 
 
 def main(args: argparse.Namespace):
+    t = time.time()
     if args.analyze_topics:
         analyze_all_topics(True)
         return
@@ -79,6 +108,7 @@ def main(args: argparse.Namespace):
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
     build()
+    logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 
 def get_args() -> argparse.Namespace:

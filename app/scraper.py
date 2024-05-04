@@ -1,4 +1,5 @@
 import os
+import time
 import traceback as tb
 from abc import ABC, abstractmethod
 from collections import namedtuple
@@ -13,8 +14,7 @@ from selenium.webdriver.firefox.options import Options
 from app.analysis import metrics
 from app.analysis.preprocessing import preprocess
 from app.models import Session, Article, Agency, Headline, SqlLock
-from app.utils import Config, Credibility, Bias, Country, Constants
-from app.utils.logger import get_logger
+from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 from utils.dayreport import DayReport
 
 logger = get_logger(__name__)
@@ -23,30 +23,19 @@ ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', '
 
 
 def extract_text(html_content):
-    # Parse the HTML content using BeautifulSoup
-    soup = Soup(html_content, 'lxml').find()
+    soup = Soup(html_content, 'html.parser')
 
-    # Initialize the stack with the root of the document
     stack = [soup]
 
-    # List to hold all extracted texts
-    extracted_texts = []
+    def generate_text_elements(_stack):
+        while _stack:
+            current_element = _stack.pop()
+            if isinstance(current_element, NavigableString):
+                yield current_element.strip()
+            else:
+                _stack.extend(reversed(list(current_element.children)))
 
-    # Process each element in the stack
-    while stack:
-        # Pop the top element from the stack
-        current_element = stack.pop()
-
-        # Check if current element has text and add it to the list
-        if isinstance(current_element, NavigableString):
-            extracted_texts.append(current_element.string.strip())
-            continue
-
-        # Add children of the current element to the stack
-        for child in current_element.children:
-            stack.append(child)
-
-    return extracted_texts
+    return list(generate_text_elements(stack))
 
 
 class Scraper(ABC, Thread):
@@ -57,7 +46,6 @@ class Scraper(ABC, Thread):
     headers: dict[str, str] = {}
     parser: str = 'lxml'
     country = Country.us
-    day_lock = Lock()
     sql_lock = SqlLock
 
     def __init__(self):
@@ -73,6 +61,7 @@ class Scraper(ABC, Thread):
             raise ValueError("URL must be set")
         if self.bias is None or self.credibility is None:
             raise ValueError("Bias and credibility must be set")
+        self.times = []
         self.downstream: list[tuple[str, Tag]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
@@ -88,14 +77,14 @@ class Scraper(ABC, Thread):
                 session.add(agency)
             session.commit()
             self.agency_id = agency.id
-        self.dayreport = DayReport(self.agency)
+        self.dayreport = DayReport(self.agency, use_lock=False)
 
     @abstractmethod
     def setup(self, soup: Soup):
         pass
 
     def process(self, art: ArticleTuple):
-        with Session() as s, self.sql_lock:
+        with Session() as s:
             if (headline := s.query(Headline).filter(Headline.processed == art.processed).first()) is not None:
                 # we're going to double-check this headline hasn't been seen before
                 headline.update_last_accessed()
@@ -142,39 +131,51 @@ class Scraper(ABC, Thread):
 
     def run(self):
         self.run_setup()
+        self.done = True
+
+    def post_run(self):
         self.run_processing()
         self.dayreport.headlines(self.headlines)
         self.dayreport.articles(self.articles)
         self.dayreport.updated(self.updated)
         # If we didn't get anything we want to warn!
         bugle = logger.info if self.articles + self.headlines + self.updated else logger.warning
-        bugle("Done with %s, from %d found, added %d articles and %d headlines, updated %d headlines",
-              self.agency, self.found, self.articles, self.headlines, self.updated)
-        self.done = True
+        total_time = sum(self.times)
+        mean_time = total_time / len(self.times) if self.times else 0
+        bugle("%s: %d found, %d articles, %d headlines, %d updated in %f seconds with a mean time of %f",
+              self.agency, self.found, self.articles, self.headlines, self.updated, total_time, mean_time)
 
     def run_processing(self):
         self.found = len(self.downstream)
         logger.info("Processing %s, %i upstream headlines", self.agency, self.found)
-        pos = 0
-        while self.downstream:
-            href, raw = self.downstream.pop()
-            raw = str(raw)
-            title = ' '.join(extract_text(raw))
-            if title.strip().count(' ') == 0:
-                continue  # obviously a headline without spaces isn't a headline
-            art = ArticleTuple(self.clean_href(href).strip(), str(raw), title, preprocess(title), pos)
-            if not art.processed:
-                continue
-            pos += 1
-            try:
-                if not (err := validators.url(art.href)):
-                    raise err
-                self.process(art)
-            except Exception as e:  # noqa
-                Session.rollback()
-                msg = f"Failed to process link: {self.agency}: {art} {e}"
-                self.dayreport.add_exception(msg, tb.format_exc())
-                logger.exception(msg)
+        self.times = list(
+            filter(
+                None,
+                [self.process_item(pos, href, raw) for pos, (href, raw) in enumerate(self.downstream)]
+            )
+        )
+
+    def process_item(self, pos, href, raw):
+        t = time.time()
+        raw = str(raw)
+        title = ' '.join(filter(None, extract_text(raw)))
+        if title.strip().count(' ') == 0:
+            return time.time() - t  # obviously a headline without spaces isn't a headline
+        processed = preprocess(title)
+        if not processed:
+            return time.time() - t
+        art = ArticleTuple(self.clean_href(href).strip(), str(raw), title, processed, pos)
+        pos += 1
+        try:
+            if not (err := validators.url(art.href)):
+                raise err
+            self.process(art)
+        except Exception as e:  # noqa
+            Session.rollback()
+            msg = f"Failed to process link: {self.agency}: {art} {e}"
+            self.dayreport.add_exception(msg, tb.format_exc())
+            logger.exception(msg)
+        return time.time() - t
 
     def clean_href(self, href):
         if href.startswith('//'):

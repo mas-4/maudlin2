@@ -2,13 +2,13 @@ import re
 
 from bs4 import BeautifulSoup as Soup
 
-from app.scraper import Scraper
+from app.scraper import SeleniumScraper
 from app.utils import Bias, Credibility, get_logger
 
 logger = get_logger(__name__)
 
 
-class WashingtonExaminer(Scraper):
+class WashingtonExaminer(SeleniumScraper):
     bias = Bias.right
     credibility = Credibility.mixed
     url: str = 'https://www.washingtonexaminer.com/'
