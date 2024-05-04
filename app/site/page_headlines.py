@@ -6,6 +6,7 @@ from app.analysis.clustering import prepare_cosine, form_clusters, label_cluster
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
+from app.site.graphing import bias_colors
 from app.utils import Config, Country, get_logger
 
 logger = get_logger(__name__)
@@ -74,14 +75,26 @@ class HeadlinesPage:
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
+        self.make_agency_lists(clusters_list)
+        self.context['clusters'] = clusters_list
+
+    def make_agency_lists(self, clusters_list):
         agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
             hrefs = []
-            for a in sorted(cluster['data'], key=lambda x: x['agency']):
-                hrefs.append(f'<a href="{a["url"]}">{a["agency"]}</a>')
-            agency_lists[cluster['cluster']] = ', '.join(hrefs)
-        self.context['clusters'] = clusters_list
+            last_bias = -3
+            for a in sorted(cluster['data'], key=lambda x: x['bias']):
+                if a['bias'] != last_bias:
+                    hrefs.append(f'<br>')
+                    last_bias = a['bias']
+                mean_sentiment = (a['afinn'] + a['vader_compound']) / 2
+                smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
+                hrefs.append(
+                    f'<a class="storylink" style="background-color: {bias_colors[a['bias'] + 3]}"'
+                    f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
+                )
+            agency_lists[cluster['cluster']] = ' '.join(hrefs)
         self.context['agency_lists'] = agency_lists
 
     def summarize(self, df):
