@@ -41,17 +41,27 @@ def apply_afinn(headline: Headline):
     headline.afinn = AFINN.score(headline.title) / len(headline.title.split())
 
 
-def apply(headline: Headline):
+def apply(headline: Headline, s: Optional[Session] = None):
     global topics
+    commit = False
+
+    if s is None:
+        s = Session()
+        commit = True
+        SqlLock.acquire()
+
     if topics is None:
-        topics = load_and_update_topics()
-    with Session() as s, SqlLock:
-        s.add(headline)
-        apply_vader(headline)
-        apply_afinn(headline)
-        apply_topic_scoring(headline)
+        topics = load_and_update_topics(s)
+
+    s.add(headline)
+    apply_vader(headline)
+    apply_afinn(headline)
+    apply_topic_scoring(headline)
+
+    if commit:
         s.commit()
-        pass
+        SqlLock.release()
+        s.close()
 
 
 def reapply_sent(applyall=False):

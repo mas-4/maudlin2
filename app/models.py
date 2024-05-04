@@ -180,6 +180,6 @@ engine = create_engine(Config.connection_string)
 # So just don't do it. To upgrade the database run alembic upgrade head
 # Base.metadata.create_all(engine)
 
-session_factory = sessionmaker(bind=engine)
+session_factory = sessionmaker(bind=engine, autoflush=False)
 Session = scoped_session(session_factory)
 SqlLock = Lock()

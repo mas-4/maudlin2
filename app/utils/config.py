@@ -24,8 +24,9 @@ class SpecialDate:
 
 
 class Config:
+    max_threads = 100
     use_color = True
-    logging_level = logging.INFO
+    logging_level = logging.DEBUG
     debug: bool = False
     site_name = 'Maudlin'
     strf = '%Y-%m-%d %H:%M:%S'
