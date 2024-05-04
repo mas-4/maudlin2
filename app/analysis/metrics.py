@@ -32,13 +32,15 @@ def apply_topic_scoring(headline: Headline):
 
 
 def apply_vader(headline: Headline):
-    results = {f'vader_{k}': v for k, v in SID.polarity_scores(headline.title).items()}
+    results = {f'vader_{k}': v for k, v in SID.polarity_scores(headline.processed).items()}
     for k, v in results.items():
         setattr(headline, k, v)
 
 
 def apply_afinn(headline: Headline):
-    headline.afinn = AFINN.score(headline.title) / len(headline.title.split())
+    length = len(headline.processed.split())
+    length = 1 if length == 0 else length
+    headline.afinn = AFINN.score(headline.processed) / length
 
 
 def apply(headline: Headline, s: Optional[Session] = None):
