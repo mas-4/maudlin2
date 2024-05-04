@@ -40,6 +40,8 @@ class HeadlinesPage:
         df = self.filter_score_sort(self.dh.main_headline_df.copy())
         self.cluster_and_summarize(df.copy())
         table_df = self.process_headlines(df)
+        # drop all rows with nan
+        table_df.dropna(inplace=True)
         self.context['tabledata'] = table_df.values.tolist()
         self.newsletter.write(self.context)
         self.template.write(self.context)

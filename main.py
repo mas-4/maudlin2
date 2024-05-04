@@ -22,6 +22,7 @@ class SeleniumThread(threading.Thread):
         self.scrapers = []
 
     def run(self):
+        t = time.time()
         for sel in self.seleniums:
             scraper = sel()
             try:
@@ -32,6 +33,7 @@ class SeleniumThread(threading.Thread):
             else:
                 self.scrapers.append(scraper)
         SeleniumResourceManager().quit()
+        logger.info(f"Finished seleniums in {time.time() - t} seconds")
 
     def post_run(self):
         num = len(self.scrapers)

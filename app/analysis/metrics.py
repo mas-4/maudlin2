@@ -81,7 +81,7 @@ def reapply_sent(applyall=False):
         count = len(headlines)
         logger.info('Reapplying sentiment to %i headlines', count)
         df = pd.DataFrame(headlines, columns=['id', 'title'])
-        df['afinn'] = df['title'].apply(lambda x: AFINN.score(x) / len(x.split()))
+        df['afinn'] = df['title'].apply(lambda x: AFINN.score(x) / max(len(x.split()), 1))
         df['vader'] = df['title'].apply(lambda x: SID.polarity_scores(x))
         df['vader_neg'] = df['vader'].apply(lambda x: x['neg'])
         df['vader_neu'] = df['vader'].apply(lambda x: x['neu'])
