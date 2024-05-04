@@ -1,5 +1,6 @@
 import os
 import time
+import warnings
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as dt
@@ -89,7 +90,8 @@ class Scraper(ABC, Thread):
             self.headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}
 
         try:
-            response: rq.Response = self.rq.get(url, headers=self.headers, timeout=Config.timeout, verify=False)
+            with warnings.catch_warnings(action="ignore"):
+                response: rq.Response = self.rq.get(url, headers=self.headers, timeout=Config.timeout, verify=False)
         except Exception as e:  # noqa
             logger.error("Failed to get page: %s %s", url, e)
             return
