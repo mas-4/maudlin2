@@ -81,11 +81,16 @@ class Plots:
             gdf = today_df[today_df['bias'] == bias][['topic', 'afinn']].set_index('topic').sort_values('topic')
             if len(gdf) < len(left):
                 gdf = gdf.reindex(left.index, fill_value=0)
-            ax.barh(gdf.index, gdf['afinn'], color=bias_colors[bias + 3], label=str(Bias(bias)), left=left)
+            ax.barh(gdf.index, gdf['afinn'], color=bias_colors[bias + 3], label=str(Bias(bias)), left=left,
+                    edgecolor='black')
             left += gdf['afinn']
         # set horizontal lines at each bias level
         ax.set_title("Today's Topics")
-        ax.legend()
+        ax.legend(frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium',
+                  title='Bias', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
+        for spine in ['right', 'top', 'left', 'bottom']:
+            ax.spines[spine].set_visible(False)
+        ax.xaxis.set_visible(False)
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bar_graph).build)
 
@@ -106,19 +111,26 @@ class Plots:
             topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
             topic_df['side'] += i * 0.1
             ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 20), label=topic,
-                       color=topic_colors[topic], alpha=0.85, edgecolor='none')
-        # set horizontal lines at each bias level
+                       color=topic_colors[topic], edgecolor='black', alpha=0.45)
         ax.set_title("Today's Articles")
         # x-axis should start at 0:00 and end at 23:59
         ax.yaxis.set_ticks(range(-1, 2))
         ax.yaxis.set_ticklabels(['left', 'center', 'right'])
+        # make horizontal lines at the y ticks
+        ax.grid(axis='y', linestyle='--', alpha=0.5)
         # rotate y-axis labels
         ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
         # set x-axis to last night at 11:00 to tonight at 11:00
         ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%I:%M %p'))
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-        ax.legend()
+        # rotate x axis 45
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+        ax.legend(frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium',
+                  title='Topic', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
+                  labelspacing=1.5)
+        for spine in ['right', 'top', 'left', 'bottom']:
+            ax.spines[spine].set_visible(False)
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.topic_today_bubble_graph).build)
 
@@ -140,7 +152,8 @@ class Plots:
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
-            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=topic_colors[topic])
+            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=topic_colors[topic],
+                   edgecolor='grey')
             bottom['bot'] += topic_df.articles
 
         ax.set_title('Number of Articles by Topic Published Per Day')
@@ -149,7 +162,11 @@ class Plots:
         ax.set_xticks(ax.get_xticks()[::2])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles[::-1], labels[::-1])
+        ax.legend(handles, labels, frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9,
+                  fontsize='medium', title='Topic', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
+                  labelspacing=1.5)
+        for spine in ['right', 'top', 'left', 'bottom']:
+            ax.spines[spine].set_visible(False)
         apply_special_dates(ax, 'all')
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.topic_history_bar_graph).build)
@@ -179,6 +196,8 @@ class Plots:
             apply_special_dates(ax, topic.name)
             plt.legend(loc='upper left')
             plt.tight_layout()
+            for spine in ['right', 'top', 'left', 'bottom']:
+                ax.spines[spine].set_visible(False)
             plt.savefig(os.path.join(Config.build, topic.graph))
 
     @staticmethod
@@ -194,7 +213,7 @@ class Plots:
             gdf = bias_df.loc[bias]
             if len(gdf) < len(bottom):
                 gdf = gdf.reindex(bottom.index, fill_value=0)
-            ax.bar(gdf.index, gdf.articles, color=bias_colors[bias + 3], label=str(Bias(bias)))
+            ax.bar(gdf.index, gdf.articles, color=bias_colors[bias + 3], edgecolor='black', label=str(Bias(bias)))
             bottom['bot'] += gdf.articles
         ax.set_ylabel('Number of Articles', color='b')
         ax.tick_params(axis='y', labelcolor='b')
@@ -228,6 +247,7 @@ class Plots:
                 ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
                 ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
                 ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
+
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.sentiment_graphs).build)
 

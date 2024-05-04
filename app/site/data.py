@@ -111,7 +111,7 @@ class DataHandler:
     @staticmethod
     def get_topics():
         with Session() as session:
-            return session.query(Topic).all()
+            return session.query(Topic).order_by(Topic.name.asc()).all()
 
     @staticmethod
     def get_topic_data():
