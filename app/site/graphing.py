@@ -43,18 +43,18 @@ def get_bottom(df):
 
 def apply_special_dates(ax: plt.Axes, topic):
     ymin, _ = ax.get_ylim()  # Get the minimum y value
-    rot = 10  # Adjust rotation if necessary
+    rot = 8  # Adjust rotation if necessary
     for i, spdate in enumerate(sorted(Config.special_dates, key=lambda x: x.date, reverse=False)):
         if topic != 'all' and spdate.topic != topic:
             continue
 
         # Plot the vertical line at the date
-        ax.axvline(spdate.date, color="black", linestyle='-', lw=1)
+        ax.axvline(spdate.date, color="black", linestyle=':', lw=1, alpha=0.4)
 
         # Calculate offset for text positioning below the x-axis
         # Offset needs to be negative to move the text below the axis
         # Adjust the multiplier (-40, -20 etc.) to position the text appropriately
-        offset = -50 - (i % rot) * 15
+        offset = -40 - (rot-i % rot) * 13
 
         # Annotate below the axis
         ax.annotate(
@@ -64,9 +64,7 @@ def apply_special_dates(ax: plt.Axes, topic):
             textcoords='offset points',
             color=topic_colors[spdate.topic],
             ha='left',
-            fontsize=12,
             fontweight='bold',
-            alpha=0.8,
         )
 
 
@@ -140,42 +138,43 @@ class Plots:
     def topic_history_bar(df: pd.DataFrame):
         df = df[df['topic'] != '']
         fig, ax = plt.subplots()
-        fig.subplots_adjust(bottom=0.6, right=0.7)
-        fig.set_size_inches(13, 10)
+        fig.subplots_adjust(bottom=0.2, top=0.8)  # Adjust top for legend space
+        fig.set_size_inches(13, 8)
 
-        bottom = get_bottom(df)
+        # Assuming `get_bottom` is a function that returns a DataFrame with a 'bot' column initialized to zeros
+        bottom = get_bottom(df)  # Adjust accordingly
         sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
         for i, topic in enumerate(sorted_topics.index):
             topic_df = df[df['topic'] == topic].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
 
-            # group by day and calculate average sentiment, emphasis, and number of articles
+            # Group by day and calculate number of articles
             topic_df = topic_df.groupby('day').agg({'afinn': 'count'})
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
             ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=topic_colors[topic],
-                   edgecolor='grey')
+                   edgecolor='black')
             bottom['bot'] += topic_df.articles
 
-        ax.set_title('Number of Articles by Topic Published Per Day')
-        # xticks should start at the day6 before the earliest date and end at day before the latest date
-        ax.set_xlim(bottom.index[0] - td(days=6), bottom.index[-1] + td(days=1))
+        ax.set_xlim(bottom.index[0] - td(days=1), bottom.index[-1] + td(days=1))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
         ax.set_xticks(ax.get_xticks()[::2])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
         handles, labels = ax.get_legend_handles_labels()
-        # put the legend to the right of the graph
-        ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5),
-                  frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9,
-                  fontsize='medium', title='Topic', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
-                  labelspacing=1.5)
+        # Put the legend above the graph, arranged horizontally
+        ax.legend(handles[::-1], labels[::-1], loc='lower center', bbox_to_anchor=(0.5, 1.04), ncol=5, frameon=True,
+                  facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium', title_fontsize='large',
+                  fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
+
         for spine in ['right', 'top', 'left', 'bottom']:
             ax.spines[spine].set_visible(False)
-        apply_special_dates(ax, 'all')
+        apply_special_dates(ax, 'all')  # Assume this function is defined elsewhere
         plt.tight_layout()
-        plt.savefig(PathHandler(PathHandler.FileNames.topic_history_bar_graph).build)
+        plt.savefig(PathHandler(
+            PathHandler.FileNames.topic_history_bar_graph).build)  # Assume PathHandler is defined elsewhere
 
     @classmethod
     def individual_topic(cls, df, topics):
