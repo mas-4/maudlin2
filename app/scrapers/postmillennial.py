@@ -1,9 +1,7 @@
-
-
 from bs4 import BeautifulSoup as Soup
 
-from app.utils import Bias, Credibility, Country, Constants, get_logger
 from app.scraper import SeleniumScraper
+from app.utils import Bias, Credibility, get_logger
 
 logger = get_logger(__name__)
 
@@ -30,4 +28,3 @@ class PostMillennial(SeleniumScraper):
                 logger.error(f"{self.agency}: Error parsing link: {e}")
                 logger.exception(f"{self.agency}: Link: {a}")
                 continue
-
