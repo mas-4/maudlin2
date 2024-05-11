@@ -8,9 +8,7 @@ import seaborn as sns
 from matplotlib import dates as mdates
 
 from app.site.common import PathHandler
-from app.utils.config import Config
-from app.utils.constants import Bias, Credibility
-from app.utils.logger import get_logger
+from app.utils import Config, Bias, Credibility, get_logger
 
 logger = get_logger(__name__)
 

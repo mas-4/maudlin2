@@ -1,9 +1,7 @@
 from app.site.common import copy_assets, TemplateHandler, PathHandler
 from app.site.data import DataHandler, DataTypes
 from app.site.wordcloudgen import generate_wordcloud
-from app.utils.config import Config
-from app.utils.constants import Bias, Credibility
-from app.utils.logger import get_logger
+from app.utils import Config, Bias, Credibility, get_logger
 
 logger = get_logger(__name__)
 

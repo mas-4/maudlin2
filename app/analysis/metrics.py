@@ -18,6 +18,15 @@ AFINN = Afinn()
 topics: Optional[list[Topic]] = None
 
 
+class SentimentAnalyzer:
+    def __init__(self):
+        SID = SentimentIntensityAnalyzer()
+        AFINN = Afinn()
+
+
+analyzer: Optional[SentimentAnalyzer] = None
+
+
 def apply_topic_scoring(headline: Headline):
     global topics
     if headline.article.topic_id is not None:
@@ -43,6 +52,7 @@ def apply_afinn(headline: Headline):
 
 def apply(headline: Headline, s: Optional[Session] = None):
     global topics
+    global analyzer
     commit = False
 
     if s is None:
@@ -52,6 +62,8 @@ def apply(headline: Headline, s: Optional[Session] = None):
 
     if topics is None:
         topics = load_and_update_topics(s)
+    if analyzer is None:
+        analyzer = SentimentAnalyzer()
 
     s.add(headline)
     apply_vader(headline)

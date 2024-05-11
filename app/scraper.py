@@ -24,22 +24,6 @@ logger = get_logger(__name__)
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos'])
 
 
-def extract_text(html_content):
-    soup = Soup(html_content, 'html.parser')
-
-    stack = [soup]
-
-    def generate_text_elements(_stack):
-        while _stack:
-            current_element = _stack.pop()
-            if isinstance(current_element, NavigableString):
-                yield current_element.strip()
-            else:
-                _stack.extend(reversed(list(current_element.children)))
-
-    return list(generate_text_elements(stack))
-
-
 class Scraper(ABC, Thread):
     agency: str = ''
     url: str = ''
@@ -58,6 +42,7 @@ class Scraper(ABC, Thread):
         self.headlines = 0
         self.updated = 0
         self.found = 0
+        self.df = None
         if not self.agency:
             raise ValueError("Agency name must be set")
         if not self.url:
@@ -135,7 +120,7 @@ class Scraper(ABC, Thread):
         logger.debug("Dropping headlines with invalid urls in %f seconds", time.time() - t)
 
         t = time.time()
-        df['title'] = df['raw'].apply(lambda x: ' '.join(extract_text(str(x))))
+        df['title'] = df['raw'].apply(lambda x: extract_text(x))
         logger.debug("Extracted text in %f seconds", time.time() - t)
 
         t = time.time()
@@ -164,6 +149,7 @@ class Scraper(ABC, Thread):
 
         df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row']),
                                  axis=1)
+        self.df = df
         return dropped, df['artpair'].tolist()
 
     def run_processing(self):

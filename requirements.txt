@@ -7,18 +7,22 @@ blis==0.7.11
 cachetools==5.3.3
 catalogue==2.0.10
 certifi==2024.2.2
+cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
 cloudpathlib==0.16.0
+colorama==0.4.6
 confection==0.1.4
 contourpy==1.2.1
 cycler==0.12.1
 cymem==2.0.8
 cytoolz==0.12.3
+en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl#sha256=ab70aeb6172cde82508f7739f35ebc9918a3d07debeed637403c8f794ba3d3dc
 filelock==3.13.4
 floret==0.10.5
 fonttools==4.51.0
 fsspec==2024.3.1
+greenlet==3.0.3
 h11==0.14.0
 huggingface-hub==0.22.2
 idna==3.7
@@ -42,6 +46,7 @@ packaging==24.0
 pandas==2.2.2
 pillow==10.3.0
 preshed==3.0.9
+pycparser==2.22
 pydantic==2.7.0
 pydantic_core==2.18.1
 pyparsing==3.1.2

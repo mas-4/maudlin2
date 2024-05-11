@@ -191,8 +191,8 @@ class NamedEntity(Base, AccessTimeMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     canonical: Mapped[str] = mapped_column(sa.String(255))
     patterns: Mapped[str] = mapped_column(Text(), index=True)
-    type: Mapped[str] = mapped_column(sa.String(255))
     wikidata_id: Mapped[str] = mapped_column(sa.String(255))
+    description: Mapped[str] = mapped_column(Text())
     count: Mapped[int] = mapped_column(Integer(), default=0)
     articles: Mapped[list["Article"]] = relationship("Article", secondary=named_entity_association,
                                                      back_populates="named_entities")

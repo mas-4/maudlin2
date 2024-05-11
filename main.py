@@ -1,16 +1,13 @@
 import argparse
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from app.analysis.metrics import reapply_sent
-from app.analysis.preprocessing import reprocess_headlines
-from app.analysis.topics import analyze_all_topics
+from app.analysis import reapply_sent, reprocess_headlines, analyze_all_topics, reapply_entities
+from app.builder import build
 from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
-from app.builder import build
 from app.utils import Config, get_logger
-from utils.emailer import send_notification
-import threading
 
 logger = get_logger(__name__)
 
@@ -98,10 +95,10 @@ def main(args: argparse.Namespace):
     if args.reprocess is not None:
         reprocess_headlines('all' in args.reprocess)
         return
-    if args.email_newsletter:
-        with open(Config.newsletter, 'rt') as f:
-            send_notification(f.read())
+    if args.process_entities is not None:
+        reapply_entities('all' in args.process_entities)
         return
+
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
@@ -113,12 +110,14 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--skip-scrape', action='store_true')
     parser.add_argument('--scraper', type=str, default=None)
-    parser.add_argument('--email-newsletter', action='store_true')
     parser.add_argument('--run-selenium', action='store_true')
+    parser.add_argument('--debug', action='store_true')
+
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
     parser.add_argument('--reprocess', action='store', type=str)
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--process-entities', action='store', type=str)
+
     args = parser.parse_args()
     if args.debug:
         Config.set_debug()
