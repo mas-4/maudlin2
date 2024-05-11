@@ -10,12 +10,12 @@ import pandas as pd
 import pytz
 import requests as rq
 import validators
-from bs4 import BeautifulSoup as Soup, Tag, NavigableString  # noqa not declared in __all__
+from bs4 import BeautifulSoup as Soup, Tag
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
 from app.analysis import metrics
-from app.analysis.preprocessing import preprocess
+from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 
