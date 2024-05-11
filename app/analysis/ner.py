@@ -6,6 +6,7 @@ import time
 from app.utils import get_logger
 from typing import Optional
 import multiprocessing as mp
+from functools import partial
 
 from app.models import Session, NamedEntity, Article, Headline, named_entity_association
 
@@ -43,7 +44,7 @@ def query_wikidata(entity_name) -> tuple[bool, Optional[WikiData]]:
         return False, None
     res = res.json()
     if 'warnings' in res:
-        logger.warning(res['warnings'])
+        logger.warning("Wikidata returned a warning for '%s': %s", entity_name, res['warnings'])
     if 'error' in res:
         logger.error(res['error'])
         return False, None
@@ -95,6 +96,9 @@ def mapping_and_updating_articles(df, entity_df):
     article_entity_df.dropna(inplace=True)
     article_entity_df.rename(columns={'entity_id': 'named_entity_id'}, inplace=True)
     with Session() as s:
+        # Drop all the current associations
+        s.execute(named_entity_association.delete())
+        # Insert the new associations
         s.execute(named_entity_association.insert().values(article_entity_df.to_dict(orient='records')))
         s.commit()
 
@@ -108,7 +112,9 @@ def updating_entities(entity_df):
     with Session() as s:
         s.bulk_insert_mappings(NamedEntity, rows)
         s.commit()
-        entity_ids = s.query(NamedEntity.id, NamedEntity.wikidata_id).filter(NamedEntity.wikidata_id.in_(new_entities['wikidata_id'])).all()
+        entity_ids = s.query(NamedEntity.id, NamedEntity.wikidata_id).filter(
+            NamedEntity.wikidata_id.in_(new_entities['wikidata_id'])
+        ).all()
     ids = pd.DataFrame(entity_ids, columns=['entity_id', 'wikidata_id'])
     new_entities = new_entities.merge(ids, on='wikidata_id', how='left')
     new_entities['entity_id'] = new_entities['entity_id'].astype('Int64')
@@ -154,6 +160,8 @@ def get_all_wikidata(entity_df, unidentified_entities):
         entity_df.loc[matches.index, 'queried'] = True
         # I'm not sure if we still need these rows, but it might help with speed later to have them available
         # in entity columns instead of just in the patterns.
+    logger.info("Ended querying with %i unidentified entities and a sleep of %f", len(unidentified_entities),
+                sleep)
 
 
 def canonicalize(entity):
@@ -187,6 +195,10 @@ def get_entity_df(unique_entities):
     return entity_df
 
 
+def process_chunk(fun, texts):
+    return [fun(text) for text in texts]
+
+
 def setup(all_entities, analyzer) -> pd.DataFrame:
     logger.info("Querying data.")
     with Session() as s:
@@ -196,13 +208,25 @@ def setup(all_entities, analyzer) -> pd.DataFrame:
             query = s.query(Article.id, Headline.id, Headline.processed).join(Headline.article).filter(
                 ~Article.named_entities.any()
             )
-        data = query.limit(1000).all()
+        data = query.limit(10000).all()
     df = pd.DataFrame(data, columns=['article_id', 'headline_id', 'text'])
 
     # Use 5 processes to extract entities
     logger.info("Extracting entities...")
-    with mp.Pool(16) as pool:
-        df['raw_entities'] = pool.map(analyzer.extract_entities, df['text'])
+    chunk_size = 1000
+    num_processes = mp.cpu_count()
+    logger.info("Using %i processes to extract entities for %i headlines", num_processes, len(df))
+
+    fun = partial(process_chunk, analyzer.extract_entities)
+    chunks = [df['text'][i:i + chunk_size] for i in range(0, len(df), chunk_size)]
+    with mp.Pool(num_processes) as pool:
+        result_chunks = pool.imap(fun, chunks)
+        results = []
+        for i, result_chunk in enumerate(result_chunks):
+            results.extend(result_chunk)
+            logger.info(f"Finished chunk {i + 1} of {len(chunks)}")
+
+    df['raw_entities'] = results
 
     logger.info("Done.")
 
