@@ -87,9 +87,11 @@ class Queue:
             return
         with Session() as s:
             df['headline_id'] = s.query(Headline.id).filter(Headline.processed.in_(df['processed'])).all()
+        # Convert headline_id to int
+        df['headline_id'] = df['headline_id'].apply(pd.Series)
         df = df[['headline_id', 'processed']]
         df.rename(columns={'processed': 'title'}, inplace=True)
-        ner.setup(df, ner.EntityAnalyzer())
+        df = ner.setup(df, ner.EntityAnalyzer())
         ner.apply_entities(df)
 
     def add(self, scraper):

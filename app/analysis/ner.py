@@ -1,6 +1,5 @@
 import multiprocessing as mp
 import time
-import uuid
 from collections import namedtuple
 from functools import partial
 from typing import Optional
@@ -18,8 +17,6 @@ labels = ['GPE', 'NORP', 'PERSON', 'ORG']
 
 WikiData = namedtuple('Wikidata', ['id', 'canonical', 'description', 'patterns'])
 
-run = str(uuid.uuid4().hex)
-
 
 class EntityAnalyzer:
     def __init__(self):
@@ -27,7 +24,7 @@ class EntityAnalyzer:
         self.nlp = spacy.load("en_core_web_lg")
 
     def extract_entities(self, text):
-        return [(ent.text, ent.label_) for ent in filter(lambda x: x.label_ in labels, self.nlp(text).ents)]
+        return [(ent.text, ent.label_) for ent in self.nlp(text).ents]
 
 
 def query_wikidata(entity_name) -> tuple[bool, Optional[WikiData]]:
@@ -79,7 +76,7 @@ def query_data(all_entities):
             query = s.query(Headline.id, Headline.processed).join(Headline.article).filter(
                 ~Headline.named_entities.any()
             )
-        data = query.limit(100).all()
+        data = query.limit(500).all()
     df = pd.DataFrame(data, columns=['headline_id', 'title'])
     return df
 
@@ -121,15 +118,20 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
 
     logger.info("Done.")
 
-    df['entities'] = df['raw_entities'].apply(lambda x: [entity[0] for entity in x])
-    df['labels'] = df['raw_entities'].apply(lambda x: [entity[1] for entity in x])
+    # Explode the raw_entities column
+    df = df.explode('raw_entities')
+    df[['entity', 'label']] = df['raw_entities'].apply(pd.Series)
+    # Drop rows where the label is not in the labels
+    df = df[df['label'].isin(labels)]
+
     # Flag for apply_entities
-    df['run'] = run
+    df['run'] = True
     return df
 
 
 def process_chunk(fun, texts):
-    return [fun(text) for text in texts]
+    # return [fun(text) for text in texts]  # Not sure which is faster :-/
+    return list(map(fun, texts))
 
 
 def apply_entities(df):
@@ -138,22 +140,21 @@ def apply_entities(df):
     To get the raw_entities, just use the setup function.
     """
     # Assert the dataframe has been run through setup by checking the run column
-    if 'run' not in df.columns or df['run'].iloc[0] != run:
+    if 'run' not in df.columns or not df['run'].iloc[0]:
         raise ValueError("Dataframe must be run through setup first.")
 
     # Get a set of all unique entities
-    unique_entities = list(set([entity for entities in df['raw_entities'] for entity in entities]))
-    entity_df = get_entity_df(unique_entities)
+    entity_df = get_entity_df(df)
 
     entity_df = get_all_wikidata(entity_df)
 
     map_and_update_headlines(df, entity_df)
 
 
-def get_entity_df(unique_entities):
-    logger.info("Getting existing ids")
-    # Fill in the ids of existing entities
-    entity_df = pd.DataFrame(unique_entities, columns=['entity', 'label'])
+def get_entity_df(df):
+    logger.info("Getting existing ids...")
+    # Drop duplicates
+    entity_df = df[['entity', 'label']].drop_duplicates().copy()
     # May also need to filter stuff like "A guy from..."
     entity_df['simplified'] = entity_df['entity'].apply(canonicalize)
 
@@ -162,10 +163,12 @@ def get_entity_df(unique_entities):
             lambda x: s.query(NamedEntity.id).filter(NamedEntity.patterns.like(f'%{x["simplified"].lower()}%')).first(),
             axis=1
         )
+
     # Upon retrieval these can be None or (id,) tuples so we need to flatten if they're not None
     entity_df['entity_id'] = entity_df['entity_id'].apply(lambda x: x[0] if x else None)
 
     entity_df['entity_id'] = entity_df['entity_id'].astype('Int64')
+    logger.info("Found %s existing entities", entity_df['entity_id'].notna().sum())
     entity_df['wikidata_id'] = None  # We don't need to query the wiki ids above because we won't be updating them
     entity_df['canonical'] = None  # same for all the rest
     entity_df['description'] = None
@@ -227,10 +230,14 @@ def get_all_wikidata(entity_df):
         entity_df.loc[matches.index, 'patterns'] = ','.join(patterns).lower()
         entity_df.loc[matches.index, 'queried'] = True
 
-        if i % 50 == 0:  # TODO: Checkpoint to database
-            logger.info(f"Checkpointing %i of %i: %s", i, unidentified_ids, row['simplified'])
+        if i % 50 == 0:
             # Get rows that are queried but not committed and have a wiki_id
-            updating_entities(queried_rows(entity_df))
+            queried = queried_rows(entity_df)
+            logger.info(
+                f"Checkpointing %i entities on iter %i of %i: %s (sleep: %f)", len(queried), i,
+                unidentified_ids, row['simplified'], sleep
+            )
+            updating_entities(queried)
             # Mark all queried rows as committed
             entity_df.loc[entity_df['queried'], 'committed'] = True
 
@@ -243,24 +250,22 @@ def get_all_wikidata(entity_df):
 
 def map_and_update_headlines(df, entity_df):
     # Drop entities for which we couldn't find a wikidata id
-    entity_df.dropna(subset=['wikidata_id'], inplace=True)
+    entity_df.dropna(subset=['entity_id'], inplace=True)
 
-    # Match the entities to the headlines by
-    df['entity_ids'] = df['entities'].apply(
-        lambda x: [entity_df[entity_df['entity'] == entity]['entity_id'].values[0] for entity in x]
-    )
-    # Make a df of all unique headline_ids and only headline_ids
-    headline_ids = df['headline_id'].unique().tolist()
+    def match_id(x):
+        match = entity_df.loc[entity_df['entity'] == x, 'entity_id']
+        if match.empty:
+            return None
+        return match.values[0]
 
-    # Now we can directly map headline_ids to entity_ids
-    headline_entity_df = pd.DataFrame(
-        [(headline_id, entity_id) for headline_id, entity_ids in
-         df[['headline_id', 'entity_ids']].values for entity_id in entity_ids],
-        columns=['headline_id', 'entity_id']
-    )
-    headline_entity_df.drop_duplicates(inplace=True)
+    # Match the entities to the headlines by checking if the entity is in the headline
+    # In the DF we have an 'entity' column with the entity, and the same in the entity_df
+    # We need to get the entity_id from the entity_df and put it in the df
+    df['entity_id'] = df['entity'].apply(match_id)
+    headline_entity_df = df[['headline_id', 'entity_id']].drop_duplicates().copy()
     headline_entity_df.dropna(inplace=True)
     headline_entity_df.rename(columns={'entity_id': 'named_entity_id'}, inplace=True)
+    headline_ids = headline_entity_df['headline_id'].unique()
 
     with Session() as s:
         logger.info("Getting all current associations...")
