@@ -179,7 +179,6 @@ Scrapers = [
     Independent,
     IndependentJournalReview,
     IndiaTimes,
-    IndianExpress,
     Intercept,
     Jacobin,
     JapanTimes,

@@ -17,13 +17,6 @@ class Base(DeclarativeBase):
     pass
 
 
-named_entity_association = sa.Table(
-    "article_named_entity",
-    Base.metadata,
-    sa.Column("article_id", Integer, sa.ForeignKey("article.id")),
-    sa.Column("named_entity_id", Integer, sa.ForeignKey("named_entity.id"))
-)
-
 
 class Agency(Base):
     __tablename__ = "agency"
@@ -118,9 +111,6 @@ class Article(Base, AccessTimeMixin):
     topic_id: Mapped[int] = mapped_column(sa.ForeignKey("topic.id"), nullable=True)
     topic: Mapped["Topic"] = relationship("Topic")
     topic_score: Mapped[float] = mapped_column(Float(), nullable=True)
-    named_entities: Mapped[list["NamedEntity"]] = relationship("NamedEntity",
-                                                               secondary=named_entity_association,
-                                                               back_populates="articles")
 
     def __repr__(self) -> str:
         return f"Article(id={self.id!r}, agency={self.agency.name!r}, url={self.url!r})"
@@ -135,30 +125,7 @@ class Article(Base, AccessTimeMixin):
         return max(self.headlines, key=lambda h: h.last_accessed)
 
 
-class Headline(Base, AccessTimeMixin):
-    __tablename__ = "headline"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    article_id: Mapped[int] = mapped_column(sa.ForeignKey("article.id"))
-    article: Mapped["Article"] = relationship(Article, back_populates="headlines")
-    raw: Mapped[str] = mapped_column(Text(), nullable=True)
-    title: Mapped[str] = mapped_column(Text())
-    processed: Mapped[str] = mapped_column(Text(), nullable=True, index=True)
-    position: Mapped[int] = mapped_column(Integer(), default=0, nullable=True)
-    legacy: Mapped[bool] = mapped_column(sa.Boolean(), default=False, nullable=True)
-
-    vader_neg: Mapped[float] = mapped_column(Float(), nullable=True)
-    vader_neu: Mapped[float] = mapped_column(Float(), nullable=True)
-    vader_pos: Mapped[float] = mapped_column(Float(), nullable=True)
-    vader_compound: Mapped[float] = mapped_column(Float(), nullable=True)
-    afinn: Mapped[float] = mapped_column(Float(), nullable=True)
-
-    def __repr__(self) -> str:
-        return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"
-
-    def __str__(self) -> str:
-        return self.title
-
-
+# Topics map to articles because the article is always about the same subject
 class Topic(Base, AccessTimeMixin):
     __tablename__ = "topic"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -186,17 +153,59 @@ class Topic(Base, AccessTimeMixin):
         self._essential = cast(Mapped[str], ','.join(value))
 
 
-class NamedEntity(Base, AccessTimeMixin):
+named_entity_association = sa.Table(
+    "article_named_entity",
+    Base.metadata,
+    sa.Column("headline_id", Integer, sa.ForeignKey("headline.id")),
+    sa.Column("named_entity_id", Integer, sa.ForeignKey("named_entity.id"))
+)
+
+class Headline(Base, AccessTimeMixin):
+    __tablename__ = "headline"
+
+    # Mapping to article
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(sa.ForeignKey("article.id"))
+    article: Mapped["Article"] = relationship(Article, back_populates="headlines")
+
+    # Headline data columns
+    raw: Mapped[str] = mapped_column(Text(), nullable=True)
+    title: Mapped[str] = mapped_column(Text())
+    processed: Mapped[str] = mapped_column(Text(), nullable=True, index=True)
+    position: Mapped[int] = mapped_column(Integer(), default=0, nullable=True)
+
+    # Sentiment columns
+    vader_neg: Mapped[float] = mapped_column(Float(), nullable=True)
+    vader_neu: Mapped[float] = mapped_column(Float(), nullable=True)
+    vader_pos: Mapped[float] = mapped_column(Float(), nullable=True)
+    vader_compound: Mapped[float] = mapped_column(Float(), nullable=True)
+    afinn: Mapped[float] = mapped_column(Float(), nullable=True)
+
+    # Internal flags
+    legacy: Mapped[bool] = mapped_column(sa.Boolean(), default=False, nullable=True)
+    ner_processed: Mapped[bool] = mapped_column(sa.Boolean(), default=False, nullable=True)
+
+    named_entities: Mapped[list["NamedEntity"]] = relationship("NamedEntity",
+                                                               secondary=named_entity_association,
+                                                               back_populates="headlines")
+
+    def __repr__(self) -> str:
+        return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class NamedEntity(Base, AccessTimeMixin):  # Named entities map to headlines because they are stored in the headline
     __tablename__ = "named_entity"
     id: Mapped[int] = mapped_column(primary_key=True)
     canonical: Mapped[str] = mapped_column(sa.String(255))
+    label: Mapped[str] = mapped_column(sa.String(10))
     patterns: Mapped[str] = mapped_column(Text(), index=True)
     wikidata_id: Mapped[str] = mapped_column(sa.String(255))
     description: Mapped[str] = mapped_column(Text())
-    count: Mapped[int] = mapped_column(Integer(), default=0)
-    articles: Mapped[list["Article"]] = relationship("Article", secondary=named_entity_association,
-                                                     back_populates="named_entities")
-    label: Mapped[str] = mapped_column(sa.String(10))
+    headlines: Mapped[list["Article"]] = relationship("Headline", secondary=named_entity_association,
+                                                      back_populates="named_entities")
 
 
 engine = sa.create_engine(Config.connection_string)

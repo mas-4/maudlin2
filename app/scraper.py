@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as dt
 from threading import Thread, Lock
+from queue import Queue
 
 import pandas as pd
 import pytz
@@ -33,6 +34,12 @@ class Scraper(ABC, Thread):
     parser: str = 'lxml'
     country = Country.us
     sql_lock = SqlLock
+
+    def __repr__(self):
+        return f'(Scraper: {self.agency})'
+
+    def __str__(self):
+        return self.__repr__()
 
     def __init__(self):
         super().__init__()
@@ -100,15 +107,37 @@ class Scraper(ABC, Thread):
         meantime = 0
         if self.found:
             meantime = runtime / self.found
-        # If we didn't got headlines but nothing processed we want to warn
+        # If we didn't get headlines but nothing processed we want to warn
         bugle = logger.info if not self.found or self.articles + self.headlines + self.updated else logger.warning
         bugle("%s: %d found, added %d articles, %d headlines, updated %d in %f seconds with a mean time of %f",
               self.agency, self.found, self.articles, self.headlines, self.updated, runtime, meantime)
 
     def prefilter(self, downstream):
-        df = pd.DataFrame(downstream, columns=['href', 'raw'])
-        df['raw'] = df['raw'].apply(str)
+        df = self.process_dataframe(downstream)
 
+        with Session() as s:
+            seen = s.query(Headline.processed, Headline.id, Article.id).join(Headline.article).filter(
+                Headline.processed.in_(df['processed'].tolist())
+            ).all()
+            df['seen'] = df['processed'].isin([x[0] for x in seen])
+
+            self.df = df.copy()
+
+            df.drop(df[df['seen'] == True].index, inplace=True)  # noqa
+            dropped = len(seen)
+            self.updated += dropped
+            s.query(Headline).filter(Headline.id.in_([x[1] for x in seen])).update({'last_accessed': dt.now(pytz.UTC)})
+            s.query(Article).filter(Article.id.in_([x[2] for x in seen])).update({'last_accessed': dt.now(pytz.UTC)})
+            s.commit()
+
+        df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row']),
+                                 axis=1)
+        return dropped, df['artpair'].tolist()
+
+    def process_dataframe(self, downstream):
+        df = pd.DataFrame(downstream, columns=['href', 'raw'])
+
+        df['raw'] = df['raw'].apply(str)
         df['row'] = df.index
         df['row'] = df['row'].astype(int)
 
@@ -135,32 +164,7 @@ class Scraper(ABC, Thread):
         df.drop(df[df['processed'].isnull()].index, inplace=True)
         logger.debug("Dropping headlines without processed text in %f seconds", time.time() - t)
 
-        with Session() as s:
-            seen = s.query(Headline.processed, Headline.id, Article.id).join(Headline.article).filter(
-                Headline.processed.in_(df['processed'].tolist())
-            ).all()
-            df['seen'] = df['processed'].isin([x[0] for x in seen])
-            df.drop(df[df['seen'] == True].index, inplace=True)  # noqa
-            dropped = len(seen)
-            self.updated += dropped
-            s.query(Headline).filter(Headline.id.in_([x[1] for x in seen])).update({'last_accessed': dt.now(pytz.UTC)})
-            s.query(Article).filter(Article.id.in_([x[2] for x in seen])).update({'last_accessed': dt.now(pytz.UTC)})
-            s.commit()
-
-        df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row']),
-                                 axis=1)
-        self.df = df
-        return dropped, df['artpair'].tolist()
-
-    def run_processing(self):
-        self.found = len(self.downstream)
-        logger.info("Processing %s, %i upstream headlines", self.agency, self.found)
-        t = time.time()
-        dropped, prefiltered = self.prefilter(self.downstream)
-        logger.info("Prefiltered %i headlines in %f seconds", dropped, time.time() - t)
-        with Session() as s:
-            [self.process(s, art_pair) for art_pair in prefiltered]
-            s.commit()
+        return df
 
     def process(self, s, art: ArticleTuple):
         if (headline := s.query(Headline).filter(Headline.processed == art.processed).first()) is not None:
@@ -186,6 +190,17 @@ class Scraper(ABC, Thread):
         s.add(headline)
         metrics.apply(headline, s)
         self.headlines += 1
+
+    def run_processing(self):
+        self.found = len(self.downstream)
+        logger.info("Processing %s, %i upstream headlines", self.agency, self.found)
+        t = time.time()
+        dropped, prefiltered = self.prefilter(self.downstream)
+        logger.info("Prefiltered %i headlines in %f seconds", dropped, time.time() - t)
+
+        with Session() as s:
+            [self.process(s, art_pair) for art_pair in prefiltered]
+            s.commit()
 
     def clean_href(self, href):
         if href.startswith('//'):
@@ -235,6 +250,9 @@ class SeleniumScraper(Scraper):
         super().__init__()
         self.srs = SeleniumResourceManager()
         self.success = False
+
+    def __repr__(self):
+        return f'(SeleniumScraper: self.agency)'
 
     def get_page(self, url: str):
         try:
