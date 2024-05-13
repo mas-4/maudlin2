@@ -4,9 +4,11 @@ from collections import namedtuple
 from functools import partial
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import requests
 import spacy
+import sqlalchemy as sa
 
 from app.models import Session, NamedEntity, Headline, named_entity_association
 from app.utils import get_logger
@@ -76,7 +78,7 @@ def query_data(all_entities):
             query = s.query(Headline.id, Headline.processed).join(Headline.article).filter(
                 ~Headline.named_entities.any()
             )
-        data = query.limit(500).all()
+        data = query.all()
     df = pd.DataFrame(data, columns=['headline_id', 'title'])
     return df
 
@@ -119,7 +121,7 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
     logger.info("Done.")
 
     # Explode the raw_entities column
-    df = df.explode('raw_entities')
+    df = df.explode('raw_entities').reset_index()
     df[['entity', 'label']] = df['raw_entities'].apply(pd.Series)
     # Drop rows where the label is not in the labels
     df = df[df['label'].isin(labels)]
@@ -159,22 +161,25 @@ def get_entity_df(df):
     entity_df['simplified'] = entity_df['entity'].apply(canonicalize)
 
     with Session() as s:
-        entity_df['entity_id'] = entity_df.apply(
-            lambda x: s.query(NamedEntity.id).filter(NamedEntity.patterns.like(f'%{x["simplified"].lower()}%')).first(),
-            axis=1
+        existing_df = pd.DataFrame(
+            s.query(
+                NamedEntity.id,
+                NamedEntity.canonical,
+                NamedEntity.patterns,
+                NamedEntity.wikidata_id
+            ).filter(
+                NamedEntity.patterns.in_(entity_df['simplified'].tolist())
+            ).all(),
+            columns=['entity_id', 'canonical', 'patterns', 'wikidata_id']
         )
-
-    # Upon retrieval these can be None or (id,) tuples so we need to flatten if they're not None
-    entity_df['entity_id'] = entity_df['entity_id'].apply(lambda x: x[0] if x else None)
+    entity_df = pd.concat([entity_df, existing_df], axis=1)
 
     entity_df['entity_id'] = entity_df['entity_id'].astype('Int64')
     logger.info("Found %s existing entities", entity_df['entity_id'].notna().sum())
-    entity_df['wikidata_id'] = None  # We don't need to query the wiki ids above because we won't be updating them
-    entity_df['canonical'] = None  # same for all the rest
-    entity_df['description'] = None
-    entity_df['patterns'] = None
     entity_df['queried'] = False
     entity_df['committed'] = False
+    entity_df['patterns'] = entity_df['patterns'].replace({np.nan: None})
+    entity_df['wikidata_id'] = entity_df['wikidata_id'].replace({np.nan: None})
     return entity_df
 
 
@@ -183,6 +188,16 @@ def canonicalize(entity):
     entity = entity.replace("'s", "")
     entity = entity.replace("'", "")
     return entity
+
+
+def merge_new_existing(entity_df, new_existing):  # noqa
+    # We have a set of entities we've found with patterns we didn't know existed. They've now been updated.
+    # We need to overwrite the patterns in the entity_df with the new patterns from new_existing
+    # But first we should identify any rows in entity_df that match patterns in new_existing
+    # And mark then queried
+
+    # TODO Implement a function that merges the patterns together
+    pass
 
 
 def get_all_wikidata(entity_df):
@@ -199,7 +214,7 @@ def get_all_wikidata(entity_df):
     def queried_rows(df):
         return df[(df['queried']) & (~df['committed']) & (df['wikidata_id'].notna())]
 
-    for i, row in entity_df[entity_df['entity_id'].isna()].iterrows():
+    for i, (idx, row) in enumerate(entity_df[entity_df['entity_id'].isna()].iterrows()):
         if row['queried']:
             continue
 
@@ -218,11 +233,20 @@ def get_all_wikidata(entity_df):
         if not wikidata:
             continue
 
+        patterns = [row['simplified']]
+        # Check if the entity is already in the entity_df
+        if entity_df[entity_df['wikidata_id'] == wikidata.id].shape[0] > 1:
+            # Combine all the patterns
+            existing_patterns = ','.join(entity_df[entity_df['wikidata_id'] == wikidata.id]['patterns'].tolist())
+            patterns = ','.join(list(set(existing_patterns.split(',') + patterns)))
+            entity_df.loc[entity_df['wikidata_id'] == wikidata.id, 'patterns'] = patterns
+            continue
+
         # Check if any of the other unidentified match aliases
-        aliases = [row['simplified']] + wikidata.patterns
-        matches = entity_df[entity_df['simplified'].isin(aliases)]  # There will always be one match.
+        matches = entity_df[entity_df['simplified'].isin(patterns)]  # There will always be one match.
         # The patterns are now the union of all the patterns
-        patterns = list(filter(None, set(wikidata.patterns + matches['patterns'].tolist())))
+        patterns = ','.join(filter(None, patterns + matches['patterns'].tolist()))
+        patterns = list(set(patterns.split(',')))
 
         entity_df.loc[matches.index, 'wikidata_id'] = wikidata.id
         entity_df.loc[matches.index, 'canonical'] = wikidata.canonical
@@ -234,10 +258,17 @@ def get_all_wikidata(entity_df):
             # Get rows that are queried but not committed and have a wiki_id
             queried = queried_rows(entity_df)
             logger.info(
-                f"Checkpointing %i entities on iter %i of %i: %s (sleep: %f)", len(queried), i,
-                unidentified_ids, row['simplified'], sleep
+                "Checkpointing %i entities on iter %i of %i: %s (idx %i) (sleep: %f)",
+                len(queried),
+                i,
+                unidentified_ids,
+                row['simplified'],
+                idx,
+                sleep
             )
-            updating_entities(queried)
+            new_existing = updating_entities(queried)
+            merge_new_existing(entity_df, new_existing)  # Does nothing
+
             # Mark all queried rows as committed
             entity_df.loc[entity_df['queried'], 'committed'] = True
 
@@ -261,6 +292,8 @@ def map_and_update_headlines(df, entity_df):
     # Match the entities to the headlines by checking if the entity is in the headline
     # In the DF we have an 'entity' column with the entity, and the same in the entity_df
     # We need to get the entity_id from the entity_df and put it in the df
+    # TODO: There has got to be a better way to do this than another apply
+    # That said, this is far from the slowest part of the process
     df['entity_id'] = df['entity'].apply(match_id)
     headline_entity_df = df[['headline_id', 'entity_id']].drop_duplicates().copy()
     headline_entity_df.dropna(inplace=True)
@@ -291,11 +324,50 @@ def map_and_update_headlines(df, entity_df):
 def updating_entities(entity_df):
     # Now we need to insert the new entities into the database
     new_entities = entity_df[(entity_df['entity_id'].isna()) & (entity_df['wikidata_id'].notna())]
+    # Drop any duplicate wikidata_ids
+    new_entities.drop_duplicates(subset='wikidata_id', inplace=True)
     new_entities = new_entities[['canonical', 'label', 'wikidata_id', 'description', 'patterns']]
-    rows = new_entities.to_dict(orient='records')
+
     with Session() as s:
-        s.bulk_insert_mappings(NamedEntity, rows)
+        existing_entities = pd.DataFrame(
+            s.query(NamedEntity.id, NamedEntity.wikidata_id, NamedEntity.patterns).filter(
+                NamedEntity.wikidata_id.in_(new_entities['wikidata_id'])
+            ).all(),
+            columns=['entity_id', 'wikidata_id', 'patterns']
+        )
+
+        # Get a list of wikidata_ids common to both
+        common = set(existing_entities['wikidata_id']) & set(new_entities['wikidata_id'])
+        new_existing = new_entities[new_entities['wikidata_id'].isin(common)]
+        # Merge the patterns from the new existing df into the existing_entities df
+        existing_entities = existing_entities.merge(new_existing[['wikidata_id', 'patterns']],
+                                                    on='wikidata_id',
+                                                    how='left')
+
+        # Drop rows where patterns_x == patterns_y
+        existing_entities = existing_entities[existing_entities['patterns_x'] != existing_entities['patterns_y']]
+        # Combine the patterns. Sometimes the dumbest way is the best.
+        existing_entities['patterns'] = existing_entities['patterns_x'] + ',' + existing_entities['patterns_y']
+        existing_entities['patterns'] = existing_entities['patterns'].str.split(',')
+        existing_entities['patterns'] = existing_entities['patterns'].apply(lambda x: ','.join(set(x)))
+
+        # Update the patterns in the database
+        existing_entities.drop(columns=['patterns_x', 'patterns_y'], inplace=True)
+        existing_entities = existing_entities[['entity_id', 'patterns']]
+        if not existing_entities.empty:
+            updates = existing_entities.to_dict(orient='records')
+            ne_table = NamedEntity.__table__
+            stmt = ne_table.update().where(ne_table.c.id == sa.bindparam('entity_id')).values(  # noqa update() missing
+                patterns=sa.bindparam('patterns'))
+            s.execute(stmt, updates)
+
+        # Drop the new_existing wikidata_ids from the new_entities df
+        new_entities = new_entities[~new_entities['wikidata_id'].isin(common)]
+
+        # Insert the new entities
+        s.bulk_insert_mappings(NamedEntity, new_entities.to_dict(orient='records'))
         s.commit()
+    return new_existing
 
 
 def get_entity_ids(entity_df):
