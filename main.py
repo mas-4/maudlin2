@@ -22,7 +22,7 @@ def main(args: argparse.Namespace):
         reprocess_headlines('all' in args.reprocess)
         return
     if args.process_entities is not None:
-        reapply_entities('all' in args.process_entities)
+        reapply_entities(args.process_entities)
         return
 
     if not args.skip_scrape:
@@ -42,7 +42,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
     parser.add_argument('--reprocess', action='store', type=str)
-    parser.add_argument('--process-entities', action='store', type=str)
+    parser.add_argument('--process-entities', action='store', type=int, default=5_000)
 
     args = parser.parse_args()
     if args.debug:

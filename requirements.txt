@@ -14,10 +14,12 @@ cloudpathlib==0.16.0
 colorama==0.4.6
 confection==0.1.4
 contourpy==1.2.1
+cupy-cuda12x==12.3.0
 cycler==0.12.1
 cymem==2.0.8
 cytoolz==0.12.3
 en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl#sha256=ab70aeb6172cde82508f7739f35ebc9918a3d07debeed637403c8f794ba3d3dc
+fastrlock==0.8.2
 filelock==3.13.4
 floret==0.10.5
 fonttools==4.51.0
@@ -79,7 +81,6 @@ thinc==8.2.3
 threadpoolctl==3.4.0
 tokenizers==0.19.1
 toolz==0.12.1
-torch==2.2.2
 tqdm==4.66.3
 transformers==4.40.0
 trio==0.25.0
@@ -91,5 +92,6 @@ urllib3==2.2.1
 validators==0.28.1
 wasabi==1.1.2
 weasel==0.3.4
+wheel==0.43.0
 wordcloud==1.9.3
 wsproto==1.2.0

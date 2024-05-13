@@ -7,6 +7,7 @@ import pytz
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from app.utils import Config, Bias, Credibility, Country, Constants, get_logger
 
@@ -153,12 +154,17 @@ class Topic(Base, AccessTimeMixin):
         self._essential = cast(Mapped[str], ','.join(value))
 
 
-named_entity_association = sa.Table(
-    "article_named_entity",
-    Base.metadata,
-    sa.Column("headline_id", Integer, sa.ForeignKey("headline.id")),
-    sa.Column("named_entity_id", Integer, sa.ForeignKey("named_entity.id"))
-)
+class NamedEntityAssociation(Base):
+    __tablename__ = "named_entity_association"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    headline_id: Mapped[int] = mapped_column(sa.ForeignKey("headline.id"))
+    named_entity_id: Mapped[int] = mapped_column(sa.ForeignKey("named_entity.id"))
+    headline: Mapped["Headline"] = relationship("Headline", back_populates="named_entity_assocs")
+    named_entity: Mapped["NamedEntity"] = relationship("NamedEntity", back_populates="headline_assocs")
+
+    entity: Mapped[str] = mapped_column(sa.String(255))
+    label: Mapped[str] = mapped_column(sa.String(10))
+
 
 class Headline(Base, AccessTimeMixin):
     __tablename__ = "headline"
@@ -185,9 +191,12 @@ class Headline(Base, AccessTimeMixin):
     legacy: Mapped[bool] = mapped_column(sa.Boolean(), default=False, nullable=True)
     ner_processed: Mapped[bool] = mapped_column(sa.Boolean(), default=False, nullable=True)
 
-    named_entities: Mapped[list["NamedEntity"]] = relationship("NamedEntity",
-                                                               secondary=named_entity_association,
-                                                               back_populates="headlines")
+    # Named entities
+    named_entity_assocs: Mapped[list["NamedEntityAssociation"]] = relationship(back_populates="headline")
+    named_entities: Mapped[list["NamedEntity"]] = association_proxy("named_entity_assocs", "named_entity")
+
+
+
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"
@@ -204,8 +213,10 @@ class NamedEntity(Base, AccessTimeMixin):  # Named entities map to headlines bec
     patterns: Mapped[str] = mapped_column(Text(), index=True)
     wikidata_id: Mapped[str] = mapped_column(sa.String(255))
     description: Mapped[str] = mapped_column(Text())
-    headlines: Mapped[list["Article"]] = relationship("Headline", secondary=named_entity_association,
-                                                      back_populates="named_entities")
+
+    headline_assocs: Mapped[list["NamedEntityAssociation"]] = relationship(back_populates="named_entity")
+    headlines: Mapped[list["Headline"]] = association_proxy("headline_assocs", "headline")
+
 
 
 engine = sa.create_engine(Config.connection_string)

@@ -4,14 +4,17 @@ from collections import namedtuple
 from functools import partial
 from typing import Optional
 
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import requests
 import spacy
 import sqlalchemy as sa
 
-from app.models import Session, NamedEntity, Headline, named_entity_association
+from app.models import Session, NamedEntity, Headline, NamedEntityAssociation
 from app.utils import get_logger
+
+tqdm.pandas()
 
 logger = get_logger(__name__)
 
@@ -23,6 +26,7 @@ WikiData = namedtuple('Wikidata', ['id', 'canonical', 'description', 'patterns']
 class EntityAnalyzer:
     def __init__(self):
         # we may need a better identifier
+        spacy.require_gpu()
         self.nlp = spacy.load("en_core_web_lg")
 
     def extract_entities(self, text):
@@ -60,24 +64,27 @@ def query_wikidata(entity_name) -> tuple[bool, Optional[WikiData]]:
     return True, WikiData(id_, canonical, description, patterns)
 
 
-def reapply_entities(all_entities: bool = False):
+def reapply_entities(limit: int = 5_000):
     analyzer = EntityAnalyzer()
-    df = query_data(all_entities)
+    df = query_data(limit)
     df = setup(df, analyzer)
     apply_entities(df)
 
 
-def query_data(all_entities):
+def query_data(limit):
     logger.info("Querying data.")
+    all_entities = True
     with Session() as s:
         if all_entities:
             # Delete all existing associations since we're clearly processing every headline
-            s.query(named_entity_association).delete()
+            s.query(NamedEntityAssociation).delete()
             query = s.query(Headline.id, Headline.processed).join(Headline.article)
         else:
             query = s.query(Headline.id, Headline.processed).join(Headline.article).filter(
                 ~Headline.named_entities.any()
             )
+        if limit:
+            query = query.limit(limit)
         data = query.all()
     df = pd.DataFrame(data, columns=['headline_id', 'title'])
     return df
@@ -99,24 +106,11 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
     if df['headline_id'].isnull().any():
         raise ValueError("Dataframe must not have any nulls in the 'headline_id' column.")
 
-    # Use 5 processes to extract entities
-    num_processes = mp.cpu_count()
     num_headlines = len(df)
-    # Calculate chunk size
-    chunk_size = num_headlines // num_processes
 
-    logger.info("Using %i processes to extract entities for %i headlines...", num_processes, num_headlines)
+    logger.info("Extracting entities for %i headlines...", num_headlines)
 
-    fun = partial(process_chunk, analyzer.extract_entities)
-    chunks = [df['title'][i:i + chunk_size] for i in range(0, len(df), chunk_size)]
-    with mp.Pool(num_processes) as pool:
-        result_chunks = pool.imap(fun, chunks)
-        results = []
-        for i, result_chunk in enumerate(result_chunks):
-            results.extend(result_chunk)
-            logger.info(f"Finished chunk {i + 1} of {len(chunks)}")
-
-    df['raw_entities'] = results
+    df['raw_entities'] = df['title'].progress_apply(analyzer.extract_entities)
 
     logger.info("Done.")
 
@@ -129,11 +123,6 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
     # Flag for apply_entities
     df['run'] = True
     return df
-
-
-def process_chunk(fun, texts):
-    # return [fun(text) for text in texts]  # Not sure which is faster :-/
-    return list(map(fun, texts))
 
 
 def apply_entities(df):
@@ -295,7 +284,7 @@ def map_and_update_headlines(df, entity_df):
     # TODO: There has got to be a better way to do this than another apply
     # That said, this is far from the slowest part of the process
     df['entity_id'] = df['entity'].apply(match_id)
-    headline_entity_df = df[['headline_id', 'entity_id']].drop_duplicates().copy()
+    headline_entity_df = df[['headline_id', 'entity_id', 'entity', 'label']].drop_duplicates().copy()
     headline_entity_df.dropna(inplace=True)
     headline_entity_df.rename(columns={'entity_id': 'named_entity_id'}, inplace=True)
     headline_ids = headline_entity_df['headline_id'].unique()
@@ -303,14 +292,14 @@ def map_and_update_headlines(df, entity_df):
     with Session() as s:
         logger.info("Getting all current associations...")
         exists_df = pd.DataFrame(s.query(
-            named_entity_association.c.headline_id, named_entity_association.c.named_entity_id
+            NamedEntityAssociation.headline_id, NamedEntityAssociation.named_entity_id
         ).all(), columns=['headline_id', 'named_entity_id'])
 
         logger.info("Dropping all existing associations from updates...")
         headline_entity_df = headline_entity_df[~headline_entity_df.isin(exists_df.to_dict(orient='records'))]
 
         logger.info("Inserting new associations...")
-        s.execute(named_entity_association.insert().values(headline_entity_df.to_dict(orient='records')))
+        s.execute(NamedEntityAssociation.__table__.insert().values(headline_entity_df.to_dict(orient='records')))  # noqa
 
         logger.info("Updating all headlines so that ner_processed is True")
         s.query(Headline).filter(Headline.id.in_(headline_ids)).update({'ner_processed': True},
