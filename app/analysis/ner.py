@@ -26,7 +26,11 @@ WikiData = namedtuple('Wikidata', ['id', 'canonical', 'description', 'patterns']
 class EntityAnalyzer:
     def __init__(self):
         # we may need a better identifier
-        spacy.require_gpu()
+        try:
+            spacy.require_gpu()
+            self.gpu = True
+        except:  # noqa
+            self.gpu = False
         self.nlp = spacy.load("en_core_web_lg")
 
     def extract_entities(self, text):
@@ -90,6 +94,10 @@ def query_data(limit):
     return df
 
 
+def process_chunk(f, chunk):
+    return [f(row) for row in chunk]
+
+
 def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
     """
     Requires a simple dataframe with a 'title' column. Use the processed data from the database.
@@ -110,7 +118,14 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
 
     logger.info("Extracting entities for %i headlines...", num_headlines)
 
-    df['raw_entities'] = df['title'].progress_apply(analyzer.extract_entities)
+    if analyzer.gpu:
+        df['raw_entities'] = df['title'].progress_apply(analyzer.extract_entities)
+    else:
+        n_processes = mp.cpu_count()
+        with mp.Pool(n_processes) as pool:
+            partial_extract = partial(analyzer.extract_entities, chunks=20_000)
+            results = pool.imap(partial_extract, df['title'].tolist())
+        df['raw_entities'] = list(tqdm(results, total=num_headlines))
 
     logger.info("Done.")
 
