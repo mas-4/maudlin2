@@ -4,12 +4,12 @@ from collections import namedtuple
 from functools import partial
 from typing import Optional
 
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import requests
 import spacy
 import sqlalchemy as sa
+from tqdm import tqdm
 
 from app.models import Session, NamedEntity, Headline, NamedEntityAssociation
 from app.utils import get_logger
@@ -98,6 +98,16 @@ def process_chunk(f, chunk):
     return [f(row) for row in chunk]
 
 
+def preprocess(df: pd.DataFrame):
+    df['split'] = df['title'].str.split()
+    df['word_count'] = df['split'].map(len)
+    df['count_upper'] = df['split'].map(lambda x: sum(1 for c in x if c.isupper()))
+    df['percent_upper'] = df['count_upper'] / df['word_count']
+    df['tolower'] = df['percent_upper'] > 0.5
+    df.loc[df['tolower'], 'title'] = df['title'].str.lower()
+    df.drop(columns=['split', 'word_count', 'count_upper', 'percent_upper', 'tolower'], inplace=True)
+
+
 def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
     """
     Requires a simple dataframe with a 'title' column. Use the processed data from the database.
@@ -113,6 +123,8 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
         raise ValueError("Dataframe must not have any nulls in the 'title' column.")
     if df['headline_id'].isnull().any():
         raise ValueError("Dataframe must not have any nulls in the 'headline_id' column.")
+
+    preprocess(df)
 
     num_headlines = len(df)
 
@@ -130,10 +142,18 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
     logger.info("Done.")
 
     # Explode the raw_entities column
-    df = df.explode('raw_entities').reset_index()
+    df = df.explode('raw_entities')
     df[['entity', 'label']] = df['raw_entities'].apply(pd.Series)
     # Drop rows where the label is not in the labels
     df = df[df['label'].isin(labels)]
+
+    df['entity_split'] = df['entity'].str.split()
+    df['entity_word_count'] = df['entity_split'].map(len)
+    df = df[df['entity_word_count'] < 4]  # Any entity with more than 3 words is probably a glitch
+    df = df.reset_index()
+    df = df.drop(columns=['entity_split', 'entity_word_count', 'raw_entities', 'index'])
+    df['simplified'] = df['entity'].str.replace("'s", "")
+    df['simplified'] = df['simplified'].str.replace("'", "")
 
     # Flag for apply_entities
     df['run'] = True
@@ -149,6 +169,8 @@ def apply_entities(df):
     if 'run' not in df.columns or not df['run'].iloc[0]:
         raise ValueError("Dataframe must be run through setup first.")
 
+    df.drop(columns=['run'], inplace=True)
+
     # Get a set of all unique entities
     entity_df = get_entity_df(df)
 
@@ -159,39 +181,34 @@ def apply_entities(df):
 
 def get_entity_df(df):
     logger.info("Getting existing ids...")
-    # Drop duplicates
-    entity_df = df[['entity', 'label']].drop_duplicates().copy()
-    # May also need to filter stuff like "A guy from..."
-    entity_df['simplified'] = entity_df['entity'].apply(canonicalize)
 
     with Session() as s:
-        existing_df = pd.DataFrame(
-            s.query(
-                NamedEntity.id,
-                NamedEntity.canonical,
-                NamedEntity.patterns,
-                NamedEntity.wikidata_id
-            ).filter(
-                NamedEntity.patterns.in_(entity_df['simplified'].tolist())
-            ).all(),
-            columns=['entity_id', 'canonical', 'patterns', 'wikidata_id']
-        )
-    entity_df = pd.concat([entity_df, existing_df], axis=1)
+        querycols = {
+            'entity_id': NamedEntity.id,
+            'patterns': NamedEntity.patterns,
+            'wikidata_id': NamedEntity.wikidata_id,
+            'canonical': NamedEntity.canonical
+        }
+        q = s.query(*querycols.values())
+        existing_entities = df.apply(
+            lambda x: q.filter(NamedEntity.patterns.like(f'%{x["simplified"]}%')).first() or [None] * 4, axis=1)
 
-    entity_df['entity_id'] = entity_df['entity_id'].astype('Int64')
+    existing_entity_df = pd.DataFrame(existing_entities.tolist(), columns=list(querycols.keys()))
+    entity_df = pd.concat([df, existing_entity_df], axis=1)
+
     logger.info("Found %s existing entities", entity_df['entity_id'].notna().sum())
     entity_df['queried'] = False
     entity_df['committed'] = False
-    entity_df['patterns'] = entity_df['patterns'].replace({np.nan: None})
-    entity_df['wikidata_id'] = entity_df['wikidata_id'].replace({np.nan: None})
+
+    entity_df.convert_dtypes()
+    # convert headline_id and entity_id to ints
+    entity_df['headline_id'] = entity_df['headline_id'].astype('Int64')
+    entity_df['entity_id'] = entity_df['entity_id'].astype('Int64')
+
+    for col in querycols.keys():
+        entity_df[col] = entity_df[col].replace({np.nan: None})
+
     return entity_df
-
-
-def canonicalize(entity):
-    # Remove 's and ' from the entity
-    entity = entity.replace("'s", "")
-    entity = entity.replace("'", "")
-    return entity
 
 
 def merge_new_existing(entity_df, new_existing):  # noqa
@@ -258,9 +275,9 @@ def get_all_wikidata(entity_df):
         entity_df.loc[matches.index, 'patterns'] = ','.join(patterns).lower()
         entity_df.loc[matches.index, 'queried'] = True
 
-        if i % 50 == 0:
+        queried = queried_rows(entity_df)
+        if len(queried) > 50:
             # Get rows that are queried but not committed and have a wiki_id
-            queried = queried_rows(entity_df)
             logger.info(
                 "Checkpointing %i entities on iter %i of %i: %s (idx %i) (sleep: %f)",
                 len(queried),
@@ -314,7 +331,8 @@ def map_and_update_headlines(df, entity_df):
         headline_entity_df = headline_entity_df[~headline_entity_df.isin(exists_df.to_dict(orient='records'))]
 
         logger.info("Inserting new associations...")
-        s.execute(NamedEntityAssociation.__table__.insert().values(headline_entity_df.to_dict(orient='records')))  # noqa
+        s.execute(
+            NamedEntityAssociation.__table__.insert().values(headline_entity_df.to_dict(orient='records')))  # noqa
 
         logger.info("Updating all headlines so that ner_processed is True")
         s.query(Headline).filter(Headline.id.in_(headline_ids)).update({'ner_processed': True},
