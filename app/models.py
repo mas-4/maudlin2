@@ -126,19 +126,26 @@ class Article(Base, AccessTimeMixin):
 
 class Headline(Base, AccessTimeMixin):
     __tablename__ = "headline"
+    # Mapping to article
     id: Mapped[int] = mapped_column(primary_key=True)
     article_id: Mapped[int] = mapped_column(ForeignKey("article.id"))
     article: Mapped["Article"] = relationship(Article, back_populates="headlines")
+
+    # Headline data
     raw: Mapped[str] = mapped_column(Text(), nullable=True)
     title: Mapped[str] = mapped_column(Text())
     processed: Mapped[str] = mapped_column(Text(), nullable=True, index=True)
     position: Mapped[int] = mapped_column(Integer(), default=0, nullable=True)
 
+    # sentiment analysis
     vader_neg: Mapped[float] = mapped_column(Float(), nullable=True)
     vader_neu: Mapped[float] = mapped_column(Float(), nullable=True)
     vader_pos: Mapped[float] = mapped_column(Float(), nullable=True)
     vader_compound: Mapped[float] = mapped_column(Float(), nullable=True)
     afinn: Mapped[float] = mapped_column(Float(), nullable=True)
+
+    # Internal flags
+    legacy: Mapped[bool] = mapped_column(Integer(), default=0, nullable=False)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"

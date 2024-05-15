@@ -15,29 +15,13 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
 from app.analysis import metrics
-from app.analysis.preprocessing import preprocess
+from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 
 logger = get_logger(__name__)
 
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos'])
-
-
-def extract_text(html_content):
-    soup = Soup(html_content, 'html.parser')
-
-    stack = [soup]
-
-    def generate_text_elements(_stack):
-        while _stack:
-            current_element = _stack.pop()
-            if isinstance(current_element, NavigableString):
-                yield current_element.strip()
-            else:
-                _stack.extend(reversed(list(current_element.children)))
-
-    return list(generate_text_elements(stack))
 
 
 class Scraper(ABC, Thread):
@@ -49,6 +33,12 @@ class Scraper(ABC, Thread):
     parser: str = 'lxml'
     country = Country.us
     sql_lock = SqlLock
+
+    def __repr__(self):
+        return f'(Scraper: {self.agency})'
+
+    def __str__(self):
+        return self.__repr__()
 
     def __init__(self):
         super().__init__()
@@ -120,10 +110,10 @@ class Scraper(ABC, Thread):
         bugle("%s: %d found, added %d articles, %d headlines, updated %d in %f seconds with a mean time of %f",
               self.agency, self.found, self.articles, self.headlines, self.updated, runtime, meantime)
 
-    def prefilter(self, downstream):
+    def process_dataframe(self, downstream):
         df = pd.DataFrame(downstream, columns=['href', 'raw'])
-        df['raw'] = df['raw'].apply(str)
 
+        df['raw'] = df['raw'].apply(str)
         df['row'] = df.index
         df['row'] = df['row'].astype(int)
 
@@ -135,7 +125,7 @@ class Scraper(ABC, Thread):
         logger.debug("Dropping headlines with invalid urls in %f seconds", time.time() - t)
 
         t = time.time()
-        df['title'] = df['raw'].apply(lambda x: ' '.join(extract_text(str(x))))
+        df['title'] = df['raw'].apply(extract_text)
         logger.debug("Extracted text in %f seconds", time.time() - t)
 
         t = time.time()
@@ -149,7 +139,10 @@ class Scraper(ABC, Thread):
         # Headlines without processed text are not headlines
         df.drop(df[df['processed'].isnull()].index, inplace=True)
         logger.debug("Dropping headlines without processed text in %f seconds", time.time() - t)
+        return df
 
+    def prefilter(self, downstream):
+        df = self.process_dataframe(downstream)
         with Session() as s:
             seen = s.query(Headline.processed, Headline.id, Article.id).join(Headline.article).filter(
                 Headline.processed.in_(df['processed'].tolist())
@@ -249,6 +242,12 @@ class SeleniumScraper(Scraper):
         super().__init__()
         self.srs = SeleniumResourceManager()
         self.success = False
+
+    def __repr__(self):
+        return f'(SeleniumScraper: {self.agency})'
+
+    def __str__(self):
+        return self.__repr__()
 
     def get_page(self, url: str):
         try:
