@@ -3,12 +3,14 @@ import time
 from collections import namedtuple
 from functools import partial
 from typing import Optional
+from bs4 import BeautifulSoup as Soup
 
 import numpy as np
 import pandas as pd
 import requests
 import spacy
 import sqlalchemy as sa
+import os
 from tqdm import tqdm
 
 from app.models import Session, NamedEntity, Headline, NamedEntityAssociation
@@ -20,7 +22,7 @@ logger = get_logger(__name__)
 
 labels = ['GPE', 'NORP', 'PERSON', 'ORG']
 
-WikiData = namedtuple('Wikidata', ['id', 'canonical', 'description', 'patterns'])
+WikiData = namedtuple('Wikidata', ['id', 'canonical', 'description'])
 
 
 class EntityAnalyzer:
@@ -40,10 +42,13 @@ class EntityAnalyzer:
 def query_wikidata(entity_name) -> tuple[bool, Optional[WikiData]]:
     url = "https://www.wikidata.org/w/api.php"
     params = {
-        "action": "wbsearchentities",
-        "language": "en",
+        "action": "query",
+        "list": "search",
+        "srsearch": entity_name.encode('utf-8'),
         "format": "json",
-        "search": entity_name.encode('utf-8')
+        "srlimit": 1,
+        "srnamespace": 0,
+        "srprop": "snippet|titlesnippet"
     }
     res = requests.get(url, params=params)
     if res.status_code != 200:
@@ -54,18 +59,15 @@ def query_wikidata(entity_name) -> tuple[bool, Optional[WikiData]]:
     if 'error' in res:
         logger.error(res['error'])
         return False, None
-    if res['success'] == 0 or not res['search']:
+    if res['query']['searchinfo']['totalhits'] == 0:
         return True, None
-    bestmatch = res['search'][0]
-    id_ = bestmatch['id']
-    canonical = bestmatch['display']['label']['value']
-    if 'description' not in bestmatch:
-        bestmatch['description'] = ""
-    description = bestmatch['description']
-    if 'aliases' not in bestmatch:
-        bestmatch['aliases'] = []
-    patterns = bestmatch['aliases'] + [canonical]
-    return True, WikiData(id_, canonical, description, patterns)
+    wikidata_id = res['query']['search'][0]['title']
+    description = res['query']['search'][0]['snippet']
+    canonical = res['query']['search'][0]['titlesnippet']
+    if '<' in canonical:
+        soup = Soup(canonical, 'html.parser')
+        canonical = soup.get_text()
+    return True, WikiData(wikidata_id, canonical, description)
 
 
 def reapply_entities(limit: int = 5_000):
@@ -130,14 +132,20 @@ def setup(df: pd.DataFrame, analyzer: EntityAnalyzer) -> pd.DataFrame:
 
     logger.info("Extracting entities for %i headlines...", num_headlines)
 
-    if analyzer.gpu:
-        df['raw_entities'] = df['title'].progress_apply(analyzer.extract_entities)
+    if os.path.exists('entity_checkpoint.csv'):
+        df = pd.read_csv('entity_checkpoint.csv')
     else:
-        n_processes = mp.cpu_count()
-        with mp.Pool(n_processes) as pool:
-            partial_extract = partial(analyzer.extract_entities, chunks=20_000)
-            results = pool.imap(partial_extract, df['title'].tolist())
-        df['raw_entities'] = list(tqdm(results, total=num_headlines))
+        if analyzer.gpu:
+            df['raw_entities'] = df['title'].progress_apply(analyzer.extract_entities)
+        else:
+            n_processes = mp.cpu_count()
+            with mp.Pool(n_processes) as pool:
+                partial_extract = partial(analyzer.extract_entities, chunks=20_000)
+                results = pool.imap(partial_extract, df['title'].tolist())
+            df['raw_entities'] = list(tqdm(results, total=num_headlines))
+
+        # Save df to a csv
+        df.to_csv('entity_checkpoint.csv', index=False)
 
     logger.info("Done.")
 
@@ -235,18 +243,25 @@ def get_all_wikidata(entity_df):
     def queried_rows(df):
         return df[(df['queried']) & (~df['committed']) & (df['wikidata_id'].notna())]
 
+    last_error = 0
+    query = 0
     for i, (idx, row) in enumerate(entity_df[entity_df['entity_id'].isna()].iterrows()):
         if row['queried']:
             continue
 
         while True:
             success, wikidata = query_wikidata(row['simplified'])
+            query += 1
             if not success:
-                logger.debug(f"Error querying Wikidata for {row['simplified']}")
+                last_error = query
+                logger.debug("Error querying Wikidata for %s", row['simplified'])
                 if sleep == 0:
                     sleep = 0.0001
                 else:
                     sleep *= 2
+                if sleep > 0 and query - last_error > 1000:
+                    logger.debug("It's been %i queries since the last error. Speeding back up.")
+                    sleep /= 2
             time.sleep(sleep)
             if success:
                 break
@@ -278,6 +293,8 @@ def get_all_wikidata(entity_df):
         queried = queried_rows(entity_df)
         if len(queried) > 50:
             # Get rows that are queried but not committed and have a wiki_id
+            # I want to know how many left. Just check how many not queried
+            unidentified_ids = len(entity_df[(entity_df['entity_id'].isna()) & (~entity_df['queried'])])
             logger.info(
                 "Checkpointing %i entities on iter %i of %i: %s (idx %i) (sleep: %f)",
                 len(queried),

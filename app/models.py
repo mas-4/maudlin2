@@ -5,9 +5,9 @@ from typing import cast
 import numpy as np
 import pytz
 import sqlalchemy as sa
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Text, Float, DateTime, Integer
-from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from app.utils import Config, Bias, Credibility, Country, Constants, get_logger
 
@@ -16,7 +16,6 @@ logger = get_logger(__name__)
 
 class Base(DeclarativeBase):
     pass
-
 
 
 class Agency(Base):
@@ -195,9 +194,6 @@ class Headline(Base, AccessTimeMixin):
     named_entity_assocs: Mapped[list["NamedEntityAssociation"]] = relationship(back_populates="headline")
     named_entities: Mapped[list["NamedEntity"]] = association_proxy("named_entity_assocs", "named_entity")
 
-
-
-
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"
 
@@ -216,7 +212,6 @@ class NamedEntity(Base, AccessTimeMixin):  # Named entities map to headlines bec
 
     headline_assocs: Mapped[list["NamedEntityAssociation"]] = relationship(back_populates="named_entity")
     headlines: Mapped[list["Headline"]] = association_proxy("headline_assocs", "headline")
-
 
 
 engine = sa.create_engine(Config.connection_string)
