@@ -254,21 +254,22 @@ class Plots:
 
     @staticmethod
     def sentiment_graphs(agg):
-        fig, ax = plt.subplots(2, 2)
+        fig, ax = plt.subplots(2)
         fig.set_size_inches(9, 8)
-        sns.lineplot(x='Date', y='Vader', data=agg, ax=ax[0, 0], label='Mean VADER')
-        sns.lineplot(x='Date', y='Vader MA', data=agg, ax=ax[0, 0], label='Moving Average')
-        sns.lineplot(x='Date', y='PVI', data=agg, ax=ax[0, 1], label='PVI (-left/+right)')
-        sns.lineplot(x='Date', y='PVI MA', data=agg, ax=ax[0, 1], label='Moving Average')
-        sns.lineplot(x='Date', y='Afinn', data=agg, ax=ax[1, 0], label='Mean AFINN')
-        sns.lineplot(x='Date', y='Afinn MA', data=agg, ax=ax[1, 0], label='Moving Average')
-        sns.lineplot(x='Date', y='PAI', data=agg, ax=ax[1, 1], label='PAI (-left/+right)')
-        sns.lineplot(x='Date', y='PAI MA', data=agg, ax=ax[1, 1], label='Moving Average')
+        sns.lineplot(x='Date', y='Vader MA', data=agg, ax=ax[0], label='Vader')
+        sns.lineplot(x='Date', y='Afinn MA', data=agg, ax=ax[0], label='Afinn')
+        sns.lineplot(x='Date', y='PVI MA', data=agg, ax=ax[1], label='PVI')
+        sns.lineplot(x='Date', y='PAI MA', data=agg, ax=ax[1], label='PAI')
         for i in range(2):
-            for j in range(2):
-                ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-                ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
-                ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=rotation)
+            ax[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax[i].set_xticks(ax[i].get_xticks()[::2])
+            ax[i].set_xticklabels(ax[i].get_xticklabels(), rotation=rotation)
+            # Hide the spines
+            for spine in ['right', 'top', 'left', 'bottom']:
+                ax[i].spines[spine].set_visible(False)
+            ax[i].legend(bbox_to_anchor=(0.5, 1.04), ncol=5, frameon=True, facecolor='lightgray', edgecolor='black',
+                         framealpha=0.9, fontsize='medium', title_fontsize='large', fancybox=True, shadow=True,
+                         borderpad=1.2, labelspacing=1.5)
 
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.sentiment_graphs).build)
