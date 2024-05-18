@@ -29,6 +29,7 @@ topic_colors = {
     'Ukraine': '#FFDD00',  # '#bcbd22',               # yellow
     # '#17becf'  # light blue
 }
+rotation = 35
 
 
 def get_bottom(df):
@@ -137,13 +138,14 @@ class Plots:
         # make horizontal lines at the y ticks
         ax.grid(axis='y', linestyle='--', alpha=0.5)
         # rotate y-axis labels
-        ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
+        ax.set_yticklabels(ax.get_yticklabels(), rotation=rotation)
         # set x-axis to last night at 11:00 to tonight at 11:00
         ax.set_xlim(dt.now().replace(hour=0, minute=0) - td(hours=1), dt.now().replace(hour=23, minute=59))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%I:%M %p'))
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
         # rotate x axis 45
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+        ax.set_xticks(ax.get_xticks()[::2])
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
         ax.legend(frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium',
                   title='Topic', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
                   labelspacing=1.5)
@@ -179,7 +181,7 @@ class Plots:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
         ax.set_xticks(ax.get_xticks()[::2])
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
 
         handles, labels = ax.get_legend_handles_labels()
         # Put the legend above the graph, arranged horizontally
@@ -215,7 +217,7 @@ class Plots:
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             # rotate x-axis labels
             ax.set_xticks(ax.get_xticks()[::2])
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
             apply_special_dates(ax, topic.name)
             plt.legend(loc='upper left')
             plt.tight_layout()
@@ -269,7 +271,7 @@ class Plots:
             for j in range(2):
                 ax[i, j].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
                 ax[i, j].set_xticks(ax[i, j].get_xticks()[::2])
-                ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=45)
+                ax[i, j].set_xticklabels(ax[i, j].get_xticklabels(), rotation=rotation)
 
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.sentiment_graphs).build)
