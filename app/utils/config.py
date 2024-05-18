@@ -47,7 +47,7 @@ class Config:
         os.makedirs(data)
     dayreport_file = os.path.join(data, 'day-report.json')
     assets = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'static')
-    build = os.path.join(Constants.Paths.ROOT, 'build')
+    build = os.path.join(Constants.Paths.ROOT, '_build')
     if not os.path.exists(build):
         os.makedirs(build)
 
