@@ -1,7 +1,6 @@
 import nltk
 
-nltk.download('vader_lexicon')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('wordnet')
-nltk.download('stopwords')
+nltks = ['vader_lexicon', 'punkt', 'averaged_perceptron_tagger', 'wordnet', 'stopwords']
+
+for nlt in nltks:
+    nltk.download(nlt, quiet=True)
