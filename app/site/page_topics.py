@@ -3,6 +3,7 @@ from functools import partial
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
 from app.models import Topic
+from app.site.graphing import Plots
 from app.site.common import copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.site.wordcloudgen import generate_wordcloud
@@ -82,4 +83,9 @@ class TopicsPage:
 if __name__ == '__main__':
     Config.set_debug()
     copy_assets()
-    TopicsPage(DataHandler([DataTypes.topics])).generate()
+    dh = DataHandler([DataTypes.topics])
+    Plots.topic_history_bar(dh.topic_df.copy())
+    Plots.topic_today_bubble(dh.topic_df.copy())
+    Plots.topic_today_bar(dh.topic_df.copy())
+    Plots.individual_topic(dh.topic_df.copy(), dh.topics)
+    TopicsPage(dh).generate()
