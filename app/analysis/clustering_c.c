@@ -4,11 +4,8 @@
 #include <numpy/arrayobject.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 static PyObject* form_clusters(PyObject* self, PyObject* args) {
-    printf("Clustering with C.\n");
-
     PyArrayObject *cosine_sim;
     int min_samples;
     double threshold;
