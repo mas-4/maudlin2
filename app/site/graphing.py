@@ -42,9 +42,8 @@ def get_bottom(df):
     return bottom
 
 
-def apply_special_dates(ax: plt.Axes, topic):
+def apply_special_dates(ax: plt.Axes, topic, rot=8):
     ymin, _ = ax.get_ylim()  # Get the minimum y value
-    rot = 8  # Adjust rotation if necessary
     i = 0
     for spdate in sorted(Config.special_dates, key=lambda x: x.date, reverse=False):
         if topic != 'all' and spdate.topic != topic:
@@ -211,12 +210,11 @@ class Plots:
             cls.individual_topic_sentiment_lines(ax.twinx(), topic_df)
 
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))
             # rotate x-axis labels
-            ax.set_xticks(ax.get_xticks()[::2])
+            ax.set_xticks(ax.get_xticks()[::3])
             ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
-            apply_special_dates(ax, topic.name)
-            plt.legend(loc='upper left')
+            apply_special_dates(ax, topic.name, 5)
             plt.tight_layout()
             for spine in ['right', 'top', 'left', 'bottom']:
                 ax.spines[spine].set_visible(False)
@@ -249,7 +247,6 @@ class Plots:
             ax.plot(gdf.index, gdf.sentiment, color=aisle_colors[group], label=group.title())
         ax.axhline(0, color='k', linestyle='dotted', lw=1)
         ax.tick_params(axis='y', labelcolor='r')
-        ax.set_xlabel('Date')
         ax.set_ylabel('Sentiment Moving Average', color='r')
 
     @staticmethod
