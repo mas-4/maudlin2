@@ -35,6 +35,7 @@ jobs:
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "git -C $SERVER_DIRECTORY pull origin main "
           echo "Installing requirements"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "$SERVER_DIRECTORY/venv/bin/pip install -r $SERVER_DIRECTORY/requirements.txt"
+          ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "cd $SERVER_DIRECTORY; ./venv/bin/python setup.py build_ext --inplace"
           echo "Running Migrations"
           ssh -i ~/.ssh/id_rsa "$SERVER_USER"@"$SERVER_IP" -p "$SERVER_PORT" "cd $SERVER_DIRECTORY && ./venv/bin/alembic upgrade head"
           

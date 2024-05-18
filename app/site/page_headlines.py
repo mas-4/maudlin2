@@ -60,14 +60,12 @@ class HeadlinesPage:
             )
             ].copy()
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
-        df = label_clusters(
-            df,
-            form_clusters(
-                prepare_cosine(df['processed']),
-                min_samples=n_samples_per_cluster,
-                threshold=0.5
-            )
-        )
+
+        logger.info("Clustering %i headlines", len(df))
+        clusters = form_clusters(prepare_cosine(df['processed']), n_samples_per_cluster, 0.5)
+        logger.info("%i clusters formed", len(clusters))
+
+        df = label_clusters(df, clusters)
         df = df[df['cluster'] != -1].copy()
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
         df['text_length'] = df['title'].str.len()
