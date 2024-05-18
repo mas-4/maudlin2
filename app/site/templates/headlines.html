@@ -11,7 +11,7 @@
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
             <div class="story">
-                <h4>Story {{ i+1 }} - {{ summaries[cluster['cluster']] }}</h4>
+                <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
             </div>
         {% endfor %}
