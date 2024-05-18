@@ -102,9 +102,8 @@ class Plots:
                     edgecolor='black')
             left += gdf['afinn']
         # set horizontal lines at each bias level
-        ax.set_title("Today's Topics")
         ax.legend(frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium',
-                  title='Bias', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
+                  title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
         for spine in ['right', 'top', 'left', 'bottom']:
             ax.spines[spine].set_visible(False)
         ax.xaxis.set_visible(False)
@@ -131,7 +130,6 @@ class Plots:
             topic_df['side'] += i * 0.1
             ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 20), label=topic,
                        color=topic_colors[topic], edgecolor='black', alpha=0.45)
-        ax.set_title("Today's Articles")
         # x-axis should start at 0:00 and end at 23:59
         ax.yaxis.set_ticks(range(-1, 2))
         ax.yaxis.set_ticklabels(['left', 'center', 'right'])
@@ -147,7 +145,7 @@ class Plots:
         ax.set_xticks(ax.get_xticks()[::2])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
         ax.legend(frameon=True, facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium',
-                  title='Topic', title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
+                  title_fontsize='large', fancybox=True, shadow=True, borderpad=1.2,
                   labelspacing=1.5)
         for spine in ['right', 'top', 'left', 'bottom']:
             ax.spines[spine].set_visible(False)
@@ -212,7 +210,6 @@ class Plots:
             cls.individual_topic_article_bar(ax, topic_df)
             cls.individual_topic_sentiment_lines(ax.twinx(), topic_df)
 
-            ax.set_title(f'{topic.name} Sentiment and Number of Articles')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             # rotate x-axis labels
