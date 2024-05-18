@@ -262,6 +262,9 @@ class Plots:
         sns.lineplot(x='Date', y='PAI MA', data=agg, ax=ax[1], label='PAI')
         for i in range(2):
             ax[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            # Turn off axis labels
+            ax[i].set_xlabel('')
+            ax[i].set_ylabel('')
             ax[i].set_xticks(ax[i].get_xticks()[::2])
             ax[i].set_xticklabels(ax[i].get_xticklabels(), rotation=rotation)
             # Hide the spines
