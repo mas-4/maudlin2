@@ -44,12 +44,11 @@ def get_bottom(df):
 def apply_special_dates(ax: plt.Axes, topic):
     ymin, _ = ax.get_ylim()  # Get the minimum y value
     rot = 8  # Adjust rotation if necessary
-    for i, spdate in enumerate(sorted(Config.special_dates, key=lambda x: x.date, reverse=False)):
+    i = 0
+    for spdate in sorted(Config.special_dates, key=lambda x: x.date, reverse=False):
         if topic != 'all' and spdate.topic != topic:
             continue
-
-        # Plot the vertical line at the date
-        ax.axvline(spdate.date, color="black", linestyle=':', lw=1, alpha=0.4)
+        i += 1
 
         # Calculate offset for text positioning below the x-axis
         # Offset needs to be negative to move the text below the axis
@@ -65,6 +64,22 @@ def apply_special_dates(ax: plt.Axes, topic):
             color=topic_colors[spdate.topic],
             ha='left',
             fontweight='bold',
+            zorder=2,
+            bbox=dict(facecolor='white', edgecolor='none', alpha=0.8)
+        )
+        ax.annotate(
+            '',
+            xy=(spdate.date, ymin),
+            xytext=(0, offset),
+            textcoords='offset points',
+            arrowprops=dict(
+                arrowstyle='-',
+                linestyle=':',
+                color=topic_colors[spdate.topic],
+                lw=0.5,
+                alpha=0.4
+            ),
+            zorder=1
         )
 
 
@@ -72,8 +87,9 @@ class Plots:
     @staticmethod
     def topic_today_bar(df: pd.DataFrame):
         # adjust timezone for first_accessed from naive utc to eastern
-        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
-                                                                                   ascending=False).copy()
+        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values(
+            'first_accessed', ascending=False
+        ).copy()
         today_df = today_df.groupby(['bias', 'topic']).agg({'afinn': 'count'}).reset_index()
         fig, ax = plt.subplots(figsize=(13, 6))
         left = pd.Series(0, index=today_df['topic'].unique()).sort_index()
@@ -97,8 +113,10 @@ class Plots:
     @staticmethod
     def topic_today_bubble(df: pd.DataFrame):
         df = df[df['topic'] != '']
-        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values('first_accessed',
-                                                                                   ascending=False).copy()
+        today_df = df[df['first_accessed'].dt.date == dt.now().date()].sort_values(
+            'first_accessed',
+            ascending=False
+        ).copy()
         fig, ax = plt.subplots(figsize=(13, 6))
         today_df['side'] = today_df['bias'].apply(lambda x: -1 if x < 0 else 1 if x > 0 else 0)
 
