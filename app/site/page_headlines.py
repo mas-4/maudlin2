@@ -33,9 +33,6 @@ class HeadlinesPage:
         self.newsletter = TemplateHandler('newsletter.html')
         self.context = {'title': 'Current Headlines'}
 
-        from transformers import pipeline as hf_pipeline
-        self.summarizer = hf_pipeline('summarization', model='facebook/bart-large-cnn')
-
     def generate(self):
         logger.info("Generating headlines page...")
         df = self.filter_score_sort(self.dh.main_headline_df.copy())
@@ -100,43 +97,13 @@ class HeadlinesPage:
         self.context['agency_lists'] = agency_lists
 
     def summarize(self, df):
-        # group each cluster, concatenate the processed text, and summarize with nlp
+        # Pick the most center headline from each cluster
         summaries = {}
-        logger.info("Summarizing all clusters")
-        i = 0
         for key, group in df.groupby('cluster'):
-            # sort the group by title length
-            group['text_length'] = group['title'].str.len()
-            group = group.sort_values(by='text_length', ascending=False)
-
-            # Take only full headlines adding up to 1024
-            length = 0
-            strings = []
-            while length < 1024 and not group.empty:
-                length += len(group.iloc[0]['title'])
-                if length >= 1024:
-                    break
-                strings.append(group.iloc[0]['title'])
-                group = group.iloc[1:]
-            mean_char = sum([len(x) for x in strings]) / len(strings)
-            mean_tok = mean_char / 2
-            text = ' '.join(strings)
-
-            # Estimate the number of tokens by either by whichever is smaller, the mean or 75% of the total length
-            # Otherwise summarizer nags about input_length being shorter than max_length
-            # You'd think these bastards would give us a way to just count the tokens
-            est_tok = round(min(mean_tok, len(text.split()) * 0.9))
-
-            summaries[key] = self.summarizer(
-                ' '.join(strings),
-                min_length=int(est_tok / 2),
-                max_new_tokens=est_tok,
-                do_sample=True,
-                early_stopping=True
-            )[0]['summary_text']
-
-            i += 1
-            logger.info("Summarized cluster %i: %s", i, summaries[key])
+            group['bias_abs'] = group['bias'].abs()
+            # Pick the most center headline and use it as the summary
+            center = group.loc[group['bias_abs'].idxmin()]
+            summaries[key] = center['title']
         self.context['summaries'] = summaries
 
     @staticmethod
