@@ -7,6 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # Function to form clusters
 def form_clusters(cosine_sim, min_samples=10, threshold=0.5):
+    print("Clustering with python.")
     # zero out diagonal
     np.fill_diagonal(cosine_sim, 0)
     # drop everything less than threshold
@@ -35,6 +36,13 @@ def form_clusters(cosine_sim, min_samples=10, threshold=0.5):
             clusters.append(cluster)
             print(f"Cluster len: {len(cluster)}, clusters formed: {len(clusters)}")
     return clusters
+
+
+try:  # If the C extension is available, use it
+    from app.analysis.maudlinlib import form_clusters
+    pass
+except ImportError:
+    pass
 
 
 def prepare_cosine(data):

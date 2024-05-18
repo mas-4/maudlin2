@@ -95,8 +95,8 @@ def main(args: argparse.Namespace):
     if args.analyze_sentiment is not None:
         reapply_sent('all' in args.analyze_sentiment)
         return
-    if args.reprocess:
-        reprocess_headlines()
+    if args.reprocess is not None:
+        reprocess_headlines('all' in args.reprocess)
         return
     if args.email_newsletter:
         with open(Config.newsletter, 'rt') as f:
@@ -117,7 +117,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--run-selenium', action='store_true')
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
-    parser.add_argument('--reprocess', action='store_true')
+    parser.add_argument('--reprocess', action='store', type=str)
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:

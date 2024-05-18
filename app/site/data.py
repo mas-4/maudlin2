@@ -33,7 +33,7 @@ class DataHandler:
             self.all_sentiment_data = self.aggregate_sentiment_data()
             self.current_processed_headlines = self.main_headline_df['title'].tolist()
             self.agency_data = self.get_agency_data()
-            self.agency_metrics = self.get_agency_metrics(self.agency_data)
+            self.agency_metrics = self.get_agency_metrics(self.agency_data.copy())
         if DataTypes.topics in types:
             self.topic_df = self.get_topic_data()
             self.topics = self.get_topics()
@@ -87,8 +87,6 @@ class DataHandler:
                 columns=['Agency', 'Credibility', 'Bias', 'Country', 'Churn', 'Vader', 'Afinn']
             )
         logger.info("Queried %i agencies for agency df.", len(df))
-        df['Bias'] = df['Bias'].map({b.value: str(b) for b in list(Bias)})
-        df['Credibility'] = df['Credibility'].map({c.value: str(c) for c in list(Credibility)})
         df['Country'] = df['Country'].map({c.value: str(c) for c in list(Country)})
         # cast churn as a float
         df['Churn'] = df['Churn'].astype(np.float64)

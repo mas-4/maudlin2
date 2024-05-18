@@ -1,6 +1,5 @@
 import os
 
-from transformers import pipeline as hf_pipeline
 
 from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
@@ -11,7 +10,6 @@ from app.utils import Config, Country, get_logger
 
 logger = get_logger(__name__)
 
-summarizer = hf_pipeline('summarization', model='facebook/bart-large-cnn')
 
 pipeline = [
     tnorm.hyphenated_words,
@@ -34,6 +32,9 @@ class HeadlinesPage:
         self.template = TemplateHandler('headlines.html', 'index.html')
         self.newsletter = TemplateHandler('newsletter.html')
         self.context = {'title': 'Current Headlines'}
+
+        from transformers import pipeline as hf_pipeline
+        self.summarizer = hf_pipeline('summarization', model='facebook/bart-large-cnn')
 
     def generate(self):
         logger.info("Generating headlines page...")
@@ -59,14 +60,12 @@ class HeadlinesPage:
             )
             ].copy()
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
-        df = label_clusters(
-            df,
-            form_clusters(
-                prepare_cosine(df['processed']),
-                min_samples=n_samples_per_cluster,
-                threshold=0.5
-            )
-        )
+
+        logger.info("Clustering %i headlines", len(df))
+        clusters = form_clusters(prepare_cosine(df['processed']), n_samples_per_cluster, 0.5)
+        logger.info("%i clusters formed", len(clusters))
+
+        df = label_clusters(df, clusters)
         df = df[df['cluster'] != -1].copy()
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
         df['text_length'] = df['title'].str.len()
@@ -128,7 +127,7 @@ class HeadlinesPage:
             # You'd think these bastards would give us a way to just count the tokens
             est_tok = round(min(mean_tok, len(text.split()) * 0.9))
 
-            summaries[key] = summarizer(
+            summaries[key] = self.summarizer(
                 ' '.join(strings),
                 min_length=int(est_tok / 2),
                 max_new_tokens=est_tok,

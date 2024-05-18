@@ -11,7 +11,10 @@ logger = get_logger(__name__)
 class AgenciesPage:
     def __init__(self, data: DataHandler):
         self.template = TemplateHandler('agencies.html')
-        tabledata = data.agency_data.values.tolist()
+        df = data.agency_data.copy()
+        df['Bias'] = df['Bias'].apply(lambda x: str(Bias(x)))
+        df['Credibility'] = df['Credibility'].apply(lambda x: str(Credibility(x)))
+        tabledata = df.values.tolist()
         tabledata.sort(key=lambda x: x[-1])
         self.context = {
             'title': 'Agencies',
