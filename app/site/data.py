@@ -10,7 +10,7 @@ from sqlalchemy import or_, func
 from app.models import Session, Agency, Headline, Topic, Article
 from app.registry import SeleniumScrapers, TradScrapers
 from app.utils.config import Config
-from app.utils.constants import Bias, Credibility, Country
+from app.utils.constants import Credibility, Country
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -97,7 +97,6 @@ class DataHandler:
 
     @staticmethod
     def get_agency_metrics(df):
-        df['Bias'] = df['Bias'].map({str(b): b.value for b in list(Bias)})
         df['Credibility'] = df['Credibility'].map({str(c): c.value for c in list(Credibility)})
         us = df[df['Country'] == "United States"]
         return {'median_vader': us['Vader'].median(), 'mean_vader': us['Vader'].mean(),
