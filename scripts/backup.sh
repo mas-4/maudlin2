@@ -30,7 +30,7 @@ INTERMED_FILE="${MOUNT_POINT}/data-$DATE.db"
 # Copy and compress the database file with a timestamp
 echo "Backing up the database file..."
 # Copy the file to the destination and compress it
-cp ${SOURCE_FILE} ${INTERMED_FILE} && gzip ${INTERMED_FILE}
+cp ${SOURCE_FILE} ${INTERMED_FILE} && gzip -f ${INTERMED_FILE}
 
 # Check if the backup was successful
 if [ $? -eq 0 ]; then
