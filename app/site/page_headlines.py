@@ -103,7 +103,7 @@ class HeadlinesPage:
             group['bias_abs'] = group['bias'].abs()
             # Pick the most center headline and use it as the summary
             center = group.loc[group['bias_abs'].idxmin()]
-            summaries[key] = center['title']
+            summaries[key] = f'{center['agency']}: {center['title']}'
         self.context['summaries'] = summaries
 
     @staticmethod
