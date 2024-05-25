@@ -31,6 +31,8 @@ STOPWORDS.extend(list(string.ascii_lowercase))
 STOPWORDS.extend(list(string.ascii_uppercase))
 STOPWORDS.extend(list(string.punctuation))
 
+STOPWORDS = [word.lower() for word in STOPWORDS]
+
 PIPELINE = [
     tnorm.hyphenated_words,
     tnorm.quotation_marks,

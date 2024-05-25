@@ -14,6 +14,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
+STOPWORDS = [word.lower() for word in STOPWORDS]
 
 pipeline = [
     str.lower,

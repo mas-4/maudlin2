@@ -11,7 +11,7 @@ from app.utils.config import Config
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
-stopwords = list(STOPWORDS) + ['ago', 'Ago']
+stopwords = list(STOPWORDS) + ['ago']
 PIPELINE = [
     tnorm.hyphenated_words,
     tnorm.quotation_marks,

@@ -14,6 +14,7 @@ exclude_stopwords = {'not', 'no', 'nor', 'none', 'neither', 'never', 'nothing',
                      'naw', 'no way', 'no way', 'ago', 'said', 'go'}
 STOPWORDS |= include_stopwords
 STOPWORDS -= exclude_stopwords
+STOPWORDS = [word.lower() for word in STOPWORDS]
 
 POS = ['NN', 'NNS', 'NNP', 'NNPS']
 
@@ -64,7 +65,6 @@ class Pipelines:
     def remove_stop(tokens: list[str], stopwords=None):
         if stopwords is None:
             stopwords = STOPWORDS
-        stopwords = [stop.lower() for stop in stopwords]
         return [tok for tok in tokens if tok.lower() not in stopwords]
 
     @staticmethod
