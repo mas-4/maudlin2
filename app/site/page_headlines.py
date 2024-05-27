@@ -1,7 +1,8 @@
 import os
-
+from datetime import datetime as dt
 
 from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
+from app.analysis.newsiness import get_newsiness
 from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
@@ -9,7 +10,6 @@ from app.site.graphing import bias_colors
 from app.utils import Config, Country, get_logger
 
 logger = get_logger(__name__)
-
 
 pipeline = [
     tnorm.hyphenated_words,
@@ -36,6 +36,7 @@ class HeadlinesPage:
     def generate(self):
         logger.info("Generating headlines page...")
         df = self.filter_score_sort(self.dh.main_headline_df.copy())
+        self.analyze_newsiness(self.dh.main_headline_df.copy())
         self.cluster_and_summarize(df.copy())
         table_df = self.process_headlines(df)
         # drop all rows with nan
@@ -44,6 +45,33 @@ class HeadlinesPage:
         self.newsletter.write(self.context)
         self.template.write(self.context)
         logger.info("...done")
+
+    def analyze_newsiness(self, df):
+        # Filter df for us or exempted foreign media
+        df = df[(df['country'] == Country.us.value) | (df['agency'].isin(Config.exempted_foreign_media))]
+        newsiness = get_newsiness(df['title'].tolist())
+        # Floor the current time to the previous half hour
+        halfhour = dt.now().replace(minute=30 if dt.now().minute >= 30 else 0, second=0, microsecond=0)
+        halfhour = halfhour.hour * 60 + halfhour.minute
+        weekday = dt.today().strftime("%A")
+        ndf = self.dh.newsiness_df
+        condition = (ndf['halfhour'] == halfhour) & (ndf['day'] == weekday)
+        try:
+            std = ndf[condition]['std'].values[0]
+            median = ndf[condition]['median'].values[0]
+            zscore = (newsiness - median) / std
+
+            if zscore > 1:
+                slowday = f'Pretty busy news day! 🚨🚨🚨 (zscore: {zscore:.2f})'
+            elif zscore < -1:
+                slowday = f'Kind of a slow news day. 🥸🥸🥸 (zscore: {zscore:.2f})'
+            else:
+                slowday = f'Just another day of news. 🤷🤷🗞️🗞️ (zscore: {zscore:.2f})'
+        except IndexError:
+            logger.warning("IndexError in analyze_newsiness, hour %i weekday %s", halfhour, weekday)
+            slowday = 'No idea how busy today is in the news. 🤷🤷🤷'
+
+        self.context['slowday'] = slowday
 
     def cluster_and_summarize(self, df):
         n_samples_per_cluster = 10

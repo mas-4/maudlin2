@@ -9,9 +9,7 @@ from sqlalchemy import or_, func
 
 from app.models import Session, Agency, Headline, Topic, Article
 from app.registry import SeleniumScrapers, TradScrapers
-from app.utils.config import Config
-from app.utils.constants import Credibility, Country
-from app.utils.logger import get_logger
+from app.utils import Config, Credibility, Country, get_logger, Constants
 
 logger = get_logger(__name__)
 
@@ -29,6 +27,7 @@ class DataHandler:
         if types is None:
             types = list(DataTypes)
         self.main_headline_df = self.get_main_headline_df()
+        self.newsiness_df = pd.read_csv(Constants.Paths.NEWSINESS_DATA)
         if DataTypes.agency in types:
             self.all_sentiment_data = self.aggregate_sentiment_data()
             self.current_processed_headlines = self.main_headline_df['title'].tolist()
