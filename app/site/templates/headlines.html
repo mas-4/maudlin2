@@ -1,7 +1,7 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <h1 style="max-width: fit-content; margin: 1em auto;">{{ slowday }}</h1>
+    {{ slowday|safe }}
 
     <div>
         <img alt="Word Cloud" src="{{ FileNames.main_wordcloud }}">

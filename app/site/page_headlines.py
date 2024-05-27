@@ -62,14 +62,14 @@ class HeadlinesPage:
             zscore = (newsiness - median) / std
 
             if zscore > 1:
-                slowday = f'Pretty busy news day! 🚨🚨🚨 (zscore: {zscore:.2f})'
+                slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BUSY NEWS DAY! (z={zscore:.2f}) 🚨🗞️🚨</h1>'
             elif zscore < -1:
-                slowday = f'Kind of a slow news day. 🥸🥸🥸 (zscore: {zscore:.2f})'
+                slowday = f'<h1 class="slow newsday">🌴🐢🍹 Slow news day... (z={zscore:.2f}) 🍹🐢🌴</h1>'
             else:
-                slowday = f'Just another day of news. 🤷🤷🗞️🗞️ (zscore: {zscore:.2f})'
+                slowday = f'<h1 class="average newsday">📰🥸📰 Just another day of news. (z={zscore:.2f}) 📰🥸📰</h1>'
         except IndexError:
             logger.warning("IndexError in analyze_newsiness, hour %i weekday %s", halfhour, weekday)
-            slowday = 'No idea how busy today is in the news. 🤷🤷🤷'
+            slowday = '<h1 class="newsday">No idea how busy today is in the news. 🤷🤷🤷 (system error 🤖🔥🤖)</h1>'
 
         self.context['slowday'] = slowday
 

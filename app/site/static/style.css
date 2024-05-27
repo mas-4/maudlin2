@@ -173,3 +173,46 @@ blockquote::before, blockquote::after, q::before, q::after {
 .storylink:hover {
     background-color: white !important;
 }
+
+.newsday {
+    /* Center the newsday */
+    margin: 1em auto;
+    max-width: fit-content;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes ticker {
+    0% { transform: translateX(130%); }
+    100% { transform: translateX(-130%); }
+}
+
+@keyframes fade {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+.busy {
+    animation: pulse 2s infinite;
+    color: red;
+    font-weight: bold;
+}
+
+.slow {
+    color: blue;
+    animation: fade 5s ease-in-out infinite;
+    padding: 10px;
+}
+
+.average {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 10px;
+    animation: ticker 10s linear infinite;
+}
+
