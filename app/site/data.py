@@ -28,6 +28,7 @@ class DataHandler:
             types = list(DataTypes)
         self.main_headline_df = self.get_main_headline_df()
         self.newsiness_df = pd.read_csv(Constants.Paths.NEWSINESS_DATA)
+        self.election_data = self.get_election_data()
         if DataTypes.agency in types:
             self.all_sentiment_data = self.aggregate_sentiment_data()
             self.current_processed_headlines = self.main_headline_df['title'].tolist()
@@ -38,6 +39,32 @@ class DataHandler:
             self.topics = self.get_topics()
 
         logger.info("DataHandler initialized in %i seconds.", time.time() - t)
+
+    @staticmethod
+    def get_election_data():
+        with (Session() as s):
+            data = s.query(
+                Headline.vader_compound, Headline.afinn, Agency._bias, Headline.first_accessed, Headline.processed
+            ).join(Headline.article).join(Article.agency).filter(
+                or_(
+                    Headline.processed.like('%Trump%'),
+                    Headline.processed.like('%Biden%'),
+                ),
+                or_(
+                    Agency._country == Country.us.value,
+                    Agency.name.in_(Config.exempted_foreign_media)
+                )
+            ).all()
+        df = pd.DataFrame(data, columns=['Vader', 'Afinn', 'Bias', 'Date', 'Title'])
+        df['Date'] = pd.to_datetime(df['Date'])
+        # Trump and Biden mentions
+        df['Trump'] = df['Title'].str.contains('Trump', case=False)
+        df['Biden'] = df['Title'].str.contains('Biden', case=False)
+        # Group by day and aggregate sentiment
+        df['PVI'] = df['Vader'] * df['Bias']
+        df['PAI'] = df['Afinn'] * df['Bias']
+        logger.info("Queried %i headlines for election data.", len(df))
+        return df
 
     @staticmethod
     def aggregate_sentiment_data():

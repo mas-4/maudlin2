@@ -53,7 +53,7 @@ def apply_special_dates(ax: plt.Axes, topic, rot=8):
         # Calculate offset for text positioning below the x-axis
         # Offset needs to be negative to move the text below the axis
         # Adjust the multiplier (-40, -20 etc.) to position the text appropriately
-        offset = -40 - (rot-i % rot) * 13
+        offset = -40 - (rot - i % rot) * 13
 
         # Annotate below the axis
         ax.annotate(
@@ -367,3 +367,55 @@ class Plots:
         plt.tight_layout()
 
         plt.savefig(PathHandler(PathHandler.FileNames.agency_distribution).build)
+
+    @staticmethod
+    def mentions_graph(df):
+        def aggregate(df):
+            cols = ['Vader', 'Afinn', 'PVI', 'PAI']
+            agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
+                .agg({col: 'mean' for col in cols}).dropna().reset_index()
+            # moving averages for vader and afinn
+            agg['Vader MA'] = agg['Vader'].rolling(window=7).mean()
+            agg['Afinn MA'] = agg['Afinn'].rolling(window=7).mean()
+            agg['PVI MA'] = agg['PVI'].rolling(window=7).mean()
+            agg['PAI MA'] = agg['PAI'].rolling(window=7).mean()
+            return agg
+
+        def plot(df, ax, title):
+            lw = 3
+            sns.lineplot(x='Date', y='Vader MA', data=df, ax=ax, label='Vader', lw=lw)
+            sns.lineplot(x='Date', y='Afinn MA', data=df, ax=ax, label='Afinn', lw=lw)
+            sns.lineplot(x='Date', y='PVI MA', data=df, ax=ax, label='PVI', lw=lw)
+            sns.lineplot(x='Date', y='PAI MA', data=df, ax=ax, label='PAI', lw=lw)
+            ax.set_title(title)
+
+        fig, axes = plt.subplots(3)
+        fig.set_size_inches(9, 24)
+
+        # Trump and Biden
+        plot(aggregate(df[(df['Trump']) & (df['Biden'])]), axes[0],
+             'Sentiment of headlines mentioning Trump and Biden')
+
+        plot(aggregate(df[df['Trump']]), axes[1], 'Sentiment of headlines mentioning Trump')
+
+        plot(aggregate(df[df['Biden']]), axes[2], 'Sentiment of headlines mentioning Biden')
+
+        for i in range(3):
+            axes[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            # Turn off axis labels
+            axes[i].set_xlabel('')
+            axes[i].set_ylabel('')
+            axes[i].set_xticks(axes[i].get_xticks()[::2])
+            axes[i].set_xticklabels(axes[i].get_xticklabels(), rotation=rotation)
+            # Hide the spines
+            for spine in ['right', 'top', 'left', 'bottom']:
+                axes[i].spines[spine].set_visible(False)
+
+            axes[i].legend(
+                bbox_to_anchor=(0.5, 1.04), ncol=5, frameon=True, facecolor='lightgray', edgecolor='black',
+                framealpha=0.9, fontsize='medium', title_fontsize='large', fancybox=True, shadow=True,
+                borderpad=1.2, labelspacing=1.5, loc='lower right'
+            )
+
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.mentions_graph).build)

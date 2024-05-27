@@ -17,6 +17,7 @@ def gen_plots(dh: DataHandler):
     Plots.topic_today_bar(dh.topic_df.copy())
     Plots.individual_topic(dh.topic_df.copy(), dh.topics)
     Plots.agency_distribution(dh.agency_data.copy())
+    Plots.mentions_graph(dh.election_data.copy())
 
 
 def build():
