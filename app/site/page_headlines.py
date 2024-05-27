@@ -62,7 +62,7 @@ class HeadlinesPage:
             zscore = (newsiness - median) / std
 
             if zscore > 1:
-                slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BUSY NEWS DAY! (z={zscore:.2f}) 🚨🗞️🚨</h1>'
+                slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! (z={zscore:.2f}) 🚨🗞️🚨</h1>'
             elif zscore < -1:
                 slowday = f'<h1 class="slow newsday">🌴🐢🍹 Slow news day... (z={zscore:.2f}) 🍹🐢🌴</h1>'
             else:
