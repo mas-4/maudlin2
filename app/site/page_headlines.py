@@ -74,7 +74,8 @@ class HeadlinesPage:
         self.context['slowday'] = slowday
 
     def cluster_and_summarize(self, df):
-        n_samples_per_cluster = 10
+        n_samples_per_cluster = 5
+        threshold = 0.5
         df = df[
             (df['country'] == Country.us.name)
             |
@@ -87,14 +88,13 @@ class HeadlinesPage:
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
 
         logger.info("Clustering %i headlines", len(df))
-        clusters = form_clusters(prepare_cosine(df['processed']), n_samples_per_cluster, 0.5)
+        clusters = form_clusters(prepare_cosine(df['processed']), n_samples_per_cluster, threshold)
         logger.info("%i clusters formed", len(clusters))
 
         df = label_clusters(df, clusters)
         df = df[df['cluster'] != -1].copy()
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
         df['text_length'] = df['title'].str.len()
-        df.sort_values(by='text_length', ascending=False, inplace=True)
         df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
         logger.info("%i clusters left after filtering", df['cluster'].nunique())
         self.summarize(df)
