@@ -50,7 +50,7 @@ If you know of a good source not on this list please open an issue or a PR! Feel
 - [X] MarketWatch
 - [X] News Nation
 - [X] The Post Millenial
-- [-] CBN
+- [ ] TPM
 - [X] Christian Science Monitor
 - [X] Bulwark
 - [X] Dispatch
