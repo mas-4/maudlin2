@@ -25,12 +25,15 @@ DATE=$(date +%Y-%m-%d)
 
 # Define the source and destination paths
 SOURCE_FILE="/home/maudlin/maudlin2/data/data.db"
-INTERMED_FILE="${MOUNT_POINT}/data-$DATE.db"
+INTERMED_FILE = "data-$DATE.db"
+TARGET_FILE="${MOUNT_POINT}/data-$DATE.db.gz"
 
 # Copy and compress the database file with a timestamp
 echo "Backing up the database file..."
 # Copy the file to the destination and compress it
-cp ${SOURCE_FILE} ${INTERMED_FILE} && gzip -f ${INTERMED_FILE}
+cp ${SOURCE_FILE} ${INTERMED_FILE}
+gzip -f ${INTERMED_FILE}
+cp ${INTERMED_FILE}.gz ${TARGET_FILE}
 
 # Check if the backup was successful
 if [ $? -eq 0 ]; then
