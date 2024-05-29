@@ -58,8 +58,8 @@ class HeadlinesPage:
         condition = (ndf['halfhour'] == halfhour) & (ndf['day'] == weekday)
         try:
             std = ndf[condition]['std'].values[0]
-            median = ndf[condition]['median'].values[0]
-            zscore = (newsiness - median) / std
+            mean = ndf[condition]['mean'].values[0]
+            zscore = (newsiness - mean) / std
 
             if zscore > 1:
                 slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! (z={zscore:.2f}) 🚨🗞️🚨</h1>'
