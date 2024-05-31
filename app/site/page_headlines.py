@@ -75,7 +75,7 @@ class HeadlinesPage:
         self.context['slowday'] = slowday
 
     def cluster_and_summarize(self, df):
-        n_samples_per_cluster = 5
+        n_samples_per_cluster = 6
         threshold = 0.5
         df = df[
             (df['country'] == Country.us.name)
