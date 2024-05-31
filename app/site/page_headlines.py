@@ -62,11 +62,12 @@ class HeadlinesPage:
             zscore = (newsiness - mean) / std
 
             if zscore > 1:
-                slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! (z={zscore:.2f}) 🚨🗞️🚨</h1>'
+                slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! 🚨🗞️🚨</h1>'
             elif zscore < -1:
-                slowday = f'<h1 class="slow newsday">🌴🐢🍹 Slow news day... (z={zscore:.2f}) 🍹🐢🌴</h1>'
+                slowday = f'<h1 class="slow newsday">🌴🐢🍹 Slow news day... 🍹🐢🌴</h1>'
             else:
-                slowday = f'<h1 class="average newsday">📰🥸📰 Just another day of news. (z={zscore:.2f}) 📰🥸📰</h1>'
+                slowday = f'<h1 class="average newsday">📰🥸📰 Just another day of news. 📰🥸📰</h1>'
+            slowday += f'<p style="text-align: center;">Newsiness score: {newsiness:.2f} (z-score: {zscore:.2f})</p>'
         except IndexError:
             logger.warning("IndexError in analyze_newsiness, hour %i weekday %s", halfhour, weekday)
             slowday = '<h1 class="newsday">No idea how busy today is in the news. 🤷🤷🤷 (system error 🤖🔥🤖)</h1>'
@@ -108,7 +109,7 @@ class HeadlinesPage:
         agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
-            hrefs = []
+            hrefs = [f'<p>{len(cluster['data'])} headlines</p>']
             last_bias = -3
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
                 if a['bias'] != last_bias:
@@ -118,7 +119,7 @@ class HeadlinesPage:
                 smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
                 bias = a['bias'] + 3
                 hrefs.append(
-                    f'<a class="storylink" style="background-color: {bias_colors[bias]}"'
+                    f'<a class="storylink" style="background-color: {bias_colors[bias]}" title="{a["title"]}"'
                     f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
                 )
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
