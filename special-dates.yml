@@ -1,69 +1,87 @@
 - name: "Alabama IVF Ruling"
+  topic: "Abortion Post-Dobbs"
   date: 2024-02-16
-  topic: "Abortion Post-Dobbs"
 - name: "James Biden Testifies"
+  topic: "Biden Impeachment"
   date: 2024-02-21
-  topic: "Biden Impeachment"
 - name: "Hunter Deposition Released"
+  topic: "Biden Impeachment"
   date: 2024-02-28
-  topic: "Biden Impeachment"
 - name: "Biden Visits Border"
-  date: 2024-02-29
   topic: "Border Chaos"
+  date: 2024-02-29
 - name: "State of the Union"
+  topic: "Biden is old"
   date: 2024-03-07
-  topic: "Biden is old"
 - name: "Hur Testimony"
-  date: 2024-03-12
   topic: "Biden is old"
-- name: "3.2% Inflation Report"
   date: 2024-03-12
+- name: "3.2% Inflation Report"
   topic: "Inflation"
+  date: 2024-03-12
 - name: "Fani Willis Georgia Ruling"
-  date: 2024-03-15
   topic: "Trump Trial"
+  date: 2024-03-15
 - name: "Hush Money Case Delay"
+  topic: "Trump Trial"
   date: 2024-03-15
-  topic: "Trump Trial"
 - name: "Bloodbath Rally"
-  date: 2024-03-16
   topic: "Trump is unfit"
+  date: 2024-03-16
 - name: "NY Bond Reduction"
+  topic: "Trump Trial"
   date: 2024-03-25
-  topic: "Trump Trial"
 - name: "Lev Parnas Testifies"
-  date: 2024-03-20
   topic: "Biden Impeachment"
+  date: 2024-03-20
 - name: "SCOTUS Abortion Pill Hearing"
+  topic: "Abortion Post-Dobbs"
   date: 2024-03-26
-  topic: "Abortion Post-Dobbs"
 - name: "Florida Abortion Ruling"
-  date: 2024-04-01
   topic: "Abortion Post-Dobbs"
+  date: 2024-04-01
 - name: "Gaza aid workers killed"
+  topic: "War in Gaza"
   date: 2024-04-01
-  topic: "War in Gaza"
 - name: "Trump Posts Bond"
+  topic: "Trump Trial"
   date: 2024-04-02
-  topic: "Trump Trial"
 - name: "Arizona Abortion Ruling"
-  date: 2024-04-09
   topic: "Abortion Post-Dobbs"
+  date: 2024-04-09
 - name: "3.5% Inflation Report"
-  date: 2024-04-10
   topic: "Inflation"
+  date: 2024-04-10
 - name: "Iran Drone Attack"
+  topic: "War in Gaza"
   date: 2024-04-13
-  topic: "War in Gaza"
 - name: "Hush Money Trial Begins"
+  topic: "Trump Trial"
   date: 2024-04-15
-  topic: "Trump Trial"
 - name: "Israel Strikes Back"
+  topic: "War in Gaza"
   date: 2024-04-18
-  topic: "War in Gaza"
 - name: "Campus Protests Heat Up"
-  date: 2024-04-22
   topic: "War in Gaza"
-- name: "Hush Money Opening Arguments"
   date: 2024-04-22
+- name: "Hush Money Opening Arguments"
   topic: "Trump Trial"
+  date: 2024-04-22
+- name: "SCOTUS hears EMTALA Case"
+  topic: "Abortion Post-Dobbs"
+  date: 2024-04-23
+- name: "Arizona Repeals 1864 Law"
+  topic: "Abortion Post-Dobbs"
+  date: 2024-05-01
+- name: "Florida Ban Takes Effect"
+  topic: "Abortion Post-Dobbs"
+  date: 2024-05-01
+- name: "Hunter Trial Delayed"
+  topic: "Biden Impeachment"
+  date: 2024-05-22
+- name: "Bronx Rally"
+  topic: "Trump is unfit"
+  date: 2024-05-23
+- name: "Trump Convicted in NY"
+  topic: "Trump Trial"
+  date: 2024-05-30
