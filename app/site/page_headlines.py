@@ -64,10 +64,10 @@ class HeadlinesPage:
             if zscore > 1:
                 slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! 🚨🗞️🚨</h1>'
             elif zscore < -1:
-                slowday = f'<h1 class="slow newsday">🌴🐢🍹 Slow news day... 🍹🐢🌴</h1>'
+                slowday = f'<h1 class="slow newsday">🌴🐢🍹 slow news day... 🍹🐢🌴</h1>'
             else:
-                slowday = f'<h1 class="average newsday">📰🥸📰 Just another day of news. 📰🥸📰</h1>'
-            slowday += f'<p style="text-align: center;">Newsiness score: {newsiness:.2f} (z-score: {zscore:.2f})</p>'
+                slowday = f'<h1 class="average newsday">📰🥸📰 Just Another Day of News. 📰🥸📰</h1>'
+            slowday += f'<h3 style="text-align: center;">Newsiness score: {newsiness:.2f} (z-score: {zscore:.2f})</h3>'
         except IndexError:
             logger.warning("IndexError in analyze_newsiness, hour %i weekday %s", halfhour, weekday)
             slowday = '<h1 class="newsday">No idea how busy today is in the news. 🤷🤷🤷 (system error 🤖🔥🤖)</h1>'
