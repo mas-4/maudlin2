@@ -1,8 +1,9 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
-    <img src="{{ topic.graph }}" alt="{{ topic.title }} Graph">
+    <h1>{{ title }}</h1>
+    <img src="{{ topic.wordcloud }}" alt="{{ title }} Wordcloud">
+    <img src="{{ topic.graph }}" alt="{{ title }} Graph">
     <br><br>
     <h2>Required Keywords</h2>
     <ul style="columns: 3">

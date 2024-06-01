@@ -187,8 +187,8 @@ blockquote::before, blockquote::after, q::before, q::after {
 }
 
 @keyframes ticker {
-    0% { transform: translateX(150%); }
-    100% { transform: translateX(-150%); }
+    0% { transform: translateX(200%); }
+    100% { transform: translateX(-200%); }
 }
 
 @keyframes fade {
