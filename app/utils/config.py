@@ -28,7 +28,7 @@ class Config:
     use_color = True
     logging_level = logging.DEBUG
     debug: bool = False
-    site_name = 'Maudlin'
+    site_name = 'BND'
     strf = '%Y-%m-%d %H:%M:%S'
     run_selenium = True
     timeout = 60  # seconds for requests
