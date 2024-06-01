@@ -152,7 +152,7 @@ class HeadlinesPage:
             return f'<a href="{topic_file}.html">{x.topic}</a>'
 
         df['topic'] = df.apply(format_topic, axis=1)
-        df = df[['title', 'first_accessed', 'last_accessed', 'score', 'topic', 'vader_compound', 'afinn']]
+        df = df[['title', 'first_accessed', 'score', 'topic', 'vader_compound', 'afinn']]
         df = df.copy().sort_values(by='first_accessed', ascending=False)
         return df
 
