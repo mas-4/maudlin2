@@ -109,7 +109,7 @@ class HeadlinesPage:
         agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
-            hrefs = [f'<p>{len(cluster['data'])} headlines</p>']
+            hrefs = [f"<p>{len(cluster['data'])} headlines</p>"]
             last_bias = -3
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
                 if a['bias'] != last_bias:
