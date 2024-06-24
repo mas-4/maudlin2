@@ -61,9 +61,9 @@ class HeadlinesPage:
             mean = ndf[condition]['mean'].values[0]
             zscore = (newsiness - mean) / std
 
-            if zscore > 1:
+            if zscore > 1.5:
                 slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! 🚨🗞️🚨</h1>'
-            elif zscore < -1:
+            elif zscore < 0.25:
                 slowday = f'<h1 class="slow newsday">🌴🐢🍹 slow news day... 🍹🐢🌴</h1>'
             else:
                 slowday = f'<h1 class="average newsday">📰🥸📰 Just Another Day of News. 📰🥸📰</h1>'
