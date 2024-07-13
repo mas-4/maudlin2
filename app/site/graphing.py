@@ -42,7 +42,7 @@ def get_bottom(df):
     return bottom
 
 
-def apply_special_dates(ax: plt.Axes, topic, rot=8):
+def apply_special_dates(ax: plt.Axes, topic, rot=3):
     ymin, _ = ax.get_ylim()  # Get the minimum y value
     i = 0
     for spdate in sorted(Config.special_dates, key=lambda x: x.date, reverse=False):
@@ -57,7 +57,7 @@ def apply_special_dates(ax: plt.Axes, topic, rot=8):
 
         # Annotate below the axis
         ax.annotate(
-            spdate.name,
+            spdate.i,
             xy=(spdate.date, ymin),  # Position at the bottom of the plot
             xytext=(0, offset),  # Offset text below the x-axis
             textcoords='offset points',

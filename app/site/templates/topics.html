@@ -1,11 +1,25 @@
 {% extends 'page.html' %}
 
+
+
 {% block content %}
+    <style>
+        {% for name, color in topic_colors.items() %}
+            .{{ name.replace(' ', '-') }} {
+                color: {{ color }};
+            }
+        {% endfor %}
+    </style>
     <div>
         <img src="{{ FileNames.topic_today_bar_graph }}" alt="Graphs">
         <img src="{{ FileNames.topic_today_bubble_graph }}" alt="Graphs">
         <img src="{{ FileNames.topic_history_bar_graph }}" alt="Graphs">
     </div>
+    <ol id="date-key">
+        {% for date in dates %}
+            <li class="{{ date.topic.replace(' ', '-') }}">{{ date.name }} ({{ date.date.strftime("%m/%d") }})</li>
+        {% endfor %}
+    </ol>
     <style>
         .tabs {
             overflow: hidden;

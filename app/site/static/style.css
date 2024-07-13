@@ -215,3 +215,36 @@ blockquote::before, blockquote::after, q::before, q::after {
     padding: 10px;
     animation: ticker 10s linear infinite;
 }
+
+#date-key {
+    /* ordered list with 3 columns */
+    columns: 3;
+    column-gap: 1em;
+    column-rule: 1px solid #ddd;
+    padding: 0;
+    /* center it */
+    margin: 1em auto;
+    max-width: fit-content;
+    /* remove period after numbers and bold the number*/
+    list-style-type: none;
+    font-weight: bold;
+}
+
+ol#date-key {
+    list-style-type: none;
+}
+
+ol#date-key > li {
+    counter-increment: customlistcounter;
+}
+
+ol#date-key > li:before {
+    content: counter(customlistcounter) " ";
+    font-weight: bold;
+    float: left;
+    width: 3em;
+}
+
+ol#date-key:first-child {
+    counter-reset: customlistcounter;
+}

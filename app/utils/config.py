@@ -17,9 +17,10 @@ def read_creds(path):
 
 
 class SpecialDate:
-    def __init__(self, rawdict: dict[str, Any]):
+    def __init__(self, i, rawdict: dict[str, Any]):
+        self.i = i
         self.name: str = rawdict['name']
-        self.date: dt = rawdict['date']  # had no idea yaml automatically converted this
+        self.date: str = rawdict['date']  # had no idea yaml automatically converted this
         self.topic: str = rawdict['topic']
 
 
@@ -74,7 +75,7 @@ class Config:
     dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
 
     with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
-        special_dates = [SpecialDate(x) for x in yaml.safe_load(f_in)]
+        special_dates = [SpecialDate(i, x) for i, x in enumerate(yaml.safe_load(f_in))]
         special_dates.sort(key=lambda x: x.date)
 
     @classmethod
