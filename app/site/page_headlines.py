@@ -8,6 +8,7 @@ from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.site.graphing import bias_colors
 from app.utils import Config, Country, get_logger
+from app.registry import Scrapers
 
 logger = get_logger(__name__)
 
@@ -101,6 +102,9 @@ class HeadlinesPage:
         self.summarize(df)
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
+        for cluster in clusters_list:
+            cluster['coverage'] = round(len(cluster['data']) / len(Scrapers) * 100, 2)
+
         clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
@@ -109,7 +113,7 @@ class HeadlinesPage:
         agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
-            hrefs = [f"<p>{len(cluster['data'])} headlines</p>"]
+            hrefs = [f"<p>{len(cluster['data'])} headlines / {cluster['coverage']}% coverage</p>"]
             last_bias = -3
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
                 if a['bias'] != last_bias:
@@ -119,7 +123,8 @@ class HeadlinesPage:
                 smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
                 bias = a['bias'] + 3
                 hrefs.append(
-                    f'<a class="storylink" style="background-color: {bias_colors[bias]}" title="{a["title"]}"'
+                    f'<a data-tooltip-color="{bias_colors[bias]}" class="storylink"'
+                    f' style="background-color: {bias_colors[bias]}" title="{a["title"]}"'
                     f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
                 )
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
