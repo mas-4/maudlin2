@@ -18,7 +18,7 @@ def read_creds(path):
 
 class SpecialDate:
     def __init__(self, i, rawdict: dict[str, Any]):
-        self.i = i
+        self.i = i + 1  # we're 1 indexing
         self.name: str = rawdict['name']
         self.date: str = rawdict['date']  # had no idea yaml automatically converted this
         self.topic: str = rawdict['topic']
