@@ -164,6 +164,8 @@ class Plots:
         for i, topic in enumerate(sorted_topics.index):
             topic_df = df[df['topic'] == topic].copy()
             topic_df['day'] = topic_df['first_accessed'].dt.date
+            # Drop everything before 30 days ago
+            topic_df = topic_df[topic_df['day'] > dt.now().date() - td(days=30)]
 
             # Group by day and calculate number of articles
             topic_df = topic_df.groupby('day').agg({'afinn': 'count'})
@@ -171,27 +173,58 @@ class Plots:
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
             ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=topic_colors[topic],
-                   edgecolor='black')
+                   edgecolor='black', width=1)
             bottom['bot'] += topic_df.articles
 
-        ax.set_xlim(bottom.index[0] - td(days=1), bottom.index[-1] + td(days=1))
+        # Set xlim to 30 days ago to today
+        ax.set_xlim(dt.now().date() - td(days=30), dt.now().date())
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
         ax.set_xticks(ax.get_xticks()[::2])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
 
-        handles, labels = ax.get_legend_handles_labels()
-        # Put the legend above the graph, arranged horizontally
-        ax.legend(handles[::-1], labels[::-1], loc='lower center', bbox_to_anchor=(0.5, 1.04), ncol=5, frameon=True,
-                  facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium', title_fontsize='large',
-                  fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
+
 
         for spine in ['right', 'top', 'left', 'bottom']:
             ax.spines[spine].set_visible(False)
-        apply_special_dates(ax, 'all')  # Assume this function is defined elsewhere
+        # apply_special_dates(ax, 'all')  # Assume this function is defined elsewhere
         plt.tight_layout()
         plt.savefig(PathHandler(
             PathHandler.FileNames.topic_history_bar_graph).build)  # Assume PathHandler is defined elsewhere
+
+    @classmethod
+    def topic_history_stacked_area(cls, df: pd.DataFrame):
+        window = 7
+        fig, ax = plt.subplots()
+        fig.subplots_adjust(bottom=0.2, top=0.8)
+        fig.set_size_inches(13, 8)
+        df = df[df['topic'] != '']
+        # Sum the number of articles per topic per day
+        df['day'] = df['first_accessed'].dt.date
+        df = df.groupby(['day', 'topic']).agg({'afinn': 'count'}).unstack().fillna(0)
+        df.columns = df.columns.droplevel()
+        df = df.reindex(sorted(df.columns), axis=1)
+        # rolling 7 day average
+        df = df.rolling(window=window).mean()
+        df = df[df.sum().sort_values(ascending=False).index]
+        # drop na
+        df = df.dropna()
+
+        ax.stackplot(df.index, df.values.T, labels=df.columns, colors=[topic_colors[topic] for topic in df.columns])
+        ax.yaxis.set_visible(False)
+        ax.set_title(f"Which topics are being covered? ({window}-day moving average)")
+
+        for spine in ['right', 'top', 'left', 'bottom']:
+            ax.spines[spine].set_visible(False)
+        handles, labels = ax.get_legend_handles_labels()
+        # Put the legend above the graph, arranged horizontally
+        ax.legend(handles[::-1], labels[::-1], loc='lower center', bbox_to_anchor=(0.5, 1.04), ncol=5, frameon=True,
+                  facecolor='lightgray', edgecolor='black', framealpha=0.9, fontsize='medium',
+                  title_fontsize='large',
+                  fancybox=True, shadow=True, borderpad=1.2, labelspacing=1.5)
+        apply_special_dates(ax, 'all')
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.topic_history_stacked_area).build)
 
     @classmethod
     def individual_topic(cls, df, topics):

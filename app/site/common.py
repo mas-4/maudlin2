@@ -63,6 +63,7 @@ class PathHandler:
         main_wordcloud = 'wordcloud.png'
         sentiment_graphs = 'sentiment-graphs.png'
         topic_history_bar_graph = 'topic_history_bar_graph.png'
+        topic_history_stacked_area = 'topic_history_stacked_area.png'
         topic_today_bubble_graph = 'topic_today_bubble_graph.png'
         topic_today_bar_graph = 'topic_today_bar_graph.png'
         agency_distribution = 'agency_distribution.png'

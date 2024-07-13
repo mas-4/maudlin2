@@ -1,3 +1,4 @@
+import sys
 import time
 from datetime import timedelta as td
 from enum import Enum
@@ -204,6 +205,9 @@ class DataHandler:
             ).all()
         df = pd.DataFrame(data, columns=list(cols.keys()))
         logger.info("Queried %i headlines for main df.", len(df))
+
+        if len(df) == 0:
+            sys.exit("No headlines found. Exiting.")
 
         df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         df['last_accessed'] = df['last_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
