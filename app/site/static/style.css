@@ -236,11 +236,11 @@ ol#date-key {
 
 ol#date-key > li {
     counter-increment: customlistcounter;
+    padding: 0.2em 1em;
 }
 
 ol#date-key > li:before {
     content: counter(customlistcounter) " ";
-    font-weight: bold;
     float: left;
     width: 3em;
 }

@@ -6,7 +6,8 @@
     <style>
         {% for name, color in topic_colors.items() %}
             .{{ name.replace(' ', '-') }} {
-                color: {{ color }};
+                background-color: {{ color }};
+                color: white;
             }
         {% endfor %}
     </style>
