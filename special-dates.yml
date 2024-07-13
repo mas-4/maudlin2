@@ -70,12 +70,18 @@
 - name: "SCOTUS hears EMTALA Case"
   topic: "Abortion Post-Dobbs"
   date: 2024-04-23
+- name: "SCOTUS Immunity Hearing"
+  topic: "Trump is unfit"
+  date: 2024-04-25
 - name: "Arizona Repeals 1864 Law"
   topic: "Abortion Post-Dobbs"
   date: 2024-05-01
 - name: "Florida Ban Takes Effect"
   topic: "Abortion Post-Dobbs"
   date: 2024-05-01
+- name: "Trump Agrees to Debate"
+  topic: "Biden is old"
+  date: 2024-05-15
 - name: "Hunter Trial Delayed"
   topic: "Biden Impeachment"
   date: 2024-05-22
@@ -85,12 +91,33 @@
 - name: "Trump Convicted in NY"
   topic: "Trump Trial"
   date: 2024-05-30
+- name: "SCOTUS Abortion Pill Ruling"
+  topic: "Abortion Post-Dobbs"
+  date: 2024-06-13
+- name: "Hunter Trial Begins"
+  topic: "Biden Impeachment"
+  date: 2024-06-03
+- name: "Biden Border Crackdown"
+  topic: "Border Chaos"
+  date: 2024-06-04
+- name: "Hunter Guilty"
+  topic: "Biden Impeachment"
+  date: 2024-06-11
+- name: "Cooler Inflation Report"
+  topic: "Inflation"
+  date: 2024-06-12
 - name: "First Debate"
   topic: "Biden is old"
   date: 2024-06-27
+- name: "SCOTUS Immunity Ruling"
+  topic: "Trump is unfit"
+  date: 2024-07-01
 - name: "George Stephanopoulos Interview"
   topic: "Biden is old"
   date: 2024-07-05
 - name: "NATO Press Conference"
   topic: "Biden is old"
+  date: 2024-07-11
+- name: "Even Cooler Inflation Report"
+  topic: "Inflation"
   date: 2024-07-11
