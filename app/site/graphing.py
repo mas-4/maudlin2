@@ -191,14 +191,6 @@ class Plots:
             )
             bottom['bot'] += topic_df.articles
 
-        # Set xlim to 30 days ago to today
-        # ax.set_xlim(dt.now().date() - td(days=30), dt.now().date())
-        # ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        # ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
-        # ax.set_xticks(ax.get_xticks()[::2])
-        # ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
-
-
         for spine in ['right', 'top', 'left', 'bottom']:
             ax.spines[spine].set_visible(False)
         # apply_special_dates(ax, 'all')  # Assume this function is defined elsewhere
