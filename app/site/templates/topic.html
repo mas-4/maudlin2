@@ -4,6 +4,13 @@
     <h1>{{ title }}</h1>
     <img src="{{ topic.wordcloud }}" alt="{{ title }} Wordcloud">
     <img src="{{ topic.graph }}" alt="{{ title }} Graph">
+    <ul>
+        {% for date in dates %}
+            {% if date.topic == title %}
+            <li style="color: {{ topic_colors[date.topic] }}">{{ date.i }}: {{ date.name }} ({{ date.date.strftime("%m/%d") }})</li>
+            {% endif %}
+        {% endfor %}
+    </ul>
     <br><br>
     <h2>Required Keywords</h2>
     <ul style="columns: 3">
@@ -11,6 +18,7 @@
             <li>{{ keyword }}</li>
         {% endfor %}
     </ul>
+
     <h2>Scorable Keywords</h2>
     <ul style="columns: 3">
         {% for keyword in topic.keywords %}

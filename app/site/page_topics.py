@@ -76,7 +76,9 @@ class TopicsPage:
             context = {
                 'topic': topic,
                 'tabledata': topic_df.values.tolist(),
-                'title': topic.name
+                'title': topic.name,
+                'topic_colors': topic_colors,
+                'dates': Config.special_dates
             }
             self.topic_template.write(context, path)
 
