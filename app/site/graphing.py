@@ -42,6 +42,18 @@ def get_bottom(df):
     return bottom
 
 
+def get_week_bottom(df):
+    days = (dt.now().date() - df['first_accessed'].min().date()).days + 1
+    bottom = pd.DataFrame(pd.date_range(df['first_accessed'].min(), periods=days, freq='W'), columns=['dt'])
+    bottom['day'] = bottom['dt'].dt.date
+    # truncate the day to the date
+    bottom = bottom[bottom['day'] < dt.now().date() + td(days=7)]
+    bottom = bottom.set_index('day')
+    bottom['bot'] = 0
+    bottom = bottom[['bot']]
+    return bottom
+
+
 def apply_special_dates(ax: plt.Axes, topic, rot=3):
     ymin, _ = ax.get_ylim()  # Get the minimum y value
     i = 0
@@ -155,34 +167,36 @@ class Plots:
     def topic_history_bar(df: pd.DataFrame):
         df = df[df['topic'] != '']
         fig, ax = plt.subplots()
-        fig.subplots_adjust(bottom=0.2, top=0.8)  # Adjust top for legend space
         fig.set_size_inches(13, 8)
 
         # Assuming `get_bottom` is a function that returns a DataFrame with a 'bot' column initialized to zeros
-        bottom = get_bottom(df)  # Adjust accordingly
         sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
+        bottom = get_week_bottom(df)
         for i, topic in enumerate(sorted_topics.index):
             topic_df = df[df['topic'] == topic].copy()
-            topic_df['day'] = topic_df['first_accessed'].dt.date
-            # Drop everything before 30 days ago
-            topic_df = topic_df[topic_df['day'] > dt.now().date() - td(days=30)]
-
+            topic_df = topic_df.groupby(pd.Grouper(key='first_accessed', freq='W')).agg({'afinn': 'count'})
             # Group by day and calculate number of articles
-            topic_df = topic_df.groupby('day').agg({'afinn': 'count'})
             topic_df = topic_df.rename(columns={'afinn': 'articles'})
+            topic_df = topic_df.reset_index()
+            topic_df['day'] = topic_df['first_accessed'].dt.date
+            topic_df = topic_df.set_index('day')
+            topic_df = topic_df[['articles']]
+            # Convert the day to a date
             if len(topic_df) < len(bottom):
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
-            ax.bar(topic_df.index, topic_df.articles, label=topic, bottom=bottom['bot'], color=topic_colors[topic],
-                   edgecolor='black', width=1)
+            ax.bar(
+                topic_df.index, topic_df.articles,
+                label=topic, color=topic_colors[topic], edgecolor='black', width=7, align='edge',
+                bottom=bottom['bot']
+            )
             bottom['bot'] += topic_df.articles
 
         # Set xlim to 30 days ago to today
-        ax.set_xlim(dt.now().date() - td(days=30), dt.now().date())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
-        ax.set_xticks(ax.get_xticks()[::2])
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
-
+        # ax.set_xlim(dt.now().date() - td(days=30), dt.now().date())
+        # ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        # ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+        # ax.set_xticks(ax.get_xticks()[::2])
+        # ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
 
 
         for spine in ['right', 'top', 'left', 'bottom']:
