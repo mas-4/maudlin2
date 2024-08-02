@@ -1,4 +1,44 @@
+- name: "Republicans are weird"
+  color: "#a0b00c"
+  keywords:
+    - "bizarre"
+    - "radical"
+    - "conspiracy"
+    - "crazy"
+    - "cult"
+    - "delusional"
+    - "dumb"
+    - "extremist"
+    - "childless"
+    - "cat"
+    - "couch"
+    - "dolphin"
+    - "cat lady"
+    - "weird"
+    - "odd"
+    - "strange"
+  essential:
+    - "republican"
+    - "gop"
+    - "trump"
+    - "vance"
+    - "donald"
+    - "maga"
+- name: "Kamala is liberal"
+  color: "#ADD8E6"
+  keywords:
+    - "dangerous"
+    - "liberal"
+    - "extreme"
+    - "radical"
+    - "san francisco"
+    - "left"
+    - "leftist"
+  essential:
+    - "kamala"
+    - "harris"
 - name: "Biden is old"
+  color: "#D3D3D3"
   keywords:
     - "81"
     - "82"
@@ -46,6 +86,7 @@
   essential:
     - "biden"
 - name: "Biden Impeachment"
+  color: "#CD7F32"
   keywords:
     - "1023"
     - "brother"
@@ -63,6 +104,7 @@
   essential:
     - "biden"
 - name: "Trump is unfit"
+  color: "#FF0000"
   keywords:
     - "authoritarian"
     - "bloodbath"
@@ -96,6 +138,7 @@
   essential:
     - "trump"
 - name: "Trump Trial"
+  color: "#FFA500"  # orange
   keywords:
     - "175"
     - "454"
@@ -142,6 +185,7 @@
   essential:
     - "trump"
 - name: "Border Chaos"
+  color: "#800080"  # purple
   keywords:
     - "ice"
     - "apprehend"
@@ -166,7 +210,8 @@
     - "wall"
   essential:
     - "border"
-- name: "Ukraine"
+- name: "Ukraine"  # yellow
+  color: "#FFD800"
   keywords:
     - "avdiivka"
     - "avdivka"
@@ -194,7 +239,8 @@
     - "zelensky"
   essential:
     - "ukraine"
-- name: "Inflation"
+- name: "Inflation"  # green
+  color: "#3E9C35"
   keywords:
     - "consumer sentiment"
     - "cost"
@@ -233,6 +279,7 @@
     - "prices"
     - "cost"
 - name: "War in Gaza"
+  color: "#0038b8"  # Israel blue
   essential:
     - "gaza"
     - "israel"
@@ -269,6 +316,7 @@
     - "world central"
     - "central kitchen"
 - name: "Abortion Post-Dobbs"
+  color: "#e377c2"
   essential:
     - "abortion"
     - "roe"

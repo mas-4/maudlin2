@@ -3,7 +3,7 @@ from functools import partial
 
 from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS
 from app.models import Topic
-from app.site.graphing import Plots, topic_colors
+from app.site.graphing import Plots
 from app.site.common import copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.site.wordcloudgen import generate_wordcloud
@@ -32,7 +32,7 @@ class TopicsPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
         self.context = {'title': 'Topic Analysis', 'topics': self.dh.topics, 'dates': Config.special_dates,
-                        'topic_colors': topic_colors}
+                        'topic_colors': {x.name: x.color for x in Config.topics}}
         self.template = TemplateHandler('topics.html')
         self.topic_template = TemplateHandler('topic.html')
 
@@ -77,7 +77,7 @@ class TopicsPage:
                 'topic': topic,
                 'tabledata': topic_df.values.tolist(),
                 'title': topic.name,
-                'topic_colors': topic_colors,
+                'topic_colors': {x.name: x.color for x in Config.topics},
                 'dates': Config.special_dates
             }
             self.topic_template.write(context, path)

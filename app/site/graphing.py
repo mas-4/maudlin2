@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import dates as mdates
 
+from app.analysis.topics import load_and_update_topics
 from app.site.common import PathHandler
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility
@@ -17,18 +18,6 @@ logger = get_logger(__name__)
 aisle_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
 bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
 credibility_colors = ["#FF0000", "#FF4500", "#FFA500", "#FFFF00", "#9ACD32", "#008000"]
-topic_colors = {
-    'War in Gaza': '#005EB8',  # '#1f77b4',           # blue
-    'Trump Trial': '#ff7f0e',  # orange
-    'Inflation': '#2ca02c',  # green
-    'Trump is unfit': '#d62728',  # red
-    'Border Chaos': '#9467bd',  # purplish
-    'Biden Impeachment': '#8c564b',  # brown
-    'Abortion Post-Dobbs': '#e377c2',  # pink
-    'Biden is old': '#7f7f7f',  # grey
-    'Ukraine': '#FFDD00',  # '#bcbd22',               # yellow
-    # '#17becf'  # light blue
-}
 rotation = 35
 
 
@@ -73,7 +62,7 @@ def apply_special_dates(ax: plt.Axes, topic, rot=3):
             xy=(spdate.date, ymin),  # Position at the bottom of the plot
             xytext=(0, offset),  # Offset text below the x-axis
             textcoords='offset points',
-            color=topic_colors[spdate.topic],
+            color=spdate.topic_obj.color,
             ha='left',
             fontweight='bold',
             zorder=2,
@@ -87,7 +76,7 @@ def apply_special_dates(ax: plt.Axes, topic, rot=3):
             arrowprops=dict(
                 arrowstyle='-',
                 linestyle=':',
-                color=topic_colors[spdate.topic],
+                color=spdate.topic_obj.color,
                 lw=0.5,
                 alpha=0.4
             ),
@@ -140,7 +129,7 @@ class Plots:
             topic_df['hour'] = topic_df['hour'].apply(lambda x: dt.now().replace(hour=x, minute=0))
             topic_df['side'] += i * 0.1
             ax.scatter(topic_df['hour'], topic_df['side'], s=((topic_df['articles']) * 20), label=topic,
-                       color=topic_colors[topic], edgecolor='black', alpha=0.45)
+                       color=Config.topic_dict[topic].color, edgecolor='black', alpha=0.45)
         # x-axis should start at 0:00 and end at 23:59
         ax.yaxis.set_ticks(range(-1, 2))
         ax.yaxis.set_ticklabels(['left', 'center', 'right'])
@@ -186,7 +175,7 @@ class Plots:
                 topic_df = topic_df.reindex(bottom.index, fill_value=0)
             ax.bar(
                 topic_df.index, topic_df.articles,
-                label=topic, color=topic_colors[topic], edgecolor='black', width=7, align='edge',
+                label=topic, color=Config.topic_dict[topic].color, edgecolor='black', width=7, align='edge',
                 bottom=bottom['bot']
             )
             bottom['bot'] += topic_df.articles
@@ -216,7 +205,8 @@ class Plots:
         # drop na
         df = df.dropna()
 
-        ax.stackplot(df.index, df.values.T, labels=df.columns, colors=[topic_colors[topic] for topic in df.columns])
+        ax.stackplot(df.index, df.values.T, labels=df.columns,
+                     colors=[Config.topic_dict[topic].color for topic in df.columns])
         ax.yaxis.set_visible(False)
         ax.set_title(f"Which topics are being covered? ({window}-day moving average)")
 

@@ -17,11 +17,26 @@ def read_creds(path):
 
 
 class SpecialDate:
-    def __init__(self, i, rawdict: dict[str, Any]):
+    def __init__(self, i, rawdict: dict[str, Any], topic_dict):
         self.i = i + 1  # we're 1 indexing
         self.name: str = rawdict['name']
         self.date: str = rawdict['date']  # had no idea yaml automatically converted this
         self.topic: str = rawdict['topic']
+        self.topic_obj: Topic = topic_dict[self.topic]
+
+    def __repr__(self):
+        return f'SpecialDate({self.i}, name={self.name}, date={self.date}, topic={self.topic}'
+
+
+class Topic:
+    def __init__(self, rawdict: dict[str, Any]):
+        self.name: str = rawdict['name']
+        self.keywords: list[str] = rawdict['keywords']
+        self.essential: list[str] = rawdict['essential']
+        self.color = rawdict.get('color', 'black')
+
+    def __repr__(self):
+        return f'Topic({self.name})'
 
 
 class Config:
@@ -74,9 +89,16 @@ class Config:
     netlify = read_creds(Constants.Paths.NETLIFY_CREDS)
     dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
 
+    with open(Constants.Paths.TOPICS_FILE, 'rt') as f_in:
+        topics = [Topic(x) for x in yaml.safe_load(f_in)]  # Need to deprecate load and update in topics file
+
+    topic_dict = {x.name: x for x in topics}
     with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
-        special_dates = [SpecialDate(i, x) for i, x in enumerate(yaml.safe_load(f_in))]
+        special_dates = []
+        for i, x in enumerate(yaml.safe_load(f_in)):
+            special_dates.append(SpecialDate(i, x, topic_dict))  # binding issue in list comprehension
         special_dates.sort(key=lambda x: x.date)
+
 
     @classmethod
     def set_debug(cls):
