@@ -34,6 +34,7 @@ echo "Backing up the database file..."
 cp ${SOURCE_FILE} ${INTERMED_FILE}
 gzip -f ${INTERMED_FILE}
 cp ${INTERMED_FILE}.gz ${TARGET_FILE}
+rm ${INTERMED_FILE}.gz
 
 # Check if the backup was successful
 if [ $? -eq 0 ]; then
