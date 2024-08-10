@@ -414,22 +414,17 @@ class Plots:
             lw = 3
             sns.lineplot(x='Date', y='Vader MA', data=df, ax=ax, label='Vader', lw=lw)
             sns.lineplot(x='Date', y='Afinn MA', data=df, ax=ax, label='Afinn', lw=lw)
-            sns.lineplot(x='Date', y='PVI MA', data=df, ax=ax, label='PVI', lw=lw)
-            sns.lineplot(x='Date', y='PAI MA', data=df, ax=ax, label='PAI', lw=lw)
+            sns.lineplot(x='Date', y='PVI MA', data=df, ax=ax, label='PVI', lw=1, alpha=0.25)
+            sns.lineplot(x='Date', y='PAI MA', data=df, ax=ax, label='PAI', lw=1, alpha=0.25)
             ax.set_title(title)
 
-        fig, axes = plt.subplots(3)
-        fig.set_size_inches(9, 24)
+        fig, axes = plt.subplots(2)
+        fig.set_size_inches(9, 12)
 
-        # Trump and Biden
-        plot(aggregate(df[(df['Trump']) & (df['Biden'])]), axes[0],
-             'Sentiment of headlines mentioning Trump and Biden')
+        plot(aggregate(df[df['trump']]), axes[0], 'Sentiment of headlines mentioning Trump Ticket')
+        plot(aggregate(df[df['harris']]), axes[1], 'Sentiment of headlines mentioning Harris Ticket')
 
-        plot(aggregate(df[df['Trump']]), axes[1], 'Sentiment of headlines mentioning Trump')
-
-        plot(aggregate(df[df['Biden']]), axes[2], 'Sentiment of headlines mentioning Biden')
-
-        for i in range(3):
+        for i in range(2):
             axes[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
             # Turn off axis labels
             axes[i].set_xlabel('')
@@ -439,6 +434,9 @@ class Plots:
             # Hide the spines
             for spine in ['right', 'top', 'left', 'bottom']:
                 axes[i].spines[spine].set_visible(False)
+
+            # Set a light grid horizontally
+            axes[i].grid(axis='y', linestyle='--', alpha=0.5)
 
             axes[i].legend(
                 bbox_to_anchor=(0.5, 1.04), ncol=5, frameon=True, facecolor='lightgray', edgecolor='black',

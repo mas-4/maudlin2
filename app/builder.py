@@ -5,6 +5,7 @@ from app.site.graphing import Plots
 from app.site.page_agencies import AgenciesPage
 from app.site.page_headlines import HeadlinesPage
 from app.site.page_topics import TopicsPage
+from app.site.page_polling import PollingPage
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -25,7 +26,7 @@ def build():
     dh: DataHandler = DataHandler()
     clear_build()
     gen_plots(dh)
-    pages = [HeadlinesPage, AgenciesPage, TopicsPage]
+    pages = [HeadlinesPage, AgenciesPage, TopicsPage, PollingPage]
     for page in pages:
         page(dh).generate()
     copy_assets()

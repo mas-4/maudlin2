@@ -99,7 +99,6 @@ class Config:
             special_dates.append(SpecialDate(i, x, topic_dict))  # binding issue in list comprehension
         special_dates.sort(key=lambda x: x.date)
 
-
     @classmethod
     def set_debug(cls):
         cls.debug = True

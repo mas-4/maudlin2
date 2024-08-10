@@ -48,8 +48,12 @@ class DataHandler:
                 Headline.vader_compound, Headline.afinn, Agency._bias, Headline.first_accessed, Headline.processed
             ).join(Headline.article).join(Article.agency).filter(
                 or_(
+                    Headline.processed.like('%Donald%'),
                     Headline.processed.like('%Trump%'),
-                    Headline.processed.like('%Biden%'),
+                    Headline.processed.like('%Vance%'),
+                    Headline.processed.like('%Kamala%'),
+                    Headline.processed.like('%Harris%'),
+                    Headline.processed.like('%Walz%'),
                 ),
                 or_(
                     Agency._country == Country.us.value,
@@ -59,8 +63,8 @@ class DataHandler:
         df = pd.DataFrame(data, columns=['Vader', 'Afinn', 'Bias', 'Date', 'Title'])
         df['Date'] = pd.to_datetime(df['Date'])
         # Trump and Biden mentions
-        df['Trump'] = df['Title'].str.contains('Trump', case=False)
-        df['Biden'] = df['Title'].str.contains('Biden', case=False)
+        df['trump'] = df['Title'].str.contains('donald|trump|vance', case=False)
+        df['harris'] = df['Title'].str.contains('kamala|harris|walz', case=False)
         # Group by day and aggregate sentiment
         df['PVI'] = df['Vader'] * df['Bias']
         df['PAI'] = df['Afinn'] * df['Bias']
