@@ -2,7 +2,7 @@
 
 # Define the mount point and the device
 MOUNT_POINT="/mnt"
-DEVICE="/dev/sdb1"
+DEVICE="/dev/sdc1"
 
 # Check if the device is already mounted
 if mount | grep -q " on ${MOUNT_POINT} "; then
