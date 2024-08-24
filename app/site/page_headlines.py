@@ -130,9 +130,10 @@ class HeadlinesPage:
                 mean_sentiment = (a['afinn'] + a['vader_compound']) / 2
                 smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
                 bias = a['bias'] + 3
+                datetime = a['appearance'].isoformat()
                 hrefs.append(
                     f'<a data-tooltip-color="{bias_colors[bias]}" class="storylink"'
-                    f' style="background-color: {bias_colors[bias]}" title="{a["title"]}"'
+                    f' style="background-color: {bias_colors[bias]}" title="{a["title"]} ({datetime})"'
                     f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
                 )
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
