@@ -104,8 +104,10 @@ class HeadlinesPage:
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         for cluster in clusters_list:
             cluster['coverage'] = round(len(cluster['data']) / len(Scrapers) * 100, 2)
+            cluster['first'] = max(cluster['data'], key=lambda x: x['howlong'])['howlong']
 
-        clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
+        # clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
+        clusters_list.sort(key=lambda x: x['first'])
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
 
@@ -114,6 +116,12 @@ class HeadlinesPage:
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
             hrefs = [f"<p>{len(cluster['data'])} headlines / {cluster['coverage']}% coverage</p>"]
+            # if cluster['first'] / 60 < 4 * 60:
+            minutes = cluster['first'] // 60
+            if minutes < 90:
+                hrefs[-1] = hrefs[-1] + f'<h3>🚨🚨🚨BREAKING! {int(minutes)}m ago! </h3>'
+            else:
+                hrefs[-1] = hrefs[-1] + f'<p>First broken {int(cluster["first"] // 60 // 60)} hours ago</p>'
             last_bias = -3
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
                 if a['bias'] != last_bias:

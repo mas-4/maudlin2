@@ -186,6 +186,7 @@ class DataHandler:
             'title': Headline.processed,
             'agency': Agency.name,
             'bias': Agency._bias,  # noqa prot attr
+            'appearance': Article.first_accessed,
             'first_accessed': Headline.first_accessed,
             'last_accessed': Headline.last_accessed,
             'position': Headline.position,
@@ -213,6 +214,9 @@ class DataHandler:
         if len(df) == 0:
             sys.exit("No headlines found. Exiting.")
 
+        df['appearance'] = df['appearance'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
+        now = pd.Timestamp.now(tz='US/Eastern')
+        df['howlong'] = (now - df['appearance']).dt.total_seconds()
         df['first_accessed'] = df['first_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         df['last_accessed'] = df['last_accessed'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         roundcol = ['vader_compound', 'afinn', 'topic_score']
