@@ -2012,7 +2012,12 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
     --card-bg: #efede6;
 }
 
-.story, .trending, .outlet-card, .term, .table-filters + .headline-table .gridjs-wrapper {
+/* A faint wash of each card's own shadow color: neutral off-whites vanish on some screens, light tints don't */
+.story, .trending, .outlet-card, .term {
+    background-color: color-mix(in srgb, var(--pop, #00c2a8) 10%, white);
+}
+
+.table-filters + .headline-table .gridjs-wrapper {
     background-color: var(--card-bg);
 }
 

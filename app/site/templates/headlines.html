@@ -649,7 +649,7 @@
             <div class="story" id="story-{{ cluster['cluster'] }}" data-age="{{ cluster['first']|round|int }}"
                  data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
-                 {% if cluster['saga'] %}style="--saga-edge: {{ cluster['saga']['color'] }}"{% endif %}>
+                 style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
                 {% if cluster['saga'] %}
                     <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
                          title="Part of an ongoing story told in {{ cluster['saga']['clusters']|length }} parts, on {{ cluster['saga']['outlets'] }} outlets">
