@@ -2,9 +2,11 @@
 
 {% block content %}
     <h2>Headline changes</h2>
-    <p class="poll-note">Headlines that changed on an article outlets had already published, in the last
-        {{ window_days }} days, newest first. Removed words are struck through and added words highlighted.
-        Each change is tagged with where it was seen:</p>
+    <p class="poll-note">Headlines outlets changed on articles they had already published, in the last
+        {{ window_days }} days, newest first. Removed words are struck through and added words highlighted.</p>
+    <details class="how-it-works">
+        <summary>How this works</summary>
+    <p class="poll-note">Each change is tagged with where it was seen:</p>
     <ul class="poll-note">
         <li><strong>feed</strong>: the outlet's RSS feed, whose titles are normally the article's own headline, so
             the article was most likely rewritten.</li>
@@ -17,16 +19,26 @@
         {{ minor_count }} minor changes (capitalization, punctuation, an added or dropped label like "WEEKEND:", or a
         shortened version) aren't shown.</p>
 
+    </details>
+
     {% if rates %}
-        <table class="races">
-            <thead><tr><th>Outlet</th><th>Changes</th><th>Headlines</th><th>Changes per 100</th></tr></thead>
-            <tbody>
-            {% for r in rates %}
-                <tr><td><span class="edit-chip" style="{{ r.style }}">{{ outlet_icon(r.agency) }}{{ short_name(r.agency) }}</span></td>
-                    <td>{{ r.edits }}</td><td>{{ r.headlines }}</td><td>{{ r.per_100 }}</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        <h3>Which outlets rewrite most</h3>
+        <div class="matrix-wrap">
+            <table class="races sortable collapsible collapsed">
+                <thead><tr><th data-sort="text">Outlet</th><th data-sort="number">Changes</th>
+                    <th data-sort="number">Headlines</th><th data-sort="number">Per 100</th></tr></thead>
+                <tbody>
+                {% for r in rates %}
+                    <tr><td><span class="edit-chip" style="{{ r.style }}" title="{{ r.agency }}">{{ outlet_icon(r.agency) }}{{ short_name(r.agency) }}</span></td>
+                        <td data-value="{{ r.edits }}">{{ r.edits }}</td><td data-value="{{ r.headlines }}">{{ r.headlines }}</td>
+                        <td data-value="{{ r.per_100 }}">{{ r.per_100 }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="show-all-wrap"><button class="trend-more" type="button"
+            onclick="const t = document.querySelector('table.collapsible'); t.classList.toggle('collapsed');
+                     this.textContent = t.classList.contains('collapsed') ? 'show all {{ rates|length }} outlets' : 'show fewer'">show all {{ rates|length }} outlets</button></p>
     {% endif %}
 
     <div class="edits">

@@ -126,15 +126,16 @@ def find_edits(days: int = WINDOW_DAYS) -> tuple[pd.DataFrame, pd.DataFrame]:
     return frame(edits), frame(minor)
 
 
-def edit_rates(edits: pd.DataFrame, days: int = WINDOW_DAYS) -> pd.DataFrame:
-    """Edits per 100 headlines for each outlet that made any, most-editing first."""
-    if edits.empty:
-        return edits
+def edit_rates(edits: pd.DataFrame, days: int = WINDOW_DAYS, min_headlines: int = 10) -> pd.DataFrame:
+    """Edits per 100 headlines for every outlet with at least `min_headlines` headlines in the window, including the
+    ones that made none, most-editing first."""
     since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
     with Session() as s:
-        rows = s.query(Agency.name, func.count(Headline.id)).join(Headline.article).join(Article.agency).filter(
-            Headline.first_accessed > since).group_by(Agency.name).all()
-    headlines = pd.Series(dict(rows), name='headlines')
-    rates = edits.groupby(['agency', 'bias']).size().rename('edits').reset_index().join(headlines, on='agency')
+        rows = s.query(Agency.name, Agency._bias, func.count(Headline.id)).join(  # noqa prot attr
+            Headline.article).join(Article.agency).filter(Headline.first_accessed > since).group_by(Agency.name).all()
+    rates = pd.DataFrame(rows, columns=['agency', 'bias', 'headlines'])
+    rates = rates[rates['headlines'] >= min_headlines].copy()
+    counts = edits.groupby('agency').size() if not edits.empty else pd.Series(dtype=int)
+    rates['edits'] = rates['agency'].map(counts).fillna(0).astype(int)
     rates['per_100'] = 100 * rates['edits'] / rates['headlines']
     return rates.sort_values(['per_100', 'edits'], ascending=False)

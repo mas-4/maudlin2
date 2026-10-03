@@ -114,3 +114,21 @@ function packColumns(box, cards, minWidth) {
     addEventListener('resize', () => layout());
     return (next) => layout(next, true);
 }
+
+// Tables with class "sortable": click a column header to sort, again to reverse. A header with data-sort="number"
+// sorts by its cells' data-value. Tables that collapse ("collapsed" class) keep their first rows showing after a sort.
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('table.sortable').forEach((table) => {
+        table.querySelectorAll('thead th').forEach((th, col) => {
+            let descending = true;
+            th.addEventListener('click', () => {
+                const rows = [...table.tBodies[0].rows];
+                const key = (row) => th.dataset.sort === 'number'
+                    ? parseFloat(row.cells[col].dataset.value) : row.cells[col].textContent.trim();
+                rows.sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * (descending ? -1 : 1));
+                descending = !descending;
+                rows.forEach((row) => table.tBodies[0].appendChild(row));
+            });
+        });
+    });
+});

@@ -71,7 +71,7 @@ class EditsPage:
                 {'agency': r.agency, 'style': chip_style(r.agency, r.bias),
                  'edits': int(r.edits),
                  'headlines': int(r.headlines), 'per_100': round(r.per_100, 1)}
-                for r in rates.head(15).itertuples()],
+                for r in rates.itertuples()],
         })
         self.template.write(self.context)
         logger.info("...%d edits, %d minor", len(rows), len(minor))
