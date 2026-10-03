@@ -90,7 +90,7 @@
                 const chip = ev.target.closest('.lineup-chip');
                 if (!chip) return;
                 ev.preventDefault();
-                popCard(document.querySelector(chip.getAttribute('href')));
+                popCard(document.getElementById(chip.getAttribute('href').slice(1)));
             });
             document.querySelector('.outlet-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');

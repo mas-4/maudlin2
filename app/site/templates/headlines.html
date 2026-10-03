@@ -765,7 +765,7 @@
             addEventListener('resize', () => layout());
             document.querySelectorAll('.saga-part').forEach((a) => a.addEventListener('click', (ev) => {
                 ev.preventDefault();
-                popCard(document.querySelector(a.getAttribute('href')));
+                popCard(document.getElementById(a.getAttribute('href').slice(1)));
             }));
             document.querySelector('.story-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
@@ -951,7 +951,7 @@
                 const pin = ev.target.closest('.table-story, .table-story-badge');
                 if (!pin) return;
                 ev.preventDefault();
-                popCard(document.querySelector(pin.getAttribute('href')));
+                popCard(document.getElementById(pin.getAttribute('href').slice(1)));
             });
             document.querySelector('.table-controls').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
