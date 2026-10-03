@@ -277,21 +277,21 @@ blockquote::before, blockquote::after, q::before, q::after {
 }
 
 .meters {
-    margin: 0.4em 0 0.6em;
+    margin: 0.6em 0 0.8em;
 }
 
 .meter {
     display: grid;
-    grid-template-columns: 5.2em 1fr 6.5em;
+    grid-template-columns: 4.4em 1fr auto;
     align-items: center;
-    gap: 0.5em;
-    font-size: 0.95em;
+    gap: 0.6em;
+    font-size: 1.1em;
     color: #1f1f2e;
     margin: 0.5em 0;
 }
 
 .meter-label {
-    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #555;
 }
 
@@ -304,15 +304,15 @@ blockquote::before, blockquote::after, q::before, q::after {
 }
 
 .meter-end {
-    font-size: 1.45em;
+    font-size: 1.7em;
     line-height: 1;
 }
 
 .meter-track {
     position: relative;
     flex: 1;
-    height: 12px;
-    border: 2px solid #1f1f2e;
+    height: 18px;
+    border: 2.5px solid #1f1f2e;
     border-radius: 999px;
 }
 
@@ -329,9 +329,9 @@ blockquote::before, blockquote::after, q::before, q::after {
 .meter-dot {
     position: absolute;
     top: 50%;
-    width: 18px;
-    height: 18px;
-    margin: -9px 0 0 -9px;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
     border-radius: 50%;
     background: #1f1f2e;
     border: 3px solid #fff;
@@ -340,15 +340,16 @@ blockquote::before, blockquote::after, q::before, q::after {
 
 /* The mood marker is the weather itself */
 .meter-dot.meter-emoji {
-    width: 1.7em;
-    height: 1.7em;
-    margin: -0.85em 0 0 -0.85em;
+    width: 2em;
+    height: 2em;
+    margin: -1em 0 0 -1em;
+    box-shadow: 0 0 0 2.5px #1f1f2e;
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
     border: none;
-    font-size: 0.95em;
+    font-size: 1.15em;
     line-height: 1;
 }
 
@@ -360,7 +361,7 @@ blockquote::before, blockquote::after, q::before, q::after {
 }
 
 .meter-feeling {
-    font-size: 1.3em;
+    font-size: 1.5em;
     vertical-align: middle;
 }
 
