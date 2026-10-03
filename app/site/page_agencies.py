@@ -1,36 +1,121 @@
+"""The outlets page: every outlet we follow, lined up by lean, with a card each saying how it covers the news (how
+loaded its wording is, how grim its news runs, how it frames shared stories against everyone else, how often it
+rewrites headlines, and the feeling its headlines stir most). All from the last WINDOW_DAYS of news headlines."""
+from datetime import datetime as dt, timedelta as td
+
+import pandas as pd
+import pytz
+
+from app.analysis.edits import find_edits, edit_rates
+from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
+from app.analysis.stories import framing_scores
+from app.models import Session, Agency, Article, Headline
 from app.site.common import copy_assets, TemplateHandler, PathHandler
-from app.site.data import DataHandler, DataTypes
-from app.site.graphing import Plots
+from app.site.data import DataHandler, DataTypes, NEWS_ONLY
+from app.site.graphing import bias_colors, bias_ink
+from app.site.page_headlines import weather
 from app.site.wordcloudgen import generate_wordcloud
-from app.analysis.stories import framing_scores, loaded_language
 from app.utils.config import Config
-from app.utils.constants import Bias, Credibility
+from app.utils.constants import Bias, Credibility, Country
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+WINDOW_DAYS = 30
+MIN_HEADLINES = 10  # fewer and the averages say little
+FRAMING_EVEN = 0.05  # within this of the other outlets on the same stories counts as in line
+
+
+def flag(country: Country) -> str:
+    """A country's flag emoji, from its two-letter code."""
+    code = country.name.rstrip('_').upper()
+    return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in code)
+
+
+def spin(loaded: float) -> tuple[str, str]:
+    if loaded < 0.25:
+        return '🍞', 'plain'
+    if loaded < 0.6:
+        return '🌶️', 'loaded'
+    return '🌶️🌶️', 'very loaded'
+
+
+def framing_badge(framing: float) -> tuple[str, str]:
+    if framing <= -FRAMING_EVEN:
+        return '😈', 'gloomier than others'
+    if framing >= FRAMING_EVEN:
+        return '😇', 'sunnier than others'
+    return '🤝', 'in line with others'
+
+
+def outlet_profiles(live: pd.Series) -> list[dict]:
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=WINDOW_DAYS)
+    with Session() as s:
+        rows = s.query(
+            Agency.name, Agency._bias, Agency._credibility, Agency._country,  # noqa prot attr
+            Headline.event_score, Headline.loaded_score, Headline.emotion_ranks,
+        ).join(Headline.article).join(Article.agency).filter(Headline.first_accessed > since, NEWS_ONLY).all()
+    df = pd.DataFrame(rows, columns=['agency', 'bias', 'credibility', 'country', 'event', 'loaded', 'ranks'])
+    profiles = df.groupby('agency').agg(
+        bias=('bias', 'first'), credibility=('credibility', 'first'), country=('country', 'first'),
+        headlines=('agency', 'size'), mood=('event', 'mean'), spice=('loaded', 'mean'))
+    profiles = profiles[profiles['headlines'] >= MIN_HEADLINES]
+
+    # Strongest feeling, ranked-choice style (as on the front page and emotions page)
+    felt = df.dropna(subset=['ranks'])
+    weights = pd.DataFrame([emotion_weights(r) for r in felt['ranks']], index=felt.index).reindex(
+        columns=EMOTIONS, fill_value=0).fillna(0)
+    feelings = weights.groupby(felt['agency']).mean().drop(columns='neutral')
+
+    framing = framing_scores()
+    framing = framing.set_index('agency')['framing'] if not framing.empty else pd.Series(dtype=float)
+    edits, _ = find_edits()
+    rates = edit_rates(edits)
+    rates = rates.set_index('agency')['per_100'] if not rates.empty else pd.Series(dtype=float)
+
+    out = []
+    for name, p in profiles.iterrows():
+        bias, mood = int(p['bias']), (p['mood'] / 2 if pd.notna(p['mood']) else None)  # event score is -2 to 2
+        card = {
+            'name': name, 'slug': name.lower().replace(' ', '-'), 'bias': bias, 'lean': str(Bias(bias)),
+            'color': bias_colors[bias + 3], 'ink': bias_ink[bias + 3],
+            'credibility': str(Credibility(int(p['credibility']))), 'cred_value': int(p['credibility']),
+            'flag': flag(Country(int(p['country']))), 'country': str(Country(int(p['country']))),
+            'headlines': int(p['headlines']), 'live': int(live.get(name, 0)),
+            'spice': None, 'mood': None, 'framing': None, 'edits': None, 'feeling': None,
+        }
+        if pd.notna(p['spice']):
+            card['spice'] = {'value': round(float(p['spice']), 2), 'badge': spin(p['spice'])}
+        if mood is not None:
+            card['mood'] = {'value': round(float(mood), 2), 'badge': weather(mood)}
+        if name in framing.index:
+            card['framing'] = {'value': round(float(framing[name]), 2), 'badge': framing_badge(framing[name])}
+        card['edits'] = round(float(rates.get(name, 0.0)), 1)
+        if name in feelings.index and feelings.loc[name].max() > 0:
+            top = feelings.loc[name].idxmax()
+            card['feeling'] = {'emoji': EMOTION_EMOJI[top], 'name': top,
+                               'share': round(100 * float(feelings.loc[name, top]))}
+        out.append(card)
+    return sorted(out, key=lambda c: c['name'].removeprefix('The '))
 
 
 class AgenciesPage:
     def __init__(self, data: DataHandler):
         self.template = TemplateHandler('agencies.html')
-        df = data.agency_data.copy()
-        df['Bias'] = df['Bias'].apply(lambda x: str(Bias(x)))
-        df['Credibility'] = df['Credibility'].apply(lambda x: str(Credibility(x)))
-        tabledata = df.values.tolist()
-        tabledata.sort(key=lambda x: x[-1])
-        self.context = {
-            'title': 'Agencies',
-            'bias': {str(b): b.value for b in list(Bias)},
-            'credibility': {str(c): c.value for c in list(Credibility)},
-            'tabledata': tabledata,
-            'metrics': data.agency_metrics
-        }
         self.data: DataHandler = data
+        self.context = {'title': 'Outlets', 'window_days': WINDOW_DAYS, 'min_headlines': MIN_HEADLINES}
 
     def generate(self):
         logger.info("Generating agencies page...")
-        self.context['framing'] = Plots.framing(framing_scores())
-        self.context['loaded_language'] = Plots.loaded_language(loaded_language())
+        live = self.data.main_headline_df.groupby('agency').size()
+        outlets = outlet_profiles(live)
+        self.context['outlets'] = outlets
+        # The lineup: outlets in columns from extreme left to extreme right
+        self.context['lineup'] = [
+            {'name': str(b), 'color': bias_colors[b.value + 3], 'ink': bias_ink[b.value + 3],
+             'outlets': [o for o in outlets if o['bias'] == b.value]}
+            for b in Bias
+        ]
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.main_headline_df[['title', 'agency', 'bias']],
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)

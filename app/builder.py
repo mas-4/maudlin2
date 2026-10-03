@@ -1,7 +1,6 @@
 from app.site.common import copy_assets, clear_build, stamp_build
 from app.site.data import DataHandler
 from app.site.deploy import publish_to_netlify
-from app.site.graphing import Plots
 from app.site.page_agencies import AgenciesPage
 from app.site.page_headlines import HeadlinesPage
 from app.site.page_edits import EditsPage
@@ -12,18 +11,12 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def gen_plots(dh: DataHandler):
-    Plots.sentiment_graphs(dh.all_sentiment_data)
-    Plots.agency_distribution(dh.agency_data.copy())
-    # The election topics and election data pages are off for now (their events predate our data); their plots
-    # and pages come back by restoring them here and in `pages` below. Polls are still fetched each run.
-
-
 def build():
     stamp_build()
     dh: DataHandler = DataHandler()
     clear_build()
-    gen_plots(dh)
+    # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
+    # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
     pages = [HeadlinesPage, AgenciesPage, EditsPage, EmotionsPage]
     for page in pages:
         page(dh).generate()
