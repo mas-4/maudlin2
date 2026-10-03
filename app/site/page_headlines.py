@@ -76,14 +76,14 @@ def meter(value: float, scale: float, negative: str, positive: str) -> dict:
 def weather(mood: float) -> tuple[str, str]:
     """A story's mood (-1 grim to 1 upbeat) as weather, matching the headline table's mood badges."""
     if mood <= -0.6:
-        return '⛈️', 'very grim'
+        return '⛈️', 'grim+'
     if mood <= -0.2:
         return '🌧️', 'grim'
     if mood < 0.2:
         return '🍞', 'plain'
     if mood < 0.6:
         return '🌤️', 'upbeat'
-    return '☀️', 'very upbeat'
+    return '☀️', 'upbeat+'
 
 
 def _name(text: str) -> str:

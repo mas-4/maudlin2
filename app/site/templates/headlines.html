@@ -774,9 +774,9 @@
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
             // Each measure is a tinted badge: emoji first, then a word or two. Plain is always 🍞.
             const badge = (emoji, text, tint) => `<span class="badge" style="--tint: ${tint}"><span class="badge-emoji">${emoji}</span>${text}</span>`;
-            const MOODS = {'-2': ['⛈️', 'very grim', '#cfc6ff'], '-1': ['🌧️', 'grim', '#e3ddff'], '0': ['🍞', 'plain', '#f4efe6'],
-                           '1': ['🌤️', 'upbeat', '#fff1b3'], '2': ['☀️', 'very upbeat', '#ffe066']};
-            const SPINS = {0: ['🍞', 'plain', '#f4efe6'], 1: ['🌶️', 'loaded', '#ffd6c2'], 2: ['🌶️🌶️', 'very loaded', '#ffab8a']};
+            const MOODS = {'-2': ['⛈️', 'grim+', '#cfc6ff'], '-1': ['🌧️', 'grim', '#e3ddff'], '0': ['🍞', 'plain', '#f4efe6'],
+                           '1': ['🌤️', 'upbeat', '#fff1b3'], '2': ['☀️', 'upbeat+', '#ffe066']};
+            const SPINS = {0: ['🍞', 'plain', '#f4efe6'], 1: ['🌶️', 'loaded', '#ffd6c2'], 2: ['🌶️🌶️', 'loaded+', '#ffab8a']};
             const FEELING_TINTS = {anger: '#ffc2c2', fear: '#e0d4ff', sadness: '#c9e2ff', disgust: '#d6f5c4',
                                    surprise: '#fff1b3', joy: '#ffe066', hope: '#c8f7e6'};
             // The clock face nearest the time it was first seen: 🕐-🕛 on the hour, 🕜-🕧 on the half hour

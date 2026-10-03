@@ -37,7 +37,7 @@ def spin(loaded: float) -> tuple[str, str]:
         return '🍞', 'plain'
     if loaded < 0.6:
         return '🌶️', 'loaded'
-    return '🌶️🌶️', 'very loaded'
+    return '🌶️🌶️', 'loaded+'
 
 
 def framing_badge(framing: float) -> tuple[str, str]:
