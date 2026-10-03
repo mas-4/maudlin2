@@ -1715,3 +1715,14 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     background: #f4f4f8;
     margin-bottom: 0.2em;
 }
+
+.bright-kind {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    background: white;
+    border: 1.5px solid #bbb;
+    border-radius: 999px;
+    padding: 0 0.5em;
+    margin-right: 0.3em;
+    white-space: nowrap;
+}

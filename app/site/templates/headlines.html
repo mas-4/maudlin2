@@ -458,9 +458,11 @@
                         <li>
                             <span class="bright-emoji">{{ item.emoji }}</span>
                             {% if item.kind == 'story' %}
+                                <span class="bright-kind" title="A story covered by several outlets">📰 story</span>
                                 <a class="bright-story" href="#story-{{ item.cluster }}">{{ item.title }}</a>
                                 <span class="trend-posts">{{ item.outlets }} outlets</span>
                             {% else %}
+                                <span class="bright-kind" title="One outlet's headline">🔗 article</span>
                                 <span class="edit-chip" style="{{ chip_style(item.agency, item.bias) }}">{{ outlet_icon(item.agency) }}{{ item.agency }}</span>
                                 <a href="{{ item.url }}">{{ item.title }}</a>
                             {% endif %}
@@ -672,10 +674,10 @@
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}">
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <div class="meters">
-                    {% if cluster['emotion'] %}
-                        <div class="story-feeling" title="{{ cluster['emotion']['share'] }}% of the feeling in its headlines">
-                            <span class="badge-emoji">{{ cluster['emotion']['emoji'] }}</span>{{ cluster['emotion']['name'] }}</div>
-                    {% endif %}
+                    {% for feeling in cluster['feelings'] %}
+                        <span class="story-feeling" title="{{ feeling['share'] }}% of the feeling in its headlines">
+                            <span class="badge-emoji">{{ feeling['emoji'] }}</span>{{ feeling['name'] }} {{ feeling['share'] }}%</span>
+                    {% endfor %}
                     <div class="meter" title="Average lean of the outlets covering this story, relative to all outlets scraped today ({{ cluster['lean']['text'] }})">
                         <span class="meter-label">covered by</span>
                         <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>

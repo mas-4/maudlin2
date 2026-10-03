@@ -31,7 +31,7 @@ BREAKING_MINUTES = 90
 # their headline: 3 rewrites is a lot for a 6-outlet story and ordinary for a 38-outlet one
 CHURN_OUTLETS = 3
 CHURN_SHARE = 0.15
-STORY_EMOTION_SHARE = 0.3  # of the story's averaged emotion votes
+STORY_EMOTION_SHARE = 0.2  # of the story's averaged emotion votes, for a feeling badge
 # Outlet chips on story cards: new ones get a sparkle, dropped ones fade over a day down to a ghost
 FRESH_HOURS = 2
 GHOST_FADE_HOURS = 12
@@ -40,6 +40,7 @@ GHOST_OPACITY = 0.35
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
 BRIGHT_COUNT = 6  # items in the bright side box
+BRIGHT_SAME_EVENT = 0.6  # headline similarity at which two picks are the same event
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
 FAST_BREAK = 8  # outlets within that window to count as a fast break
 NEWS_DAY_HALF_LIFE_HOURS = 24
@@ -161,18 +162,22 @@ SORT_BAR = ('<div class="chip-sort" role="group" aria-label="Sort outlets">sort:
             '<span class="sort-legend">outlets left to right, colored by lean</span></div>')
 
 
-def dominant_emotion(group) -> dict:
-    """The story's strongest feeling other than neutral, ranked-choice style (each headline's vote split across its
-    ranked emotions, averaged over the story), when it carries at least STORY_EMOTION_SHARE of the feeling."""
+def story_feelings(group) -> list[dict]:
+    """The feelings a story stirs, ranked-choice style (each headline's vote split across its ranked emotions,
+    averaged over the story): every one other than neutral with at least STORY_EMOTION_SHARE of the votes, strongest
+    first, at most three."""
     votes = [emotion_weights(r) for r in group.get('emotion_ranks', pd.Series(dtype=object)) if isinstance(r, str)]
     if not votes:
-        return {}
-    soft = pd.DataFrame(votes).reindex(columns=EMOTIONS, fill_value=0).fillna(0).mean()
-    feelings = soft.drop('neutral')
-    if feelings.max() < STORY_EMOTION_SHARE:
-        return {}
-    emotion = feelings.idxmax()
-    return {'emoji': EMOTION_EMOJI[emotion], 'name': emotion, 'share': round(100 * feelings.max())}
+        return []
+    feelings = pd.DataFrame(votes).reindex(columns=EMOTIONS, fill_value=0).fillna(0).mean().drop('neutral')
+    strong = feelings[feelings >= STORY_EMOTION_SHARE].sort_values(ascending=False).head(3)
+    return [{'emoji': EMOTION_EMOJI[e], 'name': e, 'share': round(100 * v)} for e, v in strong.items()]
+
+
+def dominant_emotion(group) -> dict:
+    """The story's strongest feeling (see story_feelings), or {} when none is strong enough."""
+    feelings = story_feelings(group)
+    return feelings[0] if feelings else {}
 
 
 def match_trends_to_stories(df, trends) -> dict[str, int]:
@@ -334,7 +339,8 @@ class HeadlinesPage:
                                     LEAN_RANGE, 'L', 'R')
             cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
             cluster['mood'].update(dict(zip(('emoji', 'word'), weather(cluster['mood']['value']))))
-            cluster['emotion'] = dominant_emotion(group)
+            cluster['feelings'] = story_feelings(group)
+            cluster['emotion'] = cluster['feelings'][0] if cluster['feelings'] else {}
             cluster['speed'] = break_speed(cluster['data'])
             cluster['outlets'] = int(group['agency'].nunique())
             cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0
@@ -396,11 +402,20 @@ class HeadlinesPage:
             upbeat = upbeat.assign(top=ranks[upbeat.index].str.split(',').str[0]).sort_values(
                 ['event_score', 'first_accessed'], ascending=False).drop_duplicates('title')
             in_stories = {a['url'] for c in stories for a in c['data']}
+            # One headline per event: skip any too close in meaning to one already in the box
+            chosen = [embed([i['title']])[0] for i in items]
             for r in upbeat.itertuples():
                 if len(items) >= BRIGHT_COUNT:
                     break
-                if r.url in in_stories or not widely_good(r.title):
+                if r.url in in_stories:
                     continue
+                vector = embed([r.title])[0]
+                if any(float(np.dot(vector, c) / (np.linalg.norm(vector) * np.linalg.norm(c) or 1)) >= BRIGHT_SAME_EVENT
+                       for c in chosen):
+                    continue
+                if not widely_good(r.title):
+                    continue
+                chosen.append(vector)
                 items.append({'kind': 'headline', 'title': r.title, 'url': r.url, 'agency': r.agency,
                               'bias': int(r.bias), 'emoji': EMOTION_EMOJI.get(r.top, '☀️') if r.top in ('hope', 'joy') else '☀️'})
         self.context['bright_side'] = items
