@@ -1,3 +1,4 @@
+import html
 import os
 import time
 import warnings
@@ -254,8 +255,10 @@ class FeedScraper(Scraper):
             if title is None or link is None:
                 continue
             href = link.get('href') or link.get_text(strip=True)  # atom puts the url in href, rss in the text
-            if href and title.get_text(strip=True):
-                self.downstream.append((href, title.get_text(strip=True)))
+            # An html-typed title arrives with its entities still encoded (Vox's "Here&#8217;s")
+            text = html.unescape(title.get_text(strip=True))
+            if href and text:
+                self.downstream.append((href, text))
 
 
 class GoogleNewsScraper(FeedScraper):
