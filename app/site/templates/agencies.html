@@ -51,7 +51,7 @@
                  data-framing="{{ o.framing.value if o.framing else 9 }}" data-edits="{{ o.edits }}"
                  data-headlines="{{ o.headlines }}">
                 <div class="outlet-head">
-                    <span class="edit-chip outlet-name" style="{{ o.style }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
+                    <span class="edit-chip outlet-name" style="{{ o.style }}" title="{{ o.name }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
                     <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
                 </div>
                 <div class="outlet-facts">

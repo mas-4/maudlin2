@@ -30,6 +30,7 @@
     </figure>
     <nav class="page-toc" aria-label="On this page">
         <a href="#trending">🔥 trending</a>
+        {% if saga_list %}<a href="#sagas">🧵 sagas</a>{% endif %}
         <a href="#current-stories">📰 current stories</a>
         <a href="#every-headline">📋 every headline</a>
     </nav>
@@ -661,6 +662,26 @@
         });
     </script>
 
+    {% if saga_list %}
+        <h2 class="section-divider" id="sagas"><span>Sagas</span></h2>
+        <div class="saga-cards">
+            {% for saga in saga_list %}
+                <div class="saga-card" style="--saga: {{ saga.color }}">
+                    <h3>🧵 {{ saga.name }}</h3>
+                    <p class="saga-facts">{{ saga.parts|length }} parts · {{ saga.outlets }} outlets · started {{ saga.started }} ago</p>
+                    <ol class="saga-parts">
+                        {% for part in saga.parts %}
+                            <li>
+                                <a class="saga-part" href="#story-{{ part.cluster }}">{{ part.title }}</a>
+                                <span class="trend-posts">{{ part.outlets }} outlets · {{ part.age }} ago</span>
+                                {% for f in part.feelings %}<span title="{{ f.name }}">{{ f.emoji }}</span>{% endfor %}
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
     <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
     <div class="table-filters story-sort" role="group" aria-label="Sort stories">
         <span>sort:</span>
@@ -742,6 +763,10 @@
             }
             layout();
             addEventListener('resize', () => layout());
+            document.querySelectorAll('.saga-part').forEach((a) => a.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                popCard(document.querySelector(a.getAttribute('href')));
+            }));
             document.querySelector('.story-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;

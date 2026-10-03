@@ -1753,3 +1753,45 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     padding: 0 0.5em;
     margin-right: 0.3em;
 }
+
+/* Sagas block above the current stories */
+.saga-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22em, 1fr));
+    gap: 1.2em;
+    margin-bottom: 1em;
+}
+
+.saga-card {
+    background: color-mix(in srgb, var(--saga) 10%, white);
+    border: 3px solid #1f1f2e;
+    border-left: 10px solid var(--saga);
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--saga);
+    padding: 0.6em 1em 0.8em;
+}
+
+.saga-card h3 {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    margin: 0.2em 0;
+}
+
+.saga-facts {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0 0 0.5em;
+}
+
+.saga-parts {
+    padding-left: 1.4em;
+    margin: 0;
+}
+
+.saga-parts li {
+    margin: 0.35em 0;
+}
+
+#sagas {
+    scroll-margin-top: 1em;
+}

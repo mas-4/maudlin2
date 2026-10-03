@@ -369,6 +369,13 @@ class HeadlinesPage:
         clusters_list.sort(key=lambda c: (newest[saga_of.get(c['cluster'], ('story', c['cluster']))],
                                           saga_of.get(c['cluster'], -1), c['first']))
         self.context['sagas'] = sagas
+        by_id = {c['cluster']: c for c in clusters_list}
+        for saga in sagas.values():
+            saga['parts'] = [{'cluster': int(k), 'title': self.context['titles'][k], 'outlets': by_id[k]['outlets'],
+                              'age': age_text(by_id[k]['first'] / 3600), 'feelings': by_id[k]['feelings'][:1]}
+                             for k in saga['clusters']]
+            saga['started'] = saga['parts'][0]['age']
+        self.context['saga_list'] = sorted(sagas.values(), key=lambda s: -s['outlets'])
         df['group'] = df['cluster'].map(lambda k: saga_of.get(k, k))
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
