@@ -69,6 +69,7 @@ class PathHandler:
         agency_distribution = 'agency_distribution.png'
         mentions_graph = 'mentions_graph.png'
         framing = 'framing.png'
+        loaded_language = 'loaded_language.png'
         generic_ballot = 'generic_ballot.png'
         approval = 'approval.png'
 

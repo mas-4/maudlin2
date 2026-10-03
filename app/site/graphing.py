@@ -17,6 +17,8 @@ logger = get_logger(__name__)
 
 aisle_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
 bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
+# Text color that stays readable on each bias color: white on the two darkest ends
+bias_ink = ['#ffffff', '#000000', '#000000', '#000000', '#000000', '#000000', '#ffffff']
 credibility_colors = ["#FF0000", "#FF4500", "#FFA500", "#FFFF00", "#9ACD32", "#008000"]
 rotation = 35
 # Validated as a pair (light surface): CVD and normal-vision separation both pass
@@ -450,6 +452,29 @@ class Plots:
         plt.tight_layout()
         plt.savefig(PathHandler(PathHandler.FileNames.approval).build)
         plt.close(fig)
+
+    @staticmethod
+    def loaded_language(scores: pd.DataFrame):
+        """Bars from zero: each outlet's average loaded score, colored by bias."""
+        if scores.empty:
+            return False
+        scores = scores.sort_values('loaded')
+        fig, ax = plt.subplots(figsize=(9, max(3, 0.28 * len(scores) + 1.5)))
+        ax.barh(scores['agency'], scores['loaded'], color=[bias_colors[b + 3] for b in scores['bias']],
+                edgecolor='white', linewidth=2, height=0.8)
+        ax.set_xlabel('average loaded score of news headlines (0 plain, 1 some charged words, 2 built to provoke)')
+        ax.set_title('Who uses loaded language?')
+        ax.set_xlim(0, max(1.0, scores['loaded'].max() * 1.1))
+        ax.grid(axis='x', linestyle='--', alpha=0.4)
+        for spine in ['right', 'top', 'left']:
+            ax.spines[spine].set_visible(False)
+        handles = [plt.Rectangle((0, 0), 1, 1, color=bias_colors[b.value + 3]) for b in Bias]
+        ax.legend(handles, [str(b) for b in Bias], loc='lower right', fontsize='small', title='Outlet bias',
+                  frameon=False)
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.loaded_language).build)
+        plt.close(fig)
+        return True
 
     @staticmethod
     def framing(scores: pd.DataFrame):

@@ -149,6 +149,10 @@ class Headline(Base, AccessTimeMixin):
     # Probability this is a news headline rather than lifestyle, shopping or page furniture. Null until the
     # news classifier has a model to score it with; analyses treat null as news.
     news_score: Mapped[float] = mapped_column(Float(), nullable=True)
+    # From the llm's rubric (see app/analysis/newsfilter.py): how good or bad the reported event is for the people
+    # it affects (-2 to 2), and how loaded the outlet's own wording is (0 to 2). Null without an llm.
+    event_score: Mapped[float] = mapped_column(Float(), nullable=True)
+    loaded_score: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"

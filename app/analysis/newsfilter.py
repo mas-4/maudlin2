@@ -1,13 +1,22 @@
-"""Separates news headlines from everything else outlets put on their front pages: recipes, shopping deals,
-evergreen how-tos, and page furniture that slips past the scraper filters.
+"""Judges each headline with the local llm, one headline per request (small models lose track of numbered
+batches), in a single call that returns three things:
 
-When an llm is available it labels each new headline at scrape time (one headline per request: small models lose
-track of numbered batches). `--label-headlines` builds a labeled sample and `--train-newsfilter` fits a small
-embedding classifier on it as a fallback for when no llm is running. That classifier is much weaker than the llm,
-so it uses a cutoff chosen to almost never drop real news."""
+- kind: news, or not (lifestyle, shopping, page furniture). Non-news stays out of the analyses.
+- event: how good or bad the reported event is for the people it affects, -2 to 2, whoever reports it.
+- loaded: how loaded the outlet's own wording is, 0 (plain) to 2 (built to provoke).
+
+Event and wording are scored apart because word-list sentiment (VADER, AFINN) mostly measures the event: every
+headline about a deadly crash reads negative whoever writes it. The rubric asks the model to name who is
+affected and how before scoring, which fixed most errors on hard cases (strikes and attacks read from the
+attacker's side).
+
+When no llm is running, `--label-headlines` + `--train-newsfilter` provide a fallback news classifier. It's much
+weaker than the llm, so it uses a cutoff chosen to almost never drop real news, and it gives no event or loaded
+scores (the site falls back to VADER and AFINN for those)."""
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 import joblib
@@ -27,22 +36,57 @@ NEWS_THRESHOLD = 0.5
 # The fallback classifier only drops a headline when it's at least this likely to be right
 FALLBACK_PRECISION = 0.9
 
-LABEL_PROMPT = """Classify this item scraped from {agency}'s front page.
+PROMPT = """You are scoring a headline from {agency}'s front page. Judge only the headline's words.
 
-- news: reporting, analysis or opinion about current events (politics, world, business, science, crime, \
-courts, health, sports results, notable people and what happened to them)
-- non_news: service and lifestyle content (recipes, shopping and deals, product reviews, travel guides, \
-horoscopes, quizzes, evergreen how-to and advice)
-- junk: not a headline at all (navigation, section names, bylines, promos, newsletter signups, template text)
+kind:
+- news: politics, government, world affairs, business and the economy, courts, crime, science, health, sports \
+results and sports news, entertainment-industry news (releases, deals, awards), and any opinion, analysis or \
+commentary on these, however sharply worded ("Trump's 'human printer' and the twisted magic of the MAGA \
+cocoon", "Why house prices may be in trouble", "Miranda Lambert returns with new album")
+- non_news: celebrity gossip and personal lives (romances, outfits, parties, photos), lifestyle (recipes, \
+shopping and deals, product reviews, travel features, horoscopes, quizzes), evergreen how-to and advice, \
+photo galleries ("Sydney Sweeney spills out of lacy bra", "2 habits that weaken your critical thinking", \
+"Gallery: the week in pictures")
+- junk: not a headline at all: navigation, section names, bylines, promos, newsletter signups, template text \
+("Election '04", "More news", "Read the full story")
 
-Item: {title}"""
+affected: first, in under 12 words, who the event affects and whether it helps or harms them.
+
+event: how good or bad the reported event is for the people it affects, whoever reports it and whoever caused \
+it. Attacks, strikes, arrests, deaths, losses and dangers are bad for the people on the receiving end.
+-2: deaths, disasters, attacks, violence, serious harm ("Strike kills 12", "Heat deaths top 34,000")
+-1: setbacks, losses, conflict, threats, risk, worry ("Factory lays off 1,400", "Bridge damaged in strike")
+0: neutral, procedural or mixed ("Senate schedules vote", "Polls show tight race")
++1: progress, relief, gains, wins ("Inflation eases", "Team wins series")
++2: lives saved, major breakthroughs, celebrations ("Hostages freed", "Cure approved")
+
+loaded: how much the outlet's own word choice adds emotion, judgment or alarm beyond the facts. Words quoted \
+from a source do not count. Most headlines are 0.
+0: plain wording ("Senator criticizes bill", "Man arrested after shooting", "Investigators say attack was planned")
+1: one or two charged words the outlet chose ("slams", "blasts", "chaos", "meltdown", "regime", "furious")
+2: built to provoke: insults, sensational or partisan framing, ALL CAPS, outrage bait ("MELTDOWN: Dems lose \
+their minds", "Clueless senator humiliated")
+
+Headline: {title}"""
 
 SCHEMA = {
     "type": "object",
-    "properties": {"label": {"type": "string", "enum": ["news", "non_news", "junk"]}},
-    "required": ["label"],
+    "properties": {
+        "kind": {"type": "string", "enum": ["news", "non_news", "junk"]},
+        "affected": {"type": "string", "maxLength": 100},  # written before the scores, it steers them
+        "event": {"type": "integer", "enum": [-2, -1, 0, 1, 2]},
+        "loaded": {"type": "integer", "enum": [0, 1, 2]},
+    },
+    "required": ["kind", "affected", "event", "loaded"],
     "additionalProperties": False,
 }
+MAX_TOKENS = 80
+PARALLEL_REQUESTS = 4
+
+
+def judge(title: str, agency: str) -> Optional[dict]:
+    return llm.complete_json(PROMPT.format(agency=agency, title=title.strip()), SCHEMA, max_tokens=MAX_TOKENS)
+
 
 # One headline per request: asked to label a numbered batch, small models lose track of which label belongs to
 # which item and labels slide onto the wrong headlines
@@ -64,9 +108,9 @@ def label_headlines(n: int = 3000):
     t = time.time()
     labeled = []
     for i, (title, agency) in enumerate(sample, start=1):
-        result = llm.complete_json(LABEL_PROMPT.format(agency=agency, title=title.strip()), SCHEMA, max_tokens=16)
+        result = judge(title, agency)
         if result:
-            labeled.append({'title': title, 'agency': agency, 'label': result['label']})
+            labeled.append({'title': title, 'agency': agency, 'label': result['kind']})
         if i % SAVE_EVERY == 0 or i == len(sample):
             # Append as we go so an interrupted run keeps what it has done
             pd.DataFrame(labeled).to_csv(LABELS_FILE, mode='a', header=not os.path.exists(LABELS_FILE),
@@ -127,41 +171,43 @@ def _load() -> Optional[dict]:
     return _model
 
 
-def score(titles: list[str], agency: str) -> list[Optional[float]]:
-    """1.0 for news, 0.0 for non-news or junk, None if it can't be judged (treated as news).
-
-    The llm labels each headline when one is available: it's local, free and much more accurate. Otherwise the
-    fallback classifier only marks headlines it's confident aren't news."""
+def assess(titles: list[str], agency: str) -> list[dict]:
+    """For each title: news_score (1.0 news, 0.0 not, None if it couldn't be judged, which counts as news),
+    event_score and loaded_score (None without an llm)."""
     if not len(titles):
         return []
     if llm.backend() is not None:
-        scores = []
-        for title in titles:
-            result = llm.complete_json(LABEL_PROMPT.format(agency=agency, title=title.strip()), SCHEMA,
-                                       max_tokens=16)
-            scores.append(None if result is None else float(result['label'] == 'news'))
-        return scores
+        # Several requests at once let the server batch them on the gpu (needs OLLAMA_NUM_PARALLEL > 1)
+        with ThreadPoolExecutor(PARALLEL_REQUESTS) as pool:
+            judged = list(pool.map(lambda title: judge(title, agency), titles))
+        return [{'news_score': None, 'event_score': None, 'loaded_score': None} if r is None else
+                {'news_score': float(r['kind'] == 'news'), 'event_score': float(r['event']),
+                 'loaded_score': float(r['loaded'])} for r in judged]
     model = _load()
     if model is None:
-        return [None] * len(titles)
+        return [{'news_score': None, 'event_score': None, 'loaded_score': None} for _ in titles]
     probabilities = model['model'].predict_proba(embed(titles))[:, 1]
-    return [float(p >= model['threshold']) for p in probabilities]
+    return [{'news_score': float(p >= model['threshold']), 'event_score': None, 'loaded_score': None}
+            for p in probabilities]
 
 
 def rescore_all():
-    """Score every stored headline, e.g. after retraining. With an llm this takes a while (~0.1s a headline)."""
+    """Judge every stored headline again, e.g. after changing the rubric (~0.5s a headline with the llm), then
+    recompute the stories' framing from the new scores."""
     from app.models import Session, Headline, Article, Agency
     with Session() as s:
         rows = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency).all()
     df = pd.DataFrame(rows, columns=['id', 'title', 'agency'])
     t = time.time()
     for n, (agency, group) in enumerate(df.groupby('agency'), start=1):
-        scores = score(group['title'].tolist(), agency)
+        results = assess(group['title'].tolist(), agency)
         with Session() as s:
-            s.execute(update(Headline), [{'id': int(i), 'news_score': v} for i, v in zip(group['id'], scores)])
+            s.execute(update(Headline), [{'id': int(i), **r} for i, r in zip(group['id'], results)])
             s.commit()
         logger.info("Rescored %s (%d of %d agencies, %.0fs)", agency, n, df['agency'].nunique(), time.time() - t)
     with Session() as s:
         total = s.query(Headline).count()
         news = s.query(Headline).filter(Headline.news_score >= NEWS_THRESHOLD).count()
     logger.info("Rescored %d headlines, %.1f%% news", total, 100 * news / max(total, 1))
+    from app.analysis.stories import refresh_story_sentiment
+    refresh_story_sentiment()

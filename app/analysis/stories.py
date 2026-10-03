@@ -7,7 +7,7 @@ from datetime import datetime as dt, timedelta as td
 
 import pandas as pd
 import pytz
-from sqlalchemy import func
+from sqlalchemy import func, update
 
 from app.analysis import llm
 from app.models import Session, SqlLock, Story, StoryHeadline, Headline, Article, Agency
@@ -23,8 +23,28 @@ MIN_STORIES_FOR_FRAMING = 5
 
 
 def headline_sentiment(df: pd.DataFrame) -> pd.Series:
-    # Same blend the site already shows as the smiley on each story link
-    return (df['afinn'] + df['vader_compound']) / 2
+    """How good or bad each headline makes the news look, on roughly -1 to 1: the llm's event score (-2 to 2,
+    halved) where there is one, else the VADER/AFINN blend the site used before."""
+    legacy = (df['afinn'] + df['vader_compound']) / 2
+    if 'event_score' not in df:
+        return legacy
+    return (df['event_score'] / 2).fillna(legacy)
+
+
+def refresh_story_sentiment():
+    """Recompute every saved story member's sentiment and deviation from the headlines' current scores, e.g.
+    after the headlines were rescored with a new rubric."""
+    with Session() as s, SqlLock:
+        rows = s.query(StoryHeadline.id, StoryHeadline.story_id, Headline.afinn, Headline.vader_compound,
+                       Headline.event_score).join(Headline, Headline.id == StoryHeadline.headline_id).all()
+        df = pd.DataFrame(rows, columns=['id', 'story_id', 'afinn', 'vader_compound', 'event_score'])
+        if df.empty:
+            return
+        df['sentiment'] = headline_sentiment(df)
+        df['deviation'] = df['sentiment'] - df.groupby('story_id')['sentiment'].transform('mean')
+        s.execute(update(StoryHeadline), df[['id', 'sentiment', 'deviation']].to_dict(orient='records'))
+        s.commit()
+    logger.info("Refreshed sentiment for %d story headlines", len(df))
 
 
 def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
@@ -156,3 +176,21 @@ def framing_scores() -> pd.DataFrame:
         framing=('deviation', 'mean'), stories=('story_id', 'nunique')
     ).reset_index()
     return scores[scores['stories'] >= MIN_STORIES_FOR_FRAMING].sort_values('framing')
+
+
+MIN_HEADLINES_FOR_LOADED = 30
+
+
+def loaded_language() -> pd.DataFrame:
+    """Each outlet's average loaded score (0 plain to 2 built to provoke) over its news headlines this month."""
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=FRAMING_WINDOW_DAYS)
+    with Session() as s:
+        rows = s.query(Agency.name, Agency._bias, Headline.loaded_score).join(  # noqa prot attr
+            Headline.article).join(Article.agency).filter(
+            Headline.first_accessed > since, Headline.loaded_score.isnot(None), Headline.news_score >= 0.5
+        ).all()
+    df = pd.DataFrame(rows, columns=['agency', 'bias', 'loaded'])
+    if df.empty:
+        return df
+    scores = df.groupby(['agency', 'bias']).agg(loaded=('loaded', 'mean'), headlines=('loaded', 'size')).reset_index()
+    return scores[scores['headlines'] >= MIN_HEADLINES_FOR_LOADED].sort_values('loaded')

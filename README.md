@@ -49,10 +49,11 @@ Oh! And the site is hosted on netlify. It's just a bunch of flat files I upload 
   with a key in `.anthropic_creds` to use Claude instead. With no LLM available these features are skipped and the
   site builds as before.
   - Neutral story titles are written once per new story.
-  - The news filter keeps lifestyle, shopping and page-furniture headlines out of the analyses. The LLM labels
-    each new headline at scrape time (`--rescore-news` relabels everything already stored). For when no LLM is
-    running, `--label-headlines 3000` then `--train-newsfilter` builds a small fallback classifier; it's much
-    weaker than the LLM, so it only drops headlines it's confident about.
+  - Each new headline gets one LLM call that returns three judgments: whether it's news (non-news stays out of the
+    analyses), how good or bad the event is for the people it affects (-2 to 2), and how loaded the outlet's own
+    wording is (0 to 2). These replace VADER/AFINN in the mood meters and framing charts; the old scores are kept,
+    and used when no LLM is running. `--rescore-news` rejudges everything stored after a rubric change. For when no
+    LLM is running, `--label-headlines 3000` then `--train-newsfilter` builds a small fallback news classifier.
 - Each scrape also records Bluesky's trending topics and refreshes polling data: Senate race averages computed
   from [VoteHub](https://votehub.com/polls/) polls (CC BY 4.0), and the published national averages as tabulated on
   Wikipedia (CC BY-SA 4.0).

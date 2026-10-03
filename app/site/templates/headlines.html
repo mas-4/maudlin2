@@ -58,6 +58,22 @@
     </style>
 
     <script>
+        // Keep "BREAKING! 12m ago" honest as the page sits open: recompute from each story's first-seen time
+        const BREAKING_MINUTES = {{ breaking_minutes }};
+        function updateBroken() {
+            const now = Date.now();
+            document.querySelectorAll('.broken[data-first]').forEach((el) => {
+                const minutes = Math.max(0, Math.floor((now - Date.parse(el.dataset.first)) / 60000));
+                el.innerHTML = minutes < BREAKING_MINUTES
+                    ? `<h3>🚨🚨🚨BREAKING! ${minutes}m ago!</h3>`
+                    : `<p>First seen ${Math.floor(minutes / 60)} hour${Math.floor(minutes / 60) === 1 ? '' : 's'} ago</p>`;
+            });
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            updateBroken();
+            setInterval(updateBroken, 30000);
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             const tooltip = document.createElement('div');
             tooltip.className = 'tooltip';
@@ -69,7 +85,8 @@
                 if (title) {
                     target.setAttribute('data-title', title);
                     target.removeAttribute('title');
-                    const color = target.getAttribute('data-tooltip-color') || '#333';
+                    const color = target.getAttribute('data-tooltip-color') || '#f4f4f4';
+                    tooltip.style.color = target.getAttribute('data-tooltip-ink') || '#222';
                     showTooltip(target, title, color);
                 }
             });
@@ -115,7 +132,8 @@
                 const target = document.querySelector('[data-title]');
                 if (target) {
                     const title = target.getAttribute('data-title');
-                    const color = target.getAttribute('data-tooltip-color') || '#333';
+                    const color = target.getAttribute('data-tooltip-color') || '#f4f4f4';
+                    tooltip.style.color = target.getAttribute('data-tooltip-ink') || '#222';
                     showTooltip(target, title, color);
                 }
             }

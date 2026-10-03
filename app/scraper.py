@@ -21,7 +21,8 @@ from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 
 logger = get_logger(__name__)
 
-ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score'])
+ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score', 'event_score',
+                                           'loaded_score'])
 
 
 class Scraper(ABC, Thread):
@@ -133,6 +134,12 @@ class Scraper(ABC, Thread):
         df['word_count'] = df['title'].str.split().str.len()
         # Short strings are navigation ("Read More", "OPINION"), not headlines
         df.drop(df[df['word_count'] < Constants.Thresholds.min_headline_words].index, inplace=True)
+        # ...and long strings are a summary that came along with the headline, a scraper bug to fix, not a headline
+        too_long = df['word_count'] > Constants.Thresholds.max_headline_words
+        if too_long.any():
+            logger.warning("%s: dropped %d headlines over %d words, its parser may be grabbing summaries",
+                           self.agency, too_long.sum(), Constants.Thresholds.max_headline_words)
+        df.drop(df[too_long].index, inplace=True)
         # Text repeated all over one page is chrome ("Leave a Comment", section names), not a headline
         repeats = df.groupby('title')['title'].transform('size')
         df.drop(df[repeats >= Constants.Thresholds.page_repeat_limit].index, inplace=True)
@@ -160,9 +167,11 @@ class Scraper(ABC, Thread):
             s.commit()
 
         # Only headlines we haven't seen before need judging
-        df['news_score'] = newsfilter.score(df['title'].tolist(), self.agency)
+        judged = pd.DataFrame(newsfilter.assess(df['title'].tolist(), self.agency), index=df.index,
+                              columns=['news_score', 'event_score', 'loaded_score'])
+        df = df.join(judged)
         df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row'],
-                                                        x['news_score']), axis=1)
+                                                        x['news_score'], x['event_score'], x['loaded_score']), axis=1)
         return dropped, df['artpair'].tolist()
 
     def run_processing(self):
@@ -195,6 +204,8 @@ class Scraper(ABC, Thread):
             processed=art.processed,
             position=art.pos,
             news_score=art.news_score,
+            event_score=art.event_score,
+            loaded_score=art.loaded_score,
             article=article
         )
         s.add(headline)
@@ -240,6 +251,22 @@ class FeedScraper(Scraper):
             href = link.get('href') or link.get_text(strip=True)  # atom puts the url in href, rss in the text
             if href and title.get_text(strip=True):
                 self.downstream.append((href, title.get_text(strip=True)))
+
+
+class GoogleNewsScraper(FeedScraper):
+    """For outlets that block scrapers outright: their last day of stories through a Google News search feed.
+    The links are Google redirects rather than the outlet's own urls, and the order is Google's, not the outlet's
+    front page. Subclasses set `site` (e.g. 'apnews.com') and the `suffix` Google appends to titles."""
+    site: str = ''
+    suffix: str = ''
+
+    @property
+    def feed(self) -> str:
+        return f'https://news.google.com/rss/search?q=site:{self.site}+when:1d&hl=en-US&gl=US&ceid=US:en'
+
+    def setup(self, soup: Soup):
+        super().setup(soup)
+        self.downstream = [(href, title.removesuffix(self.suffix)) for href, title in self.downstream]
 
 
 class SeleniumResourceManager:

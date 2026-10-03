@@ -1,0 +1,48 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>Headline changes</h2>
+    <p class="poll-note">Headlines that changed on an article outlets had already published, in the last
+        {{ window_days }} days, newest first. Removed words are struck through and added words highlighted.
+        Each change is tagged with where it was seen:</p>
+    <ul class="poll-note">
+        <li><strong>feed</strong>: the outlet's RSS feed, whose titles are normally the article's own headline, so
+            the article was most likely rewritten.</li>
+        <li><strong>front page</strong>: the link text on the outlet's homepage. Outlets often use a shorter or
+            different headline there, and change it when a story moves, so the article itself may still carry its
+            original headline.</li>
+    </ul>
+    <p class="poll-note">A change counts only if the old headline stopped appearing before the new one appeared, so the
+        same article placed twice on a page isn't counted, and live blogs and reused links are skipped.
+        {{ minor_count }} minor changes (capitalization, punctuation, an added or dropped label like "WEEKEND:", or a
+        shortened version) aren't shown.</p>
+
+    {% if rates %}
+        <table class="races">
+            <thead><tr><th>Outlet</th><th>Changes</th><th>Headlines</th><th>Changes per 100</th></tr></thead>
+            <tbody>
+            {% for r in rates %}
+                <tr><td><span class="edit-chip" style="background-color: {{ r.color }}; color: {{ r.ink }}">{{ r.agency }}</span></td>
+                    <td>{{ r.edits }}</td><td>{{ r.headlines }}</td><td>{{ r.per_100 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <div class="edits">
+        {% for edit in edits %}
+            <div class="edit">
+                <div class="edit-meta">
+                    <span class="edit-chip" style="background-color: {{ edit.color }}; color: {{ edit.ink }}" title="{{ edit.bias }}">{{ edit.agency }}</span>
+                    <span class="edit-source">{{ edit.source }}</span>
+                    <span>changed between {{ edit.between }}</span>
+                    {% for note in edit.shifts %}<span class="trend-both">{{ note }}</span>{% endfor %}
+                </div>
+                <p class="edit-before">{{ edit.before_html|safe }}</p>
+                <p class="edit-after"><a href="{{ edit.url }}">{{ edit.after_html|safe }}</a></p>
+            </div>
+        {% else %}
+            <p>No headline changes yet.</p>
+        {% endfor %}
+    </div>
+{% endblock content %}

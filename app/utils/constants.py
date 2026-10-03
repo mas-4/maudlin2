@@ -84,6 +84,7 @@ class Constants:
     class Thresholds:
         topic_score = 0.05
         min_headline_words = 4
+        max_headline_words = 40  # longer means a summary paragraph came along with the headline
         page_repeat_limit = 3  # the same text this many times on one page is navigation
 
     class Election:

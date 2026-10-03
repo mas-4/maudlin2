@@ -4,11 +4,21 @@
     <br><br>
     <img alt="Agency Bias Distribution" src="{{ FileNames.agency_distribution }}">
     <br><br>
+    {% if loaded_language %}
+        <h2>Loaded language</h2>
+        <p>A local language model scores how much each headline's own wording adds emotion, judgment or alarm beyond
+            the facts: 0 for plain wording, 1 for a charged word or two ("slams", "chaos"), 2 for headlines built to
+            provoke. Words quoted from a source don't count. Averaged over each outlet's news headlines from the last
+            30 days; outlets need 30 or more to appear.</p>
+        <img alt="Loaded language: average loaded score of each outlet's headlines" src="{{ FileNames.loaded_language }}">
+        <br><br>
+    {% endif %}
     {% if framing %}
         <h2>Framing</h2>
-        <p>For every story covered by at least six outlets, each headline's sentiment is compared with the average
-            across all outlets covering that story. Averaged over the last 30 days, this separates how an outlet
-            frames the news from which news happens to be bad. Outlets need five or more stories to appear.</p>
+        <p>For every story covered by at least six outlets, a local language model scores how good or bad each
+            headline makes the event look, and that is compared with the average across all outlets covering the same
+            story. Averaged over the last 30 days, this separates how an outlet frames the news from which news happens
+            to be bad. Outlets need five or more stories to appear.</p>
         <img alt="Framing: headline sentiment compared with other outlets on the same stories"
              src="{{ FileNames.framing }}">
         <br><br>

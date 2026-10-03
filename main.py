@@ -139,7 +139,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--train-newsfilter', action='store_true',
                         help='train the fallback news classifier on the labeled headlines')
     parser.add_argument('--rescore-news', action='store_true',
-                        help='judge every stored headline news or not (uses the llm when available)')
+                        help='judge every stored headline again: news or not, event and loaded scores (uses the llm)')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:

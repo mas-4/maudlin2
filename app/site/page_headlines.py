@@ -11,7 +11,8 @@ from app.analysis import textnorm
 from app.analysis.pipelines import Pipelines, prepare
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
-from app.site.graphing import bias_colors
+from app.analysis.edits import find_edits
+from app.site.graphing import bias_colors, bias_ink
 from app.utils import Config, Country, get_logger
 from app.registry import Scrapers
 from app.trends import current_trends, match_text
@@ -19,6 +20,11 @@ from app.trends import current_trends, match_text
 logger = get_logger(__name__)
 
 TRENDING_COUNT = 10
+BREAKING_MINUTES = 90
+# A story gets the churn badge once at least this many of its outlets, and this share of them, have rewritten
+# their headline: 3 rewrites is a lot for a 6-outlet story and ordinary for a 38-outlet one
+CHURN_OUTLETS = 3
+CHURN_SHARE = 0.15
 # e.g. "Oct 3, 9:41 AM ET"; Windows' strftime doesn't support the no-padding dash
 TOOLTIP_TIME = '%b %#d, %#I:%M %p ET' if os.name == 'nt' else '%b %-d, %-I:%M %p ET'
 # Cosine between a trend and a story's mean headline embedding. On a day of data true matches scored 0.72-0.86
@@ -33,9 +39,9 @@ TREND_SOURCES = [
 ]
 
 
-# Meter scales, from a day of stories: lean ran L+1.2 to R+2.0 and mood -0.66 to +0.23
+# Meter scales: lean ran L+1.2 to R+2.0 on a day of stories; mood is the event score halved, so -1 to 1
 LEAN_RANGE = 2.0
-MOOD_RANGE = 0.75
+MOOD_RANGE = 1.0
 
 
 def meter(value: float, scale: float, negative: str, positive: str) -> dict:
@@ -108,7 +114,7 @@ class HeadlinesPage:
         self.dh = dh
         self.template = TemplateHandler('headlines.html', 'index.html')
         self.newsletter = TemplateHandler('newsletter.html')
-        self.context = {'title': 'Current Headlines'}
+        self.context = {'title': 'Current Headlines', 'breaking_minutes': BREAKING_MINUTES}
 
     def generate(self):
         logger.info("Generating headlines page...")
@@ -178,7 +184,7 @@ class HeadlinesPage:
         df['text_length'] = df['title'].str.len()
         df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
         logger.info("%i clusters left after filtering", df['cluster'].nunique())
-        sentiment = headline_sentiment(df)
+        sentiment = df['sentiment'] = headline_sentiment(df)
         df['deviation'] = sentiment - sentiment.groupby(df['cluster']).transform('mean')
         stories = sync_stories(df)
         self.summarize(df, label_stories(df, stories))
@@ -220,30 +226,42 @@ class HeadlinesPage:
         ]
 
     def make_agency_lists(self, clusters_list):
+        # Articles whose headline the outlet rewrote (minor changes excluded), to mark their chips and the stories
+        # where many outlets are rewriting
+        edits, _ = find_edits()
+        rewritten = set(edits['url']) if not edits.empty else set()
         agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
             hrefs = [f"<p>{len(cluster['data'])} headlines / {cluster['coverage']}% coverage</p>"]
-            # if cluster['first'] / 60 < 4 * 60:
+            # The page's script keeps this current from data-first; the text here is for readers without javascript
+            story_first_seen = min(a['appearance'] for a in cluster['data']).isoformat()
             minutes = cluster['first'] // 60
-            if minutes < 90:
-                hrefs[-1] = hrefs[-1] + f'<h3>🚨🚨🚨BREAKING! {int(minutes)}m ago! </h3>'
+            if minutes < BREAKING_MINUTES:
+                fallback = f'<h3>🚨🚨🚨BREAKING! {int(minutes)}m ago!</h3>'
             else:
-                hrefs[-1] = hrefs[-1] + f'<p>First broken {int(cluster["first"] // 60 // 60)} hours ago</p>'
+                hours = int(cluster['first'] // 3600)
+                fallback = f'<p>First seen {hours} hour{"" if hours == 1 else "s"} ago</p>'
+            hrefs[-1] += f'<div class="broken" data-first="{story_first_seen}">{fallback}</div>'
+            cluster['rewrites'] = sum(a['url'] in rewritten for a in cluster['data'])
+            if cluster['rewrites'] >= max(CHURN_OUTLETS, CHURN_SHARE * len(cluster['data'])):
+                hrefs[-1] += (f'<a class="churn" href="edits.html" title="Outlets are still changing how they headline'
+                              f' this story">✏️ High headline churn: {cluster["rewrites"]} outlets changed theirs</a>')
             last_bias = -3
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
                 if a['bias'] != last_bias:
                     hrefs.append(f'<br>')
                     last_bias = a['bias']
-                mean_sentiment = (a['afinn'] + a['vader_compound']) / 2
-                smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
+                smiley = '😐' if a['sentiment'] == 0 else '😊' if a['sentiment'] > 0 else '😠'
                 bias = a['bias'] + 3
                 first_seen = a['appearance'].strftime(TOOLTIP_TIME)
+                edited = a['url'] in rewritten
+                note = ' · its headline for this article has changed since first seen' if edited else ''
                 hrefs.append(
-                    f'<a data-tooltip-color="{bias_colors[bias]}" class="storylink"'
-                    f' style="background-color: {bias_colors[bias]}"'
-                    f' title="{a["title"]} (first seen {first_seen}) · {a["deviation"]:+.2f} vs. other outlets"'
-                    f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
+                    f'<a data-tooltip-color="{bias_colors[bias]}" data-tooltip-ink="{bias_ink[bias]}" class="storylink"'
+                    f' style="background-color: {bias_colors[bias]}; color: {bias_ink[bias]}"'
+                    f' title="{a["title"]} (first seen {first_seen}) · {a["deviation"]:+.2f} vs. other outlets{note}"'
+                    f' href="{a["url"]}">{a["agency"]} {smiley}{" ✏️" if edited else ""}</a>'
                 )
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
         self.context['agency_lists'] = agency_lists

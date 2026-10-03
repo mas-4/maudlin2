@@ -393,3 +393,67 @@ table.races th, table.races td {
     border-bottom: 1px solid #ccc;
     text-align: left;
 }
+
+.edits {
+    max-width: 52em;
+    margin: 1.5em auto;
+}
+
+.edit {
+    border-bottom: 1px solid #ddd;
+    padding: 0.8em 0;
+}
+
+.edit-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.edit-chip {
+    color: black;
+    border-radius: 10px;
+    padding: 2px 9px;
+}
+
+.edit-before {
+    margin: 0.5em 0 0.2em;
+    color: #777;
+}
+
+.edit-after {
+    margin: 0;
+    font-weight: bold;
+}
+
+.edit del {
+    background: #f6d5d5;
+    text-decoration: line-through;
+}
+
+.edit ins {
+    background: #d4f0d4;
+    text-decoration: none;
+}
+
+.churn {
+    display: inline-block;
+    margin: 0.2em 0 0.4em;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #fff4d6;
+    border: 1px solid #e0b84a;
+    color: #6b4e00;
+    font-size: 0.85em;
+    text-decoration: none;
+}
+
+.edit-source {
+    font-size: 0.8em;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 0 0.35em;
+}

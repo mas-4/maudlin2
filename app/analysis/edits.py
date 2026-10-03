@@ -1,0 +1,140 @@
+"""Headline edits: when an outlet rewrites the headline on an article it has already published.
+
+Every article url can collect several headlines over time. Most pairs aren't edits, so a pair counts only when:
+
+- the old headline stopped appearing before the new one first appeared. Two wordings seen in the same run are
+  usually the same article placed twice on a page (a big hero headline and a short sidebar one), not a rewrite;
+- both are news (the llm's judgment, when there is one);
+- it's a rewrite of the same story: live blogs (one url, a new headline per development) and urls whose two
+  headlines share almost no words (reused for another story) are skipped;
+- the wording really changed. Changes that only touch case or punctuation, add or drop a kicker ("WEEKEND:",
+  "Exclusive —"), or where one version contains the other (truncation, or a change in how we scrape the page)
+  are kept apart as minor."""
+import difflib
+import html
+import re
+from datetime import datetime as dt, timedelta as td
+
+import pandas as pd
+import pytz
+from sqlalchemy import func
+
+from app.models import Session, Headline, Article, Agency
+from app.utils import get_logger
+
+logger = get_logger(__name__)
+
+WINDOW_DAYS = 7
+NEWS_THRESHOLD = 0.5
+
+# Labels outlets bolt onto the front or back of a headline without changing what it says: an ALL CAPS tag
+# ("WEEKEND:", "HIJACK PROBE"), a stock label ("Exclusive —", "Video:") or an ellipsis
+CAPS_KICKER = re.compile(r'^(?:[A-Z][A-Z0-9\s\'’&]{1,30}(?:\s*[:—–|]|\s{2,}))+\s*')
+LABEL_KICKER = re.compile(
+    r'^(?:(?:exclusive|watch|video|live|breaking|opinion|analysis|updated?)\s*[:—–|-]\s*)+', re.IGNORECASE)
+ELLIPSIS = re.compile(r'^[…\s.]+|[…\s.]+$')
+# Live blogs keep one url and swap in a headline for each new development, so their changes aren't edits
+LIVE = re.compile(r'\bLIVE\b|\blive (?:updates?|blog|coverage)\b|\bas it happened\b', re.IGNORECASE)
+# Below this share of words in common, the url now carries a different story (reused or rotating), not a rewrite
+MIN_OVERLAP = 0.2
+WORD = re.compile(r"[\w$%'’]+")
+
+
+def _words(text: str) -> list[str]:
+    return [w.lower().replace('’', "'") for w in WORD.findall(text)]
+
+
+def _core(text: str) -> list[str]:
+    """The words that carry a headline's meaning, without kickers, case or punctuation."""
+    text = ELLIPSIS.sub('', text.strip())
+    return _words(LABEL_KICKER.sub('', CAPS_KICKER.sub('', text)))
+
+
+def overlap(before: str, after: str) -> float:
+    a, b = set(_core(before)), set(_core(after))
+    return len(a & b) / max(len(a | b), 1)
+
+
+def is_minor(before: str, after: str) -> bool:
+    a, b = _core(before), _core(after)
+    if a == b:
+        return True
+    joined_a, joined_b = ' '.join(a), ' '.join(b)
+    return joined_a in joined_b or joined_b in joined_a
+
+
+def diff_html(before: str, after: str) -> tuple[str, str]:
+    """Both versions as html, with removed words marked <del> in the old one and added words <ins> in the new."""
+    old, new = before.split(), after.split()
+    matcher = difflib.SequenceMatcher(a=[w.lower() for w in old], b=[w.lower() for w in new], autojunk=False)
+    old_html, new_html = [], []
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        old_part = html.escape(' '.join(old[i1:i2]))
+        new_part = html.escape(' '.join(new[j1:j2]))
+        if op == 'equal':
+            old_html.append(old_part)
+            new_html.append(new_part)
+            continue
+        if old_part:
+            old_html.append(f'<del>{old_part}</del>')
+        if new_part:
+            new_html.append(f'<ins>{new_part}</ins>')
+    return ' '.join(old_html), ' '.join(new_html)
+
+
+def find_edits(days: int = WINDOW_DAYS) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(edits, minor): one row per rewrite in the last `days`, newest first."""
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
+    columns = {
+        'article_id': Headline.article_id, 'title': Headline.title, 'first': Headline.first_accessed,
+        'last': Headline.last_accessed, 'news': Headline.news_score, 'event': Headline.event_score,
+        'loaded': Headline.loaded_score, 'url': Article.url, 'agency': Agency.name, 'bias': Agency._bias,  # noqa
+    }
+    with Session() as s:
+        rows = s.query(*columns.values()).join(Headline.article).join(Article.agency).filter(
+            Headline.last_accessed > since).all()
+    df = pd.DataFrame(rows, columns=list(columns))
+    df = df[df.groupby('article_id')['title'].transform('nunique') > 1]
+    empty = pd.DataFrame()
+    if df.empty:
+        return empty, empty
+
+    edits, minor = [], []
+    for _, group in df.sort_values('first').groupby('article_id'):
+        records = group.to_dict('records')
+        for old, new in zip(records, records[1:]):
+            if old['title'].strip() == new['title'].strip() or old['last'] >= new['first']:
+                continue  # same words, or both on the page at once
+            if any(r['news'] is not None and r['news'] < NEWS_THRESHOLD for r in (old, new)):
+                continue
+            if LIVE.search(old['title']) or LIVE.search(new['title']) or overlap(old['title'], new['title']) < MIN_OVERLAP:
+                continue  # a live blog or a reused url, not a rewrite
+            old_html, new_html = diff_html(old['title'].strip(), new['title'].strip())
+            row = {
+                'agency': new['agency'], 'bias': new['bias'], 'url': new['url'],
+                'before': old['title'].strip(), 'after': new['title'].strip(),
+                'before_html': old_html, 'after_html': new_html,
+                # the change happened between these two scrapes
+                'last_seen_before': old['last'], 'first_seen_after': new['first'],
+                'event_before': old['event'], 'event_after': new['event'],
+                'loaded_before': old['loaded'], 'loaded_after': new['loaded'],
+            }
+            (minor if is_minor(row['before'], row['after']) else edits).append(row)
+
+    def frame(rows):
+        return pd.DataFrame(rows).sort_values('first_seen_after', ascending=False) if rows else empty
+    return frame(edits), frame(minor)
+
+
+def edit_rates(edits: pd.DataFrame, days: int = WINDOW_DAYS) -> pd.DataFrame:
+    """Edits per 100 headlines for each outlet that made any, most-editing first."""
+    if edits.empty:
+        return edits
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
+    with Session() as s:
+        rows = s.query(Agency.name, func.count(Headline.id)).join(Headline.article).join(Article.agency).filter(
+            Headline.first_accessed > since).group_by(Agency.name).all()
+    headlines = pd.Series(dict(rows), name='headlines')
+    rates = edits.groupby(['agency', 'bias']).size().rename('edits').reset_index().join(headlines, on='agency')
+    rates['per_100'] = 100 * rates['edits'] / rates['headlines']
+    return rates.sort_values(['per_100', 'edits'], ascending=False)

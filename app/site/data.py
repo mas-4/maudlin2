@@ -195,6 +195,8 @@ class DataHandler:
             'position': Headline.position,
             'vader_compound': Headline.vader_compound,
             'afinn': Headline.afinn,
+            'event_score': Headline.event_score,
+            'loaded_score': Headline.loaded_score,
             'url': Article.url,
             'country': Agency._country,  # noqa prot attr
             'topic_id': Article.topic_id,
