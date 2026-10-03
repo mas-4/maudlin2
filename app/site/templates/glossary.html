@@ -172,37 +172,43 @@
 
     <h2 class="section-divider" id="built"><span>How it was built</span></h2>
     <div class="terms">
-        {% call term('🛠️', 'By hand, then with AI', 'history') %}
-            <p><strong>2024: by hand.</strong> The site began in January 2024 as Maudlin, designed and written mostly by
-                hand: the scrapers for each outlet, the database, the word cloud and the first sentiment measures, over
-                about 680 commits through August 2024.</p>
-            <p><strong>2026: rebuilt with AI assistance.</strong> For the 2026 midterms it was rebuilt with an AI coding
-                assistant (Anthropic's Claude), starting in October 2026. The ideas, the design, the research questions
-                and every decision about what ships are a person's; the assistant wrote and tested much of the new code
-                to that direction, and helped research sources, ratings and methods.</p>
-            <p><strong>Two different AIs.</strong> Building the site is one thing; reading the news is another. The
-                measures on this site (news or not, mood, spin, feelings, story titles) come from the small open model
-                described above, <code>{{ model }}</code>, running on our own computer. Every score records which model
-                and which version of its instructions made it, and we test how stable its answers are before trusting
-                them, including publishing where it fails.</p>
+        {% call term('✍️', '2024: by hand', 'history') %}
+            <p>The site began in January 2024 as Maudlin, designed and written mostly by hand: the scrapers for each
+                outlet, the database, the word cloud and the first sentiment measures, over about 680 commits through
+                August 2024.</p>
+        {% endcall %}
+        {% call term('🛠️', '2026: rebuilt with AI assistance', 'rebuilt') %}
+            <p>For the 2026 midterms it was rebuilt with an AI coding assistant (Anthropic's Claude), starting in
+                October 2026. The ideas, the design, the research questions and every decision about what ships are a
+                person's; the assistant wrote and tested much of the new code to that direction, and helped research
+                sources, ratings and methods.</p>
+        {% endcall %}
+        {% call term('🧠', 'Two different AIs', 'two-ais') %}
+            <p>Building the site is one thing; reading the news is another. The measures on this site (news or not,
+                mood, spin, feelings, story titles) come from the small open model described above,
+                <code>{{ model }}</code>, running on our own computer. Every score records which model and which version
+                of its instructions made it, and we test how stable its answers are before trusting them, including
+                publishing where it fails.</p>
         {% endcall %}
     </div>
 
     <h2 class="section-divider" id="limits"><span>Limits</span></h2>
     <div class="terms">
-        {% call term('🔍', 'What to keep in mind', 'caveats') %}
-            <ul>
-                <li><strong>Front pages, not readership.</strong> We measure what outlets put up front, not what people
-                    read or share.</li>
-                <li><strong>Our outlet mix leans left</strong> as a group; lean measures compare against that mix, and
-                    blindspots account for it.</li>
-                <li><strong>The language model makes mistakes.</strong> Single scores are rough; averages over many
-                    headlines are steadier.</li>
-                <li><strong>Young data.</strong> Our database starts on October 2, 2026, so stories that were already
-                    running then look newer than they are, and 30-day measures are still filling in.</li>
-                <li><strong>Mostly US.</strong> Stories, sagas and lean use US outlets plus a few British ones; we follow
-                    foreign outlets for the cloud and the outlets page.</li>
-            </ul>
+        {% call term('🗞️', 'Front pages, from a left-leaning mix', 'caveats') %}
+            <p><strong>Front pages, not readership.</strong> We measure what outlets put up front, not what people read
+                or share.</p>
+            <p><strong>Our outlet mix leans left</strong> as a group; lean measures compare against that mix, and
+                blindspots account for it.</p>
+        {% endcall %}
+        {% call term('🤖', 'The model makes mistakes', 'model-limits') %}
+            <p>Single scores are rough; averages over many headlines are steadier. Small models also shift with how a
+                question is worded, which is why we test stability before trusting a measure.</p>
+        {% endcall %}
+        {% call term('📅', 'Young data, mostly US', 'data-limits') %}
+            <p><strong>Young data.</strong> Our database starts on October 2, 2026, so stories that were already running
+                then look newer than they are, and 30-day measures are still filling in.</p>
+            <p><strong>Mostly US.</strong> Stories, sagas and lean use US outlets plus a few British ones; we follow
+                foreign outlets for the cloud and the outlets page.</p>
             <p>The code is open: <a href="https://github.com/mas-4/maudlin2">github.com/mas-4/maudlin2</a>.</p>
         {% endcall %}
     </div>
