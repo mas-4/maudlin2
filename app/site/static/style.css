@@ -1444,12 +1444,31 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     margin-bottom: 0.3em;
 }
 
+/* Icon at the left edge, name to the right */
 .lineup-chip {
-    display: block;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
     text-decoration: none;
-    font-size: 0.85em;
-    padding: 3px 6px;
+    font-size: 1em;
+    padding: 5px 10px 5px 6px;
+}
+
+.lineup-chip .outlet-icon {
+    width: 1.7em;
+    height: 1.7em;
+    margin: 0;
+    flex: none;
+}
+
+.lineup-chip .outlet-mono {
+    line-height: 2.1em;
+}
+
+.lineup-chip .chip-name {
+    flex: 1;
+    text-align: right;
+    line-height: 1.15;
 }
 
 @media (max-width: 900px) {
@@ -1551,4 +1570,54 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     border-top: 3px solid #1f1f2e;
     text-align: center;
     font-size: 0.9em;
+}
+
+/* Cards popped up over the page */
+.pop-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(31, 31, 46, 0.35);
+}
+
+.pop-card {
+    width: min(32em, 100%);
+    max-height: 85vh;
+    overflow: auto;
+    transform: rotate(var(--tilt));
+    animation: pop-in 0.3s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+@keyframes pop-in {
+    from { transform: rotate(0deg) scale(0.6); opacity: 0; }
+}
+
+.pop-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.8em;
+}
+
+.pop-actions button {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: #ffc400;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 0.3em 1em;
+    cursor: pointer;
+}
+
+.pop-actions .pop-close {
+    background: white;
+}
+
+.flash {
+    outline: 4px dashed #ffc400;
+    outline-offset: 4px;
 }

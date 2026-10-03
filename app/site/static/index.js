@@ -53,3 +53,36 @@ function nacompare(a, b) {
         return 0;
     }
 }
+// Pop a card up over the page at a jaunty angle, with a button to jump to where it lives. Used for outlet cards
+// (from the lineup) and story cards (from the headline table's 📌).
+function closePop() {
+    document.querySelector('.pop-backdrop')?.remove();
+}
+
+function popCard(card) {
+    if (!card) return;
+    closePop();
+    const backdrop = document.createElement('div');
+    backdrop.className = 'pop-backdrop';
+    const pop = card.cloneNode(true);
+    pop.removeAttribute('id');
+    pop.classList.add('pop-card');
+    pop.style.setProperty('--tilt', `${(Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 4)}deg`);
+    const actions = document.createElement('div');
+    actions.className = 'pop-actions';
+    actions.innerHTML = '<button type="button" class="pop-jump">jump to it ↓</button>'
+        + '<button type="button" class="pop-close" aria-label="Close">✕</button>';
+    pop.appendChild(actions);
+    backdrop.appendChild(pop);
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) closePop(); });
+    actions.querySelector('.pop-close').addEventListener('click', closePop);
+    actions.querySelector('.pop-jump').addEventListener('click', () => {
+        closePop();
+        card.scrollIntoView({behavior: 'smooth', block: 'center'});
+        card.classList.add('flash');
+        setTimeout(() => card.classList.remove('flash'), 1800);
+    });
+}
+
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closePop(); });

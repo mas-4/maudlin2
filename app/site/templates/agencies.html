@@ -23,7 +23,7 @@
                 <div class="lineup-head" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
                 {% for o in column.outlets %}
                     <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}"
-                       style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ outlet_icon(o.name) }}{{ o.name }}</a>
+                       style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ outlet_icon(o.name) }}<span class="chip-name">{{ o.name }}</span></a>
                 {% endfor %}
             </div>
         {% endfor %}
@@ -79,6 +79,13 @@
                 edits: (a, b) => num(b, 'edits') - num(a, 'edits'),
                 headlines: (a, b) => num(b, 'headlines') - num(a, 'headlines'),
             };
+            // Lineup chips pop their outlet's card up instead of jumping down to it
+            document.querySelector('.lineup').addEventListener('click', (ev) => {
+                const chip = ev.target.closest('.lineup-chip');
+                if (!chip) return;
+                ev.preventDefault();
+                popCard(document.querySelector(chip.getAttribute('href')));
+            });
             document.querySelector('.outlet-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;

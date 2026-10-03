@@ -790,6 +790,13 @@
             };
             freshGrid();
 
+            // 📌 pops the story's card up instead of jumping to it
+            document.getElementById('wrapper').addEventListener('click', (ev) => {
+                const pin = ev.target.closest('.table-story, .table-story-badge');
+                if (!pin) return;
+                ev.preventDefault();
+                popCard(document.querySelector(pin.getAttribute('href')));
+            });
             document.querySelector('.table-controls').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
