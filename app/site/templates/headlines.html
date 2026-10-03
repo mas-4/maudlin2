@@ -718,7 +718,7 @@
                 },
                 story: {
                     label: 'Story',
-                    cell: (r) => `<a class="badge table-story-badge" style="--tint: #d9f7f2" href="#story-${r.story}"><span class="badge-emoji">📰</span>${esc(r.story_title)}</a>`,
+                    cell: (r) => `<a class="badge table-story-badge" style="--tint: ${storyTint(r.story)}" href="#story-${r.story}"><span class="badge-emoji">📰</span>${esc(r.story_title)}</a>`,
                     compare: (a, b) => a.story_title.localeCompare(b.story_title),
                     // Biggest stories first, each story's headlines together
                     order: (a, b) => b.story_size - a.story_size || a.story - b.story,
@@ -726,6 +726,16 @@
             };
 
             const state = {metric: 'buzz', lean: 'all', loaded: false};
+            // In the story view each story's rows get their own tint, cycling through a palette in the order the
+            // stories first appear (biggest first), so neighboring stories never share one
+            const STORY_TINTS = ['#fff1b3', '#d9f7f2', '#e0d4ff', '#ffd6c2', '#c9e2ff', '#d6f5c4'];
+            const storyOrder = {};
+            [...ROWS].filter((r) => r.story !== null)
+                .sort((a, b) => b.story_size - a.story_size || a.story - b.story)
+                .forEach((r) => { if (!(r.story in storyOrder)) storyOrder[r.story] = Object.keys(storyOrder).length; });
+            const storyTint = (story) => STORY_TINTS[storyOrder[story] % STORY_TINTS.length];
+            const rowTint = (r) => state.metric === 'story' && r && r.story !== null && r.story !== undefined
+                ? {style: `background-color: color-mix(in srgb, ${storyTint(r.story)} 55%, white)`} : {};
             const keep = (r) => (state.lean === 'all' || (state.lean === 'left' ? r.bias < 0
                                     : state.lean === 'right' ? r.bias > 0 : r.bias === 0))
                 && (!state.loaded || r.loaded > 0);
@@ -734,17 +744,20 @@
                 {
                     name: 'Outlet',
                     width: '22%',
+                    attributes: rowTint,
                     formatter: (r) => gridjs.html(`<span class="edit-chip" style="background-color: ${BIAS_COLORS[r.bias + 3]}; color: ${BIAS_INK[r.bias + 3]}">${outletIcon(r.agency)}${esc(r.agency)}</span>`),
                     sort: {compare: (a, b) => a.bias - b.bias || a.agency.localeCompare(b.agency)},
                 },
                 {
                     name: 'Headline',
+                    attributes: rowTint,
                     formatter: (r) => gridjs.html(`<a href="${esc(r.url)}">${esc(r.title)}</a>`
                         + (r.story !== null ? ` <a class="table-story" href="#story-${r.story}" title="Jump to its story">📌</a>` : '')),
                     sort: {compare: (a, b) => a.title.localeCompare(b.title)},
                 },
                 {
                     name: METRICS[state.metric].label,
+                    attributes: rowTint,
                     width: state.metric === 'story' ? '32%' : '20%',
                     formatter: (r) => gridjs.html(METRICS[state.metric].cell(r)),
                     sort: {compare: METRICS[state.metric].compare},
