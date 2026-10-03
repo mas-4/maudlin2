@@ -170,7 +170,7 @@ class HeadlinesPage:
     def generate(self):
         logger.info("Generating headlines page...")
         cloud = self.dh.main_headline_df[['title', 'agency', 'bias', 'url', 'afinn', 'vader_compound',
-                                          'event_score', 'emotion_ranks']].copy()
+                                          'event_score', 'loaded_score', 'emotion_ranks']].copy()
         cloud['sentiment'] = headline_sentiment(cloud)
         self.context['cloud_words'] = cloud_words(cloud)
         self.context['bias_colors'] = bias_colors

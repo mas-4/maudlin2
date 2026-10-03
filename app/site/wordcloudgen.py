@@ -117,6 +117,9 @@ def term_outlets(df: pd.DataFrame, pipeline: list[Callable]) -> pd.DataFrame:
         center_outlets, 1)
     merged['center_share'] = center / (left + right + center).replace(0, np.nan)
     merged['rows'] = terms.groupby('key')['row'].agg(list)  # which headlines used each term, for samples
+    # Spice: how loaded the wording of the term's headlines is on average (0 plain to 2 heavily loaded)
+    if 'loaded_score' in df:
+        merged['spice'] = merged['rows'].apply(lambda rows: df.loc[rows, 'loaded_score'].mean())
     # The term's feeling, ranked-choice style: average each headline's split vote (emotion_weights) across the term's
     # headlines, then take the strongest emotion other than neutral and its share of the whole (neutral included, so
     # a mostly-plain term gets a low share)
@@ -204,6 +207,8 @@ def cloud_words(df: pd.DataFrame, pipeline: Optional[list[Callable]] = None) -> 
         feeling_detail = {'emoji': EMOTION_EMOJI[row['emotion']], 'phrase': phrase} if has_feeling else None
         words.append({'text': term, 'outlets': int(row['outlets']), 'color': color, 'emoji': emoji,
                       'feeling': feeling_detail, 'side': side,
+                      'lean': round(float(row['lean']), 3),
+                      'spice': round(float(row['spice']), 3) if pd.notna(row.get('spice')) else 0.0,
                       'tip': f"{term}: {int(row['outlets'])} outlets · {side}{mood}{feeling}",
                       'samples': samples(df.loc[row['rows']])})
     return words

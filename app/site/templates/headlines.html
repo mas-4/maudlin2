@@ -11,6 +11,12 @@
         {% endif %}
         <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
         <noscript><img alt="Word cloud of the terms the most outlets are using right now" src="{{ FileNames.main_wordcloud }}"></noscript>
+        <div class="table-filters cloud-sort" role="group" aria-label="Arrange the cloud">
+            <button data-cloud="splay" class="active">🎲 splay</button>
+            <button data-cloud="size">📏 biggest first</button>
+            <button data-cloud="side">⚖️ left to right</button>
+            <button data-cloud="spice">🌶️ plain to spicy</button>
+        </div>
         <figcaption>Bigger words are used by more outlets. Color shows who uses a word:
             <span style="color: #1a5cff; font-weight: bold">mostly left-leaning outlets</span>,
             <span style="color: #e0102e; font-weight: bold">mostly right-leaning outlets</span>,
@@ -118,8 +124,9 @@
             for (const d of placed) {
                 // A group per word so the emoji badge rotates with it
                 const g = document.createElementNS(ns, 'g');
-                g.setAttribute('transform', `translate(${d.x},${d.y}) rotate(${d.rotate})`);
+                g.style.transform = `translate(${d.x}px, ${d.y}px) rotate(${d.rotate}deg)`;
                 g.setAttribute('class', 'cloud-word');
+                g.__word = d;
                 g.setAttribute('title', d.tip);
                 g.setAttribute('tabindex', '0');
                 g.setAttribute('role', 'button');
@@ -146,6 +153,79 @@
                 g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
             }
             clearSticker(svg);
+            if (cloudMode !== 'splay') arrangeCloud(cloudMode);
+        }
+
+        // Sorting the cloud: the splay is d3-cloud's layout; the sorted modes lay the same words out in order, upright,
+        // scaled as large as fits and kept clear of the sticker. Words glide between layouts (CSS transition).
+        let cloudMode = 'splay';
+        const CLOUD_SORTS = {
+            // biggest first, in reading order: top left to bottom right
+            size: {flow: 'rows', order: (a, b) => b.outlets - a.outlets},
+            // most left-leaning on the left to most right-leaning on the right
+            side: {flow: 'columns', order: (a, b) => a.lean - b.lean},
+            // plainest on the left to spiciest on the right
+            spice: {flow: 'columns', order: (a, b) => a.spice - b.spice || b.outlets - a.outlets},
+        };
+
+        function arrangeCloud(mode) {
+            cloudMode = mode;
+            const svg = document.querySelector('#cloud svg');
+            if (!svg) return;
+            const groups = [...svg.querySelectorAll('.cloud-word')];
+            if (mode === 'splay') {
+                groups.forEach((g) => {
+                    const d = g.__word;
+                    g.style.transform = `translate(${d.x}px, ${d.y}px) rotate(${d.rotate}deg)`;
+                });
+                return;
+            }
+            const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
+            const pad = 10, gap = 8;
+            const box = {x0: vx + pad, y0: vy + pad, x1: vx + W - pad, y1: vy + H - pad};
+            // The sticker's rectangle in the SVG's coordinates (1:1 with screen pixels)
+            let avoid = null;
+            const sticker = document.querySelector('.newsday-sticker');
+            if (sticker && getComputedStyle(sticker).position === 'absolute') {
+                const s = sticker.getBoundingClientRect(), r = svg.getBoundingClientRect(), k = W / r.width;
+                avoid = {x0: vx + (s.left - r.left) * k - gap, y0: vy + (s.top - r.top) * k - gap,
+                         x1: vx + (s.right - r.left) * k + gap, y1: vy + (s.bottom - r.top) * k + gap};
+            }
+            // Each word's upright size, measured once
+            const items = groups.map((g) => {
+                if (!g.__box) { const b = g.getBBox(); g.__box = {w: b.width, h: b.height, cx: b.x + b.width / 2, cy: b.y + b.height / 2}; }
+                return {g, d: g.__word, ...g.__box};
+            }).sort((a, b) => CLOUD_SORTS[mode].order(a.d, b.d));
+            const hits = (x, y, w, h) => avoid && x < avoid.x1 && x + w > avoid.x0 && y < avoid.y1 && y + h > avoid.y0;
+
+            function pack(scale) {
+                const spots = [];
+                let x = box.x0, y = box.y0, line = 0;
+                const rows = CLOUD_SORTS[mode].flow === 'rows';
+                for (const it of items) {
+                    const w = it.w * scale, h = it.h * scale;
+                    for (let tries = 0; tries < 3; tries++) {
+                        if (rows ? x + w > box.x1 : y + h > box.y1) {
+                            // next row or column
+                            if (rows) { x = box.x0; y += line + gap; } else { y = box.y0; x += line + gap; }
+                            line = 0;
+                        }
+                        if (!hits(x, y, w, h)) break;
+                        if (rows) x = avoid.x1; else y = avoid.y1;  // hop past the sticker
+                    }
+                    spots.push({it, x: x + w / 2, y: y + h / 2});
+                    if (rows) { x += w + gap; line = Math.max(line, h); } else { y += h + gap; line = Math.max(line, w); }
+                }
+                const fits = CLOUD_SORTS[mode].flow === 'rows' ? y + line <= box.y1 : x + line <= box.x1;
+                return fits ? spots : null;
+            }
+            let spots = null, scale = 1.6;
+            while (!(spots = pack(scale)) && scale > 0.2) scale *= 0.94;
+            spots = spots || pack(0.2);
+            spots.forEach(({it, x, y}, i) => {
+                const tilt = i % 2 ? 2 : -2;  // a little wobble, still easy to read
+                it.g.style.transform = `translate(${x - it.cx * scale}px, ${y - it.cy * scale}px) rotate(${tilt}deg) scale(${scale})`;
+            });
         }
 
         // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it
@@ -165,6 +245,12 @@
             // Lay out in the real font, or the measurements are off and words collide
             try { await document.fonts.load('700 40px "Comic Neue"'); } catch (e) {}
             drawCloud();
+            document.querySelector('.cloud-sort').addEventListener('click', (ev) => {
+                const button = ev.target.closest('button');
+                if (!button) return;
+                document.querySelectorAll('.cloud-sort button').forEach((b) => b.classList.toggle('active', b === button));
+                arrangeCloud(button.dataset.cloud);
+            });
             let lastWidth = document.getElementById('cloud').clientWidth, timer;
             window.addEventListener('resize', () => {
                 clearTimeout(timer);
