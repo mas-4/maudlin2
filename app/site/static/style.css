@@ -1427,7 +1427,7 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 /* Outlets page: the lineup by lean, then a card per outlet */
 .lineup {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.5em;
     align-items: start;
 }
@@ -1899,4 +1899,32 @@ table.sortable thead th {
 table.races .edit-chip, table.emotion-matrix .edit-chip {
     display: inline-block;
     line-height: 1.25;
+}
+
+/* Unrated outlets, off the axis */
+.unrated-strip {
+    margin: 1.2em 0 0;
+    padding: 0.7em 0.9em;
+    border: 3px dashed #1f1f2e;
+    border-radius: 14px;
+}
+
+.unrated-head {
+    font: 1em 'Bungee', 'Comic Neue', sans-serif;
+    margin-bottom: 0.5em;
+}
+
+.unrated-head span {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.unrated-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+}
+
+.unrated-chips .lineup-chip .chip-name {
+    text-align: left;
 }

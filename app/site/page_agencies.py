@@ -125,8 +125,9 @@ class AgenciesPage:
             {'name': str(Bias(b)), 'color': bias_colors[b + 3], 'ink': bias_ink[b + 3],
              'outlets': [o for o in outlets if o['bias'] == b or o['estimated_bias'] == b]}
             for b in LEAN.values()
-        ] + [{'name': 'Not rated', 'color': '#ffffff', 'ink': '#1f1f2e', 'unrated': True,
-              'outlets': [o for o in outlets if o['bias'] is None and o['estimated_bias'] is None]}]
+        ]
+        # Outlets with no rating aren't on the left-right axis, so they sit in their own strip below it
+        self.context['unrated_outlets'] = [o for o in outlets if o['bias'] is None and o['estimated_bias'] is None]
         self.context['lean_quality'] = j2env.globals['lean_quality']
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.main_headline_df[['title', 'agency', 'bias']],

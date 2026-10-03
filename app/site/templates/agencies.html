@@ -35,6 +35,16 @@
             </div>
         {% endfor %}
     </div>
+    {% if unrated_outlets %}
+        <div class="unrated-strip">
+            <div class="unrated-head">Not rated <span>· off the left-right scale: AllSides doesn't rate them and our estimate isn't confident</span></div>
+            <div class="unrated-chips">
+                {% for o in unrated_outlets %}
+                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}" style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name }}">{{ short_name(o.name) }}</span></a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
 
     <h2 class="section-divider" id="outlet-cards"><span>How they cover it</span></h2>
     <div class="table-filters outlet-sort" role="group" aria-label="Sort outlets">
@@ -106,12 +116,12 @@
                 headlines: (a, b) => num(b, 'headlines') - num(a, 'headlines'),
             };
             // Lineup chips pop their outlet's card up instead of jumping down to it
-            document.querySelector('.lineup').addEventListener('click', (ev) => {
+            document.querySelectorAll('.lineup, .unrated-strip').forEach((area) => area.addEventListener('click', (ev) => {
                 const chip = ev.target.closest('.lineup-chip');
                 if (!chip) return;
                 ev.preventDefault();
                 popCard(document.getElementById(chip.getAttribute('href').slice(1)));
-            });
+            }));
             document.querySelector('.outlet-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
