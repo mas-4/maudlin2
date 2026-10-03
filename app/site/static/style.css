@@ -283,8 +283,8 @@ blockquote::before, blockquote::after, q::before, q::after {
 /* Label on its own line above, so the bar gets the card's full width */
 .meter {
     display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas: "label label" "bar value";
+    grid-template-columns: 1fr;
+    grid-template-areas: "label" "bar";
     align-items: center;
     column-gap: 0.6em;
     row-gap: 0.1em;
@@ -1701,4 +1701,17 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     border-radius: 999px;
     padding: 0 0.5em;
     margin-left: 0.3em;
+}
+
+/* A story's strongest feeling, above its meters */
+.story-feeling {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 0.15em 0.8em 0.15em 0.3em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: #f4f4f8;
+    margin-bottom: 0.2em;
 }

@@ -672,20 +672,21 @@
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}">
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <div class="meters">
-                    <div class="meter" title="Average bias of the outlets covering this story, relative to all outlets scraped today">
+                    {% if cluster['emotion'] %}
+                        <div class="story-feeling" title="{{ cluster['emotion']['share'] }}% of the feeling in its headlines">
+                            <span class="badge-emoji">{{ cluster['emotion']['emoji'] }}</span>{{ cluster['emotion']['name'] }}</div>
+                    {% endif %}
+                    <div class="meter" title="Average lean of the outlets covering this story, relative to all outlets scraped today ({{ cluster['lean']['text'] }})">
                         <span class="meter-label">covered by</span>
                         <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>
                             <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
                             <span class="meter-end" title="right-leaning outlets">🐘</span></span>
-                        <span class="meter-value">{{ cluster['lean']['text'] }}</span>
                     </div>
-                    <div class="meter" title="How grim or upbeat the news in its headlines is, on average">
+                    <div class="meter" title="How grim or upbeat the news in its headlines is, on average ({{ cluster['mood']['word'] }})">
                         <span class="meter-label">mood</span>
                         <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
-                            <span class="meter-track mood-track"><span class="meter-dot meter-emoji" style="left: {{ cluster['mood']['position'] }}%">{{ cluster['mood']['emoji'] }}</span></span>
+                            <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
                             <span class="meter-end" title="upbeat">☀️</span></span>
-                        <span class="meter-value">{{ cluster['mood']['word'] }}{% if cluster['emotion'] %}
-                            <span class="meter-feeling" title="{{ cluster['emotion']['name'] }}: {{ cluster['emotion']['share'] }}% of the feeling in its headlines">{{ cluster['emotion']['emoji'] }}</span>{% endif %}</span>
                     </div>
                 </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
