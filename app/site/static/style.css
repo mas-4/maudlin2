@@ -8,8 +8,14 @@
     color-scheme: light;
 }
 
-html, body {
+html {
     background: #ffffff;
+}
+
+/* Transparent so the ambient geometry (body::before, at the end of this file) shows between things: with the root
+   painting white, a white body would cover anything layered beneath it */
+body {
+    background: transparent;
 }
 
 * {
@@ -1097,16 +1103,24 @@ figure.wordcloud figcaption {
     font-weight: 700;
 }
 
-/* Story titles: bigger, inky, with a wavy underline in the card's pop color */
+/* Story titles: bigger, inky, with one wavy rule under the whole title in the card's pop color (a text underline
+   would squiggle under every wrapped line and break around descenders) */
 .story h4 {
     font-size: 1.4em;
     line-height: 1.2;
     color: #1f1f2e;
     margin: 0.3em 0 0.5em;
-    text-decoration: underline wavy var(--pop, #ff4fa3);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 5px;
-    text-decoration-skip-ink: auto;
+}
+
+.story h4::after {
+    content: '';
+    display: block;
+    height: 7px;
+    margin-top: 0.3em;
+    background: var(--pop, #ff4fa3);
+    --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='7'%3E%3Cpath d='M0 3.5 Q4 0 8 3.5 T16 3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+    -webkit-mask: var(--wave) repeat-x left center / 16px 7px;
+    mask: var(--wave) repeat-x left center / 16px 7px;
 }
 
 .chip-metric {
@@ -1273,10 +1287,44 @@ figure.wordcloud figcaption {
     vertical-align: top;
 }
 
+/* Phones: each headline becomes a small card, outlet chip and measure badge on one line, the headline beneath at
+   full width (three table columns leave the headline a sliver and clip the badges) */
 @media (max-width: 700px) {
+    .headline-table .gridjs-table {
+        table-layout: auto !important;
+        width: 100% !important;
+    }
+    .headline-table thead {
+        display: none;
+    }
+    .headline-table tr.gridjs-tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 4px 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid #e4e1d8;
+    }
     .headline-table td.gridjs-td {
-        padding: 6px 8px;
-        font-size: 0.9em;
+        display: block;
+        width: auto !important;
+        padding: 0;
+        border: none;
+        font-size: 0.95em;
+    }
+    .headline-table td.gridjs-td:nth-child(2) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+    .headline-table td.gridjs-td:nth-child(3) {
+        justify-self: end;
+    }
+    .headline-table .edit-chip {
+        font-size: 0.85em;
+        white-space: nowrap;
+    }
+    .headline-table .badge {
+        font-size: 0.85em;
     }
 }
 
@@ -2023,4 +2071,79 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
 
 .trending-row .bright-side {
     background: #fff8d6;
+}
+
+/* Investigations box */
+.trending-row .investigations {
+    --pop: #00c2a8;
+}
+
+.investigation-list {
+    list-style: none;
+    padding-left: 0;
+    columns: 2;
+    column-gap: 2em;
+}
+
+.investigation-list li {
+    break-inside: avoid;
+    margin: 0 0 0.6em;
+}
+
+.investigation-source {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0 0.5em;
+    text-decoration: none;
+    margin-right: 0.2em;
+}
+
+@media (max-width: 700px) {
+    .investigation-list { columns: 1; }
+}
+
+/* The link from the front page to the headline table's own page */
+.more-link {
+    text-align: center;
+    margin: 2rem 0 1rem;
+    font-size: 1.1rem;
+}
+
+
+/* Ambient 90s geometry (Memphis style), drawn by memphis() in index.js: bold outlined shapes framing the window's
+   edges and terrazzo flecks, each drifting and turning at its own pace. Fixed to the window, and still for readers
+   who ask for reduced motion */
+#memphis {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+#memphis svg {
+    position: absolute;
+    opacity: 0.9;
+    overflow: visible;
+    animation: memphis-turn var(--dur) linear infinite var(--dir), memphis-bob calc(var(--dur) / 3) ease-in-out infinite alternate;
+}
+
+@keyframes memphis-turn {
+    from { rotate: var(--tilt); }
+    to { rotate: calc(var(--tilt) + 360deg); }
+}
+
+@keyframes memphis-bob {
+    from { translate: 0 0; }
+    to { translate: var(--dx) var(--dy); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #memphis svg {
+        animation: none;
+        rotate: var(--tilt);
+    }
 }

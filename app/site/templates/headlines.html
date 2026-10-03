@@ -1,6 +1,25 @@
 {% extends "page.html" %}
 
 {% block content %}
+    <script>
+        // Shared by the cloud, the story cards and the headline table (the front page and the table page)
+        const BIAS_COLORS = {{ bias_colors|tojson }};
+        const ICONS = {{ icons|tojson }};
+        const UNRATED = new Set({{ unrated|list|tojson }});
+        const SHORT = {{ short_names|tojson }};
+        const shortName = (name) => SHORT[name] || name;
+        // An outlet chip's colors: its lean color, or dashed white when its lean isn't rated (chip_style in common.py)
+        const ESTIMATES = {{ lean_estimates|tojson }};
+        const chipStyle = (name, bias) => name in ESTIMATES
+            ? `background-color: ${BIAS_COLORS[ESTIMATES[name] + 3]}; color: ${BIAS_INK[ESTIMATES[name] + 3]}; border-style: dashed`
+            : UNRATED.has(name) ? 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
+            : `background-color: ${BIAS_COLORS[bias + 3]}; color: ${BIAS_INK[bias + 3]}`;
+        // An outlet's icon for the front of its chip, or its initial (see outlet_icon in common.py)
+        const outletIcon = (name) => ICONS[name] ? `<img class="outlet-icon" src="${ICONS[name]}" alt="" loading="lazy">`
+            : `<span class="outlet-icon outlet-mono" aria-hidden="true">${name.replace(/^The /, '').charAt(0).toUpperCase()}</span>`;
+        const BIAS_INK = {{ bias_ink|tojson }};
+    </script>
+    {% if page_part != 'table' %}
     <figure class="wordcloud">
         {% if newsday %}
             <a class="newsday-sticker {{ newsday.kind }}" href="#story-{{ newsday.cluster }}"
@@ -31,25 +50,10 @@
         <a href="#trending">🔥 trending</a>
         {% if saga_list %}<a href="#sagas">🧵 sagas</a>{% endif %}
         <a href="#current-stories">📰 current stories</a>
-        <a href="#every-headline">📋 every headline</a>
+        <a href="headlines.html">📋 every headline</a>
     </nav>
     <script src="d3.layout.cloud.js"></script>
     <script>
-        const BIAS_COLORS = {{ bias_colors|tojson }};
-        const ICONS = {{ icons|tojson }};
-        const UNRATED = new Set({{ unrated|list|tojson }});
-        const SHORT = {{ short_names|tojson }};
-        const shortName = (name) => SHORT[name] || name;
-        // An outlet chip's colors: its lean color, or dashed white when its lean isn't rated (chip_style in common.py)
-        const ESTIMATES = {{ lean_estimates|tojson }};
-        const chipStyle = (name, bias) => name in ESTIMATES
-            ? `background-color: ${BIAS_COLORS[ESTIMATES[name] + 3]}; color: ${BIAS_INK[ESTIMATES[name] + 3]}; border-style: dashed`
-            : UNRATED.has(name) ? 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
-            : `background-color: ${BIAS_COLORS[bias + 3]}; color: ${BIAS_INK[bias + 3]}`;
-        // An outlet's icon for the front of its chip, or its initial (see outlet_icon in common.py)
-        const outletIcon = (name) => ICONS[name] ? `<img class="outlet-icon" src="${ICONS[name]}" alt="" loading="lazy">`
-            : `<span class="outlet-icon outlet-mono" aria-hidden="true">${name.replace(/^The /, '').charAt(0).toUpperCase()}</span>`;
-        const BIAS_INK = {{ bias_ink|tojson }};
         function showWord(d) {
             const panel = document.getElementById('cloud-detail');
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -428,6 +432,21 @@
                 </div>
             </section>
         {% endif %}
+        {% if investigations %}
+            <section class="trending trending-news investigations" id="investigations">
+                <h3>🔎 Investigations <span class="blindspot-note">open-source and investigative reporting, not front pages</span></h3>
+                <ul class="investigation-list">
+                    {% for p in investigations %}
+                        <li>
+                            <a class="investigation-source" href="{{ p.home }}">{{ p.source }}</a>
+                            <span class="trend-posts">{{ p.date }}</span>
+                            <a href="{{ p.url }}" title="{{ p.summary }}">{{ p.title }}</a>
+                            {% if p.story is not none %}<a class="trend-both investigation-story" href="#story-{{ p.story }}" title="Related to: {{ p.story_title }}">📰 in the news</a>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
         {% for box in trend_boxes %}
             <section class="trending">
                 <h3>{{ box.heading }}</h3>
@@ -716,7 +735,7 @@
             }
             layout();
             addEventListener('resize', () => layout());
-            document.querySelectorAll('.saga-part, .blindspot-story').forEach((a) => a.addEventListener('click', (ev) => {
+            document.querySelectorAll('.saga-part, .blindspot-story, .investigation-story').forEach((a) => a.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 popCard(document.getElementById(a.getAttribute('href').slice(1)));
             }));
@@ -730,7 +749,12 @@
         })();
     </script>
 
-    <h2 class="section-divider" id="every-headline"><span>Every headline right now</span></h2>
+    <p class="more-link"><a href="headlines.html">📋 Every headline right now, with its mood, spin and feelings →</a></p>
+    {% endif %}
+    {% if page_part == 'table' %}
+    <h1>Every headline right now</h1>
+    <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, how grim or
+        upbeat its news, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
     <section class="headline-table">
         <div class="table-controls">
             <div class="table-filters" role="group" aria-label="Measure to show">
@@ -754,12 +778,8 @@
         <div id="wrapper"></div>
     </section>
     <script>
-        // Loaded on approach: the rows are a separate file of a few megabytes
-        new IntersectionObserver((entries, observer) => {
-            if (!entries.some((e) => e.isIntersecting)) return;
-            observer.disconnect();
-            fetch({{ table_file|tojson }}).then((r) => r.json()).then(headlineTable);
-        }, {rootMargin: '800px'}).observe(document.querySelector('.headline-table'));
+        // The rows are a separate file of a few megabytes, fetched once the page is up
+        fetch({{ table_file|tojson }}).then((r) => r.json()).then(headlineTable);
 
         function headlineTable(ROWS) {
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -904,7 +924,10 @@
                 const pin = ev.target.closest('.table-story, .table-story-badge');
                 if (!pin) return;
                 ev.preventDefault();
-                popCard(document.getElementById(pin.getAttribute('href').slice(1)));
+                const id = pin.getAttribute('href').slice(1);
+                const card = document.getElementById(id);
+                // The table has its own page; story cards live on the front page
+                if (card) popCard(card); else location.href = 'index.html#' + id;
             });
             document.querySelector('.table-controls').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
@@ -925,4 +948,5 @@
             });
         }
     </script>
+    {% endif %}
 {% endblock content %}

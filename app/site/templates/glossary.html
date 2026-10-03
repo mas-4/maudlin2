@@ -131,6 +131,12 @@
                 counts only if the old headline left before the new one appeared; live blogs, reused links and minor
                 changes (capitalization, punctuation, a label like "WATCH:") are skipped.</p>
         {% endcall %}
+        {% call term('🔎', 'Investigations', 'investigations') %}
+            <p>The newest pieces from open-source and investigative outfits (Bellingcat, ICIJ, OCCRP, DFRLab, Citizen Lab,
+                Just Security), read from their feeds once an hour. They publish a few deep pieces a week rather than a
+                front page, so they're listed on their own and don't count toward stories, the cloud or any measure.
+                <span class="trend-both">📰 in the news</span> marks one that matches a current story.</p>
+        {% endcall %}
         {% call term('📡', 'Trending elsewhere', 'trending') %}
             <p>What's trending on Bluesky, Google searches, Wikipedia's most-read pages and Mastodon, next to what the
                 press is covering. A trend tagged <span class="trend-both">news</span> matches one of our stories.</p>

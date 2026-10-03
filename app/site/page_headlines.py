@@ -10,6 +10,7 @@ from sqlalchemy import func
 
 from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed
 from app.analysis.sagas import find_sagas
+from app.investigations import recent as recent_investigations
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import llm, textnorm
 from app.analysis.pipelines import Pipelines, prepare
@@ -41,6 +42,7 @@ GHOST_OPACITY = 0.35
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
+INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a current story
 BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
@@ -237,6 +239,8 @@ class HeadlinesPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
         self.template = TemplateHandler('headlines.html', 'index.html')
+        # The headline table has a page of its own, rendered from the same template (`page_part` picks the sections)
+        self.table_page = TemplateHandler('headlines.html', 'headlines.html')
         self.newsletter = TemplateHandler('newsletter.html')
         self.context = {'title': 'Current Headlines', 'breaking_minutes': BREAKING_MINUTES}
 
@@ -259,7 +263,8 @@ class HeadlinesPage:
             json.dump(self.table_rows(df), f, separators=(',', ':'))
         self.context['table_file'] = TABLE_FILE
         self.newsletter.write(self.context)
-        self.template.write(self.context)
+        self.template.write({**self.context, 'page_part': 'front'})
+        self.table_page.write({**self.context, 'page_part': 'table', 'title': 'Every Headline'})
         logger.info("...done")
 
     def news_day(self, df, active_outlets: int):
@@ -385,6 +390,7 @@ class HeadlinesPage:
         self.trending_in_the_news(df)
         self.bright_side(clusters_list)
         self.blindspots(clusters_list)
+        self.investigations(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -463,6 +469,24 @@ class HeadlinesPage:
                 items.append({'kind': 'headline', 'title': r.title, 'url': r.url, 'agency': r.agency,
                               'bias': int(r.bias), 'emoji': EMOTION_EMOJI.get(r.top, '☀️') if r.top in ('hope', 'joy') else '☀️'})
         self.context['bright_side'] = items
+
+    def investigations(self, clusters_list):
+        """The newest pieces from open-source and investigative outfits (app/investigations.py), each pointed at the
+        current story it's about when one is close enough in meaning."""
+        pieces = recent_investigations()
+        if pieces and clusters_list:
+            ids = [c['cluster'] for c in clusters_list]
+            titles = [self.context['titles'][k] for k in ids]
+            vectors = embed([p['title'] for p in pieces] + titles)
+            vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+            similarity = vectors[:len(pieces)] @ vectors[len(pieces):].T
+            for piece, row in zip(pieces, similarity):
+                best = int(row.argmax())
+                piece['story'] = int(ids[best]) if row[best] >= INVESTIGATION_MATCH else None
+                piece['story_title'] = titles[best] if piece['story'] is not None else None
+        for piece in pieces:
+            piece['date'] = pd.Timestamp(piece['published']).tz_convert('US/Eastern').strftime('%b %-d')
+        self.context['investigations'] = pieces
 
     def blindspots(self, clusters_list):
         """Stories covered almost entirely by one side: at least BLINDSPOT_MIN_OUTLETS rated outlets, BLINDSPOT_SHARE

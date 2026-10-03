@@ -125,6 +125,10 @@ from app.scrapers.justthenews import JustTheNews
 from app.scrapers.dailysignal import DailySignal
 from app.scrapers.americanconservative import AmericanConservative
 from app.scrapers.washingtonreporter import WashingtonReporter
+from app.scrapers.zeteo import Zeteo
+from app.scrapers.the19th import The19th
+from app.scrapers.americanprospect import AmericanProspect
+from app.scrapers.compact import Compact
 from app.scrapers.wallstreetjournal import WallStreetJournal
 from app.scrapers.washingtonexaminer import WashingtonExaminer
 from app.scrapers.washingtonfreebeacon import WashingtonFreeBeacon
@@ -267,6 +271,10 @@ Scrapers = [
     DailySignal,
     AmericanConservative,
     WashingtonReporter,
+    Zeteo,
+    The19th,
+    AmericanProspect,
+    Compact,
     WallStreetJournal,
     WashingtonExaminer,
     WashingtonFreeBeacon,

@@ -9,6 +9,7 @@ from app.analysis.topics import analyze_all_topics
 from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
 from app.trends import fetch_trends
+from app.investigations import fetch_investigations
 from app.polling import fetch_polls, fetch_aggregates
 from app.builder import build
 from app.utils import Config, get_logger
@@ -119,6 +120,7 @@ def main(args: argparse.Namespace):
         scrape(args, scrapers)
         if not args.scraper:
             fetch_trends()
+            fetch_investigations()
             fetch_polls()
             fetch_aggregates()
     build()
