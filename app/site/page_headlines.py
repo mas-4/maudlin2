@@ -231,6 +231,9 @@ class HeadlinesPage:
             **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * stories.loc[top, 'share']),
             'outlets': int(stories.loc[top, 'outlets']), 'active': live_outlets,
             'story': self.context['titles'][top], 'cluster': int(top), 'age': age_text(hours[top]),
+            # What we're tracking right now: news headlines on front pages, and the stories they form
+            'live_headlines': int(self.dh.main_headline_df['live'].sum()),
+            'stories': len(self.context.get('clusters', [])),
         }
 
     def cluster_and_summarize(self, df):

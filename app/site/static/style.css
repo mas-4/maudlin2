@@ -1663,3 +1663,9 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     .cloud-wiggle, .stink path { animation: none; }
     .stink path { opacity: 0.7; }
 }
+
+.newsday-count {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin-top: 0.2em;
+    opacity: 0.85;
+}

@@ -7,6 +7,7 @@
                title="On {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages right now; first seen {{ newsday.age }} ago">
                 <span class="newsday-label">{{ newsday.emoji }} {{ newsday.label }}</span>
                 <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
+                <span class="newsday-count">📡 {{ "{:,}".format(newsday.live_headlines) }} headlines live · 📰 {{ newsday.stories }} active stories</span>
             </a>
         {% endif %}
         <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
