@@ -1975,3 +1975,42 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
     color: #888;
     font-style: italic;
 }
+
+/* How it works */
+.terms {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22em, 1fr));
+    gap: 1.2em;
+    margin-bottom: 1em;
+}
+
+.term {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 var(--pop, #00c2a8);
+    padding: 0.6em 1em 0.4em;
+    scroll-margin-top: 1em;
+}
+
+.term:nth-child(5n + 2) { --pop: #ff4fa3; }
+.term:nth-child(5n + 3) { --pop: #ffc400; }
+.term:nth-child(5n + 4) { --pop: #3a86ff; }
+.term:nth-child(5n + 5) { --pop: #ff6b1a; }
+
+.term h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    margin: 0.2em 0 0.4em;
+}
+
+.term-emoji {
+    font-size: 1.4em;
+}
+
+.term p, .term li {
+    line-height: 1.5;
+}

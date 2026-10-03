@@ -1,0 +1,185 @@
+{% extends "page.html" %}
+
+{% macro term(emoji, name, id=none) %}
+    <div class="term"{% if id %} id="{{ id }}"{% endif %}>
+        <h3><span class="term-emoji">{{ emoji }}</span>{{ name }}</h3>
+        {{ caller() }}
+    </div>
+{% endmacro %}
+
+{% block content %}
+    <h1>How it works</h1>
+    <p class="table-intro">What every number, badge and emoji on the site means, and how it's made. Everything here is
+        computed on one home computer, every hour, from the front pages of the outlets we follow.</p>
+
+    <h2 class="section-divider" id="sources"><span>Where the news comes from</span></h2>
+    <div class="terms">
+        {% call term('🗞️', 'Outlets and front pages') %}
+            <p>We follow {{ outlets }} outlets and read what's on their front pages every hour. {{ pages }} are read
+                straight from their homepage, {{ feeds }} from their own RSS feeds, {{ google }} through Google News
+                (outlets that block readers like ours), and {{ selenium }} with a real browser (pages built by
+                JavaScript).</p>
+            <p>A headline is <strong>live</strong> while it's still on a front page. When it drops off, we keep it,
+                which is how the site can say an outlet <em>dropped</em> a story (👻) or <em>rewrote</em> a headline.</p>
+        {% endcall %}
+        {% call term('🧹', 'News, not everything') %}
+            <p>Front pages carry shopping guides, horoscopes and recipes too. A language model labels every new headline
+                as news, not news, or page junk; only news counts toward stories, the cloud and the measures below.
+                Very short or very long "headlines" and text repeated across a page are dropped as navigation.</p>
+        {% endcall %}
+    </div>
+
+    <h2 class="section-divider" id="reading"><span>How headlines are read</span></h2>
+    <div class="terms">
+        {% call term('🤖', 'The language model') %}
+            <p>A small open model, <code>{{ model }}</code>, runs on our own computer (not a cloud service). It reads
+                each new headline once and answers in a fixed format: whether it's news, how good or bad the event is,
+                how loaded the wording is, and the feelings it's most likely to stir. Before scoring, it writes a short
+                note on who's affected, which keeps its answers grounded. It makes mistakes, so treat any one score as
+                a rough read; the averages over many headlines are what the site shows.</p>
+        {% endcall %}
+        {% call term('🌦️', 'Mood', 'mood') %}
+            <p>How good or bad the <em>event</em> in a headline is for the people it's about, from grim to upbeat
+                (⛈️ 🌧️ 🍞 🌤️ ☀️; "+" means more so). It's about what happened, not the wording. A story's mood is the
+                average of its headlines.</p>
+        {% endcall %}
+        {% call term('🌶️', 'Spin', 'spin') %}
+            <p>How much a headline's own wording adds emotion, judgment or alarm beyond the facts: 🍞 plain, 🌶️ loaded
+                (a charged word or two, like "slams" or "chaos"), 🌶️🌶️ loaded+ (built to provoke). Words quoted from
+                someone don't count.</p>
+        {% endcall %}
+        {% call term('😨', 'Feelings', 'feelings') %}
+            <p>The feelings a headline is most likely to stir in a reader, ranked, up to three, from:
+                {% for e, emoji in emotions %}{{ emoji }} {{ e }}{% if not loop.last %}, {% endif %}{% endfor %}.
+                Like ranked-choice voting, each headline's vote is split 3:2:1 across its picks, and a story's or
+                word's feelings are the average of those votes. A story card shows every feeling with
+                {{ story_feeling }}% or more of the votes; 🥛 neutral is plain information.</p>
+        {% endcall %}
+    </div>
+
+    <h2 class="section-divider" id="stories"><span>Stories and sagas</span></h2>
+    <div class="terms">
+        {% call term('📰', 'Stories', 'story') %}
+            <p>Headlines about the same event, from different outlets. Each headline is turned into a meaning
+                fingerprint (a small sentence-embedding model), and headlines whose fingerprints are close enough join
+                up; a story needs at least six outlets. Stories look back {{ story_hours }} hours, so an outlet that
+                dropped one still shows on its card, faded with a 👻. The language model writes each story's title.</p>
+            <p><strong>Covered by</strong> on a card (🫏 to 🐘) is the average lean of the outlets covering it, compared
+                with all the outlets we follow, which lean left as a group.</p>
+        {% endcall %}
+        {% call term('🧵', 'Sagas', 'saga') %}
+            <p>One running story told in several parts: the Cornell case's prosecutor, the allegations, the governor
+                stepping in. Two stories join a saga when their centers are close (similarity {{ saga_similarity }}+)
+                <em>and</em> they share a distinctive word, one in at least {{ saga_word_share }}% of both stories'
+                headlines but no more than {{ saga_word_rare }}% of the day's. Headlines that made no story but clearly
+                belong count toward a saga's outlets. Sagas count once in trending and the news-day sticker.</p>
+        {% endcall %}
+        {% call term('🚨', 'News day', 'news-day') %}
+            <p>How big a news day it is: the share of outlets carrying the top story on their front page right now,
+                weighed by the story's age (full weight for {{ fresh_hours }} hours, then halving every
+                {{ half_life }}). {{ tiers.big }}%+ is a big news day, {{ tiers.normal }}%+ just another news day, less
+                a slow one.</p>
+        {% endcall %}
+        {% call term('🚀', 'Speed of break', 'speed') %}
+            <p>How many outlets had a story within {{ break_minutes }} minutes of our first sighting (two hourly
+                reads). {{ fast_break }}+ earns the rocket.</p>
+        {% endcall %}
+        {% call term('🙈', 'Blindspots', 'blindspots') %}
+            <p>Stories almost only one side is covering: at least {{ blind_outlets }} rated outlets, {{ blind_share }}%+
+                of them from one side, and that side's share at least {{ blind_lift }}× its share of all our rated
+                outlets.</p>
+        {% endcall %}
+        {% call term('☀️', 'The bright side', 'bright-side') %}
+            <p>Good news, for a breather: stories and headlines whose strongest feeling is hope or joy, and that the
+                language model agrees most readers across the spectrum would be glad about (so not a company's deal
+                or a party's win).</p>
+        {% endcall %}
+    </div>
+
+    <h2 class="section-divider" id="cloud"><span>The word cloud</span></h2>
+    <div class="terms">
+        {% call term('☁️', 'Size and color', 'cloud') %}
+            <p>The {{ cloud_words }} words and phrases the most outlets are using right now; each outlet counts once
+                per word, so a busy outlet can't inflate one. Bigger means more outlets.</p>
+            <p>Color is who uses a word more readily: blue for left-leaning outlets, red for right, a blue-to-red blend
+                for both, gray when it's mostly center outlets. Each outlet's use is weighted by how many distinct words
+                it publishes, so high-volume outlets don't tilt everything their way.</p>
+        {% endcall %}
+        {% call term('😰', 'Emoji bookends', 'bookends') %}
+            <p>A word framed by emoji (😰death😱) has a strong feeling in its headlines: at least {{ emoji_share }}% of
+                the votes, among words {{ emoji_outlets }}+ outlets use; the {{ emoji_max }} strongest get them.</p>
+        {% endcall %}
+        {% call term('🎲', 'Sorting', 'cloud-sort') %}
+            <p>The splay is a packing of words at random tilts. The sort buttons keep the packing but drift words
+                along the arrow: biggest first, left to right, or plain to spicy. You can drag words around.</p>
+        {% endcall %}
+    </div>
+
+    <h2 class="section-divider" id="measures"><span>Other measures</span></h2>
+    <div class="terms">
+        {% call term('📢', 'Buzz', 'buzz') %}
+            <p>In the headline table: how much a headline uses the words and phrases everyone else is using today,
+                as a percentile of the day's headlines (📢 top 5%, 🔊 top 20%, 🔉 top half, 🔈 low, 🤫 quiet).</p>
+        {% endcall %}
+        {% call term('😈', 'Framing', 'framing') %}
+            <p>On the outlets page: on stories other outlets also covered, whether an outlet's headlines make the same
+                event look worse (😈 gloomier) or better (😇 sunnier) than everyone else's. Comparing within a story
+                separates how an outlet frames the news from which news happens to be bad.</p>
+        {% endcall %}
+        {% call term('✏️', 'Headline changes', 'changes') %}
+            <p>Headlines an outlet changed on an article it had already published, over {{ edit_days }} days. A change
+                counts only if the old headline left before the new one appeared; live blogs, reused links and minor
+                changes (capitalization, punctuation, a label like "WATCH:") are skipped.</p>
+        {% endcall %}
+        {% call term('📡', 'Trending elsewhere', 'trending') %}
+            <p>What's trending on Bluesky, Google searches, Wikipedia's most-read pages and Mastodon, next to what the
+                press is covering. A trend tagged <span class="trend-both">news</span> matches one of our stories.</p>
+        {% endcall %}
+    </div>
+
+    <h2 class="section-divider" id="ratings"><span>Outlet ratings</span></h2>
+    <div class="terms">
+        {% call term('⚖️', 'Lean: AllSides', 'lean') %}
+            <p>Each outlet's lean is <a href="https://www.allsides.com/media-bias/ratings">AllSides' Media Bias
+                Rating</a> (<a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a>), on their five
+                levels: Left, Lean Left, Center, Lean Right, Right. Outlets AllSides doesn't rate are shown dashed and
+                "not rated", and are left out of every lean average.</p>
+        {% endcall %}
+        {% call term('✏️', 'Our estimate (est.)', 'estimate') %}
+            <p>For outlets AllSides doesn't rate, we estimate lean from the wording of their headlines over
+                {{ estimate_days }} days, with a model trained on the rated outlets. It publishes only when the model
+                checks out (tested by hiding each rated outlet in turn, its rank agreement must be
+                {{ estimate_rank }}+) and it's confident about the outlet.
+                {% if lean_quality %}Right now it calls a side for {{ lean_quality.called }} of the
+                {{ lean_quality.outlets }} rated outlets in that test, and gets
+                {{ (lean_quality.side_right * 100)|round|int }}% of those right; {{ estimates }} outlets carry an
+                estimate.{% endif %} Estimates are dashed "est." chips, and they stay out of lean averages.</p>
+        {% endcall %}
+        {% call term('📚', 'Reliability: Wikipedia', 'reliability') %}
+            <p>Whether Wikipedia's editors treat an outlet as a reliable source (generally reliable, no consensus,
+                generally unreliable, deprecated), from their <a
+                href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources">perennial sources</a>
+                list (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>). It's a judgment about
+                citing a source, not a fact-check score.</p>
+        {% endcall %}
+    </div>
+
+    <h2 class="section-divider" id="limits"><span>Limits</span></h2>
+    <div class="terms">
+        {% call term('🔍', 'What to keep in mind', 'caveats') %}
+            <ul>
+                <li><strong>Front pages, not readership.</strong> We measure what outlets put up front, not what people
+                    read or share.</li>
+                <li><strong>Our outlet mix leans left</strong> as a group; lean measures compare against that mix, and
+                    blindspots account for it.</li>
+                <li><strong>The language model makes mistakes.</strong> Single scores are rough; averages over many
+                    headlines are steadier.</li>
+                <li><strong>Young data.</strong> Our database starts on October 2, 2026, so stories that were already
+                    running then look newer than they are, and 30-day measures are still filling in.</li>
+                <li><strong>Mostly US.</strong> Stories, sagas and lean use US outlets plus a few British ones; we follow
+                    foreign outlets for the cloud and the outlets page.</li>
+            </ul>
+            <p>The code is open: <a href="https://github.com/mas-4/maudlin2">github.com/mas-4/maudlin2</a>.</p>
+        {% endcall %}
+    </div>
+{% endblock content %}
