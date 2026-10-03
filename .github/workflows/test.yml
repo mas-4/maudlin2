@@ -29,8 +29,13 @@ jobs:
     - name: Clustering works
       run: |
         python - <<'PY'
+        import glob, importlib.util
         import numpy as np
-        from app.analysis.maudlinlib import form_clusters
+        # load the built extension directly: importing the app package would set up NLTK and the rest
+        spec = importlib.util.spec_from_file_location('maudlinlib', glob.glob('app/analysis/maudlinlib*.so')[0])
+        lib = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lib)
+        form_clusters = lib.form_clusters
         # two obvious groups of three, and a loner
         sim = np.eye(7)
         for group in ([0, 1, 2], [3, 4, 5]):
