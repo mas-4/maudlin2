@@ -26,3 +26,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 
 ## 2026-10-02
 - **Archive begins.** The current database starts this day; anything earlier isn't in it.
+
+## History
+- **2024-01 to 2024-08: built by hand** as Maudlin: per-outlet scrapers, the database, the word cloud, word-list
+  sentiment (VADER, AFINN). About 680 commits.
+- **2026-10: rebuilt with AI assistance** (Anthropic's Claude as a coding assistant) for the 2026 midterms. The
+  direction, design and decisions are the maintainer's; the assistant wrote and tested much of the new code.
+  Separately, the site's measures come from a small open model run locally (see above for its provenance).

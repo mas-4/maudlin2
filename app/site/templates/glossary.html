@@ -170,6 +170,24 @@
         {% endcall %}
     </div>
 
+    <h2 class="section-divider" id="built"><span>How it was built</span></h2>
+    <div class="terms">
+        {% call term('🛠️', 'By hand, then with AI', 'history') %}
+            <p><strong>2024: by hand.</strong> The site began in January 2024 as Maudlin, designed and written mostly by
+                hand: the scrapers for each outlet, the database, the word cloud and the first sentiment measures, over
+                about 680 commits through August 2024.</p>
+            <p><strong>2026: rebuilt with AI assistance.</strong> For the 2026 midterms it was rebuilt with an AI coding
+                assistant (Anthropic's Claude), starting in October 2026. The ideas, the design, the research questions
+                and every decision about what ships are a person's; the assistant wrote and tested much of the new code
+                to that direction, and helped research sources, ratings and methods.</p>
+            <p><strong>Two different AIs.</strong> Building the site is one thing; reading the news is another. The
+                measures on this site (news or not, mood, spin, feelings, story titles) come from the small open model
+                described above, <code>{{ model }}</code>, running on our own computer. Every score records which model
+                and which version of its instructions made it, and we test how stable its answers are before trusting
+                them, including publishing where it fails.</p>
+        {% endcall %}
+    </div>
+
     <h2 class="section-divider" id="limits"><span>Limits</span></h2>
     <div class="terms">
         {% call term('🔍', 'What to keep in mind', 'caveats') %}

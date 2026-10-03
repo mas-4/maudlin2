@@ -1299,6 +1299,7 @@ figure.wordcloud figcaption {
         display: none;
     }
     .headline-table tr.gridjs-tr {
+        background: #ffffff;
         display: grid;
         grid-template-columns: 1fr auto;
         align-items: center;
@@ -2233,4 +2234,31 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
         animation: none;
         rotate: var(--tilt);
     }
+}
+
+/* Text that sits straight on the page gets a paper backing so the 90s shapes behind it don't fight it */
+.table-intro, .table-filters > span, .more-link a {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+}
+
+.table-intro {
+    padding: 0.5em 0.9em;
+}
+
+.table-filters > span {
+    padding: 0.1em 0.5em;
+}
+
+.more-link a {
+    padding: 0.1em 0.5em;
+}
+
+/* Headings keep their place on the page; a white glow lifts them off the shapes instead of a box */
+h1 {
+    text-shadow: 0 0 6px #ffffff, 0 0 12px #ffffff, 0 0 18px #ffffff;
+}
+
+.headline-table td.gridjs-td {
+    background-color: #ffffff;
 }
