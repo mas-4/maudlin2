@@ -16,7 +16,7 @@ import pytz
 import requests as rq
 from bs4 import BeautifulSoup as Soup
 
-from app.models import Session, Trend, SqlLock
+from app.models import Session, Trend, TrendSighting, SqlLock
 from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
@@ -143,6 +143,8 @@ def fetch_trends():
                     trend.started_at = dt.fromisoformat(raw['started_at']).astimezone(pytz.UTC).replace(tzinfo=None)
                 trend.rank = rank
                 trend.last_accessed = now
+                s.flush()  # gives a new trend its id
+                s.add(TrendSighting(trend_id=trend.id, seen_at=now, rank=rank, post_count=raw.get('post_count')))
             s.commit()
         logger.info("Recorded %d %s trends", len(trends), source)
 

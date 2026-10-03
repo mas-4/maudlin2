@@ -15,15 +15,19 @@ attacker's side).
 When no llm is running, `--label-headlines` + `--train-newsfilter` provide a fallback news classifier. It's much
 weaker than the llm, so it uses a cutoff chosen to almost never drop real news, and it gives no event or loaded
 scores (the site falls back to VADER and AFINN for those)."""
+import hashlib
+import json
 import os
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime as dt
 from typing import Optional
 
 import joblib
 import numpy as np
 import pandas as pd
+import pytz
 from sqlalchemy import update
 
 from app.analysis.clustering import embed, EMBEDDING_MODEL
@@ -99,7 +103,11 @@ SCHEMA = {
     "additionalProperties": False,
 }
 MAX_TOKENS = 96
-EMPTY = {'news_score': None, 'event_score': None, 'loaded_score': None, 'emotion': None, 'emotion_ranks': None}
+# Changes whenever the prompt or schema does, so every score can be traced to the exact rubric that made it
+RUBRIC_ID = hashlib.sha1((PROMPT + json.dumps(SCHEMA, sort_keys=True)).encode()).hexdigest()[:8]
+FALLBACK_JUDGE = 'fallback classifier'
+EMPTY = {'news_score': None, 'event_score': None, 'loaded_score': None, 'emotion': None, 'emotion_ranks': None,
+         'scored_by': None, 'scored_at': None, 'affected': None}
 PARALLEL_REQUESTS = 4
 
 
@@ -208,23 +216,34 @@ def _load() -> Optional[dict]:
     return _model
 
 
+def judge_id() -> str:
+    """Who is scoring right now: the llm and the rubric version, e.g. "qwen3:8b rubric:1a2b3c4d"."""
+    llm.backend()  # resolves which model is in use
+    return f'{llm.model()} rubric:{RUBRIC_ID}'
+
+
 def assess(titles: list[str], agency: str) -> list[dict]:
     """For each title: news_score (1.0 news, 0.0 not, None if it couldn't be judged, which counts as news),
-    event_score and loaded_score (None without an llm)."""
+    event_score and loaded_score (None without an llm), and the provenance of those scores (scored_by, scored_at,
+    and the model's 'affected' note)."""
     if not len(titles):
         return []
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
     if llm.backend() is not None:
         # Several requests at once let the server batch them on the gpu (needs OLLAMA_NUM_PARALLEL > 1)
         with ThreadPoolExecutor(PARALLEL_REQUESTS) as pool:
             judged = list(pool.map(lambda title: judge(title, agency), titles))
-        return [EMPTY if r is None else
+        by = judge_id()
+        return [dict(EMPTY) if r is None else
                 {'news_score': float(r['kind'] == 'news'), 'event_score': float(r['event']),
-                 'loaded_score': float(r['loaded']), **ranked(r['emotions'])} for r in judged]
+                 'loaded_score': float(r['loaded']), **ranked(r['emotions']), 'scored_by': by, 'scored_at': now,
+                 'affected': (r.get('affected') or '')[:128] or None} for r in judged]
     model = _load()
     if model is None:
         return [dict(EMPTY) for _ in titles]
     probabilities = model['model'].predict_proba(embed(titles))[:, 1]
-    return [{**EMPTY, 'news_score': float(p >= model['threshold'])} for p in probabilities]
+    return [{**EMPTY, 'news_score': float(p >= model['threshold']), 'scored_by': FALLBACK_JUDGE, 'scored_at': now}
+            for p in probabilities]
 
 
 def rescore_all(only_missing: bool = False):

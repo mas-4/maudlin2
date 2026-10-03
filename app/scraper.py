@@ -23,7 +23,8 @@ from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 logger = get_logger(__name__)
 
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score', 'event_score',
-                                           'loaded_score', 'emotion', 'emotion_ranks'])
+                                           'loaded_score', 'emotion', 'emotion_ranks', 'scored_by', 'scored_at',
+                                           'affected'])
 
 
 class Scraper(ABC, Thread):
@@ -168,11 +169,13 @@ class Scraper(ABC, Thread):
 
         # Only headlines we haven't seen before need judging
         judged = pd.DataFrame(newsfilter.assess(df['title'].tolist(), self.agency), index=df.index,
-                              columns=['news_score', 'event_score', 'loaded_score', 'emotion', 'emotion_ranks'])
+                              columns=['news_score', 'event_score', 'loaded_score', 'emotion', 'emotion_ranks',
+                                       'scored_by', 'scored_at', 'affected'])
         df = df.join(judged)
         df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row'],
                                                         x['news_score'], x['event_score'], x['loaded_score'],
-                                                        x['emotion'], x['emotion_ranks']), axis=1)
+                                                        x['emotion'], x['emotion_ranks'], x['scored_by'],
+                                                        x['scored_at'], x['affected']), axis=1)
         return dropped, df['artpair'].tolist()
 
     def run_processing(self):
@@ -212,6 +215,9 @@ class Scraper(ABC, Thread):
             loaded_score=art.loaded_score,
             emotion=art.emotion if isinstance(art.emotion, str) else None,
             emotion_ranks=art.emotion_ranks if isinstance(art.emotion_ranks, str) else None,
+            scored_by=art.scored_by if isinstance(art.scored_by, str) else None,
+            scored_at=art.scored_at if isinstance(art.scored_at, dt) else None,
+            affected=art.affected if isinstance(art.affected, str) else None,
             article=article
         )
         s.add(headline)

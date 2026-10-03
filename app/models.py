@@ -164,6 +164,12 @@ class Headline(Base, AccessTimeMixin):
     emotion: Mapped[str] = mapped_column(String(16), nullable=True)
     # Up to three emotions, strongest first, comma separated; averaged ranked-choice style (newsfilter.emotion_weights)
     emotion_ranks: Mapped[str] = mapped_column(String(64), nullable=True)
+    # Provenance for the scores above, so scores from different models or rubrics never mix silently: which judge
+    # made them (e.g. "qwen3:8b rubric:1a2b3c4d", the rubric id being a hash of the prompt and schema, or
+    # "fallback classifier"), when, and the model's own note on who the event affects (written before it scores).
+    scored_by: Mapped[str] = mapped_column(String(64), nullable=True, index=True)
+    scored_at: Mapped[dt] = mapped_column(DateTime(), nullable=True)
+    affected: Mapped[str] = mapped_column(String(128), nullable=True)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"
@@ -218,6 +224,17 @@ class Trend(Base, AccessTimeMixin):
 
     def __repr__(self):
         return f"Trend(id={self.id!r}, display_name={self.display_name!r})"
+
+
+class TrendSighting(Base):
+    """Each time a trend shows up in its source's list, with its rank then: the trend table keeps only the first
+    and latest sighting, which can't say how attention rose and fell day by day (press vs. public, #117)."""
+    __tablename__ = "trend_sighting"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trend_id: Mapped[int] = mapped_column(ForeignKey("trend.id"), index=True)
+    seen_at: Mapped[dt] = mapped_column(DateTime(), index=True)
+    rank: Mapped[int] = mapped_column(Integer(), nullable=True)
+    post_count: Mapped[int] = mapped_column(Integer(), nullable=True)
 
 
 class Story(Base):
