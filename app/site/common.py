@@ -106,6 +106,7 @@ def stamp_build():
     import, because a run spends several minutes scraping before it builds."""
     now = dt.now(pytz.UTC)
     j2env.globals['built_at'] = now.isoformat()
+    j2env.globals['build_version'] = now.strftime('%Y%m%d%H%M')
     j2env.globals['built_at_text'] = now.astimezone(Constants.TimeConstants.timezone).strftime(
         '%#I:%M %p ET' if os.name == 'nt' else '%-I:%M %p ET')
     j2env.globals['nav'] = j2env.get_template('nav.html').render()

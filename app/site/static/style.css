@@ -698,12 +698,9 @@ figure.wordcloud {
     transition: opacity 0.15s;
 }
 
-.cloud:hover .cloud-word {
+/* Pointing at a word fades the others; pointing at empty space between words fades nothing */
+.cloud:has(.cloud-word:hover) .cloud-word:not(:hover) {
     opacity: 0.55;
-}
-
-.cloud .cloud-word:hover {
-    opacity: 1;
 }
 
 .cloud-word {
@@ -1627,15 +1624,9 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     outline-offset: 4px;
 }
 
-/* A living cloud: words sway and can be dragged */
+/* A living cloud: words sway */
 .cloud-word {
-    cursor: grab;
-    touch-action: none;
-}
-
-.cloud-word.dragging {
-    cursor: grabbing;
-    transition: none !important;
+    cursor: pointer;
 }
 
 .cloud-wiggle {
@@ -2018,7 +2009,7 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
 /* Cards sit a shade off the white page so they read as cards (tinted ones, like the bright side and sagas, keep
    their tints) */
 :root {
-    --card-bg: #f6f5f1;
+    --card-bg: #efede6;
 }
 
 .story, .trending, .outlet-card, .term, .table-filters + .headline-table .gridjs-wrapper {

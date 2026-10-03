@@ -15,8 +15,7 @@
         <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
         <noscript><img alt="Word cloud of the terms the most outlets are using right now" src="{{ FileNames.main_wordcloud }}"></noscript>
         <div class="table-filters cloud-sort" role="group" aria-label="Arrange the cloud">
-            <button data-cloud="splay" class="active">🎲 splay</button>
-            <button data-cloud="size">📏 biggest first</button>
+            <button data-cloud="size" class="active">📏 biggest first</button>
             <button data-cloud="side">⚖️ left to right</button>
             <button data-cloud="spice">🌶️ plain to spicy</button>
         </div>
@@ -92,7 +91,7 @@
         // Cloud layouts. The splay is d3-cloud's own; the sorted modes give each word a starting point by its rank
         // (d3-cloud's origin hook) and let the packing find it a free spot nearby, so words stay tilted and
         // interleaved but drift in order: biggest toward the top left, left-leaning toward the left, and so on.
-        let cloudMode = 'splay';
+        let cloudMode = 'size';  // biggest first
         // A word's feeling as a pair of emoji around it, rising in intensity: 😰fear😱, 🤢disgust🤮
         const BOOKENDS = {'😨': ['😰', '😱'], '🤢': ['🤢', '🤮'], '😠': ['😠', '😡'], '😢': ['😢', '😭'],
                           '😲': ['😲', '🤯'], '😄': ['😄', '🥳'], '🤞': ['🤞', '🙏'], '🥛': ['🥛', '🥛']};
@@ -191,9 +190,11 @@
             const el = document.getElementById('cloud');
             if (!WORDS.length || !window.d3) return;
             el.innerHTML = '';
+            drawEnds(cloudMode);  // the end labels first, so the layout keeps words off them
             cloudGeo = cloudGeometry(el);
-            layoutCloud('splay', cloudGeo).then((placed) => {
+            layoutCloud(cloudMode, cloudGeo).then((placed) => {
                 render(el, placed, cloudGeo.width, cloudGeo.height);
+                drawArrow(document.querySelector('#cloud svg'), cloudMode);
             });
         }
 
@@ -210,10 +211,6 @@
                 g.style.opacity = '';
                 g.style.pointerEvents = '';
             };
-            if (mode === 'splay') {
-                groups.forEach((g) => move(g, g.__word));
-                return;
-            }
             layoutCloud(mode, cloudGeo).then((placed) => {
                 const spots = Object.fromEntries(placed.map((d) => [d.word, d]));
                 groups.forEach((g) => {
@@ -227,71 +224,6 @@
         function placeWord(g) {
             const p = g.__pos;
             g.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotate}deg)`;
-        }
-
-        // Drag a word anywhere; where it lands, the words it covers get shoved out of the way
-        function dragWord(svg, g) {
-            let start = null;
-            g.addEventListener('pointerdown', (ev) => {
-                if (ev.button !== 0) return;
-                const k = svg.viewBox.baseVal.width / svg.getBoundingClientRect().width;
-                start = {x: ev.clientX, y: ev.clientY, pos: {...g.__pos}, k, moved: false};
-                g.setPointerCapture(ev.pointerId);
-            });
-            g.addEventListener('pointermove', (ev) => {
-                if (!start) return;
-                const dx = (ev.clientX - start.x) * start.k, dy = (ev.clientY - start.y) * start.k;
-                if (!start.moved && Math.hypot(dx, dy) < 5) return;
-                start.moved = true;
-                g.classList.add('dragging');
-                g.__pos = {...start.pos, x: start.pos.x + dx, y: start.pos.y + dy};
-                placeWord(g);
-            });
-            const end = () => {
-                if (!start) return;
-                if (start.moved) {
-                    g.__dragged = true;  // the click that follows a drag doesn't open the panel
-                    g.classList.remove('dragging');
-                    shove(svg, g);
-                }
-                start = null;
-            };
-            g.addEventListener('pointerup', end);
-            g.addEventListener('pointercancel', end);
-        }
-
-        // Push words off each other, starting from the one just dropped, a few rounds until nothing overlaps
-        function shove(svg, dropped) {
-            const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
-            const k = W / svg.getBoundingClientRect().width, origin = svg.getBoundingClientRect();
-            const words = [...svg.querySelectorAll('.cloud-word')].filter((g) => g.style.opacity !== '0');
-            // each word's on-screen half size, measured once
-            const size = new Map(words.map((g) => {
-                const r = g.getBoundingClientRect();
-                return [g, {hw: r.width * k / 2, hh: r.height * k / 2}];
-            }));
-            const center = (g) => g.__pos;
-            for (let round = 0; round < 30; round++) {
-                let moved = false;
-                for (let i = 0; i < words.length; i++) {
-                    for (let j = i + 1; j < words.length; j++) {
-                        const a = words[i], b = words[j], ca = center(a), cb = center(b), sa = size.get(a), sb = size.get(b);
-                        const ox = sa.hw + sb.hw - Math.abs(ca.x - cb.x), oy = sa.hh + sb.hh - Math.abs(ca.y - cb.y);
-                        if (ox <= 0 || oy <= 0) continue;
-                        // the dropped word stays put; otherwise split the push
-                        const [mover, still] = b === dropped ? [a, b] : [b, a];
-                        const share = a === dropped || b === dropped ? 1 : 0.5;
-                        const cm = center(mover), cs = center(still);
-                        if (ox < oy) mover.__pos.x += Math.sign(cm.x - cs.x || 1) * ox * share;
-                        else mover.__pos.y += Math.sign(cm.y - cs.y || 1) * oy * share;
-                        mover.__pos.x = Math.max(vx + size.get(mover).hw, Math.min(vx + W - size.get(mover).hw, mover.__pos.x));
-                        mover.__pos.y = Math.max(vy + size.get(mover).hh, Math.min(vy + H - size.get(mover).hh, mover.__pos.y));
-                        moved = true;
-                    }
-                }
-                if (!moved) break;
-            }
-            words.forEach(placeWord);
         }
 
         // A swooping arrow behind the words, top left to bottom right, colored from one end of the sort to the other
@@ -395,13 +327,11 @@
                         wiggle.appendChild(e);
                     });
                 }
-                const open = () => { if (!g.__dragged) showWord(d); g.__dragged = false; };
+                const open = () => showWord(d);
                 g.addEventListener('click', open);
-                dragWord(svg, g);
                 g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
             }
             clearSticker(svg);
-            if (cloudMode !== 'splay') arrangeCloud(cloudMode);
         }
 
         // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it

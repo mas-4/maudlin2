@@ -8,8 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css">
-    <script src="index.js"></script>
+    {# The build stamp in the urls makes browsers fetch the new files after each deploy instead of a cached copy #}
+    <link rel="stylesheet" href="./style.css?v={{ build_version }}">
+    <script src="index.js?v={{ build_version }}"></script>
     <link rel="icon" href="./favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
     <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
