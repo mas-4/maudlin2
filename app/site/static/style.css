@@ -1823,3 +1823,36 @@ table.emotion-matrix th span:not(.matrix-emoji) {
         background: white;
     }
 }
+
+/* Cards packed into columns by packColumns (index.js) */
+.packed {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 1.2em;
+}
+
+.packed-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2em;
+}
+
+.outlet-search {
+    text-align: center;
+    margin: 0 0 1em;
+}
+
+.outlet-search input {
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    width: min(24em, 100%);
+    padding: 0.4em 1em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #00c2a8;
+}
+
+.lineup-chip.dimmed {
+    opacity: 0.2;
+}

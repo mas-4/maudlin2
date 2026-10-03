@@ -86,3 +86,31 @@ function popCard(card) {
 }
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closePop(); });
+
+// Pack cards into as many columns as fit (each at least `minWidth` px), every card dropping into the shortest column,
+// so short cards never leave a hole beside a long one. Returns a function to repack with a new list of cards (after a
+// sort or a search). Cards keep their ids, so #links still land.
+function packColumns(box, cards, minWidth) {
+    let current = cards, count = 0;
+    function layout(next, force) {
+        if (next) current = next;
+        const n = Math.max(1, Math.floor(box.clientWidth / minWidth));
+        if (n === count && !force && !next) return;
+        count = n;
+        box.style.minHeight = box.offsetHeight + 'px';  // hold the height while repacking, so the page doesn't jump
+        box.classList.add('packed');
+        const columns = Array.from({length: n}, () => {
+            const col = document.createElement('div');
+            col.className = 'packed-column';
+            return col;
+        });
+        box.replaceChildren(...columns);
+        for (const card of current) {
+            columns.reduce((a, b) => b.offsetHeight < a.offsetHeight ? b : a).appendChild(card);
+        }
+        box.style.minHeight = '';
+    }
+    layout(null, true);
+    addEventListener('resize', () => layout());
+    return (next) => layout(next, true);
+}

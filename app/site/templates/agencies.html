@@ -47,6 +47,9 @@
         <button data-sort="edits" title="Rewrites the most headlines first">✏️ most rewrites</button>
         <button data-sort="headlines" title="Most headlines first">📰 busiest</button>
     </div>
+    <div class="outlet-search">
+        <input type="search" id="outlet-search" placeholder="🔎 find an outlet" aria-label="Find an outlet">
+    </div>
     <div class="outlet-cards">
         {% for o in outlets %}
             <div class="outlet-card" id="outlet-{{ o.slug }}" style="--pop: {{ o.color }}"
@@ -79,6 +82,19 @@
     <script>
         (function () {
             const box = document.querySelector('.outlet-cards');
+            const all = [...box.querySelectorAll('.outlet-card')];
+            let order = all;
+            const repack = packColumns(box, all, 330);
+            // Search by name: matching cards stay, the rest step out; lineup chips that don't match fade
+            const search = document.getElementById('outlet-search');
+            const matches = (name) => name.toLowerCase().includes(search.value.trim().toLowerCase());
+            const shown = () => order.filter((c) => matches(c.dataset.name + ' ' + c.querySelector('.outlet-name').title));
+            search.addEventListener('input', () => {
+                repack(shown());
+                document.querySelectorAll('.lineup-chip').forEach((chip) => {
+                    chip.classList.toggle('dimmed', Boolean(search.value.trim()) && !matches(chip.querySelector('.chip-name').title));
+                });
+            });
             const num = (c, key) => parseFloat(c.dataset[key]);
             const SORTS = {
                 name: (a, b) => a.dataset.name.localeCompare(b.dataset.name),
@@ -99,7 +115,8 @@
             document.querySelector('.outlet-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
-                [...box.children].sort(SORTS[button.dataset.sort]).forEach((c) => box.appendChild(c));
+                order = [...all].sort(SORTS[button.dataset.sort]);
+                repack(shown());
                 document.querySelectorAll('.outlet-sort button').forEach((b) => b.classList.toggle('active', b === button));
             });
         })();
