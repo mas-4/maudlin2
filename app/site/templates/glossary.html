@@ -96,9 +96,9 @@
         {% endcall %}
     </div>
 
-    <h2 class="section-divider" id="cloud"><span>The word cloud</span></h2>
+    <h2 class="section-divider" id="word-cloud"><span>The word cloud</span></h2>
     <div class="terms">
-        {% call term('☁️', 'Size and color', 'cloud') %}
+        {% call term('☁️', 'Size and color', 'cloud-size') %}
             <p>The {{ cloud_words }} words and phrases the most outlets are using right now; each outlet counts once
                 per word, so a busy outlet can't inflate one. Bigger means more outlets.</p>
             <p>Color is who uses a word more readily: blue for left-leaning outlets, red for right, a blue-to-red blend
@@ -109,9 +109,9 @@
             <p>A word framed by emoji (😰death😱) has a strong feeling in its headlines: at least {{ emoji_share }}% of
                 the votes, among words {{ emoji_outlets }}+ outlets use; the {{ emoji_max }} strongest get them.</p>
         {% endcall %}
-        {% call term('🎲', 'Sorting', 'cloud-sort') %}
-            <p>The splay is a packing of words at random tilts. The sort buttons keep the packing but drift words
-                along the arrow: biggest first, left to right, or plain to spicy. You can drag words around.</p>
+        {% call term('📏', 'Sorting', 'cloud-sort') %}
+            <p>Words are packed at tilts (bigger ones closer to level) and drift along the arrow behind them: biggest
+                first by default, or left to right, or plain to spicy. Click a word to see how outlets are using it.</p>
         {% endcall %}
     </div>
 
