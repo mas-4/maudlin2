@@ -94,7 +94,9 @@
         // rank, spread at random across it
         const diagonal = (t, random) => {
             const along = 0.12 + 0.84 * t, room = Math.min(along, 1 - along);  // starts just past the sticker
-            const across = (random() * 2 - 1) * room;
+            // a band around the arrow rather than the whole square, so the far corners (which sit mid-scale on the
+            // diagonal) don't collect words that read as out of place
+            const across = (random() * 2 - 1) * room * 0.45;
             return [along + across, along - across];
         };
         const CLOUD_SORTS = {
