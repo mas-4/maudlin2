@@ -802,9 +802,9 @@ table.emotion-matrix th {
     font-size: 1.2em;
 }
 
-table.emotion-matrix th span {
+table.emotion-matrix th span:not(.matrix-emoji) {
     font-size: 0.6em;
-    color: #666;
+    color: #444;
 }
 
 table.emotion-matrix td {
@@ -1395,12 +1395,19 @@ figure.wordcloud figcaption {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.8em;
-    height: 1.8em;
+    width: 1.6em;
+    height: 1.6em;
     border-radius: 50%;
     background: #1f1f2e;
-    font-size: 1.3em;
+    font-size: 1.5em;
     line-height: 1;
+    margin-bottom: 0.1em;
+}
+
+table.emotion-matrix th span:not(.matrix-emoji) {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 0.75em;
 }
 
 .cloud-end-emoji {
