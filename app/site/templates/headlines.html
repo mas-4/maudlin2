@@ -481,10 +481,12 @@
                 const minutes = Math.max(1, Math.round((Date.now() / 1000 - ts) / 60));
                 return minutes < 60 ? `${minutes}m ago` : `${Math.round(minutes / 60)}h ago`;
             };
-            const FEELING_ORDER = ['anger', 'fear', 'disgust', 'sadness', 'surprise', 'hope', 'joy'];
+            // Brightest to darkest, with neutral in the middle
+            const FEELING_ORDER = ['joy', 'hope', 'surprise', 'neutral', 'sadness', 'fear', 'disgust', 'anger'];
 
-            // The third column shows one measure at a time, picked with the buttons above the table. Each has its
-            // own cell and its own sort, and picking one sorts by it.
+            // The third column shows one measure at a time, picked with the buttons above the table. `compare` is the
+            // header's ascending sort; a button starts in the reverse (loudest, newest, grimmest, spiciest, darkest
+            // first), so the header's first click always visibly changes the order. Story starts biggest first instead.
             const METRICS = {
                 buzz: {
                     label: 'Buzz',
@@ -494,22 +496,23 @@
                             : r.buzz >= 50 ? ['🔉', '#fff1b3'] : r.buzz >= 20 ? ['🔈', '#eef1f6'] : ['🤫', '#f2f2f2'];
                         return badge(emoji, r.buzz >= 50 ? `top ${Math.max(1, 100 - r.buzz)}%` : r.buzz >= 20 ? 'low' : 'quiet', tint);
                     },
-                    compare: (a, b) => b.buzz - a.buzz,
+                    compare: (a, b) => a.buzz - b.buzz,
                 },
                 seen: {
                     label: 'First seen',
                     cell: (r) => r.seen ? badge(clock(r.seen), ago(r.seen), (Date.now() / 1000 - r.seen) < 7200 ? '#fff1b3' : '#eef1f6') : '',
-                    compare: (a, b) => (b.seen ?? 0) - (a.seen ?? 0),
+                    compare: (a, b) => (a.seen ?? 0) - (b.seen ?? 0),
                 },
                 mood: {
                     label: 'Mood',
                     cell: (r) => r.mood === null ? '' : badge(...MOODS[r.mood]),
-                    compare: (a, b) => (a.mood ?? 99) - (b.mood ?? 99),
+                    // Upbeat to grim, so the default is grimmest first
+                    compare: (a, b) => (b.mood ?? -99) - (a.mood ?? -99),
                 },
                 spin: {
                     label: 'Spin',
                     cell: (r) => r.loaded === null ? '' : badge(...SPINS[r.loaded]),
-                    compare: (a, b) => (b.loaded ?? -1) - (a.loaded ?? -1),
+                    compare: (a, b) => (a.loaded ?? -1) - (b.loaded ?? -1),
                 },
                 feeling: {
                     label: 'Feeling',
@@ -518,15 +521,16 @@
                         : `<span class="metric-minor" title="${name}">${emoji}</span>`).join(' ')
                         : badge('🥛', 'neutral', '#f2f2f2'),
                     compare: (a, b) => {
-                        const rank = (r) => r.feelings.length ? FEELING_ORDER.indexOf(r.feelings[0][1]) : 99;
+                        const rank = (r) => FEELING_ORDER.indexOf(r.feelings.length ? r.feelings[0][1] : 'neutral');
                         return rank(a) - rank(b);
                     },
                 },
                 story: {
                     label: 'Story',
                     cell: (r) => `<a class="badge table-story-badge" style="--tint: #d9f7f2" href="#story-${r.story}"><span class="badge-emoji">📰</span>${esc(r.story_title)}</a>`,
+                    compare: (a, b) => a.story_title.localeCompare(b.story_title),
                     // Biggest stories first, each story's headlines together
-                    compare: (a, b) => b.story_size - a.story_size || a.story - b.story,
+                    order: (a, b) => b.story_size - a.story_size || a.story - b.story,
                 },
             };
 
@@ -534,7 +538,7 @@
             const keep = (r) => (state.lean === 'all' || (state.lean === 'left' ? r.bias < 0
                                     : state.lean === 'right' ? r.bias > 0 : r.bias === 0))
                 && (!state.loaded || r.loaded > 0);
-            const rows = () => ROWS.filter(keep).filter((r) => state.metric !== 'story' || r.story !== null).sort(METRICS[state.metric].compare).map((r) => [r, r, r]);
+            const rows = () => ROWS.filter(keep).filter((r) => state.metric !== 'story' || r.story !== null).sort(METRICS[state.metric].order || ((a, b) => METRICS[state.metric].compare(b, a))).map((r) => [r, r, r]);
             const columns = () => [
                 {
                     name: 'Outlet',
@@ -556,7 +560,7 @@
                 },
             ];
 
-            const grid = new gridjs.Grid({
+            const config = () => ({
                 columns: columns(),
                 data: rows(),
                 sort: true,
@@ -566,7 +570,16 @@
                 pagination: {limit: 25},
                 autoWidth: false,
                 language: {search: {placeholder: '🔎 search headlines, outlets, stories…'}},
-            }).render(document.getElementById('wrapper'));
+            });
+            // Each table gets a brand-new container: gridjs renders with Preact, which remembers its last render on the
+            // container element itself, so clearing and reusing one leaves the old table in charge
+            let grid;
+            const freshGrid = () => {
+                const holder = document.createElement('div');
+                document.getElementById('wrapper').replaceChildren(holder);
+                grid = new gridjs.Grid(config()).render(holder);
+            };
+            freshGrid();
 
             document.querySelector('.table-controls').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
@@ -578,7 +591,12 @@
                     state[key] = button.dataset.value;
                     document.querySelectorAll(`.table-controls [data-filter="${key}"]`).forEach((b) => b.classList.toggle('active', b === button));
                 }
-                grid.updateConfig({columns: columns(), data: rows()}).forceRender();
+                if (key === 'metric') {
+                    // A fresh table per measure, so the header doesn't carry a sort over from the last one
+                    freshGrid();
+                } else {
+                    grid.updateConfig({columns: columns(), data: rows()}).forceRender();
+                }
             });
         }
     </script>
