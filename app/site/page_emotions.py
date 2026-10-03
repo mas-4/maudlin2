@@ -68,8 +68,8 @@ class EmotionsPage:
         self.context.update({
             'available': True,
             'total': len(df),
-            'overall': [{'emotion': e, 'share': float(overall[e]), 'count': int((df['emotion'] == e).sum())}
-                        for e in EMOTION_COLUMNS],
+            'overall': sorted(({'emotion': e, 'share': float(overall[e]), 'count': int((df['emotion'] == e).sum())}
+                               for e in EMOTION_COLUMNS), key=lambda o: -o['share']),
             'sides': sorted(shares(df, 'side', 1), key=lambda r: [n for n, _ in SIDES].index(r['name'])),
             'outlets': outlets,
             'topics': shares(df.dropna(subset=['topic']), 'topic', MIN_TOPIC_HEADLINES),

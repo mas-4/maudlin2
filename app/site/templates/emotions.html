@@ -5,7 +5,7 @@
         <thead>
         <tr>
             <th data-sort="text">{{ label }}</th>
-            {% for e in emotions %}<th data-sort="number" title="{{ e }}">{{ emoji[e] }}<br><span>{{ e }}</span></th>{% endfor %}
+            {% for e in emotions %}<th data-sort="number" title="{{ e }}"><span class="matrix-emoji">{{ emoji[e] }}</span><br><span>{{ e }}</span></th>{% endfor %}
             <th data-sort="number">Headlines</th>
         </tr>
         </thead>
@@ -38,7 +38,7 @@
 
         <div class="emotion-tiles">
             {% for o in overall %}
-                <div class="emotion-tile">
+                <div class="emotion-tile tile-{{ o.emotion }}">
                     <div class="emotion-tile-emoji">{{ emoji[o.emotion] }}</div>
                     <div class="emotion-tile-share">{{ (o.share * 100)|round|int }}%</div>
                     <div class="emotion-tile-label">{{ o.emotion }}</div>
