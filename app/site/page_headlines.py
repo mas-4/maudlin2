@@ -73,6 +73,19 @@ def meter(value: float, scale: float, negative: str, positive: str) -> dict:
     return {'value': round(float(value), 3), 'position': round(position, 1), 'text': text}
 
 
+def weather(mood: float) -> tuple[str, str]:
+    """A story's mood (-1 grim to 1 upbeat) as weather, matching the headline table's mood badges."""
+    if mood <= -0.6:
+        return '⛈️', 'very grim'
+    if mood <= -0.2:
+        return '🌧️', 'grim'
+    if mood < 0.2:
+        return '🍞', 'plain'
+    if mood < 0.6:
+        return '🌤️', 'upbeat'
+    return '☀️', 'very upbeat'
+
+
 def _name(text: str) -> str:
     """A trend's name for exact matching: no parenthetical, hyphens as spaces, lowercase."""
     return re.sub(r'\s+', ' ', re.sub(r'\(.*?\)', '', text).replace('-', ' ')).strip().lower()
@@ -262,6 +275,7 @@ class HeadlinesPage:
             group = df[df['cluster'] == cluster['cluster']]
             cluster['lean'] = meter(group['bias'].mean() - baseline_bias, LEAN_RANGE, 'L', 'R')
             cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
+            cluster['mood'].update(dict(zip(('emoji', 'word'), weather(cluster['mood']['value']))))
             cluster['emotion'] = dominant_emotion(group)
             cluster['outlets'] = int(group['agency'].nunique())
             cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0

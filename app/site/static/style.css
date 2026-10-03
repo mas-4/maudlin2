@@ -282,43 +282,86 @@ blockquote::before, blockquote::after, q::before, q::after {
 
 .meter {
     display: grid;
-    grid-template-columns: 5.5em 1fr 3.5em;
+    grid-template-columns: 5.2em 1fr 6.5em;
     align-items: center;
     gap: 0.5em;
-    font-size: 0.8em;
+    font-size: 0.95em;
+    color: #1f1f2e;
+    margin: 0.5em 0;
+}
+
+.meter-label {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #555;
-    margin: 0.25em 0;
+}
+
+/* Bar with an emoji at each end saying what the ends mean */
+.meter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    min-width: 0;
+}
+
+.meter-end {
+    font-size: 1.45em;
+    line-height: 1;
 }
 
 .meter-track {
     position: relative;
-    height: 6px;
-    border-radius: 3px;
+    flex: 1;
+    height: 12px;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
 }
 
 /* Same blue-gray-red as the bias colors used across the site */
 .lean-track {
-    background: linear-gradient(to right, #3b4cc0, #dddddd 50%, #b40426);
+    background: linear-gradient(to right, #3b4cc0, #eeeeee 50%, #b40426);
 }
 
+/* Purple (grim) to gold (upbeat), like the headline table's mood badges */
 .mood-track {
-    background: linear-gradient(to right, #8a8a8a, #dddddd 50%, #e0b84a);
+    background: linear-gradient(to right, #7a5cff, #f4efe6 50%, #ffc400);
 }
 
 .meter-dot {
     position: absolute;
     top: 50%;
-    width: 10px;
-    height: 10px;
-    margin: -5px 0 0 -5px;
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
     border-radius: 50%;
-    background: #222;
-    border: 2px solid #fff;
+    background: #1f1f2e;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #1f1f2e;
+}
+
+/* The mood marker is the weather itself */
+.meter-dot.meter-emoji {
+    width: 1.7em;
+    height: 1.7em;
+    margin: -0.85em 0 0 -0.85em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: none;
+    font-size: 0.95em;
+    line-height: 1;
 }
 
 .meter-value {
     text-align: right;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.meter-feeling {
+    font-size: 1.3em;
+    vertical-align: middle;
 }
 
 .story {

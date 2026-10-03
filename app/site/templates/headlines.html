@@ -482,15 +482,19 @@
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <div class="meters">
                     <div class="meter" title="Average bias of the outlets covering this story, relative to all outlets scraped today">
-                        <span class="meter-label">Covered by</span>
-                        <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
+                        <span class="meter-label">covered by</span>
+                        <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>
+                            <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
+                            <span class="meter-end" title="right-leaning outlets">🐘</span></span>
                         <span class="meter-value">{{ cluster['lean']['text'] }}</span>
                     </div>
-                    <div class="meter" title="Average headline sentiment across the outlets covering this story">
-                        <span class="meter-label">Mood</span>
-                        <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
-                        <span class="meter-value">{{ cluster['mood']['text'] }}{% if cluster['emotion'] %}
-                            <span title="{{ cluster['emotion']['name'] }}: {{ cluster['emotion']['share'] }}% of the feeling in its headlines">{{ cluster['emotion']['emoji'] }}</span>{% endif %}</span>
+                    <div class="meter" title="How grim or upbeat the news in its headlines is, on average">
+                        <span class="meter-label">mood</span>
+                        <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
+                            <span class="meter-track mood-track"><span class="meter-dot meter-emoji" style="left: {{ cluster['mood']['position'] }}%">{{ cluster['mood']['emoji'] }}</span></span>
+                            <span class="meter-end" title="upbeat">☀️</span></span>
+                        <span class="meter-value">{{ cluster['mood']['word'] }}{% if cluster['emotion'] %}
+                            <span class="meter-feeling" title="{{ cluster['emotion']['name'] }}: {{ cluster['emotion']['share'] }}% of the feeling in its headlines">{{ cluster['emotion']['emoji'] }}</span>{% endif %}</span>
                     </div>
                 </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
