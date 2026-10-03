@@ -4,7 +4,7 @@ from datetime import datetime as dt, timedelta as td
 import pandas as pd
 import pytz
 
-from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI, NEWS_THRESHOLD
+from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI, NEWS_THRESHOLD, emotion_weights
 from app.models import Session, Headline, Article, Agency, Topic
 from app.site.common import TemplateHandler
 from app.site.data import DataHandler
@@ -23,22 +23,26 @@ SIDES = [('Left-leaning', lambda b: b < 0), ('Center', lambda b: b == 0), ('Righ
 def load(days: int = WINDOW_DAYS) -> pd.DataFrame:
     since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
     with Session() as s:
-        rows = s.query(Headline.emotion, Agency.name, Agency._bias, Topic.name).join(  # noqa prot attr
+        rows = s.query(Headline.emotion_ranks, Agency.name, Agency._bias, Topic.name).join(  # noqa prot attr
             Headline.article).join(Article.agency).join(Article.topic, isouter=True).filter(
-            Headline.first_accessed > since, Headline.emotion.isnot(None), Headline.news_score >= NEWS_THRESHOLD
+            Headline.first_accessed > since, Headline.emotion_ranks.isnot(None), Headline.news_score >= NEWS_THRESHOLD
         ).all()
-    return pd.DataFrame(rows, columns=['emotion', 'agency', 'bias', 'topic'])
+    df = pd.DataFrame(rows, columns=['ranks', 'agency', 'bias', 'topic'])
+    # Each headline's vote, split ranked-choice style across the feelings it names (3:2:1, normalized)
+    weights = pd.DataFrame([emotion_weights(r) for r in df['ranks']], index=df.index).reindex(
+        columns=EMOTION_COLUMNS, fill_value=0).fillna(0)
+    return df.join(weights)
 
 
 def shares(df: pd.DataFrame, by: str, minimum: int) -> list[dict]:
-    """One row per group with each emotion's share of its headlines, the dominant feeling first."""
-    counts = df.groupby([by, 'emotion']).size().unstack(fill_value=0).reindex(columns=EMOTION_COLUMNS, fill_value=0)
-    counts = counts[counts.sum(axis=1) >= minimum]
-    table = counts.div(counts.sum(axis=1), axis=0)
+    """One row per group with each emotion's share of the feeling in its headlines (the average of their split
+    votes), the dominant feeling first."""
+    sizes = df.groupby(by).size()
+    table = df.groupby(by)[EMOTION_COLUMNS].mean()[sizes >= minimum]
     rows = []
     for name, row in table.iterrows():
         felt = row.drop('neutral')
-        rows.append({'name': name, 'headlines': int(counts.loc[name].sum()),
+        rows.append({'name': name, 'headlines': int(sizes[name]),
                      'shares': {e: round(float(row[e]), 3) for e in EMOTION_COLUMNS},
                      'dominant': felt.idxmax(), 'dominant_share': float(felt.max())})
     return sorted(rows, key=lambda r: (EMOTION_COLUMNS.index(r['dominant']), -r['dominant_share']))
@@ -58,7 +62,7 @@ class EmotionsPage:
             self.context['available'] = False
             self.template.write(self.context)
             return
-        overall = df['emotion'].value_counts(normalize=True).reindex(EMOTION_COLUMNS, fill_value=0)
+        overall = df[EMOTION_COLUMNS].mean()
         df['side'] = df['bias'].map(lambda b: next(name for name, test in SIDES if test(b)))
         bias_by_agency = df.drop_duplicates('agency').set_index('agency')['bias']
         outlets = shares(df, 'agency', MIN_OUTLET_HEADLINES)
@@ -68,7 +72,7 @@ class EmotionsPage:
         self.context.update({
             'available': True,
             'total': len(df),
-            'overall': sorted(({'emotion': e, 'share': float(overall[e]), 'count': int((df['emotion'] == e).sum())}
+            'overall': sorted(({'emotion': e, 'share': float(overall[e]), 'count': int((df[e] > 0).sum())}
                                for e in EMOTION_COLUMNS), key=lambda o: -o['share']),
             'sides': sorted(shares(df, 'side', 1), key=lambda r: [n for n, _ in SIDES].index(r['name'])),
             'outlets': outlets,

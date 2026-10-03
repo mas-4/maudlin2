@@ -32,8 +32,9 @@
     {% if not available %}
         <p>No emotion data yet.</p>
     {% else %}
-        <p class="poll-note">A local language model reads each news headline and names the feeling it's most likely to
-            stir in a reader, from the event and the wording together. {{ total }} news headlines from the last
+        <p class="poll-note">A local language model reads each news headline and ranks up to three feelings it's most
+            likely to stir in a reader. Like ranked-choice voting, each headline's vote is split 3:2:1 across them, and
+            these are the shares of all the votes. {{ "{:,}".format(total) }} news headlines from the last
             {{ window_days }} days; lifestyle and shopping items are left out.</p>
 
         <div class="emotion-tiles">
@@ -50,7 +51,7 @@
         {{ matrix(sides, 'Outlets') }}
 
         <h3>By outlet</h3>
-        <p class="poll-note">Each outlet's news headlines by the feeling they stir; darker is a larger share. Click a
+        <p class="poll-note">Each outlet's share of the feeling in its news headlines; darker is a larger share. Click a
             column to sort. Outlets need {{ min_outlet_headlines }} or more headlines to appear.</p>
         {{ matrix(outlets, 'Outlet', chips=True) }}
 
