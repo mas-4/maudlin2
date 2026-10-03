@@ -280,23 +280,28 @@ blockquote::before, blockquote::after, q::before, q::after {
     margin: 0.6em 0 0.8em;
 }
 
+/* Label on its own line above, so the bar gets the card's full width */
 .meter {
     display: grid;
-    grid-template-columns: 4.4em 1fr auto;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "label label" "bar value";
     align-items: center;
-    gap: 0.6em;
+    column-gap: 0.6em;
+    row-gap: 0.1em;
     font-size: 1.1em;
     color: #1f1f2e;
     margin: 0.5em 0;
 }
 
 .meter-label {
+    grid-area: label;
     font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #555;
 }
 
 /* Bar with an emoji at each end saying what the ends mean */
 .meter-bar {
+    grid-area: bar;
     display: flex;
     align-items: center;
     gap: 0.3em;
@@ -354,6 +359,7 @@ blockquote::before, blockquote::after, q::before, q::after {
 }
 
 .meter-value {
+    grid-area: value;
     text-align: right;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
