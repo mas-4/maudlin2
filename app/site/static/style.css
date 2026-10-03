@@ -70,7 +70,7 @@ body {
     font-size: 1.05em;
     color: #1f1f2e;
     text-decoration: none;
-    padding: 0.15em 0.8em;
+    padding: 0.3em 1em;
     background: white;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
@@ -332,7 +332,7 @@ blockquote::before, blockquote::after, q::before, q::after {
 
 .storylink {
     display: inline-block;
-    padding: 4px 11px;
+    padding: 6px 14px;
     margin: 5px;
     text-decoration: none;
     font-family: 'Comic Neue', 'Comic Sans MS', cursive;
@@ -558,7 +558,7 @@ table.races th, table.races td {
     border: 2px solid #1f1f2e;
     border-radius: 999px;
     box-shadow: 2px 2px 0 #1f1f2e;
-    padding: 1px 9px;
+    padding: 3px 12px;
 }
 
 .edit-before {
@@ -939,8 +939,8 @@ figure.wordcloud figcaption {
     background: none;
     border: 1px solid #ccc;
     border-radius: 10px;
-    padding: 0 0.5em;
-    margin: 0 0.1em;
+    padding: 0.2em 0.75em;
+    margin: 0.1em 0.15em;
     cursor: pointer;
     color: #555;
 }
@@ -1031,7 +1031,7 @@ figure.wordcloud figcaption {
 .trend-more {
     font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
     margin: 0.2em 0 0.8em;
-    padding: 0.2em 0.8em;
+    padding: 0.35em 1em;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
     background: var(--pop, #ffc400);
@@ -1070,7 +1070,7 @@ figure.wordcloud figcaption {
     background: white;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
-    padding: 0.1em 0.8em;
+    padding: 0.3em 1em;
     cursor: pointer;
 }
 
@@ -1184,7 +1184,7 @@ figure.wordcloud figcaption {
     display: inline-flex;
     align-items: center;
     gap: 0.3em;
-    padding: 0.1em 0.65em 0.1em 0.3em;
+    padding: 0.2em 0.8em 0.2em 0.35em;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
     background: var(--tint, #f2f2f2);
@@ -1227,7 +1227,7 @@ figure.wordcloud figcaption {
     font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #1f1f2e;
     text-decoration: none;
-    padding: 0.1em 0.8em;
+    padding: 0.3em 1em;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
     background: #fff8d6;
