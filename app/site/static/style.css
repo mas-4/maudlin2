@@ -1354,14 +1354,38 @@ figure.wordcloud figcaption {
     margin: 0.3em 0 0.4em;
 }
 
-/* The faint arrow behind a sorted cloud, showing which way it falls off */
-.cloud-arrow path {
-    fill: #1f1f2e;
-    opacity: 0.06;
+/* The arrow behind a sorted cloud, showing which way it falls off */
+.cloud-arrow {
+    opacity: 0.26;
 }
 
-.cloud-arrow-end {
-    opacity: 0.5;
+#cloud {
+    position: relative;
+}
+
+/* Sticker labels at the two ends of a sorted cloud */
+.cloud-end {
+    position: absolute;
+    z-index: 1;
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.2em 0.9em;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.cloud-end-start {
+    left: var(--gutter, 16px);
+    transform: rotate(-3deg);
+}
+
+.cloud-end-finish {
+    right: var(--gutter, 16px);
+    bottom: 10px;
+    transform: rotate(-3deg);
 }
 
 .matrix-emoji {

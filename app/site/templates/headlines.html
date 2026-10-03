@@ -77,27 +77,20 @@
         // interleaved but drift in order: biggest toward the top left, left-leaning toward the left, and so on.
         let cloudMode = 'splay';
         const TILTS = {};  // each word keeps its splay tilt in every layout
+        // Every sort runs from the top left to the bottom right: a word starts its search along the diagonal at its
+        // rank, spread at random across it
+        const diagonal = (t, random) => {
+            const along = 0.12 + 0.84 * t, room = Math.min(along, 1 - along);  // starts just past the sticker
+            const across = (random() * 2 - 1) * room;
+            return [along + across, along - across];
+        };
         const CLOUD_SORTS = {
-            size: {
-                order: (a, b) => b.outlets - a.outlets,
-                // along the diagonal by rank, spread at random across it
-                origin: (t, random) => {
-                    const along = 0.1 + 0.86 * t, room = Math.min(along, 1 - along);  // starts just past the sticker
-                    const across = (random() * 2 - 1) * room;
-                    return [along + across, along - across];
-                },
-                arrow: {from: [0.1, 0.12], to: [0.95, 0.9]},
-            },
-            side: {
-                order: (a, b) => a.lean - b.lean,
-                origin: (t, random) => [0.03 + 0.94 * t, 0.08 + 0.84 * random()],
-                arrow: {from: [0.05, 0.5], to: [0.96, 0.5], ends: ['🫏', '🐘']},
-            },
-            spice: {
-                order: (a, b) => a.spice - b.spice || b.outlets - a.outlets,
-                origin: (t, random) => [0.03 + 0.94 * t, 0.08 + 0.84 * random()],
-                arrow: {from: [0.05, 0.5], to: [0.96, 0.5], ends: ['🍞', '🌶️']},
-            },
+            size: {order: (a, b) => b.outlets - a.outlets, ends: ['📏 most outlets', 'fewest 🤏'],
+                   colors: ['#1f1f2e', '#8a8f98']},
+            side: {order: (a, b) => a.lean - b.lean, ends: ['🫏 left-leaning', 'right-leaning 🐘'],
+                   colors: ['#1a5cff', '#e0102e']},
+            spice: {order: (a, b) => a.spice - b.spice || b.outlets - a.outlets, ends: ['🍞 plain', 'spicy 🌶️'],
+                    colors: ['#c9a66b', '#e0102e']},
         };
 
         function cloudGeometry(el) {
@@ -123,8 +116,9 @@
             // A fixed seed keeps each layout the same on every load
             let seed = 20261003;
             const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-            // Every word tilts, never flat: 12 to 40 degrees either way
-            const tilt = () => (random() < 0.5 ? -1 : 1) * (12 + random() * 28);
+            // Every word tilts, never flat: 12 to 60 degrees either way, and about one in seven turned upside down
+            const tilt = () => random() < 0.15 ? 180 + (random() * 2 - 1) * 30
+                : (random() < 0.5 ? -1 : 1) * (12 + random() * 48);
             const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${w.text}\u2009${w.emoji}` : w.text,
                                              px: geo.fontSize(w.outlets)}));
             const sort = CLOUD_SORTS[mode];
@@ -146,9 +140,10 @@
                     .on('end', resolve);
                 if (sort) {
                     layout.origin((d) => {
-                        const [x, y] = sort.origin(d.rank, random);
+                        const [x, y] = diagonal(d.rank, random);
                         return [x * geo.width, y * geo.height];
                     });
+                    layout.obstacles([...geo.obstacles, ...endObstacles()]);
                 }
                 layout.start();
             });
@@ -172,6 +167,7 @@
             const svg = document.querySelector('#cloud svg');
             if (!svg) return;
             drawArrow(svg, mode);
+            drawEnds(mode);
             const groups = [...svg.querySelectorAll('.cloud-word')];
             const move = (g, p) => {
                 g.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotate}deg)`;
@@ -192,25 +188,55 @@
             });
         }
 
-        // A faint arrow behind the words showing which way the sort falls off
+        // A swooping arrow behind the words, top left to bottom right, colored from one end of the sort to the other
         function drawArrow(svg, mode) {
             const ns = 'http://www.w3.org/2000/svg';
             svg.querySelector('.cloud-arrow')?.remove();
-            const arrow = CLOUD_SORTS[mode]?.arrow;
-            if (!arrow) return;
+            const sort = CLOUD_SORTS[mode];
+            if (!sort) return;
             const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
-            const at = ([x, y]) => [vx + x * W, vy + y * H];
-            const [x0, y0] = at(arrow.from), [x1, y1] = at(arrow.to);
-            const angle = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
-            const thick = Math.max(18, H * 0.07), head = thick * 2.2;
-            const length = Math.hypot(x1 - x0, y1 - y0);
+            const at = (x, y) => `${vx + x * W} ${vy + y * H}`;
+            const thick = Math.max(16, H * 0.06);
             const g = document.createElementNS(ns, 'g');
             g.setAttribute('class', 'cloud-arrow');
-            g.setAttribute('transform', `translate(${x0},${y0}) rotate(${angle})`);
-            g.innerHTML = `<path d="M0 ${-thick / 2} H${length - head} V${-head / 1.4} L${length} 0 L${length - head} ${head / 1.4} V${thick / 2} H0 Z"/>`
-                + (arrow.ends ? `<text class="cloud-arrow-end" x="0" y="${thick * 2.6}" font-size="${thick * 1.6}">${arrow.ends[0]}</text>
-                    <text class="cloud-arrow-end" x="${length - head}" y="${thick * 2.6}" font-size="${thick * 1.6}">${arrow.ends[1]}</text>` : '');
+            g.innerHTML = `<defs>
+                    <linearGradient id="arrow-ink" gradientUnits="userSpaceOnUse" x1="${vx + 0.2 * W}" y1="${vy + 0.2 * H}" x2="${vx + 0.9 * W}" y2="${vy + 0.88 * H}">
+                        <stop offset="0" stop-color="${sort.colors[0]}"/><stop offset="1" stop-color="${sort.colors[1]}"/></linearGradient>
+                    <marker id="arrow-head" viewBox="0 0 10 10" refX="4" refY="5" markerWidth="2.6" markerHeight="2.6" orient="auto-start-reverse">
+                        <path d="M0 0 L10 5 L0 10 Z" fill="${sort.colors[1]}"/></marker>
+                </defs>
+                <path d="M ${at(0.2, 0.22)} Q ${at(0.68, 0.18)} ${at(0.86, 0.8)}" fill="none" stroke="url(#arrow-ink)"
+                      stroke-width="${thick}" stroke-linecap="round" marker-end="url(#arrow-head)"/>`;
             svg.insertBefore(g, svg.querySelector('.cloud-word'));
+        }
+
+        // Sticker-style labels at the two ends of a sorted cloud: under the news-day sticker, and the bottom right
+        function drawEnds(mode) {
+            const el = document.getElementById('cloud');
+            el.querySelectorAll('.cloud-end').forEach((e) => e.remove());
+            const sort = CLOUD_SORTS[mode];
+            if (!sort) return;
+            const sticker = document.querySelector('.newsday-sticker');
+            const top = sticker && getComputedStyle(sticker).position === 'absolute'
+                ? sticker.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 14 : 12;
+            sort.ends.forEach((text, i) => {
+                const label = document.createElement('span');
+                label.className = `cloud-end ${i ? 'cloud-end-finish' : 'cloud-end-start'}`;
+                label.textContent = text;
+                label.style.borderColor = sort.colors[i];
+                label.style.boxShadow = `3px 3px 0 ${sort.colors[i]}`;
+                if (!i) label.style.top = `${top}px`;
+                el.appendChild(label);
+            });
+        }
+
+        // The end labels' rectangles, for the layout to keep words off them
+        function endObstacles() {
+            const el = document.getElementById('cloud'), c = el.getBoundingClientRect(), pad = 8;
+            return [...el.querySelectorAll('.cloud-end')].map((e) => {
+                const r = e.getBoundingClientRect();
+                return {x0: r.left - c.left - pad, y0: r.top - c.top - pad, x1: r.right - c.left + pad, y1: r.bottom - c.top + pad};
+            });
         }
 
         function render(el, placed, width, height) {
