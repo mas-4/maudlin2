@@ -1671,3 +1671,24 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 @media (max-width: 600px) {
     #cloud { aspect-ratio: 20 / 27; }
 }
+
+/* Good news, for a breather */
+.trending-row .bright-side {
+    --pop: #ffc400;
+    background: #fffbe6;
+}
+
+.bright-side ol {
+    list-style: none;
+    padding-left: 0;
+}
+
+.bright-side li {
+    margin: 0.35em 0;
+}
+
+.bright-emoji {
+    font-size: 1.3em;
+    margin-right: 0.3em;
+    vertical-align: middle;
+}

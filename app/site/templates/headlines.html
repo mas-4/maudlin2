@@ -447,6 +447,25 @@
                 </ol>
             </section>
         {% endif %}
+        {% if bright_side %}
+            <section class="trending trending-news bright-side">
+                <h3>☀️ The bright side</h3>
+                <ol>
+                    {% for item in bright_side %}
+                        <li>
+                            <span class="bright-emoji">{{ item.emoji }}</span>
+                            {% if item.kind == 'story' %}
+                                <a class="bright-story" href="#story-{{ item.cluster }}">{{ item.title }}</a>
+                                <span class="trend-posts">{{ item.outlets }} outlets</span>
+                            {% else %}
+                                <span class="edit-chip" style="{{ chip_style(item.agency, item.bias) }}">{{ outlet_icon(item.agency) }}{{ item.agency }}</span>
+                                <a href="{{ item.url }}">{{ item.title }}</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
+        {% endif %}
         {% for box in trend_boxes %}
             <section class="trending">
                 <h3>{{ box.heading }}</h3>

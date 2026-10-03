@@ -36,6 +36,8 @@ GHOST_OPACITY = 0.35
 # Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
+BRIGHT_COUNT = 6  # items in the bright side box
+BRIGHT_MOOD = 0.2  # a story's average mood (-1 grim to 1 upbeat) to count as good news
 NEWS_DAY_HALF_LIFE_HOURS = 24
 NEWS_DAY_LABELS = {
     'big': {'emoji': '🚨', 'label': 'Big news day!'},
@@ -291,6 +293,7 @@ class HeadlinesPage:
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
+        self.bright_side(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -314,6 +317,33 @@ class HeadlinesPage:
              'also_on': sorted(set(on.get(cluster, [])))}
             for cluster, count in outlets.head(TRENDING_COUNT).items()
         ]
+
+    def bright_side(self, clusters_list):
+        """Good news, for a breather: current stories whose headlines run upbeat, or whose strongest feeling is hope
+        or joy, then (to fill the box) the most upbeat individual headlines on front pages right now."""
+        stories = [c for c in clusters_list
+                   if c['mood']['value'] >= BRIGHT_MOOD or (c['emotion'] and c['emotion']['name'] in ('hope', 'joy'))]
+        stories.sort(key=lambda c: -c['mood']['value'])
+        items = [{'kind': 'story', 'cluster': int(c['cluster']), 'title': self.context['titles'][c['cluster']],
+                  'outlets': len({a['agency'] for a in c['data']}),
+                  'emoji': c['emotion']['emoji'] if c['emotion'] and c['emotion']['name'] in ('hope', 'joy')
+                  else weather(c['mood']['value'])[0]}
+                 for c in stories[:BRIGHT_COUNT]]
+        if len(items) < BRIGHT_COUNT:
+            df = self.dh.main_headline_df
+            ranks = df['emotion_ranks'].fillna('')
+            upbeat = df[df['live'] & ((df['event_score'] >= 2) | ((df['event_score'] >= 1) & ranks.str.match(r'(hope|joy)')))]
+            upbeat = upbeat.assign(top=ranks[upbeat.index].str.split(',').str[0]).sort_values(
+                ['event_score', 'first_accessed'], ascending=False).drop_duplicates('title')
+            in_stories = {a['url'] for c in stories for a in c['data']}
+            for r in upbeat.itertuples():
+                if len(items) >= BRIGHT_COUNT:
+                    break
+                if r.url in in_stories:
+                    continue
+                items.append({'kind': 'headline', 'title': r.title, 'url': r.url, 'agency': r.agency,
+                              'bias': int(r.bias), 'emoji': EMOTION_EMOJI.get(r.top, '☀️') if r.top in ('hope', 'joy') else '☀️'})
+        self.context['bright_side'] = items
 
     def make_agency_lists(self, clusters_list):
         # Articles whose headline the outlet rewrote (minor changes excluded), to mark their chips and the stories
