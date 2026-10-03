@@ -923,8 +923,13 @@ main > h1, main > h2, main > h3 {
     max-width: 52em;
 }
 
-@media (max-width: 500px) {
-    .emotion-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Phones: tiles stay four across, just smaller */
+@media (max-width: 600px) {
+    .emotion-tiles { gap: 0.5em; }
+    .emotion-tile { padding: 0.4em 0.1em 0.35em; border-width: 2px; box-shadow: 3px 3px 0 #1f1f2e; }
+    .emotion-tile-emoji { font-size: 1.3em; }
+    .emotion-tile-share { font-size: 1.05em; }
+    .emotion-tile-label { font-size: 0.75em; }
 }
 
 .emotion-tile {
@@ -1794,4 +1799,27 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 
 #sagas {
     scroll-margin-top: 1em;
+}
+
+/* Emotion tables scroll sideways in their own box on narrow screens, with the first column pinned */
+.matrix-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0 auto 2em;
+}
+
+.matrix-wrap table.emotion-matrix {
+    margin-bottom: 0.5em;
+}
+
+@media (max-width: 700px) {
+    table.emotion-matrix { font-size: 0.75em; }
+    table.emotion-matrix th, table.emotion-matrix td { padding: 0.25em 0.3em; }
+    .matrix-emoji { font-size: 1.05em; }
+    table.emotion-matrix td:first-child, table.emotion-matrix th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: white;
+    }
 }
