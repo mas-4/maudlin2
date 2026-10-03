@@ -1,4 +1,6 @@
 import os
+import tempfile
+
 import pytest
 
 from app.utils.config import Config
@@ -15,6 +17,9 @@ def pytest_sessionstart(session):
         os.rename(os.path.join(Constants.Paths.ROOT, 'tests', 'test.db'), Config.db_file_path)
     Config.set_debug()
     assert Config.debug
+    # Pages the tests render go to a scratch folder, never the real build: the pre-commit hook runs these tests, and
+    # pages written without the build's setup (icons, ratings) were overwriting the preview
+    Config.build = tempfile.mkdtemp(prefix='maudlin-test-build-')
 
 
 @pytest.fixture(scope='session')

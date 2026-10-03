@@ -2014,3 +2014,17 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
 .term p, .term li {
     line-height: 1.5;
 }
+
+/* Cards sit a shade off the white page so they read as cards (tinted ones, like the bright side and sagas, keep
+   their tints) */
+:root {
+    --card-bg: #f6f5f1;
+}
+
+.story, .trending, .outlet-card, .term, .table-filters + .headline-table .gridjs-wrapper {
+    background-color: var(--card-bg);
+}
+
+.trending-row .bright-side {
+    background: #fff8d6;
+}
