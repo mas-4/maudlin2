@@ -39,8 +39,11 @@ def form_clusters(cosine_sim, min_samples=10, threshold=0.5):
 
 
 try:  # If the C extension is available, use it
-    from app.analysis.maudlinlib import form_clusters
-    pass
+    from app.analysis.maudlinlib import form_clusters as _c_form_clusters
+
+    def form_clusters(cosine_sim, min_samples=10, threshold=0.5):
+        # The C code reads the buffer as contiguous doubles with no checks, so anything else corrupts memory
+        return _c_form_clusters(np.ascontiguousarray(cosine_sim, dtype=np.float64), min_samples, threshold)
 except ImportError:
     pass
 
@@ -52,6 +55,24 @@ def prepare_cosine(data):
     # Cosine Similarity
     cosine_sim = cosine_similarity(tfidf_matrix)
     return cosine_sim
+
+
+EMBEDDING_MODEL = 'minishlab/potion-base-8M'
+_embedder = None
+
+
+def embed(texts: list[str]) -> np.ndarray:
+    """Static sentence embeddings (model2vec). Matches headlines by meaning rather than shared words, so
+    differently worded coverage of one story still clusters. Numpy only, a few ms per thousand headlines."""
+    global _embedder
+    if _embedder is None:
+        from model2vec import StaticModel
+        _embedder = StaticModel.from_pretrained(EMBEDDING_MODEL)
+    return _embedder.encode(list(texts))
+
+
+def prepare_embedding_cosine(texts):
+    return cosine_similarity(embed(texts)).astype(np.float64)
 
 
 def label_clusters(data, clusters):

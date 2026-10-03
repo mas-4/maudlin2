@@ -8,11 +8,16 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import or_, func
 
+from app.analysis.newsfilter import NEWS_THRESHOLD
 from app.models import Session, Agency, Headline, Topic, Article
 from app.registry import SeleniumScrapers, TradScrapers
 from app.utils import Config, Credibility, Country, get_logger, Constants
 
 logger = get_logger(__name__)
+
+# Headlines the news filter scored as lifestyle, shopping or page furniture stay out of the analyses.
+# Unscored headlines (no model trained yet) count as news.
+NEWS_ONLY = or_(Headline.news_score == None, Headline.news_score >= NEWS_THRESHOLD)  # noqa: E711
 
 
 class DataTypes(Enum):
@@ -48,23 +53,19 @@ class DataHandler:
                 Headline.vader_compound, Headline.afinn, Agency._bias, Headline.first_accessed, Headline.processed
             ).join(Headline.article).join(Article.agency).filter(
                 or_(
-                    Headline.processed.like('%Donald%'),
-                    Headline.processed.like('%Trump%'),
-                    Headline.processed.like('%Vance%'),
-                    Headline.processed.like('%Kamala%'),
-                    Headline.processed.like('%Harris%'),
-                    Headline.processed.like('%Walz%'),
+                    *[Headline.processed.like(f'%{word}%') for word in Constants.Election.party_terms]
                 ),
                 or_(
                     Agency._country == Country.us.value,
                     Agency.name.in_(Config.exempted_foreign_media)
-                )
+                ),
+                NEWS_ONLY,
             ).all()
         df = pd.DataFrame(data, columns=['Vader', 'Afinn', 'Bias', 'Date', 'Title'])
         df['Date'] = pd.to_datetime(df['Date'])
-        # Trump and Biden mentions
-        df['trump'] = df['Title'].str.contains('donald|trump|vance', case=False)
-        df['harris'] = df['Title'].str.contains('kamala|harris|walz', case=False)
+        # Republican and Democratic mentions
+        df['republican'] = df['Title'].str.contains(Constants.Election.republican_pattern, case=False)
+        df['democrat'] = df['Title'].str.contains(Constants.Election.democrat_pattern, case=False)
         # Group by day and aggregate sentiment
         df['PVI'] = df['Vader'] * df['Bias']
         df['PAI'] = df['Afinn'] * df['Bias']
@@ -85,10 +86,10 @@ class DataHandler:
         agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
             .agg({col: 'mean' for col in cols}).dropna().reset_index()
         # moving averages for vader and afinn
-        agg['Vader MA'] = agg['Vader'].rolling(window=7).mean()
-        agg['Afinn MA'] = agg['Afinn'].rolling(window=7).mean()
-        agg['PVI MA'] = agg['PVI'].rolling(window=7).mean()
-        agg['PAI MA'] = agg['PAI'].rolling(window=7).mean()
+        agg['Vader MA'] = agg['Vader'].rolling(window=7, min_periods=1).mean()
+        agg['Afinn MA'] = agg['Afinn'].rolling(window=7, min_periods=1).mean()
+        agg['PVI MA'] = agg['PVI'].rolling(window=7, min_periods=1).mean()
+        agg['PAI MA'] = agg['PAI'].rolling(window=7, min_periods=1).mean()
         return agg
 
     @staticmethod
@@ -165,7 +166,8 @@ class DataHandler:
                 or_(
                     Agency._country == Country.us.value,  # noqa
                     Agency.name.in_(Config.exempted_foreign_media)
-                )
+                ),
+                NEWS_ONLY,
             ).all()
         df = pd.DataFrame(data, columns=list(columns.keys()))
         logger.info("Queried %i headlines for topic df.", len(df))
@@ -183,6 +185,7 @@ class DataHandler:
     def get_main_headline_df():
         cols = {
             'article_id': Article.id,
+            'headline_id': Headline.id,
             'title': Headline.processed,
             'agency': Agency.name,
             'bias': Agency._bias,  # noqa prot attr
@@ -204,6 +207,7 @@ class DataHandler:
             ).join(Headline.article).join(Article.agency).join(Article.topic, isouter=True).filter(
                 Headline.last_accessed > Config.last_accessed,
                 Headline.first_accessed > Config.last_accessed - td(days=3),
+                NEWS_ONLY,
             ).order_by(
                 Headline.first_accessed.desc(),
                 Headline.position.asc()  # prominence

@@ -2,11 +2,14 @@ import argparse
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from app.analysis import newsfilter
 from app.analysis.metrics import reapply_sent
 from app.analysis.preprocessing import reprocess_headlines
 from app.analysis.topics import analyze_all_topics
 from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
+from app.trends import fetch_trends
+from app.polling import fetch_polls, fetch_aggregates
 from app.builder import build
 from app.utils import Config, get_logger
 from utils.emailer import send_notification
@@ -98,6 +101,15 @@ def main(args: argparse.Namespace):
     if args.reprocess is not None:
         reprocess_headlines('all' in args.reprocess)
         return
+    if args.label_headlines:
+        newsfilter.label_headlines(args.label_headlines)
+        return
+    if args.train_newsfilter:
+        newsfilter.train()
+        return
+    if args.rescore_news:
+        newsfilter.rescore_all()
+        return
     if args.email_newsletter:
         with open(Config.newsletter, 'rt') as f:
             send_notification(f.read())
@@ -105,6 +117,10 @@ def main(args: argparse.Namespace):
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
+        if not args.scraper:
+            fetch_trends()
+            fetch_polls()
+            fetch_aggregates()
     build()
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
@@ -118,6 +134,12 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
     parser.add_argument('--reprocess', action='store', type=str)
+    parser.add_argument('--label-headlines', type=int, default=0, metavar='N',
+                        help='have the llm label N stored headlines as training data for the news filter')
+    parser.add_argument('--train-newsfilter', action='store_true',
+                        help='train the fallback news classifier on the labeled headlines')
+    parser.add_argument('--rescore-news', action='store_true',
+                        help='judge every stored headline news or not (uses the llm when available)')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:

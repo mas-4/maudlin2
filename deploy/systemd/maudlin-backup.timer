@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the Maudlin database daily
+
+[Timer]
+OnCalendar=*-*-* 04:15
+# Runs on the next wake if the machine was asleep at 4:15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

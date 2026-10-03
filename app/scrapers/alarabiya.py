@@ -13,7 +13,7 @@ class AlArabiya(Scraper):
     url: str = 'https://english.alarabiya.net'
     agency: str = "Al Arabiya"
     country = Country.sa
-    headers = {'User-Agent': Constants.Headers.UserAgents.desktop_google_bot}
+    headers = Constants.Headers.firefox
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'title': True}):

@@ -19,6 +19,7 @@ class CBS(Scraper):
             if not a:
                 continue
             href = a['href']
-            title = a.text.strip()
-            if title:
-                self.downstream.append((href, a))
+            # the link wraps the whole card; keep the headline, not the summary line and timestamp under it
+            hed = a.find(class_='item__hed') or a
+            if hed.text.strip():
+                self.downstream.append((href, hed))

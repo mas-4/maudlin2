@@ -8,6 +8,7 @@ logger = get_logger(__name__)
 
 
 class USAToday(Scraper):
+    headers = Constants.Headers.firefox
     bias = Bias.left_center
     credibility = Credibility.mostly_factual
     url: str = 'https://www.usatoday.com/'

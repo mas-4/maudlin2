@@ -17,7 +17,8 @@ class KyivIndependent(Scraper):
     country = Country.ua
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'rel': 'dofollow', 'href': re.compile(r'^/.*')}):
+        # articles live at a top level slug like /russia-planning-to-increase-hybrid-warfare
+        for a in soup.find_all('a', {'href': re.compile(r'^/[a-z0-9]+(-[a-z0-9]+){3,}/?$')}):
             href = a['href']
             if href.startswith('/'):
                 href = self.url + href

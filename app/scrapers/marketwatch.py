@@ -1,24 +1,10 @@
-import re
-
-from bs4 import BeautifulSoup as Soup
-
-from app.scraper import SeleniumScraper
-from app.utils import Bias, Credibility, get_logger
-
-logger = get_logger(__name__)
+from app.scraper import FeedScraper
+from app.utils.constants import Bias, Credibility
 
 
-class MarketWatch(SeleniumScraper):
+class MarketWatch(FeedScraper):
     bias = Bias.right_center
     credibility = Credibility.high
     url: str = 'https://www.marketwatch.com/'
     agency: str = "MarketWatch"
-
-    def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile('/story/')}):
-            try:
-                self.downstream.append((a['href'], a))
-            except Exception as e:
-                logger.error(f"{self.agency}: Error parsing link: {e}")
-                logger.exception(f"{self.agency}: Link: {a}")
-                continue
+    feed: str = 'https://feeds.content.dowjones.io/public/rss/mw_topstories'

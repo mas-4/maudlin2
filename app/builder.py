@@ -6,6 +6,7 @@ from app.site.page_agencies import AgenciesPage
 from app.site.page_headlines import HeadlinesPage
 from app.site.page_topics import TopicsPage
 from app.site.page_polling import PollingPage
+from app.utils.config import Config
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,6 +31,10 @@ def build():
     for page in pages:
         page(dh).generate()
     copy_assets()
+    if Config.debug:
+        # Debug builds use stale data for local previews and must never replace the live site
+        logger.info("Debug build, not publishing; preview it in %s", Config.build)
+        return
     publish_to_netlify()
 
 

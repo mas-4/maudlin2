@@ -1,5 +1,78 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <img alt="Mentions Graphs" src="{{ FileNames.mentions_graph }}">
+    {% if polling.available %}
+        <h2>National polling averages</h2>
+        {% set g = polling.aggregates.get('generic') %}
+        {% set a = polling.aggregates.get('approval') %}
+        {% if g and g.mean %}
+            <h3>Generic congressional ballot: Democrats {{ '%+.1f'|format(g.mean.margin) }}</h3>
+            {% if polling.chart_generic %}
+                <img alt="Generic congressional ballot margin" src="{{ FileNames.generic_ballot }}">
+            {% endif %}
+            <table class="races">
+                <thead><tr><th>Average</th><th>Dem</th><th>Rep</th><th>Margin</th></tr></thead>
+                <tbody>
+                {% for r in g.rows %}
+                    <tr><td>{{ r.source }}</td><td>{{ r.Democrats }}%</td><td>{{ r.Republicans }}%</td>
+                        <td>{{ 'D' if r.margin >= 0 else 'R' }}+{{ r.margin|abs }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+        {% if a and a.mean %}
+            <h3>Trump job approval: {{ a.mean.Approve }}% approve, {{ a.mean.Disapprove }}% disapprove</h3>
+            {% if polling.chart_approval %}
+                <img alt="Trump job approval" src="{{ FileNames.approval }}">
+            {% endif %}
+            <table class="races">
+                <thead><tr><th>Average</th><th>Approve</th><th>Disapprove</th><th>Net</th></tr></thead>
+                <tbody>
+                {% for r in a.rows %}
+                    <tr><td>{{ r.source }}</td><td>{{ r.Approve }}%</td><td>{{ r.Disapprove }}%</td>
+                        <td>{{ '%+.1f'|format(r.margin) }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+        <p class="poll-note">Headline numbers are the mean of the published averages listed, as tabulated on
+            Wikipedia (<a href="https://en.wikipedia.org/wiki/{{ g.page if g else '' }}">generic ballot</a>,
+            <a href="https://en.wikipedia.org/wiki/{{ a.page if a else '' }}">approval</a>;
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>).</p>
+
+        {% if polling.senate %}
+            <h2>Senate races</h2>
+            <table class="races">
+                <thead>
+                <tr><th>State</th><th>Leading</th><th>Trailing</th><th>Margin</th><th>Polls</th><th>Latest</th></tr>
+                </thead>
+                <tbody>
+                {% for race in polling.senate %}
+                    <tr>
+                        <td>{{ race.state }}</td>
+                        <td>{{ race.leader }} {{ race.leader_pct }}%</td>
+                        <td>{{ race.trailer }} {{ race.trailer_pct }}%</td>
+                        <td>+{{ race.margin }}</td>
+                        <td>{{ race.polls }}</td>
+                        <td>{{ race.latest.strftime('%b %-d') }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <p class="poll-note">Races with at least two polls of the current matchup in the last {{ race_window_days }}
+                days, closest first.</p>
+        {% endif %}
+
+        <p class="poll-note">
+            Senate averages are computed here from individual polls. Recent polls count more (a poll's weight halves every
+            two weeks), larger samples count more with diminishing returns, likely and registered voter polls count
+            more than polls of all adults, partisan-sponsored polls are excluded, and a pollster that releases many
+            polls has its weight split among them.
+            Poll data from <a href="https://votehub.com/polls/">VoteHub</a>, licensed
+            <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+        </p>
+    {% endif %}
+
+    <h2>How the press covers each party</h2>
+    <img alt="Sentiment of headlines mentioning each party" src="{{ FileNames.mentions_graph }}">
 {% endblock content %}

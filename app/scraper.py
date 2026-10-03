@@ -14,14 +14,14 @@ from bs4 import BeautifulSoup as Soup, Tag, NavigableString  # noqa not declared
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
-from app.analysis import metrics
+from app.analysis import metrics, newsfilter
 from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 
 logger = get_logger(__name__)
 
-ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos'])
+ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score'])
 
 
 class Scraper(ABC, Thread):
@@ -105,8 +105,9 @@ class Scraper(ABC, Thread):
         meantime = 0
         if self.found:
             meantime = runtime / self.found
-        # If we didn't got headlines but nothing processed we want to warn
-        bugle = logger.info if not self.found or self.articles + self.headlines + self.updated else logger.warning
+        # Finding nothing means the scraper is broken (blocked, or the page changed); finding headlines but keeping
+        # none of them usually means the parser is grabbing the wrong elements. Both need a look.
+        bugle = logger.warning if not self.found or not self.articles + self.headlines + self.updated else logger.info
         bugle("%s: %d found, added %d articles, %d headlines, updated %d in %f seconds with a mean time of %f",
               self.agency, self.found, self.articles, self.headlines, self.updated, runtime, meantime)
 
@@ -129,10 +130,13 @@ class Scraper(ABC, Thread):
         logger.debug("Extracted text in %f seconds", time.time() - t)
 
         t = time.time()
-        df['word_count'] = df['title'].apply(lambda x: x.count(' '))
-        # Headlines without spaces are not headlines
-        df.drop(df[df['word_count'] == 0].index, inplace=True)
-        logger.debug("Dropping headlines without spaces in %f seconds", time.time() - t)
+        df['word_count'] = df['title'].str.split().str.len()
+        # Short strings are navigation ("Read More", "OPINION"), not headlines
+        df.drop(df[df['word_count'] < Constants.Thresholds.min_headline_words].index, inplace=True)
+        # Text repeated all over one page is chrome ("Leave a Comment", section names), not a headline
+        repeats = df.groupby('title')['title'].transform('size')
+        df.drop(df[repeats >= Constants.Thresholds.page_repeat_limit].index, inplace=True)
+        logger.debug("Dropping short and repeated headlines in %f seconds", time.time() - t)
 
         t = time.time()
         df['processed'] = df['title'].apply(preprocess)
@@ -155,8 +159,10 @@ class Scraper(ABC, Thread):
             s.query(Article).filter(Article.id.in_([x[2] for x in seen])).update({'last_accessed': dt.now(pytz.UTC)})
             s.commit()
 
-        df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row']),
-                                 axis=1)
+        # Only headlines we haven't seen before need judging
+        df['news_score'] = newsfilter.score(df['title'].tolist(), self.agency)
+        df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row'],
+                                                        x['news_score']), axis=1)
         return dropped, df['artpair'].tolist()
 
     def run_processing(self):
@@ -188,6 +194,7 @@ class Scraper(ABC, Thread):
             raw=art.raw,
             processed=art.processed,
             position=art.pos,
+            news_score=art.news_score,
             article=article
         )
         s.add(headline)
@@ -208,6 +215,31 @@ class Scraper(ABC, Thread):
         if not page:
             return
         self.setup(page)
+
+
+class FeedScraper(Scraper):
+    """Pulls headlines from an RSS or Atom feed. Subclasses only need to set `feed` alongside the usual metadata.
+    `url` stays the homepage so the agency record and relative links don't change."""
+    feed: str = ''
+    parser: str = 'xml'
+
+    def run_setup(self):
+        if not self.feed:
+            raise ValueError("Feed must be set")
+        page = self.get_page(self.feed)
+        if not page:
+            return
+        self.setup(page)
+
+    def setup(self, soup: Soup):
+        for item in soup.find_all(['item', 'entry']):
+            title = item.find('title')
+            link = item.find('link')
+            if title is None or link is None:
+                continue
+            href = link.get('href') or link.get_text(strip=True)  # atom puts the url in href, rss in the text
+            if href and title.get_text(strip=True):
+                self.downstream.append((href, title.get_text(strip=True)))
 
 
 class SeleniumResourceManager:

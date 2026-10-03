@@ -1,25 +1,101 @@
 import os
+import re
 from datetime import datetime as dt
 
-from app.analysis.clustering import prepare_cosine, form_clusters, label_clusters
+import numpy as np
+
+from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed
 from app.analysis.newsiness import get_newsiness
-from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
+from app.analysis.stories import sync_stories, label_stories, headline_sentiment
+from app.analysis import textnorm
+from app.analysis.pipelines import Pipelines, prepare
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.site.graphing import bias_colors
 from app.utils import Config, Country, get_logger
 from app.registry import Scrapers
+from app.trends import current_trends, match_text
 
 logger = get_logger(__name__)
 
+TRENDING_COUNT = 10
+# e.g. "Oct 3, 9:41 AM ET"; Windows' strftime doesn't support the no-padding dash
+TOOLTIP_TIME = '%b %#d, %#I:%M %p ET' if os.name == 'nt' else '%b %-d, %-I:%M %p ET'
+# Cosine between a trend and a story's mean headline embedding. On a day of data true matches scored 0.72-0.86
+# and the best non-match 0.48 (bare Wikipedia names score low either way, so they also match by name)
+TREND_MATCH_THRESHOLD = 0.65
+NAME_MATCH_HEADLINES = 2
+TREND_SOURCES = [
+    {'key': 'bluesky', 'name': 'Bluesky', 'heading': 'Trending on Bluesky', 'unit': 'posts'},
+    {'key': 'google', 'name': 'Google', 'heading': 'Trending Google searches', 'unit': 'searches'},
+    {'key': 'wikipedia', 'name': 'Wikipedia', 'heading': 'Most read on Wikipedia', 'unit': 'views'},
+    {'key': 'mastodon', 'name': 'Mastodon', 'heading': 'Shared on Mastodon', 'unit': 'people'},
+]
+
+
+# Meter scales, from a day of stories: lean ran L+1.2 to R+2.0 and mood -0.66 to +0.23
+LEAN_RANGE = 2.0
+MOOD_RANGE = 0.75
+
+
+def meter(value: float, scale: float, negative: str, positive: str) -> dict:
+    """A diverging meter: `position` is 0-100 (50 is neutral, clamped at the ends) plus a short text value."""
+    position = 50 + 50 * max(-1.0, min(1.0, value / scale))
+    if abs(value) < scale * 0.05:
+        text = 'even' if negative else '0.00'
+    elif negative:
+        text = f'{negative if value < 0 else positive}+{abs(value):.1f}'
+    else:
+        text = f'{value:+.2f}'
+    return {'value': round(float(value), 3), 'position': round(position, 1), 'text': text}
+
+
+def _name(text: str) -> str:
+    """A trend's name for exact matching: no parenthetical, hyphens as spaces, lowercase."""
+    return re.sub(r'\s+', ' ', re.sub(r'\(.*?\)', '', text).replace('-', ' ')).strip().lower()
+
+
+def match_trends_to_stories(df, trends) -> dict[str, int]:
+    """Trend topic id -> the cluster it's about, for trends that match a story.
+
+    Two ways to match. Sentence-like trends (Bluesky topics, Google searches, shared links) are compared by
+    embedding with the story's average headline. Bare names (a Wikipedia article like "Christa Pike") carry too
+    little meaning for that, so a trend also matches when its full name, two words or more, appears in at least
+    two of a story's headlines."""
+    if not trends or df.empty:
+        return {}
+    clusters = sorted(df['cluster'].unique())
+    E = embed(df['title'].tolist())
+    E /= np.linalg.norm(E, axis=1, keepdims=True)
+    positions = {c: np.flatnonzero(df['cluster'].to_numpy() == c) for c in clusters}
+    centroids = np.array([E[positions[c]].mean(axis=0) for c in clusters])
+    centroids /= np.linalg.norm(centroids, axis=1, keepdims=True)
+    T = embed([match_text(t) for t in trends])
+    T /= np.linalg.norm(T, axis=1, keepdims=True)
+    similarity = T @ centroids.T
+    headlines = {c: [_name(t) for t in df['title'].iloc[positions[c]]] for c in clusters}
+
+    matches = {}
+    for trend, row in zip(trends, similarity):
+        name = _name(trend.display_name)
+        if len(name.split()) >= 2:
+            mentions = {c: sum(name in h for h in headlines[c]) for c in clusters}
+            best = max(mentions, key=mentions.get)
+            if mentions[best] >= NAME_MATCH_HEADLINES:
+                matches[trend.topic] = best
+                continue
+        if row.max() >= TREND_MATCH_THRESHOLD:
+            matches[trend.topic] = clusters[row.argmax()]
+    return matches
+
 pipeline = [
-    tnorm.hyphenated_words,
-    tnorm.quotation_marks,
-    tnorm.unicode,
-    tnorm.whitespace,
-    trem.accents,
-    trem.brackets,
-    trem.punctuation,
+    textnorm.hyphenated_words,
+    textnorm.quotation_marks,
+    textnorm.normalize_unicode,
+    textnorm.whitespace,
+    textnorm.accents,
+    textnorm.brackets,
+    textnorm.punctuation,
     str.lower,
     Pipelines.tokenize,
     Pipelines.decontract,
@@ -77,7 +153,7 @@ class HeadlinesPage:
 
     def cluster_and_summarize(self, df):
         n_samples_per_cluster = 6
-        threshold = 0.5
+        threshold = 0.7  # embedding cosine; tuned against a day of headlines
         df = df[
             (df['country'] == Country.us.name)
             |
@@ -89,8 +165,11 @@ class HeadlinesPage:
             ].copy()
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
 
+        # Partisan lean is measured against the outlets in today's pool, which lean one way themselves
+        baseline_bias = df.drop_duplicates('agency')['bias'].mean()
         logger.info("Clustering %i headlines", len(df))
-        clusters = form_clusters(prepare_cosine(df['processed']), n_samples_per_cluster, threshold)
+        df = df.reset_index(drop=True)  # cluster ids are positional
+        clusters = form_clusters(prepare_embedding_cosine(df['title']), n_samples_per_cluster, threshold)
         logger.info("%i clusters formed", len(clusters))
 
         df = label_clusters(df, clusters)
@@ -99,17 +178,46 @@ class HeadlinesPage:
         df['text_length'] = df['title'].str.len()
         df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
         logger.info("%i clusters left after filtering", df['cluster'].nunique())
-        self.summarize(df)
+        sentiment = headline_sentiment(df)
+        df['deviation'] = sentiment - sentiment.groupby(df['cluster']).transform('mean')
+        stories = sync_stories(df)
+        self.summarize(df, label_stories(df, stories))
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         for cluster in clusters_list:
             cluster['coverage'] = round(len(cluster['data']) / len(Scrapers) * 100, 2)
             cluster['first'] = max(cluster['data'], key=lambda x: x['howlong'])['howlong']
+            group = df[df['cluster'] == cluster['cluster']]
+            cluster['lean'] = meter(group['bias'].mean() - baseline_bias, LEAN_RANGE, 'L', 'R')
+            cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
 
         # clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
         clusters_list.sort(key=lambda x: x['first'])
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
+        self.trending_in_the_news(df)
+
+    def trending_in_the_news(self, df):
+        """Our own trending list, ranked by how many outlets carry each story, next to what's trending on social
+        media, search and Wikipedia. Where a trend and a story are about the same thing both get marked, so the
+        overlap (and the gap) between what the press covers and what people pay attention to is visible."""
+        outlets = df.groupby('cluster')['agency'].nunique().sort_values(ascending=False)
+        boxes = []
+        on = {}  # cluster -> names of the sources where it's trending
+        for source in TREND_SOURCES:
+            trends = current_trends(source['key'])
+            if not trends:
+                continue
+            matches = match_trends_to_stories(df, trends)
+            for cluster in matches.values():
+                on.setdefault(cluster, []).append(source['name'])
+            boxes.append({**source, 'trends': trends, 'matches': matches})
+        self.context['trend_boxes'] = boxes
+        self.context['news_trends'] = [
+            {'cluster': cluster, 'title': self.context['titles'][cluster], 'outlets': int(count),
+             'also_on': sorted(set(on.get(cluster, [])))}
+            for cluster, count in outlets.head(TRENDING_COUNT).items()
+        ]
 
     def make_agency_lists(self, clusters_list):
         agency_lists = {}
@@ -130,24 +238,29 @@ class HeadlinesPage:
                 mean_sentiment = (a['afinn'] + a['vader_compound']) / 2
                 smiley = '😐' if mean_sentiment == 0 else '😊' if mean_sentiment > 0 else '😠'
                 bias = a['bias'] + 3
-                datetime = a['appearance'].isoformat()
+                first_seen = a['appearance'].strftime(TOOLTIP_TIME)
                 hrefs.append(
                     f'<a data-tooltip-color="{bias_colors[bias]}" class="storylink"'
-                    f' style="background-color: {bias_colors[bias]}" title="{a["title"]} ({datetime})"'
+                    f' style="background-color: {bias_colors[bias]}"'
+                    f' title="{a["title"]} (first seen {first_seen}) · {a["deviation"]:+.2f} vs. other outlets"'
                     f' href="{a["url"]}">{a["agency"]} {smiley}</a>'
                 )
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
         self.context['agency_lists'] = agency_lists
 
-    def summarize(self, df):
-        # Pick the most center headline from each cluster
-        summaries = {}
+    def summarize(self, df, labels: dict[int, str]):
+        summaries, titles = {}, {}
         for key, group in df.groupby('cluster'):
+            if key in labels:
+                summaries[key] = titles[key] = labels[key]
+                continue
+            # Without an llm label, fall back to the most centrist outlet's headline
             group['bias_abs'] = group['bias'].abs()
-            # Pick the most center headline and use it as the summary
             center = group.loc[group['bias_abs'].idxmin()]
             summaries[key] = f'{center['agency']}: {center['title']}'
+            titles[key] = center['title']
         self.context['summaries'] = summaries
+        self.context['titles'] = titles
 
     @staticmethod
     def process_headlines(df):

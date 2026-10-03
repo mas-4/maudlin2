@@ -1,12 +1,13 @@
 from bs4 import BeautifulSoup as Soup
 
-from app.scraper import SeleniumScraper
-from app.utils import Bias, Credibility, get_logger
+from app.scraper import Scraper
+from app.utils import Bias, Credibility, Constants, get_logger
 
 logger = get_logger(__name__)
 
 
-class PostMillennial(SeleniumScraper):
+class PostMillennial(Scraper):
+    headers = Constants.Headers.firefox
     bias = Bias.right
     credibility = Credibility.mixed
     url: str = 'https://thepostmillennial.com/'

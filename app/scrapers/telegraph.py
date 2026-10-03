@@ -1,25 +1,11 @@
-from bs4 import BeautifulSoup as Soup
-
-from app.scraper import Scraper
-from app.utils.constants import Bias, Credibility, Country, Constants
-from app.utils.logger import get_logger
-
-logger = get_logger(__name__)
+from app.scraper import FeedScraper
+from app.utils.constants import Bias, Credibility, Country
 
 
-class Telegraph(Scraper):
+class Telegraph(FeedScraper):
     bias = Bias.right
     credibility = Credibility.mixed
     url: str = 'https://www.telegraph.co.uk/us'
     agency: str = "The Telegraph"
+    feed: str = 'https://www.telegraph.co.uk/rss.xml'
     country: Country = Country.gb
-
-    def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
-            try:
-                href = a['href']
-                self.downstream.append((href, a))
-            except Exception as e:
-                logger.error(f"{self.agency}: Error parsing link: {e}")
-                logger.exception(f"{self.agency}: Link: {a}")
-                continue

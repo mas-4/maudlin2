@@ -1,141 +1,96 @@
-- name: "Alabama IVF Ruling"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-02-16
-- name: "James Biden Testifies"
-  topic: "Biden Impeachment"
-  date: 2024-02-21
-- name: "Hunter Deposition Released"
-  topic: "Biden Impeachment"
-  date: 2024-02-28
-- name: "Biden Visits Border"
-  topic: "Border Chaos"
-  date: 2024-02-29
-- name: "State of the Union"
-  topic: "Biden is old"
-  date: 2024-03-07
-- name: "Hur Testimony"
-  topic: "Biden is old"
-  date: 2024-03-12
-- name: "3.2% Inflation Report"
-  topic: "Inflation"
-  date: 2024-03-12
-- name: "Fani Willis Georgia Ruling"
-  topic: "Trump Trial"
-  date: 2024-03-15
-- name: "Hush Money Case Delay"
-  topic: "Trump Trial"
-  date: 2024-03-15
-- name: "Bloodbath Rally"
-  topic: "Trump is unfit"
-  date: 2024-03-16
-- name: "NY Bond Reduction"
-  topic: "Trump Trial"
-  date: 2024-03-25
-- name: "Lev Parnas Testifies"
-  topic: "Biden Impeachment"
-  date: 2024-03-20
-- name: "SCOTUS Abortion Pill Hearing"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-03-26
-- name: "Florida Abortion Ruling"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-04-01
-- name: "Gaza aid workers killed"
-  topic: "War in Gaza"
-  date: 2024-04-01
-- name: "Trump Posts Bond"
-  topic: "Trump Trial"
-  date: 2024-04-02
-- name: "Arizona Abortion Ruling"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-04-09
-- name: "3.5% Inflation Report"
-  topic: "Inflation"
-  date: 2024-04-10
-- name: "Iran Drone Attack"
-  topic: "War in Gaza"
-  date: 2024-04-13
-- name: "Hush Money Trial Begins"
-  topic: "Trump Trial"
-  date: 2024-04-15
-- name: "Israel Strikes Back"
-  topic: "War in Gaza"
-  date: 2024-04-18
-- name: "Campus Protests Heat Up"
-  topic: "War in Gaza"
-  date: 2024-04-22
-- name: "Hush Money Opening Arguments"
-  topic: "Trump Trial"
-  date: 2024-04-22
-- name: "SCOTUS hears EMTALA Case"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-04-23
-- name: "SCOTUS Immunity Hearing"
-  topic: "Trump is unfit"
-  date: 2024-04-25
-- name: "Arizona Repeals 1864 Law"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-05-01
-- name: "Florida Ban Takes Effect"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-05-01
-- name: "Trump Agrees to Debate"
-  topic: "Biden is old"
-  date: 2024-05-15
-- name: "Hunter Trial Delayed"
-  topic: "Biden Impeachment"
-  date: 2024-05-22
-- name: "Bronx Rally"
-  topic: "Trump is unfit"
-  date: 2024-05-23
-- name: "Trump Convicted in NY"
-  topic: "Trump Trial"
-  date: 2024-05-30
-- name: "SCOTUS Abortion Pill Ruling"
-  topic: "Abortion Post-Dobbs"
-  date: 2024-06-13
-- name: "Hunter Trial Begins"
-  topic: "Biden Impeachment"
-  date: 2024-06-03
-- name: "Biden Border Crackdown"
-  topic: "Border Chaos"
-  date: 2024-06-04
-- name: "Hunter Guilty"
-  topic: "Biden Impeachment"
-  date: 2024-06-11
-- name: "Cooler Inflation Report"
-  topic: "Inflation"
-  date: 2024-06-12
-- name: "First Debate"
-  topic: "Biden is old"
-  date: 2024-06-27
-- name: "SCOTUS Immunity Ruling"
-  topic: "Trump is unfit"
-  date: 2024-07-01
-- name: "George Stephanopoulos Interview"
-  topic: "Biden is old"
-  date: 2024-07-05
-- name: "NATO Press Conference"
-  topic: "Biden is old"
-  date: 2024-07-11
-- name: "Even Cooler Inflation Report"
-  topic: "Inflation"
-  date: 2024-07-11
-- name: "Trump Assassination Attempt"
-  topic: "Trump is unfit"
-  date: 2024-07-13
-- name: "Documents Case Dismissed"
-  topic: "Trump Trial"
-  date: 2024-07-15
-- name: "Vance picked"
-  topic: "Trump is unfit"
-  date: 2024-07-15
-- name: "Biden Drops Out"
-  topic: "Kamala is liberal"
-  date: 2024-07-21
-- name: "Tim Walz Weird Interview"
-  topic: "Republicans are weird"
-  date: 2024-07-23
-- name: "Trump NABJ Interview"
-  topic: "Trump is unfit"
-  date: 2024-07-31
+- name: "Mamdani Sworn In"
+  topic: "Democrats are radical"
+  date: 2026-01-01
+- name: "ICE Kills Renée Good"
+  topic: "ICE and Deportations"
+  date: 2026-01-07
+- name: "Shutdown Begins"
+  topic: "ICE and Deportations"
+  date: 2026-01-31
+- name: "DHS Shutdown Begins"
+  topic: "ICE and Deportations"
+  date: 2026-02-14
+- name: "SCOTUS Strikes IEEPA Tariffs"
+  topic: "Tariffs"
+  date: 2026-02-20
+- name: "US Strikes Iran"
+  topic: "Iran War"
+  date: 2026-02-28
+- name: "Bondi Fired"
+  topic: "Trump Power Grab"
+  date: 2026-04-02
+- name: "Two-Week Ceasefire"
+  topic: "Iran War"
+  date: 2026-04-07
+- name: "Melania Epstein Statement"
+  topic: "Epstein Files"
+  date: 2026-04-09
+- name: "Iran Blockade Begins"
+  topic: "Iran War"
+  date: 2026-04-13
+- name: "Virginia Redistricting Passes"
+  topic: "Midterm Battle"
+  date: 2026-04-21
+- name: "WHCD Shooting"
+  topic: "Trump Power Grab"
+  date: 2026-04-25
+- name: "Comey Indicted"
+  topic: "Trump Power Grab"
+  date: 2026-04-28
+- name: "Louisiana v. Callais"
+  topic: "Midterm Battle"
+  date: 2026-04-29
+- name: "DHS Shutdown Ends"
+  topic: "ICE and Deportations"
+  date: 2026-04-30
+- name: "Massie Loses Primary"
+  topic: "Midterm Battle"
+  date: 2026-05-19
+- name: "ICE Funding Signed"
+  topic: "ICE and Deportations"
+  date: 2026-06-10
+- name: "Iran Deal Announced"
+  topic: "Iran War"
+  date: 2026-06-14
+- name: "Birthright Citizenship Ruling"
+  topic: "ICE and Deportations"
+  date: 2026-06-30
+- name: "Iran Ceasefire Collapses"
+  topic: "Iran War"
+  date: 2026-07-08
+- name: "Platner Withdraws"
+  topic: "Midterm Battle"
+  date: 2026-07-10
+- name: "NY Data Center Moratorium"
+  topic: "AI Backlash"
+  date: 2026-07-14
+- name: "Tariffs on 60 Partners"
+  topic: "Tariffs"
+  date: 2026-07-23
+- name: "50% Canada Tariffs"
+  topic: "Tariffs"
+  date: 2026-08-22
+- name: "GPT-6 Launches"
+  topic: "AI Backlash"
+  date: 2026-09-03
+- name: "Diesel Record High"
+  topic: "Affordability Crisis"
+  date: 2026-09-04
+- name: "Trump Dividend Promise"
+  topic: "Midterm Battle"
+  date: 2026-09-09
+- name: "10-Year Yield Tops 5%"
+  topic: "Affordability Crisis"
+  date: 2026-09-14
+- name: "Fed Raises Rates"
+  topic: "Affordability Crisis"
+  date: 2026-09-16
+- name: "CNN, MS NOW, Politico Banned"
+  topic: "Trump Power Grab"
+  date: 2026-09-18
+- name: "Iran Ceasefire Rejected"
+  topic: "Iran War"
+  date: 2026-09-26
+- name: "OpenAI Cancels GPT-6.1"
+  topic: "AI Backlash"
+  date: 2026-09-28

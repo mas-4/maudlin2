@@ -1,26 +1,10 @@
-import re
-
-from bs4 import BeautifulSoup as Soup
-
-from app.scraper import Scraper
+from app.scraper import FeedScraper
 from app.utils.constants import Bias, Credibility
-from app.utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
-class Atlantic(Scraper):
+class Atlantic(FeedScraper):
     bias = Bias.left_center
     credibility = Credibility.high
     url: str = 'https://www.theatlantic.com/'
     agency: str = "The Atlantic"
-
-    def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile(r'.*/archive/\d{4}/\d{2}/.*')}):
-            try:
-                href = a['href']
-                self.downstream.append((href, a))
-            except Exception as e:
-                logger.error(f"{self.agency}: Error parsing link: {e}")
-                logger.exception(f"{self.agency}: Link: {a}")
-                continue
+    feed: str = 'https://www.theatlantic.com/feed/all/'

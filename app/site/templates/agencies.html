@@ -4,6 +4,15 @@
     <br><br>
     <img alt="Agency Bias Distribution" src="{{ FileNames.agency_distribution }}">
     <br><br>
+    {% if framing %}
+        <h2>Framing</h2>
+        <p>For every story covered by at least six outlets, each headline's sentiment is compared with the average
+            across all outlets covering that story. Averaged over the last 30 days, this separates how an outlet
+            frames the news from which news happens to be bad. Outlets need five or more stories to appear.</p>
+        <img alt="Framing: headline sentiment compared with other outlets on the same stories"
+             src="{{ FileNames.framing }}">
+        <br><br>
+    {% endif %}
 
     <script type="text/javascript">
         const data = {{tabledata|safe}};

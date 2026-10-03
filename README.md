@@ -37,6 +37,27 @@ I've actually read the better part of two books in the course of making this thi
 
 Oh! And the site is hosted on netlify. It's just a bunch of flat files I upload to netlify.
 
+## 2026 Setup
+
+- `pip install -r requirements.txt`, `python setup.py build_ext --inplace` for the C clustering extension, then
+  `alembic upgrade head`.
+- Most outlets are read from their RSS feeds (`FeedScraper`); custom HTML scrapers remain for outlets without one.
+- Story clustering uses [model2vec](https://github.com/MinishLab/model2vec) sentence embeddings, downloaded from
+  Hugging Face on first use (~30MB).
+- Optional LLM features run on a small open model served locally by [Ollama](https://ollama.com) (default
+  `qwen3:8b`, which fits a 10GB GPU). Set `MAUDLIN_LLM_MODEL` to use another model, or `MAUDLIN_LLM=anthropic`
+  with a key in `.anthropic_creds` to use Claude instead. With no LLM available these features are skipped and the
+  site builds as before.
+  - Neutral story titles are written once per new story.
+  - The news filter keeps lifestyle, shopping and page-furniture headlines out of the analyses. The LLM labels
+    each new headline at scrape time (`--rescore-news` relabels everything already stored). For when no LLM is
+    running, `--label-headlines 3000` then `--train-newsfilter` builds a small fallback classifier; it's much
+    weaker than the LLM, so it only drops headlines it's confident about.
+- Each scrape also records Bluesky's trending topics and refreshes polling data: Senate race averages computed
+  from [VoteHub](https://votehub.com/polls/) polls (CC BY 4.0), and the published national averages as tabulated on
+  Wikipedia (CC BY-SA 4.0).
+- `--debug` builds from the newest data in the database instead of the last ten minutes.
+
 ## Testing
 
 Not really sure how to do testing. I guess the site builder could be tested but meh. I'm a pretty TDD guy but kinda hard to test scrapers. I had a test suite and have abandoned it. Sites change, scrapers have to be updated. I'd rather add in some features to get a good sense of what's going wrong. I have a daily report system that gets emailed to me every morning and I keep extensive logs and daily backups. Over the weekend (end of March) my entire machine went down so I missed a day of articles. But that's what happens when you run this thing out of your garage.

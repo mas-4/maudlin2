@@ -2,7 +2,8 @@ import string
 
 import nltk
 import regex as re
-from textacy.preprocessing import normalize as tnorm, remove as trem
+
+from app.analysis import textnorm
 
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
 include_stopwords = {'dear', 'New York Times', 'Getty Images',
@@ -101,13 +102,13 @@ class Pipelines:
 
 
 default_pipeline = [
-    tnorm.hyphenated_words,
-    tnorm.quotation_marks,
-    tnorm.unicode,
-    tnorm.whitespace,
-    trem.accents,
-    trem.brackets,
-    trem.punctuation,
+    textnorm.hyphenated_words,
+    textnorm.quotation_marks,
+    textnorm.normalize_unicode,
+    textnorm.whitespace,
+    textnorm.accents,
+    textnorm.brackets,
+    textnorm.punctuation,
     str.lower,
     Pipelines.tokenize,
     Pipelines.decontract,

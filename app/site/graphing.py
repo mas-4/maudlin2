@@ -19,6 +19,9 @@ aisle_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
 bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
 credibility_colors = ["#FF0000", "#FF4500", "#FFA500", "#FFFF00", "#9ACD32", "#008000"]
 rotation = 35
+# Validated as a pair (light surface): CVD and normal-vision separation both pass
+PARTY_COLORS = {'Dem': '#2a78d6', 'Rep': '#e34948'}
+APPROVAL_COLORS = {'Approve': '#2a78d6', 'Disapprove': '#eb6834'}
 
 
 def get_bottom(df):
@@ -200,7 +203,7 @@ class Plots:
         df.columns = df.columns.droplevel()
         df = df.reindex(sorted(df.columns), axis=1)
         # rolling 7 day average
-        df = df.rolling(window=window).mean()
+        df = df.rolling(window=window, min_periods=1).mean()
         df = df[df.sum().sort_values(ascending=False).index]
         # drop na
         df = df.dropna()
@@ -270,7 +273,7 @@ class Plots:
     @staticmethod
     def individual_topic_sentiment_lines(ax: plt.Axes, topic_df: pd.DataFrame):
         df = topic_df.groupby(['aisle', 'day']).agg({'sentiment': 'mean'})
-        df['sentiment'] = df['sentiment'].rolling(window=7).mean()
+        df['sentiment'] = df['sentiment'].rolling(window=7, min_periods=1).mean()
         for group in df.index.levels[0]:
             gdf = df.loc[group]
             ax.plot(gdf.index, gdf.sentiment, color=aisle_colors[group], label=group.title())
@@ -398,16 +401,92 @@ class Plots:
         plt.savefig(PathHandler(PathHandler.FileNames.agency_distribution).build)
 
     @staticmethod
+    def _poll_axes(ax, title):
+        ax.set_title(title)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %-d'))
+        ax.grid(axis='y', linestyle='--', alpha=0.4)
+        for spine in ['right', 'top', 'left']:
+            ax.spines[spine].set_visible(False)
+
+    @staticmethod
+    def generic_ballot(series: pd.DataFrame):
+        """Generic ballot margin: one line, above zero is a Democratic lead, labeled at the end."""
+        fig, ax = plt.subplots(figsize=(9, 4))
+        dates = pd.to_datetime(series['date'])
+        ax.axhline(0, color='#888888', linewidth=1)
+        ax.fill_between(dates, series['Margin'], 0, where=series['Margin'] >= 0, color=PARTY_COLORS['Dem'],
+                        alpha=0.15, interpolate=True)
+        ax.fill_between(dates, series['Margin'], 0, where=series['Margin'] < 0, color=PARTY_COLORS['Rep'],
+                        alpha=0.15, interpolate=True)
+        ax.plot(dates, series['Margin'], color='#333333', linewidth=2)
+        last = series['Margin'].iloc[-1]
+        leader = 'D' if last >= 0 else 'R'
+        ax.annotate(f'{leader}+{abs(last):.1f}', (dates.iloc[-1], last), xytext=(6, 0), textcoords='offset points',
+                    va='center', fontweight='bold', color=PARTY_COLORS['Dem' if last >= 0 else 'Rep'])
+        limit = max(5, series['Margin'].abs().max() * 1.2)
+        ax.set_ylim(-limit, limit)
+        ax.text(dates.iloc[0], limit * 0.9, 'Democrats ahead', color=PARTY_COLORS['Dem'], va='top', fontsize='small')
+        ax.text(dates.iloc[0], -limit * 0.9, 'Republicans ahead', color=PARTY_COLORS['Rep'], va='bottom',
+                fontsize='small')
+        ax.yaxis.set_major_formatter(lambda v, _: f'D+{v:g}' if v > 0 else f'R+{-v:g}' if v < 0 else 'Even')
+        Plots._poll_axes(ax, 'Generic congressional ballot margin')
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.generic_ballot).build)
+        plt.close(fig)
+
+    @staticmethod
+    def approval(series: pd.DataFrame):
+        """Trump approval and disapproval, two lines with direct labels."""
+        fig, ax = plt.subplots(figsize=(9, 4))
+        dates = pd.to_datetime(series['date'])
+        for choice in ['Approve', 'Disapprove']:
+            ax.plot(dates, series[choice], color=APPROVAL_COLORS[choice], linewidth=2, label=choice)
+            last = series[choice].iloc[-1]
+            ax.annotate(f'{choice} {last:.1f}%', (dates.iloc[-1], last), xytext=(6, 0), textcoords='offset points',
+                        va='center', color='#333333')
+        ax.yaxis.set_major_formatter(lambda v, _: f'{v:g}%')
+        ax.legend(loc='upper left', frameon=False)
+        Plots._poll_axes(ax, 'Trump job approval')
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.approval).build)
+        plt.close(fig)
+
+    @staticmethod
+    def framing(scores: pd.DataFrame):
+        """Diverging bars: how each outlet's headlines compare with every other outlet's on the same stories."""
+        if scores.empty:
+            return False
+        scores = scores.sort_values('framing')
+        fig, ax = plt.subplots(figsize=(9, max(3, 0.28 * len(scores) + 1.5)))
+        colors = [bias_colors[b + 3] for b in scores['bias']]
+        ax.barh(scores['agency'], scores['framing'], color=colors, edgecolor='white', linewidth=2, height=0.8)
+        ax.axvline(0, color='#888888', linewidth=1)
+        ax.set_xlabel('← gloomier      headline sentiment vs. other outlets on the same stories      sunnier →')
+        ax.set_title('Who frames the same news more darkly?')
+        limit = scores['framing'].abs().max() * 1.15
+        ax.set_xlim(-limit, limit)
+        ax.grid(axis='x', linestyle='--', alpha=0.4)
+        for spine in ['right', 'top', 'left']:
+            ax.spines[spine].set_visible(False)
+        handles = [plt.Rectangle((0, 0), 1, 1, color=bias_colors[b.value + 3]) for b in Bias]
+        ax.legend(handles, [str(b) for b in Bias], loc='upper left', fontsize='small', title='Outlet bias',
+                  frameon=False)
+        plt.tight_layout()
+        plt.savefig(PathHandler(PathHandler.FileNames.framing).build)
+        plt.close(fig)
+        return True
+
+    @staticmethod
     def mentions_graph(df):
         def aggregate(df):
             cols = ['Vader', 'Afinn', 'PVI', 'PAI']
             agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
                 .agg({col: 'mean' for col in cols}).dropna().reset_index()
             # moving averages for vader and afinn
-            agg['Vader MA'] = agg['Vader'].rolling(window=7).mean()
-            agg['Afinn MA'] = agg['Afinn'].rolling(window=7).mean()
-            agg['PVI MA'] = agg['PVI'].rolling(window=7).mean()
-            agg['PAI MA'] = agg['PAI'].rolling(window=7).mean()
+            agg['Vader MA'] = agg['Vader'].rolling(window=7, min_periods=1).mean()
+            agg['Afinn MA'] = agg['Afinn'].rolling(window=7, min_periods=1).mean()
+            agg['PVI MA'] = agg['PVI'].rolling(window=7, min_periods=1).mean()
+            agg['PAI MA'] = agg['PAI'].rolling(window=7, min_periods=1).mean()
             return agg
 
         def plot(df, ax, title):
@@ -421,8 +500,8 @@ class Plots:
         fig, axes = plt.subplots(2)
         fig.set_size_inches(9, 12)
 
-        plot(aggregate(df[df['trump']]), axes[0], 'Sentiment of headlines mentioning Trump Ticket')
-        plot(aggregate(df[df['harris']]), axes[1], 'Sentiment of headlines mentioning Harris Ticket')
+        plot(aggregate(df[df['republican']]), axes[0], 'Sentiment of headlines mentioning Republicans')
+        plot(aggregate(df[df['democrat']]), axes[1], 'Sentiment of headlines mentioning Democrats')
 
         for i in range(2):
             axes[i].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))

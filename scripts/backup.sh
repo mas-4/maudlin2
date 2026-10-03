@@ -1,44 +1,22 @@
 #!/bin/bash
+# Daily database backup to a different physical drive than the one the database lives on.
+# Uses SQLite's online backup so it's safe while a scrape is writing, then gzips and prunes old copies.
+set -euo pipefail
 
-# Define the mount point and the device
-MOUNT_POINT="/mnt"
-DEVICE="/dev/sdc1"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE="$ROOT/data/data.db"
+DEST="${MAUDLIN_BACKUP_DIR:-/data/ssd1t/maudlin-backups}"
+KEEP_DAYS="${MAUDLIN_BACKUP_KEEP_DAYS:-30}"
+TARGET="$DEST/data-$(date +%Y-%m-%d).db"
 
-# Check if the device is already mounted
-if mount | grep -q " on ${MOUNT_POINT} "; then
-    echo "The drive is already mounted."
-else
-    # Mount the device to the mount point
-    echo "Mounting the drive..."
-    mount ${DEVICE} ${MOUNT_POINT}
-    # Check if the mount was successful
-    if [ $? -eq 0 ]; then
-        echo "Drive mounted successfully."
-    else
-        echo "Failed to mount the drive."
-        exit 1  # Exit if mounting fails
-    fi
-fi
-
-# Get the current date in YYYY-MM-DD format
-DATE=$(date +%Y-%m-%d)
-
-# Define the source and destination paths
-SOURCE_FILE="/home/maudlin/maudlin2/data/data.db"
-INTERMED_FILE="data-$DATE.db"
-TARGET_FILE="${MOUNT_POINT}/data-$DATE.db.gz"
-
-# Copy and compress the database file with a timestamp
-echo "Backing up the database file..."
-# Copy the file to the destination and compress it
-cp ${SOURCE_FILE} ${INTERMED_FILE}
-gzip -f ${INTERMED_FILE}
-cp ${INTERMED_FILE}.gz ${TARGET_FILE}
-rm ${INTERMED_FILE}.gz
-
-# Check if the backup was successful
-if [ $? -eq 0 ]; then
-    echo "Backup completed successfully."
-else
-    echo "Backup failed."
-fi
+mkdir -p "$DEST"
+"$ROOT/.venv/bin/python" - "$SOURCE" "$TARGET" <<'PY'
+import sqlite3, sys
+src, dst = sqlite3.connect(sys.argv[1]), sqlite3.connect(sys.argv[2])
+with dst:
+    src.backup(dst)
+dst.close(); src.close()
+PY
+gzip -f "$TARGET"
+find "$DEST" -name 'data-*.db.gz' -mtime +"$KEEP_DAYS" -delete
+echo "Backed up to $TARGET.gz ($(du -h "$TARGET.gz" | cut -f1))"

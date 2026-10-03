@@ -6,7 +6,8 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from wordcloud import WordCloud
 
-from app.analysis.pipelines import Pipelines, trem, tnorm, STOPWORDS, prepare
+from app.analysis import textnorm
+from app.analysis.pipelines import Pipelines, STOPWORDS, prepare
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -34,13 +35,13 @@ STOPWORDS.extend(list(string.punctuation))
 STOPWORDS = [word.lower() for word in STOPWORDS]
 
 PIPELINE = [
-    tnorm.hyphenated_words,
-    tnorm.quotation_marks,
-    tnorm.unicode,
-    tnorm.whitespace,
-    trem.accents,
-    trem.brackets,
-    trem.punctuation,
+    textnorm.hyphenated_words,
+    textnorm.quotation_marks,
+    textnorm.normalize_unicode,
+    textnorm.whitespace,
+    textnorm.accents,
+    textnorm.brackets,
+    textnorm.punctuation,
     Pipelines.tokenize,
     Pipelines.expand_contractions,
     partial(Pipelines.remove_stop, stopwords=STOPWORDS),

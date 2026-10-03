@@ -1,12 +1,44 @@
 {% extends "page.html" %}
 
 {% block content %}
-    {{ slowday|safe }}
-
     <div>
         <img alt="Word Cloud" src="{{ FileNames.main_wordcloud }}">
     </div>
     <br><br>
+
+    {{ slowday|safe }}
+
+    <div class="trending-row">
+        {% if news_trends %}
+            <section class="trending trending-news">
+                <h3>Trending in the news</h3>
+                <ol>
+                    {% for story in news_trends %}
+                        <li>
+                            <a href="#story-{{ story.cluster }}">{{ story.title }}</a>
+                            <span class="trend-posts">{{ story.outlets }} outlets</span>
+                            {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name }}">{{ name }}</span>{% endfor %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
+        {% endif %}
+        {% for box in trend_boxes %}
+            <section class="trending">
+                <h3>{{ box.heading }}</h3>
+                <ol>
+                    {% for trend in box.trends %}
+                        <li>
+                            <a href="{{ trend.link }}" title="{{ trend.description or '' }}">{{ trend.display_name }}</a>
+                            {% if trend.post_count %}<span class="trend-posts">{{ "{:,}".format(trend.post_count) }}{% if box.key == 'google' %}+{% endif %} {{ box.unit }}</span>{% endif %}
+                            {% if trend.topic in box.matches %}<a class="trend-both" href="#story-{{ box.matches[trend.topic] }}" title="Also a top story in the news">news</a>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
+        {% endfor %}
+    </div>
+
 
     <style>
         .tooltip {
@@ -19,6 +51,9 @@
             transition: opacity 0.3s;
             border: 1px solid black;
             border-radius: 3px;
+            max-width: 22em;
+            white-space: normal;
+            line-height: 1.35;
         }
     </style>
 
@@ -89,8 +124,20 @@
 
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
-            <div class="story">
+            <div class="story" id="story-{{ cluster['cluster'] }}">
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
+                <div class="meters">
+                    <div class="meter" title="Average bias of the outlets covering this story, relative to all outlets scraped today">
+                        <span class="meter-label">Covered by</span>
+                        <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
+                        <span class="meter-value">{{ cluster['lean']['text'] }}</span>
+                    </div>
+                    <div class="meter" title="Average headline sentiment across the outlets covering this story">
+                        <span class="meter-label">Mood</span>
+                        <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
+                        <span class="meter-value">{{ cluster['mood']['text'] }}</span>
+                    </div>
+                </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
             </div>
         {% endfor %}

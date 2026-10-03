@@ -146,6 +146,9 @@ class Headline(Base, AccessTimeMixin):
 
     # Internal flags
     legacy: Mapped[bool] = mapped_column(Integer(), default=0, nullable=False)
+    # Probability this is a news headline rather than lifestyle, shopping or page furniture. Null until the
+    # news classifier has a model to score it with; analyses treat null as news.
+    news_score: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"
@@ -179,6 +182,54 @@ class Topic(Base, AccessTimeMixin):
     @essential.setter
     def essential(self, value: list[str]):
         self._essential = cast(Mapped[str], ','.join(value))
+
+
+
+class Trend(Base, AccessTimeMixin):
+    """Something trending outside the press: a Bluesky topic, a Google search, a most-read Wikipedia article or a
+    link shared on Mastodon. One row per trend, refreshed each time it shows up in its source's list."""
+    __tablename__ = "trend"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(32), index=True, default='bluesky')
+    topic: Mapped[str] = mapped_column(String(64), index=True, unique=True)  # stable id, prefixed by source
+    display_name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text(), nullable=True)
+    category: Mapped[str] = mapped_column(String(64), nullable=True)
+    link: Mapped[str] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=True)
+    post_count: Mapped[int] = mapped_column(Integer(), nullable=True)
+    rank: Mapped[int] = mapped_column(Integer(), nullable=True)
+    started_at: Mapped[dt] = mapped_column(DateTime(), nullable=True)
+
+    def __repr__(self):
+        return f"Trend(id={self.id!r}, display_name={self.display_name!r})"
+
+
+class Story(Base):
+    """One news event as covered across outlets, persisted across runs so it can be labeled once and its
+    coverage compared over time. Clusters from each run are matched to stories by the headlines they share."""
+    __tablename__ = "story"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(255), nullable=True)  # neutral title written by the llm
+    labeled_with: Mapped[int] = mapped_column(Integer(), nullable=True)  # outlet count when the label was written
+    first_seen: Mapped[dt] = mapped_column(DateTime())
+    last_seen: Mapped[dt] = mapped_column(DateTime())
+    headlines: Mapped[list["StoryHeadline"]] = relationship("StoryHeadline", back_populates="story")
+
+    def __repr__(self):
+        return f"Story(id={self.id!r}, label={self.label!r})"
+
+
+class StoryHeadline(Base):
+    """A headline's membership in a story, with how its sentiment compares to the other outlets on that story."""
+    __tablename__ = "story_headline"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    story_id: Mapped[int] = mapped_column(ForeignKey("story.id"), index=True)
+    story: Mapped["Story"] = relationship(Story, back_populates="headlines")
+    headline_id: Mapped[int] = mapped_column(ForeignKey("headline.id"), unique=True)
+    sentiment: Mapped[float] = mapped_column(Float())
+    deviation: Mapped[float] = mapped_column(Float())  # sentiment minus the story's mean across outlets
+    last_seen: Mapped[dt] = mapped_column(DateTime())
 
 
 engine = create_engine(Config.connection_string)

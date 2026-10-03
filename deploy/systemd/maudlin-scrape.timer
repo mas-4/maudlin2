@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Maudlin scrape every hour, waking the machine from sleep if needed
+
+[Timer]
+OnCalendar=hourly
+# Set the hardware clock alarm so a suspended machine wakes up for the run
+WakeSystem=true
+# Catch up on a missed run after the machine was off
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -6,7 +6,8 @@ import pandas as pd
 import yaml
 from sqlalchemy import or_
 
-from app.analysis.pipelines import Pipelines, prepare, trem, tnorm
+from app.analysis import textnorm
+from app.analysis.pipelines import Pipelines, prepare
 from app.models import Session, Topic, Headline, Article, SqlLock
 from app.utils.constants import Constants
 from app.utils.logger import get_logger
@@ -18,12 +19,12 @@ STOPWORDS = [word.lower() for word in STOPWORDS]
 
 pipeline = [
     str.lower,
-    tnorm.hyphenated_words,
-    tnorm.quotation_marks,
-    tnorm.unicode,
-    trem.accents,
-    trem.brackets,
-    trem.punctuation,
+    textnorm.hyphenated_words,
+    textnorm.quotation_marks,
+    textnorm.normalize_unicode,
+    textnorm.accents,
+    textnorm.brackets,
+    textnorm.punctuation,
     Pipelines.tokenize,
     Pipelines.expand_contractions,
     Pipelines.lemmatize,

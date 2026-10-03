@@ -1,6 +1,8 @@
 from app.site.common import copy_assets, TemplateHandler, PathHandler
 from app.site.data import DataHandler, DataTypes
+from app.site.graphing import Plots
 from app.site.wordcloudgen import generate_wordcloud
+from app.analysis.stories import framing_scores
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility
 from app.utils.logger import get_logger
@@ -27,6 +29,7 @@ class AgenciesPage:
 
     def generate(self):
         logger.info("Generating agencies page...")
+        self.context['framing'] = Plots.framing(framing_scores())
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.current_processed_headlines,
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)

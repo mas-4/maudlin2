@@ -14,7 +14,7 @@ class InfoWars(SeleniumScraper):
     credibility = Credibility.very_low
     url: str = 'https://www.infowars.com/'
     agency: str = "Info Wars"
-    headers = {'User-Agent': Constants.Headers.UserAgents.desktop_google_bot}
+    headers = Constants.Headers.firefox
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': re.compile(r'/posts/.*')}):

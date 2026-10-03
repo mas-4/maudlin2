@@ -1,3 +1,5 @@
+import re
+
 from bs4 import BeautifulSoup as Soup
 
 from app.scraper import Scraper
@@ -8,14 +10,15 @@ logger = get_logger(__name__)
 
 
 class MilitaryCom(Scraper):
+    headers = Constants.Headers.firefox
     bias = Bias.unbiased
     credibility = Credibility.high
     url: str = 'https://www.military.com'
     agency: str = "Military.com"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
-            href = self.url + a['href']
-            title = a.find('span', {'property': 'schema:name'})
+        # articles live at a top level slug like /dod-increases-hazard-pays-for-first-time
+        for a in soup.find_all('a', {'href': re.compile(r'^(https://www\.military\.com)?/[a-z0-9]+(-[a-z0-9]+){3,}/?$')}):
+            title = a.text.strip()
             if title:
-                self.downstream.append((href, title.text.strip()))
+                self.downstream.append((a['href'], a))

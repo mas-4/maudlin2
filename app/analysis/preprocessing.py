@@ -1,7 +1,7 @@
 import re
 
 import pandas as pd
-from bs4 import BeautifulSoup as Soup, NavigableString
+from bs4 import BeautifulSoup as Soup, NavigableString, Comment, Script, Stylesheet
 from sqlalchemy import update, delete
 
 from app.models import Session, Headline
@@ -117,6 +117,8 @@ def extract_text(html_content):
     def generate_text_elements(_stack):
         while _stack:
             current_element = _stack.pop()
+            if isinstance(current_element, (Comment, Script, Stylesheet)):
+                continue  # these subclass NavigableString but aren't visible text
             if isinstance(current_element, NavigableString):
                 # I have wondered if we could use a list comp here to speed up this processing. Otherwise perhaps
                 # we could just eventually write some CPython. If we go beyond 2 maybe.

@@ -1,26 +1,12 @@
-import re
-
-from bs4 import BeautifulSoup as Soup
-
-from app.scraper import SeleniumScraper
-from app.utils.constants import Bias, Credibility, Country
-from app.utils.logger import get_logger
-
-logger = get_logger(__name__)
+from app.scraper import FeedScraper
+from app.utils.constants import Bias, Credibility, Country, Constants
 
 
-class CBC(SeleniumScraper):
+class CBC(FeedScraper):
+    headers = Constants.Headers.firefox
     bias = Bias.left_center
     credibility = Credibility.high
     url: str = 'https://www.cbc.ca'
     agency: str = "CBC"
+    feed: str = 'https://www.cbc.ca/webfeed/rss/rss-topstories'
     country: str = Country.ca
-
-    def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile(r'^/news/')}):
-            href = self.url + a['href']
-            if not (title := a.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], {'class': 'headline'})):
-                continue
-            title = title.text.strip()
-            if title:
-                self.downstream.append((href, a))

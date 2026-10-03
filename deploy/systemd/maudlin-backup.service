@@ -1,0 +1,8 @@
+[Unit]
+Description=Maudlin database backup
+
+[Service]
+Type=oneshot
+User=mas
+Group=mas
+ExecStart=/home/mas/Repos/maudlin2/scripts/backup.sh

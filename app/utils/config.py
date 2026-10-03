@@ -88,6 +88,7 @@ class Config:
 
     netlify = read_creds(Constants.Paths.NETLIFY_CREDS)
     dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
+    anthropic = read_creds(Constants.Paths.ANTHROPIC_CREDS) or os.environ.get('ANTHROPIC_API_KEY', '')
 
     with open(Constants.Paths.TOPICS_FILE, 'rt') as f_in:
         topics = [Topic(x) for x in yaml.safe_load(f_in)]  # Need to deprecate load and update in topics file
