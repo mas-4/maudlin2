@@ -1949,6 +1949,14 @@ table.emotion-matrix th span:not(.matrix-emoji) {
         z-index: 1;
         background: white;
     }
+    /* Outlet names on one line: a wider first column instead of chips wrapping word by word (the table scrolls
+       sideways; the outlet column stays put) */
+    table.emotion-matrix td:first-child {
+        min-width: 9.5em;
+    }
+    table.emotion-matrix .edit-chip {
+        white-space: nowrap;
+    }
 }
 
 /* Cards packed into columns by packColumns (index.js) */
