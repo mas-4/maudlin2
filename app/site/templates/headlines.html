@@ -443,6 +443,7 @@
                         <li>
                             <a href="#story-{{ story.cluster }}">{{ story.title }}</a>
                             <span class="trend-posts">{{ story.outlets }} outlets</span>
+                            {% if story.speed %}<span class="fast-break" title="{{ story.speed }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
                             {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name }}">{{ name }}</span>{% endfor %}
                         </li>
                     {% endfor %}

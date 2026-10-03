@@ -1692,3 +1692,13 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     margin-right: 0.3em;
     vertical-align: middle;
 }
+
+.fast-break {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: #ffd6c2;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0 0.5em;
+    margin-left: 0.3em;
+}

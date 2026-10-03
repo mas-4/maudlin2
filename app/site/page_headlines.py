@@ -1,16 +1,19 @@
 import json
 import os
 import re
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+from sqlalchemy import func
 
 from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import textnorm
 from app.analysis.pipelines import Pipelines, prepare
 from app.site.common import calculate_xkeyscore, chip_style, copy_assets, outlet_icon, TemplateHandler
+from app.models import Session, Headline
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
@@ -37,6 +40,8 @@ GHOST_OPACITY = 0.35
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
 BRIGHT_COUNT = 6  # items in the bright side box
+BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
+FAST_BREAK = 8  # outlets within that window to count as a fast break
 BRIGHT_MOOD = 0.2  # a story's average mood (-1 grim to 1 upbeat) to count as good news
 NEWS_DAY_HALF_LIFE_HOURS = 24
 NEWS_DAY_LABELS = {
@@ -73,6 +78,31 @@ def meter(value: float, scale: float, negative: str, positive: str) -> dict:
     else:
         text = f'{value:+.2f}'
     return {'value': round(float(value), 3), 'position': round(position, 1), 'text': text}
+
+
+DB_START = dt(2000, 1, 1)  # our first scrape, set when the page is generated
+
+
+def first_scrape() -> dt:
+    with Session() as s:
+        return s.query(func.min(Headline.first_accessed)).scalar() or dt(2000, 1, 1)
+
+
+def break_speed(headlines: list[dict]) -> Optional[int]:
+    """How fast a story broke: how many outlets had it within about an hour of our first sighting (the first two
+    hourly scrapes). None for stories already running when the database started, whose first sighting is ours, not
+    theirs."""
+    starts = sorted(pd.Timestamp(h['first_seen']) for h in headlines)
+    db_start = pd.Timestamp(DB_START)
+    if starts and starts[0].tzinfo is not None and db_start.tzinfo is None:
+        db_start = db_start.tz_localize('UTC')  # the database stores UTC without saying so
+    if not starts or starts[0] - db_start < td(hours=2):
+        return None
+    by_outlet = {}
+    for h in headlines:
+        seen = pd.Timestamp(h['first_seen'])
+        by_outlet[h['agency']] = min(by_outlet.get(h['agency'], seen), seen)
+    return sum(t - starts[0] <= td(minutes=BREAK_WINDOW_MINUTES) for t in by_outlet.values())
 
 
 def weather(mood: float) -> tuple[str, str]:
@@ -239,6 +269,8 @@ class HeadlinesPage:
         }
 
     def cluster_and_summarize(self, df):
+        global DB_START
+        DB_START = first_scrape()
         n_samples_per_cluster = 6
         threshold = 0.7  # embedding cosine; tuned against a day of headlines
         df = df[
@@ -285,6 +317,7 @@ class HeadlinesPage:
             cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
             cluster['mood'].update(dict(zip(('emoji', 'word'), weather(cluster['mood']['value']))))
             cluster['emotion'] = dominant_emotion(group)
+            cluster['speed'] = break_speed(cluster['data'])
             cluster['outlets'] = int(group['agency'].nunique())
             cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0
 
@@ -301,6 +334,11 @@ class HeadlinesPage:
         media, search and Wikipedia. Where a trend and a story are about the same thing both get marked, so the
         overlap (and the gap) between what the press covers and what people pay attention to is visible."""
         outlets = df.groupby('cluster')['agency'].nunique().sort_values(ascending=False)
+        speeds = {c['cluster']: c['speed'] for c in self.context.get('clusters', [])
+                  if c.get('speed') and c['speed'] >= FAST_BREAK}
+        logger.info("Break speeds (outlets in the first hour): %s",
+                    sorted((c.get('speed') for c in self.context.get('clusters', []) if c.get('speed') is not None),
+                           reverse=True)[:10])
         boxes = []
         on = {}  # cluster -> names of the sources where it's trending
         for source in TREND_SOURCES:
@@ -314,6 +352,7 @@ class HeadlinesPage:
         self.context['trend_boxes'] = boxes
         self.context['news_trends'] = [
             {'cluster': cluster, 'title': self.context['titles'][cluster], 'outlets': int(count),
+             'speed': speeds.get(cluster),
              'also_on': sorted(set(on.get(cluster, [])))}
             for cluster, count in outlets.head(TRENDING_COUNT).items()
         ]
@@ -373,7 +412,9 @@ class HeadlinesPage:
             ages = sorted((now - a['first_seen']).total_seconds() / 3600 for a in cluster['data'])
             median_age = ages[len(ages) // 2]
             hrefs[-1] += (f'<p class="story-status">{live} of {len(cluster["data"])} outlets still showing it'
-                          f' · typically first seen {age_text(median_age)} ago</p>')
+                          f' · typically first seen {age_text(median_age)} ago'
+                          + (f' · <span class="fast-break">🚀 {cluster["speed"]} in the first hour</span>'
+                             if (cluster.get('speed') or 0) >= FAST_BREAK else '') + '</p>')
             hrefs.append(SORT_BAR)
             chips = []
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
