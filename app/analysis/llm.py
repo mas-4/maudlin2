@@ -7,6 +7,7 @@ Choose with MAUDLIN_LLM=ollama|anthropic|none (default: ollama if its server ans
 configured). MAUDLIN_LLM_MODEL overrides the model name for either backend."""
 import json
 import os
+import threading
 from typing import Optional
 
 import requests as rq
@@ -24,6 +25,7 @@ TIMEOUT = 120
 
 _backend: Optional[str] = None
 _resolved = False
+_lock = threading.Lock()
 
 
 def _ollama_up() -> bool:
@@ -34,11 +36,18 @@ def _ollama_up() -> bool:
 
 
 def backend() -> Optional[str]:
-    """The llm backend in use, or None if there isn't one. Resolved once per process."""
+    """The llm backend in use, or None if there isn't one. Resolved once per process; the lock keeps parallel
+    callers from reading the answer before the first caller has finished working it out."""
     global _backend, _resolved
-    if _resolved:
-        return _backend
-    _resolved = True
+    with _lock:
+        if not _resolved:
+            _resolve()
+            _resolved = True
+    return _backend
+
+
+def _resolve():
+    global _backend
     choice = os.environ.get('MAUDLIN_LLM', '').lower()
     if choice == 'none':
         _backend = None
@@ -51,7 +60,6 @@ def backend() -> Optional[str]:
                        OLLAMA_URL)
     else:
         logger.info("Using %s with %s for llm features", _backend, model())
-    return _backend
 
 
 def model() -> str:

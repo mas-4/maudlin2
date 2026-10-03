@@ -191,12 +191,15 @@ def assess(titles: list[str], agency: str) -> list[dict]:
             for p in probabilities]
 
 
-def rescore_all():
-    """Judge every stored headline again, e.g. after changing the rubric (~0.5s a headline with the llm), then
-    recompute the stories' framing from the new scores."""
+def rescore_all(only_missing: bool = False):
+    """Judge stored headlines again, e.g. after changing the rubric, then recompute the stories' framing from the
+    new scores. `only_missing` fills in just the headlines that have no scores yet (a failed or interrupted run)."""
     from app.models import Session, Headline, Article, Agency
     with Session() as s:
-        rows = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency).all()
+        query = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency)
+        if only_missing:
+            query = query.filter(Headline.event_score.is_(None))
+        rows = query.all()
     df = pd.DataFrame(rows, columns=['id', 'title', 'agency'])
     t = time.time()
     for n, (agency, group) in enumerate(df.groupby('agency'), start=1):

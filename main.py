@@ -107,8 +107,8 @@ def main(args: argparse.Namespace):
     if args.train_newsfilter:
         newsfilter.train()
         return
-    if args.rescore_news:
-        newsfilter.rescore_all()
+    if args.rescore_news or args.rescore_missing:
+        newsfilter.rescore_all(only_missing=args.rescore_missing)
         return
     if args.email_newsletter:
         with open(Config.newsletter, 'rt') as f:
@@ -140,6 +140,8 @@ def get_args() -> argparse.Namespace:
                         help='train the fallback news classifier on the labeled headlines')
     parser.add_argument('--rescore-news', action='store_true',
                         help='judge every stored headline again: news or not, event and loaded scores (uses the llm)')
+    parser.add_argument('--rescore-missing', action='store_true',
+                        help='judge only stored headlines that have no scores yet, e.g. after an interrupted run')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:
