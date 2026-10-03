@@ -28,11 +28,9 @@ def test_template_write(s):
     test = TemplateHandler('test.html')
     test.write({'test': s})
 
-    def replace(x): return x.replace('\r', '\n')
-
-    with open(test.path, 'rt', encoding='utf-8') as f_in:
-        # Mac changes \r to \n in text files. Very weird. Not much on Google about it.
-        assert replace(f_in.read()) == replace(s)
+    # Read back exactly what was written: text mode would turn '\r\n' into '\n'
+    with open(test.path, 'rt', encoding='utf-8', newline='') as f_in:
+        assert f_in.read() == s
 
 
 def test_pathhandler():
