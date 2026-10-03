@@ -704,9 +704,10 @@ figure.wordcloud {
     transition: opacity 0.15s;
 }
 
-/* Pointing at a word fades the others; pointing at empty space between words fades nothing */
+/* Pointing at a word lifts its paper cutout to the top (surface() in headlines.html) and fades the others a touch;
+   pointing at empty space between words fades nothing */
 .cloud:has(.cloud-word:hover) .cloud-word:not(:hover) {
-    opacity: 0.55;
+    opacity: 0.85;
 }
 
 .cloud-word {
@@ -1365,29 +1366,103 @@ figure.wordcloud figcaption {
 
 /* "Jump to" row under the cloud */
 .page-toc {
+    position: fixed;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 20;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5em;
-    margin: 0.4em 0 1em;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+}
+
+/* Shown once the reader is past the cloud (set by the script beside the nav) */
+body.toc-on .page-toc {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.toc-toggle {
+    display: none;
 }
 
 .page-toc a {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    width: max-content;
     font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #1f1f2e;
     text-decoration: none;
-    padding: 0.3em 1em;
+    padding: 0.25em 0.5em;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
     background: #fff8d6;
-    box-shadow: 2px 2px 0 #1f1f2e;
+    box-shadow: 3px 3px 0 #1f1f2e;
+    transition: transform 0.15s, background 0.15s;
+}
+
+.toc-emoji {
+    font-size: 1.15em;
+    line-height: 1;
+}
+
+/* Labels open on hover (desktop) and for the section on screen; otherwise just the emoji, to stay out of the way */
+.toc-label {
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-width 0.25s;
+}
+
+.page-toc a:hover .toc-label, .page-toc a.here .toc-label {
+    max-width: 10em;
 }
 
 .page-toc a:hover {
+    transform: translateX(3px);
+}
+
+.page-toc a.here {
     background: #ffc400;
 }
 
-#trending, #current-stories, #every-headline {
+/* Phones: one 🧭 button in the bottom-left corner; the section list opens above it */
+@media (max-width: 700px) {
+    .toc-toggle {
+        display: block;
+        position: fixed;
+        left: 10px;
+        bottom: 14px;
+        z-index: 21;
+        width: 46px;
+        height: 46px;
+        font-size: 1.4em;
+        border: 2px solid #1f1f2e;
+        border-radius: 50%;
+        background: #ffc400;
+        box-shadow: 3px 3px 0 #1f1f2e;
+    }
+    .page-toc, body.toc-on .page-toc {
+        top: auto;
+        bottom: 70px;
+        transform: none;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .page-toc.open, body.toc-on .page-toc.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .page-toc a .toc-label {
+        max-width: 10em;
+    }
+}
+
+#trending, #current-stories, #every-headline, #sagas, #investigations {
     scroll-margin-top: 1em;
 }
 
@@ -1411,6 +1486,18 @@ figure.wordcloud figcaption {
 
 #cloud {
     position: relative;
+}
+
+/* The paper cutouts behind each cloud word (paperCutout in headlines.html) */
+.cloud-paper {
+    stroke: #1f1f2e;
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+}
+
+.cloud-paper-shadow {
+    fill: #1f1f2e;
+    opacity: 0.85;
 }
 
 /* Sticker labels at the two ends of a sorted cloud */

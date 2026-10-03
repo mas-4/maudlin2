@@ -46,12 +46,50 @@
             Click a word to see how outlets are using it, and the feeling its headlines stir.</figcaption>
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
+    {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up #}
+    <button class="toc-toggle" type="button" aria-label="Jump to a section" aria-expanded="false">🧭</button>
     <nav class="page-toc" aria-label="On this page">
-        <a href="#trending">🔥 trending</a>
-        {% if saga_list %}<a href="#sagas">🧵 sagas</a>{% endif %}
-        <a href="#current-stories">📰 current stories</a>
-        <a href="headlines.html">📋 every headline</a>
+        <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
+        <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
+        {% if investigations %}<a href="#investigations"><span class="toc-emoji">🔎</span><span class="toc-label">investigations</span></a>{% endif %}
+        {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
+        <a href="#current-stories"><span class="toc-emoji">📰</span><span class="toc-label">stories</span></a>
+        <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
     </nav>
+    <script>
+        (function () {
+            const links = [...document.querySelectorAll('.page-toc a[href^="#"]')];
+            const target = (a) => a.getAttribute('href') === '#top' ? document.querySelector('figure.wordcloud')
+                : document.querySelector(a.getAttribute('href'));
+            links.forEach((a) => a.addEventListener('click', (ev) => {
+                const el = target(a);
+                if (!el) return;
+                ev.preventDefault();
+                el.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }));
+            // Phones: a 🧭 button from the start with the list folded; the list opens on its own once the reader is
+            // past the cloud, unless they've already opened or closed it themselves
+            const nav = document.querySelector('.page-toc'), toggle = document.querySelector('.toc-toggle');
+            const fold = (open) => { nav.classList.toggle('open', open); toggle.setAttribute('aria-expanded', open); };
+            let chosen = false;
+            toggle.addEventListener('click', () => { chosen = true; fold(!nav.classList.contains('open')); });
+            // Light up the last section whose top has passed the upper third of the screen, and only show the rail
+            // once the reader is past the cloud (at the top it would just cover the cloud's left edge)
+            const cloud = document.querySelector('figure.wordcloud');
+            let ticking = false;
+            const mark = () => {
+                ticking = false;
+                const past = cloud.getBoundingClientRect().bottom < innerHeight * 0.4;
+                document.body.classList.toggle('toc-on', past);
+                if (past && !chosen) fold(true);
+                let current = links[0];
+                links.forEach((a) => { const el = target(a); if (el && el.getBoundingClientRect().top < innerHeight / 3) current = a; });
+                links.forEach((a) => a.classList.toggle('here', a === current));
+            };
+            addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(mark); } }, {passive: true});
+            addEventListener('load', mark);
+        })();
+    </script>
     <script src="d3.layout.cloud.js"></script>
     <script>
         function showWord(d) {
@@ -66,9 +104,14 @@
                 <p class="poll-note">${d.outlets} outlets · ${esc(d.side)}. A sample of headlines using it, one per outlet,
                     from left- to right-leaning:</p>
                 <ul class="cloud-samples">${rows}</ul>`;
+            // Open where the reader is looking: the panel normally sits near the cloud's top, which on a phone can be
+            // above the screen, and focusing it there made the whole page jump up to it
+            panel.style.top = '';
             panel.hidden = false;
+            const above = panel.getBoundingClientRect().top;
+            if (above < 12) panel.style.top = `${panel.offsetTop - above + 12}px`;
             panel.querySelector('.cloud-close').addEventListener('click', () => { panel.hidden = true; });
-            panel.querySelector('.cloud-close').focus();
+            panel.querySelector('.cloud-close').focus({preventScroll: true});
         }
         // The panel floats over the cloud: Escape or a click outside it closes it
         document.addEventListener('keydown', (ev) => {
@@ -331,11 +374,47 @@
                         wiggle.appendChild(e);
                     });
                 }
+                paperCutout(wiggle, d.px);
+                // Bring the word and its paper to the top of the pile while it's pointed at or focused (SVG stacks by
+                // document order, so it moves to the end)
+                const surface = () => { if (svg.lastElementChild !== g) svg.appendChild(g); };
+                g.addEventListener('pointerenter', surface);
+                // Moving a focused element drops its focus, so give it back
+                g.addEventListener('focus', () => { if (svg.lastElementChild !== g) { surface(); g.focus({preventScroll: true}); } });
                 const open = () => showWord(d);
                 g.addEventListener('click', open);
                 g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
             }
             clearSticker(svg);
+        }
+
+        // A scrap of paper behind each word, cut out with scissors, ransom-note style: a jagged outline a little bigger
+        // than the word (and its emoji), on white or a pale tint, with a hard shadow. It sits inside the swaying layer,
+        // so it moves and tilts with its word
+        const PAPERS = ['#ffffff', '#ffffff', '#ffffff', '#fff6cc', '#dcfaf5', '#ffe1f0', '#ece4ff'];
+        function paperCutout(layer, px) {
+            const ns = 'http://www.w3.org/2000/svg';
+            const b = layer.getBBox();
+            const pad = Math.max(3, px * 0.12), jag = Math.max(1.5, px * 0.07);
+            const x0 = b.x - pad, y0 = b.y - pad * 0.6, x1 = b.x + b.width + pad, y1 = b.y + b.height + pad * 0.4;
+            const r = () => (Math.random() * 2 - 1) * jag;
+            // Walk the four edges, a point every so often, each nudged in or out like a hand cut
+            const step = Math.max(10, px * 0.8), pts = [];
+            const edge = (ax, ay, bx, by) => {
+                const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / step));
+                for (let i = 0; i < n; i++) pts.push([ax + (bx - ax) * i / n + r(), ay + (by - ay) * i / n + r()]);
+            };
+            edge(x0, y0, x1, y0); edge(x1, y0, x1, y1); edge(x1, y1, x0, y1); edge(x0, y1, x0, y0);
+            const d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L') + ' Z';
+            const shadow = document.createElementNS(ns, 'path');
+            shadow.setAttribute('d', d);
+            shadow.setAttribute('class', 'cloud-paper-shadow');
+            shadow.setAttribute('transform', `translate(${Math.max(1.5, px * 0.06)} ${Math.max(1.5, px * 0.06)})`);
+            const paper = document.createElementNS(ns, 'path');
+            paper.setAttribute('d', d);
+            paper.setAttribute('class', 'cloud-paper');
+            paper.setAttribute('fill', PAPERS[Math.floor(Math.random() * PAPERS.length)]);
+            layer.prepend(shadow, paper);
         }
 
         // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it
