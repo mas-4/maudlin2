@@ -153,6 +153,11 @@ class Headline(Base, AccessTimeMixin):
     # it affects (-2 to 2), and how loaded the outlet's own wording is (0 to 2). Null without an llm.
     event_score: Mapped[float] = mapped_column(Float(), nullable=True)
     loaded_score: Mapped[float] = mapped_column(Float(), nullable=True)
+    # The emotion the headline is most likely to stir in a reader (fear, anger, sadness, disgust, surprise, joy,
+    # hope or neutral), from the same llm call. Null without an llm.
+    emotion: Mapped[str] = mapped_column(String(16), nullable=True)
+    # Up to three emotions, strongest first, comma separated; averaged ranked-choice style (newsfilter.emotion_weights)
+    emotion_ranks: Mapped[str] = mapped_column(String(64), nullable=True)
 
     def __repr__(self) -> str:
         return f"Headline(id={self.id!r}, agency={self.article.agency.name!r}, title={self.processed!r})"

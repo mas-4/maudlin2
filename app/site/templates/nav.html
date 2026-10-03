@@ -1,7 +1,42 @@
 <nav class="navbar">
-    <a class="nav-link" href="index.html">🗞️bignews.day</a> |
-    <a class="nav-link" href="topics.html">election topics</a> |
-    <a class="nav-link" href="polling.html">election data</a> |
-    <a class="nav-link" href="edits.html">headline changes</a> |
-    <a class="nav-link" href="agencies.html">agencies</a>
+    <a class="nav-brand" href="index.html">🗞️ bignews.day</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Menu">☰</button>
+    <div class="nav-links" id="nav-links">
+        <a href="topics.html">election topics</a>
+        <a href="polling.html">election data</a>
+        <a href="edits.html">headline changes</a>
+        <a href="emotions.html">emotions</a>
+        <a href="agencies.html">agencies</a>
+    </div>
+    <span class="updated" data-built="{{ built_at }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
+    <script>
+        (function () {
+            // "updated 12 min ago", kept current while the page is open; turns orange when the site has gone stale
+            const el = document.currentScript.previousElementSibling;
+            function tick() {
+                const minutes = Math.max(0, Math.round((Date.now() - Date.parse(el.dataset.built)) / 60000));
+                const hours = Math.floor(minutes / 60);
+                el.textContent = 'updated ' + (minutes < 1 ? 'just now' : minutes < 60 ? minutes + ' min ago'
+                    : hours + ' hour' + (hours === 1 ? '' : 's') + ' ago');
+                el.classList.toggle('stale', minutes > 150);
+            }
+            tick();
+            setInterval(tick, 30000);
+
+            // The nav is rendered once for every page, so the current page is marked here
+            const nav = el.parentElement;
+            const page = location.pathname.split('/').pop() || 'index.html';
+            nav.querySelectorAll('.nav-links a').forEach((a) => {
+                if (a.getAttribute('href') === page) a.setAttribute('aria-current', 'page');
+            });
+
+            // Phone-width menu
+            const toggle = nav.querySelector('.nav-toggle');
+            toggle.addEventListener('click', () => {
+                const open = nav.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', open);
+                toggle.textContent = open ? '✕' : '☰';
+            });
+        })();
+    </script>
 </nav>

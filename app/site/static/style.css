@@ -4,6 +4,12 @@
 
 :root {
     --color-hi: #f56a6a;
+    /* The site is designed light-only; say so, or dark-themed browsers paint their own dark background behind it */
+    color-scheme: light;
+}
+
+html, body {
+    background: #ffffff;
 }
 
 * {
@@ -24,28 +30,138 @@ body {
     padding: 2em 1em;
 }
 
+/* Nav: a sticker-style brand, pill links with pop-color shadows, a menu button at phone width */
 .navbar {
-    background-color: #fff; /* White background to match your site */
-    overflow: hidden; /* Ensures the content is contained within the navigation bar */
-    border-bottom: 1px solid #ddd; /* A subtle bottom border for a touch of separation */
-    padding: 10px 0; /* Vertical padding */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em 1em;
+    padding: 6px 0 16px;
+    border-bottom: 3px solid #1f1f2e;
 }
 
-.navbar a {
-    color: #333; /* Dark text color for contrast */
-    padding: 10px 20px; /* Padding around the links for clickable area */
-    text-decoration: none; /* Removes the underline from links */
-    font-size: 16px; /* Sets a standard font size for the links */
-    display: inline-block; /* Aligns links in a row */
+.nav-brand {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 1.25em;
+    color: #1f1f2e;
+    text-decoration: none;
+    padding: 0.15em 0.6em;
+    background: #ffc400;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #ff4fa3;
+    transform: rotate(-2deg);
+    transition: transform 0.15s;
 }
 
-.navbar a:hover {
-    background-color: #f2f2f2; /* Light grey background on hover for visual feedback */
+.nav-brand:hover {
+    transform: rotate(1deg) scale(1.04);
 }
 
-/* Additional style to align the nav bar content to the left */
-.navbar {
-    text-align: left; /* Aligns the nav links to the left */
+.nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.nav-links a {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: #1f1f2e;
+    text-decoration: none;
+    padding: 0.15em 0.8em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 var(--pop);
+    transition: transform 0.15s, background-color 0.15s;
+}
+
+.nav-links a:nth-child(5n + 1) { --pop: #00c2a8; }
+.nav-links a:nth-child(5n + 2) { --pop: #3a86ff; }
+.nav-links a:nth-child(5n + 3) { --pop: #ff6b1a; }
+.nav-links a:nth-child(5n + 4) { --pop: #ff4fa3; }
+.nav-links a:nth-child(5n + 5) { --pop: #ffc400; }
+
+.nav-links a:hover {
+    background: var(--pop);
+    transform: translate(-1px, -1px) rotate(-2deg);
+}
+
+.nav-links a[aria-current="page"] {
+    background: var(--pop);
+}
+
+.nav-toggle {
+    display: none;
+    font-size: 1.3em;
+    line-height: 1;
+    width: 2.2em;
+    height: 2.2em;
+    color: #1f1f2e;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #3a86ff;
+    cursor: pointer;
+}
+
+@media (max-width: 760px) {
+    .nav-toggle {
+        display: block;
+        margin-left: auto;
+    }
+
+    .nav-links {
+        display: none;
+        order: 3;
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .navbar.open .nav-links {
+        display: flex;
+    }
+
+    .nav-links a {
+        text-align: center;
+        font-size: 1.15em;
+        padding: 0.4em 0.8em;
+    }
+
+    .navbar .updated {
+        order: 2;
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+/* Section breaks on the front page: a loud label on a thick rule */
+.section-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin: 1.6em 0 1em;
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 1.4em;
+    text-transform: uppercase;
+    color: #1f1f2e;
+}
+
+.section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 3px solid #1f1f2e;
+}
+
+.section-divider span {
+    padding: 0.1em 0.7em;
+    background: #00c2a8;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #ff4fa3;
+    transform: rotate(-1.5deg);
 }
 
 
@@ -216,16 +332,26 @@ blockquote::before, blockquote::after, q::before, q::after {
 
 .storylink {
     display: inline-block;
-    padding: 5px 10px;
+    padding: 4px 11px;
     margin: 5px;
     text-decoration: none;
-    border-radius: 10px;
-    transition: background-color 0.1s;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    transition: transform 0.12s, box-shadow 0.12s;
     color: black;
 }
 
+/* Outlet chips hop and tilt when pointed at, alternating directions */
 .storylink:hover {
-    background-color: white !important;
+    transform: translate(-1px, -3px) rotate(-4deg);
+    box-shadow: 3px 5px 0 #1f1f2e;
+}
+
+.storylink:nth-child(even):hover {
+    transform: translate(-1px, -3px) rotate(4deg);
 }
 
 .newsday {
@@ -308,6 +434,18 @@ ol#date-key:first-child {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1em;
     margin: 1em 20px;
+}
+
+.trending-row {
+    align-items: start;
+}
+
+/* Long shared-link titles (Mastodon) are clamped so one box doesn't tower over the rest; hover shows the full title */
+.trending li > a:first-child {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .trending-row .trending {
@@ -415,8 +553,12 @@ table.races th, table.races td {
 
 .edit-chip {
     color: black;
-    border-radius: 10px;
-    padding: 2px 9px;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 1px 9px;
 }
 
 .edit-before {
@@ -456,4 +598,646 @@ table.races th, table.races td {
     border: 1px solid #bbb;
     border-radius: 4px;
     padding: 0 0.35em;
+}
+
+.updated {
+    margin-left: auto;
+    font-size: 0.8em;
+    color: #777;
+}
+
+.updated.stale {
+    color: #c45a00;
+    font-weight: bold;
+}
+
+figure.wordcloud {
+    margin: 1em auto;
+    max-width: 900px;
+}
+
+figure.wordcloud img {
+    width: 100%;
+    height: auto;
+}
+
+figure.wordcloud figcaption {
+    font-size: 0.85em;
+    color: #666;
+    text-align: center;
+}
+
+.lean-left {
+    color: #2a5bd7;
+    font-weight: bold;
+}
+
+.lean-right {
+    color: #c0392b;
+    font-weight: bold;
+}
+
+figure.wordcloud {
+    max-width: 1200px;
+}
+
+.cloud-word {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    cursor: default;
+    transition: opacity 0.15s;
+}
+
+.cloud:hover .cloud-word {
+    opacity: 0.55;
+}
+
+.cloud .cloud-word:hover {
+    opacity: 1;
+}
+
+.cloud-word {
+    cursor: pointer;
+    outline: none;
+}
+
+.cloud-word text {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+.cloud-word:focus text:first-child {
+    text-decoration: underline;
+}
+
+.cloud-emoji {
+    /* emoji are color images, so a shadow is the only outline; keeps the white skull visible on white */
+    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+}
+
+.cloud-detail {
+    max-width: 900px;
+    margin: 0 auto 1.5em;
+    padding: 0.6em 1.2em;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    position: relative;
+}
+
+.cloud-detail h3 {
+    margin: 0.3em 0;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-size: 1.6em;
+}
+
+.cloud-samples {
+    list-style: none;
+    padding: 0;
+}
+
+.cloud-samples li {
+    margin: 0.45em 0;
+}
+
+.cloud-close {
+    position: absolute;
+    top: 0.4em;
+    right: 0.6em;
+    border: none;
+    background: none;
+    font-size: 1.4em;
+    cursor: pointer;
+}
+
+.emotion-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7em, 1fr));
+    gap: 0.8em;
+    max-width: 60em;
+    margin: 1em auto 2em;
+}
+
+.emotion-tile {
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 0.6em 0.3em;
+}
+
+.emotion-tile-emoji {
+    font-size: 2.2em;
+}
+
+.emotion-tile-share {
+    font-size: 1.5em;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.emotion-tile-label {
+    color: #666;
+    font-size: 0.85em;
+}
+
+table.emotion-matrix {
+    margin: 0.5em auto 2em;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+table.emotion-matrix th {
+    cursor: pointer;
+    padding: 0.3em 0.5em;
+    font-weight: normal;
+    font-size: 1.2em;
+}
+
+table.emotion-matrix th span {
+    font-size: 0.6em;
+    color: #666;
+}
+
+table.emotion-matrix td {
+    padding: 0.3em 0.6em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    border: 2px solid white;
+}
+
+table.emotion-matrix td:first-child {
+    text-align: left;
+}
+
+.cloud-feeling {
+    font-size: 1.15em;
+    margin: 0.2em 0 0.4em;
+}
+
+.cloud-feeling a {
+    font-size: 0.75em;
+}
+
+figure.wordcloud {
+    position: relative;
+}
+
+/* The news-day verdict, slapped on the corner of the word cloud like a sticker */
+.newsday-sticker {
+    position: absolute;
+    top: -0.6em;
+    left: 0;
+    z-index: 2;
+    max-width: 22em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    padding: 0.45em 0.9em 0.55em;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #1f1f2e;
+    transform: rotate(-5deg);
+    color: #1f1f2e;
+    text-decoration: none;
+}
+
+.newsday-label {
+    font-family: 'Bungee', 'Comic Neue', cursive;
+    font-size: 1.35em;
+    line-height: 1.1;
+}
+
+.newsday-why {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 0.85em;
+    line-height: 1.2;
+}
+
+.newsday-sticker.big {
+    /* dark card so the red siren reads; the red is kept for the edge */
+    background: #1d2147;
+    color: white;
+    border-color: #ff3b3b;
+    box-shadow: 4px 4px 0 #ff3b3b;
+    animation: wobble 1.6s ease-in-out infinite;
+}
+
+.newsday-sticker.normal {
+    background: #ffd23f;
+}
+
+.newsday-sticker.slow {
+    background: #5ce1c6;
+}
+
+@keyframes wobble {
+    0%, 100% { transform: rotate(-5deg) scale(1); }
+    50% { transform: rotate(-3deg) scale(1.06); }
+}
+
+@media (max-width: 700px) {
+    .newsday-sticker {
+        position: relative;
+        top: 0;
+        margin: 0 auto 0.6em;
+    }
+}
+
+/* Page-level headings sit over centered content, so they're centered too; headings inside cards (story cards,
+   trending boxes, the word panel) stay aligned with their own text */
+main > h1, main > h2, main > h3 {
+    text-align: center;
+}
+
+/* The sticker sits inside the cloud's top-left corner; the page script clears the words under it */
+.newsday-sticker {
+    position: absolute;
+    top: 0.4em;
+    left: var(--gutter, 16px);
+    width: fit-content;
+}
+
+@media (max-width: 700px) {
+    .newsday-sticker {
+        position: relative;
+        top: 0;
+        left: 0;
+        margin: 0 auto 0.6em;
+    }
+}
+
+.emotion-tiles {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    max-width: 64em;
+}
+
+@media (max-width: 900px) {
+    .emotion-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+
+/* The cloud spreads across the full page width */
+/* The cloud spills edge to edge of the window; everything else keeps its margins. 100vw counts the scrollbar, so the
+   page clips the sliver that would otherwise scroll sideways. */
+/* --page-width is the window's width without its scrollbar, set by the page's script (100vw counts the scrollbar,
+   which pushed the cloud past both edges) */
+figure.wordcloud {
+    max-width: none;
+    width: var(--page-width, 100vw);
+    margin-left: calc(50% - var(--page-width, 100vw) / 2);
+    margin-right: 0;
+}
+
+/* On html only: on body it would clip the cloud at the body's edge, which on wide windows is well inside the window */
+html {
+    overflow-x: clip;
+}
+
+figure.wordcloud figcaption {
+    padding: 0 16px;
+}
+
+.balanced-text {
+    background: linear-gradient(90deg, #1a5cff, #e0102e);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
+}
+
+/* The word panel floats over the cloud rather than pushing the page down */
+.cloud-detail {
+    position: absolute;
+    z-index: 5;
+    top: 4.5em;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(640px, 94%);
+    max-height: 80%;
+    overflow-y: auto;
+    margin: 0;
+    background: #ffffff;
+    border: 2px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 6px 6px 0 rgba(31, 31, 46, 0.85);
+}
+
+.story-status {
+    font-size: 0.85em;
+    color: #666;
+    margin: 0.2em 0;
+}
+
+.chip-sort {
+    font-size: 0.75em;
+    color: #777;
+    margin: 0.4em 0 0.2em;
+}
+
+.chip-sort button {
+    font: inherit;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0 0.5em;
+    margin: 0 0.1em;
+    cursor: pointer;
+    color: #555;
+}
+
+.chip-sort button.active {
+    background: #1f1f2e;
+    border-color: #1f1f2e;
+    color: white;
+}
+
+.storylink.chip-gone {
+    border: 2px dashed rgba(31, 31, 46, 0.6);
+    box-shadow: none;
+}
+
+/* Story cards packed into columns (by a script on the page), each card going to the shortest column, so short cards
+   don't leave a hole beside a long one */
+.stories.masonry {
+    display: flex;
+    align-items: flex-start;
+}
+
+.story-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Cards and trending boxes: thick ink outlines and loud offset shadows, a different color down the page */
+.story, .trending {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--pop, #ff4fa3);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.story:hover, .trending:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 var(--pop, #ff4fa3);
+}
+
+.story:nth-of-type(5n + 1), .trending:nth-of-type(5n + 1) { --pop: #ff4fa3; }
+.story:nth-of-type(5n + 2), .trending:nth-of-type(5n + 2) { --pop: #ffc400; }
+.story:nth-of-type(5n + 3), .trending:nth-of-type(5n + 3) { --pop: #00c2a8; }
+.story:nth-of-type(5n + 4), .trending:nth-of-type(5n + 4) { --pop: #3a86ff; }
+.story:nth-of-type(5n + 5), .trending:nth-of-type(5n + 5) { --pop: #ff6b1a; }
+
+.story h4, .trending h3 {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+/* Story titles: bigger, inky, with a wavy underline in the card's pop color */
+.story h4 {
+    font-size: 1.4em;
+    line-height: 1.2;
+    color: #1f1f2e;
+    margin: 0.3em 0 0.5em;
+    text-decoration: underline wavy var(--pop, #ff4fa3);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+    text-decoration-skip-ink: auto;
+}
+
+.chip-metric {
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-left: 0.35em;
+    padding: 0 0.35em;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.sort-legend {
+    display: block;
+    margin-top: 0.2em;
+    font-style: italic;
+}
+
+/* The outside trend boxes show their top six; a button opens the rest, so one long list doesn't stretch the row */
+.trending:not(.open) .trend-extra {
+    display: none;
+}
+
+.trend-more {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.2em 0 0.8em;
+    padding: 0.2em 0.8em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: var(--pop, #ffc400);
+    cursor: pointer;
+}
+
+/* The day's headline table: an inked box, dark header, lean-colored outlet chips, mood pills */
+.headline-table {
+    margin: 0 0 2em;
+}
+
+.table-intro {
+    text-align: center;
+    max-width: 48em;
+    margin: 0 auto 0.8em;
+}
+
+.table-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.4em;
+    margin-bottom: 0.8em;
+    font-size: 0.9em;
+}
+
+.table-filters span {
+    margin-left: 0.6em;
+    color: #777;
+}
+
+.table-filters button {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.1em 0.8em;
+    cursor: pointer;
+}
+
+.table-filters button.active {
+    background: #00c2a8;
+}
+
+.headline-table .gridjs-wrapper {
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #3a86ff;
+}
+
+.headline-table th.gridjs-th {
+    background: #1f1f2e;
+    color: white;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    border-color: #1f1f2e;
+}
+
+.headline-table th.gridjs-th .gridjs-sort {
+    filter: invert(1);
+}
+
+/* gridjs lightens a header when it's sorted or focused; keep it dark so the white label stays readable */
+.headline-table th.gridjs-th-sort:hover, .headline-table th.gridjs-th-sort:focus,
+.headline-table th.gridjs-th.gridjs-th-sort {
+    background: #1f1f2e;
+    color: white;
+}
+
+.headline-table td.gridjs-td {
+    padding: 8px 12px;
+}
+
+.headline-table tr:hover td.gridjs-td {
+    background: #fff8d6;
+}
+
+.headline-table td a {
+    color: #1f1f2e;
+}
+
+
+.table-story {
+    text-decoration: none;
+}
+
+.table-topic {
+    white-space: nowrap;
+    font-size: 0.85em;
+}
+
+.table-mood {
+    white-space: nowrap;
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #1f1f2e;
+    padding: 0.1em 0.6em;
+    border-radius: 999px;
+}
+
+.headline-table .gridjs-search-input {
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    width: min(24em, 100%);
+}
+
+.headline-table .edit-chip {
+    display: inline-block;
+    white-space: normal;
+}
+
+.table-note {
+    color: #444;
+    font-size: 1em;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.metric-emoji {
+    font-size: 1.5em;
+    vertical-align: middle;
+}
+
+.metric-emoji.metric-minor {
+    font-size: 1.15em;
+}
+
+.headline-table .table-story-badge {
+    white-space: normal;
+    border-radius: 14px;
+    font-size: 0.9em;
+}
+
+
+.headline-table td.gridjs-td:first-child {
+    vertical-align: top;
+}
+
+@media (max-width: 700px) {
+    .headline-table td.gridjs-td {
+        padding: 6px 8px;
+        font-size: 0.9em;
+    }
+}
+
+/* Measure badges in the headline table */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0.1em 0.65em 0.1em 0.3em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: var(--tint, #f2f2f2);
+    color: #1f1f2e;
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+/* Emoji sit on a dark disc: pale ones (clock faces, storm clouds) wash out on a light tint */
+.badge-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55em;
+    height: 1.55em;
+    padding: 0 0.12em;
+    margin-left: -0.15em;
+    border-radius: 999px;
+    background: #1f1f2e;
+    font-size: 1.15em;
+    line-height: 1;
+}
+
+.metric-minor {
+    font-size: 1.3em;
+    vertical-align: middle;
+}
+
+/* "Jump to" row under the cloud */
+.page-toc {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5em;
+    margin: 0.4em 0 1em;
+}
+
+.page-toc a {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    text-decoration: none;
+    padding: 0.1em 0.8em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: #fff8d6;
+    box-shadow: 2px 2px 0 #1f1f2e;
+}
+
+.page-toc a:hover {
+    background: #ffc400;
+}
+
+#trending, #current-stories, #every-headline {
+    scroll-margin-top: 1em;
 }

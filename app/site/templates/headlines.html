@@ -1,14 +1,183 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <div>
-        <img alt="Word Cloud" src="{{ FileNames.main_wordcloud }}">
-    </div>
-    <br><br>
+    <figure class="wordcloud">
+        {% if newsday %}
+            <a class="newsday-sticker {{ newsday.kind }}" href="#story-{{ newsday.cluster }}"
+               title="The biggest story is on {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages">
+                <span class="newsday-label">{{ newsday.emoji }} {{ newsday.label }}</span>
+                <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
+            </a>
+        {% endif %}
+        <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
+        <noscript><img alt="Word cloud of the terms the most outlets are using right now" src="{{ FileNames.main_wordcloud }}"></noscript>
+        <figcaption>Bigger words are used by more outlets. Color shows who uses a word:
+            <span style="color: #1a5cff; font-weight: bold">mostly left-leaning outlets</span>,
+            <span style="color: #e0102e; font-weight: bold">mostly right-leaning outlets</span>,
+            <span class="balanced-text">both sides</span>, or
+            <span style="color: #8a8f98; font-weight: bold">mostly center outlets</span>.
+            Click a word to see how outlets are using it, and the feeling its headlines stir.</figcaption>
+        <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
+    </figure>
+    <nav class="page-toc" aria-label="On this page">
+        <a href="#trending">🔥 trending</a>
+        <a href="#current-stories">📰 current stories</a>
+        <a href="#every-headline">📋 every headline</a>
+    </nav>
+    <script src="d3.layout.cloud.js"></script>
+    <script>
+        const BIAS_COLORS = {{ bias_colors|tojson }};
+        const BIAS_INK = {{ bias_ink|tojson }};
+        function showWord(d) {
+            const panel = document.getElementById('cloud-detail');
+            const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+            const rows = d.samples.map((h) => `<li><span class="edit-chip" style="background-color: ${BIAS_COLORS[h.bias + 3]}; color: ${BIAS_INK[h.bias + 3]}">${esc(h.agency)}</span>
+                <a href="${esc(h.url)}">${esc(h.title)}</a></li>`).join('');
+            panel.innerHTML = `<button class="cloud-close" aria-label="Close">×</button>
+                <h3 class="${d.color === 'balanced' ? 'balanced-text' : ''}" style="${d.color === 'balanced' ? '' : `color: ${d.color}`}">${esc(d.word)}</h3>
+                ${d.feeling ? `<p class="cloud-feeling">${d.feeling.emoji} ${esc(d.feeling.phrase)}
+                    <a href="emotions.html">(emotions)</a></p>` : ''}
+                <p class="poll-note">${d.outlets} outlets · ${esc(d.side)}. A sample of headlines using it, one per outlet,
+                    from left- to right-leaning:</p>
+                <ul class="cloud-samples">${rows}</ul>`;
+            panel.hidden = false;
+            panel.querySelector('.cloud-close').addEventListener('click', () => { panel.hidden = true; });
+            panel.querySelector('.cloud-close').focus();
+        }
+        // The panel floats over the cloud: Escape or a click outside it closes it
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Escape') document.getElementById('cloud-detail').hidden = true;
+        });
+        document.addEventListener('click', (ev) => {
+            const panel = document.getElementById('cloud-detail');
+            if (!panel.hidden && !panel.contains(ev.target) && !ev.target.closest('.cloud-word')) panel.hidden = true;
+        });
+        const WORDS = {{ cloud_words|tojson }};
+        // Lay out the cloud for the space it has: wide and short on desktop, taller than wide on a phone. Word sizes
+        // follow the canvas area, and the cloud redraws when the window is resized.
+        // The window's width without its scrollbar, for the edge-to-edge cloud. Watched rather than read once: the
+        // scrollbar only shows up once the rest of the page has loaded, and that doesn't fire a resize event.
+        // --gutter is where the page's content starts, so the sticker lines up with the nav above it
+        function setPageWidth() {
+            const root = document.documentElement.style;
+            root.setProperty('--page-width', document.documentElement.clientWidth + 'px');
+            root.setProperty('--gutter', Math.max(16, document.querySelector('main').getBoundingClientRect().left) + 'px');
+        }
+        setPageWidth();
+        new ResizeObserver(setPageWidth).observe(document.body);
 
-    {{ slowday|safe }}
+        function drawCloud() {
+            const el = document.getElementById('cloud');
+            if (!WORDS.length || !window.d3) return;
+            el.innerHTML = '';
+            // A fixed seed keeps the layout the same on every load
+            let seed = 20261003;
+            const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+            const width = el.clientWidth;
+            const aspect = width < 600 ? 1.35 : width < 1000 ? 0.75 : 0.5;
+            const height = Math.round(width * aspect);
+            const sizes = WORDS.map((w) => w.outlets);  // (d3-cloud uses d.size for font size)
+            const min = Math.min(...sizes), max = Math.max(...sizes);
+            const scale = Math.sqrt(width * height) / 10;
+            const fontSize = (s) => Math.max(11, scale * 0.12 + Math.sqrt((s - min) / ((max - min) || 1)) * scale * 0.9);
+            // Every word tilts, never flat: 12 to 40 degrees either way
+            const tilt = () => (random() < 0.5 ? -1 : 1) * (12 + random() * 28);
+            // The sticker's corner is off limits, so words pack in around it instead of leaving a hole
+            const obstacles = [];
+            const sticker = document.querySelector('.newsday-sticker');
+            if (sticker && getComputedStyle(sticker).position === 'absolute') {
+                const s = sticker.getBoundingClientRect(), c = el.getBoundingClientRect(), pad = 12;
+                obstacles.push({x0: s.left - c.left - pad, y0: s.top - c.top - pad,
+                                x1: s.right - c.left + pad, y1: s.bottom - c.top + pad});
+            }
+            d3.layout.cloud()
+                .obstacles(obstacles)
+                .size([width, height])
+                .words(WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${w.text}\u2009${w.emoji}` : w.text,
+                                          px: fontSize(w.outlets)})))
+                .text((d) => d.label)
+                .font('Comic Neue')
+                .fontWeight('bold')
+                .fontSize((d) => d.px)
+                .padding(Math.max(4, Math.round(scale * 0.1)))
+                .rotate(tilt)
+                .random(random)
+                .on('end', (placed) => render(el, placed, width, height))
+                .start();
+        }
 
-    <div class="trending-row">
+        function render(el, placed, width, height) {
+            const ns = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(ns, 'svg');
+            svg.setAttribute('viewBox', `${-width / 2} ${-height / 2} ${width} ${height}`);
+            svg.setAttribute('width', '100%');
+            // Balanced words get a left-to-right blue-to-red gradient
+            svg.innerHTML = `<defs><linearGradient id="balanced" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0" stop-color="#1a5cff"/><stop offset="1" stop-color="#e0102e"/></linearGradient></defs>`;
+            el.appendChild(svg);  // attach first: text has no measurable width until it's on the page
+            for (const d of placed) {
+                // A group per word so the emoji badge rotates with it
+                const g = document.createElementNS(ns, 'g');
+                g.setAttribute('transform', `translate(${d.x},${d.y}) rotate(${d.rotate})`);
+                g.setAttribute('class', 'cloud-word');
+                g.setAttribute('title', d.tip);
+                g.setAttribute('tabindex', '0');
+                g.setAttribute('role', 'button');
+                g.setAttribute('aria-label', d.tip);
+                const t = document.createElementNS(ns, 'text');
+                t.textContent = d.word;  // d3-cloud overwrites d.text with the label, emoji included
+                t.setAttribute('text-anchor', 'middle');
+                t.setAttribute('font-size', d.px);
+                t.setAttribute('fill', d.color === 'balanced' ? 'url(#balanced)' : d.color);
+                g.appendChild(t);
+                svg.appendChild(g);
+                if (d.emoji) {
+                    // Its own element: emoji are color images, so only a drop shadow can outline them
+                    const e = document.createElementNS(ns, 'text');
+                    e.textContent = d.emoji;
+                    e.setAttribute('class', 'cloud-emoji');
+                    e.setAttribute('font-size', d.px * 0.55);
+                    e.setAttribute('x', t.getComputedTextLength() / 2 + d.px * 0.08);
+                    e.setAttribute('y', -d.px * 0.25);
+                    g.appendChild(e);
+                }
+                const open = () => showWord(d);
+                g.addEventListener('click', open);
+                g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
+            }
+            clearSticker(svg);
+        }
+
+        // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it
+        function clearSticker(svg) {
+            const sticker = document.querySelector('.newsday-sticker');
+            if (!sticker || getComputedStyle(sticker).position !== 'absolute') return;
+            const s = sticker.getBoundingClientRect();
+            const pad = 6;
+            svg.querySelectorAll('.cloud-word').forEach((g) => {
+                const r = g.getBoundingClientRect();
+                const overlaps = r.left < s.right + pad && r.right > s.left - pad && r.top < s.bottom + pad && r.bottom > s.top - pad;
+                if (overlaps) g.remove();
+            });
+        }
+
+        (async function () {
+            // Lay out in the real font, or the measurements are off and words collide
+            try { await document.fonts.load('700 40px "Comic Neue"'); } catch (e) {}
+            drawCloud();
+            let lastWidth = document.getElementById('cloud').clientWidth, timer;
+            window.addEventListener('resize', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    const width = document.getElementById('cloud').clientWidth;
+                    if (Math.abs(width - lastWidth) > 40) { lastWidth = width; drawCloud(); }
+                }, 250);
+            });
+        })();
+    </script>
+
+
+    <div class="trending-row" id="trending">
         {% if news_trends %}
             <section class="trending trending-news">
                 <h3>Trending in the news</h3>
@@ -28,13 +197,17 @@
                 <h3>{{ box.heading }}</h3>
                 <ol>
                     {% for trend in box.trends %}
-                        <li>
-                            <a href="{{ trend.link }}" title="{{ trend.description or '' }}">{{ trend.display_name }}</a>
+                        <li{% if loop.index > 6 %} class="trend-extra"{% endif %}>
+                            <a href="{{ trend.link }}" title="{{ trend.description or trend.display_name }}">{{ trend.display_name }}</a>
                             {% if trend.post_count %}<span class="trend-posts">{{ "{:,}".format(trend.post_count) }}{% if box.key == 'google' %}+{% endif %} {{ box.unit }}</span>{% endif %}
                             {% if trend.topic in box.matches %}<a class="trend-both" href="#story-{{ box.matches[trend.topic] }}" title="Also a top story in the news">news</a>{% endif %}
                         </li>
                     {% endfor %}
                 </ol>
+                {% if box.trends|length > 6 %}
+                    <button class="trend-more" onclick="this.parentElement.classList.toggle('open');
+                        this.textContent = this.parentElement.classList.contains('open') ? 'show fewer' : 'show all {{ box.trends|length }}'">show all {{ box.trends|length }}</button>
+                {% endif %}
             </section>
         {% endfor %}
     </div>
@@ -68,6 +241,72 @@
                     ? `<h3>🚨🚨🚨BREAKING! ${minutes}m ago!</h3>`
                     : `<p>First seen ${Math.floor(minutes / 60)} hour${Math.floor(minutes / 60) === 1 ? '' : 's'} ago</p>`;
             });
+        }
+        // Sort each card's outlet chips: bias runs left to right, first seen is oldest first, still showing puts
+        // live outlets first, mood is grimmest first, framing is gloomiest-vs-others first. Ties keep their lean order.
+        document.addEventListener('click', (ev) => {
+            const button = ev.target.closest('.chip-sort button');
+            if (!button) return;
+            const card = button.closest('.story');
+            const chips = card.querySelector('.chips');
+            const key = button.dataset.key;
+            const value = (chip) => parseFloat(chip.dataset[key]);
+            const order = [...chips.querySelectorAll('a.storylink')].sort((a, b) =>
+                key === 'live' ? value(b) - value(a) || parseFloat(a.dataset.first) - parseFloat(b.dataset.first)
+                    : value(a) - value(b));
+            order.forEach((chip) => chips.appendChild(chip));
+            order.forEach((chip) => paintChip(chip, key));
+            card.querySelector('.sort-legend').textContent = SORT_LEGENDS[key];
+            card.querySelectorAll('.chip-sort button').forEach((b) => b.classList.toggle('active', b === button));
+        });
+
+        // Each sort recolors the chips by what it measures and tags them with the value, so a sort that barely moves
+        // anything (most headlines tie on mood) still shows what it found. Sorting by bias puts the lean colors back.
+        const SORT_LEGENDS = {
+            bias: 'outlets left to right, colored by lean',
+            first: 'earliest first · brighter is newer',
+            live: 'still on the front page first',
+            mood: 'grimmest headline first · purple grim, gold upbeat',
+            framing: 'gloomier than the other outlets first · purple gloomier, teal sunnier',
+        };
+        const mix = (color, amount) => `color-mix(in srgb, ${color} ${Math.round(Math.min(1, amount) * 100)}%, #eeeef2)`;
+        const ago = (hours) => hours < 1 ? `${Math.max(1, Math.round(hours * 60))}m` : `${Math.round(hours)}h`;
+        const signed = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1);
+        const PAINT = {
+            first: (c) => {
+                const hours = (Date.now() / 1000 - parseFloat(c.dataset.first)) / 3600;
+                return [mix('#ffc400', 1 - hours / 24), ago(hours)];
+            },
+            // Gone chips are already faded by how long they've been gone; the tag says how long
+            live: (c) => c.dataset.live === '1' ? ['#7ee081', 'on page']
+                : ['#e4e4e8', 'gone ' + ago((Date.now() / 1000 - parseFloat(c.dataset.last)) / 3600)],
+            mood: (c) => {
+                const v = parseFloat(c.dataset.mood);
+                return [mix(v < 0 ? '#7a5cff' : '#ffc400', Math.abs(v) * 1.5), signed(v)];
+            },
+            framing: (c) => {
+                const v = parseFloat(c.dataset.framing);
+                return [mix(v < 0 ? '#7a5cff' : '#00c2a8', Math.abs(v) * 1.5), signed(v)];
+            },
+        };
+        function paintChip(chip, key) {
+            if (!chip.dataset.bg) {
+                chip.dataset.bg = chip.style.backgroundColor;
+                chip.dataset.ink = chip.style.color;
+            }
+            chip.querySelector('.chip-metric')?.remove();
+            if (!PAINT[key]) {
+                chip.style.backgroundColor = chip.dataset.bg;
+                chip.style.color = chip.dataset.ink;
+                return;
+            }
+            const [color, text] = PAINT[key](chip);
+            chip.style.backgroundColor = color;
+            chip.style.color = '#1f1f2e';
+            const tag = document.createElement('span');
+            tag.className = 'chip-metric';
+            tag.textContent = text;
+            chip.appendChild(tag);
         }
         document.addEventListener('DOMContentLoaded', () => {
             updateBroken();
@@ -140,6 +379,7 @@
         });
     </script>
 
+    <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
             <div class="story" id="story-{{ cluster['cluster'] }}">
@@ -153,7 +393,8 @@
                     <div class="meter" title="Average headline sentiment across the outlets covering this story">
                         <span class="meter-label">Mood</span>
                         <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
-                        <span class="meter-value">{{ cluster['mood']['text'] }}</span>
+                        <span class="meter-value">{{ cluster['mood']['text'] }}{% if cluster['emotion'] %}
+                            <span title="{{ cluster['emotion']['name'] }}: {{ cluster['emotion']['share'] }}% of the feeling in its headlines">{{ cluster['emotion']['emoji'] }}</span>{% endif %}</span>
                     </div>
                 </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
@@ -161,55 +402,184 @@
         {% endfor %}
     </div>
 
-    <script type="text/javascript">
-        const data = {{tabledata|safe}};
-        document.addEventListener("DOMContentLoaded", function () {
-            new gridjs.Grid({
-                columns: [
-                    {
-                        name: "Title",
-                        formatter: (cell) => gridjs.html(cell),
-                    },
-                    {
-                        name: "First Accessed",
-                    },
-                    {
-                        name: "XKeyscore",
-                    },
-                    {
-                        name: "Topic",
-                        formatter: (cell) => gridjs.html(cell),
-                    },
-                    {
-                        name: "VADER",
-                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
-                        attributes: (cell) => {
-                            return {
-                                style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
-                            }
-                        },
-                    },
-                    {
-                        name: "AFINN",
-                        formatter: (cell) => gridjs.html(`<span>${cell} ${determineSmiley(cell, 0.5)}</span>`),
-                        attributes: (cell) => {
-                            return {
-                                style: `background-color: ${getColorForValue(cell, 0.3, 3)}; text-align: center;`
-                            }
-                        },
-                    }
-                ],
-                data: data,
-                sort: true,
-                search: true,
-                pagination: {
-                    limit: 25
-                },
-                fixexedHeader: true
-            }).render(document.getElementById('wrapper'));
-        });
+    <script>
+        // Pack the story cards into columns, each card dropping into the shortest one. Reading order stays roughly
+        // left to right, top to bottom, and cards keep their ids so #story links still land.
+        (function () {
+            const box = document.querySelector('.stories');
+            if (!box) return;
+            const cards = [...box.querySelectorAll('.story')];
+            let count = 0;
+            function layout() {
+                const n = innerWidth > 1100 ? 3 : innerWidth > 700 ? 2 : 1;
+                if (n === count) return;
+                count = n;
+                box.classList.add('masonry');
+                box.replaceChildren();
+                const columns = Array.from({length: n}, () => {
+                    const col = document.createElement('div');
+                    col.className = 'story-column';
+                    return box.appendChild(col);
+                });
+                for (const card of cards) {
+                    columns.reduce((a, b) => b.offsetHeight < a.offsetHeight ? b : a).appendChild(card);
+                }
+            }
+            layout();
+            addEventListener('resize', layout);
+        })();
     </script>
-    <h3>All articles last seen today</h3>
-    <h4>Articles initially sorted by keyword score (having more "more common" words gives a higher score)</h4>
-    <div id="wrapper"></div>
+
+    <h2 class="section-divider" id="every-headline"><span>Every headline right now</span></h2>
+    <section class="headline-table">
+        <div class="table-controls">
+            <div class="table-filters" role="group" aria-label="Measure to show">
+                <span>show:</span>
+                <button data-filter="metric" data-value="buzz" class="active" title="How much it uses the words everyone else is using today">📣 buzz</button>
+                <button data-filter="metric" data-value="seen">🕒 first seen</button>
+                <button data-filter="metric" data-value="mood" title="How grim or upbeat the news is">🌦️ mood</button>
+                <button data-filter="metric" data-value="spin" title="How loaded the wording is">🌶️ spin</button>
+                <button data-filter="metric" data-value="feeling" title="The feelings it's most likely to stir, strongest first">😨 feeling</button>
+                <button data-filter="metric" data-value="story" title="Which current story it's part of">📰 story</button>
+            </div>
+            <div class="table-filters" role="group" aria-label="Filter headlines">
+                <span>lean:</span>
+                <button data-filter="lean" data-value="all" class="active">all</button>
+                <button data-filter="lean" data-value="left">left</button>
+                <button data-filter="lean" data-value="center">center</button>
+                <button data-filter="lean" data-value="right">right</button>
+                <button data-filter="loaded" class="toggle">🌶️ loaded only</button>
+            </div>
+        </div>
+        <div id="wrapper"></div>
+    </section>
+    <script>
+        // Loaded on approach: the rows are a separate file of a few megabytes
+        new IntersectionObserver((entries, observer) => {
+            if (!entries.some((e) => e.isIntersecting)) return;
+            observer.disconnect();
+            fetch({{ table_file|tojson }}).then((r) => r.json()).then(headlineTable);
+        }, {rootMargin: '800px'}).observe(document.querySelector('.headline-table'));
+
+        function headlineTable(ROWS) {
+            const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+            // Each measure is a tinted badge: emoji first, then a word or two. Plain is always 🍞.
+            const badge = (emoji, text, tint) => `<span class="badge" style="--tint: ${tint}"><span class="badge-emoji">${emoji}</span>${text}</span>`;
+            const MOODS = {'-2': ['⛈️', 'very grim', '#cfc6ff'], '-1': ['🌧️', 'grim', '#e3ddff'], '0': ['🍞', 'plain', '#f4efe6'],
+                           '1': ['🌤️', 'upbeat', '#fff1b3'], '2': ['☀️', 'very upbeat', '#ffe066']};
+            const SPINS = {0: ['🍞', 'plain', '#f4efe6'], 1: ['🌶️', 'loaded', '#ffd6c2'], 2: ['🌶️🌶️', 'very loaded', '#ffab8a']};
+            const FEELING_TINTS = {anger: '#ffc2c2', fear: '#e0d4ff', sadness: '#c9e2ff', disgust: '#d6f5c4',
+                                   surprise: '#fff1b3', joy: '#ffe066', hope: '#c8f7e6'};
+            // The clock face nearest the time it was first seen: 🕐-🕛 on the hour, 🕜-🕧 on the half hour
+            const clock = (ts) => {
+                const d = new Date(ts * 1000);
+                const halves = Math.round(((d.getHours() % 12) * 60 + d.getMinutes()) / 30) % 24;
+                const hour = Math.floor(halves / 2) || 12;
+                return String.fromCodePoint((halves % 2 ? 0x1F55C : 0x1F550) + hour - 1);
+            };
+            const ago = (ts) => {
+                const minutes = Math.max(1, Math.round((Date.now() / 1000 - ts) / 60));
+                return minutes < 60 ? `${minutes}m ago` : `${Math.round(minutes / 60)}h ago`;
+            };
+            const FEELING_ORDER = ['anger', 'fear', 'disgust', 'sadness', 'surprise', 'hope', 'joy'];
+
+            // The third column shows one measure at a time, picked with the buttons above the table. Each has its
+            // own cell and its own sort, and picking one sorts by it.
+            const METRICS = {
+                buzz: {
+                    label: 'Buzz',
+                    cell: (r) => {
+                        // Loudness emoji by percentile of the day's headlines
+                        const [emoji, tint] = r.buzz >= 95 ? ['📢', '#ffab8a'] : r.buzz >= 80 ? ['🔊', '#ffd6c2']
+                            : r.buzz >= 50 ? ['🔉', '#fff1b3'] : r.buzz >= 20 ? ['🔈', '#eef1f6'] : ['🤫', '#f2f2f2'];
+                        return badge(emoji, r.buzz >= 50 ? `top ${Math.max(1, 100 - r.buzz)}%` : r.buzz >= 20 ? 'low' : 'quiet', tint);
+                    },
+                    compare: (a, b) => b.buzz - a.buzz,
+                },
+                seen: {
+                    label: 'First seen',
+                    cell: (r) => r.seen ? badge(clock(r.seen), ago(r.seen), (Date.now() / 1000 - r.seen) < 7200 ? '#fff1b3' : '#eef1f6') : '',
+                    compare: (a, b) => (b.seen ?? 0) - (a.seen ?? 0),
+                },
+                mood: {
+                    label: 'Mood',
+                    cell: (r) => r.mood === null ? '' : badge(...MOODS[r.mood]),
+                    compare: (a, b) => (a.mood ?? 99) - (b.mood ?? 99),
+                },
+                spin: {
+                    label: 'Spin',
+                    cell: (r) => r.loaded === null ? '' : badge(...SPINS[r.loaded]),
+                    compare: (a, b) => (b.loaded ?? -1) - (a.loaded ?? -1),
+                },
+                feeling: {
+                    label: 'Feeling',
+                    cell: (r) => r.feelings.length ? r.feelings.map(([emoji, name], i) => i === 0
+                        ? badge(emoji, name, FEELING_TINTS[name])
+                        : `<span class="metric-minor" title="${name}">${emoji}</span>`).join(' ')
+                        : badge('🥛', 'neutral', '#f2f2f2'),
+                    compare: (a, b) => {
+                        const rank = (r) => r.feelings.length ? FEELING_ORDER.indexOf(r.feelings[0][1]) : 99;
+                        return rank(a) - rank(b);
+                    },
+                },
+                story: {
+                    label: 'Story',
+                    cell: (r) => `<a class="badge table-story-badge" style="--tint: #d9f7f2" href="#story-${r.story}"><span class="badge-emoji">📰</span>${esc(r.story_title)}</a>`,
+                    // Biggest stories first, each story's headlines together
+                    compare: (a, b) => b.story_size - a.story_size || a.story - b.story,
+                },
+            };
+
+            const state = {metric: 'buzz', lean: 'all', loaded: false};
+            const keep = (r) => (state.lean === 'all' || (state.lean === 'left' ? r.bias < 0
+                                    : state.lean === 'right' ? r.bias > 0 : r.bias === 0))
+                && (!state.loaded || r.loaded > 0);
+            const rows = () => ROWS.filter(keep).filter((r) => state.metric !== 'story' || r.story !== null).sort(METRICS[state.metric].compare).map((r) => [r, r, r]);
+            const columns = () => [
+                {
+                    name: 'Outlet',
+                    width: '22%',
+                    formatter: (r) => gridjs.html(`<span class="edit-chip" style="background-color: ${BIAS_COLORS[r.bias + 3]}; color: ${BIAS_INK[r.bias + 3]}">${esc(r.agency)}</span>`),
+                    sort: {compare: (a, b) => a.bias - b.bias || a.agency.localeCompare(b.agency)},
+                },
+                {
+                    name: 'Headline',
+                    formatter: (r) => gridjs.html(`<a href="${esc(r.url)}">${esc(r.title)}</a>`
+                        + (r.story !== null ? ` <a class="table-story" href="#story-${r.story}" title="Jump to its story">📌</a>` : '')),
+                    sort: {compare: (a, b) => a.title.localeCompare(b.title)},
+                },
+                {
+                    name: METRICS[state.metric].label,
+                    width: state.metric === 'story' ? '32%' : '20%',
+                    formatter: (r) => gridjs.html(METRICS[state.metric].cell(r)),
+                    sort: {compare: METRICS[state.metric].compare},
+                },
+            ];
+
+            const grid = new gridjs.Grid({
+                columns: columns(),
+                data: rows(),
+                sort: true,
+                search: {
+                    selector: (cell, rowIndex, cellIndex) => cellIndex === 1 ? `${cell.agency} ${cell.title} ${cell.topic} ${cell.story_title}` : '',
+                },
+                pagination: {limit: 25},
+                autoWidth: false,
+                language: {search: {placeholder: '🔎 search headlines, outlets, stories…'}},
+            }).render(document.getElementById('wrapper'));
+
+            document.querySelector('.table-controls').addEventListener('click', (ev) => {
+                const button = ev.target.closest('button');
+                if (!button) return;
+                const key = button.dataset.filter;
+                if (key === 'loaded') {
+                    state.loaded = button.classList.toggle('active');
+                } else {
+                    state[key] = button.dataset.value;
+                    document.querySelectorAll(`.table-controls [data-filter="${key}"]`).forEach((b) => b.classList.toggle('active', b === button));
+                }
+                grid.updateConfig({columns: columns(), data: rows()}).forceRender();
+            });
+        }
+    </script>
 {% endblock content %}

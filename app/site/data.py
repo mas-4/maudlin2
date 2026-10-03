@@ -15,6 +15,8 @@ from app.utils import Config, Credibility, Country, get_logger, Constants
 
 logger = get_logger(__name__)
 
+STORY_LOOKBACK_HOURS = 24
+
 # Headlines the news filter scored as lifestyle, shopping or page furniture stay out of the analyses.
 # Unscored headlines (no model trained yet) count as news.
 NEWS_ONLY = or_(Headline.news_score == None, Headline.news_score >= NEWS_THRESHOLD)  # noqa: E711
@@ -33,7 +35,8 @@ class DataHandler:
         if types is None:
             types = list(DataTypes)
         self.main_headline_df = self.get_main_headline_df()
-        self.newsiness_df = pd.read_csv(Constants.Paths.NEWSINESS_DATA)
+        # Story cards look back further, so they can show outlets whose headline has dropped off their front page
+        self.story_headline_df = self.get_main_headline_df(td(hours=STORY_LOOKBACK_HOURS))
         self.election_data = self.get_election_data()
         if DataTypes.agency in types:
             self.all_sentiment_data = self.aggregate_sentiment_data()
@@ -182,7 +185,9 @@ class DataHandler:
         return df
 
     @staticmethod
-    def get_main_headline_df():
+    def get_main_headline_df(lookback: td = td(0)):
+        """Headlines on front pages now, or with `lookback`, also those that dropped off within that long; `live`
+        marks the ones still showing."""
         cols = {
             'article_id': Article.id,
             'headline_id': Headline.id,
@@ -197,6 +202,8 @@ class DataHandler:
             'afinn': Headline.afinn,
             'event_score': Headline.event_score,
             'loaded_score': Headline.loaded_score,
+            'emotion': Headline.emotion,
+            'emotion_ranks': Headline.emotion_ranks,
             'url': Article.url,
             'country': Agency._country,  # noqa prot attr
             'topic_id': Article.topic_id,
@@ -207,7 +214,7 @@ class DataHandler:
             data = session.query(
                 *list(cols.values())
             ).join(Headline.article).join(Article.agency).join(Article.topic, isouter=True).filter(
-                Headline.last_accessed > Config.last_accessed,
+                Headline.last_accessed > Config.last_accessed - lookback,
                 Headline.first_accessed > Config.last_accessed - td(days=3),
                 NEWS_ONLY,
             ).order_by(
@@ -215,11 +222,14 @@ class DataHandler:
                 Headline.position.asc()  # prominence
             ).all()
         df = pd.DataFrame(data, columns=list(cols.keys()))
+        # Older scrapes could save one headline several times over (see Scraper.prefilter); show each once
+        df = df.drop_duplicates(['agency', 'url', 'title'])
         logger.info("Queried %i headlines for main df.", len(df))
 
         if len(df) == 0:
             sys.exit("No headlines found. Exiting.")
 
+        df['live'] = df['last_accessed'] > Config.last_accessed
         df['appearance'] = df['appearance'].dt.tz_localize('utc').dt.tz_convert('US/Eastern')
         now = pd.Timestamp.now(tz='US/Eastern')
         df['howlong'] = (now - df['appearance']).dt.total_seconds()

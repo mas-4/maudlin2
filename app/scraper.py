@@ -22,7 +22,7 @@ from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 logger = get_logger(__name__)
 
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score', 'event_score',
-                                           'loaded_score'])
+                                           'loaded_score', 'emotion', 'emotion_ranks'])
 
 
 class Scraper(ABC, Thread):
@@ -154,6 +154,9 @@ class Scraper(ABC, Thread):
 
     def prefilter(self, downstream):
         df = self.process_dataframe(downstream)
+        # A page often links the same story more than once; keep its first (highest) appearance. The session doesn't
+        # autoflush, so process() can't see rows added earlier in the same batch and would save each copy.
+        df = df.drop_duplicates('processed')
         with Session() as s:
             seen = s.query(Headline.processed, Headline.id, Article.id).join(Headline.article).filter(
                 Headline.processed.in_(df['processed'].tolist())
@@ -168,10 +171,11 @@ class Scraper(ABC, Thread):
 
         # Only headlines we haven't seen before need judging
         judged = pd.DataFrame(newsfilter.assess(df['title'].tolist(), self.agency), index=df.index,
-                              columns=['news_score', 'event_score', 'loaded_score'])
+                              columns=['news_score', 'event_score', 'loaded_score', 'emotion', 'emotion_ranks'])
         df = df.join(judged)
         df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row'],
-                                                        x['news_score'], x['event_score'], x['loaded_score']), axis=1)
+                                                        x['news_score'], x['event_score'], x['loaded_score'],
+                                                        x['emotion'], x['emotion_ranks']), axis=1)
         return dropped, df['artpair'].tolist()
 
     def run_processing(self):
@@ -180,6 +184,7 @@ class Scraper(ABC, Thread):
         t = time.time()
         dropped, prefiltered = self.prefilter(self.downstream)
         logger.info("Prefiltered %i headlines in %f seconds", dropped, time.time() - t)
+        self.batch_articles = {}  # url -> Article added in this batch, which queries can't see until a flush
         with Session() as s:
             [self.process(s, art_pair) for art_pair in prefiltered]
             s.commit()
@@ -192,10 +197,12 @@ class Scraper(ABC, Thread):
             self.updated += 1
             return
 
-        if (article := s.query(Article).filter_by(url=art.href).first()) is None:
+        article = self.batch_articles.get(art.href) or s.query(Article).filter_by(url=art.href).first()
+        if article is None:
             article = Article(url=art.href, agency_id=self.agency_id)
             s.add(article)
             self.articles += 1
+        self.batch_articles[art.href] = article
 
         article.update_last_accessed()  # if its new this does nothing, if it's not we need to do it!
         headline = Headline(
@@ -206,6 +213,8 @@ class Scraper(ABC, Thread):
             news_score=art.news_score,
             event_score=art.event_score,
             loaded_score=art.loaded_score,
+            emotion=art.emotion if isinstance(art.emotion, str) else None,
+            emotion_ranks=art.emotion_ranks if isinstance(art.emotion_ranks, str) else None,
             article=article
         )
         s.add(headline)

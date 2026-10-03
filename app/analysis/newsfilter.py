@@ -4,6 +4,8 @@ batches), in a single call that returns three things:
 - kind: news, or not (lifestyle, shopping, page furniture). Non-news stays out of the analyses.
 - event: how good or bad the reported event is for the people it affects, -2 to 2, whoever reports it.
 - loaded: how loaded the outlet's own wording is, 0 (plain) to 2 (built to provoke).
+- emotions: up to three feelings it's most likely to stir, strongest first (fear, anger, sadness, disgust, surprise,
+  joy, hope or neutral), scored ranked-choice style when averaged.
 
 Event and wording are scored apart because word-list sentiment (VADER, AFINN) mostly measures the event: every
 headline about a deadly crash reads negative whoever writes it. The rubric asks the model to name who is
@@ -67,7 +69,22 @@ from a source do not count. Most headlines are 0.
 2: built to provoke: insults, sensational or partisan framing, ALL CAPS, outrage bait ("MELTDOWN: Dems lose \
 their minds", "Clueless senator humiliated")
 
+emotions: the feelings the headline is most likely to stir in a reader, from the event and the wording together:
+one to three of these, strongest first. List only feelings it really carries; plain information is just neutral.
+- fear: a threat, danger or risk to people: attacks, terror plots, war escalation, disease, disasters ahead
+- anger: outrage at someone's conduct: blame, injustice, hypocrisy, abuse of power, a person or group attacked
+- sadness: loss already suffered: deaths, tragedies, grief, decline, failure
+- disgust: revulsion: depravity, corruption, sordid scandal
+- surprise: something unexpected or astonishing
+- joy: celebration, victory, delight
+- hope: progress, relief, a solution, a way forward
+- neutral: plain information that evokes no particular feeling
+
 Headline: {title}"""
+
+EMOTIONS = ["fear", "anger", "sadness", "disgust", "surprise", "joy", "hope", "neutral"]
+EMOTION_EMOJI = {'fear': '😨', 'anger': '😠', 'sadness': '😢', 'disgust': '🤢', 'surprise': '😲', 'joy': '😄',
+                 'hope': '🤞', 'neutral': '🥛'}  # neutral is a glass of milk
 
 SCHEMA = {
     "type": "object",
@@ -76,12 +93,32 @@ SCHEMA = {
         "affected": {"type": "string", "maxLength": 100},  # written before the scores, it steers them
         "event": {"type": "integer", "enum": [-2, -1, 0, 1, 2]},
         "loaded": {"type": "integer", "enum": [0, 1, 2]},
+        "emotions": {"type": "array", "items": {"type": "string", "enum": EMOTIONS}, "minItems": 1, "maxItems": 3},
     },
-    "required": ["kind", "affected", "event", "loaded"],
+    "required": ["kind", "affected", "event", "loaded", "emotions"],
     "additionalProperties": False,
 }
-MAX_TOKENS = 80
+MAX_TOKENS = 96
+EMPTY = {'news_score': None, 'event_score': None, 'loaded_score': None, 'emotion': None, 'emotion_ranks': None}
 PARALLEL_REQUESTS = 4
+
+
+def ranked(emotions: list[str]) -> dict:
+    """The model's ranked emotions, deduplicated: the top one, and all of them in order for soft scoring."""
+    order = list(dict.fromkeys(e for e in emotions if e in EMOTIONS))[:3] or ['neutral']
+    return {'emotion': order[0], 'emotion_ranks': ','.join(order)}
+
+
+def emotion_weights(ranks: Optional[str]) -> dict[str, float]:
+    """Ranked choice, Borda style: a headline's one vote split 3:2:1 across its ranked emotions (normalized, so a
+    headline with one emotion gives it the whole vote). Averaging these across a story or an outlet lets feelings
+    that are often second choice show up, instead of only counting top picks."""
+    if not isinstance(ranks, str) or not ranks:
+        return {}
+    order = ranks.split(',')
+    points = {e: len(order) - i for i, e in enumerate(order)}
+    total = sum(points.values())
+    return {e: p / total for e, p in points.items()}
 
 
 def judge(title: str, agency: str) -> Optional[dict]:
@@ -180,15 +217,14 @@ def assess(titles: list[str], agency: str) -> list[dict]:
         # Several requests at once let the server batch them on the gpu (needs OLLAMA_NUM_PARALLEL > 1)
         with ThreadPoolExecutor(PARALLEL_REQUESTS) as pool:
             judged = list(pool.map(lambda title: judge(title, agency), titles))
-        return [{'news_score': None, 'event_score': None, 'loaded_score': None} if r is None else
+        return [EMPTY if r is None else
                 {'news_score': float(r['kind'] == 'news'), 'event_score': float(r['event']),
-                 'loaded_score': float(r['loaded'])} for r in judged]
+                 'loaded_score': float(r['loaded']), **ranked(r['emotions'])} for r in judged]
     model = _load()
     if model is None:
-        return [{'news_score': None, 'event_score': None, 'loaded_score': None} for _ in titles]
+        return [dict(EMPTY) for _ in titles]
     probabilities = model['model'].predict_proba(embed(titles))[:, 1]
-    return [{'news_score': float(p >= model['threshold']), 'event_score': None, 'loaded_score': None}
-            for p in probabilities]
+    return [{**EMPTY, 'news_score': float(p >= model['threshold'])} for p in probabilities]
 
 
 def rescore_all(only_missing: bool = False):
@@ -198,7 +234,7 @@ def rescore_all(only_missing: bool = False):
     with Session() as s:
         query = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency)
         if only_missing:
-            query = query.filter(Headline.event_score.is_(None))
+            query = query.filter(Headline.event_score.is_(None) | Headline.emotion_ranks.is_(None))
         rows = query.all()
     df = pd.DataFrame(rows, columns=['id', 'title', 'agency'])
     t = time.time()

@@ -1,0 +1,79 @@
+{% extends "page.html" %}
+
+{% macro matrix(rows, label, chips=False) %}
+    <table class="emotion-matrix sortable">
+        <thead>
+        <tr>
+            <th data-sort="text">{{ label }}</th>
+            {% for e in emotions %}<th data-sort="number" title="{{ e }}">{{ emoji[e] }}<br><span>{{ e }}</span></th>{% endfor %}
+            <th data-sort="number">Headlines</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+            <tr>
+                <td>{% if chips %}<span class="edit-chip" style="background-color: {{ r.color }}; color: {{ r.ink }}">{{ r.name }}</span>{% else %}{{ r.name }}{% endif %}</td>
+                {% for e in emotions %}
+                    {% set share = r.shares[e] %}
+                    <td data-value="{{ share }}" title="{{ r.name }}: {{ (share * 100)|round(1) }}% {{ e }}"
+                        style="background-color: rgba(106, 63, 181, {{ [share / max_share, 1]|min * (0.15 if e == 'neutral' else 0.85) }})">
+                        {{ (share * 100)|round|int }}%
+                    </td>
+                {% endfor %}
+                <td data-value="{{ r.headlines }}">{{ r.headlines }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
+
+{% block content %}
+    <h2>How the news feels</h2>
+    {% if not available %}
+        <p>No emotion data yet.</p>
+    {% else %}
+        <p class="poll-note">A local language model reads each news headline and names the feeling it's most likely to
+            stir in a reader, from the event and the wording together. {{ total }} news headlines from the last
+            {{ window_days }} days; lifestyle and shopping items are left out.</p>
+
+        <div class="emotion-tiles">
+            {% for o in overall %}
+                <div class="emotion-tile">
+                    <div class="emotion-tile-emoji">{{ emoji[o.emotion] }}</div>
+                    <div class="emotion-tile-share">{{ (o.share * 100)|round|int }}%</div>
+                    <div class="emotion-tile-label">{{ o.emotion }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h3>By side</h3>
+        {{ matrix(sides, 'Outlets') }}
+
+        <h3>By outlet</h3>
+        <p class="poll-note">Each outlet's news headlines by the feeling they stir; darker is a larger share. Click a
+            column to sort. Outlets need {{ min_outlet_headlines }} or more headlines to appear.</p>
+        {{ matrix(outlets, 'Outlet', chips=True) }}
+
+        {% if topics %}
+            <h3>By topic</h3>
+            {{ matrix(topics, 'Topic') }}
+        {% endif %}
+    {% endif %}
+
+    <script>
+        // Click a column header to sort its table; click again to reverse
+        document.querySelectorAll('table.sortable').forEach((table) => {
+            table.querySelectorAll('th').forEach((th, col) => {
+                let descending = true;
+                th.addEventListener('click', () => {
+                    const rows = [...table.tBodies[0].rows];
+                    const key = (row) => th.dataset.sort === 'number'
+                        ? parseFloat(row.cells[col].dataset.value) : row.cells[col].textContent.trim();
+                    rows.sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * (descending ? -1 : 1));
+                    descending = !descending;
+                    rows.forEach((row) => table.tBodies[0].appendChild(row));
+                });
+            });
+        });
+    </script>
+{% endblock content %}

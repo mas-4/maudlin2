@@ -46,11 +46,11 @@ class TopicsPage:
         self.template.write(self.context)
 
     def generate_topic_wordcloud(self, topic: Topic):
-        headlines = self.dh.topic_df[self.dh.topic_df['topic'] == topic.name]['headline']
-        if not headlines.any():
+        headlines = self.dh.topic_df[self.dh.topic_df['topic'] == topic.name]
+        if headlines.empty:
             return
         topic.wordcloud = f"{topic.name.replace(' ', '_')}_wordcloud.png"
-        generate_wordcloud(headlines.tolist(),
+        generate_wordcloud(headlines.rename(columns={'headline': 'title'})[['title', 'agency', 'bias']],
                            os.path.join(Config.build, topic.wordcloud),  # noqa added wordcloud attr above
                            pipeline=PIPELINE)  # noqa added wordcloud attr
 

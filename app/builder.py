@@ -1,4 +1,4 @@
-from app.site.common import copy_assets, clear_build
+from app.site.common import copy_assets, clear_build, stamp_build
 from app.site.data import DataHandler
 from app.site.deploy import publish_to_netlify
 from app.site.graphing import Plots
@@ -7,6 +7,7 @@ from app.site.page_headlines import HeadlinesPage
 from app.site.page_topics import TopicsPage
 from app.site.page_polling import PollingPage
 from app.site.page_edits import EditsPage
+from app.site.page_emotions import EmotionsPage
 from app.utils.config import Config
 from app.utils.logger import get_logger
 
@@ -25,10 +26,11 @@ def gen_plots(dh: DataHandler):
 
 
 def build():
+    stamp_build()
     dh: DataHandler = DataHandler()
     clear_build()
     gen_plots(dh)
-    pages = [HeadlinesPage, AgenciesPage, TopicsPage, PollingPage, EditsPage]
+    pages = [HeadlinesPage, AgenciesPage, TopicsPage, PollingPage, EditsPage, EmotionsPage]
     for page in pages:
         page(dh).generate()
     copy_assets()

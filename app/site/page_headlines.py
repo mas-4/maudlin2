@@ -1,17 +1,20 @@
+import json
 import os
 import re
 from datetime import datetime as dt
 
 import numpy as np
+import pandas as pd
 
 from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed
-from app.analysis.newsiness import get_newsiness
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import textnorm
 from app.analysis.pipelines import Pipelines, prepare
 from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
+from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
+from app.site.wordcloudgen import cloud_words
 from app.site.graphing import bias_colors, bias_ink
 from app.utils import Config, Country, get_logger
 from app.registry import Scrapers
@@ -25,6 +28,18 @@ BREAKING_MINUTES = 90
 # their headline: 3 rewrites is a lot for a 6-outlet story and ordinary for a 38-outlet one
 CHURN_OUTLETS = 3
 CHURN_SHARE = 0.15
+STORY_EMOTION_SHARE = 0.3  # of the story's averaged emotion votes
+# Outlet chips on story cards: new ones get a sparkle, dropped ones fade over a day down to a ghost
+FRESH_HOURS = 2
+GHOST_FADE_HOURS = 12
+GHOST_OPACITY = 0.35
+# Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
+NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]
+NEWS_DAY_LABELS = {
+    'big': {'emoji': '🚨', 'label': 'Big news day!'},
+    'normal': {'emoji': '📰', 'label': 'Just another news day'},
+    'slow': {'emoji': '🌴🐢', 'label': 'Slow news day…'},
+}
 # e.g. "Oct 3, 9:41 AM ET"; Windows' strftime doesn't support the no-padding dash
 TOOLTIP_TIME = '%b %#d, %#I:%M %p ET' if os.name == 'nt' else '%b %-d, %-I:%M %p ET'
 # Cosine between a trend and a story's mean headline embedding. On a day of data true matches scored 0.72-0.86
@@ -59,6 +74,40 @@ def meter(value: float, scale: float, negative: str, positive: str) -> dict:
 def _name(text: str) -> str:
     """A trend's name for exact matching: no parenthetical, hyphens as spaces, lowercase."""
     return re.sub(r'\s+', ' ', re.sub(r'\(.*?\)', '', text).replace('-', ' ')).strip().lower()
+
+
+def age_text(hours: float) -> str:
+    if hours < 1:
+        return f'{max(1, round(hours * 60))} min'
+    if hours < 48:
+        return f'{round(hours)} hour{"" if round(hours) == 1 else "s"}'
+    return f'{round(hours / 24)} days'
+
+
+TABLE_FILE = 'headlines-table.json'
+
+# Sort buttons over each card's outlet chips; the page script reorders chips by their data attributes
+SORT_BAR = ('<div class="chip-sort" role="group" aria-label="Sort outlets">sort: '
+            '<button data-key="bias" class="active">bias</button>'
+            '<button data-key="first">first seen</button>'
+            '<button data-key="live">still showing</button>'
+            '<button data-key="mood">mood</button>'
+            '<button data-key="framing">framing</button>'
+            '<span class="sort-legend">outlets left to right, colored by lean</span></div>')
+
+
+def dominant_emotion(group) -> dict:
+    """The story's strongest feeling other than neutral, ranked-choice style (each headline's vote split across its
+    ranked emotions, averaged over the story), when it carries at least STORY_EMOTION_SHARE of the feeling."""
+    votes = [emotion_weights(r) for r in group.get('emotion_ranks', pd.Series(dtype=object)) if isinstance(r, str)]
+    if not votes:
+        return {}
+    soft = pd.DataFrame(votes).reindex(columns=EMOTIONS, fill_value=0).fillna(0).mean()
+    feelings = soft.drop('neutral')
+    if feelings.max() < STORY_EMOTION_SHARE:
+        return {}
+    emotion = feelings.idxmax()
+    return {'emoji': EMOTION_EMOJI[emotion], 'name': emotion, 'share': round(100 * feelings.max())}
 
 
 def match_trends_to_stories(df, trends) -> dict[str, int]:
@@ -118,44 +167,41 @@ class HeadlinesPage:
 
     def generate(self):
         logger.info("Generating headlines page...")
+        cloud = self.dh.main_headline_df[['title', 'agency', 'bias', 'url', 'afinn', 'vader_compound',
+                                          'event_score', 'emotion_ranks']].copy()
+        cloud['sentiment'] = headline_sentiment(cloud)
+        self.context['cloud_words'] = cloud_words(cloud)
+        self.context['bias_colors'] = bias_colors
+        self.context['bias_ink'] = bias_ink
         df = self.filter_score_sort(self.dh.main_headline_df.copy())
-        self.analyze_newsiness(self.dh.main_headline_df.copy())
-        self.cluster_and_summarize(df.copy())
-        table_df = self.process_headlines(df)
-        # drop all rows with nan
-        table_df.dropna(inplace=True)
-        self.context['tabledata'] = table_df.values.tolist()
+        # Stories draw on the last day of headlines, keeping the raw times the cards need before they're formatted
+        stories = self.dh.story_headline_df.copy()
+        stories['first_seen'], stories['last_seen'] = stories['first_accessed'], stories['last_accessed']
+        self.cluster_and_summarize(self.filter_score_sort(stories))
+        # The table's rows ship as their own file, fetched when the reader scrolls near the table: there are
+        # thousands, and inline they'd make the front page several megabytes
+        with open(os.path.join(Config.build, TABLE_FILE), 'w') as f:
+            json.dump(self.table_rows(df), f, separators=(',', ':'))
+        self.context['table_file'] = TABLE_FILE
         self.newsletter.write(self.context)
         self.template.write(self.context)
         logger.info("...done")
 
-    def analyze_newsiness(self, df):
-        # Filter df for us or exempted foreign media
-        df = df[(df['country'] == Country.us.value) | (df['agency'].isin(Config.exempted_foreign_media))]
-        newsiness = get_newsiness(df['title'].tolist())
-        # Floor the current time to the previous half hour
-        halfhour = dt.now().replace(minute=30 if dt.now().minute >= 30 else 0, second=0, microsecond=0)
-        halfhour = halfhour.hour * 60 + halfhour.minute
-        weekday = dt.today().strftime("%A")
-        ndf = self.dh.newsiness_df
-        condition = (ndf['halfhour'] == halfhour) & (ndf['day'] == weekday)
-        try:
-            std = ndf[condition]['std'].values[0]
-            mean = ndf[condition]['mean'].values[0]
-            zscore = (newsiness - mean) / std
+    def news_day(self, df, active_outlets: int):
+        """How big a news day it is: the share of active outlets carrying the day's biggest story. One story
+        everyone is covering is what makes a big news day; this needs no historical baseline to compare against."""
+        if df.empty or not active_outlets:
+            self.context['newsday'] = None
+            return
+        outlets = df.groupby('cluster')['agency'].nunique()
+        top = outlets.idxmax()
+        share = outlets[top] / active_outlets
+        kind = next(k for k, threshold in NEWS_DAY_TIERS if share >= threshold)
+        self.context['newsday'] = {
+            **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * share), 'outlets': int(outlets[top]),
+            'active': active_outlets, 'story': self.context['titles'][top], 'cluster': int(top),
+        }
 
-            if zscore > 1.5:
-                slowday = f'<h1 class="busy newsday">🚨🗞️🚨 BIG NEWS DAY! 🚨🗞️🚨</h1>'
-            elif zscore < 0.25:
-                slowday = f'<h1 class="slow newsday">🌴🐢🍹 slow news day... 🍹🐢🌴</h1>'
-            else:
-                slowday = f'<h1 class="average newsday">📰🥸📰 Just Another Day of News. 📰🥸📰</h1>'
-            slowday += f'<h3 style="text-align: center;">Newsiness score: {newsiness:.2f} (z-score: {zscore:.2f})</h3>'
-        except IndexError:
-            logger.warning("IndexError in analyze_newsiness, hour %i weekday %s", halfhour, weekday)
-            slowday = '<h1 class="newsday">No idea how busy today is in the news. 🤷🤷🤷 (system error 🤖🔥🤖)</h1>'
-
-        self.context['slowday'] = slowday
 
     def cluster_and_summarize(self, df):
         n_samples_per_cluster = 6
@@ -173,6 +219,7 @@ class HeadlinesPage:
 
         # Partisan lean is measured against the outlets in today's pool, which lean one way themselves
         baseline_bias = df.drop_duplicates('agency')['bias'].mean()
+        active_outlets = df['agency'].nunique()
         logger.info("Clustering %i headlines", len(df))
         df = df.reset_index(drop=True)  # cluster ids are positional
         clusters = form_clusters(prepare_embedding_cosine(df['title']), n_samples_per_cluster, threshold)
@@ -180,6 +227,8 @@ class HeadlinesPage:
 
         df = label_clusters(df, clusters)
         df = df[df['cluster'] != -1].copy()
+        # One headline per outlet per story: the one still on its front page if there is one
+        df = df.sort_values('live', ascending=False, kind='stable')
         df.drop_duplicates(subset=['cluster', 'agency'], keep='first', inplace=True)
         df['text_length'] = df['title'].str.len()
         df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
@@ -196,12 +245,14 @@ class HeadlinesPage:
             group = df[df['cluster'] == cluster['cluster']]
             cluster['lean'] = meter(group['bias'].mean() - baseline_bias, LEAN_RANGE, 'L', 'R')
             cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
+            cluster['emotion'] = dominant_emotion(group)
 
         # clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
         clusters_list.sort(key=lambda x: x['first'])
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
+        self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
         """Our own trending list, ranked by how many outlets carry each story, next to what's trending on social
@@ -230,6 +281,7 @@ class HeadlinesPage:
         # where many outlets are rewriting
         edits, _ = find_edits()
         rewritten = set(edits['url']) if not edits.empty else set()
+        now = pd.Timestamp.now(tz='US/Eastern')
         agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
@@ -247,22 +299,47 @@ class HeadlinesPage:
             if cluster['rewrites'] >= max(CHURN_OUTLETS, CHURN_SHARE * len(cluster['data'])):
                 hrefs[-1] += (f'<a class="churn" href="edits.html" title="Outlets are still changing how they headline'
                               f' this story">✏️ High headline churn: {cluster["rewrites"]} outlets changed theirs</a>')
-            last_bias = -3
+            # Still-showing count and how long ago outlets first ran it
+            live = sum(bool(a['live']) for a in cluster['data'])
+            ages = sorted((now - a['first_seen']).total_seconds() / 3600 for a in cluster['data'])
+            median_age = ages[len(ages) // 2]
+            hrefs[-1] += (f'<p class="story-status">{live} of {len(cluster["data"])} outlets still showing it'
+                          f' · typically first seen {age_text(median_age)} ago</p>')
+            hrefs.append(SORT_BAR)
+            chips = []
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
-                if a['bias'] != last_bias:
-                    hrefs.append(f'<br>')
-                    last_bias = a['bias']
                 smiley = '😐' if a['sentiment'] == 0 else '😊' if a['sentiment'] > 0 else '😠'
                 bias = a['bias'] + 3
                 first_seen = a['appearance'].strftime(TOOLTIP_TIME)
                 edited = a['url'] in rewritten
-                note = ' · its headline for this article has changed since first seen' if edited else ''
-                hrefs.append(
-                    f'<a data-tooltip-color="{bias_colors[bias]}" data-tooltip-ink="{bias_ink[bias]}" class="storylink"'
-                    f' style="background-color: {bias_colors[bias]}; color: {bias_ink[bias]}"'
+                hours_live = (now - a['first_seen']).total_seconds() / 3600
+                hours_gone = (now - a['last_seen']).total_seconds() / 3600
+                notes = []
+                if edited:
+                    notes.append('its headline for this article has changed since first seen')
+                if a['live'] and hours_live < FRESH_HOURS:
+                    state, badge, opacity = 'fresh', ' ✨', 1.0
+                    notes.append(f'new on its front page in the last {FRESH_HOURS} hours')
+                elif a['live']:
+                    state, badge, opacity = 'live', '', 1.0
+                else:
+                    # Fades the longer it's been gone, down to a ghost
+                    state, badge = 'gone', ' 👻'
+                    opacity = max(GHOST_OPACITY, 1 - hours_gone / GHOST_FADE_HOURS)
+                    notes.append(f'dropped off its front page {age_text(hours_gone)} ago')
+                note = ''.join(f' · {n}' for n in notes)
+                chips.append(
+                    f'<a data-tooltip-color="{bias_colors[bias]}" data-tooltip-ink="{bias_ink[bias]}"'
+                    f' class="storylink chip-{state}"'
+                    f' style="background-color: {bias_colors[bias]}; color: {bias_ink[bias]}; opacity: {opacity:.2f}"'
+                    f' data-bias="{a["bias"]}" data-first="{a["first_seen"].timestamp():.0f}"'
+                    f' data-last="{a["last_seen"].timestamp():.0f}"'
+                    f' data-live="{int(bool(a["live"]))}" data-mood="{a["sentiment"]:.3f}"'
+                    f' data-framing="{a["deviation"]:.3f}"'
                     f' title="{a["title"]} (first seen {first_seen}) · {a["deviation"]:+.2f} vs. other outlets{note}"'
-                    f' href="{a["url"]}">{a["agency"]} {smiley}{" ✏️" if edited else ""}</a>'
+                    f' href="{a["url"]}">{a["agency"]} {smiley}{" ✏️" if edited else ""}{badge}</a>'
                 )
+            hrefs.append(f'<div class="chips">{" ".join(chips)}</div>')
             agency_lists[cluster['cluster']] = ' '.join(hrefs)
         self.context['agency_lists'] = agency_lists
 
@@ -279,6 +356,37 @@ class HeadlinesPage:
             titles[key] = center['title']
         self.context['summaries'] = summaries
         self.context['titles'] = titles
+
+    def table_rows(self, df) -> list[dict]:
+        """Every headline of the day for the table at the bottom of the page, newest first, with what we know
+        about it: lean, mood, loaded wording, ranked feelings, and the story card it belongs to, if any. Only what's on
+        a front page right now.
+
+        Buzz is the old "xkeyscore" (calculate_xkeyscore): how many of the day's most common words and phrases a
+        headline uses, i.e. how much it's on the same beat as everyone else. Shown as a percentile of the day's
+        headlines, since the raw count grows with headline length and means little by itself."""
+        stories = {a['url']: c['cluster'] for c in self.context.get('clusters', []) for a in c['data']}
+        sizes = {c['cluster']: len(c['data']) for c in self.context.get('clusters', [])}
+        summaries = self.context.get('summaries', {})
+        df = df.assign(buzz=(100 * df['score'].rank(pct=True)).round().astype(int))
+        df = df[df['live']]
+        raw_seen = self.dh.main_headline_df.groupby('url')['first_accessed'].min()
+        rows = []
+        for r in df.sort_values('buzz', ascending=False).itertuples():
+            ranks = r.emotion_ranks if isinstance(r.emotion_ranks, str) else ''
+            topic = r.topic if isinstance(r.topic, str) else ''
+            rows.append({
+                'agency': r.agency, 'bias': int(r.bias), 'url': r.url, 'title': r.title.strip(),
+                'seen': int(raw_seen[r.url].timestamp()) if r.url in raw_seen else None, 'buzz': int(r.buzz),
+                'topic': topic, 'topic_url': f"{topic.replace(' ', '_')}.html" if topic else '',
+                'mood': None if pd.isna(r.event_score) else int(r.event_score),
+                'loaded': None if pd.isna(r.loaded_score) else int(r.loaded_score),
+                'feelings': [[EMOTION_EMOJI[e], e] for e in ranks.split(',') if e in EMOTION_EMOJI and e != 'neutral'],
+                'story': int(stories[r.url]) if r.url in stories else None,
+                'story_title': summaries.get(stories[r.url], '') if r.url in stories else '',
+                'story_size': sizes.get(stories[r.url], 0) if r.url in stories else 0,
+            })
+        return rows
 
     @staticmethod
     def process_headlines(df):

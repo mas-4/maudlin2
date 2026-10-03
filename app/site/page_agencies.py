@@ -32,7 +32,7 @@ class AgenciesPage:
         self.context['framing'] = Plots.framing(framing_scores())
         self.context['loaded_language'] = Plots.loaded_language(loaded_language())
         logger.info("Generating current headlines wordcloud...")
-        generate_wordcloud(self.data.current_processed_headlines,
+        generate_wordcloud(self.data.main_headline_df[['title', 'agency', 'bias']],
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)
         self.template.write(self.context)
         logger.info("...done")

@@ -1,8 +1,10 @@
 import os
 import shutil
+from datetime import datetime as dt
 
 import mistune
 import numpy as np
+import pytz
 from jinja2 import Environment, FileSystemLoader
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -91,7 +93,19 @@ j2env.globals['bias'] = Bias.to_dict()
 j2env.globals['credibility'] = Credibility.to_dict()
 j2env.globals['now'] = Constants.TimeConstants.now_func
 
-j2env.globals['nav'] = j2env.get_template('nav.html').render()
+
+
+def stamp_build():
+    """Record when this build ran and re-render the nav bar, which shows it. Called as each build starts, not at
+    import, because a run spends several minutes scraping before it builds."""
+    now = dt.now(pytz.UTC)
+    j2env.globals['built_at'] = now.isoformat()
+    j2env.globals['built_at_text'] = now.astimezone(Constants.TimeConstants.timezone).strftime(
+        '%#I:%M %p ET' if os.name == 'nt' else '%-I:%M %p ET')
+    j2env.globals['nav'] = j2env.get_template('nav.html').render()
+
+
+stamp_build()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
 j2env.globals['enumerate'] = enumerate
 j2env.globals['FileNames'] = PathHandler.FileNames
