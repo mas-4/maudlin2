@@ -10,7 +10,7 @@ from sqlalchemy import func
 
 from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
-from app.analysis import textnorm
+from app.analysis import llm, textnorm
 from app.analysis.pipelines import Pipelines, prepare
 from app.site.common import calculate_xkeyscore, chip_style, copy_assets, outlet_icon, TemplateHandler
 from app.models import Session, Headline
@@ -42,7 +42,6 @@ NEWS_DAY_FRESH_HOURS = 12
 BRIGHT_COUNT = 6  # items in the bright side box
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
 FAST_BREAK = 8  # outlets within that window to count as a fast break
-BRIGHT_MOOD = 0.2  # a story's average mood (-1 grim to 1 upbeat) to count as good news
 NEWS_DAY_HALF_LIFE_HOURS = 24
 NEWS_DAY_LABELS = {
     'big': {'emoji': '🚨', 'label': 'Big news day!'},
@@ -103,6 +102,25 @@ def break_speed(headlines: list[dict]) -> Optional[int]:
         seen = pd.Timestamp(h['first_seen'])
         by_outlet[h['agency']] = min(by_outlet.get(h['agency'], seen), seen)
     return sum(t - starts[0] <= td(minutes=BREAK_WINDOW_MINUTES) for t in by_outlet.values())
+
+
+GOOD_NEWS_PROMPT = """Would most readers, across the political spectrum, see this headline as genuinely good news: \
+something to feel glad or hopeful about? Answer false when it's mainly good for a company, a party or one side; when \
+people disagree about it (corporate investments, expansions and deals, new government spending or payments, policy \
+moves); or when it's a business or market story. Rescues, recoveries, discoveries, sports wins, kindness, records and \
+progress on shared problems are the kind of thing that counts.
+
+Headline: {title}"""
+GOOD_NEWS_SCHEMA = {"type": "object", "properties": {"good_news": {"type": "boolean"}}, "required": ["good_news"]}
+_good_news: dict[str, bool] = {}
+
+
+def widely_good(title: str) -> bool:
+    """The bright side's last check, asked of the language model. Without one, everything passes."""
+    if title not in _good_news:
+        answer = llm.complete_json(GOOD_NEWS_PROMPT.format(title=title), GOOD_NEWS_SCHEMA, max_tokens=16)
+        _good_news[title] = True if answer is None else bool(answer.get('good_news'))
+    return _good_news[title]
 
 
 def weather(mood: float) -> tuple[str, str]:
@@ -360,9 +378,12 @@ class HeadlinesPage:
     def bright_side(self, clusters_list):
         """Good news, for a breather: current stories whose headlines run upbeat, or whose strongest feeling is hope
         or joy, then (to fill the box) the most upbeat individual headlines on front pages right now."""
-        stories = [c for c in clusters_list
-                   if c['mood']['value'] >= BRIGHT_MOOD or (c['emotion'] and c['emotion']['name'] in ('hope', 'joy'))]
+        # Upbeat isn't enough on its own: the mood score rates the event for the people directly involved, so a
+        # company's billion-dollar data center investment reads as good news. Hope or joy is what readers feel.
+        hopeful = lambda c: c['emotion'] and c['emotion']['name'] in ('hope', 'joy')
+        stories = [c for c in clusters_list if hopeful(c) and c['mood']['value'] >= 0]
         stories.sort(key=lambda c: -c['mood']['value'])
+        stories = [c for c in stories if widely_good(self.context['titles'][c['cluster']])]
         items = [{'kind': 'story', 'cluster': int(c['cluster']), 'title': self.context['titles'][c['cluster']],
                   'outlets': len({a['agency'] for a in c['data']}),
                   'emoji': c['emotion']['emoji'] if c['emotion'] and c['emotion']['name'] in ('hope', 'joy')
@@ -371,14 +392,14 @@ class HeadlinesPage:
         if len(items) < BRIGHT_COUNT:
             df = self.dh.main_headline_df
             ranks = df['emotion_ranks'].fillna('')
-            upbeat = df[df['live'] & ((df['event_score'] >= 2) | ((df['event_score'] >= 1) & ranks.str.match(r'(hope|joy)')))]
+            upbeat = df[df['live'] & (df['event_score'] >= 1) & ranks.str.match(r'(hope|joy)')]
             upbeat = upbeat.assign(top=ranks[upbeat.index].str.split(',').str[0]).sort_values(
                 ['event_score', 'first_accessed'], ascending=False).drop_duplicates('title')
             in_stories = {a['url'] for c in stories for a in c['data']}
             for r in upbeat.itertuples():
                 if len(items) >= BRIGHT_COUNT:
                     break
-                if r.url in in_stories:
+                if r.url in in_stories or not widely_good(r.title):
                     continue
                 items.append({'kind': 'headline', 'title': r.title, 'url': r.url, 'agency': r.agency,
                               'bias': int(r.bias), 'emoji': EMOTION_EMOJI.get(r.top, '☀️') if r.top in ('hope', 'joy') else '☀️'})
