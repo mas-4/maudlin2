@@ -114,6 +114,17 @@ from app.scrapers.usatoday import USAToday
 from app.scrapers.vanityfair import VanityFair
 from app.scrapers.voa import VOA
 from app.scrapers.vox import Vox
+from app.scrapers.talkingpointsmemo import TalkingPointsMemo
+from app.scrapers.puck import Puck
+from app.scrapers.washingtonsun import WashingtonSun
+from app.scrapers.lever import Lever
+from app.scrapers.mediaite import Mediaite
+from app.scrapers.straightarrownews import StraightArrowNews
+from app.scrapers.unherd import UnHerd
+from app.scrapers.justthenews import JustTheNews
+from app.scrapers.dailysignal import DailySignal
+from app.scrapers.americanconservative import AmericanConservative
+from app.scrapers.washingtonreporter import WashingtonReporter
 from app.scrapers.wallstreetjournal import WallStreetJournal
 from app.scrapers.washingtonexaminer import WashingtonExaminer
 from app.scrapers.washingtonfreebeacon import WashingtonFreeBeacon
@@ -244,6 +255,18 @@ Scrapers = [
     VOA,
     VanityFair,
     Vox,
+    # Added 2026-10-03 (see issue #140)
+    TalkingPointsMemo,
+    Puck,
+    WashingtonSun,
+    Lever,
+    Mediaite,
+    StraightArrowNews,
+    UnHerd,
+    JustTheNews,
+    DailySignal,
+    AmericanConservative,
+    WashingtonReporter,
     WallStreetJournal,
     WashingtonExaminer,
     WashingtonFreeBeacon,
