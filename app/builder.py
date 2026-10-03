@@ -4,8 +4,6 @@ from app.site.deploy import publish_to_netlify
 from app.site.graphing import Plots
 from app.site.page_agencies import AgenciesPage
 from app.site.page_headlines import HeadlinesPage
-from app.site.page_topics import TopicsPage
-from app.site.page_polling import PollingPage
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.utils.config import Config
@@ -16,13 +14,9 @@ logger = get_logger(__name__)
 
 def gen_plots(dh: DataHandler):
     Plots.sentiment_graphs(dh.all_sentiment_data)
-    Plots.topic_history_bar(dh.topic_df.copy())
-    Plots.topic_history_stacked_area(dh.topic_df.copy())
-    Plots.topic_today_bubble(dh.topic_df.copy())
-    Plots.topic_today_bar(dh.topic_df.copy())
-    Plots.individual_topic(dh.topic_df.copy(), dh.topics)
     Plots.agency_distribution(dh.agency_data.copy())
-    Plots.mentions_graph(dh.election_data.copy())
+    # The election topics and election data pages are off for now (their events predate our data); their plots
+    # and pages come back by restoring them here and in `pages` below. Polls are still fetched each run.
 
 
 def build():
@@ -30,7 +24,7 @@ def build():
     dh: DataHandler = DataHandler()
     clear_build()
     gen_plots(dh)
-    pages = [HeadlinesPage, AgenciesPage, TopicsPage, PollingPage, EditsPage, EmotionsPage]
+    pages = [HeadlinesPage, AgenciesPage, EditsPage, EmotionsPage]
     for page in pages:
         page(dh).generate()
     copy_assets()

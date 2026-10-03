@@ -54,10 +54,6 @@
             column to sort. Outlets need {{ min_outlet_headlines }} or more headlines to appear.</p>
         {{ matrix(outlets, 'Outlet', chips=True) }}
 
-        {% if topics %}
-            <h3>By topic</h3>
-            {{ matrix(topics, 'Topic') }}
-        {% endif %}
     {% endif %}
 
     <script>

@@ -1241,3 +1241,7 @@ figure.wordcloud figcaption {
 #trending, #current-stories, #every-headline {
     scroll-margin-top: 1em;
 }
+
+.story-sort {
+    margin: -0.2em 0 1em;
+}

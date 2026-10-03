@@ -34,7 +34,9 @@ FRESH_HOURS = 2
 GHOST_FADE_HOURS = 12
 GHOST_OPACITY = 0.35
 # Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
-NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]
+NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
+NEWS_DAY_FRESH_HOURS = 12
+NEWS_DAY_HALF_LIFE_HOURS = 24
 NEWS_DAY_LABELS = {
     'big': {'emoji': '🚨', 'label': 'Big news day!'},
     'normal': {'emoji': '📰', 'label': 'Just another news day'},
@@ -188,20 +190,35 @@ class HeadlinesPage:
         logger.info("...done")
 
     def news_day(self, df, active_outlets: int):
-        """How big a news day it is: the share of active outlets carrying the day's biggest story. One story
-        everyone is covering is what makes a big news day; this needs no historical baseline to compare against."""
-        if df.empty or not active_outlets:
+        """How big a news day it is: the share of outlets carrying a story on their front page right now, for the
+        story where that's highest once age is weighed in. One fresh story everyone is covering makes a big news day;
+        a story stays at full weight for NEWS_DAY_FRESH_HOURS from its first sighting, then halves every
+        NEWS_DAY_HALF_LIFE_HOURS, so yesterday's blockbuster that's still on every front page fades out. Needs no
+        historical baseline. (Ages count from our own first sighting, so stories already running when the database
+        started look younger than they are.)"""
+        live = df[df['live']]
+        live_outlets = live['agency'].nunique()
+        if live.empty or not live_outlets:
             self.context['newsday'] = None
             return
-        outlets = df.groupby('cluster')['agency'].nunique()
-        top = outlets.idxmax()
-        share = outlets[top] / active_outlets
-        kind = next(k for k, threshold in NEWS_DAY_TIERS if share >= threshold)
+        # A story is as old as its oldest headline in the window; outlets keep posting fresh articles on a running
+        # story, so a typical article's age would make it look new
+        ages = df.groupby('cluster')['howlong'].max()
+        stories = live.groupby('cluster').agg(outlets=('agency', 'nunique'))
+        stories['age'] = ages.reindex(stories.index)
+        stories['share'] = stories['outlets'] / live_outlets
+        hours = stories['age'] / 3600
+        stories['score'] = stories['share'] * 0.5 ** ((hours - NEWS_DAY_FRESH_HOURS).clip(lower=0) / NEWS_DAY_HALF_LIFE_HOURS)
+        top = stories['score'].idxmax()
+        score = stories.loc[top, 'score']
+        kind = next(k for k, threshold in NEWS_DAY_TIERS if score >= threshold)
+        logger.info("News day: %s (top story on %.0f%% of outlets, %.0fh old, score %.2f)",
+                    kind, 100 * stories.loc[top, 'share'], hours[top], score)
         self.context['newsday'] = {
-            **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * share), 'outlets': int(outlets[top]),
-            'active': active_outlets, 'story': self.context['titles'][top], 'cluster': int(top),
+            **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * stories.loc[top, 'share']),
+            'outlets': int(stories.loc[top, 'outlets']), 'active': live_outlets,
+            'story': self.context['titles'][top], 'cluster': int(top), 'age': age_text(hours[top]),
         }
-
 
     def cluster_and_summarize(self, df):
         n_samples_per_cluster = 6
@@ -246,6 +263,8 @@ class HeadlinesPage:
             cluster['lean'] = meter(group['bias'].mean() - baseline_bias, LEAN_RANGE, 'L', 'R')
             cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
             cluster['emotion'] = dominant_emotion(group)
+            cluster['outlets'] = int(group['agency'].nunique())
+            cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0
 
         # clusters_list.sort(key=lambda x: len(x['data']), reverse=True)
         clusters_list.sort(key=lambda x: x['first'])

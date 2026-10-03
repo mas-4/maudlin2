@@ -4,7 +4,7 @@
     <figure class="wordcloud">
         {% if newsday %}
             <a class="newsday-sticker {{ newsday.kind }}" href="#story-{{ newsday.cluster }}"
-               title="The biggest story is on {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages">
+               title="On {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages right now; first seen {{ newsday.age }} ago">
                 <span class="newsday-label">{{ newsday.emoji }} {{ newsday.label }}</span>
                 <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
             </a>
@@ -380,9 +380,19 @@
     </script>
 
     <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
+    <div class="table-filters story-sort" role="group" aria-label="Sort stories">
+        <span>sort:</span>
+        <button data-sort="newest" class="active" title="Most recently broken first">✨ newest</button>
+        <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
+        <button data-sort="spiciest" title="Most loaded wording first">🌶️ spiciest</button>
+        <button data-sort="lopsided" title="Coverage leaning hardest to one side first">⚖️ most one-sided</button>
+        <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
+    </div>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
-            <div class="story" id="story-{{ cluster['cluster'] }}">
+            <div class="story" id="story-{{ cluster['cluster'] }}" data-age="{{ cluster['first']|round|int }}"
+                 data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
+                 data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}">
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <div class="meters">
                     <div class="meter" title="Average bias of the outlets covering this story, relative to all outlets scraped today">
@@ -404,16 +414,27 @@
 
     <script>
         // Pack the story cards into columns, each card dropping into the shortest one. Reading order stays roughly
-        // left to right, top to bottom, and cards keep their ids so #story links still land.
+        // left to right, top to bottom, and cards keep their ids so #story links still land. The sort buttons above
+        // reorder the cards and pack them again.
         (function () {
             const box = document.querySelector('.stories');
             if (!box) return;
-            const cards = [...box.querySelectorAll('.story')];
+            let cards = [...box.querySelectorAll('.story')];
+            const num = (card, key) => parseFloat(card.dataset[key]);
+            const SORTS = {
+                newest: (a, b) => num(a, 'age') - num(b, 'age'),
+                biggest: (a, b) => num(b, 'size') - num(a, 'size') || num(a, 'age') - num(b, 'age'),
+                spiciest: (a, b) => num(b, 'spice') - num(a, 'spice'),
+                lopsided: (a, b) => num(b, 'lean') - num(a, 'lean'),
+                grimmest: (a, b) => num(a, 'mood') - num(b, 'mood'),
+            };
             let count = 0;
-            function layout() {
+            function layout(force) {
                 const n = innerWidth > 1100 ? 3 : innerWidth > 700 ? 2 : 1;
-                if (n === count) return;
+                if (n === count && !force) return;
                 count = n;
+                // Hold the height while repacking, so the page doesn't jump
+                box.style.minHeight = box.offsetHeight + 'px';
                 box.classList.add('masonry');
                 box.replaceChildren();
                 const columns = Array.from({length: n}, () => {
@@ -424,9 +445,17 @@
                 for (const card of cards) {
                     columns.reduce((a, b) => b.offsetHeight < a.offsetHeight ? b : a).appendChild(card);
                 }
+                box.style.minHeight = '';
             }
             layout();
-            addEventListener('resize', layout);
+            addEventListener('resize', () => layout());
+            document.querySelector('.story-sort').addEventListener('click', (ev) => {
+                const button = ev.target.closest('button');
+                if (!button) return;
+                cards = [...cards].sort(SORTS[button.dataset.sort]);
+                document.querySelectorAll('.story-sort button').forEach((b) => b.classList.toggle('active', b === button));
+                layout(true);
+            });
         })();
     </script>
 
@@ -575,9 +604,14 @@
             // container element itself, so clearing and reusing one leaves the old table in charge
             let grid;
             const freshGrid = () => {
+                // Hold the old table's height while the new one renders, or the page shrinks and jumps up
+                const wrapper = document.getElementById('wrapper');
+                wrapper.style.minHeight = wrapper.offsetHeight + 'px';
                 const holder = document.createElement('div');
-                document.getElementById('wrapper').replaceChildren(holder);
+                wrapper.replaceChildren(holder);
                 grid = new gridjs.Grid(config()).render(holder);
+                grid.on('ready', () => { wrapper.style.minHeight = ''; });
+                setTimeout(() => { wrapper.style.minHeight = ''; }, 2000);  // in case 'ready' doesn't come
             };
             freshGrid();
 
