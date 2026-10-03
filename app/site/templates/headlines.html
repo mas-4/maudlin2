@@ -76,7 +76,6 @@
         // (d3-cloud's origin hook) and let the packing find it a free spot nearby, so words stay tilted and
         // interleaved but drift in order: biggest toward the top left, left-leaning toward the left, and so on.
         let cloudMode = 'splay';
-        const TILTS = {};  // each word keeps its splay tilt in every layout
         // Every sort runs from the top left to the bottom right: a word starts its search along the diagonal at its
         // rank, spread at random across it
         const diagonal = (t, random) => {
@@ -113,18 +112,21 @@
         }
 
         function layoutCloud(mode, geo) {
-            // A fixed seed keeps each layout the same on every load
-            let seed = 20261003;
+            // A fixed seed per layout keeps each the same on every load, and gives each sort its own tilts
+            let seed = 20261003 + [...mode].reduce((n, c) => n * 31 + c.charCodeAt(0), 0) % 100000;
             const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-            // Every word tilts, never flat: 12 to 60 degrees either way, and about one in seven turned upside down
-            const tilt = () => random() < 0.15 ? 180 + (random() * 2 - 1) * 30
-                : (random() < 0.5 ? -1 : 1) * (12 + random() * 48);
+            // Every word tilts, never flat, leaning toward vertical (20 to 85 degrees either way, more often steep),
+            // and about one in five turned upside down
+            const tilt = () => {
+                const steep = 20 + 65 * Math.sqrt(random());
+                const angle = (random() < 0.5 ? -1 : 1) * steep;
+                return random() < 0.2 ? angle + 180 : angle;
+            };
             const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${w.text}\u2009${w.emoji}` : w.text,
                                              px: geo.fontSize(w.outlets)}));
             const sort = CLOUD_SORTS[mode];
-            if (sort) {
-                [...words].sort(sort.order).forEach((d, i, all) => { d.rank = i / Math.max(1, all.length - 1); });
-            }
+            const order = sort ? sort.order : (a, b) => b.outlets - a.outlets;
+            [...words].sort(order).forEach((d, i, all) => { d.rank = i / Math.max(1, all.length - 1); });
             return new Promise((resolve) => {
                 const layout = d3.layout.cloud()
                     .obstacles(geo.obstacles)
@@ -135,7 +137,7 @@
                     .fontWeight('bold')
                     .fontSize((d) => d.px)
                     .padding(Math.max(4, Math.round(geo.scale * 0.1)))
-                    .rotate((d) => TILTS[d.word] ?? tilt())
+                    .rotate(() => tilt())
                     .random(random)
                     .on('end', resolve);
                 if (sort) {
@@ -144,6 +146,15 @@
                         return [x * geo.width, y * geo.height];
                     });
                     layout.obstacles([...geo.obstacles, ...endObstacles()]);
+                } else {
+                    // The splay: the biggest words start near the middle; the rest start anywhere, so the corners
+                    // (and the space under the sticker) fill in instead of the cloud thinning out toward its edges
+                    layout.origin((d) => {
+                        const middle = d.rank < 0.25;
+                        const x = middle ? 0.3 + 0.4 * random() : 0.02 + 0.96 * random();
+                        const y = middle ? 0.3 + 0.4 * random() : 0.04 + 0.92 * random();
+                        return [x * geo.width, y * geo.height];
+                    });
                 }
                 layout.start();
             });
@@ -154,10 +165,8 @@
             const el = document.getElementById('cloud');
             if (!WORDS.length || !window.d3) return;
             el.innerHTML = '';
-            for (const key in TILTS) delete TILTS[key];
             cloudGeo = cloudGeometry(el);
             layoutCloud('splay', cloudGeo).then((placed) => {
-                placed.forEach((d) => { TILTS[d.word] = d.rotate; });
                 render(el, placed, cloudGeo.width, cloudGeo.height);
             });
         }
