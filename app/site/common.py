@@ -127,6 +127,21 @@ def outlet_icon(name: str) -> Markup:
 
 
 j2env.globals['outlet_icon'] = outlet_icon
+
+# Chip labels for outlets whose full names blow up their chips; the full name shows on hover
+SHORT_NAMES = {
+    'Radio Free Europe Radio Liberty': 'RFE/RL', 'The Christian Science Monitor': 'CS Monitor',
+    'Independent Journal Review': 'IJR', 'The Washington Free Beacon': 'Free Beacon',
+    'One America News Network': 'OAN', 'South China Morning Post': 'SCMP', 'The Wall Street Journal': 'WSJ',
+}
+
+
+def short_name(name: str) -> str:
+    return SHORT_NAMES.get(name, name)
+
+
+j2env.globals['short_name'] = short_name
+j2env.globals['short_names'] = SHORT_NAMES
 j2env.globals['unrated'] = set()  # outlets AllSides doesn't rate, filled by the build
 
 

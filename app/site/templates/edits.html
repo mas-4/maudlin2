@@ -22,7 +22,7 @@
             <thead><tr><th>Outlet</th><th>Changes</th><th>Headlines</th><th>Changes per 100</th></tr></thead>
             <tbody>
             {% for r in rates %}
-                <tr><td><span class="edit-chip" style="{{ r.style }}">{{ outlet_icon(r.agency) }}{{ r.agency }}</span></td>
+                <tr><td><span class="edit-chip" style="{{ r.style }}">{{ outlet_icon(r.agency) }}{{ short_name(r.agency) }}</span></td>
                     <td>{{ r.edits }}</td><td>{{ r.headlines }}</td><td>{{ r.per_100 }}</td></tr>
             {% endfor %}
             </tbody>
@@ -33,7 +33,7 @@
         {% for edit in edits %}
             <div class="edit">
                 <div class="edit-meta">
-                    <span class="edit-chip" style="{{ edit.style }}" title="{{ edit.bias }}">{{ outlet_icon(edit.agency) }}{{ edit.agency }}</span>
+                    <span class="edit-chip" style="{{ edit.style }}" title="{{ edit.bias }}">{{ outlet_icon(edit.agency) }}{{ short_name(edit.agency) }}</span>
                     <span class="edit-source">{{ edit.source }}</span>
                     <span>changed between {{ edit.between }}</span>
                     {% for note in edit.shifts %}<span class="trend-both">{{ note }}</span>{% endfor %}

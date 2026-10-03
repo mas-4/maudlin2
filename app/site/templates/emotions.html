@@ -12,7 +12,7 @@
         <tbody>
         {% for r in rows %}
             <tr>
-                <td>{% if chips %}<span class="edit-chip" style="{{ r.style }}">{{ outlet_icon(r.name) }}{{ r.name }}</span>{% else %}{{ r.name }}{% endif %}</td>
+                <td>{% if chips %}<span class="edit-chip" style="{{ r.style }}">{{ outlet_icon(r.name) }}{{ short_name(r.name) }}</span>{% else %}{{ r.name }}{% endif %}</td>
                 {% for e in emotions %}
                     {% set share = r.shares[e] %}
                     <td data-value="{{ share }}" title="{{ r.name }}: {{ (share * 100)|round(1) }}% {{ e }}"

@@ -38,6 +38,8 @@
         const BIAS_COLORS = {{ bias_colors|tojson }};
         const ICONS = {{ icons|tojson }};
         const UNRATED = new Set({{ unrated|list|tojson }});
+        const SHORT = {{ short_names|tojson }};
+        const shortName = (name) => SHORT[name] || name;
         // An outlet chip's colors: its lean color, or dashed white when its lean isn't rated (chip_style in common.py)
         const chipStyle = (name, bias) => UNRATED.has(name) ? 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
             : `background-color: ${BIAS_COLORS[bias + 3]}; color: ${BIAS_INK[bias + 3]}`;
@@ -48,7 +50,7 @@
         function showWord(d) {
             const panel = document.getElementById('cloud-detail');
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-            const rows = d.samples.map((h) => `<li><span class="edit-chip" style="${chipStyle(h.agency, h.bias)}">${outletIcon(h.agency)}${esc(h.agency)}</span>
+            const rows = d.samples.map((h) => `<li><span class="edit-chip" style="${chipStyle(h.agency, h.bias)}">${outletIcon(h.agency)}${esc(shortName(h.agency))}</span>
                 <a href="${esc(h.url)}">${esc(h.title)}</a></li>`).join('');
             panel.innerHTML = `<button class="cloud-close" aria-label="Close">×</button>
                 <h3 class="${d.color === 'balanced' ? 'balanced-text' : ''}" style="${d.color === 'balanced' ? '' : `color: ${d.color}`}">${esc(d.word)}</h3>
@@ -464,7 +466,7 @@
                                 <span class="trend-posts">{{ item.outlets }} outlets</span>
                             {% else %}
                                 <span class="bright-kind" title="One outlet's headline">🔗 article</span>
-                                <span class="edit-chip" style="{{ chip_style(item.agency, item.bias) }}">{{ outlet_icon(item.agency) }}{{ item.agency }}</span>
+                                <span class="edit-chip" style="{{ chip_style(item.agency, item.bias) }}">{{ outlet_icon(item.agency) }}{{ short_name(item.agency) }}</span>
                                 <a href="{{ item.url }}">{{ item.title }}</a>
                             {% endif %}
                         </li>
@@ -874,7 +876,7 @@
                     name: 'Outlet',
                     width: '22%',
                     attributes: rowTint,
-                    formatter: (r) => gridjs.html(`<span class="edit-chip" style="${chipStyle(r.agency, r.bias)}">${outletIcon(r.agency)}${esc(r.agency)}</span>`),
+                    formatter: (r) => gridjs.html(`<span class="edit-chip" style="${chipStyle(r.agency, r.bias)}">${outletIcon(r.agency)}${esc(shortName(r.agency))}</span>`),
                     sort: {compare: (a, b) => a.bias - b.bias || a.agency.localeCompare(b.agency)},
                 },
                 {

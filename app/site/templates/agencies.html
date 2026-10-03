@@ -26,7 +26,7 @@
                 <div class="lineup-head{% if column.unrated %} lineup-unrated{% endif %}" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
                 {% for o in column.outlets %}
                     <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}"
-                       style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name">{{ o.name }}</span></a>
+                       style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name }}">{{ short_name(o.name) }}</span></a>
                 {% endfor %}
             </div>
         {% endfor %}
