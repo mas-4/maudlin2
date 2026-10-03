@@ -19,14 +19,18 @@
         scale. 📚 Reliability: Wikipedia's
         <a href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources">perennial sources</a> list
         (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>), which says whether Wikipedia editors
-        will cite a source. Both as of October 3, 2026. The badges on the cards are our own measurements.</p>
+        will cite a source. Both as of October 3, 2026. The badges on the cards are our own measurements.
+        {% if lean_quality %}<br>✏️ Outlets marked <em>est.</em> aren't rated by AllSides; their lean is our estimate from
+        their headlines' wording, published only when the model is confident. Tested by hiding each rated outlet in turn,
+        it calls a side for {{ lean_quality.called }} of {{ lean_quality.outlets }} and gets
+        {{ (lean_quality.side_right * 100)|round|int }}% of those right.{% endif %}</p>
     <div class="lineup">
         {% for column in lineup %}
             <div class="lineup-column">
                 <div class="lineup-head{% if column.unrated %} lineup-unrated{% endif %}" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
                 {% for o in column.outlets %}
                     <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}"
-                       style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name }}">{{ short_name(o.name) }}</span></a>
+                       style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name }}{% if o.estimate %} (our estimate){% endif %}">{{ short_name(o.name) }}{% if o.estimate %} <small>est.</small>{% endif %}</span></a>
                 {% endfor %}
             </div>
         {% endfor %}
@@ -55,7 +59,7 @@
                     <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
                 </div>
                 <div class="outlet-facts">
-                    {% if o.lean_url %}<a href="{{ o.lean_url }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% else %}⚖️ not rated by AllSides{% endif %}
+                    {% if o.lean_url %}<a href="{{ o.lean_url }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% elif o.estimate %}<span title="Not rated by AllSides; estimated from its headlines' wording">⚖️ est. {{ o.estimate }} (ours)</span>{% else %}⚖️ not rated by AllSides{% endif %}
                     · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% if o.reliability_note %} ({{ o.reliability_note }}){% endif %}{% else %}not on Wikipedia's list{% endif %}
                 </div>
                 <div class="outlet-badges">

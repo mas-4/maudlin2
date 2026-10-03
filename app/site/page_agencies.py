@@ -11,7 +11,7 @@ from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.stories import framing_scores
 from app.models import Session, Agency, Article, Headline
 from app.ratings import LEAN
-from app.site.common import chip_style, copy_assets, TemplateHandler, PathHandler
+from app.site.common import chip_style, copy_assets, j2env, TemplateHandler, PathHandler
 from app.site.favicons import slug
 from app.site.data import DataHandler, DataTypes, NEWS_ONLY
 from app.site.graphing import bias_colors, bias_ink
@@ -82,9 +82,11 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
     for name, p in profiles.iterrows():
         bias, mood = int(p['bias']), (p['mood'] / 2 if pd.notna(p['mood']) else None)  # event score is -2 to 2
         rated = bool(p['rated'])
+        estimated = j2env.globals['lean_estimates'].get(name)
         card = {
             'name': name, 'slug': slug(name), 'bias': bias if rated else None,
             'lean': str(Bias(bias)) if rated else 'Not rated', 'lean_url': p['lean_url'] if rated else None,
+            'estimate': str(Bias(estimated)) if estimated is not None else None, 'estimated_bias': estimated,
             'style': chip_style(name, bias), 'color': bias_colors[bias + 3] if rated else '#c8c8d0',
             'reliability': p['reliability'] if isinstance(p['reliability'], str) else None,
             'reliability_note': p['reliability_note'] if isinstance(p['reliability_note'], str) else None,
@@ -121,10 +123,11 @@ class AgenciesPage:
         # The lineup: outlets in AllSides' five columns from left to right, then the ones it doesn't rate
         self.context['lineup'] = [
             {'name': str(Bias(b)), 'color': bias_colors[b + 3], 'ink': bias_ink[b + 3],
-             'outlets': [o for o in outlets if o['bias'] == b]}
+             'outlets': [o for o in outlets if o['bias'] == b or o['estimated_bias'] == b]}
             for b in LEAN.values()
         ] + [{'name': 'Not rated', 'color': '#ffffff', 'ink': '#1f1f2e', 'unrated': True,
-              'outlets': [o for o in outlets if o['bias'] is None]}]
+              'outlets': [o for o in outlets if o['bias'] is None and o['estimated_bias'] is None]}]
+        self.context['lean_quality'] = j2env.globals['lean_quality']
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.main_headline_df[['title', 'agency', 'bias']],
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)

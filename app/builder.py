@@ -1,4 +1,5 @@
 from app import ratings
+from app.analysis import lean_estimate
 from app.site import favicons
 from app.site.common import copy_assets, clear_build, stamp_build, j2env
 from app.site.data import DataHandler
@@ -17,6 +18,8 @@ def build():
     stamp_build()
     ratings.apply()  # outlet lean and reliability from ratings.csv
     j2env.globals['unrated'] = ratings.unrated()
+    lean = lean_estimate.estimate()  # our own estimate for some unrated outlets, kept out of lean averages
+    j2env.globals['lean_estimates'], j2env.globals['lean_quality'] = lean['estimates'], lean['quality']
     dh: DataHandler = DataHandler()
     clear_build()
     favicons.refresh()  # only fetches icons that are missing or a week old

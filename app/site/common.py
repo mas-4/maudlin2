@@ -143,11 +143,16 @@ def short_name(name: str) -> str:
 j2env.globals['short_name'] = short_name
 j2env.globals['short_names'] = SHORT_NAMES
 j2env.globals['unrated'] = set()  # outlets AllSides doesn't rate, filled by the build
+j2env.globals['lean_estimates'] = {}  # our estimate for some of them (app/analysis/lean_estimate.py)
+j2env.globals['lean_quality'] = None
 
 
 def chip_style(name: str, bias: int) -> str:
     """An outlet chip's colors: its lean color, or a dashed white chip when its lean isn't rated."""
     from app.site.graphing import bias_colors, bias_ink
+    if name in j2env.globals['lean_estimates']:  # our estimate: its lean color, dashed to say it isn't a rating
+        lean = j2env.globals['lean_estimates'][name]
+        return f'background-color: {bias_colors[lean + 3]}; color: {bias_ink[lean + 3]}; border-style: dashed'
     if name in j2env.globals['unrated']:
         return 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
     return f'background-color: {bias_colors[int(bias) + 3]}; color: {bias_ink[int(bias) + 3]}'

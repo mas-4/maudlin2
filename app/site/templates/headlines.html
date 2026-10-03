@@ -42,7 +42,10 @@
         const SHORT = {{ short_names|tojson }};
         const shortName = (name) => SHORT[name] || name;
         // An outlet chip's colors: its lean color, or dashed white when its lean isn't rated (chip_style in common.py)
-        const chipStyle = (name, bias) => UNRATED.has(name) ? 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
+        const ESTIMATES = {{ lean_estimates|tojson }};
+        const chipStyle = (name, bias) => name in ESTIMATES
+            ? `background-color: ${BIAS_COLORS[ESTIMATES[name] + 3]}; color: ${BIAS_INK[ESTIMATES[name] + 3]}; border-style: dashed`
+            : UNRATED.has(name) ? 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
             : `background-color: ${BIAS_COLORS[bias + 3]}; color: ${BIAS_INK[bias + 3]}`;
         // An outlet's icon for the front of its chip, or its initial (see outlet_icon in common.py)
         const outletIcon = (name) => ICONS[name] ? `<img class="outlet-icon" src="${ICONS[name]}" alt="" loading="lazy">`
