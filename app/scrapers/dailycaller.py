@@ -7,8 +7,6 @@ logger = get_logger(__name__)
 
 
 class DailyCaller(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://dailycaller.com'
     agency: str = "The Daily Caller"
 

@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Hill(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.mostly_factual
     url: str = 'https://thehill.com/'
     agency: str = "The Hill"
     headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}

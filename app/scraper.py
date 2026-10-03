@@ -28,8 +28,6 @@ ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', '
 class Scraper(ABC, Thread):
     agency: str = ''
     url: str = ''
-    bias: Bias = None
-    credibility: Credibility = None
     headers: dict[str, str] = {}
     parser: str = 'lxml'
     country = Country.us
@@ -53,8 +51,6 @@ class Scraper(ABC, Thread):
             raise ValueError("Agency name must be set")
         if not self.url:
             raise ValueError("URL must be set")
-        if self.bias is None or self.credibility is None:
-            raise ValueError("Bias and credibility must be set")
         self.downstream: list[tuple[str, Tag]] = []
         self.prefiltered = []
         self.done: bool = False
@@ -64,10 +60,10 @@ class Scraper(ABC, Thread):
             if not agency:
                 agency = Agency(url=self.url)
             agency.name = self.agency
-            agency.bias = self.bias
-            agency.credibility = self.credibility
             agency.country = self.country
             if not agency.id:
+                # Ratings come from ratings.csv (app/ratings.py); a new outlet starts unrated until it's added there
+                agency._bias, agency._credibility, agency.lean_rated = 0, 0, False  # noqa prot attr
                 session.add(agency)
             session.commit()
             self.agency_id = agency.id

@@ -76,8 +76,8 @@ CENTER_MAJORITY = 0.5
 # Mood is the average event score of the headlines using a term (-1 grim to 1 good news)
 MOOD_EMOJI = [(-0.6, '💀'), (-0.3, '😬'), (0.3, ''), (0.6, '🙂'), (float('inf'), '🎉')]
 MIN_OUTLETS_FOR_EMOJI = 5
-MAX_EMOJI = 12
-MIN_EMOTION_SHARE = 0.35
+MAX_EMOJI = 25
+MIN_EMOTION_SHARE = 0.25  # of the averaged ranked-choice votes, so 25% is a strong pull
 CLOUD_WORDS = 120
 
 
@@ -91,8 +91,9 @@ def term_outlets(df: pd.DataFrame, pipeline: list[Callable]) -> pd.DataFrame:
         terms = {' '.join(tokens[i:i + n]) for n in (1, 2, 3) for i in range(len(tokens) - n + 1)}
         mood = row.sentiment if has_mood else float('nan')
         ranks = row.emotion_ranks if has_emotion and isinstance(row.emotion_ranks, str) else None
-        rows.extend((term, row.agency, row.bias, mood, ranks, row.Index) for term in terms)
-    terms = pd.DataFrame(rows, columns=['term', 'agency', 'bias', 'mood', 'ranks', 'row'])
+        rated = getattr(row, 'rated', True)
+        rows.extend((term, row.agency, row.bias, rated, mood, ranks, row.Index) for term in terms)
+    terms = pd.DataFrame(rows, columns=['term', 'agency', 'bias', 'rated', 'mood', 'ranks', 'row'])
     # "State" and "state" are one term, shown in whichever spelling outlets use most
     terms['key'] = terms['term'].str.lower()
     spelling = terms.groupby('key')['term'].agg(lambda t: t.value_counts().index[0])
@@ -103,9 +104,11 @@ def term_outlets(df: pd.DataFrame, pipeline: list[Callable]) -> pd.DataFrame:
     # would tilt every term their way, so each outlet's use counts as 1 / (the number of distinct terms it used) and
     # each side's score is the average over its outlets: every outlet weighs the same, whatever its volume.
     # lean = log2(right score / left score), smoothed; positive means the right uses it more.
+    # Outlets without a lean rating count toward reach but not lean.
     vocab = one_vote.groupby('agency').size()
-    usage = one_vote.assign(weight=1 / one_vote['agency'].map(vocab))
-    sides = one_vote.drop_duplicates('agency').set_index('agency')['bias']
+    rated_vote = one_vote[one_vote['rated'].astype(bool)]
+    usage = rated_vote.assign(weight=1 / rated_vote['agency'].map(vocab))
+    sides = rated_vote.drop_duplicates('agency').set_index('agency')['bias']
     left_outlets, right_outlets = (sides < 0).sum(), (sides > 0).sum()
     smooth = 0.5 / vocab.mean()
     left = usage[usage['bias'] < 0].groupby('key')['weight'].sum().reindex(merged.index, fill_value=0) / left_outlets

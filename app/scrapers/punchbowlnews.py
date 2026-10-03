@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class PunchbowlNews(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://punchbowl.news'
     agency: str = "Punchbowl News"
     headers = {

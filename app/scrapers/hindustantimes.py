@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class HindustanTimes(SeleniumScraper):
-    bias = Bias.left_center
-    credibility = Credibility.mixed
     url: str = 'https://www.hindustantimes.com'
     agency: str = "Hindustan Times"
     country: Country = Country.in_

@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 class News18(Scraper):
     headers = Constants.Headers.firefox
-    bias = Bias.right_center
-    credibility = Credibility.mixed
     url: str = 'https://www.news18.com/'
     agency: str = "News 18"
     country = Country.in_

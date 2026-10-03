@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class NewYorkPost(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mixed
     url: str = 'https://nypost.com'
     agency: str = "New York Post"
 

@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Federalist(Scraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.mixed
     url: str = 'https://thefederalist.com/'
     agency: str = "The Federalist"
     headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}

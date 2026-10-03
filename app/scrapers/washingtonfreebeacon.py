@@ -7,8 +7,6 @@ logger = get_logger(__name__)
 
 
 class WashingtonFreeBeacon(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://freebeacon.com/'
     agency: str = "The Washington Free Beacon"
 

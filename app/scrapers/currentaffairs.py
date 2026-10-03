@@ -11,8 +11,6 @@ logger = get_logger(__name__)
 
 class CurrentAffairs(Scraper):
     headers = Constants.Headers.firefox
-    bias = Bias.left
-    credibility = Credibility.high
     url: str = 'https://www.currentaffairs.org'
     agency: str = "Current Affairs"
 

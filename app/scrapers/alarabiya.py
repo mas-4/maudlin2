@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class AlArabiya(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mixed
     url: str = 'https://english.alarabiya.net'
     agency: str = "Al Arabiya"
     country = Country.sa

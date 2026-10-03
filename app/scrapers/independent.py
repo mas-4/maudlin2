@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Independent(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mixed
     url: str = 'https://www.independent.co.uk/us'
     agency: str = "The Independent"
     country = Country.gb

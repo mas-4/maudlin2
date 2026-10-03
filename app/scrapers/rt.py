@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class RT(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.very_low
     url: str = 'https://www.rt.com'
     agency: str = "RT"
     country: str = Country.ru

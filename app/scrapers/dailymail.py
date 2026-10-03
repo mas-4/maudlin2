@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class DailyMail(Scraper):
-    bias = Bias.right
-    credibility = Credibility.low
     url: str = 'https://www.dailymail.co.uk'
     agency: str = "Daily Mail"
     country = Country.gb

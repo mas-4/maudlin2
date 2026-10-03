@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Week(Scraper):
-    bias = Bias.left
-    credibility = Credibility.high
     url: str = 'https://theweek.com/'
     agency: str = "The Week"
 

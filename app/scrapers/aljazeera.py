@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 
 class AlJazeera(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mixed
     url: str = 'https://www.aljazeera.com'
     agency: str = "Al Jazeera"
     country = Country.qa

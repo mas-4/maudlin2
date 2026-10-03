@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 
 class ChristianScienceMonitor(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.csmonitor.com/'
     agency: str = "The Christian Science Monitor"
 

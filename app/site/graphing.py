@@ -16,9 +16,9 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 aisle_colors = {'left': 'blue', 'right': 'red', 'center': 'gray'}
-bias_colors = ['#3b4cc0', '#7092f3', '#aac7fd', '#dddddd', '#f7b89c', '#e7755b', '#b40426']
+bias_colors = ['#26357a', '#3b4cc0', '#8fb0fa', '#dddddd', '#f4a582', '#b40426', '#7a0219']
 # Text color that stays readable on each bias color: white on the two darkest ends
-bias_ink = ['#ffffff', '#000000', '#000000', '#000000', '#000000', '#000000', '#ffffff']
+bias_ink = ['#ffffff', '#ffffff', '#000000', '#000000', '#000000', '#ffffff', '#ffffff']
 credibility_colors = ["#FF0000", "#FF4500", "#FFA500", "#FFFF00", "#9ACD32", "#008000"]
 rotation = 35
 # Validated as a pair (light surface): CVD and normal-vision separation both pass

@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class TaipeiTimes(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.taipeitimes.com/'
     agency: str = "Taipei Times"
     country: str = Country.tw

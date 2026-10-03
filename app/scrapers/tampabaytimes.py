@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class TampaBayTimes(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.tampabay.com'
     agency: str = "Tampa Bay Times"
 

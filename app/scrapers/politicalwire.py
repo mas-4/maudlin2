@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class PoliticalWire(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://politicalwire.com/'
     agency: str = "Political Wire"
     headers: dict = {

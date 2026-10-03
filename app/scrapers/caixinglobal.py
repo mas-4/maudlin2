@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class CaixinGlobal(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mixed
     url: str = 'https://www.caixinglobal.com'
     agency: str = "Caixin Global"
     country = Country.cn

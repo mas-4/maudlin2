@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class LosAngelesTimes(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.latimes.com/'
     agency: str = "Los Angeles Times"
     headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}

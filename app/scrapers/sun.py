@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Sun(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://www.the-sun.com/'
     agency: str = "The Sun"
 

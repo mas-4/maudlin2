@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class NikkeiAsia(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://asia.nikkei.com'
     agency: str = "Nikkei Asia"
     country: str = Country.jp

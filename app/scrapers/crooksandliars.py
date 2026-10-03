@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class CrooksandLiars(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mostly_factual
     url: str = 'https://crooksandliars.com'
     agency: str = "Crooks and Liars"
 

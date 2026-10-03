@@ -3,8 +3,6 @@ from app.utils.constants import Bias, Credibility, Country
 
 
 class FT(FeedScraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.ft.com'
     agency: str = "Financial Times"
     feed: str = 'https://www.ft.com/rss/home'

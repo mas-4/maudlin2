@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 
 class Bulwark(SeleniumScraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://www.thebulwark.com/'
     agency: str = "The Bulwark"
 

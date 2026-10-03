@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class PBSNewsHour(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.pbs.org/newshour/'
     agency: str = "PBS NewsHour"
 

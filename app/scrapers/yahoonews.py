@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class YahooNews(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://news.yahoo.com/'
     agency: str = "Yahoo News"
 

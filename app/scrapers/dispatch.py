@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 
 class Dispatch(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://thedispatch.com/'
     agency: str = "The Dispatch"
 

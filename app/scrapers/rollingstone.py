@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class RollingStone(Scraper):
-    bias = Bias.left
-    credibility = Credibility.high
     url: str = 'https://www.rollingstone.com/'
     agency: str = "Rolling Stone"
 

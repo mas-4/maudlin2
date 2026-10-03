@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Mint(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.mixed
     url: str = 'https://www.livemint.com/'
     agency: str = "livemint.com"
     country = Country.in_

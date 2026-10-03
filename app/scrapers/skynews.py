@@ -3,8 +3,6 @@ from app.utils.constants import Bias, Credibility, Country
 
 
 class SkyNews(FeedScraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://news.sky.com'
     agency: str = "Sky News"
     feed: str = 'https://feeds.skynews.com/feeds/rss/home.xml'

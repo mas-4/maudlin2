@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class CNBC(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.cnbc.com'
     agency: str = "CNBC"
 

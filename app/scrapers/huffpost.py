@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class HuffPost(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mixed
     url: str = 'https://www.huffpost.com/'
     agency: str = "HuffPost"
 

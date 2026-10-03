@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class NationalPost(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://nationalpost.com'
     agency: str = "National Post"
     country = Country.ca

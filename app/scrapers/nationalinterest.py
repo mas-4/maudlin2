@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class NationalInterest(SeleniumScraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://nationalinterest.org/'
     agency: str = "The National Interest"
 

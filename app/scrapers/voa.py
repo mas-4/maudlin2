@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class VOA(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.voanews.com/'
     agency: str = "Voice of America"
 

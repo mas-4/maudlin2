@@ -11,8 +11,6 @@ logger = get_logger(__name__)
 
 
 class MSNBC(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mixed
     url: str = 'https://www.msnbc.com'
     agency: str = "MSNBC"
     stopwords = ["AD Choices", "AP", "Getty Images", ";", ]

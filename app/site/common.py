@@ -127,6 +127,18 @@ def outlet_icon(name: str) -> Markup:
 
 
 j2env.globals['outlet_icon'] = outlet_icon
+j2env.globals['unrated'] = set()  # outlets AllSides doesn't rate, filled by the build
+
+
+def chip_style(name: str, bias: int) -> str:
+    """An outlet chip's colors: its lean color, or a dashed white chip when its lean isn't rated."""
+    from app.site.graphing import bias_colors, bias_ink
+    if name in j2env.globals['unrated']:
+        return 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
+    return f'background-color: {bias_colors[int(bias) + 3]}; color: {bias_ink[int(bias) + 3]}'
+
+
+j2env.globals['chip_style'] = chip_style
 j2env.globals['FileNames'] = PathHandler.FileNames
 
 

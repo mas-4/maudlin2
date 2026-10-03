@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class IndianExpress(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mixed
     url: str = 'https://indianexpress.com/'
     agency: str = "The Indian Express"
     country = Country.in_

@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class TorontoSun(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mostly_factual
     url: str = 'https://torontosun.com/'
     agency: str = "Toronto Sun"
     country = Country.ca

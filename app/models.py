@@ -1,12 +1,12 @@
 from datetime import datetime as dt, timedelta as td
 from threading import Lock
-from typing import cast
+from typing import Optional, cast
 
 import numpy as np
 import pytz
 from sqlalchemy import ForeignKey, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
-from sqlalchemy.types import Text, Float, DateTime, Integer
+from sqlalchemy.types import Boolean, Text, Float, DateTime, Integer
 
 from app.utils import Config, Bias, Credibility, Country, Constants, get_logger
 
@@ -24,8 +24,14 @@ class Agency(Base):
     url: Mapped[str] = mapped_column(String(100))
     articles: Mapped[list["Article"]] = relationship("Article", back_populates="agency", lazy="dynamic")
     _bias: Mapped[int] = mapped_column(Integer())
-    _credibility: Mapped[int] = mapped_column(Integer())
+    _credibility: Mapped[int] = mapped_column(Integer())  # legacy MBFC rating, no longer shown
     _country: Mapped[int] = mapped_column(Integer())
+    # Licensed ratings from ratings.csv (see app/ratings.py): AllSides lean, stored in _bias as -2..2, and Wikipedia's
+    # reliability status. An outlet AllSides doesn't rate has lean_rated False and a placeholder _bias of 0.
+    lean_rated: Mapped[bool] = mapped_column(Boolean(), default=False, server_default='0')
+    lean_url: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    reliability: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    reliability_note: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"

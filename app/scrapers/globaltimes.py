@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class GlobalTimes(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mixed
     url: str = 'https://www.globaltimes.cn/'
     agency: str = "Global Times"
     country = Country.cn

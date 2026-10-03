@@ -12,8 +12,6 @@ logger = get_logger(__name__)
 class NBC(Scraper):
     url: str = 'https://www.nbcnews.com'
     agency: str = "NBC News"
-    bias: Bias = Bias.left_center
-    credibility: Credibility = Credibility.high
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a',

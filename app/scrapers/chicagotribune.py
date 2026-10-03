@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class ChicagoTribune(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://www.chicagotribune.com/'
     agency: str = "Chicago Tribune"
 

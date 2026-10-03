@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Newsweek(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.newsweek.com/'
     agency: str = "Newsweek"
     headers = {

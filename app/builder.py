@@ -1,3 +1,4 @@
+from app import ratings
 from app.site import favicons
 from app.site.common import copy_assets, clear_build, stamp_build, j2env
 from app.site.data import DataHandler
@@ -14,6 +15,8 @@ logger = get_logger(__name__)
 
 def build():
     stamp_build()
+    ratings.apply()  # outlet lean and reliability from ratings.csv
+    j2env.globals['unrated'] = ratings.unrated()
     dh: DataHandler = DataHandler()
     clear_build()
     favicons.refresh()  # only fetches icons that are missing or a week old

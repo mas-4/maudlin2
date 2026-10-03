@@ -3,9 +3,8 @@ import os
 import pandas as pd
 
 from app.analysis.edits import find_edits, edit_rates, WINDOW_DAYS
-from app.site.common import TemplateHandler
+from app.site.common import TemplateHandler, chip_style, j2env
 from app.site.data import DataHandler
-from app.site.graphing import bias_colors, bias_ink
 from app.utils.constants import Bias
 from app.utils.logger import get_logger
 
@@ -57,9 +56,8 @@ class EditsPage:
         rows = []
         for _, edit in edits.iterrows():
             rows.append({
-                'agency': edit['agency'], 'url': edit['url'], 'color': bias_colors[int(edit['bias']) + 3],
-                'ink': bias_ink[int(edit['bias']) + 3],
-                'bias': str(Bias(int(edit['bias']))),
+                'agency': edit['agency'], 'url': edit['url'], 'style': chip_style(edit['agency'], edit['bias']),
+                'bias': 'not rated' if edit['agency'] in j2env.globals['unrated'] else str(Bias(int(edit['bias']))),
                 'before_html': edit['before_html'], 'after_html': edit['after_html'],
                 'between': f"{eastern(edit['last_seen_before'])} and {eastern(edit['first_seen_after'])} ET",
                 'shifts': shifts(edit),
@@ -70,7 +68,7 @@ class EditsPage:
             'edits': rows,
             'minor_count': len(minor),
             'rates': [] if rates.empty else [
-                {'agency': r.agency, 'color': bias_colors[int(r.bias) + 3], 'ink': bias_ink[int(r.bias) + 3],
+                {'agency': r.agency, 'style': chip_style(r.agency, r.bias),
                  'edits': int(r.edits),
                  'headlines': int(r.headlines), 'per_100': round(r.per_100, 1)}
                 for r in rates.head(15).itertuples()],

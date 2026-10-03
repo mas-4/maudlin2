@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class NewYorkMagazine(Scraper):
-    bias = Bias.left
-    credibility = Credibility.high
     url: str = 'https://nymag.com'
     agency: str = "New York Magazine"
 

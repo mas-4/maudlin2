@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class ForeignPolicy(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://foreignpolicy.com'
     agency: str = "Foreign Policy"
 

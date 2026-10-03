@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Vox(Scraper):
-    bias = Bias.left
-    credibility = Credibility.high
     url: str = 'https://www.vox.com/'
     agency: str = "Vox"
 

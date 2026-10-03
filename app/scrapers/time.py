@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Time(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://time.com/'
     agency: str = "Time"
 

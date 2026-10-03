@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Xinhua(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mixed
     url: str = 'https://english.news.cn/'
     agency: str = "Xinhua"
     country = Country.cn

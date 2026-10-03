@@ -10,7 +10,7 @@ from app.analysis.clustering import prepare_embedding_cosine, form_clusters, lab
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import textnorm
 from app.analysis.pipelines import Pipelines, prepare
-from app.site.common import calculate_xkeyscore, copy_assets, outlet_icon, TemplateHandler
+from app.site.common import calculate_xkeyscore, chip_style, copy_assets, outlet_icon, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
@@ -182,7 +182,7 @@ class HeadlinesPage:
 
     def generate(self):
         logger.info("Generating headlines page...")
-        cloud = self.dh.main_headline_df[['title', 'agency', 'bias', 'url', 'afinn', 'vader_compound',
+        cloud = self.dh.main_headline_df[['title', 'agency', 'bias', 'rated', 'url', 'afinn', 'vader_compound',
                                           'event_score', 'loaded_score', 'emotion_ranks']].copy()
         cloud['sentiment'] = headline_sentiment(cloud)
         self.context['cloud_words'] = cloud_words(cloud)
@@ -251,7 +251,8 @@ class HeadlinesPage:
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
 
         # Partisan lean is measured against the outlets in today's pool, which lean one way themselves
-        baseline_bias = df.drop_duplicates('agency')['bias'].mean()
+        # (outlets without a lean rating are left out of lean)
+        baseline_bias = df[df['rated'].astype(bool)].drop_duplicates('agency')['bias'].mean()
         active_outlets = df['agency'].nunique()
         logger.info("Clustering %i headlines", len(df))
         df = df.reset_index(drop=True)  # cluster ids are positional
@@ -276,7 +277,9 @@ class HeadlinesPage:
             cluster['coverage'] = round(len(cluster['data']) / len(Scrapers) * 100, 2)
             cluster['first'] = max(cluster['data'], key=lambda x: x['howlong'])['howlong']
             group = df[df['cluster'] == cluster['cluster']]
-            cluster['lean'] = meter(group['bias'].mean() - baseline_bias, LEAN_RANGE, 'L', 'R')
+            rated = group[group['rated'].astype(bool)]
+            cluster['lean'] = meter(rated['bias'].mean() - baseline_bias if not rated.empty else 0.0,
+                                    LEAN_RANGE, 'L', 'R')
             cluster['mood'] = meter(headline_sentiment(group).mean(), MOOD_RANGE, '', '')
             cluster['mood'].update(dict(zip(('emoji', 'word'), weather(cluster['mood']['value']))))
             cluster['emotion'] = dominant_emotion(group)
@@ -367,7 +370,7 @@ class HeadlinesPage:
                 chips.append(
                     f'<a data-tooltip-color="{bias_colors[bias]}" data-tooltip-ink="{bias_ink[bias]}"'
                     f' class="storylink chip-{state}"'
-                    f' style="background-color: {bias_colors[bias]}; color: {bias_ink[bias]}; opacity: {opacity:.2f}"'
+                    f' style="{chip_style(a["agency"], a["bias"])}; opacity: {opacity:.2f}"'
                     f' data-bias="{a["bias"]}" data-first="{a["first_seen"].timestamp():.0f}"'
                     f' data-last="{a["last_seen"].timestamp():.0f}"'
                     f' data-live="{int(bool(a["live"]))}" data-mood="{a["sentiment"]:.3f}"'

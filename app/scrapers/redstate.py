@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class RedState(Scraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.low
     url: str = 'https://redstate.com'
     agency: str = "Red State"
 

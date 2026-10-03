@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Blaze(Scraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.mixed
     url: str = 'https://www.theblaze.com'
     agency: str = "The Blaze"
 

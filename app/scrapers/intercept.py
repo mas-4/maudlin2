@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Intercept(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mostly_factual
     url: str = 'https://theintercept.com/'
     agency: str = "The Intercept"
 

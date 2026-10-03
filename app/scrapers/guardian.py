@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Guardian(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mixed
     url: str = 'https://www.theguardian.com/us'
     agency: str = "The Guardian"
 

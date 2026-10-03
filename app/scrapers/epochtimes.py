@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class EpochTimes(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://www.theepochtimes.com'
     agency: str = "The Epoch Times"
 

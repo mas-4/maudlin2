@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Forbes(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.forbes.com/'
     agency: str = "Forbes"
 

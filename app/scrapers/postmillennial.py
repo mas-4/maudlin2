@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 class PostMillennial(Scraper):
     headers = Constants.Headers.firefox
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://thepostmillennial.com/'
     agency: str = "The Post Millennial"
 

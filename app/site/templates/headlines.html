@@ -37,6 +37,10 @@
     <script>
         const BIAS_COLORS = {{ bias_colors|tojson }};
         const ICONS = {{ icons|tojson }};
+        const UNRATED = new Set({{ unrated|list|tojson }});
+        // An outlet chip's colors: its lean color, or dashed white when its lean isn't rated (chip_style in common.py)
+        const chipStyle = (name, bias) => UNRATED.has(name) ? 'background-color: #ffffff; color: #1f1f2e; border-style: dashed'
+            : `background-color: ${BIAS_COLORS[bias + 3]}; color: ${BIAS_INK[bias + 3]}`;
         // An outlet's icon for the front of its chip, or its initial (see outlet_icon in common.py)
         const outletIcon = (name) => ICONS[name] ? `<img class="outlet-icon" src="${ICONS[name]}" alt="" loading="lazy">`
             : `<span class="outlet-icon outlet-mono" aria-hidden="true">${name.replace(/^The /, '').charAt(0).toUpperCase()}</span>`;
@@ -44,7 +48,7 @@
         function showWord(d) {
             const panel = document.getElementById('cloud-detail');
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-            const rows = d.samples.map((h) => `<li><span class="edit-chip" style="background-color: ${BIAS_COLORS[h.bias + 3]}; color: ${BIAS_INK[h.bias + 3]}">${outletIcon(h.agency)}${esc(h.agency)}</span>
+            const rows = d.samples.map((h) => `<li><span class="edit-chip" style="${chipStyle(h.agency, h.bias)}">${outletIcon(h.agency)}${esc(h.agency)}</span>
                 <a href="${esc(h.url)}">${esc(h.title)}</a></li>`).join('');
             panel.innerHTML = `<button class="cloud-close" aria-label="Close">×</button>
                 <h3 class="${d.color === 'balanced' ? 'balanced-text' : ''}" style="${d.color === 'balanced' ? '' : `color: ${d.color}`}">${esc(d.word)}</h3>
@@ -824,8 +828,8 @@
             const storyTint = (story) => STORY_TINTS[storyOrder[story] % STORY_TINTS.length];
             const rowTint = (r) => state.metric === 'story' && r && r.story !== null && r.story !== undefined
                 ? {style: `background-color: color-mix(in srgb, ${storyTint(r.story)} 55%, white)`} : {};
-            const keep = (r) => (state.lean === 'all' || (state.lean === 'left' ? r.bias < 0
-                                    : state.lean === 'right' ? r.bias > 0 : r.bias === 0))
+            const keep = (r) => (state.lean === 'all' || (!UNRATED.has(r.agency) && (state.lean === 'left' ? r.bias < 0
+                                    : state.lean === 'right' ? r.bias > 0 : r.bias === 0)))
                 && (!state.loaded || r.loaded > 0);
             const rows = () => ROWS.filter(keep).filter((r) => state.metric !== 'story' || r.story !== null).sort(METRICS[state.metric].order || ((a, b) => METRICS[state.metric].compare(b, a))).map((r) => [r, r, r]);
             const columns = () => [
@@ -833,7 +837,7 @@
                     name: 'Outlet',
                     width: '22%',
                     attributes: rowTint,
-                    formatter: (r) => gridjs.html(`<span class="edit-chip" style="background-color: ${BIAS_COLORS[r.bias + 3]}; color: ${BIAS_INK[r.bias + 3]}">${outletIcon(r.agency)}${esc(r.agency)}</span>`),
+                    formatter: (r) => gridjs.html(`<span class="edit-chip" style="${chipStyle(r.agency, r.bias)}">${outletIcon(r.agency)}${esc(r.agency)}</span>`),
                     sort: {compare: (a, b) => a.bias - b.bias || a.agency.localeCompare(b.agency)},
                 },
                 {

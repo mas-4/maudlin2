@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class DrudgeReport(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mixed
     url: str = 'https://www.drudgereport.com/'
     agency: str = "Drudge Report"
 

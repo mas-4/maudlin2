@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 
 class ProPublica(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.propublica.org/'
     agency: str = "ProPublica"
 

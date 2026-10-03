@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class VanityFair(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.vanityfair.com/'
     agency: str = "Vanity Fair"
 

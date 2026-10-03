@@ -12,8 +12,6 @@ TIMESTAMP = re.compile(r'^\d{1,2}:\d{2}\s+')
 
 
 class TimesofIndia(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.mixed
     url: str = 'https://timesofindia.indiatimes.com/us'
     agency: str = "The Times of India"
     country = Country.in_

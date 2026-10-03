@@ -14,16 +14,19 @@
     <h1>The outlets</h1>
 
     <h2 class="section-divider" id="lineup"><span>The lineup</span></h2>
-    <p class="ratings-credit">⚖️ Lean and credibility ratings:
-        <a href="https://mediabiasfactcheck.com/">Media Bias/Fact Check</a>, recorded when each outlet was added.
-        The badges on the cards below are our own measurements.</p>
+    <p class="ratings-credit">⚖️ Lean: <a href="https://www.allsides.com/media-bias/ratings">AllSides Media Bias
+        Ratings</a> (<a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a>), shown on their five-level
+        scale. 📚 Reliability: Wikipedia's
+        <a href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources">perennial sources</a> list
+        (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>), which says whether Wikipedia editors
+        will cite a source. Both as of October 3, 2026. The badges on the cards are our own measurements.</p>
     <div class="lineup">
         {% for column in lineup %}
             <div class="lineup-column">
-                <div class="lineup-head" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
+                <div class="lineup-head{% if column.unrated %} lineup-unrated{% endif %}" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
                 {% for o in column.outlets %}
                     <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}"
-                       style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ outlet_icon(o.name) }}<span class="chip-name">{{ o.name }}</span></a>
+                       style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name">{{ o.name }}</span></a>
                 {% endfor %}
             </div>
         {% endfor %}
@@ -43,15 +46,18 @@
     <div class="outlet-cards">
         {% for o in outlets %}
             <div class="outlet-card" id="outlet-{{ o.slug }}" style="--pop: {{ o.color }}"
-                 data-name="{{ o.name.removeprefix('The ') }}" data-lean="{{ o.bias }}"
+                 data-name="{{ o.name.removeprefix('The ') }}" data-lean="{{ o.bias if o.bias is not none else 9 }}"
                  data-spice="{{ o.spice.value if o.spice else -1 }}" data-mood="{{ o.mood.value if o.mood else 9 }}"
                  data-framing="{{ o.framing.value if o.framing else 9 }}" data-edits="{{ o.edits }}"
                  data-headlines="{{ o.headlines }}">
                 <div class="outlet-head">
-                    <span class="edit-chip outlet-name" style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
+                    <span class="edit-chip outlet-name" style="{{ o.style }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
                     <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
                 </div>
-                <div class="outlet-facts">{{ o.lean }} · {{ o.credibility }} credibility</div>
+                <div class="outlet-facts">
+                    {% if o.lean_url %}<a href="{{ o.lean_url }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% else %}⚖️ not rated by AllSides{% endif %}
+                    · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% if o.reliability_note %} ({{ o.reliability_note }}){% endif %}{% else %}not on Wikipedia's list{% endif %}
+                </div>
                 <div class="outlet-badges">
                     {% if o.spice %}{{ badge(o.spice.badge[0], o.spice.badge[1], SPIN_TINTS[o.spice.badge[1]], 'Average loaded score ' ~ o.spice.value ~ ' (0 plain to 2 built to provoke)') }}{% endif %}
                     {% if o.mood %}{{ badge(o.mood.badge[0], o.mood.badge[1] ~ ' news', MOOD_TINTS[o.mood.badge[1]], 'Average mood ' ~ o.mood.value ~ ' (-1 grim to 1 upbeat)') }}{% endif %}

@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Slate(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mostly_factual
     url: str = 'https://slate.com'
     agency: str = "Slate"
 

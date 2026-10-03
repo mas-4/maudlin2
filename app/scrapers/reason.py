@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Reason(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://reason.com'
     agency: str = "Reason"
 

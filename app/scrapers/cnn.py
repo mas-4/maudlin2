@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class CNN(Scraper):
-    bias = Bias.left
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.cnn.com'
     agency: str = "CNN"
 

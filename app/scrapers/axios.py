@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Axios(SeleniumScraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.axios.com'
     agency: str = "Axios"
 

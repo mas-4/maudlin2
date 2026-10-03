@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Fortune(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://fortune.com'
     agency: str = "Fortune"
 

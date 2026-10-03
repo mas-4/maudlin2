@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class GlobeAndMail(Scraper):
-    bias = Bias.right_center
-    credibility = Credibility.high
     url: str = 'https://www.theglobeandmail.com/'
     agency: str = "The Globe and Mail"
     country: Country = Country.ca

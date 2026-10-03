@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class RawStory(Scraper):
-    bias = Bias.left
-    credibility = Credibility.high
     url: str = 'https://www.rawstory.com'
     agency: str = "Raw Story"
     headers = {

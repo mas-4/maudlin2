@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class SouthChinaMorningPost(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mixed
     url: str = 'https://www.scmp.com'
     agency: str = "South China Morning Post"
     country: str = Country.cn

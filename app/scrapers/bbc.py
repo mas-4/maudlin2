@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class BBC(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.bbc.com'
     agency: str = "BBC"
     country = Country.gb

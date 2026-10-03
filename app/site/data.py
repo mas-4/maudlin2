@@ -194,6 +194,7 @@ class DataHandler:
             'title': Headline.processed,
             'agency': Agency.name,
             'bias': Agency._bias,  # noqa prot attr
+            'rated': Agency.lean_rated,  # False for outlets AllSides doesn't rate: left out of lean averages
             'appearance': Article.first_accessed,
             'first_accessed': Headline.first_accessed,
             'last_accessed': Headline.last_accessed,

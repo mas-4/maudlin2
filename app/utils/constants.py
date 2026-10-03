@@ -17,7 +17,9 @@ class Bias(Enum):
     extreme_right = 3
 
     def __str__(self):
-        return self.name.replace('_', ' ').title()
+        # AllSides' wording (ratings.csv); the extremes aren't used since AllSides rates on five levels
+        return {-3: 'Far Left', -2: 'Left', -1: 'Lean Left', 0: 'Center', 1: 'Lean Right', 2: 'Right',
+                3: 'Far Right'}[self.value]
 
     @classmethod
     def to_dict(cls):

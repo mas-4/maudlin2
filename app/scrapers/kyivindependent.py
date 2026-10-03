@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class KyivIndependent(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://kyivindependent.com'
     agency: str = "The Kyiv Independent"
     country = Country.ua

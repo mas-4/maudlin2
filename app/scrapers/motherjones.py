@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class MotherJones(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.motherjones.com'
     agency: str = "Mother Jones"
 

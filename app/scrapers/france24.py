@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class France24(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.france24.com/en'
     agency: str = "France24"
     country: Country = Country.fr

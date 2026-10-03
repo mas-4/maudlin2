@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class DerSpiegel(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.high
     url: str = 'https://www.spiegel.de/international'
     agency: str = "Der Spiegel"
     country = Country.de

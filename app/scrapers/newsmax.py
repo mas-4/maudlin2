@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Newsmax(SeleniumScraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.low
     url: str = 'https://www.newsmax.com'
     agency: str = "Newsmax"
     country: str = Country.us

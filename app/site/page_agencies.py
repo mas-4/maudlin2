@@ -10,13 +10,14 @@ from app.analysis.edits import find_edits, edit_rates
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.stories import framing_scores
 from app.models import Session, Agency, Article, Headline
-from app.site.common import copy_assets, TemplateHandler, PathHandler
+from app.ratings import LEAN
+from app.site.common import chip_style, copy_assets, TemplateHandler, PathHandler
 from app.site.data import DataHandler, DataTypes, NEWS_ONLY
 from app.site.graphing import bias_colors, bias_ink
 from app.site.page_headlines import weather
 from app.site.wordcloudgen import generate_wordcloud
 from app.utils.config import Config
-from app.utils.constants import Bias, Credibility, Country
+from app.utils.constants import Bias, Country
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -52,12 +53,15 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
     since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=WINDOW_DAYS)
     with Session() as s:
         rows = s.query(
-            Agency.name, Agency._bias, Agency._credibility, Agency._country,  # noqa prot attr
+            Agency.name, Agency._bias, Agency.lean_rated, Agency.lean_url, Agency.reliability,  # noqa prot attr
+            Agency.reliability_note, Agency._country,
             Headline.event_score, Headline.loaded_score, Headline.emotion_ranks,
         ).join(Headline.article).join(Article.agency).filter(Headline.first_accessed > since, NEWS_ONLY).all()
-    df = pd.DataFrame(rows, columns=['agency', 'bias', 'credibility', 'country', 'event', 'loaded', 'ranks'])
+    df = pd.DataFrame(rows, columns=['agency', 'bias', 'rated', 'lean_url', 'reliability', 'reliability_note',
+                                     'country', 'event', 'loaded', 'ranks'])
     profiles = df.groupby('agency').agg(
-        bias=('bias', 'first'), credibility=('credibility', 'first'), country=('country', 'first'),
+        bias=('bias', 'first'), rated=('rated', 'first'), lean_url=('lean_url', 'first'),
+        reliability=('reliability', 'first'), reliability_note=('reliability_note', 'first'), country=('country', 'first'),
         headlines=('agency', 'size'), mood=('event', 'mean'), spice=('loaded', 'mean'))
     profiles = profiles[profiles['headlines'] >= MIN_HEADLINES]
 
@@ -76,10 +80,13 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
     out = []
     for name, p in profiles.iterrows():
         bias, mood = int(p['bias']), (p['mood'] / 2 if pd.notna(p['mood']) else None)  # event score is -2 to 2
+        rated = bool(p['rated'])
         card = {
-            'name': name, 'slug': name.lower().replace(' ', '-'), 'bias': bias, 'lean': str(Bias(bias)),
-            'color': bias_colors[bias + 3], 'ink': bias_ink[bias + 3],
-            'credibility': str(Credibility(int(p['credibility']))), 'cred_value': int(p['credibility']),
+            'name': name, 'slug': name.lower().replace(' ', '-'), 'bias': bias if rated else None,
+            'lean': str(Bias(bias)) if rated else 'Not rated', 'lean_url': p['lean_url'] if rated else None,
+            'style': chip_style(name, bias), 'color': bias_colors[bias + 3] if rated else '#c8c8d0',
+            'reliability': p['reliability'] if isinstance(p['reliability'], str) else None,
+            'reliability_note': p['reliability_note'] if isinstance(p['reliability_note'], str) else None,
             'flag': flag(Country(int(p['country']))), 'country': str(Country(int(p['country']))),
             'headlines': int(p['headlines']), 'live': int(live.get(name, 0)),
             'spice': None, 'mood': None, 'framing': None, 'edits': None, 'feeling': None,
@@ -110,12 +117,13 @@ class AgenciesPage:
         live = self.data.main_headline_df.groupby('agency').size()
         outlets = outlet_profiles(live)
         self.context['outlets'] = outlets
-        # The lineup: outlets in columns from extreme left to extreme right
+        # The lineup: outlets in AllSides' five columns from left to right, then the ones it doesn't rate
         self.context['lineup'] = [
-            {'name': str(b), 'color': bias_colors[b.value + 3], 'ink': bias_ink[b.value + 3],
-             'outlets': [o for o in outlets if o['bias'] == b.value]}
-            for b in Bias
-        ]
+            {'name': str(Bias(b)), 'color': bias_colors[b + 3], 'ink': bias_ink[b + 3],
+             'outlets': [o for o in outlets if o['bias'] == b]}
+            for b in LEAN.values()
+        ] + [{'name': 'Not rated', 'color': '#ffffff', 'ink': '#1f1f2e', 'unrated': True,
+              'outlets': [o for o in outlets if o['bias'] is None]}]
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.main_headline_df[['title', 'agency', 'bias']],
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)

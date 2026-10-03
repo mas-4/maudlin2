@@ -1422,7 +1422,7 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 /* Outlets page: the lineup by lean, then a card per outlet */
 .lineup {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 0.5em;
     align-items: start;
 }
@@ -1652,4 +1652,8 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
     margin-top: 0.2em;
     opacity: 0.85;
+}
+
+.lineup-unrated {
+    border-style: dashed;
 }

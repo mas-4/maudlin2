@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class WinnipegFreePress(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.winnipegfreepress.com/'
     agency: str = "Winnipeg Free Press"
     country = Country.ca

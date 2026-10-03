@@ -7,8 +7,6 @@ logger = get_logger(__name__)
 
 
 class Townhall(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://townhall.com'
     agency: str = "Townhall"
 

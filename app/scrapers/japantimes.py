@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class JapanTimes(Scraper):
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.japantimes.co.jp/'
     agency: str = "The Japan Times"
     country = Country.jp

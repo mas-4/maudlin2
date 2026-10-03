@@ -11,8 +11,6 @@ logger = get_logger(__name__)
 
 class MilitaryCom(Scraper):
     headers = Constants.Headers.firefox
-    bias = Bias.unbiased
-    credibility = Credibility.high
     url: str = 'https://www.military.com'
     agency: str = "Military.com"
 

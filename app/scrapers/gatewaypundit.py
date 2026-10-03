@@ -7,8 +7,6 @@ logger = get_logger(__name__)
 
 
 class GatewayPundit(Scraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.very_low
     url: str = 'https://www.thegatewaypundit.com/'
     agency: str = "The Gateway Pundit"
     headers = {

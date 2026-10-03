@@ -7,8 +7,6 @@ logger = get_logger(__name__)
 
 
 class Alternet(Scraper):
-    bias = Bias.extreme_left
-    credibility = Credibility.mixed
     url: str = 'https://www.alternet.org/'
     agency: str = "Alternet"
 

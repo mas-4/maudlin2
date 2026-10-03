@@ -8,8 +8,6 @@ logger = get_logger(__name__)
 
 
 class Quillette(Scraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://quillette.com/'
     agency: str = "Quillette"
 

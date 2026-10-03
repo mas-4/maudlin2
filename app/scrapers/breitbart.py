@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Breitbart(Scraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.mixed
     url: str = 'https://www.breitbart.com/'
     agency: str = "Breitbart"
 

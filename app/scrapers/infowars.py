@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class InfoWars(SeleniumScraper):
-    bias = Bias.extreme_right
-    credibility = Credibility.very_low
     url: str = 'https://www.infowars.com/'
     agency: str = "Info Wars"
     headers = Constants.Headers.firefox

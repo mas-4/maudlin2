@@ -10,8 +10,6 @@ logger = get_logger(__name__)
 
 
 class Vice(Scraper):
-    bias = Bias.left_center
-    credibility = Credibility.mostly_factual
     url: str = 'https://www.vice.com/en'
     agency: str = "Vice"
 

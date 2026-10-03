@@ -12,8 +12,6 @@ logger = get_logger(__name__)
 class Fox(Scraper):
     url: str = 'https://www.foxnews.com/'
     agency: str = "Fox News"
-    bias: Bias = Bias.right
-    credibility: Credibility = Credibility.mixed
 
     def setup(self, soup: Soup):
         for item in soup.find('div', {'class': 'page'}).find_all(

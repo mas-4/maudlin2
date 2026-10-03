@@ -9,8 +9,6 @@ logger = get_logger(__name__)
 
 
 class WashingtonExaminer(SeleniumScraper):
-    bias = Bias.right
-    credibility = Credibility.mixed
     url: str = 'https://www.washingtonexaminer.com/'
     agency: str = "Washington Examiner"
 
