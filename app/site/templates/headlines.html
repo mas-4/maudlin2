@@ -478,6 +478,26 @@
                 </ol>
             </section>
         {% endif %}
+        {% if blindspots %}
+            <section class="trending trending-news blindspots" id="blindspots">
+                <h3>🙈 Blindspots <span class="blindspot-note">stories almost only one side is covering</span></h3>
+                <div class="blindspot-sides">
+                    {% for side, emoji in [('left', '🫏'), ('right', '🐘')] %}
+                        <div class="blindspot-side blindspot-{{ side }}">
+                            <h4>{{ emoji }} mostly {{ side }}</h4>
+                            {% for s in blindspots[side] %}
+                                <div class="blindspot">
+                                    <a class="blindspot-story" href="#story-{{ s.cluster }}">{{ s.title }}</a>
+                                    <span class="blindspot-split" title="Rated outlets covering it">{{ s.left }} left · {{ s.center }} center · {{ s.right }} right</span>
+                                </div>
+                            {% else %}
+                                <p class="blindspot-none">none right now</p>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
         {% for box in trend_boxes %}
             <section class="trending">
                 <h3>{{ box.heading }}</h3>
@@ -766,7 +786,7 @@
             }
             layout();
             addEventListener('resize', () => layout());
-            document.querySelectorAll('.saga-part').forEach((a) => a.addEventListener('click', (ev) => {
+            document.querySelectorAll('.saga-part, .blindspot-story').forEach((a) => a.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 popCard(document.getElementById(a.getAttribute('href').slice(1)));
             }));

@@ -41,6 +41,9 @@ GHOST_OPACITY = 0.35
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
+BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
+BLINDSPOT_SHARE = 0.7  # of them from one side
+BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
 BRIGHT_COUNT = 6  # items in the bright side box
 BRIGHT_SAME_EVENT = 0.6  # headline similarity at which two picks are the same event
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
@@ -381,6 +384,7 @@ class HeadlinesPage:
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
         self.bright_side(clusters_list)
+        self.blindspots(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -459,6 +463,30 @@ class HeadlinesPage:
                 items.append({'kind': 'headline', 'title': r.title, 'url': r.url, 'agency': r.agency,
                               'bias': int(r.bias), 'emoji': EMOTION_EMOJI.get(r.top, '☀️') if r.top in ('hope', 'joy') else '☀️'})
         self.context['bright_side'] = items
+
+    def blindspots(self, clusters_list):
+        """Stories covered almost entirely by one side: at least BLINDSPOT_MIN_OUTLETS rated outlets, BLINDSPOT_SHARE
+        or more of them from one side, and that side's share at least BLINDSPOT_LIFT times its share of all the rated
+        outlets in the pool (which itself leans left, so a mostly-left story is less unusual than a mostly-right one)."""
+        pool = {a['agency']: a['bias'] for c in clusters_list for a in c['data'] if a['rated']}
+        sides = {'left': sum(b < 0 for b in pool.values()) / max(1, len(pool)),
+                 'right': sum(b > 0 for b in pool.values()) / max(1, len(pool))}
+        found = {'left': [], 'right': []}
+        for c in clusters_list:
+            rated = {a['agency']: a['bias'] for a in c['data'] if a['rated']}
+            if len(rated) < BLINDSPOT_MIN_OUTLETS:
+                continue
+            counts = {'left': sum(b < 0 for b in rated.values()), 'center': sum(b == 0 for b in rated.values()),
+                      'right': sum(b > 0 for b in rated.values())}
+            for side in ('left', 'right'):
+                share = counts[side] / len(rated)
+                if share >= BLINDSPOT_SHARE and share >= BLINDSPOT_LIFT * sides[side]:
+                    found[side].append({'cluster': int(c['cluster']), 'title': self.context['titles'][c['cluster']],
+                                        'share': round(100 * share), **counts})
+        for side in found:
+            found[side].sort(key=lambda s: (-s['share'], -(s['left'] + s['right'] + s['center'])))
+        self.context['blindspots'] = found if found['left'] or found['right'] else None
+        logger.info("Blindspots: %d mostly left, %d mostly right", len(found['left']), len(found['right']))
 
     def make_agency_lists(self, clusters_list):
         # Articles whose headline the outlet rewrote (minor changes excluded), to mark their chips and the stories

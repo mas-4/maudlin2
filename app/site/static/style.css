@@ -1928,3 +1928,50 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
 .unrated-chips .lineup-chip .chip-name {
     text-align: left;
 }
+
+/* Blindspots: stories almost only one side is covering */
+.trending-row .blindspots {
+    --pop: #7a5cff;
+}
+
+.blindspot-note {
+    font: 700 0.6em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+}
+
+.blindspot-sides {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2em;
+}
+
+@media (max-width: 700px) {
+    .blindspot-sides { grid-template-columns: minmax(0, 1fr); }
+}
+
+.blindspot-side h4 {
+    font: 1em 'Bungee', 'Comic Neue', sans-serif;
+    margin: 0.2em 0 0.5em;
+    padding: 0.2em 0.7em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    width: fit-content;
+}
+
+.blindspot-left h4 { background: #8fb0fa; }
+.blindspot-right h4 { background: #f4a582; }
+
+.blindspot {
+    margin: 0 0 0.6em;
+}
+
+.blindspot-split {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+}
+
+.blindspot-none {
+    color: #888;
+    font-style: italic;
+}
