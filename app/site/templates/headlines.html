@@ -83,6 +83,9 @@
         // (d3-cloud's origin hook) and let the packing find it a free spot nearby, so words stay tilted and
         // interleaved but drift in order: biggest toward the top left, left-leaning toward the left, and so on.
         let cloudMode = 'splay';
+        // A word's feeling as a pair of emoji around it, rising in intensity: 😰fear😱, 🤢disgust🤮
+        const BOOKENDS = {'😨': ['😰', '😱'], '🤢': ['🤢', '🤮'], '😠': ['😠', '😡'], '😢': ['😢', '😭'],
+                          '😲': ['😲', '🤯'], '😄': ['😄', '🥳'], '🤞': ['🤞', '🙏'], '🥛': ['🥛', '🥛']};
         // Every sort runs from the top left to the bottom right: a word starts its search along the diagonal at its
         // rank, spread at random across it
         const diagonal = (t, random) => {
@@ -129,7 +132,7 @@
                 const angle = (random() < 0.5 ? -1 : 1) * steep;
                 return random() < 0.2 ? angle + 180 : angle;
             };
-            const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${w.text}\u2009${w.emoji}` : w.text,
+            const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${BOOKENDS[w.emoji][0]}\u2009${w.text}\u2009${BOOKENDS[w.emoji][1]}` : w.text,
                                              px: geo.fontSize(w.outlets)}));
             const sort = CLOUD_SORTS[mode];
             const order = sort ? sort.order : (a, b) => b.outlets - a.outlets;
@@ -187,12 +190,12 @@
             const groups = [...svg.querySelectorAll('.cloud-word')];
             const move = (g, p) => {
                 g.__pos = {x: p.x, y: p.y, rotate: p.rotate};
+                placeWord(g);
                 g.style.opacity = '';
                 g.style.pointerEvents = '';
             };
             if (mode === 'splay') {
                 groups.forEach((g) => move(g, g.__word));
-                react(svg);
                 return;
             }
             layoutCloud(mode, cloudGeo).then((placed) => {
@@ -202,39 +205,12 @@
                     if (p) move(g, p);
                     else { g.style.opacity = 0; g.style.pointerEvents = 'none'; }  // no room for it this time
                 });
-                react(svg);
             });
         }
 
-        // A word's place: its layout position plus any recoil from emotional neighbors
         function placeWord(g) {
-            const p = g.__pos, r = g.__react || {dx: 0, dy: 0, tilt: 0, scale: 1};
-            g.style.transform = `translate(${p.x + r.dx}px, ${p.y + r.dy}px) rotate(${p.rotate + r.tilt}deg) scale(${r.scale})`;
-        }
-
-        // Emotional physics: words lean away from a disgusting word (🤢) and shrink back from a fearful one (😨)
-        function react(svg) {
-            const words = [...svg.querySelectorAll('.cloud-word')].filter((g) => g.style.opacity !== '0');
-            words.forEach((g) => { g.__react = {dx: 0, dy: 0, tilt: 0, scale: 1}; });
-            for (const src of words) {
-                const kind = {'🤢': 'disgust', '😨': 'fear'}[src.__word.emoji];
-                if (!kind) continue;
-                const reach = src.__word.px * 5;
-                for (const g of words) {
-                    if (g === src) continue;
-                    const dx = g.__pos.x - src.__pos.x, dy = g.__pos.y - src.__pos.y, dist = Math.hypot(dx, dy) || 1;
-                    if (dist > reach) continue;
-                    const push = 1 - dist / reach;
-                    if (kind === 'disgust') {
-                        g.__react.dx += dx / dist * push * src.__word.px * 0.9;
-                        g.__react.dy += dy / dist * push * src.__word.px * 0.9;
-                        g.__react.tilt += Math.sign(dx || 1) * push * 18;
-                    } else {
-                        g.__react.scale = Math.min(g.__react.scale, 1 - 0.4 * push);
-                    }
-                }
-            }
-            words.forEach(placeWord);
+            const p = g.__pos;
+            g.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotate}deg)`;
         }
 
         // Drag a word anywhere; where it lands, the words it covers get shoved out of the way
@@ -278,7 +254,7 @@
                 const r = g.getBoundingClientRect();
                 return [g, {hw: r.width * k / 2, hh: r.height * k / 2}];
             }));
-            const center = (g) => ({x: g.__pos.x + (g.__react?.dx || 0), y: g.__pos.y + (g.__react?.dy || 0)});
+            const center = (g) => g.__pos;
             for (let round = 0; round < 30; round++) {
                 let moved = false;
                 for (let i = 0; i < words.length; i++) {
@@ -299,7 +275,7 @@
                 }
                 if (!moved) break;
             }
-            react(svg);
+            words.forEach(placeWord);
         }
 
         // A swooping arrow behind the words, top left to bottom right, colored from one end of the sort to the other
@@ -390,26 +366,18 @@
                 wiggle.appendChild(t);
                 svg.appendChild(g);
                 if (d.emoji) {
-                    // Its own element: emoji are color images, so only a drop shadow can outline them
-                    const e = document.createElementNS(ns, 'text');
-                    e.textContent = d.emoji;
-                    e.setAttribute('class', 'cloud-emoji');
-                    // Inline with the word, sitting on its baseline
-                    e.setAttribute('font-size', d.px * 0.72);
-                    e.setAttribute('x', t.getComputedTextLength() / 2 + d.px * 0.1);
-                    e.setAttribute('y', d.px * 0.02);
-                    wiggle.appendChild(e);
-                }
-                if (d.emoji === '🤢') {
-                    // Stink lines rising off disgusting words
-                    const width = t.getComputedTextLength();
-                    const stink = document.createElementNS(ns, 'g');
-                    stink.setAttribute('class', 'stink');
-                    stink.innerHTML = [-0.4, -0.2, 0, 0.2, 0.4].map((f, i) => {
-                        const x = f * width, y = -d.px * 0.8, h = d.px * 0.6;
-                        return `<path style="animation-delay: ${i * 0.45}s" d="M${x} ${y} q ${h * 0.3} ${-h * 0.25} 0 ${-h * 0.5} t 0 ${-h * 0.5}"/>`;
-                    }).join('');
-                    wiggle.appendChild(stink);
+                    // Their own elements: emoji are color images, so only a drop shadow can outline them
+                    const half = t.getComputedTextLength() / 2, size = d.px * 0.72, gap = d.px * 0.12;
+                    BOOKENDS[d.emoji].forEach((emoji, side) => {
+                        const e = document.createElementNS(ns, 'text');
+                        e.textContent = emoji;
+                        e.setAttribute('class', 'cloud-emoji');
+                        e.setAttribute('font-size', size);
+                        e.setAttribute('text-anchor', side ? 'start' : 'end');
+                        e.setAttribute('x', side ? half + gap : -half - gap);
+                        e.setAttribute('y', d.px * 0.02);  // on the word's baseline
+                        wiggle.appendChild(e);
+                    });
                 }
                 const open = () => { if (!g.__dragged) showWord(d); g.__dragged = false; };
                 g.addEventListener('click', open);
@@ -418,7 +386,6 @@
             }
             clearSticker(svg);
             if (cloudMode !== 'splay') arrangeCloud(cloudMode);
-            else react(svg);
         }
 
         // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it

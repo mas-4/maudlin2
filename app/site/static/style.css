@@ -666,7 +666,7 @@ figure.wordcloud {
     max-width: 900px;
 }
 
-figure.wordcloud img {
+figure.wordcloud noscript img {
     width: 100%;
     height: auto;
 }
@@ -1622,7 +1622,7 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     outline-offset: 4px;
 }
 
-/* A living cloud: words sway, can be dragged, and stink lines rise off disgusting ones */
+/* A living cloud: words sway and can be dragged */
 .cloud-word {
     cursor: grab;
     touch-action: none;
@@ -1644,24 +1644,8 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     to { transform: rotate(2deg) translateY(1.5px); }
 }
 
-.stink path {
-    fill: none;
-    stroke: #5f9a1e;
-    stroke-width: 4;
-    stroke-linecap: round;
-    opacity: 0;
-    animation: stink 2.4s ease-out infinite;
-}
-
-@keyframes stink {
-    0% { opacity: 0; transform: translateY(4px); }
-    30% { opacity: 0.95; }
-    100% { opacity: 0; transform: translateY(-26px); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .cloud-wiggle, .stink path { animation: none; }
-    .stink path { opacity: 0.7; }
+    .cloud-wiggle { animation: none; }
 }
 
 .newsday-count {
