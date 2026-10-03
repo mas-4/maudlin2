@@ -1,31 +1,43 @@
-name: Run pytest
+name: Smoke check
 
-on: [pull_request]
+# The test suite needs a populated database, so CI only checks what can break without one: every module compiles,
+# and the C clustering extension builds and clusters correctly on the Python the site runs on.
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.11, 3.12]
-
+  smoke:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+    - uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.14'
 
-    - name: Install dependencies
-
+    - name: Build the C extension
       run: |
         python -m pip install --upgrade pip
-        pip install pytest hypothesis
-        pip install -r requirements.txt
+        pip install numpy setuptools
         python setup.py build_ext --inplace
 
-    - name: Run pytest
+    - name: Compile every module
+      run: python -m compileall -q app main.py
+
+    - name: Clustering works
       run: |
-        pytest --setup-db
+        python - <<'PY'
+        import numpy as np
+        from app.analysis.maudlinlib import form_clusters
+        # two obvious groups of three, and a loner
+        sim = np.eye(7)
+        for group in ([0, 1, 2], [3, 4, 5]):
+            for i in group:
+                for j in group:
+                    sim[i, j] = 0.9
+        clusters = sorted(sorted(c) for c in form_clusters(np.ascontiguousarray(sim, dtype=np.float64), 2, 0.7))
+        assert clusters == [[0, 1, 2], [3, 4, 5]], clusters
+        print("clusters:", clusters)
+        PY
