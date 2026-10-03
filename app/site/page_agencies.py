@@ -138,6 +138,8 @@ class AgenciesPage:
 
 if __name__ == "__main__":
     Config.set_debug()
+    from app.builder import prepare
+    prepare()  # icons, ratings and lean estimates, as in a full build
     copy_assets()
     dh: DataHandler = DataHandler([DataTypes.agency])
     AgenciesPage(dh).generate()

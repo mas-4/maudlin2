@@ -611,5 +611,7 @@ class HeadlinesPage:
 
 if __name__ == '__main__':
     Config.set_debug()
+    from app.builder import prepare
+    prepare()  # icons, ratings and lean estimates, as in a full build
     HeadlinesPage(DataHandler([DataTypes.headlines])).generate()
     copy_assets()

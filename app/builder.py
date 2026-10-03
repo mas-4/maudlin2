@@ -14,16 +14,25 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def build():
-    stamp_build()
+def prepare():
+    """Everything the pages need besides their data: outlet ratings (ratings.csv) and our lean estimates, and the
+    outlet icons copied into the build. Run before any page renders, including a single page run on its own
+    (`python -m app.site.page_headlines`), or chips lose their icons and ratings."""
     ratings.apply()  # outlet lean and reliability from ratings.csv
     j2env.globals['unrated'] = ratings.unrated()
     lean = lean_estimate.estimate()  # our own estimate for some unrated outlets, kept out of lean averages
     j2env.globals['lean_estimates'], j2env.globals['lean_quality'] = lean['estimates'], lean['quality']
-    dh: DataHandler = DataHandler()
-    clear_build()
     favicons.refresh()  # only fetches icons that are missing or a week old
     j2env.globals['icons'] = favicons.publish()
+    logger.info("Prepared %d outlet icons, %d unrated outlets, %d lean estimates",
+                len(j2env.globals['icons']), len(j2env.globals['unrated']), len(lean['estimates']))
+
+
+def build():
+    stamp_build()
+    clear_build()
+    prepare()
+    dh: DataHandler = DataHandler()
     # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
     pages = [HeadlinesPage, AgenciesPage, EditsPage, EmotionsPage]
