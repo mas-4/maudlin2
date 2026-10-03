@@ -72,13 +72,35 @@
         setPageWidth();
         new ResizeObserver(setPageWidth).observe(document.body);
 
-        function drawCloud() {
-            const el = document.getElementById('cloud');
-            if (!WORDS.length || !window.d3) return;
-            el.innerHTML = '';
-            // A fixed seed keeps the layout the same on every load
-            let seed = 20261003;
-            const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+        // Cloud layouts. The splay is d3-cloud's own; the sorted modes give each word a starting point by its rank
+        // (d3-cloud's origin hook) and let the packing find it a free spot nearby, so words stay tilted and
+        // interleaved but drift in order: biggest toward the top left, left-leaning toward the left, and so on.
+        let cloudMode = 'splay';
+        const TILTS = {};  // each word keeps its splay tilt in every layout
+        const CLOUD_SORTS = {
+            size: {
+                order: (a, b) => b.outlets - a.outlets,
+                // along the diagonal by rank, spread at random across it
+                origin: (t, random) => {
+                    const along = 0.1 + 0.86 * t, room = Math.min(along, 1 - along);  // starts just past the sticker
+                    const across = (random() * 2 - 1) * room;
+                    return [along + across, along - across];
+                },
+                arrow: {from: [0.1, 0.12], to: [0.95, 0.9]},
+            },
+            side: {
+                order: (a, b) => a.lean - b.lean,
+                origin: (t, random) => [0.03 + 0.94 * t, 0.08 + 0.84 * random()],
+                arrow: {from: [0.05, 0.5], to: [0.96, 0.5], ends: ['🫏', '🐘']},
+            },
+            spice: {
+                order: (a, b) => a.spice - b.spice || b.outlets - a.outlets,
+                origin: (t, random) => [0.03 + 0.94 * t, 0.08 + 0.84 * random()],
+                arrow: {from: [0.05, 0.5], to: [0.96, 0.5], ends: ['🍞', '🌶️']},
+            },
+        };
+
+        function cloudGeometry(el) {
             const width = el.clientWidth;
             const aspect = width < 600 ? 1.35 : width < 1000 ? 0.75 : 0.5;
             const height = Math.round(width * aspect);
@@ -86,8 +108,6 @@
             const min = Math.min(...sizes), max = Math.max(...sizes);
             const scale = Math.sqrt(width * height) / 10;
             const fontSize = (s) => Math.max(11, scale * 0.12 + Math.sqrt((s - min) / ((max - min) || 1)) * scale * 0.9);
-            // Every word tilts, never flat: 12 to 40 degrees either way
-            const tilt = () => (random() < 0.5 ? -1 : 1) * (12 + random() * 28);
             // The sticker's corner is off limits, so words pack in around it instead of leaving a hole
             const obstacles = [];
             const sticker = document.querySelector('.newsday-sticker');
@@ -96,20 +116,101 @@
                 obstacles.push({x0: s.left - c.left - pad, y0: s.top - c.top - pad,
                                 x1: s.right - c.left + pad, y1: s.bottom - c.top + pad});
             }
-            d3.layout.cloud()
-                .obstacles(obstacles)
-                .size([width, height])
-                .words(WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${w.text}\u2009${w.emoji}` : w.text,
-                                          px: fontSize(w.outlets)})))
-                .text((d) => d.label)
-                .font('Comic Neue')
-                .fontWeight('bold')
-                .fontSize((d) => d.px)
-                .padding(Math.max(4, Math.round(scale * 0.1)))
-                .rotate(tilt)
-                .random(random)
-                .on('end', (placed) => render(el, placed, width, height))
-                .start();
+            return {width, height, scale, fontSize, obstacles};
+        }
+
+        function layoutCloud(mode, geo) {
+            // A fixed seed keeps each layout the same on every load
+            let seed = 20261003;
+            const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+            // Every word tilts, never flat: 12 to 40 degrees either way
+            const tilt = () => (random() < 0.5 ? -1 : 1) * (12 + random() * 28);
+            const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${w.text}\u2009${w.emoji}` : w.text,
+                                             px: geo.fontSize(w.outlets)}));
+            const sort = CLOUD_SORTS[mode];
+            if (sort) {
+                [...words].sort(sort.order).forEach((d, i, all) => { d.rank = i / Math.max(1, all.length - 1); });
+            }
+            return new Promise((resolve) => {
+                const layout = d3.layout.cloud()
+                    .obstacles(geo.obstacles)
+                    .size([geo.width, geo.height])
+                    .words(words)
+                    .text((d) => d.label)
+                    .font('Comic Neue')
+                    .fontWeight('bold')
+                    .fontSize((d) => d.px)
+                    .padding(Math.max(4, Math.round(geo.scale * 0.1)))
+                    .rotate((d) => TILTS[d.word] ?? tilt())
+                    .random(random)
+                    .on('end', resolve);
+                if (sort) {
+                    layout.origin((d) => {
+                        const [x, y] = sort.origin(d.rank, random);
+                        return [x * geo.width, y * geo.height];
+                    });
+                }
+                layout.start();
+            });
+        }
+
+        let cloudGeo = null;
+        function drawCloud() {
+            const el = document.getElementById('cloud');
+            if (!WORDS.length || !window.d3) return;
+            el.innerHTML = '';
+            for (const key in TILTS) delete TILTS[key];
+            cloudGeo = cloudGeometry(el);
+            layoutCloud('splay', cloudGeo).then((placed) => {
+                placed.forEach((d) => { TILTS[d.word] = d.rotate; });
+                render(el, placed, cloudGeo.width, cloudGeo.height);
+            });
+        }
+
+        function arrangeCloud(mode) {
+            cloudMode = mode;
+            const svg = document.querySelector('#cloud svg');
+            if (!svg) return;
+            drawArrow(svg, mode);
+            const groups = [...svg.querySelectorAll('.cloud-word')];
+            const move = (g, p) => {
+                g.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotate}deg)`;
+                g.style.opacity = '';
+                g.style.pointerEvents = '';
+            };
+            if (mode === 'splay') {
+                groups.forEach((g) => move(g, g.__word));
+                return;
+            }
+            layoutCloud(mode, cloudGeo).then((placed) => {
+                const spots = Object.fromEntries(placed.map((d) => [d.word, d]));
+                groups.forEach((g) => {
+                    const p = spots[g.__word.word];
+                    if (p) move(g, p);
+                    else { g.style.opacity = 0; g.style.pointerEvents = 'none'; }  // no room for it this time
+                });
+            });
+        }
+
+        // A faint arrow behind the words showing which way the sort falls off
+        function drawArrow(svg, mode) {
+            const ns = 'http://www.w3.org/2000/svg';
+            svg.querySelector('.cloud-arrow')?.remove();
+            const arrow = CLOUD_SORTS[mode]?.arrow;
+            if (!arrow) return;
+            const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
+            const at = ([x, y]) => [vx + x * W, vy + y * H];
+            const [x0, y0] = at(arrow.from), [x1, y1] = at(arrow.to);
+            const angle = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
+            const thick = Math.max(18, H * 0.07), head = thick * 2.2;
+            const length = Math.hypot(x1 - x0, y1 - y0);
+            const g = document.createElementNS(ns, 'g');
+            g.setAttribute('class', 'cloud-arrow');
+            g.setAttribute('transform', `translate(${x0},${y0}) rotate(${angle})`);
+            g.innerHTML = `<path d="M0 ${-thick / 2} H${length - head} V${-head / 1.4} L${length} 0 L${length - head} ${head / 1.4} V${thick / 2} H0 Z"/>`
+                + (arrow.ends ? `<text class="cloud-arrow-end" x="0" y="${thick * 2.6}" font-size="${thick * 1.6}">${arrow.ends[0]}</text>
+                    <text class="cloud-arrow-end" x="${length - head}" y="${thick * 2.6}" font-size="${thick * 1.6}">${arrow.ends[1]}</text>` : '');
+            svg.insertBefore(g, svg.querySelector('.cloud-word'));
         }
 
         function render(el, placed, width, height) {
@@ -154,78 +255,6 @@
             }
             clearSticker(svg);
             if (cloudMode !== 'splay') arrangeCloud(cloudMode);
-        }
-
-        // Sorting the cloud: the splay is d3-cloud's layout; the sorted modes lay the same words out in order, upright,
-        // scaled as large as fits and kept clear of the sticker. Words glide between layouts (CSS transition).
-        let cloudMode = 'splay';
-        const CLOUD_SORTS = {
-            // biggest first, in reading order: top left to bottom right
-            size: {flow: 'rows', order: (a, b) => b.outlets - a.outlets},
-            // most left-leaning on the left to most right-leaning on the right
-            side: {flow: 'columns', order: (a, b) => a.lean - b.lean},
-            // plainest on the left to spiciest on the right
-            spice: {flow: 'columns', order: (a, b) => a.spice - b.spice || b.outlets - a.outlets},
-        };
-
-        function arrangeCloud(mode) {
-            cloudMode = mode;
-            const svg = document.querySelector('#cloud svg');
-            if (!svg) return;
-            const groups = [...svg.querySelectorAll('.cloud-word')];
-            if (mode === 'splay') {
-                groups.forEach((g) => {
-                    const d = g.__word;
-                    g.style.transform = `translate(${d.x}px, ${d.y}px) rotate(${d.rotate}deg)`;
-                });
-                return;
-            }
-            const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
-            const pad = 10, gap = 8;
-            const box = {x0: vx + pad, y0: vy + pad, x1: vx + W - pad, y1: vy + H - pad};
-            // The sticker's rectangle in the SVG's coordinates (1:1 with screen pixels)
-            let avoid = null;
-            const sticker = document.querySelector('.newsday-sticker');
-            if (sticker && getComputedStyle(sticker).position === 'absolute') {
-                const s = sticker.getBoundingClientRect(), r = svg.getBoundingClientRect(), k = W / r.width;
-                avoid = {x0: vx + (s.left - r.left) * k - gap, y0: vy + (s.top - r.top) * k - gap,
-                         x1: vx + (s.right - r.left) * k + gap, y1: vy + (s.bottom - r.top) * k + gap};
-            }
-            // Each word's upright size, measured once
-            const items = groups.map((g) => {
-                if (!g.__box) { const b = g.getBBox(); g.__box = {w: b.width, h: b.height, cx: b.x + b.width / 2, cy: b.y + b.height / 2}; }
-                return {g, d: g.__word, ...g.__box};
-            }).sort((a, b) => CLOUD_SORTS[mode].order(a.d, b.d));
-            const hits = (x, y, w, h) => avoid && x < avoid.x1 && x + w > avoid.x0 && y < avoid.y1 && y + h > avoid.y0;
-
-            function pack(scale) {
-                const spots = [];
-                let x = box.x0, y = box.y0, line = 0;
-                const rows = CLOUD_SORTS[mode].flow === 'rows';
-                for (const it of items) {
-                    const w = it.w * scale, h = it.h * scale;
-                    for (let tries = 0; tries < 3; tries++) {
-                        if (rows ? x + w > box.x1 : y + h > box.y1) {
-                            // next row or column
-                            if (rows) { x = box.x0; y += line + gap; } else { y = box.y0; x += line + gap; }
-                            line = 0;
-                        }
-                        if (!hits(x, y, w, h)) break;
-                        if (rows) x = avoid.x1; else y = avoid.y1;  // hop past the sticker
-                    }
-                    spots.push({it, x: x + w / 2, y: y + h / 2});
-                    if (rows) { x += w + gap; line = Math.max(line, h); } else { y += h + gap; line = Math.max(line, w); }
-                }
-                const fits = CLOUD_SORTS[mode].flow === 'rows' ? y + line <= box.y1 : x + line <= box.x1;
-                return fits ? spots : null;
-            }
-            let spots = null, scale = 1.6;
-            while (!(spots = pack(scale)) && scale > 0.2) scale *= 0.94;
-            spots = spots || pack(0.2);
-            spots.forEach(({it, x, y}, i) => {
-                const tilt = i % 2 ? 2 : -2;  // a little wobble, still easy to read
-                it.g.style.transform = `translate(${x - it.cx * scale}px, ${y - it.cy * scale}px) rotate(${tilt}deg) scale(${scale})`;
-            });
         }
 
         // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it

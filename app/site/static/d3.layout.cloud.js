@@ -1,6 +1,8 @@
 // d3-cloud 1.2.7 (https://github.com/jasondavies/d3-cloud, BSD-3-Clause, (c) Jason Davies), with one addition for
 // bignews.day marked "maudlin:": cloud.obstacles([{x0, y0, x1, y1}, ...]) marks rectangles of the layout as taken
-// before any word is placed, so words flow around them (the news-day sticker in the cloud's corner).
+// before any word is placed, so words flow around them (the news-day sticker in the cloud's corner); and
+// cloud.origin(function(d, i) { return [x, y]; }) sets where each word starts its spiral search instead of near the
+// middle, so a layout can be ordered (big words toward one corner, left-leaning words toward the left) yet still packed.
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g=(g.d3||(g.d3 = {}));g=(g.layout||(g.layout = {}));g.cloud = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 // Word cloud layout by Jason Davies, https://www.jasondavies.com/wordcloud/
 // Algorithm due to Jonathan Feinberg, https://s3.amazonaws.com/static.mrfeinberg.com/bv_ch03.pdf
@@ -33,6 +35,7 @@ module.exports = function() {
       timer = null,
       random = Math.random,
       obstacles = [],  // maudlin
+      origin = null,  // maudlin
       cloud = {},
       canvas = cloudCanvas;
 
@@ -83,8 +86,14 @@ module.exports = function() {
       var start = Date.now();
       while (Date.now() - start < timeInterval && ++i < n && timer) {
         var d = data[i];
-        d.x = (size[0] * (random() + .5)) >> 1;
-        d.y = (size[1] * (random() + .5)) >> 1;
+        if (origin) {  // maudlin
+          var start = origin(d, i);
+          d.x = start[0] >> 0;
+          d.y = start[1] >> 0;
+        } else {
+          d.x = (size[0] * (random() + .5)) >> 1;
+          d.y = (size[1] * (random() + .5)) >> 1;
+        }
         cloudSprite(contextAndRatio, d, data, i);
         if (d.hasText && place(board, d, bounds)) {
           tags.push(d);
@@ -218,6 +227,11 @@ module.exports = function() {
 
   cloud.padding = function(_) {
     return arguments.length ? (padding = functor(_), cloud) : padding;
+  };
+
+  // maudlin
+  cloud.origin = function(_) {
+    return arguments.length ? (origin = _, cloud) : origin;
   };
 
   // maudlin
