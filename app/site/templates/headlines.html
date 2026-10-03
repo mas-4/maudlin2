@@ -131,18 +131,20 @@
             // A fixed seed per layout keeps each the same on every load, and gives each sort its own tilts
             let seed = 20261003 + [...mode].reduce((n, c) => n * 31 + c.charCodeAt(0), 0) % 100000;
             const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-            // Every word tilts, never flat, leaning toward vertical (20 to 85 degrees either way, more often steep),
-            // and about one in five turned upside down
-            const tilt = () => {
-                const steep = 20 + 65 * Math.sqrt(random());
-                const angle = (random() < 0.5 ? -1 : 1) * steep;
-                return random() < 0.2 ? angle + 180 : angle;
+            // Every word tilts, never flat. The biggest stay closer to level (about 5 to 25 degrees, readable at a
+            // glance); smaller ones can go steeper, up to 85, and sometimes upside down, which the leaders rarely do.
+            // `size` (a word's bigness rank) is 0 for the biggest word and 1 for the smallest.
+            const tilt = (size) => {
+                const least = 5 + 15 * size, most = 25 + 60 * size;
+                const angle = (random() < 0.5 ? -1 : 1) * (least + (most - least) * Math.sqrt(random()));
+                return random() < 0.03 + 0.22 * size ? angle + 180 : angle;
             };
             const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${BOOKENDS[w.emoji][0]}\u2009${w.text}\u2009${BOOKENDS[w.emoji][1]}` : w.text,
                                              px: geo.fontSize(w.outlets)}));
             const sort = CLOUD_SORTS[mode];
             const order = sort ? sort.order : (a, b) => b.outlets - a.outlets;
             [...words].sort(order).forEach((d, i, all) => { d.rank = i / Math.max(1, all.length - 1); });
+            [...words].sort((a, b) => b.outlets - a.outlets).forEach((d, i, all) => { d.bigness = i / Math.max(1, all.length - 1); });
             return new Promise((resolve) => {
                 const layout = d3.layout.cloud()
                     .obstacles(geo.obstacles)
@@ -153,7 +155,7 @@
                     .fontWeight('bold')
                     .fontSize((d) => d.px)
                     .padding(Math.max(3, Math.round(geo.scale * 0.06)))
-                    .rotate(() => tilt())
+                    .rotate((d) => tilt(d.bigness))
                     .random(random)
                     .on('end', resolve);
                 if (sort) {
@@ -399,11 +401,11 @@
             const sticker = document.querySelector('.newsday-sticker');
             if (!sticker || getComputedStyle(sticker).position !== 'absolute') return;
             const s = sticker.getBoundingClientRect();
-            const pad = 6;
+            // A tilted word's bounding box is far bigger than its letters, so only a word whose middle is under the
+            // sticker counts; the layout already keeps letters off it pixel by pixel
             svg.querySelectorAll('.cloud-word').forEach((g) => {
-                const r = g.getBoundingClientRect();
-                const overlaps = r.left < s.right + pad && r.right > s.left - pad && r.top < s.bottom + pad && r.bottom > s.top - pad;
-                if (overlaps) g.remove();
+                const r = g.getBoundingClientRect(), x = (r.left + r.right) / 2, y = (r.top + r.bottom) / 2;
+                if (x > s.left && x < s.right && y > s.top && y < s.bottom) g.remove();
             });
         }
 
