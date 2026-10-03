@@ -183,12 +183,13 @@
             drawEnds(mode);
             const groups = [...svg.querySelectorAll('.cloud-word')];
             const move = (g, p) => {
-                g.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotate}deg)`;
+                g.__pos = {x: p.x, y: p.y, rotate: p.rotate};
                 g.style.opacity = '';
                 g.style.pointerEvents = '';
             };
             if (mode === 'splay') {
                 groups.forEach((g) => move(g, g.__word));
+                react(svg);
                 return;
             }
             layoutCloud(mode, cloudGeo).then((placed) => {
@@ -198,7 +199,104 @@
                     if (p) move(g, p);
                     else { g.style.opacity = 0; g.style.pointerEvents = 'none'; }  // no room for it this time
                 });
+                react(svg);
             });
+        }
+
+        // A word's place: its layout position plus any recoil from emotional neighbors
+        function placeWord(g) {
+            const p = g.__pos, r = g.__react || {dx: 0, dy: 0, tilt: 0, scale: 1};
+            g.style.transform = `translate(${p.x + r.dx}px, ${p.y + r.dy}px) rotate(${p.rotate + r.tilt}deg) scale(${r.scale})`;
+        }
+
+        // Emotional physics: words lean away from a disgusting word (🤢) and shrink back from a fearful one (😨)
+        function react(svg) {
+            const words = [...svg.querySelectorAll('.cloud-word')].filter((g) => g.style.opacity !== '0');
+            words.forEach((g) => { g.__react = {dx: 0, dy: 0, tilt: 0, scale: 1}; });
+            for (const src of words) {
+                const kind = {'🤢': 'disgust', '😨': 'fear'}[src.__word.emoji];
+                if (!kind) continue;
+                const reach = src.__word.px * 3.5;
+                for (const g of words) {
+                    if (g === src) continue;
+                    const dx = g.__pos.x - src.__pos.x, dy = g.__pos.y - src.__pos.y, dist = Math.hypot(dx, dy) || 1;
+                    if (dist > reach) continue;
+                    const push = 1 - dist / reach;
+                    if (kind === 'disgust') {
+                        g.__react.dx += dx / dist * push * src.__word.px * 0.4;
+                        g.__react.dy += dy / dist * push * src.__word.px * 0.4;
+                        g.__react.tilt += Math.sign(dx || 1) * push * 8;
+                    } else {
+                        g.__react.scale = Math.min(g.__react.scale, 1 - 0.2 * push);
+                    }
+                }
+            }
+            words.forEach(placeWord);
+        }
+
+        // Drag a word anywhere; where it lands, the words it covers get shoved out of the way
+        function dragWord(svg, g) {
+            let start = null;
+            g.addEventListener('pointerdown', (ev) => {
+                if (ev.button !== 0) return;
+                const k = svg.viewBox.baseVal.width / svg.getBoundingClientRect().width;
+                start = {x: ev.clientX, y: ev.clientY, pos: {...g.__pos}, k, moved: false};
+                g.setPointerCapture(ev.pointerId);
+            });
+            g.addEventListener('pointermove', (ev) => {
+                if (!start) return;
+                const dx = (ev.clientX - start.x) * start.k, dy = (ev.clientY - start.y) * start.k;
+                if (!start.moved && Math.hypot(dx, dy) < 5) return;
+                start.moved = true;
+                g.classList.add('dragging');
+                g.__pos = {...start.pos, x: start.pos.x + dx, y: start.pos.y + dy};
+                placeWord(g);
+            });
+            const end = () => {
+                if (!start) return;
+                if (start.moved) {
+                    g.__dragged = true;  // the click that follows a drag doesn't open the panel
+                    g.classList.remove('dragging');
+                    shove(svg, g);
+                }
+                start = null;
+            };
+            g.addEventListener('pointerup', end);
+            g.addEventListener('pointercancel', end);
+        }
+
+        // Push words off each other, starting from the one just dropped, a few rounds until nothing overlaps
+        function shove(svg, dropped) {
+            const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
+            const k = W / svg.getBoundingClientRect().width, origin = svg.getBoundingClientRect();
+            const words = [...svg.querySelectorAll('.cloud-word')].filter((g) => g.style.opacity !== '0');
+            // each word's on-screen half size, measured once
+            const size = new Map(words.map((g) => {
+                const r = g.getBoundingClientRect();
+                return [g, {hw: r.width * k / 2, hh: r.height * k / 2}];
+            }));
+            const center = (g) => ({x: g.__pos.x + (g.__react?.dx || 0), y: g.__pos.y + (g.__react?.dy || 0)});
+            for (let round = 0; round < 30; round++) {
+                let moved = false;
+                for (let i = 0; i < words.length; i++) {
+                    for (let j = i + 1; j < words.length; j++) {
+                        const a = words[i], b = words[j], ca = center(a), cb = center(b), sa = size.get(a), sb = size.get(b);
+                        const ox = sa.hw + sb.hw - Math.abs(ca.x - cb.x), oy = sa.hh + sb.hh - Math.abs(ca.y - cb.y);
+                        if (ox <= 0 || oy <= 0) continue;
+                        // the dropped word stays put; otherwise split the push
+                        const [mover, still] = b === dropped ? [a, b] : [b, a];
+                        const share = a === dropped || b === dropped ? 1 : 0.5;
+                        const cm = center(mover), cs = center(still);
+                        if (ox < oy) mover.__pos.x += Math.sign(cm.x - cs.x || 1) * ox * share;
+                        else mover.__pos.y += Math.sign(cm.y - cs.y || 1) * oy * share;
+                        mover.__pos.x = Math.max(vx + size.get(mover).hw, Math.min(vx + W - size.get(mover).hw, mover.__pos.x));
+                        mover.__pos.y = Math.max(vy + size.get(mover).hh, Math.min(vy + H - size.get(mover).hh, mover.__pos.y));
+                        moved = true;
+                    }
+                }
+                if (!moved) break;
+            }
+            react(svg);
         }
 
         // A swooping arrow behind the words, top left to bottom right, colored from one end of the sort to the other
@@ -267,9 +365,16 @@
             for (const d of placed) {
                 // A group per word so the emoji badge rotates with it
                 const g = document.createElementNS(ns, 'g');
-                g.style.transform = `translate(${d.x}px, ${d.y}px) rotate(${d.rotate}deg)`;
                 g.setAttribute('class', 'cloud-word');
                 g.__word = d;
+                g.__pos = {x: d.x, y: d.y, rotate: d.rotate};
+                placeWord(g);
+                // An inner layer that idly sways, each word on its own rhythm
+                const wiggle = document.createElementNS(ns, 'g');
+                wiggle.setAttribute('class', 'cloud-wiggle');
+                wiggle.style.animationDuration = `${4 + Math.random() * 4}s`;
+                wiggle.style.animationDelay = `${-Math.random() * 8}s`;
+                g.appendChild(wiggle);
                 g.setAttribute('title', d.tip);
                 g.setAttribute('tabindex', '0');
                 g.setAttribute('role', 'button');
@@ -279,7 +384,7 @@
                 t.setAttribute('text-anchor', 'middle');
                 t.setAttribute('font-size', d.px);
                 t.setAttribute('fill', d.color === 'balanced' ? 'url(#balanced)' : d.color);
-                g.appendChild(t);
+                wiggle.appendChild(t);
                 svg.appendChild(g);
                 if (d.emoji) {
                     // Its own element: emoji are color images, so only a drop shadow can outline them
@@ -290,14 +395,27 @@
                     e.setAttribute('font-size', d.px * 0.72);
                     e.setAttribute('x', t.getComputedTextLength() / 2 + d.px * 0.1);
                     e.setAttribute('y', d.px * 0.02);
-                    g.appendChild(e);
+                    wiggle.appendChild(e);
                 }
-                const open = () => showWord(d);
+                if (d.emoji === '🤢') {
+                    // Stink lines rising off disgusting words
+                    const width = t.getComputedTextLength();
+                    const stink = document.createElementNS(ns, 'g');
+                    stink.setAttribute('class', 'stink');
+                    stink.innerHTML = [-0.3, 0, 0.3].map((f, i) => {
+                        const x = f * width, y = -d.px * 0.85, h = d.px * 0.35;
+                        return `<path style="animation-delay: ${i * 0.6}s" d="M${x} ${y} q ${h * 0.3} ${-h * 0.25} 0 ${-h * 0.5} t 0 ${-h * 0.5}"/>`;
+                    }).join('');
+                    wiggle.appendChild(stink);
+                }
+                const open = () => { if (!g.__dragged) showWord(d); g.__dragged = false; };
                 g.addEventListener('click', open);
+                dragWord(svg, g);
                 g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
             }
             clearSticker(svg);
             if (cloudMode !== 'splay') arrangeCloud(cloudMode);
+            else react(svg);
         }
 
         // The layout already keeps words off the sticker; this catches any a wobble or late font shift pushes under it

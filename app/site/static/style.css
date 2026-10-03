@@ -1621,3 +1621,45 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     outline: 4px dashed #ffc400;
     outline-offset: 4px;
 }
+
+/* A living cloud: words sway, can be dragged, and stink lines rise off disgusting ones */
+.cloud-word {
+    cursor: grab;
+    touch-action: none;
+}
+
+.cloud-word.dragging {
+    cursor: grabbing;
+    transition: none !important;
+}
+
+.cloud-wiggle {
+    animation: cloud-wiggle 6s ease-in-out infinite alternate;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+@keyframes cloud-wiggle {
+    from { transform: rotate(-2deg) translateY(-1.5px); }
+    to { transform: rotate(2deg) translateY(1.5px); }
+}
+
+.stink path {
+    fill: none;
+    stroke: #6b9a2e;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    opacity: 0;
+    animation: stink 2.4s ease-out infinite;
+}
+
+@keyframes stink {
+    0% { opacity: 0; transform: translateY(4px); }
+    30% { opacity: 0.85; }
+    100% { opacity: 0; transform: translateY(-14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cloud-wiggle, .stink path { animation: none; }
+    .stink path { opacity: 0.7; }
+}
