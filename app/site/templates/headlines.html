@@ -7,7 +7,9 @@
                title="On {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages right now; first seen {{ newsday.age }} ago">
                 <span class="newsday-label">{{ newsday.emoji }} {{ newsday.label }}</span>
                 <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
-                <span class="newsday-count">📡 {{ "{:,}".format(newsday.live_headlines) }} headlines live · 📰 {{ newsday.stories }} active stories</span>
+                {% if newsday.live_headlines is defined %}
+                    <span class="newsday-count">📡 {{ "{:,}".format(newsday.live_headlines) }} headlines live · 📰 {{ newsday.stories }} active stories</span>
+                {% endif %}
             </a>
         {% endif %}
         <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
@@ -217,18 +219,18 @@
             for (const src of words) {
                 const kind = {'🤢': 'disgust', '😨': 'fear'}[src.__word.emoji];
                 if (!kind) continue;
-                const reach = src.__word.px * 3.5;
+                const reach = src.__word.px * 5;
                 for (const g of words) {
                     if (g === src) continue;
                     const dx = g.__pos.x - src.__pos.x, dy = g.__pos.y - src.__pos.y, dist = Math.hypot(dx, dy) || 1;
                     if (dist > reach) continue;
                     const push = 1 - dist / reach;
                     if (kind === 'disgust') {
-                        g.__react.dx += dx / dist * push * src.__word.px * 0.4;
-                        g.__react.dy += dy / dist * push * src.__word.px * 0.4;
-                        g.__react.tilt += Math.sign(dx || 1) * push * 8;
+                        g.__react.dx += dx / dist * push * src.__word.px * 0.9;
+                        g.__react.dy += dy / dist * push * src.__word.px * 0.9;
+                        g.__react.tilt += Math.sign(dx || 1) * push * 18;
                     } else {
-                        g.__react.scale = Math.min(g.__react.scale, 1 - 0.2 * push);
+                        g.__react.scale = Math.min(g.__react.scale, 1 - 0.4 * push);
                     }
                 }
             }
@@ -403,9 +405,9 @@
                     const width = t.getComputedTextLength();
                     const stink = document.createElementNS(ns, 'g');
                     stink.setAttribute('class', 'stink');
-                    stink.innerHTML = [-0.3, 0, 0.3].map((f, i) => {
-                        const x = f * width, y = -d.px * 0.85, h = d.px * 0.35;
-                        return `<path style="animation-delay: ${i * 0.6}s" d="M${x} ${y} q ${h * 0.3} ${-h * 0.25} 0 ${-h * 0.5} t 0 ${-h * 0.5}"/>`;
+                    stink.innerHTML = [-0.4, -0.2, 0, 0.2, 0.4].map((f, i) => {
+                        const x = f * width, y = -d.px * 0.8, h = d.px * 0.6;
+                        return `<path style="animation-delay: ${i * 0.45}s" d="M${x} ${y} q ${h * 0.3} ${-h * 0.25} 0 ${-h * 0.5} t 0 ${-h * 0.5}"/>`;
                     }).join('');
                     wiggle.appendChild(stink);
                 }

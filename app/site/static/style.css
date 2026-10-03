@@ -1646,8 +1646,8 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 
 .stink path {
     fill: none;
-    stroke: #6b9a2e;
-    stroke-width: 2.5;
+    stroke: #5f9a1e;
+    stroke-width: 4;
     stroke-linecap: round;
     opacity: 0;
     animation: stink 2.4s ease-out infinite;
@@ -1655,8 +1655,8 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 
 @keyframes stink {
     0% { opacity: 0; transform: translateY(4px); }
-    30% { opacity: 0.85; }
-    100% { opacity: 0; transform: translateY(-14px); }
+    30% { opacity: 0.95; }
+    100% { opacity: 0; transform: translateY(-26px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
