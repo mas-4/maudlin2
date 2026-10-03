@@ -10,7 +10,7 @@ from app.analysis.clustering import prepare_embedding_cosine, form_clusters, lab
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import textnorm
 from app.analysis.pipelines import Pipelines, prepare
-from app.site.common import calculate_xkeyscore, copy_assets, TemplateHandler
+from app.site.common import calculate_xkeyscore, copy_assets, outlet_icon, TemplateHandler
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
@@ -370,7 +370,7 @@ class HeadlinesPage:
                     f' data-live="{int(bool(a["live"]))}" data-mood="{a["sentiment"]:.3f}"'
                     f' data-framing="{a["deviation"]:.3f}"'
                     f' title="{a["title"]} (first seen {first_seen}) · {a["deviation"]:+.2f} vs. other outlets{note}"'
-                    f' href="{a["url"]}">{a["agency"]} {smiley}{" ✏️" if edited else ""}{badge}</a>'
+                    f' href="{a["url"]}">{outlet_icon(a["agency"])}{a["agency"]} {smiley}{" ✏️" if edited else ""}{badge}</a>'
                 )
             hrefs.append(f'<div class="chips">{" ".join(chips)}</div>')
             agency_lists[cluster['cluster']] = ' '.join(hrefs)

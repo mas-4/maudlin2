@@ -1507,3 +1507,27 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     flex-wrap: wrap;
     gap: 0.4em;
 }
+
+/* Outlet icons at the front of outlet chips: favicon on a white disc, or the outlet's initial */
+.outlet-icon {
+    display: inline-block;
+    width: 1.3em;
+    height: 1.3em;
+    margin: -0.15em 0.35em -0.15em -0.25em;
+    vertical-align: middle;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 0 1.5px #1f1f2e;
+    object-fit: contain;
+    padding: 1px;
+    box-sizing: border-box;
+}
+
+.outlet-mono {
+    text-align: center;
+    font: 700 0.8em/1.6em 'Bungee', 'Comic Neue', sans-serif;
+    width: 1.6em;
+    height: 1.6em;
+    color: #1f1f2e;
+    padding: 0;
+}

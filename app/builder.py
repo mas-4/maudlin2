@@ -1,4 +1,5 @@
-from app.site.common import copy_assets, clear_build, stamp_build
+from app.site import favicons
+from app.site.common import copy_assets, clear_build, stamp_build, j2env
 from app.site.data import DataHandler
 from app.site.deploy import publish_to_netlify
 from app.site.page_agencies import AgenciesPage
@@ -15,6 +16,8 @@ def build():
     stamp_build()
     dh: DataHandler = DataHandler()
     clear_build()
+    favicons.refresh()  # only fetches icons that are missing or a week old
+    j2env.globals['icons'] = favicons.publish()
     # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
     pages = [HeadlinesPage, AgenciesPage, EditsPage, EmotionsPage]

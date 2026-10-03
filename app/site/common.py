@@ -1,5 +1,7 @@
 import os
 import shutil
+
+from markupsafe import Markup, escape
 from datetime import datetime as dt
 
 import mistune
@@ -57,7 +59,11 @@ def copy_assets():
 def clear_build():
     for file in os.listdir(Config.build):
         logger.debug(f"Removing %s", file)
-        os.remove(os.path.join(Config.build, file))
+        path = os.path.join(Config.build, file)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
 
 class PathHandler:
@@ -108,6 +114,19 @@ def stamp_build():
 stamp_build()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
 j2env.globals['enumerate'] = enumerate
+j2env.globals['icons'] = {}  # outlet name -> icon path, filled by the build (see favicons.publish)
+
+
+def outlet_icon(name: str) -> Markup:
+    """An outlet's icon for the front of its chip: its favicon on a white disc, or its initial when it has none."""
+    path = j2env.globals['icons'].get(name)
+    if path:
+        return Markup(f'<img class="outlet-icon" src="{escape(path)}" alt="" loading="lazy">')
+    initial = (name.removeprefix('The ').strip()[:1] or '?').upper()
+    return Markup(f'<span class="outlet-icon outlet-mono" aria-hidden="true">{escape(initial)}</span>')
+
+
+j2env.globals['outlet_icon'] = outlet_icon
 j2env.globals['FileNames'] = PathHandler.FileNames
 
 

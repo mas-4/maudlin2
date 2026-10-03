@@ -20,7 +20,7 @@
                 <div class="lineup-head" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
                 {% for o in column.outlets %}
                     <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}"
-                       style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ o.name }}</a>
+                       style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ outlet_icon(o.name) }}{{ o.name }}</a>
                 {% endfor %}
             </div>
         {% endfor %}
@@ -45,7 +45,7 @@
                  data-framing="{{ o.framing.value if o.framing else 9 }}" data-edits="{{ o.edits }}"
                  data-headlines="{{ o.headlines }}">
                 <div class="outlet-head">
-                    <span class="edit-chip outlet-name" style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ o.name }}</span>
+                    <span class="edit-chip outlet-name" style="background-color: {{ o.color }}; color: {{ o.ink }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
                     <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
                 </div>
                 <div class="outlet-facts">{{ o.lean }} · {{ o.credibility }} credibility</div>
