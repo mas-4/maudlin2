@@ -78,7 +78,7 @@ MOOD_EMOJI = [(-0.6, '💀'), (-0.3, '😬'), (0.3, ''), (0.6, '🙂'), (float('
 MIN_OUTLETS_FOR_EMOJI = 5
 MAX_EMOJI = 25
 MIN_EMOTION_SHARE = 0.25  # of the averaged ranked-choice votes, so 25% is a strong pull
-CLOUD_WORDS = 120
+CLOUD_WORDS = 95  # more and the smallest come out unreadable or don't fit
 
 
 def term_outlets(df: pd.DataFrame, pipeline: list[Callable]) -> pd.DataFrame:

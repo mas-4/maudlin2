@@ -1657,3 +1657,17 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 .lineup-unrated {
     border-style: dashed;
 }
+
+/* The cloud's space is reserved at its final shape before it draws (the same aspects as drawCloud), so the page doesn't
+   jump when it appears */
+#cloud {
+    aspect-ratio: 5 / 3;
+}
+
+@media (max-width: 1000px) {
+    #cloud { aspect-ratio: 5 / 4; }
+}
+
+@media (max-width: 600px) {
+    #cloud { aspect-ratio: 20 / 27; }
+}

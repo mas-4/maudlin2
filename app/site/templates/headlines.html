@@ -108,12 +108,14 @@
 
         function cloudGeometry(el) {
             const width = el.clientWidth;
-            const aspect = width < 600 ? 1.35 : width < 1000 ? 0.75 : 0.5;
-            const height = Math.round(width * aspect);
-            const sizes = WORDS.map((w) => w.outlets);  // (d3-cloud uses d.size for font size)
-            const min = Math.min(...sizes), max = Math.max(...sizes);
+            // The height is the space #cloud's aspect-ratio (style.css) already reserved
+            const height = el.clientHeight || Math.round(width * (width < 600 ? 1.35 : width < 1000 ? 0.8 : 0.6));
+            const counts = WORDS.map((w) => w.outlets);  // (d3-cloud uses d.size for font size)
+            const lo = Math.min(...counts), hi = Math.max(...counts);
             const scale = Math.sqrt(width * height) / 10;
-            const fontSize = (s) => Math.max(11, scale * 0.12 + Math.sqrt((s - min) / ((max - min) || 1)) * scale * 0.9);
+            // A readable floor for the smallest words and a really big top, on a curve that keeps the crowd of
+            // middling words modest so they all fit and only the leaders tower
+            const fontSize = (s) => scale * (0.3 + 1.1 * Math.pow((s - lo) / ((hi - lo) || 1), 1.5));
             // The sticker's corner is off limits, so words pack in around it instead of leaving a hole
             const obstacles = [];
             const sticker = document.querySelector('.newsday-sticker');
@@ -150,7 +152,7 @@
                     .font('Comic Neue')
                     .fontWeight('bold')
                     .fontSize((d) => d.px)
-                    .padding(Math.max(4, Math.round(geo.scale * 0.1)))
+                    .padding(Math.max(3, Math.round(geo.scale * 0.06)))
                     .rotate(() => tilt())
                     .random(random)
                     .on('end', resolve);
@@ -407,7 +409,8 @@
 
         (async function () {
             // Lay out in the real font, or the measurements are off and words collide
-            try { await document.fonts.load('700 40px "Comic Neue"'); } catch (e) {}
+            // and wait for the sticker's font too, or the sticker grows after layout and covers words
+            try { await Promise.all([document.fonts.load('700 40px "Comic Neue"'), document.fonts.load('20px Bungee')]); } catch (e) {}
             drawCloud();
             document.querySelector('.cloud-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
