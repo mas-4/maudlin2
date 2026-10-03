@@ -441,6 +441,7 @@
                 <ol>
                     {% for story in news_trends %}
                         <li>
+                            {% if story.saga %}<span class="saga-tag" style="--saga: {{ story.color }}" title="An ongoing story in {{ story.saga }} parts">🧵 {{ story.saga }} parts</span>{% endif %}
                             <a href="#story-{{ story.cluster }}">{{ story.title }}</a>
                             <span class="trend-posts">{{ story.outlets }} outlets</span>
                             {% if story.speed %}<span class="fast-break" title="{{ story.speed }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
@@ -671,7 +672,13 @@
         {% for i, cluster in enumerate(clusters) %}
             <div class="story" id="story-{{ cluster['cluster'] }}" data-age="{{ cluster['first']|round|int }}"
                  data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
-                 data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}">
+                 data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
+                 {% if cluster['saga'] %}style="--saga-edge: {{ cluster['saga']['color'] }}"{% endif %}>
+                {% if cluster['saga'] %}
+                    <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
+                         title="Part of an ongoing story told in {{ cluster['saga']['clusters']|length }} parts, on {{ cluster['saga']['outlets'] }} outlets">
+                        🧵 {{ cluster['saga']['name'] }} · part {{ cluster['saga']['clusters'].index(cluster['cluster']) + 1 }} of {{ cluster['saga']['clusters']|length }}</div>
+                {% endif %}
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <div class="meters">
                     {% for feeling in cluster['feelings'] %}

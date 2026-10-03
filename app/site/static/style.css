@@ -1726,3 +1726,30 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     margin-right: 0.3em;
     white-space: nowrap;
 }
+
+/* Sagas: stories that are parts of one running story */
+.saga-ribbon {
+    display: inline-block;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, var(--saga) 25%, white);
+    border: 2px solid var(--saga);
+    border-radius: 999px;
+    padding: 0.1em 0.8em;
+    margin-bottom: 0.3em;
+}
+
+.story:has(.saga-ribbon) {
+    border-left-width: 8px;
+    border-left-color: var(--saga-edge, #1f1f2e);
+}
+
+.saga-tag {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, var(--saga) 25%, white);
+    border: 1.5px solid var(--saga);
+    border-radius: 999px;
+    padding: 0 0.5em;
+    margin-right: 0.3em;
+}
