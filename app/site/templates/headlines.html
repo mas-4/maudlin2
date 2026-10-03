@@ -84,11 +84,11 @@
             return [along + across, along - across];
         };
         const CLOUD_SORTS = {
-            size: {order: (a, b) => b.outlets - a.outlets, ends: ['📏 most outlets', 'fewest 🤏'],
+            size: {order: (a, b) => b.outlets - a.outlets, ends: [['📏', 'most outlets'], ['🤏', 'fewest']],
                    colors: ['#1f1f2e', '#8a8f98']},
-            side: {order: (a, b) => a.lean - b.lean, ends: ['🫏 left-leaning', 'right-leaning 🐘'],
+            side: {order: (a, b) => a.lean - b.lean, ends: [['🫏', 'left-leaning'], ['🐘', 'right-leaning']],
                    colors: ['#1a5cff', '#e0102e']},
-            spice: {order: (a, b) => a.spice - b.spice || b.outlets - a.outlets, ends: ['🍞 plain', 'spicy 🌶️'],
+            spice: {order: (a, b) => a.spice - b.spice || b.outlets - a.outlets, ends: [['🍞', 'plain'], ['🌶️', 'spicy']],
                     colors: ['#c9a66b', '#e0102e']},
         };
 
@@ -228,10 +228,13 @@
             const sticker = document.querySelector('.newsday-sticker');
             const top = sticker && getComputedStyle(sticker).position === 'absolute'
                 ? sticker.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 14 : 12;
-            sort.ends.forEach((text, i) => {
+            sort.ends.forEach(([emoji, text], i) => {
                 const label = document.createElement('span');
                 label.className = `cloud-end ${i ? 'cloud-end-finish' : 'cloud-end-start'}`;
-                label.textContent = text;
+                const big = document.createElement('span');
+                big.className = 'cloud-end-emoji';
+                big.textContent = emoji;
+                if (i) label.append(text, big); else label.append(big, text);
                 label.style.borderColor = sort.colors[i];
                 label.style.boxShadow = `3px 3px 0 ${sort.colors[i]}`;
                 if (!i) label.style.top = `${top}px`;
@@ -279,9 +282,10 @@
                     const e = document.createElementNS(ns, 'text');
                     e.textContent = d.emoji;
                     e.setAttribute('class', 'cloud-emoji');
-                    e.setAttribute('font-size', d.px * 0.55);
-                    e.setAttribute('x', t.getComputedTextLength() / 2 + d.px * 0.08);
-                    e.setAttribute('y', -d.px * 0.25);
+                    // Inline with the word, sitting on its baseline
+                    e.setAttribute('font-size', d.px * 0.72);
+                    e.setAttribute('x', t.getComputedTextLength() / 2 + d.px * 0.1);
+                    e.setAttribute('y', d.px * 0.02);
                     g.appendChild(e);
                 }
                 const open = () => showWord(d);

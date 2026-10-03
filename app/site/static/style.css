@@ -1367,12 +1367,15 @@ figure.wordcloud figcaption {
 .cloud-end {
     position: absolute;
     z-index: 1;
-    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    font: 700 1.5em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #1f1f2e;
     background: white;
-    border: 3px solid #1f1f2e;
+    border: 4px solid #1f1f2e;
     border-radius: 999px;
-    padding: 0.2em 0.9em;
+    padding: 0.1em 0.7em;
     pointer-events: none;
     white-space: nowrap;
 }
@@ -1398,4 +1401,13 @@ figure.wordcloud figcaption {
     background: #1f1f2e;
     font-size: 1.3em;
     line-height: 1;
+}
+
+.cloud-end-emoji {
+    font-size: 1.8em;
+    line-height: 1;
+}
+
+@media (max-width: 700px) {
+    .cloud-end { font-size: 1.1em; }
 }
