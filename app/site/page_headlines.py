@@ -6,12 +6,13 @@ from datetime import datetime as dt, timedelta as td
 from typing import Optional
 
 import numpy as np
+import pytz
 import pandas as pd
 from sqlalchemy import func
 
 from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
-from app.analysis.sagas import find_sagas
+from app.analysis.sagas import link_sagas
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
@@ -54,10 +55,11 @@ BRIGHT_SAME_EVENT = 0.6  # headline similarity at which two picks are the same e
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
 FAST_BREAK = 8  # outlets within that window to count as a fast break
 NEWS_DAY_HALF_LIFE_HOURS = 24
+# Each verdict is anchored by a big emoji on either side
 NEWS_DAY_LABELS = {
-    'big': {'emoji': '🚨', 'label': 'Big news day!'},
-    'normal': {'emoji': '📰', 'label': 'Just another news day'},
-    'slow': {'emoji': '🌴🐢', 'label': 'Slow news day…'},
+    'big': {'emoji': '🚨', 'ends': ('🚨', '🚨'), 'label': 'Big news day!'},
+    'normal': {'emoji': '📰', 'ends': ('📰', '🗞️'), 'label': 'Just another news day'},
+    'slow': {'emoji': '🌴🐢', 'ends': ('🌴', '🐢'), 'label': 'Slow news day…'},
 }
 # e.g. "Oct 3, 9:41 AM ET"; Windows' strftime doesn't support the no-padding dash
 TOOLTIP_TIME = '%b %#d, %#I:%M %p ET' if os.name == 'nt' else '%b %-d, %-I:%M %p ET'
@@ -270,6 +272,20 @@ class HeadlinesPage:
         self.table_page.write({**self.context, 'page_part': 'table', 'title': 'Every Headline'})
         logger.info("...done")
 
+    @staticmethod
+    def heat(df) -> pd.DataFrame:
+        """Per story (or saga, by df['group']): outlets carrying it on their front page now, its age (from its oldest
+        headline), and a score: its share of the outlets on front pages now, at full weight for NEWS_DAY_FRESH_HOURS,
+        then halving every NEWS_DAY_HALF_LIFE_HOURS. The news-day sticker and the trending list both rank by it."""
+        live = df[df['live']]
+        live_outlets = max(1, live['agency'].nunique())
+        heat = pd.DataFrame({'now': live.groupby('group')['agency'].nunique()}).reindex(df['group'].unique()).fillna(0)
+        heat['age'] = df.groupby('group')['howlong'].max()
+        hours = heat['age'] / 3600
+        heat['score'] = heat['now'] / live_outlets * 0.5 ** (
+            (hours - NEWS_DAY_FRESH_HOURS).clip(lower=0) / NEWS_DAY_HALF_LIFE_HOURS)
+        return heat
+
     def news_day(self, df, active_outlets: int):
         """How big a news day it is: the share of outlets carrying a story on their front page right now, for the
         story where that's highest once age is weighed in. One fresh story everyone is covering makes a big news day;
@@ -345,6 +361,7 @@ class HeadlinesPage:
         sentiment = df['sentiment'] = headline_sentiment(df)
         df['deviation'] = sentiment - sentiment.groupby(df['cluster']).transform('mean')
         stories = sync_stories(df)
+        self.story_of = {int(k): story.id for k, story in stories.items()}  # cluster -> saved story, for sagas
         self.summarize(df, label_stories(df, stories))
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
@@ -363,14 +380,17 @@ class HeadlinesPage:
             cluster['outlets'] = int(group['agency'].nunique())
             cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0
 
-        # Sagas: stories that are parts of one running story. Members sit together, ordered by the saga's newest part
-        sagas = find_sagas(considered, df)
+        # Sagas: stories that are parts of one running story, kept across days (earlier parts stay in the saga after
+        # they leave the front pages). Members sit together, ordered by the saga's newest part
+        sagas = link_sagas(considered, df, getattr(self, 'story_of', {}))
         saga_of = {k: sid for sid, saga in sagas.items() for k in saga['clusters']}
-        for i, (sid, saga) in enumerate(sagas.items()):
-            saga['color'] = SAGA_COLORS[i % len(SAGA_COLORS)]
-            saga['lead'] = max(saga['clusters'], key=lambda k: (df['cluster'] == k).sum())  # its biggest story
-            age = {c['cluster']: c['first'] for c in clusters_list}
-            saga['clusters'].sort(key=lambda k: -age[k])  # part 1 is the one that broke first
+        age = {c['cluster']: c['first'] for c in clusters_list}
+        for sid, saga in sagas.items():
+            saga['color'] = SAGA_COLORS[saga['id'] % len(SAGA_COLORS)]  # a saga keeps its color from run to run
+            saga['lead'] = max(saga['clusters'], key=lambda k: (df['cluster'] == k).sum())  # its biggest story now
+            saga['clusters'].sort(key=lambda k: -age[k])  # in the order they broke
+            # Part numbers count every part, earlier ones included, in the order they were first seen
+            saga['part_of'] = {p['cluster']: n for n, p in enumerate(saga['parts_all'], start=1) if p['cluster'] is not None}
         for cluster in clusters_list:
             sid = saga_of.get(cluster['cluster'])
             cluster['saga'] = {**sagas[sid], 'id': sid} if sid is not None else None
@@ -382,10 +402,20 @@ class HeadlinesPage:
                                           saga_of.get(c['cluster'], -1), c['first']))
         self.context['sagas'] = sagas
         by_id = {c['cluster']: c for c in clusters_list}
+        now = dt.now(pytz.UTC).replace(tzinfo=None)
         for saga in sagas.values():
-            saga['parts'] = [{'cluster': int(k), 'title': self.context['titles'][k], 'outlets': by_id[k]['outlets'],
-                              'age': age_text(by_id[k]['first'] / 3600), 'feelings': by_id[k]['feelings'][:1]}
-                             for k in saga['clusters']]
+            saga['parts'] = []
+            for part in saga['parts_all']:
+                k = part['cluster']
+                if k is not None and k in by_id:  # on the front pages now: links to its card
+                    saga['parts'].append({'cluster': int(k), 'title': self.context['titles'][k], 'now': True,
+                                          'outlets': by_id[k]['outlets'], 'age': age_text(by_id[k]['first'] / 3600),
+                                          'feelings': by_id[k]['feelings'][:1]})
+                else:  # an earlier part, off the front pages
+                    saga['parts'].append({'cluster': None, 'title': part['label'] or 'An earlier part', 'now': False,
+                                          'outlets': part['outlets'],
+                                          'age': age_text((now - part['first_seen']).total_seconds() / 3600),
+                                          'feelings': []})
             saga['started'] = saga['parts'][0]['age']
         self.context['saga_list'] = sorted(sagas.values(), key=lambda s: -s['outlets'])
         df['group'] = df['cluster'].map(lambda k: saga_of.get(k, k))
@@ -420,18 +450,24 @@ class HeadlinesPage:
                 on.setdefault(cluster, []).append(source['name'])
             boxes.append({**source, 'trends': trends, 'matches': matches})
         self.context['trend_boxes'] = boxes
-        # A saga counts once, with every outlet on any of its parts (and on related headlines that made no story)
+        # A saga counts once, with every outlet on any of its parts (and on related headlines that made no story).
+        # Ranked by heat, not reach: how many outlets carry it on their front page *now*, weighed by age the same way
+        # as the news-day sticker, so a story outlets have dropped falls down the list instead of holding its spot
+        # for a day on yesterday's coverage
         sagas = self.context.get('sagas', {})
         reach = df.groupby('group')['agency'].nunique()
         for sid, saga in sagas.items():
             reach[sid] = saga['outlets']
+        heat = self.heat(df)
         items = []
-        for group, count in reach.sort_values(ascending=False).head(TRENDING_COUNT).items():
+        for group in heat[heat['now'] > 0].sort_values('score', ascending=False).head(TRENDING_COUNT).index:
+            count = reach[group]
             saga = sagas.get(group)
             members = saga['clusters'] if saga else [group]
             lead = saga['lead'] if saga else group
             items.append({'cluster': lead, 'title': saga['name'] if saga else self.context['titles'][group],
-                          'outlets': int(count), 'saga': len(members) if saga else None,
+                          'outlets': int(count), 'now': int(heat.loc[group, 'now']),
+                          'saga': saga['size'] if saga else None,
                           'color': saga['color'] if saga else None,
                           'speed': max((speeds.get(k) or 0) for k in members) or None,
                           'also_on': sorted({name for k in members for name in on.get(k, [])})})

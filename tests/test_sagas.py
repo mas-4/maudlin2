@@ -12,7 +12,7 @@ from app.analysis.sagas import find_sagas, words
     ('Cornell case grows', {'cornell', 'case', 'grows'}),
     ('Trump’s war on the Fed', {'trump'}),  # the curly apostrophe ends the word; short words dropped
     ("Trump's 'human printer'", {"trump's", 'human', 'printer'}),
-    ('Kyiv-Moscow talks stall', {'kyiv-moscow', 'talks', 'stall'}),
+    ('Kyiv-Moscow talks stall', {'kyiv', 'moscow', 'talks', 'stall'}),  # hyphens split words
     ('UN to vote on it', {'vote'}),  # three letters or fewer don't count
     ('2024 votes', {'votes'}),
     ('', set()),

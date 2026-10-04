@@ -265,6 +265,18 @@ class SideTranscript(Base):
     segments: Mapped[str] = mapped_column(Text())  # JSON: [{start, end, text}, ...]
 
 
+class Saga(Base):
+    """One running story told in several parts, kept across days (app/analysis/sagas.py): stories join it and stay,
+    so a saga only grows or merges into another, never loses a part when its older parts leave the front pages."""
+    __tablename__ = "saga"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=True)
+    named_with: Mapped[int] = mapped_column(Integer(), nullable=True)  # parts when the name was written
+    words: Mapped[str] = mapped_column(String(255), nullable=True)  # its distinctive words, comma separated
+    first_seen: Mapped[dt] = mapped_column(DateTime())
+    last_seen: Mapped[dt] = mapped_column(DateTime())
+
+
 class Story(Base):
     """One news event as covered across outlets, persisted across runs so it can be labeled once and its
     coverage compared over time. Clusters from each run are matched to stories by the headlines they share."""
@@ -274,6 +286,7 @@ class Story(Base):
     labeled_with: Mapped[int] = mapped_column(Integer(), nullable=True)  # outlet count when the label was written
     first_seen: Mapped[dt] = mapped_column(DateTime())
     last_seen: Mapped[dt] = mapped_column(DateTime())
+    saga_id: Mapped[Optional[int]] = mapped_column(ForeignKey("saga.id"), nullable=True, index=True)
     headlines: Mapped[list["StoryHeadline"]] = relationship("StoryHeadline", back_populates="story")
 
     def __repr__(self):

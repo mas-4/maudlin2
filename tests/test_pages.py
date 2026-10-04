@@ -11,6 +11,7 @@ def test_headlines_page(data_handler, monkeypatch):
     import app.site.page_headlines as ph
     monkeypatch.setattr(ph, 'sync_stories', lambda df: {})
     monkeypatch.setattr(ph, 'label_stories', lambda df, stories: {})
+    monkeypatch.setattr(ph, 'link_sagas', lambda headlines, stories, story_of: {})  # writes sagas to the database
     page = HeadlinesPage(data_handler)
     page.generate()
     assert os.path.exists(page.template.path)

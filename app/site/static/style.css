@@ -704,11 +704,8 @@ figure.wordcloud {
     transition: opacity 0.15s;
 }
 
-/* Pointing at a word lifts its paper cutout to the top (surface() in headlines.html) and fades the others a touch;
-   pointing at empty space between words fades nothing */
-.cloud:has(.cloud-word:hover) .cloud-word:not(:hover) {
-    opacity: 0.85;
-}
+/* Pointing at a word lifts its paper cutout to the top of the pile (surface() in headlines.html); nothing fades:
+   the cutouts are opaque paper */
 
 .cloud-word {
     cursor: pointer;
@@ -841,10 +838,10 @@ figure.wordcloud {
     top: -0.6em;
     left: 0;
     z-index: 2;
-    max-width: 22em;
+    max-width: 30em;
     display: flex;
-    flex-direction: column;
-    gap: 0.15em;
+    align-items: stretch;
+    gap: 0.4em;
     padding: 0.45em 0.9em 0.55em;
     border: 3px solid #1f1f2e;
     border-radius: 12px;
@@ -854,10 +851,38 @@ figure.wordcloud {
     text-decoration: none;
 }
 
+.newsday-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15em;
+    min-width: 0;
+}
+
 .newsday-label {
     font-family: 'Bungee', 'Comic Neue', cursive;
     font-size: 1.35em;
     line-height: 1.1;
+}
+
+/* Twin pillars: a big emoji on each side, as tall as the whole sticker, tilted outward */
+.newsday-end {
+    flex: none;
+    display: flex;
+    align-items: center;
+    font-size: 4.2em;
+    line-height: 1;
+    transform: rotate(-8deg);
+}
+
+.newsday-end:last-child {
+    transform: rotate(8deg);
+}
+
+@media (max-width: 700px) {
+    .newsday-end {
+        font-size: 3em;
+    }
 }
 
 .newsday-why {
@@ -882,6 +907,23 @@ figure.wordcloud {
 
 .newsday-sticker.slow {
     background: #5ce1c6;
+    /* not the old .slow fade: a lethargic slump, sagging down and spreading out, then slowly hauling back up */
+    color: #1f1f2e;
+    padding: 0.45em 0.9em 0.55em;
+    opacity: 1;
+    transform-origin: 50% 100%;
+    animation: slump 6s ease-in-out infinite;
+}
+
+@keyframes slump {
+    0%, 100% { transform: rotate(-5deg) scale(1, 1); }
+    35% { transform: rotate(-6.5deg) scale(1.05, 0.9); }
+    55% { transform: rotate(-6.5deg) scale(1.06, 0.88); }
+    80% { transform: rotate(-5deg) scale(0.99, 1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .newsday-sticker.slow, .newsday-sticker.big { animation: none; }
 }
 
 @keyframes wobble {
@@ -2377,4 +2419,13 @@ h1 {
 
 .show-chip {
     font-size: 0.75em;
+}
+
+/* Saga parts that have left the front pages: still listed, quieter, no card to jump to */
+.saga-earlier {
+    opacity: 0.7;
+}
+
+.saga-past {
+    font-style: italic;
 }

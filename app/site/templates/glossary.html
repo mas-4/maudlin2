@@ -68,11 +68,15 @@
                 with all the outlets we follow, which lean left as a group.</p>
         {% endcall %}
         {% call term('🧵', 'Sagas', 'saga') %}
-            <p>One running story told in several parts: the Cornell case's prosecutor, the allegations, the governor
-                stepping in. Two stories join a saga when their centers are close (similarity {{ saga_similarity }}+)
-                <em>and</em> they share a distinctive word, one in at least {{ saga_word_share }}% of both stories'
-                headlines but no more than {{ saga_word_rare }}% of the day's. Headlines that made no story but clearly
-                belong count toward a saga's outlets. Sagas count once in trending and the news-day sticker.</p>
+            <p>One running story told in several parts: the Cornell case's allegations, the prosecutor, the attorney
+                general taking over. Two stories join a saga when their centers are close (similarity {{ saga_similarity }}+)
+                <em>and</em> they share a distinctive name, one in at least {{ saga_word_share }}% of both stories'
+                headlines but no more than {{ saga_word_rare }}% of the day's, that outlets capitalize as a name
+                (Cornell, Iranian), not a common word (rally).</p>
+            <p>Sagas are kept: each hour today's stories are compared with the last week's, so a saga gathers parts
+                across days and never loses one when its earlier parts leave the front pages. A saga shows while any
+                of its parts is current; earlier parts are listed, quieter, with when they ran. Sagas count once in
+                trending and the news-day sticker.</p>
         {% endcall %}
         {% call term('🚨', 'News day', 'news-day') %}
             <p>How big a news day it is: the share of outlets carrying the top story on their front page right now,

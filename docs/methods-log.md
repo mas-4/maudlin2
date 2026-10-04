@@ -5,6 +5,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Trending ranks by what's on front pages now.** "Trending in the news" ranks stories by the share of outlets
+  carrying them on their front page right now, weighted by age the same way as the news-day sticker (full weight
+  for 12 hours, then halving every 24), instead of every outlet that covered them in the last day. A story outlets
+  have dropped falls down the list. Items show both counts: on front pages now, and in all.
+- **Sagas are kept across days.** Sagas are saved (saga table, story.saga_id). Each hour, today's stories are merged
+  with the last 7 days of saved stories, starting from the saved sagas, so a saga grows or merges but never loses a
+  part. Linking now needs a shared distinctive *name* (a word outlets capitalize mid-sentence) rather than any
+  distinctive word, and hyphenated words split ("UK-Iranian" carries "Iranian"). Checked on Oct 3-4: Cornell keeps
+  all 4 parts; a false link ("Trump rally in Alabama" with "Ohio layoffs before Trump rally", via "rally") is gone.
 - **Podcast transcription.** Archived podcast audio is transcribed on our own GPU with Whisper (faster-whisper
   large-v3-turbo, int8), after each hourly build, hourly newscasts first, for items up to 3 days old. Sponsor reads
   at the start and end are trimmed. Transcripts are kept with the model's name, for analysis only.

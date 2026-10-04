@@ -24,11 +24,15 @@
         {% if newsday %}
             <a class="newsday-sticker {{ newsday.kind }}" href="#story-{{ newsday.cluster }}"
                title="On {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages right now; first seen {{ newsday.age }} ago">
-                <span class="newsday-label">{{ newsday.emoji }} {{ newsday.label }}</span>
-                <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
-                {% if newsday.live_headlines is defined %}
-                    <span class="newsday-count">📡 {{ "{:,}".format(newsday.live_headlines) }} headlines live · 📰 {{ newsday.stories }} active stories</span>
-                {% endif %}
+                <span class="newsday-end" aria-hidden="true">{{ newsday.ends[0] }}</span>
+                <span class="newsday-body">
+                    <span class="newsday-label">{{ newsday.label }}</span>
+                    <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
+                    {% if newsday.live_headlines is defined %}
+                        <span class="newsday-count">📡 {{ "{:,}".format(newsday.live_headlines) }} headlines live · 📰 {{ newsday.stories }} active stories</span>
+                    {% endif %}
+                </span>
+                <span class="newsday-end" aria-hidden="true">{{ newsday.ends[1] }}</span>
             </a>
         {% endif %}
         <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
@@ -376,7 +380,9 @@
                 <stop offset="0" stop-color="#1a5cff"/><stop offset="1" stop-color="#e0102e"/></linearGradient></defs>`;
             el.appendChild(svg);  // attach first: text has no measurable width until it's on the page
             [...placed].sort((a, b) => b.px - a.px).forEach((d, i) => d.__order = i);
-            for (const d of placed) {
+            // Biggest words go down first, so the smaller ones lie on top of the pile and stay readable where
+            // their paper overlaps a big word's
+            for (const d of [...placed].sort((a, b) => b.px - a.px)) {
                 // A group per word so the emoji badge rotates with it; it pops in, biggest words first
                 const g = document.createElementNS(ns, 'g');
                 g.setAttribute('class', 'cloud-word pop-in');
@@ -421,6 +427,10 @@
                 // document order, so it moves to the end)
                 const surface = () => { if (svg.lastElementChild !== g) svg.appendChild(g); };
                 g.addEventListener('pointerenter', surface);
+                g.addEventListener('pointerleave', () => {  // back to its size's place in the pile
+                    const below = [...svg.querySelectorAll('.cloud-word')].find((o) => o !== g && o.__word.px < d.px);
+                    if (below) svg.insertBefore(g, below);
+                });
                 // Moving a focused element drops its focus, so give it back
                 g.addEventListener('focus', () => { if (svg.lastElementChild !== g) { surface(); g.focus({preventScroll: true}); } });
                 const open = () => showWord(d);
@@ -504,7 +514,7 @@
                         <li>
                             {% if story.saga %}<span class="saga-tag" style="--saga: {{ story.color }}" title="An ongoing story in {{ story.saga }} parts">🧵 {{ story.saga }} parts</span>{% endif %}
                             <a href="#story-{{ story.cluster }}">{{ story.title }}</a>
-                            <span class="trend-posts">{{ story.outlets }} outlets</span>
+                            <span class="trend-posts" title="Outlets with it on their front page now, and all that covered it">{{ story.now }} on front pages now{% if story.outlets > story.now %} · {{ story.outlets }} in all{% endif %}</span>
                             {% if story.speed %}<span class="fast-break" title="{{ story.speed }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
                             {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name }}">{{ name }}</span>{% endfor %}
                         </li>
@@ -784,9 +794,10 @@
                     <p class="saga-facts">{{ saga.parts|length }} parts · {{ saga.outlets }} outlets · started {{ saga.started }} ago</p>
                     <ol class="saga-parts">
                         {% for part in saga.parts %}
-                            <li>
-                                <a class="saga-part" href="#story-{{ part.cluster }}">{{ part.title }}</a>
-                                <span class="trend-posts">{{ part.outlets }} outlets · {{ part.age }} ago</span>
+                            <li{% if not part.now %} class="saga-earlier"{% endif %}>
+                                {% if part.now %}<a class="saga-part" href="#story-{{ part.cluster }}">{{ part.title }}</a>
+                                {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
+                                <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}earlier, {{ part.age }} ago{% endif %}</span>
                                 {% for f in part.feelings %}<span title="{{ f.name }}">{{ f.emoji }}</span>{% endfor %}
                             </li>
                         {% endfor %}
@@ -812,8 +823,8 @@
                  style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
                 {% if cluster['saga'] %}
                     <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
-                         title="Part of an ongoing story told in {{ cluster['saga']['clusters']|length }} parts, on {{ cluster['saga']['outlets'] }} outlets">
-                        🧵 {{ cluster['saga']['name'] }} · part {{ cluster['saga']['clusters'].index(cluster['cluster']) + 1 }} of {{ cluster['saga']['clusters']|length }}</div>
+                         title="Part of an ongoing story told in {{ cluster['saga']['size'] }} parts, on {{ cluster['saga']['outlets'] }} outlets">
+                        🧵 {{ cluster['saga']['name'] }} · part {{ cluster['saga']['part_of'][cluster['cluster']] }} of {{ cluster['saga']['size'] }}</div>
                 {% endif %}
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 <div class="meters">
