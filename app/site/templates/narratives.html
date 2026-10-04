@@ -18,9 +18,9 @@
                 bots and accounts posting many times an hour are left out.</p>
             <p class="poll-note">For each big group, our local language model reads a few versions and says what they
                 share, whether it's retold or just a shared topic, its genre, its chapter of Thompson's Motif-Index (the
-                folklorist's catalog of story elements), and who it casts as villain, victim and hero. Links to the day's
-                news and to voters' own words (The Focus Group podcast) appear only when the model, shown both side by
-                side, agrees they match.</p>
+                folklorist's catalog of story elements), and who it casts as villain, victim and hero. A link to the day's
+                news appears only when the model, choosing among the closest stories with "none" on offer, picks
+                one.</p>
             <p class="poll-note">People's posts are never shown here, only the model's summary of what they share;
                 accounts are never identified. Raw posts are kept 30 days for this research and never published.</p>
         </details>
@@ -60,11 +60,9 @@
                     {% if c.story %}
                         <p class="narrative-link">{% if c.story.relation == 'same event' %}📰 In the news: {% else %}🔗 Same issue as: {% endif %}{{ c.story.label|e }}</p>
                     {% endif %}
-                    {% if c.voters %}<p class="narrative-link">🎙️ Voters raise it too (The Focus Group, {{ c.voters[0].date }})</p>{% endif %}
                     {% if preview and c.examples %}
                         <details class="court-more"><summary>versions (preview only)</summary>
                             <ul class="court-headlines">{% for e in c.examples %}<li>{{ e|e }}</li>{% endfor %}</ul>
-                            {% for v in c.voters %}<p class="court-when">🎙️ "{{ v.text[:240]|e }}"</p>{% endfor %}
                         </details>
                     {% endif %}
                 </div>

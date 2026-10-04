@@ -12,8 +12,9 @@ words. Copypasta and coordinated posting travel as the same words from few hands
    it's a retold narrative (a story, rumor or saying people repeat) or just a shared topic, its genre, its chapter
    of Thompson's Motif-Index and a specific motif, who is cast as villain, victim, hero and helper (Propp's roles),
    and whether it's about politics, from which side. Answers are cached by the versions shown.
-4. Cross-checks: the Focus Group transcripts (do voters say it in their own words?) and today's news stories (which
-   story it rides on, if any). The nearest few by embedding are only candidates: the model, shown both side by side,
+4. Cross-checks: today's news stories (which story it rides on, if any) and the Focus Group transcripts (research
+   only: they rarely overlap a day of social posts, and a yes-or-no check matched nearly anything, so the voters'
+   check is a forced choice and isn't shown on the site). The nearest few by embedding are only candidates: the model, shown both side by side,
    says whether a story is the same event or the same issue (anything looser isn't shown), and whether voters voice
    the same claim; otherwise the report says there's none.
 
@@ -214,42 +215,42 @@ CANDIDATES = 3  # nearest stories or passages the model is asked about
 STORY_PROMPT = """People online are retelling this: {claim}
 For example: {example}
 
-News story: {other}
+Today's news stories:
+{other}
 
-How does what they're retelling relate to this news story?
-- "same event": it's about this story's event, case or person
-- "same issue": it's about the same issue or controversy (for example a party's vote on Zionism and a singer's
-  Free Palestine shirt are both about Israel and Palestine), but not this event
-- "unrelated": anything looser, like the same broad topic
+Is what they're retelling about one of these stories? Answer with the story's number and how:
+- "N event": it's about that story's own event, case or person
+- "N issue": it's about the same specific issue or controversy (for example a party's vote declaring Zionism racist
+  and a singer's Free Palestine shirt: both Israel and Palestine), but not that event. A shared broad topic, a
+  shared kind of thing (two different ads, two different crimes) or a shared famous name is not the same issue
+- "none": most of the time
 
 reason: briefly
-relation: same event, same issue or unrelated"""
-STORY_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string"},
-                                                 "relation": {"type": "string",
-                                                              "enum": ['same event', 'same issue', 'unrelated']}},
-                "required": ["reason", "relation"]}
+link: "N event", "N issue" or "none"""
 VOICE_PROMPT = """People online are retelling this: {claim}
 For example: {example}
 
-Words from a recorded focus group of voters:
-"{other}"
+Passages from recorded focus groups of voters (and the hosts discussing them):
+{other}
 
-Do these voters voice, repeat or argue about the same claim (not merely mention the same person or topic)?
+Which passage, if any, has voters voicing, repeating or arguing about the same claim? Mentioning the same person,
+place or topic is not enough. Most of the time the answer is "none".
 
 reason: briefly
-same: true or false"""
+passage: the passage's number, or "none"""
+VOICE_FLOOR = 0.72  # passages less alike than this (mxbai) aren't offered
 CONFIRM_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string"}, "same": {"type": "boolean"}},
                   "required": ["reason", "same"]}
 
 
-def ask(prompt: str, schema: dict, group: dict, other: str, cache: dict) -> dict | None:
-    """The model's answer about one cross-check candidate (cached), or None without one."""
+def ask(prompt: str, schema: dict, group: dict, other: str, cache: dict, limit: int = 600) -> dict | None:
+    """The model's answer about a cross-check candidate (cached by the question and what it's shown), or None."""
     from app.analysis import llm
     claim = group['label']['narrative'] or group['examples'][0]
-    key = hashlib.sha1(json.dumps([prompt[:40], claim, other]).encode()).hexdigest()
+    key = hashlib.sha1(json.dumps([prompt, claim, other]).encode()).hexdigest()
     if key not in cache:
-        answer = llm.complete_json(prompt.format(claim=claim, example=group['examples'][0][:280], other=other[:600]),
-                                   schema, max_tokens=120)
+        answer = llm.complete_json(prompt.format(claim=claim, example=group['examples'][0][:280],
+                                                 other=other[:limit]), schema, max_tokens=120)
         if not answer:
             return None
         cache[key] = {**answer, 'claim': claim, 'other': other[:200]}
@@ -261,15 +262,37 @@ def confirm(prompt: str, group: dict, other: str, cache: dict) -> bool:
     return bool(answer and answer.get('same'))
 
 
+def voice(group: dict, candidates: list[dict], cache: dict) -> dict | None:
+    """The Focus Group passage the model picks as voicing the same claim, out of the candidates, or None; a forced
+    choice with "none" offered, which a small model can't agree its way through the way it does a yes-or-no."""
+    if not candidates:
+        return None
+    options = '\n'.join(f'{n}. "{c["text"][:400]}"' for n, c in enumerate(candidates, 1))
+    schema = {"type": "object", "properties": {
+        "reason": {"type": "string"},
+        "passage": {"type": "string", "enum": [str(n) for n in range(1, len(candidates) + 1)] + ['none']}},
+        "required": ["reason", "passage"]}
+    answer = ask(VOICE_PROMPT, schema, group, options, cache, limit=2000)
+    pick = (answer or {}).get('passage', 'none')
+    return candidates[int(pick) - 1] if pick != 'none' else None
+
+
 def story_link(group: dict, candidates: list[str], cache: dict) -> dict | None:
-    """The first candidate story the model calls the same event, else the first it calls the same issue."""
-    answers = [(story, (ask(STORY_PROMPT, STORY_SCHEMA, group, story, cache) or {}).get('relation'))
-               for story in candidates]
-    for wanted in ('same event', 'same issue'):
-        match = next((story for story, relation in answers if relation == wanted), None)
-        if match:
-            return {'label': match, 'relation': wanted}
-    return None
+    """The story the model links the narrative to, as the same event or the same issue, out of the candidates (a
+    forced choice with "none" offered), or None."""
+    if not candidates:
+        return None
+    options = '\n'.join(f'{n}. {story}' for n, story in enumerate(candidates, 1))
+    links = [f'{n} {how}' for n in range(1, len(candidates) + 1) for how in ('event', 'issue')] + ['none']
+    schema = {"type": "object", "properties": {"reason": {"type": "string"},
+                                               "link": {"type": "string", "enum": links}},
+              "required": ["reason", "link"]}
+    answer = ask(STORY_PROMPT, schema, group, options, cache, limit=2000)
+    link = (answer or {}).get('link', 'none')
+    if link == 'none':
+        return None
+    number, how = link.split()
+    return {'label': candidates[int(number) - 1], 'relation': 'same event' if how == 'event' else 'same issue'}
 
 
 def focus_group_segments(window: int = 3) -> list[dict]:
@@ -326,8 +349,9 @@ def report(hours: float = 6) -> dict:
             for g, row in zip(narratives, sims):
                 # The closest few passages are only candidates; the model keeps the ones that really voice or argue
                 # about the same claim
-                candidates = [segments[i] for i in np.argsort(-row)[:CANDIDATES]]
-                g['voters'] = [c for c in candidates if confirm(VOICE_PROMPT, g, c['text'], cache)][:2]
+                candidates = [segments[i] for i in np.argsort(-row)[:CANDIDATES] if row[i] >= VOICE_FLOOR]
+                pick = voice(g, candidates, cache)
+                g['voters'] = [pick] if pick else []
         if stories:
             st = embed(stories)
             sims = np.maximum(claims @ st.T, centers @ st.T)

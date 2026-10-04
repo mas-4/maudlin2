@@ -17,8 +17,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   model labels the biggest groups: the shared claim, whether it's retold or just a shared topic, genre (rumor,
   contemporary legend, conspiracy theory, folk belief, joke formula, testimony, news reaction...), Thompson
   Motif-Index chapter and a motif, Propp-style roles (villain, victim, hero), politics and side. Each narrative is
-  matched to the nearest current story and to the nearest words in The Focus Group transcripts (12 episodes,
-  Ep50-61, transcribed Oct 4). The first report (40 minutes of stream, 15,430 posts) found 13 retold narratives,
+  matched to current stories: the model chooses among the three closest stories ("same event", "same issue" or,
+  most often, "none"). A yes-or-no check, one candidate at a time, agreed to nearly anything (a Drake Maye fumble
+  "matched" voters calling J.D. Vance "a goober"); the forced choice linked 12 of 60 narratives on Oct 4, 10 of them
+  rightly. Matching narratives to The Focus Group transcripts (12 episodes, Ep50-61, transcribed Oct 4) was tried and
+  dropped from the page: the passages rarely overlap a day of social posts, and the yes-or-no matches were wrong
+  almost every time. The first report (40 minutes of stream, 15,430 posts) found 13 retold narratives,
   among them a folk belief that Trump is being kept alive by doctors because "they need him alive" and a contemporary
   legend of "Julie bots". Reports stay in data/narratives; nothing is published.
 - **Stories use a bigger embedding model.** Four models were compared on the day's 6,733 headlines at equal
