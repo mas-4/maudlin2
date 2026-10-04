@@ -6,6 +6,7 @@ from app.analysis import newsfilter
 from app.analysis.metrics import reapply_sent
 from app.analysis.preprocessing import reprocess_headlines
 from app.analysis.topics import analyze_all_topics
+from app import scraper_health
 from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
 from app.trends import fetch_trends
@@ -35,6 +36,7 @@ class SeleniumThread(threading.Thread):
                 scraper.run()
             except Exception as e:
                 logger.error(f"Failed to run {scraper}: {e}")
+                scraper_health.record(scraper.agency, scraper.url, error=type(e).__name__)
                 continue
             else:
                 self.scrapers.append(scraper)
@@ -44,6 +46,9 @@ class SeleniumThread(threading.Thread):
     def post_run(self):
         num = len(self.scrapers)
         for i, sel in enumerate(self.scrapers):
+            if not sel.success:  # its page never loaded
+                scraper_health.record(sel.agency, sel.url, error='page not loaded')
+                continue
             sel.post_run()
             logger.info(f"Finished {sel} ({i + 1} of {num})")
 
@@ -65,9 +70,13 @@ class Queue:
             futures = {executor.submit(scraper.run): scraper for scraper in self.threads}
             for i, future in enumerate(as_completed(futures)):
                 scraper: Scraper = futures[future]
-                if scraper.success:
+                if future.exception():
+                    scraper_health.record(scraper.agency, scraper.url, error=type(future.exception()).__name__)
+                elif scraper.success:
                     scraper.post_run()
                     logger.info(f"Finished {scraper} ({i + 1} of {num})")
+                else:
+                    scraper_health.record(scraper.agency, scraper.url, error='page not loaded')
 
         if Config.run_selenium and self.args.run_selenium:
             logger.info("Waiting for seleniums")
@@ -91,6 +100,9 @@ def scrape(args, scrapers):
         queue.add(scraper)
 
     queue.run()
+    # The list of scrapers to check (data/scraper_check.md); browser-driven ones only when they ran
+    ran_seleniums = Config.run_selenium and args.run_selenium
+    scraper_health.write([(s.agency, s.url) for s in scrapers if ran_seleniums or not issubclass(s, SeleniumScraper)])
 
 
 def main(args: argparse.Namespace):

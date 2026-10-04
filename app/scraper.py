@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup as Soup, Tag, NavigableString  # noqa not declared
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
+from app import scraper_health
 from app.analysis import abtests, metrics, newsfilter
 from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
@@ -114,6 +115,9 @@ class Scraper(ABC, Thread):
         bugle = logger.warning if not self.found or not self.articles + self.headlines + self.updated else logger.info
         bugle("%s: %d found, added %d articles, %d headlines, updated %d in %f seconds with a mean time of %f",
               self.agency, self.found, self.articles, self.headlines, self.updated, runtime, meantime)
+        scraper_health.record(self.agency, self.url, found=self.found,
+                              kept=self.articles + self.headlines + self.updated,
+                              added=self.articles + self.headlines, too_long=getattr(self, 'too_long', 0))
 
     def process_dataframe(self, downstream):
         df = pd.DataFrame(downstream, columns=['href', 'raw'])
@@ -144,6 +148,7 @@ class Scraper(ABC, Thread):
         if too_long.any():
             logger.warning("%s: dropped %d headlines over %d words, its parser may be grabbing summaries",
                            self.agency, too_long.sum(), Constants.Thresholds.max_headline_words)
+        self.too_long = int(too_long.sum())  # for the scraper check (app/scraper_health.py)
         df.drop(df[too_long].index, inplace=True)
         # Text repeated all over one page is chrome ("Leave a Comment", section names), not a headline
         repeats = df.groupby('title')['title'].transform('size')
