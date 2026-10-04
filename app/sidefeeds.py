@@ -31,6 +31,7 @@ logger = get_logger(__name__)
 STATE = os.path.join(Config.data, 'sidefeeds_state.json')  # ETag / Last-Modified / last fetch per source
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 REFRESH = td(hours=2)
+BIG_FEED = td(hours=6)  # feeds of many megabytes (thousands of items) are read less often
 HOST_PAUSE = 5  # seconds between requests to one host (several shows share megaphone, substack, youtube)
 NEWEST = 40  # items parsed per feed (some podcast feeds hold thousands)
 YOUTUBE = 'https://www.youtube.com/feeds/videos.xml?channel_id='
@@ -41,7 +42,7 @@ def _source(key, name, kind, group, url, publish=False, refresh=None):
             'refresh': refresh or REFRESH}
 
 
-# kind: newsletter, podcast, video or satire. group: left, right, center or crossover (a loose lean by reputation, for
+# kind: newsletter, podcast, video, call-in or satire. group: left, right, center or crossover (a loose lean by reputation, for
 # balance and colors; AllSides ratings, where they exist, stay in ratings.csv). publish: news of the day, shown on site
 SOURCES = [
     # News of the day (published)
@@ -140,6 +141,23 @@ SOURCES = [
     _source('ajthetake', 'The Take (Al Jazeera)', 'podcast', 'center',
             'https://www.omnycontent.com/d/playlist/9c074afa-3313-47e8-b802-a9f900789975/'
             '09af2160-238f-48b2-b20b-ad4b00ebd8e7/b86dddc1-67a5-41c2-a13c-ad4b00ebd8f5/podcast.rss'),
+    # Call-in shows (#153): ordinary people phoning in about the news, as raw talk for the folklore research; archived
+    # and transcribed, never shown. Full shows with callers in free feeds: none on the left (Hartmann's and the
+    # Majority Report's caller hours are YouTube-only or for members), so public radio stands in there. iHeart's
+    # feeds (omnycontent) are over 10 MB each, so they're read every six hours, not two
+    _source('jessekelly', 'The Jesse Kelly Show', 'call-in', 'right',
+            'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
+            '723a5526-8c62-4255-8c8b-ae2c007cfcc1/f2551c6e-95ed-4d33-9cfb-ae2c007cfcf9/podcast.rss', refresh=BIG_FEED),
+    _source('claybuck', 'Clay Travis & Buck Sexton', 'call-in', 'right',
+            'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
+            '57c236de-aec0-46c1-b141-ae3c00026d77/1776c4cc-50a1-410f-a2de-ae3c00026dfa/podcast.rss', refresh=BIG_FEED),
+    _source('michaelberry', 'The Michael Berry Show', 'call-in', 'right',
+            'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
+            '32ad6995-949b-47b5-bfa5-b2ce01483175/785d2727-e393-40b7-8309-b2ce01483193/podcast.rss', refresh=BIG_FEED),
+    _source('levin', 'The Mark Levin Show', 'call-in', 'right', 'https://feeds.megaphone.fm/mark-levin-podcast'),
+    _source('lehrer', 'The Brian Lehrer Show (WNYC)', 'call-in', 'center', 'https://feeds.simplecast.com/C8a1jmw4'),
+    _source('kqedforum', 'Forum (KQED)', 'call-in', 'center', 'https://feeds.megaphone.fm/KQINC9557381633'),
+    _source('onea', '1A (WAMU/NPR)', 'call-in', 'center', 'https://feeds.npr.org/510316/podcast.xml'),
     # Satire (#139): jokes about the news, matched to the stories they joke about (app/analysis/satire.py) and shown
     # only as such, never counted as coverage or in any measure. Leans by reputation
     _source('babylonbee', 'The Babylon Bee', 'satire', 'right', 'https://babylonbee.com/feed'),

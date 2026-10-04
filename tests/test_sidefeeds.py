@@ -78,11 +78,11 @@ def test_recent_only_published_sources_one_each_newest_first(db, monkeypatch):
 def test_sources_are_well_formed():
     keys = [s['key'] for s in sf.SOURCES]
     assert len(keys) == len(set(keys))
-    assert all(s['kind'] in ('podcast', 'newsletter', 'video', 'satire') for s in sf.SOURCES)
+    assert all(s['kind'] in ('podcast', 'newsletter', 'video', 'call-in', 'satire') for s in sf.SOURCES)
     assert all(s['group'] in ('left', 'right', 'center', 'crossover') for s in sf.SOURCES)
     assert all(len(k) <= 32 for k in keys)
     published = [s for s in sf.SOURCES if s['publish']]
-    assert not any(s['publish'] for s in sf.SOURCES if s['kind'] == 'satire')  # jokes never in the shows list
+    assert not any(s['publish'] for s in sf.SOURCES if s['kind'] in ('satire', 'call-in'))  # never in the shows list
     assert {s['group'] for s in published} >= {'left', 'right', 'center'}
 
 
@@ -132,5 +132,6 @@ def test_parse_keeps_podcast_audio():
 
 
 def test_sources_have_a_refresh_interval():
-    assert all(s['refresh'] <= sf.REFRESH for s in sf.SOURCES)
+    assert all(s['refresh'] <= sf.REFRESH or s['refresh'] == sf.BIG_FEED for s in sf.SOURCES)
+    assert all(sf.BY_KEY[k]['refresh'] == sf.BIG_FEED for k in ('jessekelly', 'claybuck', 'michaelberry'))  # iHeart's 10 MB feeds
     assert sf.BY_KEY['nprnewsnow']['refresh'] < sf.REFRESH and not sf.BY_KEY['nprnewsnow']['publish']

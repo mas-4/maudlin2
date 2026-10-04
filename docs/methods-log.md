@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Call-in shows archived and transcribed (research only, #153).** Seven shows whose free feeds carry full hours
+  with callers: Jesse Kelly, Clay Travis & Buck Sexton, Michael Berry, Mark Levin (right); Brian Lehrer (WNYC),
+  KQED Forum, 1A (public radio). No free feed on the left carries callers (Thom Hartmann's and the Majority
+  Report's caller hours are YouTube-only or for paying members), so public radio stands in there; the sample
+  leans right. C-SPAN's Washington Journal, which sorts callers by party line, has no feed and its archive runs
+  on a lag, so it's out. Never shown; callers are private people, so only patterns will be published.
 - **Satire (#139): which stories become jokes.** Ten satire sites are read every two hours (the Babylon Bee; the
   Onion, Borowitz, New Yorker humor, McSweeney's, Reductress, the Hard Times, NewsThump; Duffel Blog, ClickHole;
   leans by reputation). Each joke from the last three days is offered the closest current stories with
