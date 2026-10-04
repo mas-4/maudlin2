@@ -328,10 +328,21 @@ class SeleniumResourceManager:
         except (ProcessLookupError, AttributeError):
             pass
 
-    def get_html(self, url):
+    def get_html(self, url, ready: str = None, wait: float = 20):
+        """The page's HTML once it's in; with `ready` (a CSS selector), once that has appeared too, for pages that
+        draw their headlines with scripts after the HTML arrives (up to `wait` seconds)."""
         with self.lock:
             try:
                 self._driver.get(url)
+                if ready:
+                    from selenium.webdriver.common.by import By
+                    from selenium.webdriver.support import expected_conditions as ec
+                    from selenium.webdriver.support.ui import WebDriverWait
+                    try:
+                        WebDriverWait(self._driver, wait).until(
+                            ec.presence_of_element_located((By.CSS_SELECTOR, ready)))
+                    except TimeoutException:
+                        logger.warning("%s: %s never appeared in %ss; using the page as it is", url, ready, wait)
             except TimeoutException:
                 # Whatever loaded before the timeout usually has the headlines; keep it unless it's an empty shell
                 html = self._driver.page_source
@@ -342,6 +353,9 @@ class SeleniumResourceManager:
 
 
 class SeleniumScraper(Scraper):
+    # A CSS selector to wait for after the page's HTML is in, when its headlines are drawn by scripts afterwards
+    ready: str = None
+
     def __init__(self):
         super().__init__()
         self.srs = SeleniumResourceManager()
@@ -356,7 +370,7 @@ class SeleniumScraper(Scraper):
     def get_page(self, url: str):
         try:
             t = time.time()
-            soup = Soup(self.srs.get_html(url), self.parser)
+            soup = Soup(self.srs.get_html(url, self.ready), self.parser)
             logger.info("Downloaded %s in %i seconds", url, time.time() - t)
             self.success = True
         except Exception as e:  # noqa
