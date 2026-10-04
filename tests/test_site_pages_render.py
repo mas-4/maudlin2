@@ -1,0 +1,300 @@
+"""Render the site's pages through their real page classes from the session `data_handler` (read from the database)
+and check their structure. Each page is generated once for the module.
+
+Kept offline and read-only: no language model (llm.backend is None), the embedder loads from the local model cache
+(or a stand-in when there is none), sockets refuse to connect, story syncing/labeling (which write to the database)
+are stubbed, and a guard fails the run on any INSERT/UPDATE/DELETE. Pages go to a scratch build folder."""
+import copy
+import glob
+import os
+import re
+import socket
+import zlib
+
+import numpy as np
+import pytest
+from bs4 import BeautifulSoup
+from sqlalchemy import event
+
+from app.analysis import clustering, llm, sagas
+from app.models import engine
+from app.site import page_agencies, page_headlines as ph
+from app.site.page_agencies import AgenciesPage
+from app.site.page_edits import EditsPage
+from app.site.page_emotions import EmotionsPage
+from app.site.page_glossary import GlossaryPage
+from app.utils.config import Config
+
+PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html']
+NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'glossary.html']
+# Fewer headlines than a real build: enough for stories to form, a fraction of the time
+MAIN_HEADLINES = 1000
+STORY_HEADLINES = 2500
+WRITES = re.compile(r'^\s*(INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER)\b', re.I)
+
+
+def stand_in_embed(texts):
+    """Bag of hashed words, for machines without the embedding model cached."""
+    out = np.zeros((len(texts), 256))
+    for i, t in enumerate(texts):
+        for w in re.findall(r'\w+', t.lower()):
+            out[i, zlib.crc32(w.encode()) % 256] += 1
+    out[:, 0] += 1e-6
+    return out
+
+
+def refuse_connection(*args, **kwargs):
+    raise RuntimeError('network access in a test')
+
+
+@pytest.fixture(scope='module')
+def site(data_handler, tmp_path_factory):
+    build = tmp_path_factory.mktemp('site-build')
+    writes = []
+
+    def no_writes(conn, cursor, statement, parameters, context, executemany):
+        if WRITES.match(statement):
+            writes.append(statement)
+            raise RuntimeError(f'database write in a test: {statement[:80]}')
+
+    event.listen(engine, 'before_cursor_execute', no_writes)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(Config, 'build', str(build))
+        mp.setattr(socket.socket, 'connect', refuse_connection)
+        mp.setattr(llm, 'backend', lambda: None)
+        mp.setattr(ph, 'sync_stories', lambda df: {})
+        mp.setattr(ph, 'label_stories', lambda df, stories: {})
+        mp.setattr(ph, '_good_news', {})
+        mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
+        snapshot = sorted(glob.glob(os.path.expanduser(
+            '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
+        if clustering._embedder is None and snapshot:
+            mp.setattr(clustering, 'EMBEDDING_MODEL', os.path.dirname(snapshot[-1]))
+        elif clustering._embedder is None:
+            for module in (ph, sagas):
+                mp.setattr(module, 'embed', stand_in_embed)
+            mp.setattr(ph, 'prepare_embedding_cosine',
+                       lambda texts: clustering.cosine_similarity(stand_in_embed(list(texts))))
+
+        dh = copy.copy(data_handler)
+        dh.main_headline_df = data_handler.main_headline_df.head(MAIN_HEADLINES).copy()
+        dh.story_headline_df = data_handler.story_headline_df.head(STORY_HEADLINES).copy()
+        headlines = ph.HeadlinesPage(dh)
+        try:
+            headlines.generate()
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage):
+                page(data_handler).generate()
+        finally:
+            event.remove(engine, 'before_cursor_execute', no_writes)
+    assert writes == []
+    html = {}
+    for name in PAGES:
+        with open(build / name, encoding='utf-8') as f:
+            html[name] = f.read()
+    return {'html': html, 'soup': {k: BeautifulSoup(v, 'html.parser') for k, v in html.items()},
+            'context': headlines.context, 'build': build}
+
+
+@pytest.fixture(scope='module')
+def front(site):
+    return site['soup']['index.html']
+
+
+@pytest.fixture(scope='module')
+def table(site):
+    return site['soup']['headlines.html']
+
+
+# <editor-fold desc="every page">
+def test_every_page_was_written_to_the_scratch_build(site):
+    for name in PAGES + ['newsletter.html', ph.TABLE_FILE]:
+        assert (site['build'] / name).stat().st_size > 0, name
+    assert os.path.realpath(site['build']) != os.path.realpath(os.path.join(os.path.dirname(Config.data), '_build'))
+
+
+@pytest.mark.parametrize('name', PAGES)
+def test_no_unrendered_jinja(site, name):
+    html = site['html'][name]
+    for marker in ('{{', '{%', '%}', '{#'):
+        assert marker not in html, f'{marker} in {name}'
+
+
+@pytest.mark.parametrize('name', PAGES)
+def test_nav_links_every_page(site, name):
+    nav = site['soup'][name].select_one('nav.navbar')
+    assert nav is not None
+    hrefs = [a['href'] for a in nav.select('.nav-links a')]
+    assert hrefs == NAV_LINKS
+    assert nav.select_one('a.nav-brand')['href'] == 'index.html'
+    assert nav.select_one('.updated')['data-built']
+
+
+@pytest.mark.parametrize('name', PAGES)
+def test_assets_carry_the_build_version(site, name):
+    soup = site['soup'][name]
+    css = [l['href'] for l in soup.select('link[rel=stylesheet]') if 'style.css' in l['href']]
+    js = [s['src'] for s in soup.select('script[src]') if 'index.js' in s['src']]
+    assert len(css) == 1 and len(js) == 1
+    for url in css + js:
+        assert re.search(r'\?v=\d{12}$', url), url
+    assert css[0].split('?v=')[1] == js[0].split('?v=')[1]
+
+
+@pytest.mark.parametrize('name', PAGES)
+def test_page_has_title_and_footer(site, name):
+    soup = site['soup'][name]
+    assert soup.title.string.startswith(f'{Config.site_name} - ')
+    assert soup.select_one('.site-footer') is not None
+    assert soup.html['lang'] == 'en'
+
+
+@pytest.mark.parametrize('name', PAGES)
+def test_ids_are_unique(site, name):
+    ids = [el['id'] for el in site['soup'][name].select('[id]')]
+    assert len(ids) == len(set(ids)), sorted({i for i in ids if ids.count(i) > 1})
+# </editor-fold>
+
+
+# <editor-fold desc="the front page and the table page">
+def test_front_page_has_the_cloud(front):
+    figure = front.select_one('figure.wordcloud')
+    assert figure is not None
+    assert figure.select_one('#cloud') is not None
+    assert figure.select('.cloud-sort button')
+
+
+def test_front_page_has_the_floating_section_rail(front):
+    toc = front.select_one('nav.page-toc')
+    assert toc is not None
+    assert front.select_one('button.toc-toggle') is not None
+    hrefs = [a['href'] for a in toc.select('a')]
+    assert '#top' in hrefs
+    assert 'headlines.html' in hrefs
+
+
+def test_front_page_section_links_land(front):
+    for a in front.select('nav.page-toc a[href^="#"]'):
+        if a['href'] != '#top':
+            assert front.select_one(a['href']) is not None, a['href']
+
+
+def test_front_page_has_no_table(front, site):
+    assert front.select_one('#wrapper') is None
+    assert front.select_one('h1') is None
+    assert ph.TABLE_FILE not in site['html']['index.html']
+    # but it points readers to the table page outside the nav, too
+    assert [a for a in front.select('a[href="headlines.html"]') if not a.find_parent('nav', class_='navbar')]
+
+
+def test_front_page_story_cards_match_the_clusters(front, site):
+    clusters = site['context']['clusters']
+    cards = front.select('div.stories > div.story')
+    assert len(cards) == len(clusters)
+    assert cards, 'no stories formed from the sample of headlines'
+    for card, c in zip(cards, clusters):
+        assert card['id'] == f'story-{c["cluster"]}'
+        assert card.select_one('h4').get_text(strip=True)
+        assert card.select('.meter-dot')
+
+
+def test_story_card_chips(front, site):
+    for card in front.select('div.stories > div.story'):
+        chips = card.select('.chips a.storylink')
+        assert chips
+        assert all(re.match(r'chip-(fresh|live|gone)', ' '.join(a['class'][1:])) for a in chips)
+        assert all(a.select_one('.outlet-icon') is not None for a in chips)
+
+
+def test_story_links_point_at_cards(front):
+    ids = {el['id'] for el in front.select('[id]')}
+    for a in front.select('a[href^="#story-"]'):
+        assert a['href'][1:] in ids, a['href']
+
+
+def test_news_day_sticker(front, site):
+    day = site['context']['newsday']
+    if day is None:
+        pytest.skip('nothing live in the sample')
+    assert day['kind'] in ph.NEWS_DAY_LABELS
+    assert day['label'] in front.select_one('figure.wordcloud').get_text()
+
+
+def test_table_page_has_the_table(table):
+    assert table.select_one('#wrapper') is not None
+    assert table.select_one('h1').get_text(strip=True) == 'Every headline right now'
+
+
+def test_table_page_has_no_front_page_sections(table):
+    assert table.select('.story') == []
+    assert table.select_one('figure.wordcloud') is None
+    assert table.select_one('nav.page-toc') is None
+
+
+def test_table_rows_file_is_linked(site):
+    assert ph.TABLE_FILE in site['html']['headlines.html']
+    import json
+    rows = json.loads((site['build'] / ph.TABLE_FILE).read_text())
+    assert isinstance(rows, list)
+    if rows:
+        assert {'agency', 'bias', 'url', 'title', 'buzz', 'story'} <= set(rows[0])
+# </editor-fold>
+
+
+# <editor-fold desc="how it works">
+def section_terms(soup, section_id):
+    """The term cards between a section heading and the next heading."""
+    heading = soup.find('h2', id=section_id)
+    assert heading is not None, section_id
+    box = heading.find_next_sibling('div', class_='terms')
+    return box.find_all('div', class_='term', recursive=False)
+
+
+def test_glossary_build_history(site):
+    terms = section_terms(site['soup']['glossary.html'], 'built')
+    assert [t.select_one('.term-emoji').get_text() for t in terms] == ['✍️', '🛠️', '🧠']
+    titles = [t.select_one('h3').get_text() for t in terms]
+    assert '2024' in titles[0] and '2026' in titles[1] and 'Two different AIs' in titles[2]
+    assert [t['id'] for t in terms] == ['history', 'rebuilt', 'two-ais']
+
+
+def test_glossary_limits(site):
+    terms = section_terms(site['soup']['glossary.html'], 'limits')
+    assert len(terms) == 3
+    assert all(t.select_one('h3').get_text(strip=True) for t in terms)
+
+
+def test_glossary_numbers_come_from_the_settings(site):
+    text = site['soup']['glossary.html'].get_text(' ')
+    assert site['soup']['glossary.html'].select_one('h1').get_text() == 'How it works'
+    assert str(ph.BLINDSPOT_MIN_OUTLETS) in text
+    assert f'{round(100 * ph.BLINDSPOT_SHARE)}%' in text
+
+
+def test_glossary_lists_every_feeling(site):
+    from app.analysis.newsfilter import EMOTIONS
+    text = site['soup']['glossary.html'].get_text(' ')
+    for e in EMOTIONS:
+        assert e in text
+# </editor-fold>
+
+
+# <editor-fold desc="other pages">
+def test_emotions_page(site):
+    soup = site['soup']['emotions.html']
+    from app.analysis.newsfilter import EMOTIONS
+    tables = soup.select('table.emotion-matrix')
+    assert tables
+    header = [th.get('title') for th in tables[0].select('thead th') if th.get('title')]
+    assert sorted(header) == sorted(EMOTIONS)
+
+
+def test_agencies_page(site):
+    soup = site['soup']['agencies.html']
+    assert soup.select_one('h1').get_text(strip=True) == 'The outlets'
+
+
+def test_edits_page(site):
+    soup = site['soup']['edits.html']
+    assert soup.find('h2', string='Headline changes') is not None
+    assert soup.select_one('details.how-it-works') is not None
+# </editor-fold>

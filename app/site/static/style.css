@@ -1590,6 +1590,22 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     text-decoration: none;
     font-size: 1em;
     padding: 5px 10px 5px 6px;
+    transition: transform 0.12s, box-shadow 0.12s;
+}
+
+/* Pointing at an outlet lifts its chip off the page, like a card popping up: up and left, a deeper shadow and a
+   sunny ring */
+.lineup-chip:hover, .lineup-chip:focus-visible {
+    transform: translate(-2px, -3px) rotate(-1.5deg);
+    box-shadow: 5px 6px 0 #1f1f2e, 0 0 0 3px #ffc400;
+    outline: none;
+    position: relative;
+    z-index: 2;
+}
+
+.lineup-chip:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #1f1f2e;
 }
 
 .lineup-chip .outlet-icon {

@@ -6,7 +6,11 @@ from app.site.page_topics import TopicsPage
 from app.site.data import DataHandler
 
 
-def test_headlines_page(data_handler):
+def test_headlines_page(data_handler, monkeypatch):
+    # Saving and labeling stories writes to the database (shared with production) and calls the llm; stub both
+    import app.site.page_headlines as ph
+    monkeypatch.setattr(ph, 'sync_stories', lambda df: {})
+    monkeypatch.setattr(ph, 'label_stories', lambda df, stories: {})
     page = HeadlinesPage(data_handler)
     page.generate()
     assert os.path.exists(page.template.path)
