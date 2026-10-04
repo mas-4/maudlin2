@@ -5,6 +5,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Aggregators aren't outlets (#151).** Google News, Drudge Report, RealClearPolitics and Political Wire no longer count
+  toward stories, lean, the news-day sticker or the cloud (they mostly link to other outlets' stories); their live
+  headlines are matched to stories (embedding 0.7) and shown as "picked up by" on the cards.
+- **Wire share (#152).** Outlet cards show the share of an outlet's news headlines over 7 days that are AP or Reuters
+  headlines near word for word (embedding 0.90 and 70% of words shared; checked by hand). Outlets mostly rewrite wire
+  copy: on Oct 4 the highest was about 11%.
+- **Story snapshots and trend arrows (#133).** Every run saves each story's lean, mood and outlet count
+  (story_snapshot). Cards show arrows when lean or mood moved over the last 6 hours (needs 2+ hours of history):
+  lean 0.15 / 0.35 / 0.6, mood 0.1 / 0.25 / 0.45 for one, two or three arrows.
 - **Bright side removed.** Its picks (hope/joy plus a "widely good news" model check) read as feel-good filler rather
   than a measure.
 - **Blindspots move onto story cards.** Same rule; the separate box is gone. A blindspot's card shows a lean meter

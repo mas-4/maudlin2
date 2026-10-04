@@ -809,19 +809,22 @@
                             <span class="badge-emoji">{{ feeling['emoji'] }}</span>{{ feeling['name'] }} {{ feeling['share'] }}%</span>
                     {% endfor %}
                     <div class="meter" title="Average lean of the outlets covering this story, relative to all outlets scraped today ({{ cluster['lean']['text'] }})">
-                        <span class="meter-label">covered by</span>
+                        <span class="meter-label">covered by{% if cluster['trend'] and cluster['trend']['lean']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['lean']['tip'] }}">{{ cluster['trend']['lean']['arrows'] }}</span>{% endif %}</span>
                         <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>
                             <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
                             <span class="meter-end" title="right-leaning outlets">🐘</span></span>
                     </div>
                     <div class="meter" title="How grim or upbeat the news in its headlines is, on average ({{ cluster['mood']['word'] }})">
-                        <span class="meter-label">mood</span>
+                        <span class="meter-label">mood{% if cluster['trend'] and cluster['trend']['mood']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['mood']['tip'] }}">{{ cluster['trend']['mood']['arrows'] }}</span>{% endif %}</span>
                         <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
                             <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
                             <span class="meter-end" title="upbeat">☀️</span></span>
                     </div>
                 </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
+                {% if cluster['curators'] %}
+                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<span class="edit-chip" style="{{ chip_style(a, 0) }}">{{ outlet_icon(a) }}{{ short_name(a) }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
+                {% endif %}
                 {% set on_shows = show_coverage.get(cluster['cluster']) if show_coverage is defined else none %}
                 {% if on_shows %}
                     <div class="story-shows">

@@ -65,7 +65,9 @@
                 up; a story needs at least six outlets. Stories look back {{ story_hours }} hours, so an outlet that
                 dropped one still shows on its card, faded with a 👻. The language model writes each story's title.</p>
             <p><strong>Covered by</strong> on a card (🫏 to 🐘) is the average lean of the outlets covering it, compared
-                with all the outlets we follow, which lean left as a group.</p>
+                with all the outlets we follow, which lean left as a group. Arrows beside a meter show it moving over
+                the last few hours: ◀ or ▶ as coverage shifts toward left- or right-leaning outlets, ▲ or ▼ as the news
+                turns brighter or grimmer; more arrows, more movement.</p>
         {% endcall %}
         {% call term('🧵', 'Sagas', 'saga') %}
             <p>One running story told in several parts: the Cornell case's allegations, the prosecutor, the attorney
@@ -131,6 +133,16 @@
             <p>Headlines an outlet changed on an article it had already published, over {{ edit_days }} days. A change
                 counts only if the old headline left before the new one appeared; live blogs, reused links and minor
                 changes (capitalization, punctuation, a label like "WATCH:") are skipped.</p>
+        {% endcall %}
+        {% call term('📡', 'Wire copy', 'wire') %}
+            <p>On the outlets page: the share of an outlet's headlines over the last week that are AP or Reuters
+                headlines, word for word or nearly (very close in meaning and sharing most of their words). Outlets
+                mostly rewrite wire stories in their own words; this counts only the ones they run as is.</p>
+        {% endcall %}
+        {% call term('📌', 'Aggregators', 'aggregators') %}
+            <p>Google News, Drudge Report, RealClearPolitics and Political Wire mostly link to other outlets' stories,
+                so they don't count as outlets covering a story, or toward lean, the news-day sticker or the cloud. A
+                story card says "📌 picked up by" when one of them is linking to it right now.</p>
         {% endcall %}
         {% call term('🔎', 'Investigations', 'investigations') %}
             <p>The newest pieces from open-source and investigative outfits (Bellingcat, ICIJ, OCCRP, DFRLab, Citizen Lab,

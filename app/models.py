@@ -293,6 +293,18 @@ class Story(Base):
         return f"Story(id={self.id!r}, label={self.label!r})"
 
 
+class StorySnapshot(Base):
+    """A story's meters at one run (lean of the outlets covering it, mood, outlets), for trend arrows on its card and
+    for studying how coverage of a story moves over its life."""
+    __tablename__ = "story_snapshot"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    story_id: Mapped[int] = mapped_column(ForeignKey("story.id"), index=True)
+    at: Mapped[dt] = mapped_column(DateTime(), index=True)
+    lean: Mapped[float] = mapped_column(Float())  # relative to the day's outlets, as on the card
+    mood: Mapped[float] = mapped_column(Float())
+    outlets: Mapped[int] = mapped_column(Integer())
+
+
 class StoryHeadline(Base):
     """A headline's membership in a story, with how its sentiment compares to the other outlets on that story."""
     __tablename__ = "story_headline"

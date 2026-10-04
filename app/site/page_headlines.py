@@ -13,6 +13,7 @@ from sqlalchemy import func
 from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
+from app.analysis import trends_meter
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
@@ -48,6 +49,10 @@ NEWS_DAY_FRESH_HOURS = 12
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
 INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a current story
 BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
+# Aggregators mostly link to other outlets' stories, so they don't count as outlets covering a story (or as votes in
+# the cloud); a story card says when they're picking it up instead (#151)
+AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}
+CURATOR_MATCH = 0.7  # an aggregator's headline this close to one of a story's headlines links to that story
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
@@ -230,8 +235,10 @@ class HeadlinesPage:
 
     def generate(self):
         logger.info("Generating headlines page...")
-        cloud = self.dh.main_headline_df[['title', 'agency', 'bias', 'rated', 'url', 'afinn', 'vader_compound',
-                                          'event_score', 'loaded_score', 'emotion_ranks']].copy()
+        main = self.dh.main_headline_df
+        cloud = main[~main['agency'].isin(AGGREGATORS)][['title', 'agency', 'bias', 'rated', 'url', 'afinn',
+                                                         'vader_compound', 'event_score', 'loaded_score',
+                                                         'emotion_ranks']].copy()
         cloud['sentiment'] = headline_sentiment(cloud)
         self.context['cloud_words'] = cloud_words(cloud)
         self.context['bias_colors'] = bias_colors
@@ -316,6 +323,9 @@ class HeadlinesPage:
                     (df['agency'].isin(Config.exempted_foreign_media))
             )
             ].copy()
+        # Aggregators sit out of the stories themselves; afterwards they're matched to the stories they're linking
+        self.curated = df[df['agency'].isin(AGGREGATORS) & df['live'].astype(bool)].copy()
+        df = df[~df['agency'].isin(AGGREGATORS)].copy()
         df['processed'] = df['title'].apply(lambda x: prepare(x, pipeline))
 
         # Partisan lean is measured against the outlets in today's pool, which lean one way themselves
@@ -398,6 +408,8 @@ class HeadlinesPage:
             saga['started'] = saga['parts'][0]['age']
         self.context['saga_list'] = sorted(sagas.values(), key=lambda s: -s['outlets'])
         df['group'] = df['cluster'].map(lambda k: saga_of.get(k, k))
+        self.curators(df, clusters_list)
+        self.meter_trends(clusters_list)
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
@@ -547,6 +559,46 @@ class HeadlinesPage:
                 {**i, 'emoji': self.SHOW_KIND.get(i['kind'], '🎙️'), 'color': self.SHOW_GROUP.get(i['group'], '#b8b8c8')}
                 for i in chips]
         logger.info("Show coverage: %d items across %d stories", len(items), len(covered))
+
+    def meter_trends(self, clusters_list):
+        """Save this run's meters for every story, then mark the cards whose lean or mood has moved (#133)."""
+        story_of = getattr(self, 'story_of', {})
+        meters = {story_of[c['cluster']]: {'lean': c['lean']['value'], 'mood': c['mood']['value'],
+                                           'outlets': c['outlets']}
+                  for c in clusters_list if c['cluster'] in story_of}
+        if not meters:
+            return
+        trends_meter.save(meters)
+        moved = trends_meter.trends(list(meters))
+        for c in clusters_list:
+            trend = moved.get(story_of.get(c['cluster']))
+            if trend:
+                c['trend'] = trend
+
+    def curators(self, df, clusters_list):
+        """Which aggregators (Google News, Drudge…) are linking each story right now: an aggregator's live headline
+        goes to the story holding the headline most like it, when that's CURATOR_MATCH or closer."""
+        for c in clusters_list:
+            c['curators'] = []
+        curated = getattr(self, 'curated', None)
+        members = df[df['cluster'] != -1]
+        if curated is None or curated.empty or members.empty:
+            return
+        titles = curated['title'].tolist() + members['title'].tolist()
+        vectors = embed(titles)
+        vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+        similarity = vectors[:len(curated)] @ vectors[len(curated):].T
+        by_cluster = {c['cluster']: c for c in clusters_list}
+        clusters = members['cluster'].tolist()
+        for agency, row in zip(curated['agency'], similarity):
+            best = int(row.argmax())
+            cluster = by_cluster.get(clusters[best])
+            if row[best] >= CURATOR_MATCH and cluster is not None and agency not in cluster['curators']:
+                cluster['curators'].append(agency)
+        for c in clusters_list:
+            c['curators'].sort()
+        logger.info("Curators: %d of %d live aggregator headlines link a current story",
+                    sum(len(c['curators']) for c in clusters_list), len(curated))
 
     def blindspots(self, clusters_list):
         """Stories covered almost entirely by one side: at least BLINDSPOT_MIN_OUTLETS rated outlets, BLINDSPOT_SHARE

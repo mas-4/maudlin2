@@ -8,6 +8,7 @@ import pytz
 
 from app.site import wiki
 from app.analysis.edits import find_edits, edit_rates
+from app.analysis.wire import wire_share, WIRES
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.stories import framing_scores
 from app.models import Session, Agency, Article, Headline
@@ -78,6 +79,7 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
     edits, _ = find_edits()
     rates = edit_rates(edits)
     rates = rates.set_index('agency')['per_100'] if not rates.empty else pd.Series(dtype=float)
+    wire = wire_share()
 
     out = []
     background = wiki.all_info()
@@ -104,6 +106,9 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
         if name in framing.index:
             card['framing'] = {'value': round(float(framing[name]), 2), 'badge': framing_badge(framing[name])}
         card['edits'] = round(float(rates.get(name, 0.0)), 1)
+        # Share of its headlines that are AP or Reuters copy (None for the wires themselves, or too few headlines)
+        card['wire'] = round(100 * float(wire.loc[name, 'share'])) if name in wire.index else None
+        card['is_wire'] = name in WIRES
         if name in feelings.index and feelings.loc[name].max() > 0:
             top = feelings.loc[name].idxmax()
             card['feeling'] = {'emoji': EMOTION_EMOJI[top], 'name': top,

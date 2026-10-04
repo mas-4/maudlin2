@@ -2471,3 +2471,22 @@ h1 {
 .story[hidden] {
     display: none;
 }
+
+/* Aggregators linking a story (story cards) */
+.story-curators {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0.2em 0 0.4em;
+}
+
+.story-curators .edit-chip {
+    font-size: 0.95em;
+    padding: 1px 8px;
+}
+
+/* Trend arrows beside a story card's meter labels (how far lean or mood moved over the last hours) */
+.trend-arrows {
+    font-size: 0.85em;
+    letter-spacing: -0.1em;
+    color: #ff4fa3;
+}

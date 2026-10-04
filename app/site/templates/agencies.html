@@ -93,6 +93,7 @@
                     {% if o.framing %}{{ badge(o.framing.badge[0], o.framing.badge[1], FRAMING_TINTS[o.framing.badge[0]], 'On stories other outlets also covered, its headlines run ' ~ o.framing.value ~ ' from theirs') }}{% endif %}
                     {% if o.feeling %}{{ badge(o.feeling.emoji, 'mostly ' ~ o.feeling.name if o.feeling.share >= 50 else 'often ' ~ o.feeling.name, FEELING_TINTS[o.feeling.name], o.feeling.share ~ '% of the feeling in its headlines') }}{% endif %}
                     {{ badge('✏️', (o.edits ~ ' rewrites per 100') if o.edits else 'no rewrites', '#d9f7f2', 'Headlines changed after first seen, per 100 headlines') }}
+                    {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff', 'Its headlines are the copy other outlets run') }}{% elif o.wire is not none %}{{ badge('📡', (o.wire ~ '% wire copy') if o.wire else 'no wire copy', '#e0d4ff', 'Share of its headlines in ' ~ window_days ~ ' days that are AP or Reuters headlines, word for word or nearly') }}{% endif %}
                 </div>
                 <div class="outlet-count">📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</div>
             </div>
