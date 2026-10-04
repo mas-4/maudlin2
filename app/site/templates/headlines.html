@@ -216,7 +216,7 @@
                         const [x, y] = diagonal(d.rank, random);
                         return [x * geo.width, y * geo.height];
                     });
-                    layout.obstacles([...geo.obstacles, ...endObstacles()]);
+                    layout.obstacles([...geo.obstacles, ...endObstacles(), ...arrowObstacles(geo)]);
                 } else {
                     // The splay: the biggest words start near the middle; the rest start anywhere, so the corners
                     // (and the space under the sticker) fill in instead of the cloud thinning out toward its edges
@@ -272,28 +272,65 @@
             g.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotate}deg)`;
         }
 
-        // A swooping arrow behind the words, top left to bottom right, colored from one end of the sort to the other
+        // The sort's arrow, top left to bottom right: a solid, outlined swoop with a hard shadow that the words pack
+        // around like any other piece of the collage. Its shape in the cloud's own pixels (0..W, 0..H)
+        function arrowShape(W, H) {
+            const p0 = [0.2 * W, 0.22 * H], c = [0.68 * W, 0.18 * H], p1 = [0.86 * W, 0.8 * H];
+            const thick = Math.max(14, H * 0.05), head = thick * 2.3;
+            const len = Math.hypot(p1[0] - c[0], p1[1] - c[1]), u = [(p1[0] - c[0]) / len, (p1[1] - c[1]) / len];
+            const n = [-u[1], u[0]];
+            const base = [p1[0] - u[0] * head * 0.35, p1[1] - u[1] * head * 0.35];
+            const tri = [[p1[0] + u[0] * head * 0.65, p1[1] + u[1] * head * 0.65],
+                         [base[0] + n[0] * head * 0.55, base[1] + n[1] * head * 0.55],
+                         [base[0] - n[0] * head * 0.55, base[1] - n[1] * head * 0.55]];
+            const point = (t) => [(1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * c[0] + t * t * p1[0],
+                                  (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * c[1] + t * t * p1[1]];
+            return {p0, c, p1, thick, head, tri, point};
+        }
+
+        // Where words may not go: small squares along the shaft and one over the head, a little smaller than the
+        // arrow itself so words can tuck slightly over its edges
+        function arrowObstacles(geo) {
+            const a = arrowShape(geo.width, geo.height), out = [];
+            const half = a.thick * 0.32;
+            for (let i = 0; i <= 60; i++) {
+                const [x, y] = a.point(i / 60);
+                out.push({x0: x - half, y0: y - half, x1: x + half, y1: y + half});
+            }
+            const hx = a.tri.map((p) => p[0]), hy = a.tri.map((p) => p[1]);
+            const shrink = a.head * 0.18;
+            out.push({x0: Math.min(...hx) + shrink, y0: Math.min(...hy) + shrink,
+                      x1: Math.max(...hx) - shrink, y1: Math.max(...hy) - shrink});
+            return out;
+        }
+
         function drawArrow(svg, mode) {
             const ns = 'http://www.w3.org/2000/svg';
             svg.querySelector('.cloud-arrow')?.remove();
             const sort = CLOUD_SORTS[mode];
             if (!sort) return;
             const [vx, vy, W, H] = svg.getAttribute('viewBox').split(' ').map(Number);
-            const at = (x, y) => `${vx + x * W} ${vy + y * H}`;
-            const thick = Math.max(16, H * 0.06);
+            const a = arrowShape(W, H);
+            const xy = ([x, y]) => `${(vx + x).toFixed(1)} ${(vy + y).toFixed(1)}`;
+            const shaft = `M ${xy(a.p0)} Q ${xy(a.c)} ${xy(a.p1)}`;
+            const head = `M ${a.tri.map(xy).join(' L ')} Z`;
+            const ink = '#1f1f2e', edge = Math.max(3, a.thick * 0.18), drop = Math.max(4, a.thick * 0.3);
             const g = document.createElementNS(ns, 'g');
             g.setAttribute('class', 'cloud-arrow');
             g.innerHTML = `<defs>
                     <linearGradient id="arrow-ink" gradientUnits="userSpaceOnUse" x1="${vx + 0.2 * W}" y1="${vy + 0.2 * H}" x2="${vx + 0.9 * W}" y2="${vy + 0.88 * H}">
                         <stop offset="0" stop-color="${sort.colors[0]}"/><stop offset="1" stop-color="${sort.colors[1]}"/></linearGradient>
-                    <marker id="arrow-head" viewBox="0 0 10 10" refX="4" refY="5" markerWidth="2.6" markerHeight="2.6" orient="auto-start-reverse">
-                        <path d="M0 0 L10 5 L0 10 Z" fill="${sort.colors[1]}"/></marker>
                 </defs>
-                <path d="M ${at(0.2, 0.22)} Q ${at(0.68, 0.18)} ${at(0.86, 0.8)}" fill="none" stroke="url(#arrow-ink)"
-                      stroke-width="${thick}" stroke-linecap="round" marker-end="url(#arrow-head)"/>`;
-            // On top of the words (their paper cutouts would hide it underneath), see-through and untouchable so
-            // words stay readable and clickable through it
-            svg.appendChild(g);
+                <g transform="translate(${drop} ${drop})" fill="${ink}" stroke="${ink}">
+                    <path d="${shaft}" fill="none" stroke-width="${a.thick + 2 * edge}" stroke-linecap="round"/>
+                    <path d="${head}" stroke-width="${2 * edge}" stroke-linejoin="round"/>
+                </g>
+                <path d="${shaft}" fill="none" stroke="${ink}" stroke-width="${a.thick + 2 * edge}" stroke-linecap="round"/>
+                <path d="${head}" fill="${ink}" stroke="${ink}" stroke-width="${2 * edge}" stroke-linejoin="round"/>
+                <path d="${shaft}" fill="none" stroke="url(#arrow-ink)" stroke-width="${a.thick}" stroke-linecap="round"/>
+                <path d="${head}" fill="${sort.colors[1]}"/>`;
+            // Behind the words: they pack around it and may tuck a little over its edges
+            svg.insertBefore(g, svg.querySelector('.cloud-word'));
         }
 
         // Sticker-style labels at the two ends of a sorted cloud: under the news-day sticker, and the bottom right

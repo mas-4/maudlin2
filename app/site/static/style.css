@@ -1482,7 +1482,6 @@ body.toc-on .page-toc {
 
 /* The arrow behind a sorted cloud, showing which way it falls off */
 .cloud-arrow {
-    opacity: 0.2;
     pointer-events: none;
 }
 
