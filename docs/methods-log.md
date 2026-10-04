@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Rumors: are they circulating?** Each fact-checked claim is looked for nightly in the last 72 hours of our
+  Bluesky and Mastodon sample: posts at least 0.72 alike by meaning are candidates, and the model reads up to 12 one
+  at a time, saying whether each is telling the claim, arguing against it (sharing the fact-check counts), only
+  about the news around it, or something else. The Rumors page shows counts of people, never posts. Stance matters
+  here (unlike for a story's shape): the closest posts are often people sharing the fact-check or the news report
+  itself. First look (half a day of sample, 66,722 posts): 15 of 91 claims seen. Weak spots: some fact-checker
+  items are explainers of real news, so "telling it" is people sharing news; single posts can be misjudged.
 - **Beyond the front pages.** The front page's "Investigations" and "On the shows" link lists are gone (we're not an
   aggregator): each piece now shows on the story it covers (🕵️ investigated by, 🎙️ on the shows), and a new page
   lists what the shows, newsletters, streams and investigative desks discuss, tagged by subject by the local model

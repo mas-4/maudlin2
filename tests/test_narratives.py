@@ -38,3 +38,23 @@ def test_shared_side_needs_enough_rated_shares():
     assert shared_side([('Reuters', 4)], leans) == 'center'
     assert shared_side([('Fox News', 1)], leans) is None  # one share isn't enough
     assert shared_side([('Some blog', 9)], leans) is None  # unrated outlets don't count
+
+
+def test_circulation_counts_people_by_stance(monkeypatch, tmp_path):
+    import numpy as np
+    from app import narratives
+    from app.analysis import circulation, llm
+    posts = [{'key': f'k{i}', 'author': f'a{i % 3}', 'text': f'post {i}'} for i in range(5)]
+    monkeypatch.setattr(narratives, 'load', lambda hours: posts)
+    vecs = {'post 0': [1, 0], 'post 1': [1, 0], 'post 2': [1, 0], 'post 3': [0, 1], 'post 4': [0, 1],
+            'the claim': [1, 0]}
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.array([vecs[t] for t in texts], dtype=float))
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    stance = {'post 0': 'telling it', 'post 1': 'arguing against it', 'post 2': 'something else'}
+    monkeypatch.setattr(llm, 'complete_json',
+                        lambda prompt, schema, max_tokens=0: {'stance': stance[prompt.split('A post: ')[1].split('\n')[0]]})
+    monkeypatch.setattr(circulation, 'SEEN', str(tmp_path / 'seen.json'))
+    monkeypatch.setattr(circulation, 'CACHE', str(tmp_path / 'stance.json'))
+    out = circulation.seen({'u1': 'the claim'})
+    assert out['u1']['telling'] == 1 and out['u1']['arguing'] == 1 and out['u1']['candidates'] == 3
+    assert circulation.load()['claims']['u1']['people'] == 2

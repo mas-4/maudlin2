@@ -173,7 +173,9 @@ def main(args: argparse.Namespace):
         # Once a night, the day's narratives (research only, #142): the GPU has nothing else to do at 4 AM
         if dt.now().hour == NARRATIVE_HOUR:
             from app import narratives
+            from app.analysis import circulation
             narratives.report(hours=24)
+            circulation.nightly()  # which fact-checked rumors people are telling or arguing over (#153)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 

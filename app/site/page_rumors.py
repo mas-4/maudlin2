@@ -4,7 +4,7 @@ app/analysis/rumor_shapes.py): genre, rumor class, conspiracy scope, subject. Th
 fact-checker's own, behind its link: the model doesn't rate claims."""
 from collections import Counter
 
-from app.analysis import factchecks
+from app.analysis import circulation, factchecks
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app.site.common import TemplateHandler
 from app.site.page_folklore import GENRE_EMOJI
@@ -27,6 +27,8 @@ class RumorsPage:
         except Exception as e:  # noqa: e.g. no side_item table on a database that hasn't migrated
             logger.warning("Rumors: %s", e)
             items, labels = [], {}
+        looked = circulation.load()
+        seen = looked.get('claims', {})
         cards = []
         for item in items:
             label = labels.get(item['url'])
@@ -38,7 +40,8 @@ class RumorsPage:
                           'conspiracy': (label.get('conspiracy') if label.get('conspiracy') != 'not a conspiracy'
                                          else None),
                           'family': label.get('family') if label.get('family') != 'none' else None,
-                          'date': item['published'][:10]})
+                          'date': item['published'][:10],
+                          'seen': seen.get(item['url']) if looked else None})
         count = lambda key: Counter(c[key] for c in cards if c[key]).most_common()
         self.template.write({
             'preview': Config.debug,  # the conspiracy scope shows only in previews until it's reliable (Oct 4)
@@ -46,5 +49,6 @@ class RumorsPage:
             'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
             'class_counts': count('rumor_class'), 'scope_counts': count('conspiracy'),
             'family_counts': count('family'), 'source_counts': count('source'),
+            'looked': looked, 'seen_count': sum(1 for c in cards if c['seen'] and c['seen']['people']),
         })
         logger.info("...%d fact-checked rumors", len(cards))

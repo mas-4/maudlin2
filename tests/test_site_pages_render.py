@@ -489,11 +489,14 @@ def test_rumors_page_lists_labeled_fact_checks(monkeypatch, tmp_path):
                                            'family': 'animals and nature'}}
     monkeypatch.setattr(pr.factchecks, '_items', lambda days: items)
     monkeypatch.setattr(pr.factchecks, 'label_all', lambda items: labels)
+    monkeypatch.setattr(pr.circulation, 'load', lambda: {'hours': 72, 'claims': {
+        'https://snopes.example/1': {'telling': 3, 'arguing': 1, 'people': 4, 'checked': 9}}})
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     pr.RumorsPage().generate()
     html = (tmp_path / 'rumors.html').read_text()
     assert 'Did a &lt;bison&gt; herd save a hiker?' in html and '🌈 wish rumor' in html
     assert 'conspiracy</span>' not in html and 'Unlabeled' not in html  # no plot claimed; not labeled yet
+    assert '<b>3</b> telling it, <b>1</b> arguing against it' in html
     assert 'These are rumors, not facts.' in html
 
 

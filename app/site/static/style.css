@@ -3497,6 +3497,13 @@ h1 {
     color: #555;
 }
 
+.rumor-seen {
+    margin: 0.3em 0;
+    font-size: 0.85em;
+}
+
+.rumor-unseen { color: #8a8f98; }
+
 .narrative-claim {
     margin: 0.3em 0;
     font-style: italic;
