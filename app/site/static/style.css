@@ -1077,40 +1077,52 @@ figure.wordcloud figcaption {
     padding: 0 16px;
 }
 
-/* The cloud's key, kept to a glance: the size cue in big type, the colors as chips, and how to open a word */
+/* The cloud's key, kept to a glance: the size cue in big type, what the colors compare, and a pointing hand that
+   bobs toward the cloud so it's clear the words open */
 figure.wordcloud figcaption.cloud-key {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: baseline;
     justify-content: center;
-    gap: 0.45em 0.6em;
+    gap: 0.3em 0.7em;
     margin: 0.6em 0 1.4em;
     color: #1f1f2e;
     font-family: 'Comic Neue', 'Comic Sans MS', cursive;
-    font-weight: 700;
+    font-size: 1.05em;
+    text-shadow: 0 0 4px #ffffff, 0 0 8px #ffffff, 0 0 12px #ffffff;
 }
 
 .key-big {
-    font-size: 2.3em;
+    font-size: 2.2em;
     font-weight: 700;
-    letter-spacing: 0.02em;
     line-height: 1;
-    text-shadow: 0 0 6px #ffffff, 0 0 12px #ffffff;
 }
 
-.key-chip, .key-click {
-    padding: 0.15em 0.75em;
-    background: white;
-    border: 2px solid #1f1f2e;
-    border-radius: 999px;
-    box-shadow: 2px 2px 0 #1f1f2e;
-    font-size: 1.05em;
+.key-sep {
+    color: #8a8f98;
+    font-weight: 700;
 }
 
 .key-click {
-    border-style: dashed;
-    box-shadow: none;
-    font-size: 0.95em;
+    font-weight: 700;
+}
+
+.key-point {
+    display: inline-block;
+    font-size: 2em;
+    line-height: 1;
+    vertical-align: -0.15em;
+    text-shadow: none;
+    filter: drop-shadow(2px 2px 0 #ffc400);
+    animation: key-point 1.4s ease-in-out infinite;
+}
+
+@keyframes key-point {
+    50% { transform: translateY(-0.2em); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .key-point { animation: none; }
 }
 
 .balanced-text {
