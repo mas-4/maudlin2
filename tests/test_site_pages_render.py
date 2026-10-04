@@ -457,3 +457,16 @@ def test_folklore_cards_link_fact_checks(monkeypatch, tmp_path):
     pn.FolklorePage().generate()
     html = (tmp_path / 'folklore.html').read_text()
     assert '<b>NewsGuard</b>: False flag &lt;claim&gt;' in html
+
+
+def test_folklore_withheld_claims_never_show(monkeypatch, tmp_path):
+    from app.site import page_folklore as pn
+    report = {'posts': 10, 'authors': 10, 'hours': 24, 'made': '2026-10-05T04:00', 'found': [
+        {'authors': 12, 'posts': 14, 'variety': 0.9, 'kind': 'told', 'examples': ['x'],
+         'label': {'retold': True, 'narrative': 'A misread claim'}}]}
+    monkeypatch.setattr(pn, 'latest_report', lambda: report)
+    monkeypatch.setattr(pn, 'withheld', lambda: {'A misread claim'})
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setattr(Config, 'debug', False)
+    pn.FolklorePage().generate()
+    assert 'A misread claim' not in (tmp_path / 'folklore.html').read_text()

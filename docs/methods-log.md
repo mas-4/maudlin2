@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **A folklore card withheld after a misreading.** "Trans women are predators and their identities are inherently
+  tied to dark kinks", told by 12 people and labeled right-wing, was a group of mostly trans people talking about
+  their own gender; one post's line, from one trans woman arguing with others, became the group's "shared claim".
+  It's withheld by hand (data/narratives/withheld.json). Cause: the finder groups posts by topic and the labeler
+  writes a claim even when most posts don't concern it. Fix (next report): a narrative counts only if most of its
+  sampled posts are about its claim, telling it or arguing over it alike.
 - **Fact-checks (#153).** Seven fact-checkers' feeds are archived (PolitiFact, FactCheck.org, Snopes, Lead Stories,
   Full Fact, NewsGuard Reality Check, Science Feedback; Check Your Fact was dropped: its feed is mostly the Daily
   Caller's ordinary news). Each check from the last week is tied to a current story, and each from the last 30

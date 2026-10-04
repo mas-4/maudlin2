@@ -60,6 +60,19 @@ GENRE_NOTES = {
 SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#8a8f98'}
 
 
+WITHHELD = os.path.join(FOLDER, 'withheld.json')  # narratives pulled by hand: [{claim, reason, at}]
+
+
+def withheld() -> set[str]:
+    """Claims withheld from the page by hand after a misreading (Oct 4: a group of trans people talking about their
+    own identity was labeled as spreading an anti-trans claim one of them had quoted)."""
+    try:
+        with open(WITHHELD) as f:
+            return {w['claim'] for w in json.load(f)}
+    except (OSError, ValueError):
+        return set()
+
+
 def latest_report() -> dict | None:
     reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')))
     if not reports:
@@ -76,10 +89,13 @@ class FolklorePage:
         logger.info("Generating folklore page...")
         report = latest_report()
         cards, copies, fewer = [], [], 0
+        pulled = withheld()
         floor = max(MIN_PEOPLE, round(report['authors'] / PEOPLE_SHARE)) if report else MIN_PEOPLE
         if report:
             for g in report['found']:
                 label = g.get('label') or {}
+                if label.get('narrative') in pulled:
+                    continue
                 if label.get('retold') and g['authors'] < floor:
                     fewer += 1
                 elif label.get('retold'):
