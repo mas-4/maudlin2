@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Each side's wording.** Story cards show two-word phrases that outlets on one side of the lean scale put in their
+  headlines and no outlet on the other side did ("hero pilot" and "FlyDubai hijacker" from the right against
+  "extremism concerns" and "terrorist act" from the left on the FlyDubai attack; "Trump doxes" against "Trump urges"
+  on the senator's phone number). Our outlets lean left as a group, so a story needs 3 or more rated outlets on each
+  side, and a phrase needs 2 or more outlets and a quarter of its side's outlets, with none on the other side.
+  Function words and headline filler don't count; phrases the same outlets used back to back are joined ("small
+  Texas town stopped Trump's"). No model involved.
 - **Every-headline file packed.** headlines-table.json now lists each row's values in a fixed column order, with
   outlets (and their lean), topics, stories and feelings listed once and referred to by position, and URLs without
   "https://": about 12% smaller compressed (keys were a third of the raw file, but compression already removed most
@@ -51,6 +58,9 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   Verdicts are cached (saga_judgments.json); those two sagas were taken apart.
 - **Headline A/B tests (#119).** Every wording Slate tests on a front-page card is recorded each run with when it was
   first and last up; when one is left, it's the winner. Shown on the headline changes page. Recording begins Oct 4.
+  Checked on Oct 4 whether other outlets expose their variants the same way (each homepage once): none do. Outlets
+  using Chartbeat's or Optimizely's headline testing run it in the reader's browser, so the variants never appear in
+  the page a scraper reads.
 - **Headline download.** The every-headline page links its rows as JSON (the file the table already loads).
 - **Quote selection (#149).** Story cards list the phrases outlets put in quotation marks in their headlines (one
   headline per outlet, up to 4 phrases, most-quoted first), each tinted by the lean of the outlets that quoted it.

@@ -857,6 +857,11 @@
                         {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %})">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
                     </p>
                 {% endif %}
+                {% if cluster['wording'] %}
+                    <p class="story-wording"><span class="story-quotes-label" title="Two-word phrases outlets on one side put in their headlines and no outlet on the other side did (each side needs 3 or more rated outlets on the story)">🗣️ only one side says</span>
+                        {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in cluster['wording'].get(s, []) %}<span class="wording-chip wording-{{ s }}" title="{{ s|capitalize }}-leaning: {{ p.outlets|join(', ')|e }}">{{ emoji }} {{ p.phrase|e }}{% if p.count > 2 %} <b>{{ p.count }}</b>{% endif %}</span>{% endfor %}{% endfor %}
+                    </p>
+                {% endif %}
                 {% set on_shows = show_coverage.get(cluster['cluster']) if show_coverage is defined else none %}
                 {% if on_shows %}
                     <div class="story-shows">

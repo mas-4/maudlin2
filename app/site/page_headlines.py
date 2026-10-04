@@ -15,6 +15,7 @@ from app.analysis.clustering import prepare_embedding_cosine, form_clusters, lab
 from app.analysis.sagas import link_sagas
 from app.analysis import trends_meter
 from app.analysis.quotes import story_quotes
+from app.analysis.wording import side_phrases
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
@@ -432,6 +433,7 @@ class HeadlinesPage:
             cluster['outlets'] = int(group['agency'].nunique())
             cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0
             cluster['quotes'] = story_quotes(cluster['data'])
+            cluster['wording'] = side_phrases(cluster['data'])
 
         # Sagas: stories that are parts of one running story, kept across days (earlier parts stay in the saga after
         # they leave the front pages). Members sit together, ordered by the saga's newest part
