@@ -1,5 +1,5 @@
 """The outlets page: every outlet we follow, lined up by lean, with a card each saying how it covers the news (how
-loaded its wording is, how grim its news runs, how it frames shared stories against everyone else, how often it
+loaded its wording is, how grim it makes the news, how it frames shared stories against everyone else, how often it
 rewrites headlines, and the feeling its headlines stir most). All from the last WINDOW_DAYS of news headlines."""
 from datetime import datetime as dt, timedelta as td
 

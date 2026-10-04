@@ -844,7 +844,7 @@
                             <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
                             <span class="meter-end" title="right-leaning outlets">🐘</span></span>
                     </div>
-                    <div class="meter" title="How grim or upbeat the news in its headlines is, on average ({{ cluster['mood']['word'] }})">
+                    <div class="meter" title="How grim or upbeat its headlines make the news, on average ({{ cluster['mood']['word'] }})">
                         <span class="meter-label">mood{% if cluster['trend'] and cluster['trend']['mood']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['mood']['tip'] }}">{{ cluster['trend']['mood']['arrows'] }}</span>{% endif %}</span>
                         <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
                             <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
@@ -944,8 +944,8 @@
     {% endif %}
     {% if page_part == 'table' %}
     <h1>Every headline right now</h1>
-    <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, how grim or
-        upbeat its news, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
+    <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, whether it
+        presents its news as good or bad, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
     <p class="table-download"><a href="{{ table_file }}" download="{{ table_download }}">⬇️ Download these headlines as JSON</a></p>
     <details class="table-fields">
         <summary>What's in the file</summary>
@@ -961,7 +961,7 @@
             <tr><td><code>seen</code></td><td>number or null</td><td>When we first saw the article, in Unix seconds (UTC).</td></tr>
             <tr><td><code>buzz</code></td><td>number</td><td>0 to 100: the headline's percentile among this hour's headlines for how many of the day's most common words and phrases it uses.</td></tr>
             <tr><td><code>topic</code>, <code>topic_url</code></td><td>text</td><td>A topic page it belongs to, if any (often empty).</td></tr>
-            <tr><td><code>mood</code></td><td>number or null</td><td>How grim or upbeat the news in it is, as our local language model reads it: -2 grim, -1, 0 plain, 1, 2 upbeat. Null when not yet scored.</td></tr>
+            <tr><td><code>mood</code></td><td>number or null</td><td>Whether the headline presents its news as good or bad, from its own words and tone, as our local language model reads it: -2 grim, -1, 0 plain (takes no side), 1, 2 upbeat. Null when not yet scored. Headlines scored before Oct 4 measured how good the event was for the people it affects instead, and are being rescored.</td></tr>
             <tr><td><code>loaded</code></td><td>number or null</td><td>How loaded the outlet's own wording is: 0 plain, 1 one or two charged words, 2 built to provoke. Words quoted from someone else don't count.</td></tr>
             <tr><td><code>feelings</code></td><td>list</td><td>The feelings it's likely to stir, strongest first, each as <code>[emoji, name]</code> (fear, anger, sadness, disgust, surprise, joy, hope).</td></tr>
             <tr><td><code>story</code></td><td>number or null</td><td>The story card it's on this hour. These numbers change every run: use <code>story_title</code> to match across downloads.</td></tr>
@@ -977,7 +977,7 @@
                 <span>show:</span>
                 <button data-filter="metric" data-value="buzz" class="active" title="How much it uses the words everyone else is using today">📣 buzz</button>
                 <button data-filter="metric" data-value="seen">🕒 first seen</button>
-                <button data-filter="metric" data-value="mood" title="How grim or upbeat the news is">🌦️ mood</button>
+                <button data-filter="metric" data-value="mood" title="Whether the headline presents its news as good or bad">🌦️ mood</button>
                 <button data-filter="metric" data-value="spin" title="How loaded the wording is">🌶️ spin</button>
                 <button data-filter="metric" data-value="feeling" title="The feelings it's most likely to stir, strongest first">{{ emotion_emoji.fear }} feeling</button>
                 <button data-filter="metric" data-value="story" title="Which current story it's part of">📰 story</button>

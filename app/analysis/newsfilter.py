@@ -2,15 +2,18 @@
 batches), in a single call that returns three things:
 
 - kind: news, or not (lifestyle, shopping, page furniture). Non-news stays out of the analyses.
-- event: how good or bad the reported event is for the people it affects, -2 to 2, whoever reports it.
-- loaded: how loaded the outlet's own wording is, 0 (plain) to 2 (built to provoke).
+- event (shown as mood): whether the headline presents its news as good or bad, -2 to 2, from the outlet's own
+  words and tone.
+- loaded: how loaded the outlet's own wording is, 0 (plain) to 2 (built to provoke), outrage bait included.
 - emotions: up to three feelings it's most likely to stir, strongest first (fear, anger, sadness, disgust, surprise,
   joy, hope or neutral), scored ranked-choice style when averaged.
 
-Event and wording are scored apart because word-list sentiment (VADER, AFINN) mostly measures the event: every
-headline about a deadly crash reads negative whoever writes it. The rubric asks the model to name who is
-affected and how before scoring, which fixed most errors on hard cases (strikes and attacks read from the
-attacker's side).
+Mood was first how good or bad the event was for the people it affects, whoever reported it. For anything
+political that depends on whose side you're on (a ruling is good news to one side and bad to the other), so the
+model had to pick a side itself, and a reader couldn't check it from the headline. Since Oct 4 it's how the
+headline presents the news, which a reader can check from the words, and which differs between outlets exactly
+where their framing does. Before scoring, the model notes how the headline treats the news and for whom, which
+keeps plainly reported harm (strikes, attacks) read from the receiving end.
 
 When no llm is running, `--label-headlines` + `--train-newsfilter` provide a fallback news classifier. It's much
 weaker than the llm, so it uses a cutoff chosen to almost never drop real news, and it gives no event or loaded
@@ -56,20 +59,29 @@ photo galleries ("Sydney Sweeney spills out of lacy bra", "2 habits that weaken 
 - junk: not a headline at all: navigation, section names, bylines, promos, newsletter signups, template text \
 ("Election '04", "More news", "Read the full story")
 
-affected: first, in under 12 words, who the event affects and whether it helps or harms them.
+affected: first, in under 12 words, whether the headline treats its news as good or bad, and for whom.
 
-event: how good or bad the reported event is for the people it affects, whoever reports it and whoever caused \
-it. Attacks, strikes, arrests, deaths, losses and dangers are bad for the people on the receiving end.
--2: deaths, disasters, attacks, violence, serious harm ("Strike kills 12", "Heat deaths top 34,000")
--1: setbacks, losses, conflict, threats, risk, worry ("Factory lays off 1,400", "Bridge damaged in strike")
-0: neutral, procedural or mixed ("Senate schedules vote", "Polls show tight race")
-+1: progress, relief, gains, wins ("Inflation eases", "Team wins series")
-+2: lives saved, major breakthroughs, celebrations ("Hostages freed", "Cure approved")
+event: how this headline presents its news: as good news, bad news or neither, judged from the outlet's own \
+words and tone, not from your own view of the event. When people disagree about whether something is good, \
+follow this headline: one cheering a court ruling presents good news, one dismayed by the same ruling presents \
+bad news, one that just reports it is 0. Deaths, attacks, disasters and harm reported plainly are bad news for \
+the people on the receiving end.
+-2: presented as terrible: deaths, disasters, attacks, or alarm and outrage ("Strike kills 12", "Heat deaths top \
+34,000", "DISASTER: Court guts border law")
+-1: presented as a setback, loss, threat or worry ("Factory lays off 1,400", "Ruling deals blow to unions")
+0: neutral, procedural or mixed; the headline takes no side ("Senate schedules vote", "Judge strikes down \
+border law")
++1: presented as progress, relief or a win ("Inflation eases", "Team wins series", "Unions score win in court")
++2: presented as a triumph: lives saved, breakthroughs, celebration ("Hostages freed", "HUGE WIN: Court strikes \
+down border law")
 
 loaded: how much the outlet's own word choice adds emotion, judgment or alarm beyond the facts. Words quoted \
-from a source do not count. Most headlines are 0.
+from a source do not count. Most headlines are 0. Outrage bait counts even in plain words: exclamations, \
+sarcasm, taunting questions and reaction phrases ("Oh, come on:", "You can't make this up", "Unreal.") make a \
+headline 1 or 2.
 0: plain wording ("Senator criticizes bill", "Man arrested after shooting", "Investigators say attack was planned")
-1: one or two charged words the outlet chose ("slams", "blasts", "chaos", "meltdown", "regime", "furious")
+1: one or two charged words or a reaction phrase the outlet chose ("slams", "blasts", "chaos", "meltdown", \
+"regime", "furious", "Yikes:")
 2: built to provoke: insults, sensational or partisan framing, ALL CAPS, outrage bait ("MELTDOWN: Dems lose \
 their minds", "Clueless senator humiliated")
 
@@ -249,23 +261,60 @@ def assess(titles: list[str], agency: str) -> list[dict]:
             for p in probabilities]
 
 
-def rescore_all(only_missing: bool = False):
+SCORE_ARCHIVE = os.path.join(Config.data, 'archive', 'scores-before-rescore.csv')
+
+
+def archive_scores(ids: list[int]):
+    """Keep the scores a rescore is about to replace (appended to SCORE_ARCHIVE, each with the model and rubric
+    that made it), so earlier readings stay on record and the rubrics can be compared."""
+    from app.models import Session, Headline
+    if not ids:
+        return
+    cols = ['id', 'news_score', 'event_score', 'loaded_score', 'emotion_ranks', 'affected', 'scored_by', 'scored_at']
+    with Session() as s:
+        rows = [r for start in range(0, len(ids), 500) for r in s.query(*[getattr(Headline, c) for c in cols]).filter(
+            Headline.id.in_(ids[start:start + 500])).all()]
+    old = pd.DataFrame(rows, columns=cols)
+    if os.path.exists(SCORE_ARCHIVE):  # an interrupted rescore run again: don't archive the same scores twice
+        kept = pd.read_csv(SCORE_ARCHIVE, usecols=['id', 'scored_by'])
+        old = old[~old.set_index(['id', 'scored_by']).index.isin(kept.set_index(['id', 'scored_by']).index)]
+    os.makedirs(os.path.dirname(SCORE_ARCHIVE), exist_ok=True)
+    old.to_csv(SCORE_ARCHIVE, mode='a', header=not os.path.exists(SCORE_ARCHIVE), index=False)
+    logger.info("Archived %d headlines' earlier scores to %s", len(old), SCORE_ARCHIVE)
+
+
+RESCORE_CHUNK = 200  # headlines judged between saves (and between checks that it's a good time to go on)
+
+
+def rescore_all(only_missing: bool = False, outdated: bool = False, wait=None):
     """Judge stored headlines again, e.g. after changing the rubric, then recompute the stories' framing from the
-    new scores. `only_missing` fills in just the headlines that have no scores yet (a failed or interrupted run)."""
+    new scores. `only_missing` fills in just the headlines that have no scores yet (a failed or interrupted run);
+    `outdated` just the ones not scored by the current model and rubric, so an interrupted rescore picks up where it
+    stopped. `wait`, if given, is called before each chunk and can block until it's a good time to go on (not while
+    the hourly run needs the gpu)."""
     from app.models import Session, Headline, Article, Agency
     with Session() as s:
         query = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency)
         if only_missing:
             query = query.filter(Headline.event_score.is_(None) | Headline.emotion_ranks.is_(None))
+        if outdated:
+            query = query.filter(Headline.scored_by.is_(None) | (Headline.scored_by != judge_id()))
         rows = query.all()
     df = pd.DataFrame(rows, columns=['id', 'title', 'agency'])
-    t = time.time()
-    for n, (agency, group) in enumerate(df.groupby('agency'), start=1):
-        results = assess(group['title'].tolist(), agency)
-        with Session() as s:
-            s.execute(update(Headline), [{'id': int(i), **r} for i, r in zip(group['id'], results)])
-            s.commit()
-        logger.info("Rescored %s (%d of %d agencies, %.0fs)", agency, n, df['agency'].nunique(), time.time() - t)
+    if outdated:
+        archive_scores(df['id'].tolist())
+    t, done = time.time(), 0
+    for agency, group in df.groupby('agency'):
+        for start in range(0, len(group), RESCORE_CHUNK):
+            if wait is not None:
+                wait()
+            chunk = group.iloc[start:start + RESCORE_CHUNK]
+            results = assess(chunk['title'].tolist(), agency)
+            with Session() as s:
+                s.execute(update(Headline), [{'id': int(i), **r} for i, r in zip(chunk['id'], results)])
+                s.commit()
+            done += len(chunk)
+        logger.info("Rescored %s (%d of %d headlines, %.0fs)", agency, done, len(df), time.time() - t)
     with Session() as s:
         total = s.query(Headline).count()
         news = s.query(Headline).filter(Headline.news_score >= NEWS_THRESHOLD).count()

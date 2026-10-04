@@ -22,6 +22,7 @@ import threading
 
 logger = get_logger(__name__)
 NARRATIVE_HOUR = 4  # the run that writes the day's narrative report
+QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
 
 class SeleniumThread(threading.Thread):
@@ -107,6 +108,17 @@ def scrape(args, scrapers):
     scraper_health.write([(s.agency, s.url) for s in scrapers if ran_seleniums or not issubclass(s, SeleniumScraper)])
 
 
+def between_runs():
+    """Block while the hourly run has (or is about to have) the gpu: its first QUIET_MINUTES, the minutes before it,
+    and while it runs."""
+    import subprocess
+    while True:
+        running = subprocess.run(['systemctl', 'is-active', '--quiet', 'maudlin-scrape.service']).returncode == 0
+        if not running and QUIET_MINUTES <= dt.now().minute < 58:  # a chunk started at :58 ends before :00
+            return
+        time.sleep(60)
+
+
 def main(args: argparse.Namespace):
     t = time.time()
     if args.analyze_topics:
@@ -126,6 +138,9 @@ def main(args: argparse.Namespace):
         return
     if args.rescore_news or args.rescore_missing:
         newsfilter.rescore_all(only_missing=args.rescore_missing)
+        return
+    if args.rescore_outdated:
+        newsfilter.rescore_all(outdated=True, wait=between_runs)
         return
     if args.email_newsletter:
         with open(Config.newsletter, 'rt') as f:
@@ -179,6 +194,9 @@ def get_args() -> argparse.Namespace:
                         help='judge every stored headline again: news or not, event and loaded scores (uses the llm)')
     parser.add_argument('--rescore-missing', action='store_true',
                         help='judge only stored headlines that have no scores yet, e.g. after an interrupted run')
+    parser.add_argument('--rescore-outdated', action='store_true',
+                        help='judge again the headlines not scored by the current model and rubric, between hourly '
+                             'runs (resumable)')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:

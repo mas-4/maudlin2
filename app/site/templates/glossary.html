@@ -33,20 +33,24 @@
     <div class="terms">
         {% call term('🤖', 'The language model') %}
             <p>A small open model, <code>{{ model }}</code>, runs on our own computer (not a cloud service). It reads
-                each new headline once and answers in a fixed format: whether it's news, how good or bad the event is,
+                each new headline once and answers in a fixed format: whether it's news, whether it presents the news as good or bad,
                 how loaded the wording is, and the feelings it's most likely to stir. Before scoring, it writes a short
-                note on who's affected, which keeps its answers grounded. It makes mistakes, so treat any one score as
+                note on how the headline treats the news and for whom, which keeps its answers grounded. It makes mistakes, so treat any one score as
                 a rough read; the averages over many headlines are what the site shows.</p>
         {% endcall %}
         {% call term('🌦️', 'Mood', 'mood') %}
-            <p>How good or bad the <em>event</em> in a headline is for the people it's about, from grim to upbeat
-                (⛈️ 🌧️ 🍞 🌤️ ☀️; "+" means more so). It's about what happened, not the wording. A story's mood is the
-                average of its headlines.</p>
+            <p>Whether a headline presents its news as good or bad, from grim to upbeat (⛈️ 🌧️ 🍞 🌤️ ☀️; "+" means
+                more so), judged from the outlet's own words and tone. The same court ruling can be 🌧️ grim in one
+                outlet's headline, ☀️ upbeat in another's and 🍞 plain in a wire report's: that difference is the
+                outlets' framing. Plainly reported deaths and disasters are grim. A story's mood is the average of
+                its headlines. (Until Oct 4, mood was how good the event was for the people it affects, whoever
+                reported it; for anything political that meant the model taking a side.)</p>
         {% endcall %}
         {% call term('🌶️', 'Spin', 'spin') %}
             <p>How much a headline's own wording adds emotion, judgment or alarm beyond the facts: 🍞 plain, 🌶️ loaded
                 (a charged word or two, like "slams" or "chaos"), 🌶️🌶️ loaded+ (built to provoke). Words quoted from
-                someone don't count.</p>
+                someone don't count. Outrage bait counts even in plain words ("Oh, come on:", "You can't make this
+                up").</p>
         {% endcall %}
         {% call term(emotion_emoji.fear, 'Feelings', 'feelings') %}
             <p>The feelings a headline is most likely to stir in a reader, ranked, up to three, from:

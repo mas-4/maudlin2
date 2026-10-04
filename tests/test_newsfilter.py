@@ -5,6 +5,7 @@ import re
 from datetime import datetime as dt, timezone
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from app.analysis import llm, newsfilter
@@ -216,3 +217,38 @@ def test_assess_fallback_classifier(monkeypatch):
         assert isinstance(r['scored_at'], dt)
         assert r['event_score'] is None and r['loaded_score'] is None and r['emotion'] is None
         assert r['affected'] is None
+
+
+def test_rescore_outdated_only_touches_other_rubrics_and_waits_before_each_chunk(fake_llm, monkeypatch, tmp_path):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app import models
+    from app.analysis import stories
+    engine = create_engine('sqlite://')
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+    monkeypatch.setattr(stories, 'refresh_story_sentiment', lambda: None)
+    monkeypatch.setattr(newsfilter, 'RESCORE_CHUNK', 2)
+    monkeypatch.setattr(newsfilter, 'SCORE_ARCHIVE', str(tmp_path / 'archive' / 'scores.csv'))
+    answers, _ = fake_llm
+    current = newsfilter.judge_id()
+    with models.Session() as s:
+        agency = models.Agency(name='Wire', url='https://wire.test', _bias=0, _credibility=0, _country=0)
+        s.add(agency)
+        for i, by in enumerate(['old rubric', 'old rubric', None, current]):
+            answers[f'Headline {i}'] = {'kind': 'news', 'affected': 'x', 'event': -1, 'loaded': 1, 'emotions': ['fear']}
+            article = models.Article(agency=agency, url=f'https://wire.test/{i}')
+            s.add(models.Headline(article=article, title=f'Headline {i}', scored_by=by, event_score=2.0))
+        s.commit()
+    waits = []
+    newsfilter.rescore_all(outdated=True, wait=lambda: waits.append(1))
+    with models.Session() as s:
+        rows = {h.title: (h.event_score, h.scored_by) for h in s.query(models.Headline)}
+    assert all(rows[f'Headline {i}'] == (-1.0, current) for i in range(3))
+    assert rows['Headline 3'] == (2.0, current)  # already on this rubric: left alone
+    assert len(waits) == 2  # three headlines in chunks of two
+    archived = pd.read_csv(tmp_path / 'archive' / 'scores.csv')
+    assert sorted(archived['id']) == [1, 2, 3] and set(archived['event_score']) == {2.0}
+    newsfilter.archive_scores([4])
+    newsfilter.archive_scores([4])  # already archived with these scores (an interrupted run going again): not twice
+    assert len(pd.read_csv(tmp_path / 'archive' / 'scores.csv')) == 4

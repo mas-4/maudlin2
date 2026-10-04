@@ -155,8 +155,9 @@ class Headline(Base, AccessTimeMixin):
     # Probability this is a news headline rather than lifestyle, shopping or page furniture. Null until the
     # news classifier has a model to score it with; analyses treat null as news.
     news_score: Mapped[float] = mapped_column(Float(), nullable=True)
-    # From the llm's rubric (see app/analysis/newsfilter.py): how good or bad the reported event is for the people
-    # it affects (-2 to 2), and how loaded the outlet's own wording is (0 to 2). Null without an llm.
+    # From the llm's rubric (see app/analysis/newsfilter.py): whether the headline presents its news as good or bad
+    # (-2 to 2; before Oct 4, how good or bad the event was for the people it affects), and how loaded the outlet's
+    # own wording is (0 to 2). Null without an llm.
     event_score: Mapped[float] = mapped_column(Float(), nullable=True)
     loaded_score: Mapped[float] = mapped_column(Float(), nullable=True)
     # The emotion the headline is most likely to stir in a reader (fear, anger, sadness, disgust, surprise, joy,

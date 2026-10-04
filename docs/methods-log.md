@@ -5,6 +5,19 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Mood redefined: how the headline presents the news (rubric b31d654f).** Mood was how good or bad the event is
+  for the people it affects, whoever reports it. For political news that depends on whose side you're on, so the
+  model picked a side itself and a reader couldn't check it: RedState's "Oh, Hell No: Judge Rules Federal
+  Noncitizen Voting Ban Unconstitutional" scored ☀️ upbeat+ (good for noncitizens). Mood is now whether the
+  headline presents its news as good or bad, from the outlet's own words and tone; plainly reported harm is still
+  grim. Spin now also counts outrage bait in plain words ("Oh, come on:").
+  - Tested on 21 headlines (12 hand-checked in the label check, nine outlets' headlines on that ruling): mood exact
+    13 vs 10 under the old rubric, within one step 19 vs 16. On the hand-checked 12 alone, exact 6 vs 6 and
+    within one 10 vs 9; the one sign flip (the Daily Wire's "Leftism's appetite for the destruction of order"
+    read as upbeat+) is fixed. The ruling set's expected moods are the assistant's reading, not a hand check.
+  - Every stored headline is rescored with the new rubric (`--rescore-outdated`, between hourly runs). The old
+    scores are kept in `data/archive/scores-before-rescore.csv` with the rubric that made them. Mood before and
+    after Oct 4 means different things, so any mood trend starts here.
 - **Shortened links scrubbed (privacy fix).** Bluesky writes links in a post's text shortened and without
   https:// ("youtu.be/…", "twitch.tv/someone"), so the scrubber missed them: 4,998 stored posts kept a full link,
   some naming an account. They now become their site like every other link, and the stored posts were rewritten.
