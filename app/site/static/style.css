@@ -3203,9 +3203,16 @@ h1 {
     display: none;
 }
 
-/* Chips never break inside ("Google / News"); the row wraps between them instead */
-.edit-chip, .storylink, .quote-chip, .show-chip {
+/* Outlet and show chips never break inside ("Google / News"); the row wraps between them instead. Quotes and
+   phrases can be long, so they wrap, but never wider than their card (a long one on one line widened the whole
+   page on phones) */
+.edit-chip, .storylink, .show-chip {
     white-space: nowrap;
+}
+
+.quote-chip, .wording-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 /* A story card's coverage lines (headline count, first seen, still showing) read as notes, not body text */
@@ -3298,7 +3305,6 @@ h1 {
     padding: 1px 9px;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
-    white-space: nowrap;
 }
 
 .wording-left {
