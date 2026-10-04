@@ -129,6 +129,12 @@ from app.scrapers.zeteo import Zeteo
 from app.scrapers.the19th import The19th
 from app.scrapers.americanprospect import AmericanProspect
 from app.scrapers.compact import Compact
+from app.scrapers.thefreepress import TheFreePress
+from app.scrapers.westernjournal import WesternJournal
+from app.scrapers.pjmedia import PJMedia
+from app.scrapers.americanspectator import AmericanSpectator
+from app.scrapers.nationalpulse import NationalPulse
+from app.scrapers.americanthinker import AmericanThinker
 from app.scrapers.wallstreetjournal import WallStreetJournal
 from app.scrapers.washingtonexaminer import WashingtonExaminer
 from app.scrapers.washingtonfreebeacon import WashingtonFreeBeacon
@@ -275,6 +281,13 @@ Scrapers = [
     The19th,
     AmericanProspect,
     Compact,
+    # Added 2026-10-04 (#140): right-leaning outlets AllSides rates, to even out a pool that leans left
+    TheFreePress,
+    WesternJournal,
+    PJMedia,
+    AmericanSpectator,
+    NationalPulse,
+    AmericanThinker,
     WallStreetJournal,
     WashingtonExaminer,
     WashingtonFreeBeacon,

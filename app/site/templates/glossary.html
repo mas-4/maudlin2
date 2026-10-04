@@ -61,8 +61,9 @@
     <div class="terms">
         {% call term('📰', 'Stories', 'story') %}
             <p>Headlines about the same event, from different outlets. Each headline is turned into a meaning
-                fingerprint (a small sentence-embedding model), and headlines whose fingerprints are close enough join
-                up; a story needs at least six outlets. Stories look back {{ story_hours }} hours, so an outlet that
+                fingerprint by a sentence-embedding model running on our own machine ({{ story_model }}), and headlines
+                whose fingerprints are close enough ({{ story_threshold }}+) join up; a story needs at least six
+                outlets. Stories look back {{ story_hours }} hours, so an outlet that
                 dropped one still shows on its card, faded with a 👻. The language model writes each story's title.</p>
             <p><strong>Covered by</strong> on a card (🫏 to 🐘) is the average lean of the outlets covering it, compared
                 with all the outlets we follow, which lean left as a group. Arrows beside a meter show it moving over

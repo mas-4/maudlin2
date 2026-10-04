@@ -641,3 +641,10 @@ def test_table_packs_and_unpacks_to_the_same_rows():
     assert ph.unpack_table(json.loads(json.dumps(packed))) == rows
     assert len(packed['outlets']) == 2 and packed['topics'] == ['Supreme Court']  # listed once
     assert packed['rows'][0][1] == 'cnn.com/a' and packed['rows'][1][1] == 'http://foxnews.com/b'
+
+
+def test_story_similarity_falls_back_to_the_static_model():
+    from app.analysis import clustering
+    sim, threshold, model = clustering.story_similarity(['Senate passes bill', 'Senate passes the bill', 'Rain'])
+    assert model == 'potion-base-8M' and threshold == clustering.STORY_THRESHOLDS['potion-base-8M']
+    assert sim.shape == (3, 3) and sim[0, 1] > sim[0, 2]

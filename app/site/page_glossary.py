@@ -1,6 +1,6 @@
 """How it works: the glossary and methodology page. Its numbers come from the settings the rest of the site uses, so
 the page stays true when a threshold changes."""
-from app.analysis import edits, lean_estimate, sagas
+from app.analysis import clustering, edits, lean_estimate, sagas
 from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI
 from app.registry import Scrapers, SeleniumScrapers
 from app.scraper import FeedScraper, GoogleNewsScraper
@@ -28,6 +28,7 @@ class GlossaryPage:
             'pages': len(Scrapers) - feeds - google - len(SeleniumScrapers),
             'model': DEFAULT_MODELS['ollama'], 'emotions': [(e, EMOTION_EMOJI[e]) for e in EMOTIONS],
             'story_hours': STORY_LOOKBACK_HOURS,
+            'story_model': clustering.STORY_MODEL, 'story_threshold': clustering.STORY_THRESHOLDS[clustering.STORY_MODEL],
             'cloud_words': wordcloudgen.CLOUD_WORDS, 'emoji_share': round(100 * wordcloudgen.MIN_EMOTION_SHARE),
             'emoji_outlets': wordcloudgen.MIN_OUTLETS_FOR_EMOJI, 'emoji_max': wordcloudgen.MAX_EMOJI,
             'saga_similarity': sagas.SAGA_SIMILARITY, 'saga_word_share': round(100 * sagas.NAME_MIN_SHARE),

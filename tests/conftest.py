@@ -28,6 +28,13 @@ def pytest_sessionstart(session):
     # run's transcription) and make results depend on it. Tests that need answers fake llm.backend themselves.
     from app.analysis import llm
     llm.backend = lambda: None
+    # Nor the embedding model behind stories (also on the shared GPU, and its cache is in the shared data folder):
+    # stories fall back to the static model, as they would with Ollama down
+    from app.analysis import clustering
+
+    def no_ollama(*args, **kwargs):
+        raise RuntimeError('no Ollama embeddings in tests')
+    clustering.ollama_embed = no_ollama
 
 
 @pytest.fixture(scope='session')

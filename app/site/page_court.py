@@ -19,7 +19,6 @@ logger = get_logger(__name__)
 SHOWN = 6  # headlines shown on a card before "more"
 TOPIC_CARDS = 9
 MIN_CARD_OUTLETS = 2  # a case gets a card from two outlets; one is in the term's list with its count
-STORY_THRESHOLD = 0.7  # as the front page's stories
 
 
 def court_date(text):
@@ -37,13 +36,13 @@ def one_per_outlet(rows: list[dict]) -> list[dict]:
 
 def court_stories(headlines: list[dict]) -> tuple[list[list[dict]], list[dict]]:
     """The other Court news grouped into stories the way the front page groups headlines (connected groups of
-    headlines whose embeddings are STORY_THRESHOLD alike), each led by its most central headline; and the headlines
+    headlines whose embeddings are as alike as the front page's stories need), each led by its most central headline; and the headlines
     in no story of two outlets or more."""
-    from app.analysis.clustering import form_clusters, prepare_embedding_cosine
+    from app.analysis.clustering import form_clusters, story_similarity
     if len(headlines) < 2:
         return [], list(headlines)
-    sim = prepare_embedding_cosine([h['title'] for h in headlines])
-    clusters = form_clusters(sim.copy(), 2, STORY_THRESHOLD)
+    sim, threshold, _ = story_similarity([h['title'] for h in headlines])
+    clusters = form_clusters(sim.copy(), 2, threshold)
     stories, placed = [], set()
     for cluster in clusters:
         members = sorted(cluster)

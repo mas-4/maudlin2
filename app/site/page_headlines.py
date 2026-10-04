@@ -10,7 +10,7 @@ import pytz
 import pandas as pd
 from sqlalchemy import func
 
-from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed, \
+from app.analysis.clustering import prepare_embedding_cosine, story_similarity, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
 from app.analysis import trends_meter
@@ -377,7 +377,6 @@ class HeadlinesPage:
         global DB_START
         DB_START = first_scrape()
         n_samples_per_cluster = 6
-        threshold = 0.7  # embedding cosine; re-tested Oct 4 2026 against model-judged pairs (methods log)
         df = df[
             (df['country'] == Country.us.name)
             |
@@ -398,7 +397,9 @@ class HeadlinesPage:
         active_outlets = df['agency'].nunique()
         logger.info("Clustering %i headlines", len(df))
         df = df.reset_index(drop=True)  # cluster ids are positional
-        similarity = unlink_money_conflicts(prepare_embedding_cosine(df['title']), df['title'].tolist())
+        similarity, threshold, model = story_similarity(df['title'])
+        similarity = unlink_money_conflicts(similarity, df['title'].tolist())
+        logger.info("Story similarity from %s, threshold %.2f", model, threshold)
         clusters = form_clusters(similarity, n_samples_per_cluster, threshold)
         logger.info("%i clusters formed", len(clusters))
 

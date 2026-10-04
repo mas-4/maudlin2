@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Stories use a bigger embedding model.** Four models were compared on the day's 6,733 headlines at equal
+  coverage (the threshold at which each put about 700, 900 and 1,100 headlines into stories of 6+ outlets), with
+  precision from cross-outlet pairs sampled inside each model's stories and recall from a shared pool of 657 pairs
+  sampled across every model's similarity range, all judged by the local language model under two wordings
+  (agreement only; about 80 judged pairs per cell, so ±0.04). At ~900 headlines: potion-base-8M (until now)
+  precision 0.77, recall 0.57; mxbai-embed-large 0.91, 0.57. At ~1,100: 0.82 / 0.64 against 0.88 / 0.68.
+  potion-base-32M and nomic-embed-text fell between. Stories now use mxbai-embed-large through the local Ollama at
+  0.80 (about 1,000 headlines in stories); its vectors are cached by headline, so each run embeds only new
+  headlines. If Ollama can't embed, stories fall back to potion-base-8M at 0.70. Sagas, wire share and aggregator
+  matching keep potion-base-8M, whose thresholds were tuned on its scale.
 - **Each side's wording.** Story cards show two-word phrases that outlets on one side of the lean scale put in their
   headlines and no outlet on the other side did ("hero pilot" and "FlyDubai hijacker" from the right against
   "extremism concerns" and "terrorist act" from the left on the FlyDubai attack; "Trump doxes" against "Trump urges"

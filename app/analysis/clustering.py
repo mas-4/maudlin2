@@ -1,3 +1,4 @@
+import os
 import re
 from collections import deque
 
@@ -103,6 +104,70 @@ def embed(texts: list[str]) -> np.ndarray:
 
 def prepare_embedding_cosine(texts):
     return cosine_similarity(embed(texts)).astype(np.float64)
+
+
+# Stories use a bigger embedding model than the rest of the site: tested on Oct 4 2026 against model-judged headline
+# pairs, mxbai-embed-large (through the local Ollama) made more coherent stories than potion-base-8M at the same
+# coverage (methods log). Each model has its own similarity scale, so each has its own threshold; if Ollama can't
+# embed, stories fall back to the static model at its threshold. Vectors are cached by headline text, so a run only
+# embeds the headlines it hasn't seen (a few hundred an hour instead of the day's thousands).
+STORY_MODEL = 'mxbai-embed-large'
+STORY_THRESHOLDS = {STORY_MODEL: 0.80, 'potion-base-8M': 0.70}
+STORY_CACHE_DAYS = 7  # cached vectors unused this long are dropped
+OLLAMA_URL = 'http://localhost:11434'
+
+
+def _story_cache():
+    import sqlite3
+    from app.utils import Config
+    con = sqlite3.connect(os.path.join(Config.data, 'story_embeddings.sqlite'))
+    con.execute('CREATE TABLE IF NOT EXISTS vec (key TEXT PRIMARY KEY, model TEXT, used REAL, v BLOB)')
+    return con
+
+
+def ollama_embed(texts: list[str], model: str = STORY_MODEL) -> np.ndarray:
+    """Unit vectors for `texts` from the local Ollama, cached by text and model."""
+    import hashlib
+    import time
+    import requests as rq
+    keys = [hashlib.sha1(f'{model}\n{t}'.encode()).hexdigest() for t in texts]
+    con = _story_cache()
+    try:
+        found = {}
+        for i in range(0, len(keys), 500):
+            chunk = keys[i:i + 500]
+            rows = con.execute(f"SELECT key, v FROM vec WHERE key IN ({','.join('?' * len(chunk))})", chunk).fetchall()
+            found.update({k: np.frombuffer(v, dtype=np.float32) for k, v in rows})
+        missing = [i for i, k in enumerate(keys) if k not in found]
+        for start in range(0, len(missing), 256):
+            batch = missing[start:start + 256]
+            r = rq.post(f'{OLLAMA_URL}/api/embed', json={'model': model, 'input': [texts[i] for i in batch]},
+                        timeout=600)
+            r.raise_for_status()
+            for i, v in zip(batch, r.json()['embeddings']):
+                v = np.asarray(v, dtype=np.float32)
+                found[keys[i]] = v / max(float(np.linalg.norm(v)), 1e-12)
+        now = time.time()
+        con.executemany('INSERT OR REPLACE INTO vec VALUES (?, ?, ?, ?)',
+                        [(k, model, now, found[k].tobytes()) for k in dict.fromkeys(keys)])
+        con.execute('DELETE FROM vec WHERE used < ?', (now - STORY_CACHE_DAYS * 86400,))
+        con.commit()
+        return np.vstack([found[k] for k in keys])
+    finally:
+        con.close()
+
+
+def story_similarity(texts) -> tuple[np.ndarray, float, str]:
+    """(cosine similarity of the headlines, the story threshold for the model that made it, the model's name)."""
+    texts = list(texts)
+    try:
+        v = ollama_embed(texts).astype(np.float64)
+        return v @ v.T, STORY_THRESHOLDS[STORY_MODEL], STORY_MODEL
+    except Exception as e:  # Ollama down, the model missing, a network refusal in tests: the static model instead
+        import logging
+        logging.getLogger(__name__).warning("Story embeddings from %s failed (%s); using potion-base-8M",
+                                            STORY_MODEL, type(e).__name__)
+        return prepare_embedding_cosine(texts), STORY_THRESHOLDS['potion-base-8M'], 'potion-base-8M'
 
 
 def label_clusters(data, clusters):

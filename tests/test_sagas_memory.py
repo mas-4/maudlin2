@@ -130,3 +130,26 @@ def test_same_saga_caches_and_never_links_without_an_answer(monkeypatch, tmp_pat
         assert sg.same_saga(['Supreme Court takes climate case'], ['Supreme Court takes detention case']) is False
         assert sg.same_saga(['Supreme Court takes detention case'], ['Supreme Court takes climate case']) is False
     assert len(calls) == 1
+
+
+def test_same_saga_needs_both_wordings(monkeypatch, tmp_path):
+    monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'judgments.json'))
+    monkeypatch.setattr(sg.llm, 'model', lambda: 'fake')
+    calls = []
+
+    def answer(prompt, schema, max_tokens):
+        calls.append(prompt)
+        return {'reason': 'r', 'same_story': prompt.startswith('Two groups')}  # the first wording says yes, the second no
+    monkeypatch.setattr(sg.llm, 'complete_json', answer)
+    a, b = ['Man bailed over RAF base plot'], ['Two Iranians in court over plot against Jews']
+    assert sg.same_saga(a, b) is False and len(calls) == 2
+    assert sg.same_saga(a, b) is False and len(calls) == 2  # cached
+    # A yes cached before the second wording existed is asked the second wording once
+    monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'old.json'))
+    key = sg.hashlib.sha1(sg.json.dumps(sorted([sg._sample(a), sg._sample(b)])).encode()).hexdigest()
+    sg.json.dump({key: {'reason': 'r', 'same_story': True, 'a': a, 'b': b}}, open(tmp_path / 'old.json', 'w'))
+    assert sg.same_saga(a, b) is False and len(calls) == 3
+    # Both wordings yes: linked
+    monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'yes.json'))
+    monkeypatch.setattr(sg.llm, 'complete_json', lambda *x, **k: {'reason': 'r', 'same_story': True})
+    assert sg.same_saga(['Cornell case goes to AG'], ['Hochul picks AG for Cornell case']) is True

@@ -63,6 +63,20 @@ Group 2:
 
 reason: a few words
 same_story: true or false"""
+# The same question worded the other way round. A link needs both wordings to say yes: one wording alone linked a
+# British-Iranian man bailed over an RAF base plot with two Iranians charged over a plot against Jews (Oct 4)
+JUDGE_PROMPT_B = """Group 1:
+{a}
+
+Group 2:
+{b}
+
+Would a news editor file these two groups under one running story (one case, incident or investigation followed \
+over time)? Answer no if they are two separate cases or events, even when they share a country, a court, a kind of \
+crime or a person.
+
+reason: a few words
+same_story: true or false"""
 JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 120},
                                                  "same_story": {"type": "boolean"}},
                 "required": ["reason", "same_story"]}
@@ -75,8 +89,9 @@ def _sample(titles: list[str]) -> list[str]:
 
 
 def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
-    """Whether two groups of headlines are one running story, by the language model (cached). False without an
-    answer, so an unchecked link is never saved; the pair is asked again next run."""
+    """Whether two groups of headlines are one running story, by the language model under two wordings, both of
+    which must say yes (cached). False without an answer, so an unchecked link is never saved; the pair is asked
+    again next run."""
     a, b = sorted([_sample(titles_a), _sample(titles_b)])
     key = hashlib.sha1(json.dumps([a, b]).encode()).hexdigest()
     try:
@@ -84,16 +99,27 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
             cache = json.load(f)
     except (OSError, ValueError):
         cache = {}
-    if key not in cache:
-        answer = llm.complete_json(JUDGE_PROMPT.format(a='\n'.join(f'- {t}' for t in a),
-                                                       b='\n'.join(f'- {t}' for t in b)), JUDGE_SCHEMA, max_tokens=80)
-        if not answer or 'same_story' not in answer:
-            return False
-        cache[key] = {**answer, 'a': a, 'b': b, 'model': llm.model()}
+    entry = cache.get(key)
+    if entry is None or ('second' not in entry and entry.get('same_story')):  # yeses from before the second wording
+        first = entry or None
+        listed = {'a': '\n'.join(f'- {t}' for t in a), 'b': '\n'.join(f'- {t}' for t in b)}
+        if first is None:
+            answer = llm.complete_json(JUDGE_PROMPT.format(**listed), JUDGE_SCHEMA, max_tokens=80)
+            if not answer or 'same_story' not in answer:
+                return False
+            first = {**answer, 'a': a, 'b': b, 'model': llm.model()}
+        second = None
+        if first['same_story']:
+            second = llm.complete_json(JUDGE_PROMPT_B.format(**listed), JUDGE_SCHEMA, max_tokens=80)
+            if not second or 'same_story' not in second:
+                return False
+        entry = {**first, 'second': second, 'same_story': bool(first['same_story'] and second and second['same_story'])}
+        cache[key] = entry
         with open(JUDGMENTS, 'w') as f:
             json.dump(cache, f)
-        logger.info("Saga check: %s | %s -> %s (%s)", a[0], b[0], answer['same_story'], answer['reason'])
-    return bool(cache[key]['same_story'])
+        logger.info("Saga check: %s | %s -> %s (%s)", a[0], b[0], entry['same_story'],
+                    (second or first).get('reason', ''))
+    return bool(entry['same_story'])
 
 
 def words(title: str) -> set[str]:
