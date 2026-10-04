@@ -117,21 +117,23 @@ STORY_CACHE_DAYS = 7  # cached vectors unused this long are dropped
 OLLAMA_URL = 'http://localhost:11434'
 
 
-def _story_cache():
+def _story_cache(path: str = None):
     import sqlite3
     from app.utils import Config
-    con = sqlite3.connect(os.path.join(Config.data, 'story_embeddings.sqlite'))
+    con = sqlite3.connect(path or os.path.join(Config.data, 'story_embeddings.sqlite'))
     con.execute('CREATE TABLE IF NOT EXISTS vec (key TEXT PRIMARY KEY, model TEXT, used REAL, v BLOB)')
     return con
 
 
-def ollama_embed(texts: list[str], model: str = STORY_MODEL) -> np.ndarray:
-    """Unit vectors for `texts` from the local Ollama, cached by text and model."""
+def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
+                 keep_days: float = STORY_CACHE_DAYS) -> np.ndarray:
+    """Unit vectors for `texts` from the local Ollama, cached by text and model (in `cache`, a SQLite file; the
+    stories' own by default), unused vectors dropped after `keep_days`."""
     import hashlib
     import time
     import requests as rq
     keys = [hashlib.sha1(f'{model}\n{t}'.encode()).hexdigest() for t in texts]
-    con = _story_cache()
+    con = _story_cache(cache)
     try:
         found = {}
         for i in range(0, len(keys), 500):
@@ -150,7 +152,7 @@ def ollama_embed(texts: list[str], model: str = STORY_MODEL) -> np.ndarray:
         now = time.time()
         con.executemany('INSERT OR REPLACE INTO vec VALUES (?, ?, ?, ?)',
                         [(k, model, now, found[k].tobytes()) for k in dict.fromkeys(keys)])
-        con.execute('DELETE FROM vec WHERE used < ?', (now - STORY_CACHE_DAYS * 86400,))
+        con.execute('DELETE FROM vec WHERE used < ?', (now - keep_days * 86400,))
         con.commit()
         return np.vstack([found[k] for k in keys])
     finally:

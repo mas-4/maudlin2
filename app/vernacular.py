@@ -69,14 +69,43 @@ def fingerprint(value: str, pepper: str) -> str:
     return hashlib.sha256(f'{pepper}\n{value}'.encode()).hexdigest()[:24]
 
 
+# Sexual spam its posters don't label: never stored
+ADULT = re.compile(r'\b(only ?fans|fansly|nsfw|nudes?|porn\w*|horny|boobs|tits|milf|cock|pussy|xxx|sexting|'
+                   r'cam ?girls?|goon\w*|hentai|onlyfan)\b', re.I)
+ENGLISH_WORDS = {'the', 'and', 'to', 'of', 'a', 'in', 'is', 'it', 'that', 'for', 'you', 'this', 'on', 'with', 'are',
+                 'be', 'have', 'not', 'was', 'but', 'they', 'what', 'just', 'so', 'my', 'all', 'if', 'about', 'we',
+                 'like', 'he', 'she', 'do', 'at', 'from', 'can', 'will', 'or', 'me', 'his', 'her', 'their', 'an',
+                 'i', 'your', 'how', 'who', 'no', 'one', 'there', 'when', 'out', 'up', 'people', 'by', 'has'}
+
+
+def english(text: str) -> bool:
+    """Mostly Latin letters and some common English words: posts often don't say their language, or say it wrong."""
+    letters = [c for c in text if c.isalpha()]
+    if not letters or sum(c.isascii() for c in letters) < 0.85 * len(letters):
+        return False
+    tokens = re.findall(r"[a-z']+", text.lower())
+    return len(tokens) < 5 or sum(t in ENGLISH_WORDS for t in tokens) >= max(1, 0.12 * len(tokens))
+
+
 def keep(record: dict) -> bool:
-    """English text posts with something to say, that their authors didn't label as sensitive."""
+    """English text posts with something to say, that their authors didn't label as sensitive and aren't sex spam."""
     langs = record.get('langs') or []
     if langs and not any(str(lang).lower().startswith('en') for lang in langs):
         return False
     if (record.get('labels') or {}).get('values'):  # self-labels: porn, sexual, nudity, graphic-media, gore...
         return False
-    return len((record.get('text') or '').strip()) >= MIN_CHARS
+    text = (record.get('text') or '').strip()
+    return len(text) >= MIN_CHARS and english(text) and not ADULT.search(text)
+
+
+def clean() -> int:
+    """Apply the current keep rules to what's already stored (after they change); returns how many were dropped."""
+    con = connect()
+    drop = [(k,) for k, t in con.execute('SELECT key, text FROM post') if not english(t) or ADULT.search(t)]
+    con.executemany('DELETE FROM post WHERE key = ?', drop)
+    con.commit()
+    con.close()
+    return len(drop)
 
 
 def row(message: dict, pepper: str):
@@ -150,7 +179,7 @@ def mastodon_row(status: dict, pepper: str):
             or status.get('spoiler_text') or (status.get('language') or 'en') != 'en':
         return None
     text = scrub(BeautifulSoup(status.get('content') or '', 'html.parser').get_text(' ', strip=True))
-    if len(text) < MIN_CHARS:
+    if len(text) < MIN_CHARS or not english(text) or ADULT.search(text):
         return None
     now = dt.now(timezone.utc).isoformat(timespec='seconds')
     return (fingerprint(status.get('uri', ''), pepper), fingerprint(account.get('uri', ''), pepper),
