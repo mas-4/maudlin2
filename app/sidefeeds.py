@@ -104,6 +104,9 @@ SOURCES = [
     _source('warroom', "Bannon's War Room", 'podcast', 'right', 'https://listen.warroom.org/feed.xml'),
     _source('kye', 'Know Your Enemy', 'podcast', 'left', 'https://feeds.simplecast.com/MQHnVVgK'),
     _source('lrc', 'Left, Right & Center', 'podcast', 'center', 'https://leftrightandcenter-feed.kcrw.com'),
+    # Ordinary voters in their own words: recorded focus groups (swing and crossover voters), kept for research on how
+    # people talk about the news; transcribed from Oct 4 2026 on
+    _source('focusgroup', 'The Focus Group', 'podcast', 'crossover', 'https://audioboom.com/channels/5114313.rss'),
     _source('krugman', 'Paul Krugman', 'newsletter', 'left', 'https://paulkrugman.substack.com/feed'),
     _source('silver', 'Silver Bulletin', 'newsletter', 'center', 'https://www.natesilver.net/feed'),
     _source('slowboring', 'Slow Boring', 'newsletter', 'center', 'https://www.slowboring.com/feed'),
