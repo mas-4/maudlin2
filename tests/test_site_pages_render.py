@@ -54,7 +54,8 @@ AB_TEST = {'url': 'https://slate.com/a.html', 'agency': 'Slate', 'bias': -2, 'st
 
 COURT_ROW = {'title': 'Justices weigh <Suncor> climate suit', 'first': dt(2026, 10, 5, 14), 'agency': 'Fox News',
              'bias': 2, 'rated': True, 'url': 'https://example.com/a?b=1&c=2', 'stage': 'argument',
-             'issue': 'climate suit', 'side': 'right', 'via': 'party'}
+             'issue': 'climate suit', 'side': 'right', 'via': 'party', 'tags': ['climate suit'],
+             'tag_links': [{'tag': 'climate suit', 'docket': '25-170'}]}
 COURT = {'term': 2026, 'source': 'https://www.supremecourt.gov/orders/26grantednotedlist.pdf', 'window_days': 14,
          'total': 2,
          'covered': [{'docket': '25-170', 'name': 'Suncor Energy v. Commissioners of Boulder County', 'raw': 'X',
@@ -66,8 +67,12 @@ COURT = {'term': 2026, 'source': 'https://www.supremecourt.gov/orders/26grantedn
                    {'docket': '25-1311', 'name': 'Apple Inc. v. Epic Games, Inc.', 'raw': 'X', 'granted': '6/1/26',
                     'argued': None, 'outlets': 0, 'sides': {}, 'stages': {}, 'headlines': []}],
          'other': {'outlets': 1, 'sides': {'left': 1}, 'stages': {'the justices': 1},
+                   'tags': [('case-25-170', 'climate suit', 2), ('<guns>', '<Guns>', 2)],
                    'headlines': [{**COURT_ROW, 'title': 'Alito speaks', 'agency': 'CNN', 'bias': -1,
-                                  'stage': 'the justices', 'side': 'left', 'via': None}]}}
+                                  'stage': 'the justices', 'side': 'left', 'via': None,
+                                  'tag_links': [{'tag': 'climate suit', 'docket': '25-170'},
+                                                {'tag': '<Guns>', 'docket': None}],
+                                  'tag_keys': ['<guns>', 'case-25-170']}]}}
 
 
 def refuse_connection(*args, **kwargs):
@@ -354,3 +359,9 @@ def test_court_page(site):
     assert [r.select_one('a').get_text() for r in rows][-1] == 'Apple Inc. v. Epic Games, Inc.'  # unset date last
     assert 'none yet' in rows[-1].get_text()
     assert 'Alito speaks' in court.get_text()
+    other = court.select_one('#court-other li')
+    assert other['data-tags'] == '<guns>|case-25-170'
+    assert other.select_one('a.court-tag')['href'] == '#case-25-170'  # a docket case's tag links to its card
+    assert other.select_one('button.court-tag').get_text() == '<Guns>'
+    assert [b['data-tag'] for b in court.select('.court-tag-filter button')] == ['case-25-170', '<guns>']
+    assert court.select_one('#case-25-170')

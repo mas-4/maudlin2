@@ -9,7 +9,6 @@ from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
 SHOWN = 8  # headlines shown per case before "more"
-OTHER_SHOWN = 40
 
 
 def court_date(text):
@@ -43,7 +42,7 @@ class CourtPage:
         self.context.update({
             'term': data['term'], 'source': data['source'], 'window_days': data['window_days'], 'total': data['total'],
             'covered': covered, 'term_cases': term_cases, 'today': today, 'shown': SHOWN,
-            'other': {**data['other'], 'rows': rows(data['other']['headlines'])[:OTHER_SHOWN]},
+            'other': {**data['other'], 'rows': rows(data['other']['headlines'])},
             'stage_emoji': scotus.STAGE_EMOJI,
         })
         self.template.write(self.context)

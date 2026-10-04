@@ -16,9 +16,10 @@
 {% macro headline_list(rows) %}
     <ul class="court-headlines">
         {% for h in rows %}
-            <li><span class="court-stage" title="{{ h.stage }}">{{ h.emoji }}</span>
+            <li data-tags="{{ (h.tag_keys or [])|join('|')|e }}"><span class="court-stage" title="{{ h.stage }}">{{ h.emoji }}</span>
                 <span class="edit-chip" style="{{ h.style }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
                 <a href="{{ h.url|e }}">{{ h.title|e }}</a>
+                {% for t in h.tag_links %}{% if t.docket %}<a class="court-tag linked" href="#case-{{ t.docket }}" title="This case: No. {{ t.docket }}">{{ t.tag|e }}</a>{% else %}<button type="button" class="court-tag" data-tag="{{ t.tag|lower|e }}" title="Show only headlines tagged this">{{ t.tag|e }}</button>{% endif %}{% endfor %}
                 <span class="court-when">{{ h.when }}{% if h.via == 'issue' %} · <span title="Names no party; the model matched it to this case from the case's other headlines">by issue</span>{% endif %}</span></li>
         {% endfor %}
     </ul>
@@ -46,7 +47,7 @@
         <h3>Cases in the news</h3>
         <div class="court-cases">
             {% for c in covered %}
-                <section class="court-case">
+                <section class="court-case" id="case-{{ c.docket }}">
                     <h4><a href="{{ c.docket_url }}">{{ c.name|e }}</a></h4>
                     <p class="court-meta">No. {{ c.docket }}{% if c.argued_text %} · {% if c.argued_on <= today %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}
                         · {{ c.outlets }} outlet{{ 's' if c.outlets != 1 }}
@@ -66,7 +67,31 @@
         <p class="poll-note">About the Court or the justices but not tied to one case on the docket: emergency orders,
             the justices themselves, previews of the term. {{ other.outlets }} outlets.</p>
         {{ lean_meter(other.sides) }}
-        {{ headline_list(other.rows) }}
+        {% set tag_bar = other.tags|selectattr(2, 'ge', 2)|list %}
+        {% if tag_bar %}
+            <div class="table-filters court-tag-filter" role="group" aria-label="Show one case or issue">
+                <span>cases and issues:</span>
+                {% for key, name, n in tag_bar[:14] %}<button type="button" data-tag="{{ key|e }}"{% if key.startswith('case-') %} title="Tags for case No. {{ key[5:] }}"{% endif %}>{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
+            </div>
+        {% endif %}
+        <div id="court-other">{{ headline_list(other.rows) }}</div>
+        <script>
+            (function () {
+                // A tag (in the bar or on a headline) narrows the list to headlines tagged with it; again to undo
+                const list = document.getElementById('court-other');
+                let current = null;
+                function show(tag) {
+                    current = current === tag ? null : tag;
+                    list.querySelectorAll('li').forEach((li) => {
+                        li.hidden = current !== null && !li.dataset.tags.split('|').includes(current);
+                    });
+                    document.querySelectorAll('.court-tag-filter button').forEach((b) => b.classList.toggle('active', b.dataset.tag === current));
+                }
+                document.querySelectorAll('.court-tag-filter button, #court-other button.court-tag').forEach((b) => {
+                    b.addEventListener('click', () => show(b.dataset.tag));
+                });
+            })();
+        </script>
     {% endif %}
 
     {% if term_cases %}

@@ -20,6 +20,7 @@ from sqlalchemy import or_
 from app.analysis import llm
 from app.models import Session, Headline, Article, Agency
 from app.utils import Config, get_logger
+from app.utils.constants import Country
 
 logger = get_logger(__name__)
 
@@ -45,22 +46,27 @@ STAGE_EMOJI = {'case taken': '📥', 'argument': '🎤', 'ruling': '🔨', 'emer
                'nomination or retirement': '🪑', 'term preview': '🗓️', 'other': '⚖️'}
 
 JUDGE_PROMPT = """Headline: {title}
+Outlet: {outlet} ({country})
 
 Is this headline about the Supreme Court of the United States: its cases, arguments, rulings, orders or justices? \
-A state supreme court, another country's supreme court, or a lower federal court is not.
+A state supreme court, another country's supreme court (India's, for example), or a lower federal court is not.
 
 If it is, also give:
-- case: the case or issue in a few words, as the headline describes it (for example "Boulder climate suit" or \
-"Trump tariffs"), or "" if it isn't about one case
+- cases: each case or issue the headline mentions, as a short tag of a few words (one for a headline about one \
+case, several for a preview of the term, none for one about the justices or the Court in general). Reuse a tag \
+from this list when it's the same case or issue: {tags}
 - stage: which of these it reports: {stages}
 
-reason: a few words
+reason: in your own words, briefly
 us_supreme_court: true or false
-case: the case or issue, or ""
+cases: the tags, or an empty list
 stage: one of the stages"""
 JUDGE_SCHEMA = {"type": "object", "properties": {
-    "reason": {"type": "string"}, "us_supreme_court": {"type": "boolean"}, "case": {"type": "string"},
-    "stage": {"type": "string", "enum": STAGES}}, "required": ["reason", "us_supreme_court", "case", "stage"]}
+    "reason": {"type": "string"}, "us_supreme_court": {"type": "boolean"},
+    "cases": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
+    "stage": {"type": "string", "enum": STAGES}}, "required": ["reason", "us_supreme_court", "cases", "stage"]}
+MAX_VOCABULARY = 40  # tags shown to the model to reuse, most used first
+AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}  # as in page_headlines
 
 CASE_PROMPT = """Headline: {title}
 
@@ -71,6 +77,17 @@ Is the headline above about one of these cases? The same case is often described
 its parties' names. Answer "none" if it's about a different case, several cases at once, or the Court in general.
 
 reason: which case it matches and why, in your own words
+case: the case number from the list, or none"""
+
+TAG_PROMPT = """News outlets tagged some Supreme Court headlines: "{title}"
+
+Supreme Court cases already in the news, each with headlines known to be about it:
+{cases}
+
+Is that tag the name of one of these cases (by its parties, its issue or its place)? Answer "none" if it names a \
+different case, a broader topic that covers more than this one case, a person, or an earlier case.
+
+reason: in your own words, briefly
 case: the case number from the list, or none"""
 
 # Party words too common in court news to tie a headline to one case: government parties, generic institutions and
@@ -95,16 +112,23 @@ def term(now: dt = None) -> int:
     return now.year if now.month >= 10 else now.year - 1
 
 
+# Short words in the Court's all-caps names that are words, not acronyms ("Air Force", not "AIR Force")
+WORDS = {'AIR', 'SUN', 'NEW', 'OLD', 'BIG', 'RED', 'ONE', 'TWO', 'ART', 'LAW', 'OIL', 'GAS', 'BAY', 'CAR', 'ICE', 'FOX',
+         'GA', 'DA', 'DE', 'LA', 'VON', 'VAN', 'MI'}
+
+
 def nice_name(name: str) -> str:
     """'SUNCOR ENERGY (U.S.A.) INC. V. COMMISSIONERS OF BOULDER COUNTY' -> 'Suncor Energy (U.S.A.) Inc. v.
     Commissioners of Boulder County'."""
-    words = []
+    words, versus = [], False
     for i, w in enumerate(name.split()):
-        if w in ('V.', 'v.'):
+        if w in ('V.', 'v.') and not versus:  # the first is "versus"; later ones are initials (D. V. D.)
             words.append('v.')
+            versus = True
         elif i and w.lower() in ('of', 'the', 'for', 'and', 'on', 'in'):
             words.append(w.lower())
-        elif re.fullmatch(r'\(?([A-Z]\.)+\)?,?', w) or len(w) <= 3 and w.isupper() and '.' not in w and w != 'GA':
+        elif re.fullmatch(r'\(?([A-Z]\.)+\)?,?', w) or (len(w) <= 3 and w.isupper() and '.' not in w
+                                                          and w.rstrip(',') not in WORDS):
             words.append(w)  # initials and acronyms (U.S.A., WBI, D. V. D.)
         else:
             words.append(w[0] + w[1:].lower() if w[0].isalpha() else w[:2] + w[2:].lower())
@@ -195,22 +219,31 @@ def matcher(cases: list[dict]):
     return match
 
 
-def _key(title: str) -> str:
-    return hashlib.sha1(title.encode()).hexdigest()
+def _key(title: str, country: str = '') -> str:
+    return hashlib.sha1((title + '\n' + country).encode()).hexdigest()
 
 
-def judge(title: str, cache: dict, ask: bool = True):
-    """The model's reading of one headline (cached by its text). None when it's unjudged and `ask` is off, or the
-    model gave no answer (asked again next run)."""
-    key = _key(title)
+def vocabulary(cache: dict) -> list[str]:
+    """The tags given so far, most used first: the model reuses them so one case keeps one name."""
+    counts = Counter(t for v in cache.values() if v.get('us_supreme_court') for t in v.get('cases', []))
+    return [t for t, _ in counts.most_common(MAX_VOCABULARY)]
+
+
+def judge(row: dict, cache: dict, ask: bool = True):
+    """The model's reading of one headline (cached by its text and the outlet's country). None when it's unjudged
+    and `ask` is off, or the model gave no answer (asked again next run)."""
+    key = _key(row['title'], row.get('country', ''))
     if key not in cache:
         if not ask:
             return None
-        answer = llm.complete_json(JUDGE_PROMPT.format(title=title, stages=', '.join(STAGES)), JUDGE_SCHEMA,
-                                   max_tokens=100)
+        tags = vocabulary(cache)
+        answer = llm.complete_json(JUDGE_PROMPT.format(
+            title=row['title'], outlet=row.get('agency', ''), country=row.get('country', ''),
+            tags='; '.join(tags) if tags else '(none yet)', stages=', '.join(STAGES)), JUDGE_SCHEMA, max_tokens=200)
         if not answer or 'us_supreme_court' not in answer:
             return None
-        cache[key] = {**answer, 'title': title, 'model': llm.model()}
+        answer['cases'] = [t.strip() for t in answer.get('cases', []) if t.strip()][:5]
+        cache[key] = {**answer, 'title': row['title'], 'model': llm.model()}
     return cache[key]
 
 
@@ -219,16 +252,18 @@ def candidates(since: dt) -> list[dict]:
     with Session() as session:
         rows = session.query(
             Headline.processed, Headline.first_accessed, Agency.name, Agency._bias, Agency.lean_rated, Article.url,  # noqa
+            Agency._country,  # noqa
         ).join(Headline.article).join(Article.agency).filter(
             Headline.first_accessed > since,
             or_(*[Headline.processed.ilike(f'%{w}%') for w in LIKE]),
         ).order_by(Headline.first_accessed.desc()).all()
     seen, out = set(), []
-    for title, first, agency, bias, rated, url in rows:
-        if not title or not CANDIDATE.search(title) or (agency, title) in seen:
+    for title, first, agency, bias, rated, url, country in rows:
+        if not title or agency in AGGREGATORS or not CANDIDATE.search(title) or (agency, title) in seen:
             continue
         seen.add((agency, title))
-        out.append({'title': title, 'first': first, 'agency': agency, 'bias': bias, 'rated': bool(rated), 'url': url})
+        out.append({'title': title, 'first': first, 'agency': agency, 'bias': bias, 'rated': bool(rated), 'url': url,
+                    'country': str(Country(country)) if country is not None else ''})
     return out
 
 
@@ -246,7 +281,8 @@ def case_options(by_case: dict, cases: list[dict]) -> list[dict]:
     return sorted(options, key=lambda o: o['docket'])
 
 
-def by_issue(unnamed: list[dict], by_case: dict, cases: list[dict] = (), cache: dict = None) -> list:
+def by_issue(unnamed: list[dict], by_case: dict, cases: list[dict] = (), cache: dict = None,
+             prompt: str = None) -> list:
     """For each headline that names no party, the docket number of the case the language model says it's about,
     choosing among the cases the press has named a party of (case_options), or None. The press teaches the docket
     what each case is about: the Court's list gives only the parties' names. Term previews (several cases at once)
@@ -264,14 +300,15 @@ def by_issue(unnamed: list[dict], by_case: dict, cases: list[dict] = (), cache: 
         "required": ["reason", "case"]}
     asked = 0
     for i, row in enumerate(unnamed):
-        if not row.get('issue', '').strip() or row.get('stage') == 'term preview':
+        if not row.get('issue', '').strip() or row.get('stage') == 'term preview':  # several cases at once
             continue
         key = _key(row['title'] + '\n' + listing)
         if key not in cache:
             if asked >= MAX_NEW_JUDGMENTS:
                 continue
             asked += 1
-            answer = llm.complete_json(CASE_PROMPT.format(title=row['title'], cases=listing), schema, max_tokens=250)
+            answer = llm.complete_json((prompt or CASE_PROMPT).format(title=row['title'], cases=listing), schema,
+                                       max_tokens=250)
             if not answer or 'case' not in answer:
                 continue
             cache[key] = {**answer, 'title': row['title'], 'model': llm.model()}
@@ -300,11 +337,13 @@ def coverage(now: dt = None) -> dict:
     asked = 0
     court = []
     for row in rows:
-        new = _key(row['title']) not in cache
-        verdict = judge(row['title'], cache, ask=asked < MAX_NEW_JUDGMENTS)
+        new = _key(row['title'], row.get('country', '')) not in cache
+        verdict = judge(row, cache, ask=asked < MAX_NEW_JUDGMENTS)
         asked += new and asked < MAX_NEW_JUDGMENTS
         if verdict and verdict['us_supreme_court']:
-            court.append({**row, 'stage': verdict['stage'], 'issue': verdict['case'], 'side': side(row)})
+            tags = verdict.get('cases', [])
+            court.append({**row, 'stage': verdict['stage'], 'tags': tags, 'issue': tags[0] if len(tags) == 1 else '',
+                          'side': side(row)})
     if len(cache) > before:
         with open(JUDGMENTS, 'w') as f:
             json.dump(cache, f)
@@ -330,9 +369,6 @@ def coverage(now: dt = None) -> dict:
         case_cache = {}
     known = len(case_cache)
     joined = by_issue(unnamed, by_case, cases, case_cache)
-    if len(case_cache) > known:
-        with open(CASES, 'w') as f:
-            json.dump(case_cache, f)
     for row, docket_number in zip(unnamed, joined):
         if docket_number:
             row['via'] = 'issue'
@@ -341,6 +377,17 @@ def coverage(now: dt = None) -> dict:
             other.append(row)
     for rows in by_case.values():
         rows.sort(key=lambda r: r['first'], reverse=True)
+    # Each tag the model says names a case on the docket points at that case wherever it turns up, so a term
+    # preview's "Big Oil climate suits" links to the Boulder case
+    distinct = list(dict.fromkeys(t.lower() for r in court for t in r.get('tags', [])))
+    owners = by_issue([{'title': t, 'issue': t, 'stage': 'tag'} for t in distinct], by_case, cases, case_cache,
+                      prompt=TAG_PROMPT)
+    owner = dict(zip(distinct, owners))
+    for row in court:
+        row['tag_links'] = [{'tag': t, 'docket': owner.get(t.lower())} for t in row.get('tags', [])]
+    if len(case_cache) > known:
+        with open(CASES, 'w') as f:
+            json.dump(case_cache, f)
 
     def summary(rows: list[dict]) -> dict:
         one_each = {}
@@ -353,5 +400,17 @@ def coverage(now: dt = None) -> dict:
         term_cases.append({**case, **summary(by_case[case['docket']])})
     covered = sorted([c for c in term_cases if c['headlines']], key=lambda c: c['headlines'][0]['first'],
                      reverse=True)
+    # The filter bar: a case's tags count as one ("case-25-170", named by its most used tag), the rest by tag
+    tags, names = Counter(), {}
+    for r in other:
+        keys = set()
+        for link in r['tag_links']:
+            key = f"case-{link['docket']}" if link['docket'] else link['tag'].lower()
+            names.setdefault(key, Counter())[link['tag']] += 1
+            keys.add(key)
+        r['tag_keys'] = sorted(keys)
+        tags.update(keys)
+    tags = [(key, names[key].most_common(1)[0][0], n) for key, n in tags.most_common()]
     return {'term': docket().get('term'), 'source': docket().get('source'), 'covered': covered,
-            'cases': term_cases, 'other': summary(other), 'total': len(court), 'window_days': WINDOW_DAYS}
+            'cases': term_cases, 'other': {**summary(other), 'tags': tags}, 'total': len(court),
+            'window_days': WINDOW_DAYS}

@@ -16,6 +16,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   covering several cases aren't asked). The embedding model couldn't do this step: it scored "Big Oil climate suits"
   further from the Boulder climate case than "Trump, climate, AR-15s". On Oct 4 the Boulder climate case went from 4
   outlets by party name alone to 23. The lean meter counts each outlet once per case. Window: 14 days.
+  The model also tags each headline with every case or issue it mentions (several for a term preview), shown the
+  tags used so far so one case keeps one name, and sees the outlet and its country (India's Supreme Court headlines
+  had been slipping in). A tag links to a docket case only when the model, shown that case's headlines, says the tag
+  names it; broad topics ("Climate", "Dobbs") stay plain tags. Aggregators are left out, as elsewhere on the site.
+- **Story coherence check tried, not adopted.** The model was shown each story's three most central headlines and
+  asked about each loosely tied member (best similarity to that core under 0.75); rejected ones were taken out and
+  clustered again among themselves. On Oct 4's headlines (labels as in the threshold test above, 90 pairs per setup):
+  at 0.70 it raised precision from 0.87 to 0.91 but cut recall from 0.79 to 0.73; at 0.67 and 0.65 it didn't help,
+  and the biggest stories kept their size (they were real stories: the FlyDubai attack ran to 121 headlines). All
+  within the noise of the sample, so stories stay as they were.
 - **Story threshold re-tested; it stays at 0.70.** Stories are still the connected groups of headlines whose
   embeddings are 0.70 alike or more. On one day's headlines (6,888) the local model judged about 1,000 headline
   pairs, under two wordings, keeping the pairs both wordings agreed on. One set was spread across the similarity

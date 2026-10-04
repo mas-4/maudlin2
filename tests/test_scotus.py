@@ -94,23 +94,27 @@ def test_judge_caches_and_never_saves_a_missing_answer(monkeypatch):
 
     def answer(prompt, schema, max_tokens):
         calls.append(prompt)
-        return None if 'nothing' in prompt else {'reason': 'r', 'us_supreme_court': True, 'case': 'x',
+        return None if 'nothing' in prompt else {'reason': 'r', 'us_supreme_court': True, 'cases': [' x ', ''],
                                                  'stage': 'ruling'}
     monkeypatch.setattr(llm, 'complete_json', answer)
     monkeypatch.setattr(llm, 'model', lambda: 'stub')
     cache = {}
-    assert sc.judge('Supreme Court rules', cache)['stage'] == 'ruling'
-    assert sc.judge('Supreme Court rules', cache)['stage'] == 'ruling'
+    row = {'title': 'Supreme Court rules', 'agency': 'CNN', 'country': 'United States'}
+    assert sc.judge(row, cache)['cases'] == ['x']
+    assert sc.judge(row, cache)['stage'] == 'ruling'
     assert len(calls) == 1
-    assert sc.judge('nothing back', cache) is None and len(cache) == 1
-    assert sc.judge('Supreme Court rules again', cache, ask=False) is None
+    assert 'CNN (United States)' in calls[0]  # the model sees the outlet's country (India's court isn't ours)
+    assert sc.judge({**row, 'title': 'Supreme Court rules again'}, cache)['cases'] == ['x']
+    assert 'from this list when it\'s the same case or issue: x' in calls[1]  # the model is shown tags to reuse
+    assert sc.judge({**row, 'title': 'nothing back'}, cache) is None and len(cache) == 2
+    assert sc.judge({**row, 'title': 'Supreme Court rules a third time'}, cache, ask=False) is None
 
 
 def test_coverage_groups_counts_sides_and_bounds_new_judgments(monkeypatch, tmp_path, cases):
     monkeypatch.setattr(sc, 'JUDGMENTS', str(tmp_path / 'judgments.json'))
     monkeypatch.setattr(sc, 'docket', lambda: {'term': 2026, 'source': 'u', 'cases': cases})
     monkeypatch.setattr(sc, 'CASES', str(tmp_path / 'cases.json'))
-    monkeypatch.setattr(sc, 'by_issue', lambda unnamed, by_case, cases, cache: [None] * len(unnamed))
+    monkeypatch.setattr(sc, 'by_issue', lambda unnamed, by_case, cases, cache, prompt=None: [None] * len(unnamed))
     monkeypatch.setattr(sc, 'MAX_NEW_JUDGMENTS', 3)
     rows = [{'title': t, 'first': dt(2026, 10, 5, 12 - i), 'agency': a, 'bias': b, 'rated': r, 'url': 'u'}
             for i, (t, a, b, r) in enumerate([
@@ -122,7 +126,9 @@ def test_coverage_groups_counts_sides_and_bounds_new_judgments(monkeypatch, tmp_
     monkeypatch.setattr(sc, 'candidates', lambda since: rows)
     monkeypatch.setattr(llm, 'model', lambda: 'stub')
     monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, max_tokens: {
-        'reason': 'r', 'us_supreme_court': 'India' not in prompt, 'case': '', 'stage': 'argument'})
+        'reason': 'r', 'us_supreme_court': 'India' not in prompt.split('\n')[0],
+        'cases': ['Alito'] if 'Alito' in prompt.split('\n')[0] else [],
+        'stage': 'argument'})
     out = sc.coverage(now=dt(2026, 10, 5, 13))
     # Only the first three were judged this run (the cap); the rest wait for the next
     assert out['total'] == 3
@@ -133,3 +139,11 @@ def test_coverage_groups_counts_sides_and_bounds_new_judgments(monkeypatch, tmp_
     out = sc.coverage(now=dt(2026, 10, 5, 13))
     assert out['total'] == 4  # India's court is judged and left out; Alito joins the other Court news
     assert [h['title'] for h in out['other']['headlines']] == ['Alito speaks at dinner']
+    assert out['other']['tags'] == [('alito', 'Alito', 1)]
+    assert out['other']['headlines'][0]['tag_links'] == [{'tag': 'Alito', 'docket': None}]
+
+
+def test_nice_name():
+    assert sc.nice_name('DEPARTMENT OF AIR FORCE V. PRUTEHI GUAHAN') == 'Department of Air Force v. Prutehi Guahan'
+    assert sc.nice_name('DEPTARTMENT OF HOMELAND SECURITY V. D. V. D.').endswith('v. D. V. D.')
+    assert sc.nice_name('HOFFMANN V. WBI ENERGY TRANSMISSION, INC.') == 'Hoffmann v. WBI Energy Transmission, Inc.'

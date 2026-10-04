@@ -2797,6 +2797,38 @@ h1 {
     max-width: 320px;
 }
 
+/* The cases and issues a headline mentions, as the model tags them: linked to the case's card when it's one on the
+   docket, else a filter */
+.court-tag {
+    display: inline-block;
+    margin: 0 0.25em 0 0;
+    padding: 0 0.5em;
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: #fff4c2;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    cursor: pointer;
+    text-decoration: none;
+    vertical-align: 1px;
+}
+
+.court-tag.linked {
+    background: #d9f7f2;
+}
+
+.court-tag.linked::after {
+    content: ' →';
+}
+
+.court-tag-filter {
+    margin: 0.4em 0 0.6em;
+}
+
+.court-headlines li[hidden] {
+    display: none;
+}
+
 .court-term {
     width: 100%;
     border-collapse: collapse;
