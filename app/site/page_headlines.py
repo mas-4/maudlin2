@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from collections import defaultdict
 from datetime import datetime as dt, timedelta as td
 from typing import Optional
 
@@ -12,6 +13,7 @@ from app.analysis.clustering import prepare_embedding_cosine, form_clusters, lab
     unlink_money_conflicts
 from app.analysis.sagas import find_sagas
 from app.investigations import recent as recent_investigations
+from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import llm, textnorm
 from app.analysis.pipelines import Pipelines, prepare
@@ -393,6 +395,8 @@ class HeadlinesPage:
         self.bright_side(clusters_list)
         self.blindspots(clusters_list)
         self.investigations(clusters_list)
+        self.shows(clusters_list)
+        self.show_coverage(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -491,6 +495,83 @@ class HeadlinesPage:
             piece.setdefault('story_title', None)
             piece['date'] = pd.Timestamp(piece['published']).tz_convert('US/Eastern').strftime('%b %-d')
         self.context['investigations'] = pieces
+
+    SHOW_KIND = {'podcast': '🎙️', 'newsletter': '📨', 'video': '📺'}
+    SHOW_GROUP = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#b8b8c8', 'crossover': '#8a5cff'}
+
+    def shows(self, clusters_list):
+        """The newest from news-of-the-day newsletters, podcasts and political video channels (app/sidefeeds.py), one
+        per source, each pointed at the current story it's about when one is close enough in meaning."""
+        try:
+            items = sidefeeds.recent()
+        except Exception as e:  # noqa: e.g. the table doesn't exist yet on a database that hasn't migrated
+            logger.warning("Shows: %s", e)
+            items = []
+        if items and clusters_list:
+            ids = [c['cluster'] for c in clusters_list]
+            titles = [self.context['titles'][k] for k in ids]
+            vectors = embed([i['title'] for i in items] + titles)
+            vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+            similarity = vectors[:len(items)] @ vectors[len(items):].T
+            for item, row in zip(items, similarity):
+                best = int(row.argmax())
+                item['story'] = int(ids[best]) if row[best] >= INVESTIGATION_MATCH else None
+                item['story_title'] = titles[best] if item['story'] is not None else None
+        for item in items:
+            item.setdefault('story', None)
+            item.setdefault('story_title', None)
+            item['emoji'] = self.SHOW_KIND.get(item['kind'], '🎙️')
+            item['color'] = self.SHOW_GROUP.get(item['group'], '#b8b8c8')
+            item['date'] = pd.Timestamp(item['published']).tz_convert('US/Eastern').strftime('%b %-d')
+        self.context['shows'] = items
+
+    # A piece of an episode's title or description this close in meaning to a story covers it. Checked by hand on
+    # Oct 3: above 0.55 the matches were right; below 0.5 mostly wrong
+    SHOW_MATCH = 0.55
+    PIECES = re.compile(r'\s*(?:[,;|•]|\s[&+]\s|\s-\s|:\s)\s*')
+
+    def show_coverage(self, clusters_list):
+        """Which current stories the news-of-the-day shows covered in the last few days, for a row on each story card.
+        A rundown episode covers several stories ("Wages Vs Inflation, Tennessee Failed Execution, Cornell Rape
+        Case"), so each item is split into pieces (its title on separators, and its description's first sentences)
+        and every piece is matched to the stories on its own; one episode can land on several cards."""
+        self.context['show_coverage'] = {}
+        if not clusters_list:
+            return
+        try:
+            items = sidefeeds.recent(days=3, limit=400, per_source=40)
+        except Exception as e:  # noqa
+            logger.warning("Show coverage: %s", e)
+            return
+        pieces, owner = [], []
+        for n, item in enumerate(items):
+            parts = [p for p in self.PIECES.split(item['title']) if len(p.split()) >= 2]
+            parts += [p for p in re.split(r'(?<=[.!?])\s+', item['summary'])[:2] if len(p.split()) >= 4]
+            for part in parts or [item['title']]:
+                pieces.append(part)
+                owner.append(n)
+        if not pieces:
+            return
+        ids = [c['cluster'] for c in clusters_list]
+        titles = [self.context['titles'][k] for k in ids]
+        vectors = embed(pieces + titles)
+        vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+        similarity = vectors[:len(pieces)] @ vectors[len(pieces):].T
+        covered = defaultdict(dict)  # cluster -> source -> newest item covering it
+        for n, row in zip(owner, similarity):
+            best = int(row.argmax())
+            if row[best] < self.SHOW_MATCH:
+                continue
+            item = items[n]
+            src = covered[ids[best]]
+            if item['source'] not in src or item['published'] > src[item['source']]['published']:
+                src[item['source']] = item
+        for cluster, by_source in covered.items():
+            chips = sorted(by_source.values(), key=lambda i: i['published'], reverse=True)[:4]
+            self.context['show_coverage'][int(cluster)] = [
+                {**i, 'emoji': self.SHOW_KIND.get(i['kind'], '🎙️'), 'color': self.SHOW_GROUP.get(i['group'], '#b8b8c8')}
+                for i in chips]
+        logger.info("Show coverage: %d items across %d stories", len(items), len(covered))
 
     def blindspots(self, clusters_list):
         """Stories covered almost entirely by one side: at least BLINDSPOT_MIN_OUTLETS rated outlets, BLINDSPOT_SHARE

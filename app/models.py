@@ -4,7 +4,7 @@ from typing import Optional, cast
 
 import numpy as np
 import pytz
-from sqlalchemy import ForeignKey, String, create_engine
+from sqlalchemy import ForeignKey, String, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Boolean, Text, Float, DateTime, Integer
 
@@ -235,6 +235,21 @@ class TrendSighting(Base):
     seen_at: Mapped[dt] = mapped_column(DateTime(), index=True)
     rank: Mapped[int] = mapped_column(Integer(), nullable=True)
     post_count: Mapped[int] = mapped_column(Integer(), nullable=True)
+
+
+class SideItem(Base):
+    """An item from a newsletter, podcast or political video channel (app/sidefeeds.py), kept for the long run: one
+    row per source and url, never overwritten. Only some sources are shown on the site; all are archived."""
+    __tablename__ = "side_item"
+    __table_args__ = (UniqueConstraint('source', 'url', name='uq_side_item_source_url'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(32), index=True)  # sidefeeds.SOURCES key
+    title: Mapped[str] = mapped_column(String(500))
+    url: Mapped[str] = mapped_column(String(500))
+    published: Mapped[dt] = mapped_column(DateTime(), nullable=True, index=True)
+    summary: Mapped[str] = mapped_column(Text(), nullable=True)
+    audio: Mapped[str] = mapped_column(String(500), nullable=True)  # a podcast's audio file, for transcribing later
+    first_seen: Mapped[dt] = mapped_column(DateTime())
 
 
 class Story(Base):

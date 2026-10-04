@@ -1463,7 +1463,7 @@ body.toc-on .page-toc {
     }
 }
 
-#trending, #current-stories, #every-headline, #sagas, #investigations {
+#trending, #current-stories, #every-headline, #sagas, #investigations, #shows {
     scroll-margin-top: 1em;
 }
 
@@ -2190,6 +2190,10 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
     --pop: #00c2a8;
 }
 
+.trending-row .shows {
+    --pop: #ff4fa3;
+}
+
 .investigation-list {
     list-style: none;
     padding-left: 0;
@@ -2355,4 +2359,22 @@ h1 {
 .outlet-wiki a {
     white-space: nowrap;
     font-style: italic;
+}
+
+/* Story cards: the news-of-the-day shows that covered the story (show_coverage in page_headlines.py) */
+.story-shows {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 0.4em;
+}
+
+.story-shows-label {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.show-chip {
+    font-size: 0.75em;
 }

@@ -137,6 +137,14 @@
                 front page, so they're listed on their own and don't count toward stories, the cloud or any measure.
                 <span class="trend-both">📰 in the news</span> marks one that matches a current story.</p>
         {% endcall %}
+        {% call term('🎙️', 'On the shows', 'shows') %}
+            <p>The newest from news-of-the-day podcasts, newsletters and political streams (Pod Save America, Breaking
+                Points, Up First, Ruthless, Megyn Kelly, Hasan Piker…), one per show, read from their own feeds every
+                couple of hours. We sort shows by how they follow the news, not by format: <em>news of the day</em>
+                shows react to this week's news, several stories at a time; <em>thinking</em> shows take one subject
+                at a time (The Remnant, Noahpinion). Only news-of-the-day shows appear here; we keep a record of the
+                rest for research. Blue, red and gray mark a show's rough side by reputation, not a rating.</p>
+        {% endcall %}
         {% call term('📡', 'Trending elsewhere', 'trending') %}
             <p>What's trending on Bluesky, Google searches, Wikipedia's most-read pages and Mastodon, next to what the
                 press is covering. A trend tagged <span class="trend-both">news</span> matches one of our stories.</p>

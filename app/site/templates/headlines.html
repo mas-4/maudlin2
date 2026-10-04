@@ -52,6 +52,7 @@
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
         {% if investigations %}<a href="#investigations"><span class="toc-emoji">🔎</span><span class="toc-label">investigations</span></a>{% endif %}
+        {% if shows %}<a href="#shows"><span class="toc-emoji">🎙️</span><span class="toc-label">shows</span></a>{% endif %}
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
         <a href="#current-stories"><span class="toc-emoji">📰</span><span class="toc-label">stories</span></a>
         <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
@@ -570,6 +571,23 @@
                 </ul>
             </section>
         {% endif %}
+        {% if shows %}
+            <section class="trending trending-news investigations shows" id="shows">
+                <h3>🎙️ On the shows <span class="blindspot-note">news-of-the-day podcasts, newsletters and streams</span></h3>
+                <ul class="investigation-list">
+                    {% for p in shows %}
+                        <li>
+                            <div class="investigation-meta">
+                                <span class="investigation-source" style="--chip: {{ p.color }}" title="{{ p.source }} ({{ p.kind }})"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</span>
+                                <span class="trend-posts">{{ p.date }}</span>
+                            </div>
+                            <a class="investigation-title" href="{{ p.url }}" title="{{ p.summary }}">{{ p.title }}</a>
+                            {% if p.story is not none %}<a class="trend-both investigation-story" href="#story-{{ p.story }}" title="Related to: {{ p.story_title }}">📰 in the news</a>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
         {% for box in trend_boxes %}
             <section class="trending">
                 <h3>{{ box.heading }}</h3>
@@ -817,6 +835,13 @@
                     </div>
                 </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
+                {% set on_shows = show_coverage.get(cluster['cluster']) if show_coverage is defined else none %}
+                {% if on_shows %}
+                    <div class="story-shows">
+                        <span class="story-shows-label">🎙️ on the shows</span>
+                        {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
+                    </div>
+                {% endif %}
             </div>
         {% endfor %}
     </div>

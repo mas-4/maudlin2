@@ -5,6 +5,9 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-03 (evening)
+- **Shows archive begins.** 40 newsletters, podcasts and political video channels are collected into side_item
+  (append-only), each feed read at most every 2 hours with conditional requests. Sources are sorted by how they
+  follow the news (news of the day vs. thinking, #135), not format; only news-of-the-day ones are shown on the site.
 - **Stories: different money stays apart.** Headlines that both name dollar amounts more than 3x apart can't link
   ($90 Medicare checks vs. a $5,000 promise); $90 vs. "nearly $100" still can. Headlines without amounts unchanged.
 - **Stories: a split story gets two titles.** When one saved story's coverage splits into two clusters in an hour,

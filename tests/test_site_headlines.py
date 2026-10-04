@@ -676,3 +676,29 @@ def test_filter_score_sort_is_newest_first():
 
 
 # </editor-fold>
+
+
+# show_coverage: news-of-the-day items split into pieces and matched to several story cards
+
+def test_show_coverage_splits_rundowns_onto_several_cards(monkeypatch):
+    import numpy as np
+    import app.site.page_headlines as ph
+    items = [{'title': 'Wages Vs Inflation, Tennessee Failed Execution, Cornell Case', 'summary': '',
+              'source': 'Up First (NPR)', 'kind': 'podcast', 'group': 'center', 'url': 'u1',
+              'published': '2026-10-03T10:00:00+00:00'},
+             {'title': 'Cornell Case', 'summary': '', 'source': 'Up First (NPR)', 'kind': 'podcast',
+              'group': 'center', 'url': 'u0', 'published': '2026-10-02T10:00:00+00:00'},
+             {'title': 'Something else entirely', 'summary': '', 'source': 'Ruthless', 'kind': 'podcast',
+              'group': 'right', 'url': 'u2', 'published': '2026-10-03T09:00:00+00:00'}]
+    monkeypatch.setattr(ph.sidefeeds, 'recent', lambda **kw: items)
+    vecs = {'Wages Vs Inflation': [1, 0, 0, 0], 'Tennessee Failed Execution': [0, 1, 0, 0],
+            'Cornell Case': [0, 0, 1, 0], 'Something else entirely': [0, 0, 0, 1],
+            'Jobs report': [1, 0, 0, 0], 'Execution fails': [0, 1, 0, 0], 'Cornell': [0, 0, 1, 0]}
+    monkeypatch.setattr(ph, 'embed', lambda texts: np.array([vecs.get(t, [0.1, 0.1, 0.1, 0.1]) for t in texts], float))
+    page = ph.HeadlinesPage.__new__(ph.HeadlinesPage)
+    page.context = {'titles': {1: 'Jobs report', 2: 'Execution fails', 3: 'Cornell'}}
+    page.show_coverage([{'cluster': 1}, {'cluster': 2}, {'cluster': 3}])
+    cov = page.context['show_coverage']
+    assert set(cov) == {1, 2, 3}  # one rundown lands on all three cards; the unrelated item on none
+    assert [c['url'] for c in cov[3]] == ['u1']  # one chip per show, its newest item
+    assert cov[1][0]['emoji'] == '🎙️'
