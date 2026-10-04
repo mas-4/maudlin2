@@ -13,7 +13,9 @@ words. Copypasta and coordinated posting travel as the same words from few hands
    of Thompson's Motif-Index and a specific motif, who is cast as villain, victim, hero and helper (Propp's roles),
    and whether it's about politics, from which side. Answers are cached by the versions shown.
 4. Cross-checks: the Focus Group transcripts (do voters say it in their own words?) and today's news stories (which
-   story it rides on, if any), each matched by embedding.
+   story it rides on, if any). The nearest few by embedding are only candidates: the model, shown both side by side,
+   says whether a story is the same event or the same issue (anything looser isn't shown), and whether voters voice
+   the same claim; otherwise the report says there's none.
 
 Writes a report to data/narratives/ (JSON and Markdown); nothing here is published. Run:
     .venv/bin/python -m app.narratives [--hours 6]
@@ -208,6 +210,68 @@ def label(group: dict, cache: dict) -> dict | None:
     return cache[key]
 
 
+CANDIDATES = 3  # nearest stories or passages the model is asked about
+STORY_PROMPT = """People online are retelling this: {claim}
+For example: {example}
+
+News story: {other}
+
+How does what they're retelling relate to this news story?
+- "same event": it's about this story's event, case or person
+- "same issue": it's about the same issue or controversy (for example a party's vote on Zionism and a singer's
+  Free Palestine shirt are both about Israel and Palestine), but not this event
+- "unrelated": anything looser, like the same broad topic
+
+reason: briefly
+relation: same event, same issue or unrelated"""
+STORY_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string"},
+                                                 "relation": {"type": "string",
+                                                              "enum": ['same event', 'same issue', 'unrelated']}},
+                "required": ["reason", "relation"]}
+VOICE_PROMPT = """People online are retelling this: {claim}
+For example: {example}
+
+Words from a recorded focus group of voters:
+"{other}"
+
+Do these voters voice, repeat or argue about the same claim (not merely mention the same person or topic)?
+
+reason: briefly
+same: true or false"""
+CONFIRM_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string"}, "same": {"type": "boolean"}},
+                  "required": ["reason", "same"]}
+
+
+def ask(prompt: str, schema: dict, group: dict, other: str, cache: dict) -> dict | None:
+    """The model's answer about one cross-check candidate (cached), or None without one."""
+    from app.analysis import llm
+    claim = group['label']['narrative'] or group['examples'][0]
+    key = hashlib.sha1(json.dumps([prompt[:40], claim, other]).encode()).hexdigest()
+    if key not in cache:
+        answer = llm.complete_json(prompt.format(claim=claim, example=group['examples'][0][:280], other=other[:600]),
+                                   schema, max_tokens=120)
+        if not answer:
+            return None
+        cache[key] = {**answer, 'claim': claim, 'other': other[:200]}
+    return cache[key]
+
+
+def confirm(prompt: str, group: dict, other: str, cache: dict) -> bool:
+    answer = ask(prompt, CONFIRM_SCHEMA, group, other, cache)
+    return bool(answer and answer.get('same'))
+
+
+def story_link(group: dict, candidates: list[str], cache: dict) -> dict | None:
+    """The first candidate story the model calls the same event, else the first it calls the same issue."""
+    answers = [(story, (ask(STORY_PROMPT, STORY_SCHEMA, group, story, cache) or {}).get('relation'))
+               for story in candidates]
+    for wanted in ('same event', 'same issue'):
+        match = next((story for story, relation in answers if relation == wanted), None)
+        if match:
+            return {'label': match, 'relation': wanted}
+    return None
+
+
 def focus_group_segments(window: int = 3) -> list[dict]:
     """The Focus Group transcripts in short windows of consecutive segments (a few sentences each)."""
     from app.models import Session, SideItem, SideTranscript
@@ -257,17 +321,20 @@ def report(hours: float = 6) -> dict:
         centers = np.vstack([embed(g['examples']).mean(axis=0) for g in narratives])
         centers /= np.maximum(np.linalg.norm(centers, axis=1, keepdims=True), 1e-12)
         if segments:
-            seg = embed([s['text'] for s in segments])
+            seg = embed([x['text'] for x in segments])
             sims = np.maximum(claims @ seg.T, centers @ seg.T)
             for g, row in zip(narratives, sims):
-                best = np.argsort(-row)[:3]
-                g['voters'] = [{**segments[i], 'similarity': round(float(row[i]), 3)} for i in best]
+                # The closest few passages are only candidates; the model keeps the ones that really voice or argue
+                # about the same claim
+                candidates = [segments[i] for i in np.argsort(-row)[:CANDIDATES]]
+                g['voters'] = [c for c in candidates if confirm(VOICE_PROMPT, g, c['text'], cache)][:2]
         if stories:
             st = embed(stories)
             sims = np.maximum(claims @ st.T, centers @ st.T)
             for g, row in zip(narratives, sims):
-                best = int(np.argmax(row))
-                g['story'] = {'label': stories[best], 'similarity': round(float(row[best]), 3)}
+                g['story'] = story_link(g, [stories[i] for i in np.argsort(-row)[:CANDIDATES]], cache)
+        with open(JUDGMENTS, 'w') as f:
+            json.dump(cache, f)
     out = {'made': dt.now().isoformat(timespec='minutes'), 'hours': hours, 'posts': len(posts),
            'authors': len({p['author'] for p in posts}), 'groups': len(found),
            'kinds': dict(Counter(g['kind'] for g in found)), 'focus_group_segments': len(segments),
@@ -295,11 +362,18 @@ def markdown(out: dict) -> str:
         lines.append(f"{g['authors']} people, {g['posts']} posts, wording variety {g['variety']} ({g['kind']}); "
                      f"{lab['genre']}; motif {lab['motif_chapter']}: {lab['motif'] or '-'}; "
                      f"politics: {lab['politics']} ({lab['side']}){'; ' + roles if roles else ''}")
-        if g.get('story'):
-            lines.append(f"Nearest story: {g['story']['label']} ({g['story']['similarity']})")
+        story = g.get('story')
+        if story and story['relation'] == 'same event':
+            lines.append(f"In the news: {story['label']}")
+        elif story:
+            lines.append(f"Related story (same issue): {story['label']}")
+        else:
+            lines.append('In the news: no matching or related story today')
         if g.get('voters'):
-            v = g['voters'][0]
-            lines.append(f"Nearest Focus Group words ({v['similarity']}, {v['date']}): \"{v['text'][:220]}\"")
+            for v in g['voters']:
+                lines.append(f"Voters say it too (The Focus Group, {v['date']}): \"{v['text'][:240]}\"")
+        else:
+            lines.append('Voters: not raised in the Focus Group transcripts')
         lines += ['Versions:'] + [f'- {t[:200]}' for t in g['examples'][:5]] + ['']
     copies = [g for g in out['found'] if g['kind'] == 'copypasta']
     lines += ['## Copypasta (same words, many accounts)', '']

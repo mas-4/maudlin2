@@ -3355,3 +3355,39 @@ h1 {
 .story [id], .story[data-share] {
     scroll-margin-top: 1em;
 }
+
+/* Narratives (work in progress) */
+.wip-banner {
+    padding: 0.6em 0.9em;
+    background: #fff4c2;
+    border: 2px dashed #1f1f2e;
+    border-radius: 10px;
+}
+
+.variety-track {
+    background: linear-gradient(90deg, #c8c8d0, #00c2a8);
+}
+
+.narrative-motif, .narrative-link {
+    font-size: 0.9em;
+    margin: 0.35em 0;
+}
+
+.narrative-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0.4em 0;
+}
+
+.role {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 1px 9px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    max-width: 100%;
+}
+
+.role-villain { background: #ffe3e7; }
+.role-victim { background: #e3ebff; }
+.role-hero { background: #d9f7f2; }

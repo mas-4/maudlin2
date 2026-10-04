@@ -1,0 +1,100 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>🧶 Narratives</h2>
+    <p class="wip-banner">🚧 <b>Work in progress.</b> An experiment in finding the stories people retell in their own
+        words: rumors, legends, beliefs, jokes and sayings, not the news itself. Read from a sample of public Bluesky and
+        Mastodon posts; the labels are a small local language model's best guess and are often wrong.</p>
+    {% if report %}
+        <p class="poll-note">From {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
+            in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }}: {{ cards|length }} narratives told by
+            at least five people each in their own words, and {{ copies|length }} copypasta (the same words, pasted).</p>
+        <details class="how-it-works">
+            <summary>How this works</summary>
+            <p class="poll-note">Folklore travels as variants: one claim or story told by many unrelated people, each
+                in their own words. Copypasta and coordinated posting travel as the same words. So posts saying the
+                same thing in different words are grouped together (by meaning, with an embedding model), and each
+                group is measured by how many different people posted it and how varied their wording is. Feeds,
+                bots and accounts posting many times an hour are left out.</p>
+            <p class="poll-note">For each big group, our local language model reads a few versions and says what they
+                share, whether it's retold or just a shared topic, its genre, its chapter of Thompson's Motif-Index (the
+                folklorist's catalog of story elements), and who it casts as villain, victim and hero. Links to the day's
+                news and to voters' own words (The Focus Group podcast) appear only when the model, shown both side by
+                side, agrees they match.</p>
+            <p class="poll-note">People's posts are never shown here, only the model's summary of what they share;
+                accounts are never identified. Raw posts are kept 30 days for this research and never published.</p>
+        </details>
+
+        <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter narratives">
+            <span class="bar-group"><span class="bar-label">only:</span>
+                <button type="button" data-filter="politics">🏛️ politics</button></span>
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">genre:</span>
+                {% for genre, n in genres %}<button type="button" data-genre="{{ genre|e }}">{{ genre_emoji.get(genre, '🧶') }} {{ genre|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+        </div>
+
+        <div class="court-cards narrative-cards">
+            {% for c in cards %}
+                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}">
+                    <h4>{{ c.claim|e }}</h4>
+                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}">🏛️ {{ c.side if c.side != 'none' else 'politics' }}</span>{% endif %}</p>
+                    <div class="meters">
+                        <div class="meter" title="{{ c.people }} different people, {{ c.posts }} posts">
+                            <span class="meter-label">told by {{ c.people }} people</span>
+                        </div>
+                        <div class="meter" title="How varied their wording is: 0% the same words (pasted), 100% nothing in common. Folklore is told in many ways; copypasta is pasted">
+                            <span class="meter-label">wording</span>
+                            <span class="meter-bar"><span class="meter-end" title="the same words">📋</span>
+                                <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct }}%"></span></span>
+                                <span class="meter-end" title="told many ways">🗣️</span></span>
+                        </div>
+                    </div>
+                    {% if c.motif or c.chapter %}<p class="narrative-motif" title="Thompson's Motif-Index chapter, and the motif the model sees">📚 {{ c.chapter|e }}{% if c.motif %}: <i>{{ c.motif|e }}</i>{% endif %}</p>{% endif %}
+                    {% if c.villain or c.victim or c.hero %}
+                        <p class="narrative-roles">
+                            {% if c.villain %}<span class="role role-villain" title="Cast as the villain">🦹 {{ c.villain|e }}</span>{% endif %}
+                            {% if c.victim %}<span class="role role-victim" title="Cast as the victim">🫂 {{ c.victim|e }}</span>{% endif %}
+                            {% if c.hero %}<span class="role role-hero" title="Cast as the hero">🦸 {{ c.hero|e }}</span>{% endif %}
+                        </p>
+                    {% endif %}
+                    {% if c.story %}
+                        <p class="narrative-link">{% if c.story.relation == 'same event' %}📰 In the news: {% else %}🔗 Same issue as: {% endif %}{{ c.story.label|e }}</p>
+                    {% endif %}
+                    {% if c.voters %}<p class="narrative-link">🎙️ Voters raise it too (The Focus Group, {{ c.voters[0].date }})</p>{% endif %}
+                    {% if preview and c.examples %}
+                        <details class="court-more"><summary>versions (preview only)</summary>
+                            <ul class="court-headlines">{% for e in c.examples %}<li>{{ e|e }}</li>{% endfor %}</ul>
+                            {% for v in c.voters %}<p class="court-when">🎙️ "{{ v.text[:240]|e }}"</p>{% endfor %}
+                        </details>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if copies %}
+            <h3>Copypasta</h3>
+            <p class="poll-note">The same words posted by many accounts: {% for c in copies %}{{ c.people }} accounts{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+            {% if preview %}<ul class="court-headlines">{% for c in copies %}<li>{{ c.people }} accounts: {{ c.example|e }}</li>{% endfor %}</ul>{% endif %}
+        {% endif %}
+        <script>
+            (function () {
+                const box = document.querySelector('.narrative-cards');
+                const all = [...box.querySelectorAll('.narrative')];
+                const repack = packColumns(box, all, 360);
+                let politics = false, genre = null;
+                document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
+                    const b = ev.target.closest('button');
+                    if (!b) return;
+                    if (b.dataset.filter) politics = b.classList.toggle('active');
+                    else {
+                        genre = genre === b.dataset.genre ? null : b.dataset.genre;
+                        document.querySelectorAll('.narrative-tools button[data-genre]').forEach((x) => x.classList.toggle('active', x.dataset.genre === genre));
+                    }
+                    repack(all.filter((c) => (!politics || c.dataset.politics) && (!genre || c.dataset.genre === genre)));
+                });
+            })();
+        </script>
+    {% else %}
+        <p class="poll-note">No report yet: the first one is written overnight.</p>
+    {% endif %}
+{% endblock %}
