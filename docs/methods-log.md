@@ -4,6 +4,11 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-04
+- **Podcast transcription.** Archived podcast audio is transcribed on our own GPU with Whisper (faster-whisper
+  large-v3-turbo, int8), after each hourly build, hourly newscasts first, for items up to 3 days old. Sponsor reads
+  at the start and end are trimmed. Transcripts are kept with the model's name, for analysis only.
+
 ## 2026-10-03 (evening)
 - **Shows archive begins.** 40 newsletters, podcasts and political video channels are collected into side_item
   (append-only), each feed read at most every 2 hours with conditional requests. Sources are sorted by how they

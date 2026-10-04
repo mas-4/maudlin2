@@ -252,6 +252,19 @@ class SideItem(Base):
     first_seen: Mapped[dt] = mapped_column(DateTime())
 
 
+class SideTranscript(Base):
+    """A podcast item's transcript, made on our own GPU (app/transcribe.py), with the model that made it. For
+    analysis only; transcripts are never republished."""
+    __tablename__ = "side_transcript"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("side_item.id"), unique=True)
+    model: Mapped[str] = mapped_column(String(64))
+    created: Mapped[dt] = mapped_column(DateTime())
+    seconds: Mapped[float] = mapped_column(Float())  # the audio's length
+    text: Mapped[str] = mapped_column(Text())  # sponsor reads trimmed
+    segments: Mapped[str] = mapped_column(Text())  # JSON: [{start, end, text}, ...]
+
+
 class Story(Base):
     """One news event as covered across outlets, persisted across runs so it can be labeled once and its
     coverage compared over time. Clusters from each run are matched to stories by the headlines they share."""

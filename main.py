@@ -128,6 +128,10 @@ def main(args: argparse.Namespace):
             fetch_polls()
             fetch_aggregates()
     build()
+    if not args.skip_scrape and not args.scraper and not Config.debug:
+        # The language model is done for this run: Whisper gets the GPU for up to ten minutes
+        from app.transcribe import transcribe_pending
+        transcribe_pending(budget=600)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 
