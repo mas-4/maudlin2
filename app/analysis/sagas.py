@@ -10,6 +10,9 @@ didn't make any story but clearly belong (close to the saga's center and carryin
 Sagas are kept across days (link_sagas): each run compares today's stories with the last SAGA_MEMORY of saved
 stories, starting from the sagas already saved, so a saga grows (or merges into another) but never loses a part when
 its older parts leave the front pages: a story told in four parts stays four parts."""
+import hashlib
+import json
+import os
 import re
 from collections import Counter
 from datetime import datetime as dt, timedelta as td
@@ -21,7 +24,7 @@ import pytz
 from app.analysis import llm
 from app.analysis.clustering import embed
 from app.models import Session, SqlLock, Saga, Story, StoryHeadline, Headline, Article, Agency
-from app.utils import get_logger
+from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
 
@@ -41,6 +44,56 @@ Plain words, no quotes, no dates.
 {headlines}"""
 NAME_SCHEMA = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
 _names: dict[frozenset, str] = {}
+
+
+# Before two stories first join a saga, the language model reads both side by side: sharing a name isn't enough when
+# the name is an institution or a nationality (two separate cases at the Supreme Court, two separate plots by
+# Iranian nationals both passed the word rule on Oct 4). Verdicts are cached by the headlines shown.
+JUDGMENTS = os.path.join(Config.data, 'saga_judgments.json')
+JUDGE_SAMPLE = 4  # headlines shown from each side
+JUDGE_PROMPT = """Two groups of news headlines. Are they parts of one ongoing news story: the same case, incident, \
+event, investigation or negotiation as it develops? Separate cases at the same court, separate crimes by people of the \
+same nationality, or separate events involving the same person or place are different stories.
+
+Group 1:
+{a}
+
+Group 2:
+{b}
+
+reason: a few words
+same_story: true or false"""
+JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 120},
+                                                 "same_story": {"type": "boolean"}},
+                "required": ["reason", "same_story"]}
+
+
+def _sample(titles: list[str]) -> list[str]:
+    distinct = list(dict.fromkeys(t.strip() for t in titles))
+    picks = np.linspace(0, len(distinct) - 1, min(JUDGE_SAMPLE, len(distinct))).round().astype(int)
+    return [distinct[i] for i in dict.fromkeys(picks)]
+
+
+def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
+    """Whether two groups of headlines are one running story, by the language model (cached). False without an
+    answer, so an unchecked link is never saved; the pair is asked again next run."""
+    a, b = sorted([_sample(titles_a), _sample(titles_b)])
+    key = hashlib.sha1(json.dumps([a, b]).encode()).hexdigest()
+    try:
+        with open(JUDGMENTS) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    if key not in cache:
+        answer = llm.complete_json(JUDGE_PROMPT.format(a='\n'.join(f'- {t}' for t in a),
+                                                       b='\n'.join(f'- {t}' for t in b)), JUDGE_SCHEMA, max_tokens=80)
+        if not answer or 'same_story' not in answer:
+            return False
+        cache[key] = {**answer, 'a': a, 'b': b, 'model': llm.model()}
+        with open(JUDGMENTS, 'w') as f:
+            json.dump(cache, f)
+        logger.info("Saga check: %s | %s -> %s (%s)", a[0], b[0], answer['same_story'], answer['reason'])
+    return bool(cache[key]['same_story'])
 
 
 def words(title: str) -> set[str]:
@@ -136,10 +189,11 @@ def name(stories: pd.DataFrame, clusters: list[int]) -> str:
 
 
 def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counter, common: float,
-           names_ok: set[str]) -> dict:
+           names_ok: set[str], titles: list[str]) -> dict:
     """Greedy saga merging (as in find_sagas) over `groups`: key -> {'members': [...], 'rows': [title rows]}. Two
     groups join only if they share a distinctive word that's a name (`names_ok`): sagas are kept for good, so a
-    shared common noun ("rally") isn't enough to tie two stories together forever."""
+    shared common noun ("rally") isn't enough to tie two stories together forever. And the language model has to
+    agree they're one story (same_saga): a shared name can be an institution or a nationality."""
     def center(rows):
         v = vectors[rows].mean(axis=0)
         return v / np.linalg.norm(v)
@@ -150,6 +204,10 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
 
     centers = {k: center(g['rows']) for k, g in groups.items()}
     names = {k: distinctive(g['rows']) for k, g in groups.items()}
+    rejected = set()  # pairs of member sets the language model said aren't one story
+
+    def pair(a, b):
+        return frozenset([frozenset(groups[a]['members']), frozenset(groups[b]['members'])])
     while True:
         keys = list(groups)
         if len(keys) < 2:
@@ -160,11 +218,15 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
         best = None
         for i, j in zip(*np.where(np.triu(similarity, 1) >= SAGA_SIMILARITY)):
             a, b = keys[i], keys[j]
-            if names[a] & names[b] & names_ok and (best is None or similarity[i, j] > best[0]):
+            if names[a] & names[b] & names_ok and pair(a, b) not in rejected and \
+                    (best is None or similarity[i, j] > best[0]):
                 best = (similarity[i, j], a, b)
         if best is None:
             break
         _, a, b = best
+        if not same_saga([titles[r] for r in groups[a]['rows']], [titles[r] for r in groups[b]['rows']]):
+            rejected.add(pair(a, b))
+            continue
         groups[a]['members'] += groups[b]['members']
         groups[a]['rows'] += groups[b]['rows']
         del groups[b], centers[b], names[b]
@@ -228,7 +290,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
         group = groups.setdefault(key, {'members': [], 'rows': []})
         group['members'].append(member)
         group['rows'] += rows
-    groups = _merge(groups, vectors, bags, frequency, common, proper_nouns(titles))
+    groups = _merge(groups, vectors, bags, frequency, common, proper_nouns(titles), titles)
 
     active = {}
     unclustered = headlines.index[headlines['cluster'] == -1]

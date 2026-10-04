@@ -1,0 +1,69 @@
+{% extends "page.html" %}
+
+{% set MOOD_TINTS = {'grim+': '#cfc6ff', 'grim': '#e3ddff', 'plain': '#f4efe6', 'upbeat': '#fff1b3', 'upbeat+': '#ffe066'} %}
+{% set SPIN_TINTS = {'plain': '#f4efe6', 'loaded': '#ffd6c2', 'loaded+': '#ffab8a'} %}
+{% set FRAMING_TINTS = {'😈': '#e0d4ff', '😇': '#fff1b3', '🤝': '#eef1f6'} %}
+
+{% macro badge(emoji, text, tint, title='') %}
+    <span class="badge" style="--tint: {{ tint }}"{% if title %} title="{{ title }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
+{% endmacro %}
+
+{% block content %}
+    <p class="outlet-back"><a href="agencies.html#outlet-{{ o.slug }}">← all outlets</a></p>
+    <div class="outlet-profile" style="--pop: {{ o.color }}">
+        <div class="outlet-profile-head">
+            <span class="edit-chip outlet-profile-name" style="{{ o.style }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
+            <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
+        </div>
+        {% if o.wiki %}
+            {% set w = o.wiki %}
+            <div class="outlet-about">
+                {% if w.owner or w.parent %}<span>🏢 {{ (w.owner or w.parent)|join(', ') }}</span>{% endif %}
+                {% if w.founded %}<span>📅 since {{ w.founded }}</span>{% endif %}
+                {% if w.headquarters %}<span>📍 {{ w.headquarters[0] }}</span>{% endif %}
+            </div>
+            {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
+        {% endif %}
+        <div class="outlet-facts">
+            {% if o.lean_url %}<a href="{{ o.lean_url }}">⚖️ {{ o.lean }} (AllSides)</a>{% elif o.estimate %}⚖️ est. {{ o.estimate }} (ours){% else %}⚖️ not rated by AllSides{% endif %}
+            · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% else %}not on Wikipedia's list{% endif %}
+        </div>
+        <div class="outlet-badges">
+            {% if o.spice %}{{ badge(o.spice.badge[0], o.spice.badge[1], SPIN_TINTS[o.spice.badge[1]], 'Average loaded score ' ~ o.spice.value) }}{% endif %}
+            {% if o.mood %}{{ badge(o.mood.badge[0], o.mood.badge[1] ~ ' news', MOOD_TINTS[o.mood.badge[1]], 'Average mood ' ~ o.mood.value) }}{% endif %}
+            {% if o.framing %}{{ badge(o.framing.badge[0], o.framing.badge[1], FRAMING_TINTS[o.framing.badge[0]]) }}{% endif %}
+            {{ badge('✏️', (o.edits ~ ' rewrites per 100') if o.edits else 'no rewrites', '#d9f7f2') }}
+            {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff') }}{% elif o.wire is not none %}{{ badge('📡', (o.wire ~ '% wire copy') if o.wire else 'no wire copy', '#e0d4ff') }}{% endif %}
+            <span class="trend-posts">📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</span>
+        </div>
+    </div>
+
+    {% if feelings %}
+        <h2 class="section-divider"><span>The feelings in its headlines</span></h2>
+        <div class="feeling-bar" title="Each feeling's share of its headlines on the front page now, ranked-choice style">
+            {% for f in feelings %}<span class="feeling-seg" style="flex: {{ f.share }}; --c: {{ f.color }}" title="{{ f.name }} {{ f.share }}%">{% if f.share >= 6 %}{{ f.emoji }} {{ f.share }}%{% endif %}</span>{% endfor %}
+        </div>
+    {% endif %}
+
+    <h2 class="section-divider"><span>On its front page now</span></h2>
+    {% if now %}
+        <ol class="outlet-now">
+            {% for h in now %}
+                <li><a href="{{ h.url }}">{{ h.title }}</a>{% if h.story %} <a class="trend-both" href="index.html#story-{{ h.story[0] }}" title="Part of the story: {{ h.story[1] }}">📰 {{ h.story[1] }}</a>{% endif %}</li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <p class="table-intro">Nothing on its front page in our latest read.</p>
+    {% endif %}
+
+    {% if rewrites %}
+        <h2 class="section-divider"><span>Headlines it rewrote</span></h2>
+        {% for r in rewrites %}
+            <div class="outlet-rewrite">
+                <div class="edit-before">{{ r.before|safe }}</div>
+                <div class="edit-after">{{ r.after|safe }}</div>
+                {% if r.change %}<span class="edit-change">✏️ {{ r.change }}</span>{% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endblock content %}

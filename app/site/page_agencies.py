@@ -7,6 +7,7 @@ import pandas as pd
 import pytz
 
 from app.site import wiki
+from app.site.page_outlets import OutletPages
 from app.analysis.edits import find_edits, edit_rates
 from app.analysis.wire import wire_share, WIRES
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
@@ -137,6 +138,7 @@ class AgenciesPage:
         # Outlets with no rating aren't on the left-right axis, so they sit in their own strip below it
         self.context['unrated_outlets'] = [o for o in outlets if o['bias'] is None and o['estimated_bias'] is None]
         self.context['lean_quality'] = j2env.globals['lean_quality']
+        OutletPages(self.data, outlets, WINDOW_DAYS).generate()  # one page per outlet (#126)
         logger.info("Generating current headlines wordcloud...")
         generate_wordcloud(self.data.main_headline_df[['title', 'agency', 'bias']],
                            PathHandler(PathHandler.FileNames.main_wordcloud).build)

@@ -305,6 +305,21 @@ class StorySnapshot(Base):
     outlets: Mapped[int] = mapped_column(Integer())
 
 
+class HeadlineVariant(Base):
+    """One wording an outlet showed for an article while A/B testing its headline (#119), with when it was first and
+    last on the front page. Every wording of a card is seen at the same moment each run, so the wordings whose
+    last_seen is the article's latest sighting are the ones still in the test; one left means the test is over."""
+    __tablename__ = "headline_variant"
+    __table_args__ = (UniqueConstraint('url', 'text', name='uq_headline_variant_url_text'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
+    url: Mapped[str] = mapped_column(Text(), index=True)
+    text: Mapped[str] = mapped_column(Text())
+    is_default: Mapped[bool] = mapped_column(Integer(), default=0)  # the one shown to readers without javascript
+    first_seen: Mapped[dt] = mapped_column(DateTime())
+    last_seen: Mapped[dt] = mapped_column(DateTime())
+
+
 class StoryHeadline(Base):
     """A headline's membership in a story, with how its sentiment compares to the other outlets on that story."""
     __tablename__ = "story_headline"

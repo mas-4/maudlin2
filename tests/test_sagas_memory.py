@@ -31,6 +31,7 @@ def db(monkeypatch):
     monkeypatch.setattr(sg, 'Session', session)
     monkeypatch.setattr(sg, 'embed', fake_embed)
     monkeypatch.setattr(sg, 'name', lambda stories, clusters: 'Cornell case')
+    monkeypatch.setattr(sg, 'same_saga', lambda a, b: True)  # the language model agrees (tests never call it)
     return session
 
 
@@ -105,3 +106,27 @@ def test_only_active_sagas_returned_and_ids_negative(db):
     sagas = sg.link_sagas(headlines, stories, {0: saved_story(db, ['Cornell probe'], 1),
                                                1: saved_story(db, ['Storm'], 1)})
     assert all(k < 0 for k in sagas) and len(sagas) == 1
+
+
+def test_language_model_veto_blocks_a_link(db, monkeypatch):
+    asked = []
+    monkeypatch.setattr(sg, 'same_saga', lambda a, b: asked.append((a, b)) or False)
+    saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 30)
+    headlines, stories = today({0: ['Attorney general takes over Cornell investigation',
+                                    'New details in the Cornell investigation']})
+    assert sg.link_sagas(headlines, stories, {0: saved_story(db, ['Attorney general takes over Cornell case'], 1)}) == {}
+    assert len(asked) == 1  # asked once per pair, not again in the same run
+
+
+def test_same_saga_caches_and_never_links_without_an_answer(monkeypatch, tmp_path):
+    monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'judgments.json'))
+    monkeypatch.setattr(sg.llm, 'complete_json', lambda *a, **k: None)
+    assert sg.same_saga(['Supreme Court takes detention case'], ['Supreme Court takes climate case']) is False
+    calls = []
+    monkeypatch.setattr(sg.llm, 'complete_json',
+                        lambda *a, **k: calls.append(a) or {'reason': 'different cases', 'same_story': False})
+    monkeypatch.setattr(sg.llm, 'model', lambda: 'fake')
+    for _ in range(2):  # either order, asked once
+        assert sg.same_saga(['Supreme Court takes climate case'], ['Supreme Court takes detention case']) is False
+        assert sg.same_saga(['Supreme Court takes detention case'], ['Supreme Court takes climate case']) is False
+    assert len(calls) == 1

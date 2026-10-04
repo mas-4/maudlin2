@@ -2,6 +2,7 @@ import os
 
 import pandas as pd
 
+from app.analysis import abtests
 from app.analysis.edits import judge_edits, find_edits, edit_rates, WINDOW_DAYS
 from app.site.common import TemplateHandler, chip_style, j2env
 from app.site.data import DataHandler
@@ -76,7 +77,10 @@ class EditsPage:
                 'source': kinds.get(edit['agency'], 'front page'),
             })
         rates = edit_rates(edits)
+        ab = [{**t, 'style': chip_style(t['agency'], t['bias']), 'started': eastern(t['started']),
+               'latest': eastern(t['latest'])} for t in abtests.tests()]
         self.context.update({
+            'tests': ab,
             'edits': rows,
             'minor_count': len(minor),
             'rates': [] if rates.empty else [

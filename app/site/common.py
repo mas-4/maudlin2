@@ -120,6 +120,8 @@ from app.analysis.newsfilter import EMOTION_EMOJI, EMOTION_BOOKENDS  # noqa: E40
 j2env.globals['emotion_emoji'] = EMOTION_EMOJI
 j2env.globals['cloud_bookends'] = {EMOTION_EMOJI[e]: list(pair) for e, pair in EMOTION_BOOKENDS.items()}
 j2env.globals['icons'] = {}  # outlet name -> icon path, filled by the build (see favicons.publish)
+# What one page learns that a later one needs during a build (the front page's stories, for the outlet pages)
+SHARED: dict = {}
 
 
 def outlet_icon(name: str) -> Markup:

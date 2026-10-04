@@ -9,6 +9,7 @@ from app.site.page_headlines import HeadlinesPage
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
+from app.site import archive
 from app.utils.config import Config
 from app.utils.logger import get_logger
 
@@ -38,7 +39,11 @@ def build():
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
     pages = [HeadlinesPage, AgenciesPage, EditsPage, EmotionsPage, GlossaryPage]
     for page in pages:
-        page(dh).generate()
+        built = page(dh)
+        built.generate()
+        if isinstance(built, HeadlinesPage):
+            archive.save(built.context.get('newsday'))  # today's front page as today's edition (not in debug)
+    archive.publish()
     copy_assets()
     if Config.debug:
         # Debug builds use stale data for local previews and must never replace the live site

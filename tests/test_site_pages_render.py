@@ -10,13 +10,14 @@ import os
 import re
 import socket
 import zlib
+from datetime import datetime as dt
 
 import numpy as np
 import pytest
 from bs4 import BeautifulSoup
 from sqlalchemy import event
 
-from app.analysis import clustering, llm, sagas
+from app.analysis import abtests, clustering, llm, sagas
 from app.models import engine
 from app.site import page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
@@ -26,7 +27,7 @@ from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html']
-NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'glossary.html']
+NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'archive.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
@@ -41,6 +42,12 @@ def stand_in_embed(texts):
             out[i, zlib.crc32(w.encode()) % 256] += 1
     out[:, 0] += 1e-6
     return out
+
+
+AB_TEST = {'url': 'https://slate.com/a.html', 'agency': 'Slate', 'bias': -2, 'state': 'won', 'winner': 'Kept <wording>',
+           'started': dt(2026, 10, 4, 12), 'latest': dt(2026, 10, 4, 15),
+           'variants': [{'text': 'Kept <wording>', 'default': True, 'live': True, 'won': True, 'hours': 3},
+                        {'text': 'Dropped wording', 'default': False, 'live': False, 'won': False, 'hours': 0.5}]}
 
 
 def refuse_connection(*args, **kwargs):
@@ -65,6 +72,8 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(ph, 'sync_stories', lambda df: {})
         mp.setattr(ph, 'label_stories', lambda df, stories: {})
         mp.setattr(ph, 'link_sagas', lambda headlines, stories, story_of: {})  # writes sagas to the database
+        # A/B tests: a canned one, so the section renders before the database has the table (prod migrates it)
+        mp.setattr(abtests, 'tests', lambda: [AB_TEST])
         mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
         snapshot = sorted(glob.glob(os.path.expanduser(
             '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
@@ -298,3 +307,12 @@ def test_edits_page(site):
     assert soup.find('h2', string='Headline changes') is not None
     assert soup.select_one('details.how-it-works') is not None
 # </editor-fold>
+
+
+def test_edits_page_shows_ab_tests_escaped(site):
+    page = site['soup']['edits.html']
+    test = page.select_one('.ab-test.ab-won')
+    assert test is not None and '🏆' in test.get_text()
+    assert test.select_one('.ab-won a').get_text() == 'Kept <wording>'  # escaped, not parsed as a tag
+    assert 'shown without javascript' in test.select_one('.ab-won').get_text()
+    assert test.select_one('.ab-lost').get_text().startswith('Dropped wording')

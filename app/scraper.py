@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup as Soup, Tag, NavigableString  # noqa not declared
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
-from app.analysis import metrics, newsfilter
+from app.analysis import abtests, metrics, newsfilter
 from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
 from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
@@ -58,6 +58,8 @@ class Scraper(ABC, Thread):
             raise ValueError("URL must be set")
         self.downstream: list[tuple[str, Tag]] = []
         self.prefiltered = []
+        # Cards whose headline is being A/B tested: (url, every wording, the default one); see app/analysis/abtests.py
+        self.variants: list[tuple[str, list[str], str]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
         with Session() as session, self.sql_lock:
@@ -194,6 +196,9 @@ class Scraper(ABC, Thread):
         with Session() as s:
             [self.process(s, art_pair) for art_pair in prefiltered]
             s.commit()
+        if self.variants:
+            abtests.record(self.agency_id, [(self.clean_href(url), texts, default)
+                                            for url, texts, default in self.variants])
 
     def process(self, s, art: ArticleTuple):
         if (headline := s.query(Headline).filter(Headline.processed == art.processed).first()) is not None:

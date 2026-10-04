@@ -24,3 +24,7 @@ class Slate(Scraper):
             # <noscript> copy is the default one, shown to readers without javascript.
             default = headline.find('noscript') or headline.find(attrs={'data-promoline-variant': True}) or headline
             self.downstream.append((a['href'], default.get_text(' ', strip=True)))
+            # Every wording on the card, to follow the test (one wording on a card that was tested ends it)
+            wordings = [v.get_text(' ', strip=True) for v in headline.find_all(attrs={'data-promoline-variant': True})]
+            self.variants.append((a['href'], wordings or [default.get_text(' ', strip=True)],
+                                  default.get_text(' ', strip=True)))

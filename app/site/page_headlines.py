@@ -14,12 +14,13 @@ from app.analysis.clustering import prepare_embedding_cosine, form_clusters, lab
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
 from app.analysis import trends_meter
+from app.analysis.quotes import story_quotes
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis import llm, textnorm
 from app.analysis.pipelines import Pipelines, prepare
-from app.site.common import calculate_xkeyscore, chip_style, copy_assets, outlet_icon, short_name, TemplateHandler
+from app.site.common import SHARED, calculate_xkeyscore, chip_style, copy_assets, outlet_icon, short_name, TemplateHandler
 from app.models import Session, Headline
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
@@ -253,7 +254,10 @@ class HeadlinesPage:
         with open(os.path.join(Config.build, TABLE_FILE), 'w') as f:
             json.dump(self.table_rows(df), f, separators=(',', ':'))
         self.context['table_file'] = TABLE_FILE
+        # Saved under a dated name, so a reader's downloads from different hours don't overwrite each other
+        self.context['table_download'] = f"bignews-headlines-{pd.Timestamp.now(tz='US/Eastern'):%Y-%m-%d-%H%M}.json"
         self.newsletter.write(self.context)
+        self.write_feed()
         self.template.write({**self.context, 'page_part': 'front'})
         self.table_page.write({**self.context, 'page_part': 'table', 'title': 'Every Headline'})
         logger.info("...done")
@@ -271,6 +275,29 @@ class HeadlinesPage:
         heat['score'] = heat['now'] / live_outlets * 0.5 ** (
             (hours - NEWS_DAY_FRESH_HOURS).clip(lower=0) / NEWS_DAY_HALF_LIFE_HOURS)
         return heat
+
+    def write_feed(self):
+        """feed.xml: the trending stories as RSS (#123). Each item keeps its saved story's id as its guid, so readers
+        don't show a story again when its rank or title changes."""
+        from email.utils import format_datetime
+        by_id = {c['cluster']: c for c in self.context.get('clusters', [])}
+        story_of = getattr(self, 'story_of', {})
+        now = dt.now(pytz.UTC)
+        items = []
+        for t in self.context.get('news_trends', []):
+            c = by_id.get(t['cluster'])
+            if not c:
+                continue
+            first = now - td(seconds=float(c['first']))
+            bits = [f"On {t['now']} outlets' front pages now ({t['outlets']} in all)",
+                    f"covered by {c['lean']['text']} outlets", f"mood {c['mood']['word']}"]
+            if c.get('feelings'):
+                bits.append('feelings: ' + ', '.join(f"{f['emoji']} {f['name']}" for f in c['feelings']))
+            if t.get('saga'):
+                bits.append(f"part of a {t['saga']}-part saga")
+            items.append({'title': t['title'], 'cluster': t['cluster'], 'guid': story_of.get(t['cluster'], t['cluster']),
+                          'date': format_datetime(first), 'description': '; '.join(bits) + '.'})
+        TemplateHandler('feed.xml').write({'feed_items': items, 'feed_date': format_datetime(now)})
 
     def news_day(self, df, active_outlets: int):
         """How big a news day it is: the share of outlets carrying a story on their front page right now, for the
@@ -368,6 +395,7 @@ class HeadlinesPage:
             cluster['speed'] = break_speed(cluster['data'])
             cluster['outlets'] = int(group['agency'].nunique())
             cluster['spice'] = round(float(group['loaded_score'].mean()), 3) if group['loaded_score'].notna().any() else 0
+            cluster['quotes'] = story_quotes(cluster['data'])
 
         # Sagas: stories that are parts of one running story, kept across days (earlier parts stay in the saga after
         # they leave the front pages). Members sit together, ordered by the saga's newest part
@@ -411,6 +439,9 @@ class HeadlinesPage:
         self.curators(df, clusters_list)
         self.meter_trends(clusters_list)
         self.make_agency_lists(clusters_list)
+        # For the outlet pages: which current story each headline (by url) belongs to
+        SHARED['story_of_url'] = {a['url']: (int(c['cluster']), self.context['titles'][c['cluster']])
+                                  for c in clusters_list for a in c['data']}
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
         self.blindspots(clusters_list)
@@ -730,7 +761,7 @@ class HeadlinesPage:
             ranks = r.emotion_ranks if isinstance(r.emotion_ranks, str) else ''
             topic = r.topic if isinstance(r.topic, str) else ''
             rows.append({
-                'agency': r.agency, 'bias': int(r.bias), 'url': r.url, 'title': r.title.strip(),
+                'agency': r.agency, 'bias': int(r.bias), 'rated': bool(getattr(r, 'rated', True)), 'url': r.url, 'title': r.title.strip(),
                 'seen': int(raw_seen[r.url].timestamp()) if r.url in raw_seen else None, 'buzz': int(r.buzz),
                 'topic': topic, 'topic_url': f"{topic.replace(' ', '_')}.html" if topic else '',
                 'mood': None if pd.isna(r.event_score) else int(r.event_score),

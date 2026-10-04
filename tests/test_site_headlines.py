@@ -601,3 +601,23 @@ def test_show_coverage_splits_rundowns_onto_several_cards(monkeypatch):
     assert set(cov) == {1, 2, 3}  # one rundown lands on all three cards; the unrelated item on none
     assert [c['url'] for c in cov[3]] == ['u1']  # one chip per show, its newest item
     assert cov[1][0]['emoji'] == '🎙️'
+
+
+# feed.xml (#123)
+def test_feed_is_valid_rss_with_stable_guids(tmp_path, monkeypatch):
+    import xml.etree.ElementTree as ET
+    from app.utils import Config
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    page = ph.HeadlinesPage.__new__(ph.HeadlinesPage)
+    page.story_of = {7: 1234}
+    page.context = {
+        'clusters': [{'cluster': 7, 'first': 3600, 'lean': {'text': 'L+0.4'}, 'mood': {'word': 'grim'},
+                      'feelings': [{'emoji': '😱', 'name': 'fear'}]}],
+        'news_trends': [{'cluster': 7, 'title': 'Storms & floods <hit> coast', 'now': 12, 'outlets': 30, 'saga': 3}],
+    }
+    page.write_feed()
+    root = ET.parse(tmp_path / 'feed.xml').getroot()
+    [item] = root.iter('item')
+    assert item.findtext('title') == 'Storms & floods <hit> coast'
+    assert item.findtext('guid') == 'bignews-story-1234'
+    assert '12 outlets' in item.findtext('description') and '3-part saga' in item.findtext('description')

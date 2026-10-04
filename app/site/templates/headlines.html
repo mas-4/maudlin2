@@ -822,6 +822,11 @@
                     </div>
                 </div>
                 <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
+                {% if cluster['quotes'] %}
+                    <p class="story-quotes"><span class="story-quotes-label" title="Phrases the outlets on this story put in quotation marks">💬 quoted</span>
+                        {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %})">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
+                    </p>
+                {% endif %}
                 {% if cluster['curators'] %}
                     <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<span class="edit-chip" style="{{ chip_style(a, 0) }}">{{ outlet_icon(a) }}{{ short_name(a) }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
                 {% endif %}
@@ -901,6 +906,8 @@
     <h1>Every headline right now</h1>
     <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, how grim or
         upbeat its news, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
+    <p class="table-download"><a href="{{ table_file }}" download="{{ table_download }}">⬇️ Download these headlines as JSON</a>
+        <span title="bias: outlet lean from AllSides, -2 left to 2 right (CC BY-NC 4.0), only where rated is true · mood: -2 grim to 2 upbeat · loaded: 0 plain to 2 loaded · seen: first seen, Unix seconds · feelings: strongest first · story: the card it's on this hour (numbers change every run)">ⓘ fields</span></p>
     <section class="headline-table">
         <div class="table-controls">
             <div class="table-filters" role="group" aria-label="Measure to show">

@@ -5,6 +5,23 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Saga links checked by the language model.** Before two stories first join a saga, the model reads a few headlines
+  from each side by side and says whether they're one running story; the similarity and shared-name rules still
+  apply first. A shared name alone had linked separate Supreme Court cases and separate plots by Iranian nationals.
+  Verdicts are cached (saga_judgments.json); those two sagas were taken apart.
+- **Headline A/B tests (#119).** Every wording Slate tests on a front-page card is recorded each run with when it was
+  first and last up; when one is left, it's the winner. Shown on the headline changes page. Recording begins Oct 4.
+- **Headline download.** The every-headline page links its rows as JSON (the file the table already loads).
+- **Quote selection (#149).** Story cards list the phrases outlets put in quotation marks in their headlines (one
+  headline per outlet, up to 4 phrases, most-quoted first), each tinted by the lean of the outlets that quoted it.
+  Phrases of 2 to 80 characters count (an apostrophe inside a word doesn't open a quote); matching ignores case and
+  punctuation, and each outlet counts once per phrase.
+- **Daily editions begin (#125).** At each run the front page is saved as that news day's edition; past days are
+  published as fixed pages under /YYYY/MM/DD/ with an archive index. Editions start Oct 4; earlier days have none.
+- **Outlet pages (#126).** Each outlet gets its own page: live headlines and the stories they're in, recent
+  rewrites, and the mix of feelings its headlines stir, over the outlets page's 30-day window.
+- **RSS feed (#123).** feed.xml lists the current stories; each item keeps its id across runs while the story
+  lives.
 - **Aggregators aren't outlets (#151).** Google News, Drudge Report, RealClearPolitics and Political Wire no longer count
   toward stories, lean, the news-day sticker or the cloud (they mostly link to other outlets' stories); their live
   headlines are matched to stories (embedding 0.7) and shown as "picked up by" on the cards.

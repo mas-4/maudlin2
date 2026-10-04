@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+    <title>bignews.day: top stories</title>
+    <link>https://bignews.day/</link>
+    <atom:link href="https://bignews.day/feed.xml" rel="self" type="application/rss+xml"/>
+    <description>The stories the most outlets have on their front pages right now, with who's covering them and how.</description>
+    <language>en-us</language>
+    <lastBuildDate>{{ feed_date }}</lastBuildDate>
+    {% for item in feed_items %}
+    <item>
+        <title>{{ item.title|e }}</title>
+        <link>https://bignews.day/#story-{{ item.cluster }}</link>
+        <guid isPermaLink="false">bignews-story-{{ item.guid }}</guid>
+        <pubDate>{{ item.date }}</pubDate>
+        <description>{{ item.description|e }}</description>
+    </item>
+    {% endfor %}
+</channel>
+</rss>

@@ -71,7 +71,7 @@
                  data-framing="{{ o.framing.value if o.framing else 9 }}" data-edits="{{ o.edits }}"
                  data-headlines="{{ o.headlines }}">
                 <div class="outlet-head">
-                    <span class="edit-chip outlet-name" style="{{ o.style }}" title="{{ o.name }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
+                    <span class="edit-chip outlet-name{% if short_name(o.name)|length > 18 %} long-name{% endif %}" style="{{ o.style }}" title="{{ o.name }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
                     <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
                 </div>
                 {% if o.wiki %}
@@ -96,6 +96,7 @@
                     {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff', 'Its headlines are the copy other outlets run') }}{% elif o.wire is not none %}{{ badge('📡', (o.wire ~ '% wire copy') if o.wire else 'no wire copy', '#e0d4ff', 'Share of its headlines in ' ~ window_days ~ ' days that are AP or Reuters headlines, word for word or nearly') }}{% endif %}
                 </div>
                 <div class="outlet-count">📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</div>
+                <a class="outlet-profile-link" href="outlet-{{ o.slug }}.html">full profile →</a>
             </div>
         {% endfor %}
     </div>

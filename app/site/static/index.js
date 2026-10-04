@@ -116,16 +116,20 @@ function packColumns(box, cards, minWidth) {
 }
 
 // Tables with class "sortable": click a column header to sort, again to reverse. A header with data-sort="number"
-// sorts by its cells' data-value. Tables that collapse ("collapsed" class) keep their first rows showing after a sort.
+// sorts by its cells' data-value; text sorts ignore case and a leading "The " (livemint.com among the Ls, The Week
+// among the Ws). Tables that collapse ("collapsed" class) keep their first rows showing after a sort.
+const TEXT_ORDER = new Intl.Collator('en', {sensitivity: 'base', numeric: true});
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('table.sortable').forEach((table) => {
         table.querySelectorAll('thead th').forEach((th, col) => {
-            let descending = true;
+            let descending = th.dataset.sort === 'number';  // numbers biggest first, names A to Z
             th.addEventListener('click', () => {
                 const rows = [...table.tBodies[0].rows];
-                const key = (row) => th.dataset.sort === 'number'
-                    ? parseFloat(row.cells[col].dataset.value) : row.cells[col].textContent.trim();
-                rows.sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * (descending ? -1 : 1));
+                const numeric = th.dataset.sort === 'number';
+                const key = (row) => numeric
+                    ? parseFloat(row.cells[col].dataset.value) : row.cells[col].textContent.trim().replace(/^the\s+/i, '');
+                const order = (a, b) => numeric ? (a > b ? 1 : a < b ? -1 : 0) : TEXT_ORDER.compare(a, b);
+                rows.sort((a, b) => order(key(a), key(b)) * (descending ? -1 : 1));
                 descending = !descending;
                 rows.forEach((row) => table.tBodies[0].appendChild(row));
             });

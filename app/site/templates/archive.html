@@ -1,0 +1,18 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h1>Past front pages</h1>
+    <p class="table-intro">Each day's front page as it stood at the end of the day: the cloud, the stories and every
+        measure, kept as they were. Our archive starts on October 2, 2026.</p>
+    {% if days %}
+        <ul class="archive-days">
+            {% for d in days %}
+                <li><a href="{{ d.path }}">{{ d.when }}</a>
+                    {% if d.label %}<span class="trend-posts">{{ d.emoji }} {{ d.label }}{% if d.story %} · top story: {{ d.story }}{% endif %}{% if d.stories %} · {{ d.stories }} stories{% endif %}</span>{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="table-intro">The first archived day appears tomorrow.</p>
+    {% endif %}
+{% endblock content %}

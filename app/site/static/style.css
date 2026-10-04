@@ -649,6 +649,36 @@ table.races th, table.races td {
     text-decoration: none;
 }
 
+.ab-variants {
+    margin: 0.5em 0 0;
+    padding-left: 1.4em;
+}
+
+.ab-variants li {
+    margin: 0.25em 0;
+}
+
+.ab-won {
+    font-weight: bold;
+}
+
+.ab-won::marker {
+    content: '🏆 ';
+}
+
+.ab-lost {
+    color: #777;
+    text-decoration: line-through;
+    text-decoration-color: #c99;
+}
+
+.ab-hours {
+    font-size: 0.8em;
+    color: #888;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
 .edit-source {
     font-size: 0.8em;
     border: 1px solid #bbb;
@@ -1704,6 +1734,15 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 
 .outlet-name {
     font-size: 1.15em;
+    /* one line: a wrapped pill turns into a lumpy box. Long names step down a size, and only past that are cut */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.outlet-name.long-name {
+    font-size: 0.95em;
 }
 
 .outlet-flag {
@@ -2489,4 +2528,135 @@ h1 {
     font-size: 0.85em;
     letter-spacing: -0.1em;
     color: #ff4fa3;
+}
+
+/* Quoted phrases on a story card, colored by the side that quotes them (#149) */
+.story-quotes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 6px;
+    margin: 0.3em 0 0.4em;
+}
+
+.story-quotes-label {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.quote-chip {
+    font: italic 700 0.82em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 1px 8px;
+    border: 2px solid #1f1f2e;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1f1f2e;
+}
+
+.quote-left { background: #cfe0ff; }
+.quote-right { background: #ffd0d6; }
+.quote-center { background: #e4e4ea; }
+.quote-mixed { background: linear-gradient(90deg, #cfe0ff, #ffd0d6); }
+.quote-unrated { border-style: dashed; }
+
+/* Archived editions and the list of days */
+.archive-ribbon {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    text-align: center;
+    padding: 0.4em 1em;
+    background: #ffc400;
+    border-bottom: 3px solid #1f1f2e;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.archive-days {
+    list-style: none;
+    padding: 0;
+    max-width: 48em;
+    margin: 0 auto;
+}
+
+.archive-days li {
+    margin: 0.5em 0;
+    padding: 0.5em 0.8em;
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+}
+
+.archive-days a {
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin-right: 0.5em;
+}
+
+/* Outlet profile pages (#126) */
+.outlet-back { margin: 0 0 0.5em; }
+
+.outlet-profile {
+    max-width: 52em;
+    margin: 0 auto 1em;
+    padding: 1em 1.2em;
+    background: color-mix(in srgb, var(--pop, #ffc400) 10%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 var(--pop, #1f1f2e);
+}
+
+.outlet-profile-head { display: flex; align-items: center; gap: 0.6em; }
+.outlet-profile-name { font-size: 1.5em; }
+
+.feeling-bar {
+    display: flex;
+    max-width: 52em;
+    margin: 0 auto 1em;
+    height: 34px;
+    border: 3px solid #1f1f2e;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 4px 4px 0 #1f1f2e;
+}
+
+.feeling-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--c) 55%, white);
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.feeling-seg + .feeling-seg { border-left: 2px solid #1f1f2e; }
+
+.outlet-now, .outlet-rewrite {
+    max-width: 52em;
+    margin-left: auto;
+    margin-right: auto;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+    padding: 0.6em 1em 0.6em 2.2em;
+}
+
+.outlet-now li { margin: 0.35em 0; }
+.outlet-rewrite { padding-left: 1em; margin-bottom: 0.8em; border: 2px solid #1f1f2e; }
+
+.outlet-profile-link {
+    display: inline-block;
+    margin-top: 0.4em;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.table-download {
+    text-align: center;
+    font-size: 0.9em;
+}
+
+.table-download span {
+    margin-left: 0.5em;
+    color: #666;
+    cursor: help;
 }
