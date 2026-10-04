@@ -990,6 +990,12 @@
                 <button data-filter="lean" data-value="right">right</button>
                 <button data-filter="loaded" class="toggle">🌶️ loaded only</button>
             </div>
+            <div class="table-filters" role="group" aria-label="Filter by feeling">
+                <span>feeling:</span>
+                <button data-filter="feeling" data-value="all" class="active">any</button>
+                {% for name, emoji in emotion_emoji.items() if name != 'neutral' %}<button data-filter="feeling" data-value="{{ name }}" title="Headlines likely to stir {{ name }}, among their strongest feelings">{{ emoji }} {{ name }}</button>
+                {% endfor %}
+            </div>
         </div>
         <div id="wrapper"></div>
     </section>
@@ -1077,6 +1083,11 @@
                         : `<span class="metric-minor" title="${name}">${emoji}</span>`).join(' ')
                         : badge('🥛', 'neutral', '#f2f2f2'),
                     compare: (a, b) => {
+                        // With one feeling picked: where it ranks among each headline's feelings, strongest first
+                        if (state.feeling !== 'all') {
+                            const place = (r) => r.feelings.findIndex(([, name]) => name === state.feeling);
+                            return place(b) - place(a);
+                        }
                         const rank = (r) => FEELING_ORDER.indexOf(r.feelings.length ? r.feelings[0][1] : 'neutral');
                         return rank(a) - rank(b);
                     },
@@ -1090,7 +1101,7 @@
                 },
             };
 
-            const state = {metric: 'buzz', lean: 'all', loaded: false};
+            const state = {metric: 'buzz', lean: 'all', loaded: false, feeling: 'all'};
             // In the story view each story's rows get their own tint, cycling through a palette in the order the
             // stories first appear (biggest first), so neighboring stories never share one
             const STORY_TINTS = ['#fff1b3', '#d9f7f2', '#e0d4ff', '#ffd6c2', '#c9e2ff', '#d6f5c4'];
@@ -1103,7 +1114,8 @@
                 ? {style: `background-color: color-mix(in srgb, ${storyTint(r.story)} 55%, white)`} : {};
             const keep = (r) => (state.lean === 'all' || (!UNRATED.has(r.agency) && (state.lean === 'left' ? r.bias < 0
                                     : state.lean === 'right' ? r.bias > 0 : r.bias === 0)))
-                && (!state.loaded || r.loaded > 0);
+                && (!state.loaded || r.loaded > 0)
+                && (state.feeling === 'all' || r.feelings.some(([, name]) => name === state.feeling));
             const rows = () => ROWS.filter(keep).filter((r) => state.metric !== 'story' || r.story !== null).sort(METRICS[state.metric].order || ((a, b) => METRICS[state.metric].compare(b, a))).map((r) => [r, r, r]);
             const columns = () => [
                 {
@@ -1175,7 +1187,12 @@
                     state[key] = button.dataset.value;
                     document.querySelectorAll(`.table-controls [data-filter="${key}"]`).forEach((b) => b.classList.toggle('active', b === button));
                 }
-                if (key === 'metric') {
+                // Picking a feeling shows the feelings column, so what matched is visible
+                if (key === 'feeling' && state.feeling !== 'all' && state.metric !== 'feeling') {
+                    state.metric = 'feeling';
+                    document.querySelectorAll('.table-controls [data-filter="metric"]').forEach((b) => b.classList.toggle('active', b.dataset.value === 'feeling'));
+                    freshGrid();
+                } else if (key === 'metric') {
                     // A fresh table per measure, so the header doesn't carry a sort over from the last one
                     freshGrid();
                 } else {
