@@ -798,6 +798,7 @@
         <span class="bar-divider" aria-hidden="true"></span>
         <span class="bar-group"><span class="bar-label">only:</span>
         {% if blindspots %}<button data-filter="blindspot" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
+        {% if satire_of %}<button data-filter="satire" class="toggle" title="Only stories the satire sites are joking about">🃏 joked about</button>{% endif %}
         {% if show_coverage %}<button data-filter="shows" class="toggle" title="Only stories the news podcasts, newsletters and streams are talking about">🎙️ in podcasts</button>{% endif %}
         {% if clusters|selectattr('curators')|list %}<button data-filter="picked" class="toggle" title="Only stories an aggregator (Google News, Drudge Report, RealClearPolitics, Political Wire) is linking to now">📌 aggregated</button>{% endif %}
         </span>
@@ -809,6 +810,7 @@
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
                  {% if cluster['blindspot'] %}data-blindspot="{{ cluster['blindspot']['side'] }}"{% endif %}
                  {% if show_coverage is defined and show_coverage.get(cluster['cluster']) %}data-shows="1"{% endif %}
+                 {% if satire_of is defined and satire_of.get(cluster['cluster']) %}data-satire="1"{% endif %}
                  {% if cluster['curators'] %}data-picked="1"{% endif %}
                  style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
                 {% if cluster['saga'] %}
@@ -867,6 +869,13 @@
                     <div class="story-shows">
                         <span class="story-shows-label">🎙️ on the shows</span>
                         {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
+                    </div>
+                {% endif %}
+                {% set joked = satire_of.get(cluster['cluster']) if satire_of is defined else none %}
+                {% if joked %}
+                    <div class="story-shows story-satire">
+                        <span class="story-shows-label" title="Satire sites joking about this story. Jokes, not news: they never count as coverage">🃏 joked about by</span>
+                        {% for p in joked %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }} (satire, not news): {{ p.title|e }}" style="--chip: {{ p.color }}">{{ p.source }}</a>{% endfor %}
                     </div>
                 {% endif %}
                 {% if cluster['curators'] %}

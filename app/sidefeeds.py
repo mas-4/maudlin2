@@ -41,7 +41,7 @@ def _source(key, name, kind, group, url, publish=False, refresh=None):
             'refresh': refresh or REFRESH}
 
 
-# kind: newsletter, podcast or video. group: left, right, center or crossover (a loose lean by reputation, for
+# kind: newsletter, podcast, video or satire. group: left, right, center or crossover (a loose lean by reputation, for
 # balance and colors; AllSides ratings, where they exist, stay in ratings.csv). publish: news of the day, shown on site
 SOURCES = [
     # News of the day (published)
@@ -140,6 +140,18 @@ SOURCES = [
     _source('ajthetake', 'The Take (Al Jazeera)', 'podcast', 'center',
             'https://www.omnycontent.com/d/playlist/9c074afa-3313-47e8-b802-a9f900789975/'
             '09af2160-238f-48b2-b20b-ad4b00ebd8e7/b86dddc1-67a5-41c2-a13c-ad4b00ebd8f5/podcast.rss'),
+    # Satire (#139): jokes about the news, matched to the stories they joke about (app/analysis/satire.py) and shown
+    # only as such, never counted as coverage or in any measure. Leans by reputation
+    _source('babylonbee', 'The Babylon Bee', 'satire', 'right', 'https://babylonbee.com/feed'),
+    _source('onion', 'The Onion', 'satire', 'left', 'https://theonion.com/feed/'),
+    _source('borowitz', 'The Borowitz Report', 'satire', 'left', 'https://www.borowitzreport.com/feed'),
+    _source('newyorkerhumor', 'New Yorker humor', 'satire', 'left', 'https://www.newyorker.com/feed/humor'),
+    _source('mcsweeneys', "McSweeney's", 'satire', 'left', 'https://feeds.feedburner.com/mcsweeneys'),
+    _source('reductress', 'Reductress', 'satire', 'left', 'https://reductress.com/feed/'),
+    _source('hardtimes', 'The Hard Times', 'satire', 'left', 'https://thehardtimes.net/feed/'),
+    _source('newsthump', 'NewsThump', 'satire', 'left', 'https://newsthump.com/feed/'),
+    _source('duffelblog', 'Duffel Blog', 'satire', 'center', 'https://www.duffelblog.com/rss/'),
+    _source('clickhole', 'ClickHole', 'satire', 'center', 'https://clickhole.com/feed/'),
 ]
 BY_KEY = {s['key']: s for s in SOURCES}
 
@@ -252,6 +264,19 @@ def recent(days: int = 3, limit: int = 12, per_source: int = 1) -> list[dict]:
         if len(picked) == limit:
             break
     return picked
+
+
+def satire(days: int = 3) -> list[dict]:
+    """Every satire piece from the last `days`, newest first."""
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
+    keys = [s['key'] for s in SOURCES if s['kind'] == 'satire']
+    with Session() as s:
+        rows = s.query(SideItem).filter(SideItem.source.in_(keys), SideItem.published >= since) \
+            .order_by(SideItem.published.desc()).all()
+        s.expunge_all()
+    return [{'title': row.title, 'url': row.url, 'summary': row.summary or '',
+             'published': row.published.replace(tzinfo=pytz.UTC).isoformat(), 'source': BY_KEY[row.source]['name'],
+             'group': BY_KEY[row.source]['group']} for row in rows]
 
 
 def source_for(key: str) -> Optional[dict]:

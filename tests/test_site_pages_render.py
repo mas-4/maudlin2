@@ -430,3 +430,14 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
 def test_table_filters_by_feeling(table):
     picks = [b['data-value'] for b in table.select('[data-filter="feeling"]')]
     assert picks[0] == 'all' and {'fear', 'anger', 'hope'} <= set(picks) and 'neutral' not in picks
+
+
+def test_satire_is_labeled_as_jokes_on_its_story(monkeypatch, tmp_path):
+    from app.site import page_headlines
+    monkeypatch.setattr(page_headlines.satire, 'jokes', lambda stories: {next(iter(stories)): [
+        {'title': 'Area <man> wins', 'url': 'https://theonion.com/x', 'source': 'The Onion', 'group': 'left',
+         'summary': '', 'published': '2026-10-04T12:00:00+00:00'}]})
+    page = page_headlines.HeadlinesPage.__new__(page_headlines.HeadlinesPage)
+    page.context = {'titles': {3: 'A story'}}
+    page.satire_coverage([{'cluster': 3}])
+    assert page.context['satire_of'][3][0]['color'] == page.SHOW_GROUP['left']

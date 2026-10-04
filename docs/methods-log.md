@@ -5,6 +5,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Satire (#139): which stories become jokes.** Ten satire sites are read every two hours (the Babylon Bee; the
+  Onion, Borowitz, New Yorker humor, McSweeney's, Reductress, the Hard Times, NewsThump; Duffel Blog, ClickHole;
+  leans by reputation). Each joke from the last three days is offered the closest current stories with
+  mxbai-embed-large similarity 0.5 or more (up to three) and the model picks one or "none". Shown only as 🃏
+  "joked about by" on the story card, never as coverage or in any measure.
+  - Checked by hand on Oct 4. With no similarity floor, the model tied 6 jokes to stories and 2 were wrong, both
+    on a shared word ("Woman survives two minutes in Primark" -> a botched execution; a paste-eating Marine -> a
+    Marine arrested in Japan). Asking it to name the event the joke mocks first made it worse (9 ties, 4 wrong).
+    Every wrong tie was under 0.48 similarity and three of four right ones over 0.54, so with the 0.5 floor: 3
+    ties, all right. Missed: the Bee's oblique Cornell joke (0.44). With only the fallback embeddings, satire is
+    skipped rather than matched on another scale.
 - **Mood redefined: how the headline presents the news (rubric b31d654f).** Mood was how good or bad the event is
   for the people it affects, whoever reports it. For political news that depends on whose side you're on, so the
   model picked a side itself and a reader couldn't check it: RedState's "Oh, Hell No: Judge Rules Federal

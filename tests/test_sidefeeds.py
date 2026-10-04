@@ -78,10 +78,11 @@ def test_recent_only_published_sources_one_each_newest_first(db, monkeypatch):
 def test_sources_are_well_formed():
     keys = [s['key'] for s in sf.SOURCES]
     assert len(keys) == len(set(keys))
-    assert all(s['kind'] in ('podcast', 'newsletter', 'video') for s in sf.SOURCES)
+    assert all(s['kind'] in ('podcast', 'newsletter', 'video', 'satire') for s in sf.SOURCES)
     assert all(s['group'] in ('left', 'right', 'center', 'crossover') for s in sf.SOURCES)
     assert all(len(k) <= 32 for k in keys)
     published = [s for s in sf.SOURCES if s['publish']]
+    assert not any(s['publish'] for s in sf.SOURCES if s['kind'] == 'satire')  # jokes never in the shows list
     assert {s['group'] for s in published} >= {'left', 'right', 'center'}
 
 
