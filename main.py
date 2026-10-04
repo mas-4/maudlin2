@@ -129,6 +129,13 @@ def main(args: argparse.Namespace):
         with open(Config.newsletter, 'rt') as f:
             send_notification(f.read())
         return
+    # What people say on Bluesky and Mastodon (research only, #153): sampled on a thread of its own while the outlets are
+    # scraped and the site builds, so it adds no time to the run
+    listening = None
+    if not args.skip_scrape and not args.scraper and not Config.debug:
+        from app import vernacular
+        listening = threading.Thread(target=lambda: (vernacular.sample(), vernacular.mastodon_sample()), daemon=True)
+        listening.start()
     if not args.skip_scrape:
         scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
         scrape(args, scrapers)
@@ -140,6 +147,8 @@ def main(args: argparse.Namespace):
             fetch_polls()
             fetch_aggregates()
     build()
+    if listening is not None:
+        listening.join(timeout=10 * 60)  # five minutes of listening, begun with the scrape: usually already done
     if not args.skip_scrape and not args.scraper and not Config.debug:
         # The language model is done for this run: Whisper gets the GPU for up to ten minutes
         from app.transcribe import transcribe_pending
