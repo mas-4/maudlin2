@@ -14,7 +14,7 @@ def test_jokes_are_a_forced_choice_among_the_closest_stories(monkeypatch, tmp_pa
 
     def complete_json(prompt, schema, max_tokens=0):
         asked.append(prompt)
-        return {'reason': '', 'story': '1' if 'Senator eats' in prompt else 'none'}
+        return {'reason': '', 'pick': '1' if 'Senator eats' in prompt else 'none'}
 
     monkeypatch.setattr(llm, 'complete_json', complete_json)
     items = [{'title': 'Senator eats filibuster', 'summary': '', 'source': 'The Onion', 'group': 'left'},
@@ -35,7 +35,7 @@ def test_no_model_no_jokes(monkeypatch):
 def test_jokes_need_a_close_story_and_the_right_embeddings(monkeypatch, tmp_path):
     monkeypatch.setattr(satire, 'CACHE', str(tmp_path / 'satire.json'))
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
-    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'reason': '', 'story': '1'})
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'reason': '', 'pick': '1'})
     item = [{'title': 'A joke', 'summary': '', 'source': 'x', 'group': 'left'}]
     far = np.array([[1, .3], [.3, 1]])
     monkeypatch.setattr(clustering, 'story_similarity', lambda texts: (far, 0.8, 'mxbai-embed-large'))

@@ -401,6 +401,15 @@ def report(hours: float = 6) -> dict:
                 g['story'] = story_link(g, [stories[i] for i in np.argsort(-row)[:CANDIDATES]], cache)
         with open(JUDGMENTS, 'w') as f:
             json.dump(cache, f)
+        try:
+            from app.analysis import factchecks
+            checked = factchecks.for_narratives({n: g['label']['narrative'] for n, g in enumerate(narratives)
+                                                 if g['label'].get('narrative')})
+        except Exception as e:  # noqa: fact-checks are extra; the report stands without them
+            logger.warning("Narratives: fact-checks failed (%s)", e)
+            checked = {}
+        for n, g in enumerate(narratives):
+            g['factchecks'] = [{k: c[k] for k in ('source', 'title', 'url', 'published')} for c in checked.get(n, [])]
     out = {'made': dt.now().isoformat(timespec='minutes'), 'hours': hours, 'posts': len(posts),
            'authors': len({p['author'] for p in posts}), 'groups': len(found),
            'kinds': dict(Counter(g['kind'] for g in found)), 'focus_group_segments': len(segments),
@@ -438,6 +447,8 @@ def markdown(out: dict) -> str:
             lines.append(f"Related story (same issue): {story['label']}")
         else:
             lines.append('In the news: no matching or related story today')
+        for c in g.get('factchecks') or []:
+            lines.append(f"Fact-checked ({c['source']}, {c['published'][:10]}): {c['title']} {c['url']}")
         if g.get('voters'):
             for v in g['voters']:
                 lines.append(f"Voters say it too (The Focus Group, {v['date']}): \"{v['text'][:240]}\"")

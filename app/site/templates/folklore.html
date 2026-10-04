@@ -21,7 +21,9 @@
                 folklorist's catalog of story elements), and who it casts as villain, victim and hero. When the posts share
                 articles from outlets we follow, those articles are shown (an exact link to the story); otherwise a
                 link to the day's news appears only when the model, choosing among the closest stories with "none" on
-                offer, picks one.</p>
+                offer, picks one. When a fact-checker (PolitiFact, Snopes, FactCheck.org, Lead Stories, Full Fact, NewsGuard,
+                Science Feedback) has examined the same claim in the last 30 days, the check is linked (🔎), chosen the
+                same way.</p>
             <p class="poll-note">People's posts are never shown here, only the model's summary of what they share;
                 accounts are never identified. Raw posts are kept 30 days for this research and never published.</p>
         </details>
@@ -78,6 +80,11 @@
                         </div>
                     </div>
                     {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif %}: <i>{{ c.motif|e }}</i>{% endif %}</p>{% endif %}
+                    {% if c.factchecks %}
+                        <ul class="story-checks" title="Fact-checkers who examined this claim">
+                            {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
+                        </ul>
+                    {% endif %}
                     {% if c.villain or c.victim or c.hero %}
                         <p class="narrative-roles" title="Who the story casts in each part, in the model's words">
                             <span class="roles-lead">the story's cast:</span>

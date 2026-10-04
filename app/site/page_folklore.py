@@ -93,6 +93,7 @@ class FolklorePage:
                         'politics': bool(label.get('politics')), 'side': label.get('side', 'none'),
                         'side_ink': SIDE_INK.get(label.get('side'), '#8a8f98'),
                         'story': g.get('story'), 'articles': g.get('articles') or [],
+                        'factchecks': g.get('factchecks') or [],
                         'examples': g['examples'][:4] if Config.debug else [],
                     })
                 elif g['kind'] == 'copypasta':

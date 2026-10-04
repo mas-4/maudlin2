@@ -13,7 +13,7 @@ from sqlalchemy import func
 from app.analysis.clustering import prepare_embedding_cosine, story_similarity, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
-from app.analysis import satire, trends_meter
+from app.analysis import factchecks, satire, trends_meter
 from app.analysis.quotes import story_quotes
 from app.analysis.wording import side_phrases
 from app.investigations import recent as recent_investigations
@@ -489,6 +489,7 @@ class HeadlinesPage:
         self.shows(clusters_list)
         self.show_coverage(clusters_list)
         self.satire_coverage(clusters_list)
+        self.factcheck_coverage(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -597,6 +598,19 @@ class HeadlinesPage:
         self.context['satire_of'] = {
             cluster: [{**i, 'color': self.SHOW_GROUP.get(i['group'], '#b8b8c8')} for i in items[:4]]
             for cluster, items in found.items()}
+
+    def factcheck_coverage(self, clusters_list):
+        """Fact-checks of the current stories (app/analysis/factchecks.py), for a 🔎 row on each story card."""
+        self.context['factchecks_of'] = {}
+        if not clusters_list:
+            return
+        try:
+            found = factchecks.for_stories({int(c['cluster']): self.context['titles'][c['cluster']]
+                                            for c in clusters_list})
+        except Exception as e:  # noqa: extra; never let it stop the page
+            logger.warning("Fact-checks: %s", e)
+            return
+        self.context['factchecks_of'] = {cluster: items[:3] for cluster, items in found.items()}
 
     # A piece of an episode's title or description this close in meaning to a story covers it. Checked by hand on
     # Oct 3: above 0.55 the matches were right; below 0.5 mostly wrong

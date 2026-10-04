@@ -5,6 +5,18 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Fact-checks (#153).** Seven fact-checkers' feeds are archived (PolitiFact, FactCheck.org, Snopes, Lead Stories,
+  Full Fact, NewsGuard Reality Check, Science Feedback; Check Your Fact was dropped: its feed is mostly the Daily
+  Caller's ordinary news). Each check from the last week is tied to a current story, and each from the last 30
+  days to a folklore narrative, the same way as satire: the closest three at 0.6+ similarity, then the model picks
+  one or "none". Shown with its title (which usually carries the verdict) on story and folklore cards.
+  - Checked by hand on Oct 4. Below 0.58 the closest pairs were mostly another claim on the same subject
+    (FactCheck.org on Trump's taxpayer-funded ads matched Ken Paxton's ads at 0.56). The first prompt ("the same
+    event or the very claim") made the model answer "none" even when its own reason said the check was about the
+    story; asking for "N claim" / "N event" / "none" made it worse (no story ties at all). Asking only for the
+    number, and saying a check of a fake video or rumor about an event is about that event: 7 ties, 6 right
+    (FlyDubai, Cornell ×4, Christa Pike), 1 on the same subject rather than the same event (an AI-safety check
+    tied to the "Super Intelligence Force" narrative). The satire ties (now the same code) were unchanged, 3 of 3.
 - **Call-in shows archived and transcribed (research only, #153).** Seven shows whose free feeds carry full hours
   with callers: Jesse Kelly, Clay Travis & Buck Sexton, Michael Berry, Mark Levin (right); Brian Lehrer (WNYC),
   KQED Forum, 1A (public radio). No free feed on the left carries callers (Thom Hartmann's and the Majority

@@ -441,3 +441,18 @@ def test_satire_is_labeled_as_jokes_on_its_story(monkeypatch, tmp_path):
     page.context = {'titles': {3: 'A story'}}
     page.satire_coverage([{'cluster': 3}])
     assert page.context['satire_of'][3][0]['color'] == page.SHOW_GROUP['left']
+
+
+def test_folklore_cards_link_fact_checks(monkeypatch, tmp_path):
+    from app.site import page_folklore as pn
+    report = {'posts': 10, 'authors': 10, 'hours': 24, 'made': '2026-10-05T04:00', 'found': [
+        {'authors': 12, 'posts': 14, 'variety': 0.9, 'kind': 'told', 'examples': ['x'],
+         'label': {'retold': True, 'narrative': 'The pilot was a false flag'},
+         'factchecks': [{'source': 'NewsGuard', 'title': 'False flag <claim>', 'url': 'https://n.example/1',
+                         'published': '2026-10-02'}]}]}
+    monkeypatch.setattr(pn, 'latest_report', lambda: report)
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setattr(Config, 'debug', False)
+    pn.FolklorePage().generate()
+    html = (tmp_path / 'folklore.html').read_text()
+    assert '<b>NewsGuard</b>: False flag &lt;claim&gt;' in html

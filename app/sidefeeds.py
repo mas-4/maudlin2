@@ -42,7 +42,7 @@ def _source(key, name, kind, group, url, publish=False, refresh=None):
             'refresh': refresh or REFRESH}
 
 
-# kind: newsletter, podcast, video, call-in or satire. group: left, right, center or crossover (a loose lean by reputation, for
+# kind: newsletter, podcast, video, call-in, fact-check or satire. group: left, right, center or crossover (a loose lean by reputation, for
 # balance and colors; AllSides ratings, where they exist, stay in ratings.csv). publish: news of the day, shown on site
 SOURCES = [
     # News of the day (published)
@@ -158,6 +158,15 @@ SOURCES = [
     _source('lehrer', 'The Brian Lehrer Show (WNYC)', 'call-in', 'center', 'https://feeds.simplecast.com/C8a1jmw4'),
     _source('kqedforum', 'Forum (KQED)', 'call-in', 'center', 'https://feeds.megaphone.fm/KQINC9557381633'),
     _source('onea', '1A (WAMU/NPR)', 'call-in', 'center', 'https://feeds.npr.org/510316/podcast.xml'),
+    # Fact-checkers (#153): what claims are circulating and how they were rated, tied to the stories and folklore
+    # narratives they check (app/analysis/factchecks.py). All 'center' so they share one neutral color
+    _source('politifact', 'PolitiFact', 'fact-check', 'center', 'https://www.politifact.com/rss/factchecks/'),
+    _source('factcheckorg', 'FactCheck.org', 'fact-check', 'center', 'https://www.factcheck.org/feed/'),
+    _source('snopes', 'Snopes', 'fact-check', 'center', 'https://www.snopes.com/feed/'),
+    _source('leadstories', 'Lead Stories', 'fact-check', 'center', 'https://leadstories.com/atom.xml'),
+    _source('sciencefeedback', 'Science Feedback', 'fact-check', 'center', 'https://science.feedback.org/feed/'),
+    _source('fullfact', 'Full Fact', 'fact-check', 'center', 'https://fullfact.org/feed/'),
+    _source('newsguard', 'NewsGuard Reality Check', 'fact-check', 'center', 'https://www.newsguardrealitycheck.com/feed'),
     # Satire (#139): jokes about the news, matched to the stories they joke about (app/analysis/satire.py) and shown
     # only as such, never counted as coverage or in any measure. Leans by reputation
     _source('babylonbee', 'The Babylon Bee', 'satire', 'right', 'https://babylonbee.com/feed'),
@@ -284,10 +293,10 @@ def recent(days: int = 3, limit: int = 12, per_source: int = 1) -> list[dict]:
     return picked
 
 
-def satire(days: int = 3) -> list[dict]:
-    """Every satire piece from the last `days`, newest first."""
+def of_kind(kind: str, days: int = 3) -> list[dict]:
+    """Every item from sources of this kind (satire, fact-check) from the last `days`, newest first."""
     since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
-    keys = [s['key'] for s in SOURCES if s['kind'] == 'satire']
+    keys = [s['key'] for s in SOURCES if s['kind'] == kind]
     with Session() as s:
         rows = s.query(SideItem).filter(SideItem.source.in_(keys), SideItem.published >= since) \
             .order_by(SideItem.published.desc()).all()
@@ -295,6 +304,10 @@ def satire(days: int = 3) -> list[dict]:
     return [{'title': row.title, 'url': row.url, 'summary': row.summary or '',
              'published': row.published.replace(tzinfo=pytz.UTC).isoformat(), 'source': BY_KEY[row.source]['name'],
              'group': BY_KEY[row.source]['group']} for row in rows]
+
+
+def satire(days: int = 3) -> list[dict]:
+    return of_kind('satire', days)
 
 
 def source_for(key: str) -> Optional[dict]:
