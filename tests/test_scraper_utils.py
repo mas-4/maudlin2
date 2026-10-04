@@ -34,9 +34,6 @@ def test_clean_href(href, expected):
     assert bare(Guardian).clean_href(href) == expected
 
 
-@pytest.mark.xfail(reason="clean_href() strips whitespace only after the prefix checks, so an absolute href with "
-                          "leading whitespace gets the outlet's url glued on ('https://site/  https://...') and is "
-                          "then dropped as an invalid url")
 @pytest.mark.parametrize('href', ['  https://x.example/a', '\n/world/a'])
 def test_clean_href_leading_whitespace(href):
     assert ' ' not in bare(Guardian).clean_href(href)
@@ -175,8 +172,6 @@ def test_process_dataframe_repeats_below_limit_kept():
     assert len(df) == n
 
 
-@pytest.mark.xfail(reason="process_dataframe() drops rows where 'processed' isnull(), but preprocess() returns '' "
-                          "(never None) for a bare photo credit, so those rows are kept with empty processed text")
 def test_process_dataframe_drops_empty_processed():
     # A photo credit has enough words but preprocesses to nothing
     df = bare(Guardian).process_dataframe([('https://ok.example/a', 'Jane Doe / AP'),

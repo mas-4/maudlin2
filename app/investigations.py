@@ -118,11 +118,10 @@ def recent(days: int = 14, limit: int = 8) -> list[dict]:
     since = dt.now(pytz.UTC) - td(days=days)
     pieces = []
     for source in SOURCES:
-        taken = 0
-        for item in cache.get(source['key'], {}).get('items', []):
-            if not item.get('published') or dt.fromisoformat(item['published']) < since or taken >= 2:
-                continue
-            pieces.append({**item, 'source': source['name'], 'home': source['home']})
-            taken += 1
-    pieces.sort(key=lambda p: p['published'], reverse=True)
+        # Its two newest in the window, whatever order the feed lists them in
+        fresh = [i for i in cache.get(source['key'], {}).get('items', [])
+                 if i.get('published') and dt.fromisoformat(i['published']) >= since]
+        fresh.sort(key=lambda i: dt.fromisoformat(i['published']), reverse=True)
+        pieces += [{**item, 'source': source['name'], 'home': source['home']} for item in fresh[:2]]
+    pieces.sort(key=lambda p: dt.fromisoformat(p['published']), reverse=True)
     return pieces[:limit]

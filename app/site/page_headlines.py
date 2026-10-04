@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import func
 
-from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed
+from app.analysis.clustering import prepare_embedding_cosine, form_clusters, label_clusters, embed, \
+    unlink_money_conflicts
 from app.analysis.sagas import find_sagas
 from app.investigations import recent as recent_investigations
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
@@ -326,7 +327,8 @@ class HeadlinesPage:
         active_outlets = df['agency'].nunique()
         logger.info("Clustering %i headlines", len(df))
         df = df.reset_index(drop=True)  # cluster ids are positional
-        clusters = form_clusters(prepare_embedding_cosine(df['title']), n_samples_per_cluster, threshold)
+        similarity = unlink_money_conflicts(prepare_embedding_cosine(df['title']), df['title'].tolist())
+        clusters = form_clusters(similarity, n_samples_per_cluster, threshold)
         logger.info("%i clusters formed", len(clusters))
 
         df = label_clusters(df, clusters)
@@ -485,6 +487,8 @@ class HeadlinesPage:
                 piece['story'] = int(ids[best]) if row[best] >= INVESTIGATION_MATCH else None
                 piece['story_title'] = titles[best] if piece['story'] is not None else None
         for piece in pieces:
+            piece.setdefault('story', None)  # no current stories to match: no "in the news" link
+            piece.setdefault('story_title', None)
             piece['date'] = pd.Timestamp(piece['published']).tz_convert('US/Eastern').strftime('%b %-d')
         self.context['investigations'] = pieces
 
@@ -627,27 +631,6 @@ class HeadlinesPage:
         return rows
 
     @staticmethod
-    def process_headlines(df):
-        def format_title(x):
-            t = x.title.replace("'", "").replace('"', '')
-            t_trunc = t[:Config.headline_cutoff] + '...' if len(t) > Config.headline_cutoff else t
-            return f'<a data-tooltip-color="#c4dbff" title="{t}" href="{x.url}">{x.agency} - {t_trunc}</a>'
-
-        df['title'] = df.apply(format_title, axis=1)
-
-        def format_topic(x):
-            # Truncate headline_df['title'] to 255 characters and append a ... if it is longer
-            if not x.topic:
-                return ''
-            topic_file = x.topic.replace(' ', '_') + '.html'
-            return f'<a href="{topic_file}.html">{x.topic}</a>'
-
-        df['topic'] = df.apply(format_topic, axis=1)
-        df = df[['title', 'first_accessed', 'score', 'topic', 'vader_compound', 'afinn']]
-        df = df.copy().sort_values(by='first_accessed', ascending=False)
-        return df
-
-    @staticmethod
     def filter_score_sort(df):
         # if windows:
         fa_str = '%b %-d %-I:%M %p'
@@ -656,9 +639,11 @@ class HeadlinesPage:
             fa_str = fa_str.replace('-', '')
             la_str = la_str.replace('-', '')
         df['country'] = df['country'].map({c.value: c.name for c in list(Country)})
+        # Score and sort while the times are still times; as display text, 9:41 AM would sort after 10:15 AM
+        df = calculate_xkeyscore(df.copy())
         df['first_accessed'] = df['first_accessed'].dt.strftime(fa_str)
         df['last_accessed'] = df['last_accessed'].dt.strftime(la_str)
-        return calculate_xkeyscore(df.copy())
+        return df
 
 
 if __name__ == '__main__':

@@ -141,8 +141,6 @@ def test_live_pattern(title, live):
     assert bool(LIVE.search(title)) is live
 
 
-@pytest.mark.xfail(reason="LIVE is compiled with re.IGNORECASE, so the all-caps \\bLIVE\\b branch matches any word "
-                          "'live' and ordinary headlines ('Live music...', 'Where to live') are skipped as live blogs")
 @pytest.mark.parametrize('title', ['Live music returns to Austin', 'The best cities to live in'])
 def test_live_pattern_ignores_plain_word_live(title):
     assert not LIVE.search(title)

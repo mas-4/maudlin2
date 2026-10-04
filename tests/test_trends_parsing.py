@@ -179,12 +179,9 @@ def test_wikipedia_quotes_titles_in_links(fake_get):
     assert trend['display_name'] == 'Café Society' and trend['description'] == 'Film'
 
 
-@pytest.mark.xfail(reason="wikipedia() builds the summary url with rq.utils.quote(), which leaves '/' unescaped, so "
-                          "a title like 'AC/DC' requests /page/summary/AC/DC (a different path) and loses its "
-                          "description; the REST api needs the slash as %2F")
 def test_wikipedia_summary_url_escapes_slashes(fake_get):
     routes, calls = fake_get
-    wiki_routes(routes, [{'article': 'AC/DC', 'views': 10}], {'/page/summary/AC%2FDC': FakeResponse({'description': 'Band'})})
+    wiki_routes(routes, [{'article': 'AC/DC', 'views': 10}], {'AC%2FDC': FakeResponse({'description': 'Band'})})
     [trend] = trends.wikipedia()
     assert trend['description'] == 'Band'
 

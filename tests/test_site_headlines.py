@@ -484,9 +484,6 @@ def test_investigations_none_found(monkeypatch):
     assert run_investigations([], [{'cluster': 1}], no_embedding, monkeypatch) == []
 
 
-@pytest.mark.xfail(strict=True, reason="With no current stories, pieces get no 'story' key; headlines.html tests "
-                                       "`p.story is not none`, which is true for an undefined value, so each piece "
-                                       "links to an empty '#story-' anchor")
 def test_investigations_without_stories_have_no_story_link(monkeypatch):
     out = run_investigations([{'title': 'A', 'published': '2026-10-03T12:00:00+00:00'}], [], FakeEmbed(), monkeypatch)
     assert out[0].get('story', 'missing') is None
@@ -673,34 +670,9 @@ def test_filter_score_sort_formats_and_scores():
     assert 'prepared' not in df
 
 
-@pytest.mark.xfail(strict=True, reason='filter_score_sort turns first_accessed into display strings before '
-                                       'calculate_xkeyscore sorts by it, so "newest first" is alphabetical: '
-                                       '9:41 AM sorts after 10:15 AM')
 def test_filter_score_sort_is_newest_first():
     df = HeadlinesPage.filter_score_sort(raw_headlines(['2026-10-03 09:41', '2026-10-03 10:15']))
     assert list(df['first_accessed']) == ['Oct 3 10:15 AM', 'Oct 3 9:41 AM']
 
 
-@pytest.mark.xfail(strict=True, reason='process_headlines.format_topic appends ".html" to a file name that already '
-                                       'ends in ".html", linking to Foo_Bar.html.html')
-def test_process_headlines_topic_link():
-    df = pd.DataFrame({'title': ['A "quoted" title'], 'url': ['https://x'], 'agency': ['AP'], 'topic': ['Foo Bar'],
-                       'first_accessed': ['Oct 3'], 'score': [1], 'vader_compound': [0.1], 'afinn': [1.0]})
-    out = HeadlinesPage.process_headlines(df)
-    assert 'href="Foo_Bar.html"' in out['topic'].iloc[0]
-
-
-def test_process_headlines_title_link():
-    long = 'x' * 200
-    df = pd.DataFrame({'title': ['A "quoted" title', long], 'url': ['https://a', 'https://b'], 'agency': ['AP', 'BBC'],
-                       'topic': ['', ''], 'first_accessed': ['Oct 3 9:00 AM', 'Oct 3 10:00 AM'], 'score': [1, 2],
-                       'vader_compound': [0.1, 0.2], 'afinn': [1.0, 2.0]})
-    out = HeadlinesPage.process_headlines(df)
-    assert list(out.columns) == ['title', 'first_accessed', 'score', 'topic', 'vader_compound', 'afinn']
-    assert out['topic'].tolist() == ['', '']
-    short = out[out['score'] == 1]['title'].iloc[0]
-    assert '"quoted"' not in short and 'href="https://a"' in short and 'AP - A quoted title' in short
-    truncated = out[out['score'] == 2]['title'].iloc[0]
-    from app.utils import Config
-    assert 'x' * Config.headline_cutoff + '...' in truncated
 # </editor-fold>

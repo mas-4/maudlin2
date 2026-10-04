@@ -145,8 +145,9 @@ class Scraper(ABC, Thread):
 
         t = time.time()
         df['processed'] = df['title'].apply(preprocess)
-        # Headlines without processed text are not headlines
-        df.drop(df[df['processed'].isnull()].index, inplace=True)
+        # Headlines without processed text are not headlines (preprocess gives '' for, e.g., a bare photo credit)
+        empty = df['processed'].isnull() | (df['processed'].fillna('').str.strip() == '')
+        df.drop(df[empty].index, inplace=True)
         logger.debug("Dropping headlines without processed text in %f seconds", time.time() - t)
         return df
 
@@ -225,6 +226,7 @@ class Scraper(ABC, Thread):
         self.headlines += 1
 
     def clean_href(self, href):
+        href = href.strip()  # before the checks: ' https://…' is absolute, not relative
         if href.startswith('//'):
             href = 'https:' + href
         elif href.startswith('/'):

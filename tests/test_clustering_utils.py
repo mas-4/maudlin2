@@ -106,8 +106,6 @@ def test_default_input_is_modified_in_place():
     assert np.all(np.diag(m) == 0)
 
 
-@pytest.mark.xfail(reason="the C form_clusters and the Python fallback disagree when min_samples <= 1: C returns every "
-                          "unlinked row as a singleton cluster, Python returns none (it only visits rows with a link)")
 def test_implementations_agree_on_singletons():
     assert as_sets(clustering.form_clusters(np.eye(3), 1, .5)) == as_sets(PYTHON(np.eye(3), 1, .5))
 
@@ -165,3 +163,28 @@ def test_label_clusters_from_form_clusters():
     clustering.label_clusters(df, clustering.form_clusters(TWO_PAIRS.copy(), 2, .5))
     assert df.groupby('cluster').size().to_dict() == {0: 2, 1: 2}
     assert df.loc[0, 'cluster'] == df.loc[1, 'cluster'] != df.loc[2, 'cluster'] == df.loc[3, 'cluster']
+
+
+# money() and unlink_money_conflicts(): different sums keep similar-sounding stories apart (#148)
+
+@pytest.mark.parametrize('title, amounts', [
+    ('Trump Promises $100 Checks for 20 Million Seniors', [100.0]),
+    ('Trump again promises $5,000 checks', [5000.0]),
+    ('Deal worth $1.2 billion', [1.2e9]),
+    ('A $3bn bailout and a $40k bonus', [3e9, 40e3]),
+    ('Nearly $100, up from $90', [100.0, 90.0]),
+    ('No money here', []),
+])
+def test_money(title, amounts):
+    assert clustering.money(title) == pytest.approx(amounts)
+
+
+def test_unlink_money_conflicts():
+    titles = ['Trump sends $90 checks to seniors', 'Trump promises nearly $100 checks', 'Trump promises $5,000 checks',
+              'Trump announces checks for seniors']
+    m = np.full((4, 4), 0.9)
+    out = clustering.unlink_money_conflicts(m, titles)
+    assert out[0, 1] == 0.9  # $90 ~ $100: ordinary rounding, still linked
+    assert out[0, 2] == 0 and out[2, 0] == 0  # $90 vs $5,000: different money
+    assert out[1, 2] == 0
+    assert out[2, 3] == 0.9 and out[0, 3] == 0.9  # no amount: left alone

@@ -4,6 +4,16 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-03 (evening)
+- **Stories: different money stays apart.** Headlines that both name dollar amounts more than 3x apart can't link
+  ($90 Medicare checks vs. a $5,000 promise); $90 vs. "nearly $100" still can. Headlines without amounts unchanged.
+- **Stories: a split story gets two titles.** When one saved story's coverage splits into two clusters in an hour,
+  the bigger part keeps the story and its title and the smaller becomes a new story (before, both showed the same
+  title).
+- **Headline changes: live-blog filter.** Only an all-caps LIVE tag or phrases like "live updates" mark a live
+  blog; the plain word "live" no longer does, so ordinary rewrites containing it now count.
+- **Scraping.** Bare photo credits with no text left after cleaning are dropped; hrefs with stray spaces are kept.
+
 ## 2026-10-03
 - **Score provenance.** Each scored headline now records which model and rubric version scored it, when, and the
   model's own note on who the event affects. The rubric id is a hash of the prompt and schema, so it changes on any

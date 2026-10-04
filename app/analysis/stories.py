@@ -52,13 +52,19 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
     persisted story, recording every headline's deviation from its story's mean sentiment."""
     now = dt.now(pytz.UTC).replace(tzinfo=None)
     stories = {}
+    claimed = set()  # stories already continued by a cluster in this run
     with Session() as s, SqlLock:
-        for cluster, group in df.groupby('cluster'):
+        # Biggest clusters first, so when one story's coverage splits into two clusters this hour, the bigger part
+        # keeps the story (and its title) and the smaller becomes a story of its own, instead of both showing as
+        # cards with the same title
+        groups = sorted(df.groupby('cluster'), key=lambda item: -len(item[1]))
+        for cluster, group in groups:
             ids = [int(i) for i in group['headline_id']]
             # The story that already holds most of these headlines is the one this cluster continues
-            match = s.query(StoryHeadline.story_id, func.count().label('n')).filter(
+            matches = s.query(StoryHeadline.story_id, func.count().label('n')).filter(
                 StoryHeadline.headline_id.in_(ids)
-            ).group_by(StoryHeadline.story_id).order_by(func.count().desc()).first()
+            ).group_by(StoryHeadline.story_id).order_by(func.count().desc()).all()
+            match = next((m for m in matches if m.story_id not in claimed), None)
             if match:
                 story = s.get(Story, match.story_id)
             else:
@@ -78,6 +84,7 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
                 member.last_seen = now
                 s.add(member)
             stories[cluster] = story
+            claimed.add(story.id)
         s.commit()
         for story in stories.values():
             s.refresh(story)

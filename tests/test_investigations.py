@@ -184,8 +184,6 @@ def test_recent_ignores_unknown_sources_and_empty_cache(fake_cache):
     assert inv.recent() == []
 
 
-@pytest.mark.xfail(reason="recent() takes the first two in-window items in cache (feed) order, not the two newest: "
-                          "a feed that isn't newest-first shows older pieces and hides newer ones")
 def test_recent_two_newest_even_if_feed_out_of_order(fake_cache):
     fake_cache['icij'] = {'items': [item('older', iso(days=3)), item('old', iso(days=2)), item('newest', iso(hours=1))]}
     assert [p['title'] for p in inv.recent()] == ['newest', 'old']

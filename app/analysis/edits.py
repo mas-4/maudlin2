@@ -34,7 +34,8 @@ LABEL_KICKER = re.compile(
     r'^(?:(?:exclusive|watch|video|live|breaking|opinion|analysis|updated?)\s*[:—–|-]\s*)+', re.IGNORECASE)
 ELLIPSIS = re.compile(r'^[…\s.]+|[…\s.]+$')
 # Live blogs keep one url and swap in a headline for each new development, so their changes aren't edits
-LIVE = re.compile(r'\bLIVE\b|\blive (?:updates?|blog|coverage)\b|\bas it happened\b', re.IGNORECASE)
+# (an all-caps LIVE tag counts; the plain word "live" doesn't: "Live music returns", "Best cities to live in")
+LIVE = re.compile(r'(?-i:\bLIVE\b)|\blive (?:updates?|blog|coverage)\b|\bas it happened\b', re.IGNORECASE)
 # Below this share of words in common, the url now carries a different story (reused or rotating), not a rewrite
 MIN_OVERLAP = 0.2
 WORD = re.compile(r"[\w$%'’]+")
