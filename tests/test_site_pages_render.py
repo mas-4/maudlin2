@@ -422,6 +422,8 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         html = (tmp_path / 'folklore.html').read_text()
         assert 'They are &lt;keeping&gt; him alive' in html and 'Same issue as: Trump health' in html
         assert 'Only six people' not in html and '1 more told by fewer' in html
+        assert 'Motif-Index</a> D · Magic' in html and 'transformations, enchantments' in html
+        assert '🦹 villain</b> doctors' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts
 
 

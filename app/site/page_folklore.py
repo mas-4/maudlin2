@@ -25,6 +25,38 @@ GENRE_EMOJI = {'rumor': '🗣️', 'contemporary legend': '🏙️', 'conspiracy
 # handful reacting to the same news, not a story people retell. The floor grows with the sample, 1 in PEOPLE_SHARE.
 MIN_PEOPLE = 10
 PEOPLE_SHARE = 2500
+# Plain glosses, in our words, of what each Motif-Index chapter covers (shown on hover and in "What the labels mean")
+CHAPTER_NOTES = {
+    'A': 'creators, gods, and how the world began or will end', 'B': 'talking, helpful or monstrous animals',
+    'C': 'forbidden acts and what happens to people who break the rule',
+    'D': 'transformations, enchantments, magic objects and powers', 'E': 'ghosts, the soul, returns from the dead',
+    'F': 'wonders, other worlds, extraordinary beings and places', 'G': 'monsters, witches and other menaces',
+    'H': 'trials of identity, wit, strength or worth', 'J': 'cleverness and stupidity, good and bad judgment',
+    'K': 'tricks, disguises, frauds, hidden plots and false appearances',
+    'L': 'the lowly raised up, the proud brought down', 'M': 'oaths, bargains, curses and prophecies',
+    'N': 'luck, accidents and fate', 'P': 'rulers, classes, families, trades and customs',
+    'Q': 'deeds paid back, rewarded or punished', 'R': 'captures, rescues and escapes',
+    'S': 'cruel relatives, murders, abandonment and sacrifice', 'T': 'love, marriage, seduction and birth',
+    'U': 'how life and the world work', 'V': 'worship, saints, religious belief and practice',
+    'W': 'virtues and vices', 'X': 'jokes about kinds of people, absurd lies',
+    'Z': 'formulas, symbols, numbers and other patterns',
+}
+GENRE_NOTES = {
+    'rumor': 'an unconfirmed claim passed along as news ("I heard that…")',
+    'contemporary legend': 'a story told as true and recent, often about a friend of a friend (the folklorists\' '
+                           'name for an "urban legend")',
+    'conspiracy theory': 'a hidden group said to be secretly behind events',
+    'folk belief': 'something held as known without evidence, often about health, luck or how the world works',
+    'prophecy or prediction': "what's going to happen",
+    'cautionary tale': 'a story told as a warning',
+    'atrocity story': "a story of shocking cruelty by the other side, told to show what they're like",
+    'trickster tale': 'a clever figure outwitting the powerful',
+    'joke formula or meme': 'a joke shape people refill with new content',
+    'proverb or catchphrase': 'a stock saying or slogan repeated as wisdom',
+    'personal testimony': 'many people telling the same kind of experience as their own',
+    'news report or shared reaction': 'many people passing on, or reacting to, the same news; not folklore in '
+                                      'itself, kept for comparison',
+}
 SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#8a8f98'}
 
 
@@ -55,7 +87,8 @@ class FolklorePage:
                         'claim': label.get('narrative') or '', 'people': g['authors'], 'posts': g['posts'],
                         'variety': g['variety'], 'variety_pct': round(100 * g['variety']),
                         'genre': label.get('genre', ''), 'genre_emoji': GENRE_EMOJI.get(label.get('genre'), '🧶'),
-                        'chapter': label.get('motif_chapter', ''), 'motif': label.get('motif', ''),
+                        'chapter': '' if label.get('motif_chapter') in (None, '', 'none') else label['motif_chapter'],
+                        'motif': label.get('motif', ''),
                         'villain': label.get('villain'), 'victim': label.get('victim'), 'hero': label.get('hero'),
                         'politics': bool(label.get('politics')), 'side': label.get('side', 'none'),
                         'side_ink': SIDE_INK.get(label.get('side'), '#8a8f98'),
@@ -68,6 +101,8 @@ class FolklorePage:
         self.template.write({
             'title': 'Folklore', 'report': report, 'cards': cards, 'copies': copies,
             'floor': floor, 'fewer': fewer, 'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
+            'genre_notes': GENRE_NOTES, 'chapter_notes': CHAPTER_NOTES,
+            'chapters_seen': sorted({c['chapter'] for c in cards if c['chapter']}),
             'preview': Config.debug,
         })
         logger.info("...%d narratives, %d copypasta groups", len(cards), len(copies))

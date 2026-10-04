@@ -37,11 +37,14 @@ INSERT_SOURCE = ('INSERT OR IGNORE INTO post (key, author, created, collected, t
                  'source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
 MENTION = re.compile(r'@[\w.-]+(?:\.[a-z]{2,})+|@\w+')
 LINK = re.compile(r'https?://(?:www\.)?([^/\s]+)\S*')
+# Bluesky shows links in a post's text shortened and without https:// ("youtu.be/aZztV...", "twitch.tv/someone")
+BARE_LINK = re.compile(r'(?<![\w@/.\[])(?:www\.)?((?:[a-z0-9-]+\.)+[a-z]{2,})/\S*', re.I)
 
 
 def scrub(text: str) -> str:
     """Other people's handles become "@someone" and links just their site, before anything is stored."""
-    return LINK.sub(r'[link: \1]', MENTION.sub('@someone', text)).strip()
+    text = LINK.sub(r'[link: \1]', MENTION.sub('@someone', text))
+    return BARE_LINK.sub(lambda m: f'[link: {m.group(1).lower()}]', text).strip()
 
 
 _news = None
@@ -142,13 +145,18 @@ def keep(record: dict) -> bool:
 
 
 def clean() -> int:
-    """Apply the current keep rules to what's already stored (after they change); returns how many were dropped."""
+    """Apply the current keep and scrub rules to what's already stored (after they change); returns how many posts
+    were dropped or rewritten."""
     con = connect()
-    drop = [(k,) for k, t in con.execute('SELECT key, text FROM post') if not english(t) or ADULT.search(t)]
+    rows = con.execute('SELECT key, text FROM post').fetchall()
+    drop = [(k,) for k, t in rows if not english(t) or ADULT.search(t)]
+    dropped = {k for k, in drop}
+    rewrite = [(scrub(t), k) for k, t in rows if k not in dropped and scrub(t) != t]
     con.executemany('DELETE FROM post WHERE key = ?', drop)
+    con.executemany('UPDATE post SET text = ? WHERE key = ?', rewrite)
     con.commit()
     con.close()
-    return len(drop)
+    return len(drop) + len(rewrite)
 
 
 def row(message: dict, pepper: str):

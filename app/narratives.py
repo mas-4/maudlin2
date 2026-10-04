@@ -44,6 +44,7 @@ SIMILARITY = 0.78  # mutual neighbours this alike (mxbai) are versions of one th
 NEIGHBOURS = 15
 MIN_AUTHORS = 5
 MIN_CHARS = 40
+MIN_WORDS = 6  # words of letters: a string of emoji and a link has none
 FEED_POSTS = 20  # posts in six hours: more is a feed or a bot
 SAMPLE = 10  # versions shown to the model
 LABEL_TOP = 150  # biggest candidate groups labeled per report
@@ -85,7 +86,7 @@ SCHEMA = {"type": "object", "properties": {
     "required": ["narrative", "retold", "genre", "motif_chapter", "motif", "villain", "victim", "hero", "politics",
                  "side"]}
 WORD = re.compile(r"[a-z0-9']+")
-NOISE = re.compile(r'@someone|\[link: [^\]]*\]')
+NOISE = re.compile(r'@someone|\[link: [^\]]*\]|(?:[a-z0-9-]+\.)+[a-z]{2,}/\S*')  # the last: links stored before Oct 4
 
 _embedder = None
 
@@ -123,12 +124,14 @@ def load(hours: float) -> list[dict]:
                        (since,)).fetchall()
     con.close()
     # Feeds and bots post far more than people: an account with more than FEED_POSTS posts in the window is left
-    # out, and so is a bare link share (a headline and its link), which is a story being passed on, not told
+    # out, and so is a bare link share (a headline and its link), which is a story being passed on, not told, and a
+    # post with hardly any words (emoji and a link: promotion, not talk)
     from app.vernacular import ADULT, english
     per_author = Counter(row[1] for row in rows)
     return [{'key': k, 'author': a, 'text': t, 'reply': r, 'source': s, 'links': json.loads(links or '[]')}
             for k, a, t, r, s, links in rows
-            if len(NOISE.sub('', t).strip()) >= MIN_CHARS and english(t) and not ADULT.search(t) and per_author[a] <= FEED_POSTS * max(1, hours / 6)
+            if len(NOISE.sub('', t).strip()) >= MIN_CHARS and len(WORD.findall(NOISE.sub(' ', t.lower()))) >= MIN_WORDS
+            and english(t) and not ADULT.search(t) and per_author[a] <= FEED_POSTS * max(1, hours / 6)
             and not ('[link:' in t and len(NOISE.sub('', t).strip()) < 120) and '[BOT]' not in t]
 
 

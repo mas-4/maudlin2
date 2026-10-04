@@ -1,3 +1,4 @@
+import pytest
 """The Bluesky and Mastodon sample: what's kept, what's scrubbed, what's skipped."""
 from app import vernacular as v
 
@@ -39,3 +40,12 @@ def test_mastodon_keeps_only_opted_in_people():
     assert v.mastodon_row({**status, 'account': {'uri': 'a', 'indexable': False}}, 'p') is None
     assert v.mastodon_row({**status, 'account': {'uri': 'a', 'indexable': True, 'bot': True}}, 'p') is None
     assert v.mastodon_row({**status, 'spoiler_text': 'politics'}, 'p') is None
+
+
+@pytest.mark.parametrize('text, scrubbed', [
+    ('Click for the full video! youtu.be/eff3Rw7KhIc', 'Click for the full video! [link: youtu.be]'),
+    ('www.twitch.tv/somebody', '[link: twitch.tv]'),  # a shortened link without https:// can name an account
+    ('rated 3.5/10, e.g. bad', 'rated 3.5/10, e.g. bad'),
+])
+def test_scrub_cuts_shortened_links_to_their_site(text, scrubbed):
+    assert v.scrub(text) == scrubbed

@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Shortened links scrubbed (privacy fix).** Bluesky writes links in a post's text shortened and without
+  https:// ("youtu.be/…", "twitch.tv/someone"), so the scrubber missed them: 4,998 stored posts kept a full link,
+  some naming an account. They now become their site like every other link, and the stored posts were rewritten.
+  Posts need six real words to be grouped: a run of emoji and a video link is promotion, and a ring of such posts
+  had reached the page as an 11-person "conspiracy theory".
 - **Folklore page floor: 10 people.** In the first full report (25,095 accounts), half of the 60 retold narratives
   had five to nine tellers, and those were mostly a handful reacting to one news item or game. The page shows
   narratives told by at least 10 people, or 1 in 2,500 accounts sampled if that's more; the report keeps the rest.

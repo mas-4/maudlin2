@@ -25,6 +25,33 @@
             <p class="poll-note">People's posts are never shown here, only the model's summary of what they share;
                 accounts are never identified. Raw posts are kept 30 days for this research and never published.</p>
         </details>
+        <details class="how-it-works" id="labels">
+            <summary>What the labels mean</summary>
+            <h3>Genre</h3>
+            <p class="poll-note">The kind of folklore the model thinks it is, from folklorists' categories:</p>
+            <ul class="label-notes">{% for g, note in genre_notes.items() %}
+                <li>{{ genre_emoji.get(g, '') }} <b>{{ g }}</b>: {{ note }}</li>{% endfor %}
+            </ul>
+            <h3>📚 Motif-Index</h3>
+            <p class="poll-note">Stith Thompson's <i>Motif-Index of Folk-Literature</i> (1932–36, revised 1955–58) is
+                the folklorists' standard catalog of the recurring elements in folktales, myths and legends from
+                around the world, sorted into lettered chapters, A to Z. The model picks the chapter a narrative fits
+                best, then names its motif in its own words (the phrase after the chapter is the model's, not an
+                entry from the index). It's a rough way to see which old story shapes today's narratives reuse: the
+                hidden ruler, the poisoned well, the fool who gets his comeuppance. Chapters on this page:</p>
+            <ul class="label-notes">{% for ch in chapters_seen %}
+                <li><b>{{ ch[0] }} · {{ ch[2:]|e }}</b>: {{ chapter_notes.get(ch[0], '') }}</li>{% endfor %}
+            </ul>
+            <h3>The story's cast</h3>
+            <p class="poll-note">Vladimir Propp's <i>Morphology of the Folktale</i> (1928) found that folktales cast
+                their characters in a few fixed parts, whatever the plot. Three of them fit a great deal of political
+                storytelling: 🦹 the <b>villain</b> who does harm, 🫂 the <b>victim</b> who suffers it, and 🦸 the
+                <b>hero</b> who fights back or sets things right. The names in each part are the model's words for
+                who the posts cast there, and a part is left out when the posts don't fill it.</p>
+            <h3>Wording and tellers</h3>
+            <p class="poll-note"><b>Told by</b> counts different accounts, not posts. <b>Wording</b> runs from 📋 the
+                same words (pasted) to 🗣️ told in many ways; folklore is usually told many ways.</p>
+        </details>
 
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter narratives">
             <span class="bar-group"><span class="bar-label">only:</span>
@@ -50,12 +77,13 @@
                                 <span class="meter-end" title="told many ways">🗣️</span></span>
                         </div>
                     </div>
-                    {% if c.motif or c.chapter %}<p class="narrative-motif" title="Thompson's Motif-Index chapter, and the motif the model sees">📚 {{ c.chapter|e }}{% if c.motif %}: <i>{{ c.motif|e }}</i>{% endif %}</p>{% endif %}
+                    {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif %}: <i>{{ c.motif|e }}</i>{% endif %}</p>{% endif %}
                     {% if c.villain or c.victim or c.hero %}
-                        <p class="narrative-roles">
-                            {% if c.villain %}<span class="role role-villain" title="Cast as the villain">🦹 {{ c.villain|e }}</span>{% endif %}
-                            {% if c.victim %}<span class="role role-victim" title="Cast as the victim">🫂 {{ c.victim|e }}</span>{% endif %}
-                            {% if c.hero %}<span class="role role-hero" title="Cast as the hero">🦸 {{ c.hero|e }}</span>{% endif %}
+                        <p class="narrative-roles" title="Who the story casts in each part, in the model's words">
+                            <span class="roles-lead">the story's cast:</span>
+                            {% if c.villain %}<span class="role role-villain"><b class="role-name">🦹 villain</b> {{ c.villain|e }}</span>{% endif %}
+                            {% if c.victim %}<span class="role role-victim"><b class="role-name">🫂 victim</b> {{ c.victim|e }}</span>{% endif %}
+                            {% if c.hero %}<span class="role role-hero"><b class="role-name">🦸 hero</b> {{ c.hero|e }}</span>{% endif %}
                         </p>
                     {% endif %}
                     {% for a in c.articles %}
@@ -79,6 +107,10 @@
             {% if preview %}<ul class="court-headlines">{% for c in copies %}<li>{{ c.people }} accounts: {{ c.example|e }}</li>{% endfor %}</ul>{% endif %}
         {% endif %}
         <script>
+            // The motif line's link opens the label guide it points to
+            document.addEventListener('click', (ev) => {
+                if (ev.target.closest('.open-labels')) document.getElementById('labels').open = true;
+            });
             (function () {
                 const box = document.querySelector('.narrative-cards');
                 const all = [...box.querySelectorAll('.narrative')];

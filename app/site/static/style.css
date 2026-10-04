@@ -3402,6 +3402,27 @@ h1 {
     max-width: 100%;
 }
 
+.role-name {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-right: 3px;
+}
+
+.roles-lead {
+    width: 100%;
+    font-size: 0.85em;
+    color: #555;
+}
+
+.label-notes {
+    margin: 0.3em 0 0.8em;
+    padding-left: 1.2em;
+    line-height: 1.5;
+}
+
+.narrative-motif a { text-decoration: none; }
+
 .role-villain { background: #ffe3e7; }
 .role-victim { background: #e3ebff; }
 .role-hero { background: #d9f7f2; }
