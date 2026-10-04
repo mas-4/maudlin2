@@ -29,7 +29,7 @@ from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'folklore.html', 'emotions.html',
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'folklore.html', 'rumors.html', 'emotions.html',
              'archive.html', 'feed.xml', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -409,7 +409,8 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         {'authors': 12, 'posts': 14, 'variety': 0.9, 'kind': 'told', 'examples': ['A <secret> post by someone'],
          'label': {'retold': True, 'narrative': 'They are <keeping> him alive', 'genre': 'folk belief',
                    'motif_chapter': 'D Magic', 'motif': 'the kept king', 'villain': 'doctors', 'victim': '',
-                   'hero': '', 'politics': True, 'side': 'left'},
+                   'hero': '', 'politics': True, 'side': 'left', 'rumor_class': 'dread', 'conspiracy': 'event',
+                   'family': 'celebrities'},
          'story': {'label': 'Trump health', 'relation': 'same issue'}, 'voters': []},
         {'authors': 6, 'posts': 6, 'variety': 0.8, 'kind': 'told', 'examples': ['few'],
          'label': {'retold': True, 'narrative': 'Only six people say this'}},
@@ -422,6 +423,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         html = (tmp_path / 'folklore.html').read_text()
         assert 'They are &lt;keeping&gt; him alive' in html and 'Same issue as: Trump health' in html
         assert 'These are rumors, not facts.' in html
+        assert '😨 dread rumor' in html and '🕵️ event conspiracy' in html and 'data-rumor="dread"' in html
         # Not a bare "left"/"right" (reads as "correct"); the model's guess only in previews
         assert ('🏛️ left-wing (model' in html) is shows_posts
         assert 'Only six people' not in html and '1 more told by fewer' in html
@@ -473,3 +475,22 @@ def test_folklore_withheld_claims_never_show(monkeypatch, tmp_path):
     monkeypatch.setattr(Config, 'debug', False)
     pn.FolklorePage().generate()
     assert 'A misread claim' not in (tmp_path / 'folklore.html').read_text()
+
+
+def test_rumors_page_lists_labeled_fact_checks(monkeypatch, tmp_path):
+    from app.site import page_rumors as pr
+    items = [{'url': 'https://snopes.example/1', 'title': 'Did a <bison> herd save a hiker?', 'source': 'Snopes',
+              'published': '2026-10-03T12:00:00+00:00', 'summary': ''},
+             {'url': 'https://snopes.example/2', 'title': 'Unlabeled', 'source': 'Snopes',
+              'published': '2026-10-03T12:00:00+00:00', 'summary': ''}]
+    labels = {'https://snopes.example/1': {'claim': 'A bison herd protected a hiker', 'genre': 'contemporary legend',
+                                           'rumor_class': 'wish', 'conspiracy': 'not a conspiracy',
+                                           'family': 'animals and nature'}}
+    monkeypatch.setattr(pr.factchecks, '_items', lambda days: items)
+    monkeypatch.setattr(pr.factchecks, 'label_all', lambda items: labels)
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    pr.RumorsPage().generate()
+    html = (tmp_path / 'rumors.html').read_text()
+    assert 'Did a &lt;bison&gt; herd save a hiker?' in html and '🌈 wish rumor' in html
+    assert 'conspiracy</span>' not in html and 'Unlabeled' not in html  # no plot claimed; not labeled yet
+    assert 'These are rumors, not facts.' in html

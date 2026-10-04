@@ -7,6 +7,8 @@ TRACKERS = [
      'about': "This term's cases: who's covering which, from which side, at which stage."},
     {'href': 'folklore.html', 'emoji': '🧶', 'name': 'Folklore (work in progress)',
      'about': 'Rumors, legends and sayings people retell in their own words, from Bluesky and Mastodon.'},
+    {'href': 'rumors.html', 'emoji': '🔎', 'name': 'Rumors (work in progress)',
+     'about': "Rumors the fact-checkers examined, read for their shape: what drives them, what plot they claim."},
     {'href': 'emotions.html', 'emoji': '😱', 'name': 'Emotions',
      'about': "The feelings each outlet's headlines are likely to stir."},
     {'href': 'archive.html', 'emoji': '🗄️', 'name': 'Archive',

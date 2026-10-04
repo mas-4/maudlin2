@@ -70,19 +70,22 @@ staged"), or "" if it checks no single claim
 genre: what kind of story the claim is, one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index the claim fits best, one of {chapters}
 motif: the specific motif in a few words of your own, describing this claim, or ""
+{shapes}
 villain: who the claim casts as the villain, or ""
 victim: who the claim casts as the victim, or ""
 politics: true if it is about politics or public life"""
 
 
 def label_schema() -> dict:
+    from app.analysis.rumor_shapes import SCHEMA_FIELDS
     from app.narratives import GENRES, MOTIF_CHAPTERS
     return {"type": "object", "properties": {
         "claim": {"type": "string", "maxLength": 240},
         "genre": {"type": "string", "enum": GENRES}, "motif_chapter": {"type": "string", "enum": MOTIF_CHAPTERS},
         "motif": {"type": "string", "maxLength": 80}, "villain": {"type": "string", "maxLength": 120},
-        "victim": {"type": "string", "maxLength": 120}, "politics": {"type": "boolean"}},
-        "required": ["claim", "genre", "motif_chapter", "motif", "villain", "victim", "politics"]}
+        "victim": {"type": "string", "maxLength": 120}, "politics": {"type": "boolean"},
+        **SCHEMA_FIELDS},
+        "required": ["claim", *SCHEMA_FIELDS, "genre", "motif_chapter", "motif", "villain", "victim", "politics"]}
 
 
 def load_labels() -> dict:
@@ -97,17 +100,20 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
     """Label the fact-checks from the last LABEL_DAYS that have no labels yet (at most `limit` model calls); returns
     every label, url -> labels."""
     from app.analysis import llm
+    from app.analysis.rumor_shapes import prompt_fields
     from app.narratives import GENRES, MOTIF_CHAPTERS
     labels = load_labels()
     items = _items(LABEL_DAYS) if items is None else items
-    todo = [i for i in items if i['url'] not in labels][:limit]
+    fields = set(label_schema()['required'])
+    todo = [i for i in items if not fields <= set(labels.get(i['url'], {}))][:limit]  # new, or labeled before a field
+                                                                                     # was added
     if not todo or llm.backend() is None:
         return labels
     schema = label_schema()
     for item in todo:
         answer = llm.complete_json(LABEL_PROMPT.format(
             source=item['source'], title=item['title'], summary=(item.get('summary') or '')[:400],
-            genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS)),
+            genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS), shapes=prompt_fields()),
             schema, max_tokens=300)
         if answer:
             labels[item['url']] = {**answer, 'model': llm.model()}

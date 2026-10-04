@@ -72,6 +72,7 @@ retold: true if most of the posts retell that one narrative, false if they only 
 genre: one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index it fits best, one of {chapters}
 motif: the specific motif in a few words of your own, describing these posts, or ""
+{shapes}
 For the parts below, take the point of view of the people telling the narrative: how THEY cast it, whether or not
 it's true. Many stories have no villain, no victim or no hero; say so rather than filling a part.
 has_villain: does the story, as its tellers tell it, cast someone as the villain who does harm?
@@ -82,14 +83,17 @@ has_hero: does it cast someone as the hero or rescuer who sets things right?
 hero: who, or "" if not
 politics: true if it is about politics or public life
 side: whose politics the people telling it carry: "left", "right", "both" or "none" (no politics)"""
+from app.analysis.rumor_shapes import SCHEMA_FIELDS as SHAPE_FIELDS, prompt_fields  # noqa: E402
+
 SCHEMA = {"type": "object", "properties": {
     "narrative": {"type": "string"}, "retold": {"type": "boolean"}, "genre": {"type": "string", "enum": GENRES},
     "motif_chapter": {"type": "string", "enum": MOTIF_CHAPTERS}, "motif": {"type": "string"},
     "has_villain": {"type": "boolean"}, "villain": {"type": "string"},
     "has_victim": {"type": "boolean"}, "victim": {"type": "string"},
     "has_hero": {"type": "boolean"}, "hero": {"type": "string"},
-    "politics": {"type": "boolean"}, "side": {"type": "string", "enum": ['left', 'right', 'both', 'none']}},
-    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", "has_villain", "villain", "has_victim",
+    "politics": {"type": "boolean"}, "side": {"type": "string", "enum": ['left', 'right', 'both', 'none']},
+    **SHAPE_FIELDS},
+    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", *SHAPE_FIELDS, "has_villain", "villain", "has_victim",
                  "victim", "has_hero", "hero", "politics", "side"]}
 # A narrative counts only if at least this share of its sampled posts are about its claim (telling it or arguing
 # over it alike). Oct 4: a group of trans people talking about their own gender was labeled with an anti-trans claim
@@ -228,8 +232,9 @@ def label(group: dict, cache: dict) -> dict | None:
     key = hashlib.sha1((PROMPT + json.dumps(shown)).encode()).hexdigest()
     if key not in cache:
         answer = llm.complete_json(PROMPT.format(posts='\n'.join(f'- {t[:280]}' for t in shown),
-                                                 genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS)),
-                                   SCHEMA, max_tokens=500)
+                                                 genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS),
+                                                 shapes=prompt_fields()),
+                                   SCHEMA, max_tokens=600)
         if not answer:
             return None
         for part in ('villain', 'victim', 'hero'):  # a part the model says the story lacks stays empty

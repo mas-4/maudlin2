@@ -5,6 +5,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Rumor shapes: three open label sets, and a Rumors page.** Thompson's index fits folktales, not modern political
+  rumor: in a blind test (151 claims: folklore narratives and fact-checked claims; up to 16 candidate entries each
+  by meaning), the local 8B model picked a motif for 30 of its first 53 claims and the user accepted 1 of 6 checked;
+  a strong model (Claude, in-session) picked 5 of 151, and the user accepted both checked. Specific motifs stay off
+  the site. Instead every narrative and fact-checked claim gets three short labels from the study of rumor,
+  concepts rather than anyone's text: rumor class by what drives it (wish, dread, wedge; Knapp 1944, DiFonzo and
+  Bordia 2007), conspiracy scope (event, systemic, superconspiracy; Barkun 2003), and a subject family (our own
+  list, after the chapters of urban-legend collections). The new Rumors tracker lists the fact-checkers' recent
+  work with these labels, filterable; verdicts are always the fact-checkers' own, behind their links. Survey of
+  other schemes (SemEval 2025 Task 10 narratives and roles, UK election narratives, EIP, Brunvand, ATU, Berezkin,
+  EUvsDisinfo, NewsGuard and more, with their licenses) on #145.
 - **Narrative labels from one point of view, and only when most posts are about it.** The labeler now names the claim
   most posts share (one or two posts' claim isn't the narrative), says for each part (villain, victim, hero)
   whether the story has one before naming it (it used to fill every part: "hero: the Bills"), and casts parts and

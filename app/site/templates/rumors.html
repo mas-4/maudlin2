@@ -1,0 +1,67 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>🔎 Rumors</h2>
+    <div class="rumor-warning" role="note">
+        <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>
+        <p>Each entry is a rumor or claim that a fact-checker examined in the last {{ days }} days. <b>The verdict is the
+            fact-checker's</b>: follow the link to read it. The labels (genre, what drives the rumor, what kind of
+            conspiracy it claims, its subject) are a small language model's reading of <b>the shape of the story as
+            people tell it</b>, not whether it's true.</p>
+    </div>
+    <p class="poll-note">{{ cards|length }} fact-checked rumors from PolitiFact, FactCheck.org, Snopes, Lead Stories,
+        Full Fact, NewsGuard and Science Feedback. The rumor and conspiracy labels come from the study of rumor:
+        what drives it (Knapp, 1944; DiFonzo and Bordia, 2007) and the scope of the plot it claims (Barkun, 2003);
+        <a href="folklore.html#labels">more on the labels</a>. People retelling stories in their own words are on
+        <a href="folklore.html">Folklore</a>.</p>
+    {% if cards %}
+        <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter rumors">
+            {% if class_counts %}<span class="bar-group"><span class="bar-label">rumor:</span>
+                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k }}" title="{{ rumor_classes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+            {% if scope_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">conspiracy:</span>
+                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k }}" title="{{ conspiracy_scopes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">subject:</span>
+                {% for k, n in family_counts %}<button type="button" data-family="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">checker:</span>
+                {% for k, n in source_counts %}<button type="button" data-source="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+        </div>
+        <div class="court-cards narrative-cards">
+            {% for c in cards %}
+                <div class="story court-story narrative" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}" data-family="{{ c.family or '' }}" data-source="{{ c.source|e }}">
+                    <p class="court-when">{{ c.source|e }} · {{ c.date }}</p>
+                    <h4><a href="{{ c.url|e }}">{{ c.title|e }}</a></h4>
+                    <p class="narrative-claim" title="The claim checked, in the model's words">“{{ c.claim|e }}”</p>
+                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}</p>
+                    {% if c.rumor_class or c.conspiracy or c.family %}
+                        <p class="rumor-shape">
+                            {% if c.rumor_class %}<span class="shape-chip">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor</span>{% endif %}
+                            {% if c.conspiracy %}<span class="shape-chip">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy</span>{% endif %}
+                            {% if c.family %}<span class="shape-family">{{ c.family|e }}</span>{% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <script>
+            (function () {
+                const box = document.querySelector('.narrative-cards');
+                const all = [...box.querySelectorAll('.narrative')];
+                const repack = packColumns(box, all, 320);
+                const pick = {rumor: null, scope: null, family: null, source: null};  // one per row, tap again to clear
+                document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
+                    const b = ev.target.closest('button');
+                    if (!b) return;
+                    const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
+                    pick[key] = pick[key] === b.dataset[key] ? null : b.dataset[key];
+                    document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
+                    repack(all.filter((c) => Object.entries(pick).every(([k, v]) => !v || c.dataset[k] === v)));
+                });
+            })();
+        </script>
+    {% else %}
+        <p class="poll-note">No fact-checks labeled yet.</p>
+    {% endif %}
+{% endblock %}

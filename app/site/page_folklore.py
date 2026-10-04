@@ -11,6 +11,7 @@ import json
 import os
 from collections import Counter
 
+from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
 
@@ -114,6 +115,9 @@ class FolklorePage:
                         'side_from': 'shares' if g.get('shared_side') else 'model',
                         'side_ink': SIDE_INK.get(g.get('shared_side') or label.get('side'), '#8a8f98'),
                         'story_shape': label.get('genre') not in NOT_STORIES,
+                        'rumor_class': label.get('rumor_class') if label.get('rumor_class') != 'other' else None,
+                        'conspiracy': label.get('conspiracy') if label.get('conspiracy') != 'not a conspiracy' else None,
+                        'family': label.get('family') if label.get('family') != 'none' else None,
                         'story': g.get('story'), 'articles': g.get('articles') or [],
                         'factchecks': g.get('factchecks') or [],
                         'examples': g['examples'][:4] if Config.debug else [],
@@ -125,6 +129,9 @@ class FolklorePage:
             'title': 'Folklore', 'report': report, 'cards': cards, 'copies': copies,
             'floor': floor, 'fewer': fewer, 'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
             'genre_notes': GENRE_NOTES, 'chapter_notes': CHAPTER_NOTES,
+            'rumor_classes': RUMOR_CLASSES, 'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
+            'class_counts': Counter(c['rumor_class'] for c in cards if c['rumor_class']).most_common(),
+            'scope_counts': Counter(c['conspiracy'] for c in cards if c['conspiracy']).most_common(),
             'chapters_seen': sorted({c['chapter'] for c in cards if c['chapter']}),
             'preview': Config.debug,
         })

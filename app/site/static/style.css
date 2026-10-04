@@ -320,7 +320,9 @@ blockquote::before, blockquote::after, q::before, q::after {
 }
 
 .meter-end-word {
-    font-size: 0.75em;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 0.8em;
     color: #555;
     white-space: nowrap;
 }
@@ -3448,6 +3450,30 @@ h1 {
 
 .story-checks li { margin: 0.2em 0; }
 .story-checks a { color: inherit; }
+
+.rumor-shape {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin: 0.35em 0;
+    font-size: 0.85em;
+}
+
+.shape-chip {
+    padding: 1px 8px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    background: #fff8e1;
+    font-weight: 700;
+}
+
+.shape-family { color: #555; }
+
+.narrative-claim {
+    margin: 0.3em 0;
+    font-style: italic;
+}
 
 .label-notes {
     margin: 0.3em 0 0.8em;

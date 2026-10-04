@@ -52,6 +52,17 @@
             <ul class="label-notes">{% for ch in chapters_seen %}
                 <li><b>{{ ch[0] }} · {{ ch[2:]|e }}</b>: {{ chapter_notes.get(ch[0], '') }}</li>{% endfor %}
             </ul>
+            <h3>Rumor, conspiracy and subject</h3>
+            <p class="poll-note">Three short label sets from the study of rumor, read by the model from each story as
+                its tellers tell it, never as a judgment of whether it's true:</p>
+            <ul class="label-notes">
+                <li><b>Rumor</b>, by what drives it (Robert Knapp, 1944; Nicholas DiFonzo and Prashant Bordia, 2007):
+                    {% for k, note in rumor_classes.items() if k != 'other' %}{{ shape_emoji.get(k, '') }} <b>{{ k }}</b>, {{ note }}{% if not loop.last %}; {% endif %}{% endfor %}.</li>
+                <li><b>Conspiracy</b>, by the scope of the secret plot it claims (Michael Barkun, 2003):
+                    {% for k, note in conspiracy_scopes.items() if k != 'not a conspiracy' %}{{ shape_emoji.get(k, '') }} <b>{{ k }}</b>, {{ note }}{% if not loop.last %}; {% endif %}{% endfor %}.</li>
+                <li><b>Subject</b>: a broad family (crime and danger, health, celebrities, government…), our own list,
+                    after the way urban-legend collections such as Jan Harold Brunvand's sort legends into chapters.</li>
+            </ul>
             <h3>The story's cast</h3>
             <p class="poll-note">Vladimir Propp's <i>Morphology of the Folktale</i> (1928) found that folktales cast
                 their characters in a few fixed parts, whatever the plot. Three of them fit a great deal of political
@@ -67,6 +78,12 @@
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter narratives">
             <span class="bar-group"><span class="bar-label">only:</span>
                 <button type="button" data-filter="politics">🏛️ politics</button></span>
+            {% if class_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">rumor:</span>
+                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k }}" title="{{ rumor_classes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+            {% if scope_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">conspiracy:</span>
+                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k }}" title="{{ conspiracy_scopes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">genre:</span>
                 {% for genre, n in genres %}<button type="button" data-genre="{{ genre|e }}">{{ genre_emoji.get(genre, '🧶') }} {{ genre|e }} <b>{{ n }}</b></button>{% endfor %}</span>
@@ -74,15 +91,21 @@
 
         <div class="court-cards narrative-cards">
             {% for c in cards %}
-                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}">
+                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}">
                     <h4>{{ c.claim|e }}</h4>
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
+                    {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
+                        <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
+                            {% if c.rumor_class %}<span class="shape-chip">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor</span>{% endif %}
+                            {% if c.conspiracy %}<span class="shape-chip">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy</span>{% endif %}
+                            {% if c.family %}<span class="shape-family">{{ c.family|e }}</span>{% endif %}
+                        </p>
+                    {% endif %}
                     <div class="meters">
                         <div class="meter" title="{{ c.people }} different people, {{ c.posts }} posts">
                             <span class="meter-label">told by {{ c.people }} people</span>
                         </div>
                         <div class="meter" title="How much their posts share the same words: on average {{ 100 - c.variety_pct }}% of the words in one version are in another. Folklore is retold in people's own words; copypasta is pasted">
-                            <span class="meter-label">how they say it: {% if c.variety >= 0.5 %}each in their own words{% else %}mostly the same words, copied{% endif %}</span>
                             <span class="meter-bar"><span class="meter-end" title="the same words, copied">📋</span><span class="meter-end-word">copied</span>
                                 <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct }}%"></span></span>
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
@@ -131,16 +154,18 @@
                 const box = document.querySelector('.narrative-cards');
                 const all = [...box.querySelectorAll('.narrative')];
                 const repack = packColumns(box, all, 360);
-                let politics = false, genre = null;
+                let politics = false;
+                const pick = {genre: null, rumor: null, scope: null};  // one choice per row, tapped again to clear
                 document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
                     const b = ev.target.closest('button');
                     if (!b) return;
                     if (b.dataset.filter) politics = b.classList.toggle('active');
                     else {
-                        genre = genre === b.dataset.genre ? null : b.dataset.genre;
-                        document.querySelectorAll('.narrative-tools button[data-genre]').forEach((x) => x.classList.toggle('active', x.dataset.genre === genre));
+                        const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
+                        pick[key] = pick[key] === b.dataset[key] ? null : b.dataset[key];
+                        document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
                     }
-                    repack(all.filter((c) => (!politics || c.dataset.politics) && (!genre || c.dataset.genre === genre)));
+                    repack(all.filter((c) => (!politics || c.dataset.politics) && Object.entries(pick).every(([k, v]) => !v || c.dataset[k] === v)));
                 });
             })();
         </script>
