@@ -22,14 +22,15 @@ from app.models import engine
 from app.site import page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
 from app.site.page_court import CourtPage
+from app.site.page_trackers import TRACKERS
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
-NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'court.html', 'archive.html',
-             'glossary.html']
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'emotions.html', 'archive.html',
+             'feed.xml', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
@@ -53,26 +54,24 @@ AB_TEST = {'url': 'https://slate.com/a.html', 'agency': 'Slate', 'bias': -2, 'st
 
 
 COURT_ROW = {'title': 'Justices weigh <Suncor> climate suit', 'first': dt(2026, 10, 5, 14), 'agency': 'Fox News',
-             'bias': 2, 'rated': True, 'url': 'https://example.com/a?b=1&c=2', 'stage': 'argument',
-             'issue': 'climate suit', 'side': 'right', 'via': 'party', 'tags': ['climate suit'],
-             'tag_links': [{'tag': 'climate suit', 'docket': '25-170'}]}
+             'bias': 2, 'rated': True, 'url': 'https://example.com/a?b=1&c=2', 'stage': 'argument', 'side': 'right',
+             'topics': ['climate'], 'cases': ['25-170'], 'named': '25-170', 'event_score': -1.0, 'afinn': -2.0,
+             'vader_compound': -0.4, 'loaded_score': 1.5, 'emotion_ranks': 'anger,fear', 'country': 'United States'}
+LEFT_ROW = {**COURT_ROW, 'title': 'Boulder "fights back" for its climate', 'agency': 'CNN', 'bias': -1, 'side': 'left',
+            'loaded_score': 0.5}
+SUNCOR = {'docket': '25-170', 'name': 'Suncor Energy v. Commissioners of Boulder County', 'raw': 'SUNCOR V. BOULDER',
+          'granted': '2/23/26', 'argued': '10/5/26', 'from': 'SC-Colo.', 'gloss': 'Boulder <climate> suit',
+          'question': 'Whether federal law precludes state-law claims', 'outlets': 2,
+          'sides': {'right': 1, 'left': 1}, 'stages': {'argument': 2}, 'headlines': [COURT_ROW, LEFT_ROW]}
 COURT = {'term': 2026, 'source': 'https://www.supremecourt.gov/orders/26grantednotedlist.pdf', 'window_days': 14,
-         'total': 2,
-         'covered': [{'docket': '25-170', 'name': 'Suncor Energy v. Commissioners of Boulder County', 'raw': 'X',
-                      'granted': '2/23/26', 'argued': '10/5/26', 'outlets': 1, 'sides': {'right': 1},
-                      'stages': {'argument': 1}, 'headlines': [COURT_ROW]}],
-         'cases': [{'docket': '25-170', 'name': 'Suncor Energy v. Commissioners of Boulder County', 'raw': 'X',
-                    'granted': '2/23/26', 'argued': '10/5/26', 'outlets': 1, 'sides': {'right': 1},
-                    'stages': {'argument': 1}, 'headlines': [COURT_ROW]},
-                   {'docket': '25-1311', 'name': 'Apple Inc. v. Epic Games, Inc.', 'raw': 'X', 'granted': '6/1/26',
-                    'argued': None, 'outlets': 0, 'sides': {}, 'stages': {}, 'headlines': []}],
-         'other': {'outlets': 1, 'sides': {'left': 1}, 'stages': {'the justices': 1},
-                   'tags': [('case-25-170', 'climate suit', 2), ('<guns>', '<Guns>', 2)],
-                   'headlines': [{**COURT_ROW, 'title': 'Alito speaks', 'agency': 'CNN', 'bias': -1,
-                                  'stage': 'the justices', 'side': 'left', 'via': None,
-                                  'tag_links': [{'tag': 'climate suit', 'docket': '25-170'},
-                                                {'tag': '<Guns>', 'docket': None}],
-                                  'tag_keys': ['<guns>', 'case-25-170']}]}}
+         'total': 3, 'covered': [SUNCOR],
+         'cases': [SUNCOR, {'docket': '25-1311', 'name': 'Apple Inc. v. Epic Games, Inc.', 'raw': 'X', 'granted': '6/1/26',
+                            'argued': None, 'from': 'USCA-9', 'gloss': 'Apple contempt fight', 'question': 'Q',
+                            'outlets': 0, 'sides': {}, 'stages': {}, 'headlines': []}],
+         'other': {'outlets': 1, 'sides': {'left': 1}, 'stages': {'the justices': 1}, 'topics': [('retirement', 1)],
+                   'headlines': [{**LEFT_ROW, 'title': 'Alito <speaks>', 'stage': 'the justices',
+                                  'topics': ['retirement'], 'cases': [], 'named': None}]},
+         'glosses': {}}
 
 
 def refuse_connection(*args, **kwargs):
@@ -270,10 +269,13 @@ def test_table_page_has_no_front_page_sections(table):
 def test_table_rows_file_is_linked(site):
     assert ph.TABLE_FILE in site['html']['headlines.html']
     import json
-    rows = json.loads((site['build'] / ph.TABLE_FILE).read_text())
-    assert isinstance(rows, list)
+    packed = json.loads((site['build'] / ph.TABLE_FILE).read_text())
+    assert packed['version'] == 1 and len(packed['columns']) == len(packed['rows'][0]) if packed['rows'] else True
+    rows = ph.unpack_table(packed)
     if rows:
         assert {'agency', 'bias', 'url', 'title', 'buzz', 'story'} <= set(rows[0])
+        assert all(r['url'].startswith('http') for r in rows)
+    assert 'unpackTable' in site['html']['headlines.html']  # the page unpacks it, and the download saves named rows
 # </editor-fold>
 
 
@@ -348,20 +350,28 @@ def test_edits_page_shows_ab_tests_escaped(site):
 
 def test_court_page(site):
     court = site['soup']['court.html']
-    cards = court.select('.court-case')
-    assert len(cards) == 1
-    assert cards[0].select_one('h4 a')['href'].endswith('/25-170.html')
-    assert 'argued Oct 5' in cards[0].get_text() or 'to be argued Oct 5' in cards[0].get_text()
-    headline = cards[0].select_one('.court-headlines a')
-    assert headline.get_text() == 'Justices weigh <Suncor> climate suit'  # escaped, not markup
-    assert headline['href'] == 'https://example.com/a?b=1&c=2'
-    rows = court.select('.court-term tbody tr')
-    assert [r.select_one('a').get_text() for r in rows][-1] == 'Apple Inc. v. Epic Games, Inc.'  # unset date last
-    assert 'none yet' in rows[-1].get_text()
-    assert 'Alito speaks' in court.get_text()
-    other = court.select_one('#court-other li')
-    assert other['data-tags'] == '<guns>|case-25-170'
-    assert other.select_one('a.court-tag')['href'] == '#case-25-170'  # a docket case's tag links to its card
-    assert other.select_one('button.court-tag').get_text() == '<Guns>'
-    assert [b['data-tag'] for b in court.select('.court-tag-filter button')] == ['case-25-170', '<guns>']
-    assert court.select_one('#case-25-170')
+    [card] = court.select('.court-cards #case-25-170')
+    assert card.select_one('h4').get_text() == 'Boulder <climate> suit'  # escaped gloss as the title
+    assert card.select_one('.court-meta a')['href'].endswith('/25-170.html')
+    assert 'argued Oct 5' in card.get_text()
+    left, right = card.select('.court-frame')
+    assert 'court-frame-left' in left['class'] and 'CNN' in left.get_text()
+    assert right.select_one('.court-frame-title').get_text() == '“Justices weigh <Suncor> climate suit”'
+    assert right['href'] == 'https://example.com/a?b=1&c=2'
+    assert card.select_one('.quote-chip').get_text().startswith('“fights back”')
+    assert len(card.select('.story-outlets .storylink')) == 2
+    assert len(card.select('.meter')) == 3  # lean, mood, spice
+    [topic] = court.select('.court-topic')
+    assert topic.select_one('h4').get_text() == 'retirement' and 'Alito <speaks>' in topic.get_text()
+    covered, quiet = court.select('.court-quiet')  # the term's cases, by argument date (no date last)
+    assert covered['href'] == '#case-25-170' and 'covered' in covered['class']
+    assert covered.select_one('.court-gloss-tag').get_text() == 'Boulder <climate> suit'
+    assert 'Apple contempt fight' in quiet.get_text() and quiet['href'].endswith('/25-1311.html')
+    assert 'no coverage' in quiet.get_text()
+    assert [a['href'] for a in court.select('.page-toc a')] == ['#court-cases', '#court-singles', '#court-term']
+
+
+def test_nav_trackers_menu(site):
+    menu = site['soup']['edits.html'].select_one('nav .nav-menu')
+    assert menu.select_one('summary').get_text(strip=True) == 'trackers'
+    assert [a['href'] for a in menu.select('.nav-menu-list a')] == [t['href'] for t in TRACKERS]

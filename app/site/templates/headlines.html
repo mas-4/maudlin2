@@ -40,13 +40,15 @@
         <div class="table-filters cloud-sort" role="group" aria-label="Arrange the cloud">
             <button data-cloud="size" class="active">📏 biggest first</button>
             <button data-cloud="side">⚖️ left to right</button>
-            <button data-cloud="spice">🌶️ plain to spicy</button>
+            <button data-cloud="spice" title="{{ spicy_tip }}">🌶️ plain to spicy</button>
         </div>
         <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Poke (click or tap) a word to see how outlets are using it, and the feeling its headlines stir.">
             <span class="key-part"><span class="key-big">BIGGER</span> <span>= more outlets</span></span>
             <span class="key-part"><span>color = who's saying it</span>
                 <span><b style="color: #1a5cff">left</b>, <b style="color: #e0102e">right</b>,
                 <span class="balanced-text">both</span>, or <b style="color: #8a8f98">center</b></span></span>
+            <span class="key-part"><span>paper = how <span class="spicy-tip" tabindex="0" title="{{ spicy_tip }}">spicy</span></span>
+                <span class="key-paper" aria-hidden="true"><span>🍞</span><span class="key-paper-swatch"></span><span>🌶️</span></span></span>
             <span class="key-part key-click"><span class="key-point" aria-hidden="true">👆</span> poke a word</span></figcaption>
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
@@ -429,7 +431,7 @@
                         wiggle.appendChild(e);
                     });
                 }
-                paperCutout(wiggle, d.px);
+                paperCutout(wiggle, d.px, d.spice);
                 // Bring the word and its paper to the top of the pile while it's pointed at or focused (SVG stacks by
                 // document order, so it moves to the end)
                 const surface = () => { if (svg.lastElementChild !== g) svg.appendChild(g); };
@@ -448,10 +450,22 @@
         }
 
         // A scrap of paper behind each word, cut out with scissors, ransom-note style: a jagged outline a little bigger
-        // than the word (and its emoji), on white or a pale tint, with a hard shadow. It sits inside the swaying layer,
-        // so it moves and tilts with its word
-        const PAPERS = ['#ffffff', '#ffffff', '#ffffff', '#fff6cc', '#dcfaf5', '#ffe1f0', '#ece4ff'];
-        function paperCutout(layer, px) {
+        // than the word (and its emoji), with a hard shadow. It sits inside the swaying layer, so it moves and tilts
+        // with its word. Its color is how spicy the word's headlines are (loaded wording, 0 plain to 2 loaded): white
+        // for plain, through cream, to a hot peach for the spiciest; pale enough that the lean color stays readable
+        const PAPER_STOPS = [[0.25, [255, 255, 255]], [0.55, [255, 220, 120]], [0.9, [255, 160, 128]]];  // as .key-paper-swatch
+        function paperColor(spice) {
+            const v = Math.max(PAPER_STOPS[0][0], Math.min(PAPER_STOPS[PAPER_STOPS.length - 1][0], spice || 0));
+            for (let i = 1; i < PAPER_STOPS.length; i++) {
+                const [a, ca] = PAPER_STOPS[i - 1], [b, cb] = PAPER_STOPS[i];
+                if (v <= b) {
+                    const t = (v - a) / (b - a);
+                    return `rgb(${ca.map((c, k) => Math.round(c + (cb[k] - c) * t)).join(',')})`;
+                }
+            }
+            return `rgb(${PAPER_STOPS[PAPER_STOPS.length - 1][1].join(',')})`;
+        }
+        function paperCutout(layer, px, spice) {
             const ns = 'http://www.w3.org/2000/svg';
             const b = layer.getBBox();
             const pad = Math.max(3, px * 0.12), jag = Math.max(1.5, px * 0.07);
@@ -472,7 +486,7 @@
             const paper = document.createElementNS(ns, 'path');
             paper.setAttribute('d', d);
             paper.setAttribute('class', 'cloud-paper');
-            paper.setAttribute('fill', PAPERS[Math.floor(Math.random() * PAPERS.length)]);
+            paper.setAttribute('fill', paperColor(spice));
             layer.prepend(shadow, paper);
         }
 
@@ -773,12 +787,14 @@
         </div>
     {% endif %}
     <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
-    <div class="table-filters story-sort" role="group" aria-label="Sort stories">
-        <span>sort:</span>
+    <div class="table-filters story-sort" role="group" aria-label="Sort and filter stories">
+        <span class="bar-label">sort:</span>
         <button data-sort="newest" class="active" title="Most recently broken first">✨ newest</button>
         <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
-        <button data-sort="spiciest" title="Most loaded wording first">🌶️ spiciest</button>
+        <button data-sort="spiciest" title="Spiciest first. {{ spicy_tip }}">🌶️ spiciest</button>
         <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
+        <span class="bar-divider" aria-hidden="true"></span>
+        <span class="bar-label">only:</span>
         {% if blindspots %}<button data-filter="blindspot" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
         {% if show_coverage %}<button data-filter="shows" class="toggle" title="Only stories the news podcasts, newsletters and streams are talking about">🎙️ in podcasts</button>{% endif %}
         {% if clusters|selectattr('curators')|list %}<button data-filter="picked" class="toggle" title="Only stories an aggregator (Google News, Drudge Report, RealClearPolitics, Political Wire) is linking to now">📌 aggregated</button>{% endif %}
@@ -832,14 +848,11 @@
                             <span class="meter-end" title="upbeat">☀️</span></span>
                     </div>
                 </div>
-                <p>{{ agency_lists[cluster['cluster']]|safe }}</p>
+                <div class="story-extras">
                 {% if cluster['quotes'] %}
                     <p class="story-quotes"><span class="story-quotes-label" title="Phrases the outlets on this story put in quotation marks">💬 quoted</span>
                         {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %})">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
                     </p>
-                {% endif %}
-                {% if cluster['curators'] %}
-                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<span class="edit-chip" style="{{ chip_style(a, 0) }}">{{ outlet_icon(a) }}{{ short_name(a) }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
                 {% endif %}
                 {% set on_shows = show_coverage.get(cluster['cluster']) if show_coverage is defined else none %}
                 {% if on_shows %}
@@ -848,6 +861,11 @@
                         {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
                     </div>
                 {% endif %}
+                {% if cluster['curators'] %}
+                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<span class="edit-chip" style="{{ chip_style(a, 0) }}">{{ outlet_icon(a) }}{{ short_name(a) }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
+                {% endif %}
+                </div>
+                <p class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</p>
             </div>
         {% endfor %}
     </div>
@@ -945,8 +963,28 @@
         <div id="wrapper"></div>
     </section>
     <script>
-        // The rows are a separate file of a few megabytes, fetched once the page is up
-        fetch({{ table_file|tojson }}).then((r) => r.json()).then(headlineTable);
+        // The rows are a separate file of a few megabytes, fetched once the page is up. It's packed (pack_table in
+        // page_headlines.py: lists instead of named fields, repeated values listed once); unpacked here into the
+        // same rows with named fields, which is also what the download button saves
+        function unpackTable(data) {
+            return data.rows.map(([outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story]) => {
+                const [agency, bias, rated] = data.outlets[outlet];
+                const name = topic === null ? '' : data.topics[topic];
+                const [storyTitle, storySize] = story === null ? ['', 0] : (data.stories[String(story)] || ['', 0]);
+                return {agency, bias, rated, url: url.startsWith('http') ? url : 'https://' + url, title, seen, buzz,
+                        topic: name, topic_url: name ? name.replaceAll(' ', '_') + '.html' : '', mood, loaded,
+                        feelings: feelings.map((i) => data.feelings[i]), story, story_title: storyTitle,
+                        story_size: storySize};
+            });
+        }
+        fetch({{ table_file|tojson }}).then((r) => r.json()).then(unpackTable).then((rows) => {
+            // The download saves the rows with their field names, not the packed file
+            const link = document.querySelector('.table-download a');
+            if (link) {
+                link.href = URL.createObjectURL(new Blob([JSON.stringify(rows, null, 1)], {type: 'application/json'}));
+            }
+            headlineTable(rows);
+        });
 
         function headlineTable(ROWS) {
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));

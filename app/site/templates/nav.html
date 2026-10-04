@@ -3,11 +3,14 @@
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Menu">☰</button>
     <div class="nav-links" id="nav-links">
         <a href="headlines.html">every headline</a>
-        <a href="edits.html">headline changes</a>
-        <a href="emotions.html">emotions</a>
         <a href="agencies.html">outlets</a>
-        <a href="court.html">supreme court</a>
-        <a href="archive.html">archive</a>
+        {# Trackers: a menu of the pages of running measures, opened on hover or tap #}
+        <details class="nav-menu">
+            <summary>trackers</summary>
+            <div class="nav-menu-list">
+                {% for t in trackers %}<a href="{{ t.href }}"><span class="nav-menu-emoji" aria-hidden="true">{{ t.emoji }}</span><span><b>{{ t.name }}</b><small>{{ t.about }}</small></span></a>{% endfor %}
+            </div>
+        </details>
         <a href="glossary.html">how it works</a>
     </div>
     <span class="updated" data-built="{{ built_at }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
@@ -31,6 +34,20 @@
             nav.querySelectorAll('.nav-links a').forEach((a) => {
                 if (a.getAttribute('href') === page) a.setAttribute('aria-current', 'page');
             });
+            // The trackers menu: lit when the page is one of its own; opens on hover where there's a mouse, closes
+            // on a click elsewhere or Escape
+            const menu = nav.querySelector('.nav-menu');
+            if (menu) {
+                if (menu.querySelector('a[aria-current]')) menu.classList.add('current');
+                if (matchMedia('(hover: hover)').matches) {
+                    menu.addEventListener('mouseenter', () => { menu.open = true; });
+                    menu.addEventListener('mouseleave', () => { menu.open = false; });
+                    // Hovering already opened it, so a click keeps it open rather than toggling it shut
+                    menu.querySelector('summary').addEventListener('click', (ev) => { ev.preventDefault(); menu.open = true; });
+                }
+                document.addEventListener('click', (ev) => { if (!menu.contains(ev.target)) menu.open = false; });
+                document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') menu.open = false; });
+            }
 
             // Phone-width menu
             const toggle = nav.querySelector('.nav-toggle');

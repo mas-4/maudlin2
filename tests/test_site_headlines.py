@@ -1,6 +1,7 @@
 """app/site/page_headlines.py: the front page's pure helpers and the HeadlinesPage methods that work on small
 synthetic frames. No database, no language model and no embedding model: `embed`, `find_edits` and
 `recent_investigations` are monkeypatched wherever a method reaches for them."""
+import json
 import zlib
 from datetime import datetime as dt, timedelta as td
 from types import SimpleNamespace
@@ -621,3 +622,22 @@ def test_feed_is_valid_rss_with_stable_guids(tmp_path, monkeypatch):
     assert item.findtext('title') == 'Storms & floods <hit> coast'
     assert item.findtext('guid') == 'bignews-story-1234'
     assert '12 outlets' in item.findtext('description') and '3-part saga' in item.findtext('description')
+
+
+def test_table_packs_and_unpacks_to_the_same_rows():
+    rows = [{'agency': 'CNN', 'bias': -1, 'rated': True, 'url': 'https://cnn.com/a', 'title': 'A "quoted" <title>',
+             'seen': 1791093666, 'buzz': 90, 'topic': 'Supreme Court', 'topic_url': 'Supreme_Court.html', 'mood': -1,
+             'loaded': 1, 'feelings': [['🤬', 'anger'], ['😨', 'fear']], 'story': 3, 'story_title': 'Climate case',
+             'story_size': 12},
+            {'agency': 'Fox News', 'bias': 2, 'rated': True, 'url': 'http://foxnews.com/b', 'title': 'B',
+             'seen': None, 'buzz': 10, 'topic': '', 'topic_url': '', 'mood': None, 'loaded': None, 'feelings': [],
+             'story': None, 'story_title': '', 'story_size': 0},
+            {'agency': 'CNN', 'bias': -1, 'rated': True, 'url': 'https://cnn.com/c', 'title': 'C', 'seen': 1,
+             'buzz': 50, 'topic': 'Supreme Court', 'topic_url': 'Supreme_Court.html', 'mood': 0, 'loaded': 0,
+             'feelings': [['😨', 'fear']], 'story': 3, 'story_title': 'Climate case', 'story_size': 12}]
+    rows[0]['feelings'] = [[ph.EMOTION_EMOJI['anger'], 'anger'], [ph.EMOTION_EMOJI['fear'], 'fear']]
+    rows[2]['feelings'] = [[ph.EMOTION_EMOJI['fear'], 'fear']]
+    packed = ph.pack_table(rows)
+    assert ph.unpack_table(json.loads(json.dumps(packed))) == rows
+    assert len(packed['outlets']) == 2 and packed['topics'] == ['Supreme Court']  # listed once
+    assert packed['rows'][0][1] == 'cnn.com/a' and packed['rows'][1][1] == 'http://foxnews.com/b'

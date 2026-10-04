@@ -1105,6 +1105,28 @@ figure.wordcloud figcaption.cloud-key {
     line-height: 1;
 }
 
+.spicy-tip {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+.key-paper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-size: 0.9em;
+}
+
+.key-paper-swatch {
+    display: inline-block;
+    width: 4.5em;
+    height: 0.9em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgb(255, 255, 255), rgb(255, 220, 120), rgb(255, 160, 128));  /* as paperColor */
+}
+
 .key-click {
     flex-direction: row;
     gap: 0.3em;
@@ -1131,7 +1153,7 @@ figure.wordcloud figcaption.cloud-key {
 }
 
 .balanced-text {
-    background: linear-gradient(90deg, #1a5cff, #e0102e);
+    background: linear-gradient(90deg, #1a5cff 42%, #e0102e 58%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -2736,31 +2758,49 @@ h1 {
     cursor: help;
 }
 
-/* Supreme Court page: a card per case in the news, its lean meter and headlines, then the term's docket */
-.court-cases {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
-    gap: 18px;
+/* Supreme Court page: cards like the front page's story cards, a card per case in the news and per topic of the
+   other Court news, then the docket's uncovered cases */
+.court-cards {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    margin: 0.6em 0 1.6em;
 }
 
-.court-case {
-    background: color-mix(in srgb, var(--pop, #3a86ff) 10%, white);
-    border: 3px solid #1f1f2e;
-    border-radius: 14px;
-    box-shadow: 6px 6px 0 var(--pop, #3a86ff);
-    padding: 0.6em 1em 0.8em;
+.court-cards > .court-story {
+    flex: 1 1 380px;  /* before the script packs them, and without it: a plain wrapping row */
+}
+
+.court-cards:not(:has(.court-column)) {
+    flex-wrap: wrap;
+}
+
+.court-column {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.court-story {
+    padding: 0.8em 1em 0.9em;
     min-width: 0;
 }
 
-.court-case:nth-child(5n + 1) { --pop: #3a86ff; }
-.court-case:nth-child(5n + 2) { --pop: #ffc400; }
-.court-case:nth-child(5n + 3) { --pop: #00c2a8; }
-.court-case:nth-child(5n + 4) { --pop: #ff4fa3; }
-.court-case:nth-child(5n + 5) { --pop: #ff6b1a; }
+.court-cards .court-story:nth-child(5n + 1) { --pop: #3a86ff; }
+.court-cards .court-story:nth-child(5n + 2) { --pop: #ffc400; }
+.court-cards .court-story:nth-child(5n + 3) { --pop: #00c2a8; }
+.court-cards .court-story:nth-child(5n + 4) { --pop: #ff4fa3; }
+.court-cards .court-story:nth-child(5n + 5) { --pop: #ff6b1a; }
 
-.court-case h4 {
-    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
-    margin: 0.2em 0;
+.court-story h4 {
+    margin: 0.1em 0 0.2em;
+    font-size: 1.25em;
+}
+
+.court-topic h4::first-letter {
+    text-transform: uppercase;
 }
 
 .court-meta, .court-when {
@@ -2772,10 +2812,67 @@ h1 {
     margin: 0 0 0.3em;
 }
 
+.court-stages {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.2em 0 0.4em;
+}
+
+/* How each side frames it: the left- and right-leaning outlets' most loaded headlines, side by side */
+.court-framing {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0.5em 0;
+}
+
+.court-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0.45em 0.6em;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    color: #1f1f2e;
+    text-decoration: none;
+    font-size: 0.88em;
+    line-height: 1.3;
+}
+
+.court-frame-left {
+    background: #e3ebff;
+    box-shadow: 3px 3px 0 #1a5cff;
+}
+
+.court-frame-right {
+    background: #ffe3e7;
+    box-shadow: 3px 3px 0 #e0102e;
+}
+
+.court-frame-side {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.court-frame-title {
+    font-style: italic;
+}
+
+.court-frame .edit-chip {
+    align-self: flex-start;
+    font-size: 0.8em;
+    padding: 1px 8px;
+}
+
+.court-more summary {
+    cursor: pointer;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin-top: 0.3em;
+}
+
 .court-headlines {
     list-style: none;
     padding-left: 0;
     margin: 0.5em 0 0;
+    font-size: 0.92em;
 }
 
 .court-headlines li {
@@ -2793,60 +2890,236 @@ h1 {
     padding: 1px 8px;
 }
 
-.court-meter {
-    max-width: 320px;
+/* The docket's cases nobody is covering: quiet paper slips */
+.court-uncovered {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 10px;
+    margin: 0.6em 0 2em;
 }
 
-/* The cases and issues a headline mentions, as the model tags them: linked to the case's card when it's one on the
-   docket, else a filter */
-.court-tag {
-    display: inline-block;
-    margin: 0 0.25em 0 0;
-    padding: 0 0.5em;
-    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+.court-quiet {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5em 0.7em;
+    background: #ffffff;
+    border: 2px dashed #8a8f98;
+    border-radius: 10px;
     color: #1f1f2e;
+    text-decoration: none;
+}
+
+.court-quiet:hover, .court-quiet.covered {
+    border-style: solid;
+}
+
+.court-quiet.covered {
+    border-color: #1f1f2e;
+    box-shadow: 3px 3px 0 #ffc400;
+}
+
+/* A case's plain gloss, as a tag */
+.court-gloss-tag {
+    align-self: flex-start;
+    padding: 1px 9px;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
     background: #fff4c2;
     border: 1.5px solid #1f1f2e;
     border-radius: 999px;
-    cursor: pointer;
-    text-decoration: none;
-    vertical-align: 1px;
 }
 
-.court-tag.linked {
-    background: #d9f7f2;
-}
-
-.court-tag.linked::after {
-    content: ' →';
-}
-
-.court-tag-filter {
-    margin: 0.4em 0 0.6em;
-}
-
-.court-headlines li[hidden] {
-    display: none;
-}
-
-.court-term {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.court-term th, .court-term td {
-    text-align: left;
-    padding: 0.35em 0.5em;
-    border-bottom: 1px solid #ddd;
-    vertical-align: middle;
-}
-
-.court-term .court-meter {
-    display: inline-flex;
-    width: 140px;
-    vertical-align: middle;
+.court-quiet-name {
+    font-size: 0.9em;
 }
 
 @media (max-width: 600px) {
-    .court-term th:nth-child(2), .court-term td:nth-child(2) { display: none; }
+    .court-framing { grid-template-columns: 1fr; }
+}
+
+/* Story cards: what the coverage says beyond the outlets (the phrases quoted, the shows talking about it, the
+   aggregators picking it up) sits above the outlet chips and reads bigger; the outlet chips shrink a little */
+.story-extras {
+    margin: 0.5em 0 0.2em;
+}
+
+.story-extras .story-quotes-label, .story-extras .story-shows-label, .story-extras .story-curators {
+    font-size: 0.95em;
+    color: #1f1f2e;
+}
+
+.story-extras .quote-chip {
+    font-size: 0.98em;
+    padding: 2px 10px;
+}
+
+.story-extras .show-chip {
+    font-size: 0.9em;
+}
+
+.story-extras .story-curators .edit-chip {
+    font-size: 1em;
+    padding: 2px 10px;
+}
+
+.story-outlets .storylink {
+    padding: 4px 11px;
+    margin: 4px;
+    font-size: 0.9em;
+}
+
+/* The nav's trackers menu: a summary styled like the other nav links, opening a card of the tracker pages */
+.nav-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-links .nav-menu > summary {
+    list-style: none;
+    cursor: pointer;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: #1f1f2e;
+    padding: 0.3em 1em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #ff4fa3;
+    transition: transform 0.15s, background-color 0.15s;
+}
+
+.nav-links .nav-menu > summary:hover, .nav-links .nav-menu[open] > summary, .nav-links .nav-menu.current > summary {
+    background: #ff4fa3;
+}
+
+.nav-links .nav-menu > summary:hover {
+    transform: translate(-1px, -1px) rotate(-2deg);
+}
+
+/* The menu's own links are rows, not the nav's pills */
+.nav-links .nav-menu-list a {
+    font-size: 1em;
+    padding: 0.45em 0.6em;
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    box-shadow: none;
+    text-align: left;
+    transform: none;
+}
+
+.nav-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.nav-menu > summary::after {
+    content: ' ▾';
+    font-size: 0.8em;
+}
+
+.nav-menu[open] > summary::after {
+    content: ' ▴';
+}
+
+.nav-menu-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: max-content;
+    max-width: min(340px, 90vw);
+    padding: 6px;
+    background: #ffffff;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #ffc400;
+}
+
+.nav-menu-list a {
+    display: flex;
+    gap: 0.6em;
+    align-items: flex-start;
+    padding: 0.45em 0.6em;
+    border-radius: 9px;
+    color: #1f1f2e;
+    text-decoration: none;
+    white-space: normal;
+}
+
+.nav-links .nav-menu-list a:hover, .nav-links .nav-menu-list a:focus-visible,
+.nav-links .nav-menu-list a[aria-current] {
+    background: #fff4c2;
+    transform: none;
+}
+
+.nav-menu-list b {
+    display: block;
+}
+
+.nav-menu-list small {
+    display: block;
+    color: #555;
+    font-size: 0.8em;
+    line-height: 1.3;
+}
+
+.nav-menu-emoji {
+    font-size: 1.4em;
+    line-height: 1.2;
+}
+
+@media (max-width: 760px) {
+    .nav-links .nav-menu > summary {
+        text-align: center;
+        font-size: 1.15em;
+    }
+
+    .nav-menu-list {
+        position: static;
+        box-shadow: none;
+        border-width: 2px;
+        margin-top: 6px;
+    }
+}
+
+/* The current stories bar: sorts (pick one, filled when chosen) and filters ("only:", each on or off, a checkbox look:
+   dashed until ticked) read as two different kinds of button */
+.story-sort .bar-divider {
+    padding: 0;
+    display: inline-block;
+    width: 2px;
+    height: 1.6em;
+    margin: 0 0.4em;
+    background: #1f1f2e;
+    vertical-align: middle;
+    border-radius: 1px;
+}
+
+.story-sort .bar-label {
+    font-weight: 700;
+}
+
+.story-sort button[data-filter] {
+    border-style: dashed;
+}
+
+.story-sort button[data-filter]::before {
+    content: '☐ ';
+}
+
+.story-sort button[data-filter].active {
+    border-style: solid;
+}
+
+.story-sort button[data-filter].active::before {
+    content: '☑ ';
+}
+
+/* Spice meter on the court cards: plain bread to hot pepper */
+.spice-track {
+    background: linear-gradient(90deg, #f4efe6, #ffd666 50%, #ff7a59);
 }

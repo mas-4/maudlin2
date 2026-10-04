@@ -225,6 +225,42 @@ pipeline = [
 ]
 
 
+def pack_table(rows: list[dict]) -> dict:
+    """The table's rows as published: one list per row instead of named fields, with the values that repeat across
+    rows (outlets with their lean, topics, stories, feelings) listed once and referred to by position, and URLs
+    without "https://". About a tenth smaller over the wire than named fields (repeated keys mostly compress away
+    anyway; the bulk is the URLs and titles). The page unpacks it (unpackTable in headlines.html) back into the rows
+    table_rows makes, and the download button saves those, named fields and all."""
+    outlets, topics, stories, feelings, packed = {}, {}, {}, {}, []
+    for r in rows:
+        outlet = outlets.setdefault((r['agency'], r['bias'], r['rated']), len(outlets))
+        topic = topics.setdefault(r['topic'], len(topics)) if r['topic'] else None
+        if r['story'] is not None:
+            stories[str(r['story'])] = [r['story_title'], r['story_size']]
+        url = r['url'][len('https://'):] if r['url'].startswith('https://') else r['url']
+        packed.append([outlet, url, r['title'], r['seen'], r['buzz'], topic, r['mood'], r['loaded'],
+                       [feelings.setdefault(name, len(feelings)) for _, name in r['feelings']], r['story']])
+    return {'version': 1, 'outlets': [list(o) for o in outlets], 'topics': list(topics), 'stories': stories,
+            'feelings': [[EMOTION_EMOJI[name], name] for name in feelings],
+            'columns': ['outlet', 'url', 'title', 'seen', 'buzz', 'topic', 'mood', 'loaded', 'feelings', 'story'],
+            'rows': packed}
+
+
+def unpack_table(data: dict) -> list[dict]:
+    """pack_table undone, field for field as unpackTable does it in the page (kept in step by the tests)."""
+    rows = []
+    for outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story in data['rows']:
+        agency, bias, rated = data['outlets'][outlet]
+        name = data['topics'][topic] if topic is not None else ''
+        title_size = data['stories'].get(str(story), ['', 0]) if story is not None else ['', 0]
+        rows.append({'agency': agency, 'bias': bias, 'rated': rated,
+                     'url': url if url.startswith('http') else 'https://' + url, 'title': title, 'seen': seen,
+                     'buzz': buzz, 'topic': name, 'topic_url': f"{name.replace(' ', '_')}.html" if name else '',
+                     'mood': mood, 'loaded': loaded, 'feelings': [data['feelings'][i] for i in feelings],
+                     'story': story, 'story_title': title_size[0], 'story_size': title_size[1]})
+    return rows
+
+
 class HeadlinesPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
@@ -252,7 +288,7 @@ class HeadlinesPage:
         # The table's rows ship as their own file, fetched when the reader scrolls near the table: there are
         # thousands, and inline they'd make the front page several megabytes
         with open(os.path.join(Config.build, TABLE_FILE), 'w') as f:
-            json.dump(self.table_rows(df), f, separators=(',', ':'))
+            json.dump(pack_table(self.table_rows(df)), f, separators=(',', ':'), ensure_ascii=False)
         self.context['table_file'] = TABLE_FILE
         # Saved under a dated name, so a reader's downloads from different hours don't overwrite each other
         self.context['table_download'] = f"bignews-headlines-{pd.Timestamp.now(tz='US/Eastern'):%Y-%m-%d-%H%M}.json"

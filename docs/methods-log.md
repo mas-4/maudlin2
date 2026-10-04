@@ -5,21 +5,28 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
-- **Supreme Court page (#144).** Headlines naming the Court or a justice are read by the local language model,
-  which says whether each is about the US Supreme Court (not a state's or another country's), the case or issue in a
-  few words, and the stage it reports (case taken, argument, ruling, emergency order, the justices, nomination or
-  retirement, term preview); answers are cached per headline, and at most 80 new ones are asked per run. Cases come
-  from the Court's Granted & Noted list (a public-domain government record, fetched at most weekly). A headline joins
-  a case when it names a party only that case has ("Suncor", not "Congress" or "Johnson", which turn up in court news
-  about anything). A headline that names no party is shown the cases the press has named a party of, each with the
-  court it came from and up to three of its party-naming headlines, and the model picks one or "none" (term previews
-  covering several cases aren't asked). The embedding model couldn't do this step: it scored "Big Oil climate suits"
-  further from the Boulder climate case than "Trump, climate, AR-15s". On Oct 4 the Boulder climate case went from 4
-  outlets by party name alone to 23. The lean meter counts each outlet once per case. Window: 14 days.
-  The model also tags each headline with every case or issue it mentions (several for a term preview), shown the
-  tags used so far so one case keeps one name, and sees the outlet and its country (India's Supreme Court headlines
-  had been slipping in). A tag links to a docket case only when the model, shown that case's headlines, says the tag
-  names it; broad topics ("Climate", "Dobbs") stay plain tags. Aggregators are left out, as elsewhere on the site.
+- **Every-headline file packed.** headlines-table.json now lists each row's values in a fixed column order, with
+  outlets (and their lean), topics, stories and feelings listed once and referred to by position, and URLs without
+  "https://": about 12% smaller compressed (keys were a third of the raw file, but compression already removed most
+  of that; URLs and titles are the bulk). The page unpacks it, and the download button saves the rows with named
+  fields as before.
+- **Cloud paper by spiciness.** Each word's scrap of paper is colored by how loaded the wording of its headlines is,
+  white (plain) through cream to peach (spicy), instead of a random tint.
+- **Supreme Court page (#144).** The term's cases come from the Court's Granted & Noted list (a public-domain
+  government record); what each is about comes from its question presented on Wikipedia's list of pending cases
+  (CC BY-SA), which the local language model puts in a few plain words ("Cook County AR-15 gun rights case"). Both
+  are fetched at most weekly. Headlines naming the Court or a justice are read by the model with the outlet and its
+  country (India's Supreme Court had been slipping in): whether each is about the US Supreme Court, which of the
+  glossed cases it's about, a few topic words, and the stage it reports. A small model reading a list of thirty
+  cases matched every term preview to five or six of them, and two headlines about Justice Alito and the Dobbs leak
+  to the Arizona voter case, so a suggested case is kept only if the headline shares a word specific to that case
+  (from its gloss, parties, question presented or the state court it came from, counting only words in at most two
+  cases' texts) and the model, asked about that case alone, agrees it clearly refers to it. A distinctive party name
+  ("Suncor", never "Congress") ties a headline to its case as well. Each case in the news gets a card like the front
+  page's story cards: the lean of the outlets covering it against all Court coverage, mood, loaded wording,
+  feelings, quoted phrases, and each side's most loaded headline side by side. Court news about no case on the
+  docket is grouped by topic; docket cases no headline covered are listed. Window: 14 days; each outlet counts once
+  per card.
 - **Story coherence check tried, not adopted.** The model was shown each story's three most central headlines and
   asked about each loosely tied member (best similarity to that core under 0.75); rejected ones were taken out and
   clustered again among themselves. On Oct 4's headlines (labels as in the threshold test above, 90 pairs per setup):

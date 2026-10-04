@@ -1,110 +1,237 @@
 {% extends "page.html" %}
 
-{% macro lean_meter(sides) %}
-    {% set l, c, r = sides.get('left', 0), sides.get('center', 0), sides.get('right', 0) %}
-    <span class="bs-meter court-meter" title="{{ l }} left-leaning, {{ c }} center, {{ r }} right-leaning outlets{% if sides.get('unrated') %}, {{ sides.unrated }} not rated{% endif %}">
-        <span class="bs-end" aria-hidden="true">🫏</span>
-        <span class="bs-track">
-            {% if l %}<span class="bs-seg bs-left" style="flex: {{ l }}"></span>{% endif %}
-            {% if c %}<span class="bs-seg bs-center" style="flex: {{ c }}"></span>{% endif %}
-            {% if r %}<span class="bs-seg bs-right" style="flex: {{ r }}"></span>{% endif %}
-        </span>
-        <span class="bs-end" aria-hidden="true">🐘</span>
-    </span>
+{% macro meters(a) %}
+    <div class="meters">
+        {% for feeling in a.feelings %}
+            <span class="story-feeling" title="{{ feeling['share'] }}% of the feeling in its headlines">
+                <span class="badge-emoji">{{ feeling['emoji'] }}</span>{{ feeling['name'] }} {{ feeling['share'] }}%</span>
+        {% endfor %}
+        <div class="meter" title="Average lean of the outlets covering it, against all the Court coverage ({{ a.lean.text }}): {{ a.counts.get('left', 0) }} left-leaning, {{ a.counts.get('center', 0) }} center, {{ a.counts.get('right', 0) }} right-leaning{% if a.counts.get('unrated') %}, {{ a.counts.unrated }} not rated{% endif %}">
+            <span class="meter-label">covered by</span>
+            <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>
+                <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ a.lean.position }}%"></span></span>
+                <span class="meter-end" title="right-leaning outlets">🐘</span></span>
+        </div>
+        <div class="meter" title="How grim or upbeat its headlines make the news, on average ({{ a.mood.word }})">
+            <span class="meter-label">mood</span>
+            <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
+                <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ a.mood.position }}%"></span></span>
+                <span class="meter-end" title="upbeat">☀️</span></span>
+        </div>
+        {% if a.spice_position is not none %}
+        <div class="meter" title="Spice {{ a.spice }} (0 plain to 2 loaded, averaged over its headlines). {{ spicy_tip }}">
+            <span class="meter-label">spice</span>
+            <span class="meter-bar"><span class="meter-end" title="plain">🍞</span>
+                <span class="meter-track spice-track"><span class="meter-dot" style="left: {{ a.spice_position }}%"></span></span>
+                <span class="meter-end" title="spicy">🌶️</span></span>
+        </div>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% macro extras(a) %}
+    {% if a.quotes %}
+        <p class="story-quotes"><span class="story-quotes-label" title="Phrases the outlets put in quotation marks">💬 quoted</span>
+            {% for q in a.quotes %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ')|e }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %})">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
+        </p>
+    {% endif %}
+    {% if a.framing %}
+        <div class="court-framing" title="Each side's most loaded headline on it">
+            {% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}
+                {% set h = a.framing[side] %}
+                <a class="court-frame court-frame-{{ side }}" href="{{ h.url|e }}">
+                    <span class="court-frame-side">{{ emoji }} {{ side }}-leaning</span>
+                    <span class="court-frame-title">“{{ h.title|e }}”</span>
+                    <span class="edit-chip" style="{{ h.style }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
 {% endmacro %}
 
 {% macro headline_list(rows) %}
     <ul class="court-headlines">
         {% for h in rows %}
-            <li data-tags="{{ (h.tag_keys or [])|join('|')|e }}"><span class="court-stage" title="{{ h.stage }}">{{ h.emoji }}</span>
+            <li><span class="court-stage" title="{{ h.stage }}">{{ h.emoji }}</span>
                 <span class="edit-chip" style="{{ h.style }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
                 <a href="{{ h.url|e }}">{{ h.title|e }}</a>
-                {% for t in h.tag_links %}{% if t.docket %}<a class="court-tag linked" href="#case-{{ t.docket }}" title="This case: No. {{ t.docket }}">{{ t.tag|e }}</a>{% else %}<button type="button" class="court-tag" data-tag="{{ t.tag|lower|e }}" title="Show only headlines tagged this">{{ t.tag|e }}</button>{% endif %}{% endfor %}
-                <span class="court-when">{{ h.when }}{% if h.via == 'issue' %} · <span title="Names no party; the model matched it to this case from the case's other headlines">by issue</span>{% endif %}</span></li>
+                <span class="court-when">{{ h.when }}</span></li>
         {% endfor %}
     </ul>
 {% endmacro %}
 
+{% macro outlet_chips(a) %}
+    <p class="story-outlets">{% for c in a.chips %}<a class="storylink" href="{{ c.url|e }}" style="{{ c.style }}" title="{{ c.agency|e }}">{{ outlet_icon(c.agency) }}{{ c.short }}</a>{% endfor %}</p>
+{% endmacro %}
+
 {% block content %}
     <h2>⚖️ The Supreme Court</h2>
-    <p class="poll-note">Who's covering the Court's cases{% if term %} in October Term {{ term }}{% endif %}, from which
-        side and at which stage: {{ total }} headlines about the US Supreme Court in the last {{ window_days }} days.</p>
+    <p class="poll-note">{% if term %}October Term {{ term }}: {% endif %}{{ n_cases }} cases on the docket, {{ cards|length }}
+        in the news, from {{ total }} headlines about the Court in the last {{ window_days }} days.
+        {% if argued_soon %}Argued this week:
+            {% for c in argued_soon %}<a href="{% if c.headlines %}#case-{{ c.docket }}{% else %}{{ c.docket_url }}{% endif %}">{{ (c.gloss or c.name)|e }}</a> ({{ c.argued_text }}){% if not loop.last %}, {% endif %}{% endfor %}.
+        {% endif %}</p>
     <details class="how-it-works">
         <summary>How this works</summary>
-        <p class="poll-note">Headlines that name the Court or a justice are read by our local language model, which
-            says whether each is about the US Supreme Court (not a state's or another country's), what case or issue
-            it's about, and which stage it reports:
-            {% for stage, emoji in stage_emoji.items() %}{{ emoji }} {{ stage }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
         <p class="poll-note">The cases come from the Court's own
-            {% if source %}<a href="{{ source|e }}">Granted &amp; Noted list</a>{% else %}Granted &amp; Noted list{% endif %},
-            checked weekly. A headline joins a case when it names a party only that case has ("Suncor", not
-            "Congress"); one that names no party is shown the cases already in the news, with their headlines, and
-            the model says which one it's about, if any ("by issue"). The meter counts each outlet once per case, by its AllSides
-            rating.</p>
+            {% if source %}<a href="{{ source|e }}">Granted &amp; Noted list</a>{% else %}Granted &amp; Noted list{% endif %};
+            what each is about comes from its question presented on Wikipedia's
+            <a href="https://en.wikipedia.org/wiki/{{ wiki|replace(' ', '_') }}">{{ wiki }}</a> (CC BY-SA 4.0), which our
+            local language model puts in a few plain words. Both are checked weekly.</p>
+        <p class="poll-note">Headlines that name the Court or a justice are read by the model with the outlet and its
+            country: whether each is about the US Supreme Court, which of the term's cases it's about, a few topic
+            words, and the stage it reports
+            ({% for stage, emoji in stage_emoji.items() %}{{ emoji }} {{ stage }}{% if not loop.last %}, {% endif %}{% endfor %}).
+            A headline joins a case only if it shares a word specific to that case (its parties, place or subject)
+            and the model, asked again about that case alone, agrees. The lean meter is against all the Court
+            coverage, with each outlet counted once per card; each side's framing is its most loaded headline.</p>
     </details>
 
-    {% if covered %}
-        <h3>Cases in the news</h3>
-        <div class="court-cases">
-            {% for c in covered %}
-                <section class="court-case" id="case-{{ c.docket }}">
-                    <h4><a href="{{ c.docket_url }}">{{ c.name|e }}</a></h4>
-                    <p class="court-meta">No. {{ c.docket }}{% if c.argued_text %} · {% if c.argued_on <= today %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}
-                        · {{ c.outlets }} outlet{{ 's' if c.outlets != 1 }}
-                        · {% for stage, n in c.stages.items() %}<span title="{{ stage }}">{{ stage_emoji[stage] }} {{ n }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
-                    {{ lean_meter(c.sides) }}
-                    {{ headline_list(c.rows[:shown]) }}
-                    {% if c.rows|length > shown %}
-                        <details><summary>{{ c.rows|length - shown }} more</summary>{{ headline_list(c.rows[shown:]) }}</details>
-                    {% endif %}
-                </section>
+    {# The same section rail as the front page: any section a tap away, the one on screen lit #}
+    <button class="toc-toggle" type="button" aria-label="Jump to a section" aria-expanded="false">🧭</button>
+    <nav class="page-toc" aria-label="On this page">
+        {% if cards %}<a href="#court-cases"><span class="toc-emoji">⚖️</span><span class="toc-label">cases in the news</span></a>{% endif %}
+        {% if stories %}<a href="#court-stories"><span class="toc-emoji">📰</span><span class="toc-label">also at the Court</span></a>{% endif %}
+        {% if topics %}<a href="#court-singles"><span class="toc-emoji">🗞️</span><span class="toc-label">single headlines</span></a>{% endif %}
+        <a href="#court-term"><span class="toc-emoji">📜</span><span class="toc-label">the term's cases</span></a>
+    </nav>
+    <script>
+        (function () {
+            const links = [...document.querySelectorAll('.page-toc a[href^="#"]')];
+            const target = (a) => document.querySelector(a.getAttribute('href'));
+            links.forEach((a) => a.addEventListener('click', (ev) => {
+                const el = target(a);
+                if (!el) return;
+                ev.preventDefault();
+                el.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }));
+            const nav = document.querySelector('.page-toc'), toggle = document.querySelector('.toc-toggle');
+            const fold = (open) => { nav.classList.toggle('open', open); toggle.setAttribute('aria-expanded', open); };
+            toggle.addEventListener('click', () => fold(!nav.classList.contains('open')));
+            document.body.classList.add('toc-on');
+            fold(innerWidth > 700);
+            let ticking = false;
+            const mark = () => {
+                ticking = false;
+                let current = links[0];
+                links.forEach((a) => { const el = target(a); if (el && el.getBoundingClientRect().top < innerHeight / 3) current = a; });
+                links.forEach((a) => a.classList.toggle('here', a === current));
+            };
+            addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(mark); } }, {passive: true});
+            addEventListener('load', mark);
+        })();
+    </script>
+
+    {% if cards %}
+        <h3 id="court-cases">Cases in the news</h3>
+        <div class="court-cards">
+            {% for c in cards %}
+                <div class="story court-story" id="case-{{ c.docket }}">
+                    <h4>{{ (c.gloss or c.name)|e }}</h4>
+                    <p class="court-meta"><a href="{{ c.docket_url }}">{{ c.name|e }}</a> · No. {{ c.docket }}
+                        {% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}</p>
+                    <p class="court-stages">📰 <b>{{ c.outlets }}</b> outlet{{ 's' if c.outlets != 1 }}
+                        {% for stage, n in c.stage_list %} · <span title="{{ stage }}">{{ stage_emoji[stage] }} {{ stage }} {{ n }}</span>{% endfor %}</p>
+                    {{ meters(c) }}
+                    <div class="story-extras">{{ extras(c) }}</div>
+                    {{ outlet_chips(c) }}
+                    <details class="court-more"><summary>{{ c.rows|length }} headline{{ 's' if c.rows|length != 1 }}</summary>{{ headline_list(c.rows) }}</details>
+                </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    {% if other.rows %}
-        <h3>Other Court news</h3>
-        <p class="poll-note">About the Court or the justices but not tied to one case on the docket: emergency orders,
-            the justices themselves, previews of the term. {{ other.outlets }} outlets.</p>
-        {{ lean_meter(other.sides) }}
-        {% set tag_bar = other.tags|selectattr(2, 'ge', 2)|list %}
-        {% if tag_bar %}
-            <div class="table-filters court-tag-filter" role="group" aria-label="Show one case or issue">
-                <span>cases and issues:</span>
-                {% for key, name, n in tag_bar[:14] %}<button type="button" data-tag="{{ key|e }}"{% if key.startswith('case-') %} title="Tags for case No. {{ key[5:] }}"{% endif %}>{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
-            </div>
-        {% endif %}
-        <div id="court-other">{{ headline_list(other.rows) }}</div>
-        <script>
-            (function () {
-                // A tag (in the bar or on a headline) narrows the list to headlines tagged with it; again to undo
-                const list = document.getElementById('court-other');
-                let current = null;
-                function show(tag) {
-                    current = current === tag ? null : tag;
-                    list.querySelectorAll('li').forEach((li) => {
-                        li.hidden = current !== null && !li.dataset.tags.split('|').includes(current);
-                    });
-                    document.querySelectorAll('.court-tag-filter button').forEach((b) => b.classList.toggle('active', b.dataset.tag === current));
-                }
-                document.querySelectorAll('.court-tag-filter button, #court-other button.court-tag').forEach((b) => {
-                    b.addEventListener('click', () => show(b.dataset.tag));
-                });
-            })();
-        </script>
+    {% if stories %}
+        <h3 id="court-stories">Also at the Court</h3>
+        <p class="poll-note">Court news not about one of the term's cases (the justices, emergency orders, older
+            cases, previews of the term), grouped into stories the way the front page groups headlines.</p>
+        <div class="court-cards">
+            {% for t in stories %}
+                <div class="story court-story">
+                    <h4>{{ t.lead.title|e }}</h4>
+                    <p class="court-stages">📰 <b>{{ t.outlets }}</b> outlets
+                        {% for stage, n in t.stage_list %} · <span title="{{ stage }}">{{ stage_emoji[stage] }} {{ stage }}{% if t.stage_list|length > 1 %} {{ n }}{% endif %}</span>{% endfor %}
+                        {% for topic in t.topics %} <span class="court-topic-word">#{{ topic|e }}</span>{% endfor %}</p>
+                    {{ meters(t) }}
+                    <div class="story-extras">{{ extras(t) }}</div>
+                    {{ outlet_chips(t) }}
+                    <details class="court-more"><summary>{{ t.rows|length }} headlines</summary>{{ headline_list(t.rows) }}</details>
+                </div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    {% if term_cases %}
-        <h3>This term's cases</h3>
-        <table class="court-term">
-            <thead><tr><th>Case</th><th>Argument</th><th>Outlets covering</th></tr></thead>
-            <tbody>
-            {% for c in term_cases %}
-                <tr><td><a href="{{ c.docket_url }}">{{ c.name|e }}</a> <span class="court-when">No. {{ c.docket }}</span></td>
-                    <td>{{ c.argued_text or 'not set' }}</td>
-                    <td>{% if c.outlets %}{{ c.outlets }} {{ lean_meter(c.sides) }}{% else %}<span class="court-when">none yet</span>{% endif %}</td></tr>
+    {% if topics %}
+        <h3 id="court-singles">{% if stories %}Single headlines, by topic{% else %}Also at the Court{% endif %}</h3>
+        <p class="poll-note">Court news{% if stories %} that no other outlet ran a headline like{% else %} not about one of the
+            term's cases{% endif %}, by topic.</p>
+        <div class="court-cards">
+            {% for t in topics %}
+                <div class="story court-story court-topic">
+                    <h4>{{ t.topic|e }}</h4>
+                    <p class="court-stages">📰 <b>{{ t.outlets }}</b> outlet{{ 's' if t.outlets != 1 }}</p>
+                    {{ meters(t) }}
+                    <div class="story-extras">{{ extras(t) }}</div>
+                    {{ headline_list(t.rows[:shown]) }}
+                    {% if t.rows|length > shown %}
+                        <details class="court-more"><summary>{{ t.rows|length - shown }} more</summary>{{ headline_list(t.rows[shown:]) }}</details>
+                    {% endif %}
+                </div>
             {% endfor %}
-            </tbody>
-        </table>
+        </div>
     {% endif %}
+
+    <h3 id="court-term">The term's cases</h3>
+    <p class="poll-note">Every case on the docket with what it's about. Solid: in the news in the last
+        {{ window_days }} days (jumps to its card when it has one). Dashed: nobody we follow has covered it.</p>
+    <div class="table-filters court-term-sort" role="group" aria-label="Order the term's cases">
+        <span>order:</span>
+        <button type="button" data-order="date" class="active">🗓️ by argument date</button>
+        <button type="button" data-order="covered">📰 most covered first</button>
+    </div>
+    <div class="court-uncovered" id="court-term-list">
+        {% for c in term_cases %}
+            <a class="court-quiet{% if c.outlets %} covered{% endif %}" data-outlets="{{ c.outlets }}" data-date="{{ loop.index0 }}" href="{% if c.outlets >= min_card %}#case-{{ c.docket }}{% else %}{{ c.docket_url }}{% endif %}" title="{{ c.name|e }}, No. {{ c.docket }}{% if c.question %}: {{ c.question[:300]|e }}{% endif %}">
+                {% if c.gloss %}<span class="court-gloss-tag">{{ c.gloss|e }}</span>{% endif %}
+                <span class="court-quiet-name">{{ c.name|e }}</span>
+                <span class="court-when">No. {{ c.docket }}{% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}
+                    · {% if c.outlets %}📰 {{ c.outlets }} outlet{{ 's' if c.outlets != 1 }}{% else %}no coverage{% endif %}</span>
+            </a>
+        {% endfor %}
+    </div>
+    <script>
+        (function () {
+            // Cards packed into columns, each dropping into the shortest one (a masonry layout, like the front page's
+            // story cards), so cards of different heights leave no gaps
+            function pack(box) {
+                const cards = [...box.querySelectorAll(':scope > .court-story, :scope > .court-column > .court-story')];
+                const width = box.clientWidth, count = Math.max(1, Math.floor((width + 22) / (380 + 22)));
+                box.querySelectorAll(':scope > .court-column').forEach((c) => c.remove());
+                const columns = Array.from({length: count}, () => {
+                    const col = document.createElement('div');
+                    col.className = 'court-column';
+                    return box.appendChild(col);
+                });
+                cards.forEach((card) => columns.reduce((a, b) => b.offsetHeight < a.offsetHeight ? b : a).appendChild(card));
+            }
+            const boxes = [...document.querySelectorAll('.court-cards')];
+            const all = () => boxes.forEach(pack);
+            all();
+            let width = innerWidth;
+            addEventListener('resize', () => { if (Math.abs(innerWidth - width) > 40) { width = innerWidth; all(); } });
+            document.querySelectorAll('.court-cards details').forEach((d) => d.addEventListener('toggle', all));
+
+            // The term's cases: by argument date, or most covered first
+            const list = document.getElementById('court-term-list');
+            document.querySelectorAll('.court-term-sort button').forEach((b) => b.addEventListener('click', () => {
+                const slips = [...list.children];
+                const num = (el, k) => parseFloat(el.dataset[k]);
+                slips.sort(b.dataset.order === 'covered'
+                    ? (x, y) => num(y, 'outlets') - num(x, 'outlets') || num(x, 'date') - num(y, 'date')
+                    : (x, y) => num(x, 'date') - num(y, 'date'));
+                slips.forEach((el) => list.appendChild(el));
+                document.querySelectorAll('.court-term-sort button').forEach((o) => o.classList.toggle('active', o === b));
+            }));
+        })();
+    </script>
 {% endblock %}

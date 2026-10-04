@@ -65,85 +65,127 @@ def test_match_by_distinctive_party_only(cases):
     assert match('Suncor and PepsiCo both lose') is None  # more than one case: none
 
 
-def test_issue_only_headlines_join_the_case_the_model_picks(monkeypatch, cases):
+PENDING = """<table class="wikitable"><tr><th>Case</th><th>Docket no.</th><th>Question(s) presented</th>
+<th>Certiorari granted</th><th>Oral argument</th></tr>
+<tr><td>Suncor Energy v. Boulder County</td><td>25-170</td><td>Whether federal law precludes state-law claims over
+global climate change .</td><td>Feb 2026</td><td>(October 5, 2026)</td></tr>
+<tr><td>Viramontes v. Cook County Grant v. Higgins</td><td>25-238 25-566</td><td>Whether the Second Amendment guarantees
+the right to possess AR-15 platform rifles .</td><td>June 2026</td><td></td></tr>
+<tr><td>Republican National Committee v. Mi Familia Vota</td><td>25A1017</td><td>Whether Arizona may require proof of
+citizenship to register voters.</td><td>June 2026</td><td></td></tr>
+</table>"""
+
+
+def test_questions_from_wikipedia_by_docket_or_party(cases):
+    pending = sc.parse_pending(PENDING)
+    assert pending[1]['dockets'] == ['25-238', '25-566']
+    assert pending[0]['question'].endswith('global climate change.')  # spacing before punctuation tidied
+    sc.add_questions(cases, pending)
+    by = {c['docket']: c for c in cases}
+    assert 'AR-15' in by['25-238']['question'] and by['25-238']['question'] == by['25-566']['question']
+    assert 'Arizona' in by['25-1017']['question']  # a different number on Wikipedia: matched by party
+    assert 'question' not in by['25-735']
+
+
+@pytest.fixture
+def glossed(cases, monkeypatch, tmp_path):
+    sc.add_questions(cases, sc.parse_pending(PENDING))
+    monkeypatch.setattr(sc, 'GLOSSES', str(tmp_path / 'glosses.json'))
+    monkeypatch.setattr(llm, 'model', lambda: 'stub')
+    glosses = {'Suncor': ('Boulder climate suit', ['climate change', 'Boulder', 'oil companies']),
+               'Viramontes': ('Cook County AR-15 ban', ['AR-15', 'gun ban']),
+               'Grant': ('AR-15 rights', ['AR-15', 'Second Amendment']),
+               'Republican': ('Arizona voter citizenship proof', ['Arizona', 'voter registration', 'First Step'])}
     asked = []
 
     def answer(prompt, schema, max_tokens):
         asked.append(prompt)
-        assert schema['properties']['case']['enum'] == ['25-170', 'none']  # only cases the press has named
-        assert 'Supreme Court hears Suncor climate case' in prompt  # the case's own headlines describe it
-        return {'reason': 'r', 'case': '25-170' if 'oil' in prompt.split('Supreme Court cases')[0] else 'none'}
+        gloss, keywords = next(v for k, v in glosses.items() if f'case: {k}' in prompt)
+        return {'gloss': gloss + '.', 'keywords': keywords}
     monkeypatch.setattr(llm, 'complete_json', answer)
-    monkeypatch.setattr(llm, 'model', lambda: 'stub')
-    by_case = {'25-170': [{'title': 'Supreme Court hears Suncor climate case', 'first': dt(2026, 10, 5),
-                           'issue': 'climate suit'}], '25-1017': []}
-    unnamed = [{'title': 'Big oil climate suits reach the Court', 'issue': 'climate suits', 'stage': 'argument'},
-               {'title': 'Justices take church zoning case', 'issue': 'church zoning', 'stage': 'case taken'},
-               {'title': 'Guns, climate, immigration top the docket', 'issue': 'docket', 'stage': 'term preview'},
-               {'title': 'Alito speaks', 'issue': '', 'stage': 'the justices'}]
-    cache = {}
-    assert sc.by_issue(unnamed, by_case, cases, cache) == ['25-170', None, None, None]
-    assert len(asked) == 2  # term previews and headlines with no case aren't asked
-    assert sc.by_issue(unnamed, by_case, cases, cache) == ['25-170', None, None, None]
-    assert len(asked) == 2  # cached
-    assert sc.by_issue(unnamed, {'25-170': []}, cases, {}) == [None] * 4  # nothing named yet: nothing to pick
+    sc.add_glosses(cases)
+    sc.add_glosses(cases)
+    assert len(asked) == 4  # cached; no question, no gloss
+    return cases
 
 
-def test_judge_caches_and_never_saves_a_missing_answer(monkeypatch):
+def test_glosses_and_cues(glossed):
+    by = {c['docket']: c for c in glossed}
+    assert by['25-170']['gloss'] == 'Boulder climate suit' and 'gloss' not in by['25-735']
+    assert by['25-170']['keywords'] == ['climate change', 'Boulder', 'oil companies']
+    assert sc.origin_state('SC-KY') == 'Kentucky' and sc.origin_state('SC-Colo.') == 'Colorado'
+    assert sc.origin_state('USCA-9') == ''
+    cue = sc.cue_sets(glossed)
+    assert {'boulder', 'climat', 'colorado'} <= cue['25-170']  # gloss, question and the court it came from
+    keys = sc.keyword_sets(glossed)
+    assert keys['25-170']['names'] == {'boulder', 'suncor'}  # Colorado: a state, so a subject the model checks
+    assert 'colorado' in keys['25-170']['subjects']
+    assert {'climat', 'oil'} <= keys['25-170']['subjects']
+    # Consolidated cases (one question) share their words; "First", "Second" and "Amendment" are no one's name
+    assert 'ar-15' in keys['25-238']['names'] and 'ar-15' in keys['25-566']['names']
+    assert not {'first', 'step', 'second', 'amend'} & (keys['25-1017']['names'] | keys['25-566']['names'])
+
+
+def test_judge_ties_by_name_and_confirms_subjects(glossed, monkeypatch):
     calls = []
 
     def answer(prompt, schema, max_tokens):
         calls.append(prompt)
-        return None if 'nothing' in prompt else {'reason': 'r', 'us_supreme_court': True, 'cases': [' x ', ''],
-                                                 'stage': 'ruling'}
+        if 'refers' in str(schema):
+            return {'reason': 'r', 'refers': 'Boulder climate suit' in prompt}
+        return {'reason': 'r', 'us_supreme_court': True, 'cases': ['25-1017', 'bogus'],
+                'topics': ['Climate', 'law', 'climate'], 'stage': 'term preview'}
     monkeypatch.setattr(llm, 'complete_json', answer)
-    monkeypatch.setattr(llm, 'model', lambda: 'stub')
     cache = {}
-    row = {'title': 'Supreme Court rules', 'agency': 'CNN', 'country': 'United States'}
-    assert sc.judge(row, cache)['cases'] == ['x']
-    assert sc.judge(row, cache)['stage'] == 'ruling'
-    assert len(calls) == 1
-    assert 'CNN (United States)' in calls[0]  # the model sees the outlet's country (India's court isn't ours)
-    assert sc.judge({**row, 'title': 'Supreme Court rules again'}, cache)['cases'] == ['x']
-    assert 'from this list when it\'s the same case or issue: x' in calls[1]  # the model is shown tags to reuse
-    assert sc.judge({**row, 'title': 'nothing back'}, cache) is None and len(cache) == 2
-    assert sc.judge({**row, 'title': 'Supreme Court rules a third time'}, cache, ask=False) is None
+    row = {'title': 'Climate and AR-15s top the Court docket', 'agency': 'CNN', 'country': 'United States'}
+    verdict = sc.judge(row, cache, glossed)
+    assert verdict['suggested'] == ['25-1017']  # unknown numbers dropped
+    # AR-15 is the consolidated pair's name: tied outright. Climate is one case's subject: asked about, told it's
+    # the only climate case, and confirmed. Arizona shares no word with the headline: never asked
+    assert set(verdict['cases']) == {'25-238', '25-566', '25-170'}
+    confirms = [c for c in calls if 'refers' in c]
+    assert len(confirms) == 1 and 'the only case this term about "climate change"' in confirms[0]
+    assert verdict['topics'] == ['climate']  # vague words dropped, one spelling
+    assert 'Boulder climate suit' in calls[0] and 'CNN (United States)' in calls[0]
+    sc.judge(row, cache, glossed)
+    assert len(calls) == 2  # cached
+    assert sc.judge({**row, 'title': 'Something else'}, cache, glossed, ask=False) is None
 
 
-def test_coverage_groups_counts_sides_and_bounds_new_judgments(monkeypatch, tmp_path, cases):
+def test_coverage_cards_by_case_with_the_rest_by_topic(glossed, monkeypatch, tmp_path):
     monkeypatch.setattr(sc, 'JUDGMENTS', str(tmp_path / 'judgments.json'))
-    monkeypatch.setattr(sc, 'docket', lambda: {'term': 2026, 'source': 'u', 'cases': cases})
-    monkeypatch.setattr(sc, 'CASES', str(tmp_path / 'cases.json'))
-    monkeypatch.setattr(sc, 'by_issue', lambda unnamed, by_case, cases, cache, prompt=None: [None] * len(unnamed))
+    monkeypatch.setattr(sc, 'docket', lambda: {'term': 2026, 'source': 'u', 'cases': glossed})
+    monkeypatch.setattr(sc, 'add_glosses', lambda cases: None)
     monkeypatch.setattr(sc, 'MAX_NEW_JUDGMENTS', 3)
-    rows = [{'title': t, 'first': dt(2026, 10, 5, 12 - i), 'agency': a, 'bias': b, 'rated': r, 'url': 'u'}
-            for i, (t, a, b, r) in enumerate([
-                ('Justices hear Suncor climate case', 'Fox News', 2, True),
-                ('Supreme Court weighs Boulder suit', 'CNN', -1, True),
-                ('Justices hear Suncor climate case again', 'Fox News', 2, True),
-                ('India Supreme Court orders payment', 'NDTV', 0, False),
-                ('Alito speaks at dinner', 'NPR', -1, True)])]
+    rows = [{'title': t, 'first': dt(2026, 10, 5, 12 - i), 'agency': a, 'bias': b, 'rated': r, 'url': 'u',
+             'country': c} for i, (t, a, b, r, c) in enumerate([
+                ('Justices hear Suncor climate case', 'Fox News', 2, True, 'United States'),
+                ('Supreme Court weighs Boulder suit', 'CNN', -1, True, 'United States'),
+                ('Justices hear Suncor climate case again', 'Fox News', 2, True, 'United States'),
+                ('Supreme Court orders payment', 'NDTV', 0, False, 'India'),
+                ('Alito speaks at dinner', 'NPR', -1, True, 'United States')])]
     monkeypatch.setattr(sc, 'candidates', lambda since: rows)
-    monkeypatch.setattr(llm, 'model', lambda: 'stub')
-    monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, max_tokens: {
-        'reason': 'r', 'us_supreme_court': 'India' not in prompt.split('\n')[0],
-        'cases': ['Alito'] if 'Alito' in prompt.split('\n')[0] else [],
-        'stage': 'argument'})
+
+    def answer(prompt, schema, max_tokens):
+        first = prompt.split('\n')[0]
+        if 'refers' in str(schema):
+            return {'reason': 'r', 'refers': True}
+        return {'reason': 'r', 'us_supreme_court': 'India' not in prompt.split('\n')[1],
+                'cases': [] if 'Alito' in first else ['25-170'], 'topics': ['retirement'] if 'Alito' in first
+                else ['climate'], 'stage': 'argument'}
+    monkeypatch.setattr(llm, 'complete_json', answer)
     out = sc.coverage(now=dt(2026, 10, 5, 13))
-    # Only the first three were judged this run (the cap); the rest wait for the next
-    assert out['total'] == 3
+    assert out['total'] == 3  # only three judged this run (the cap); the rest wait for the next
     [suncor] = out['covered']
-    assert suncor['docket'] == '25-170'
-    assert suncor['outlets'] == 2 and suncor['sides'] == {'right': 1, 'left': 1}
-    assert [h['via'] for h in suncor['headlines']] == ['party'] * 3
+    assert suncor['docket'] == '25-170' and suncor['outlets'] == 2 and suncor['sides'] == {'right': 1, 'left': 1}
     out = sc.coverage(now=dt(2026, 10, 5, 13))
-    assert out['total'] == 4  # India's court is judged and left out; Alito joins the other Court news
+    assert out['total'] == 4  # India's court is judged and left out
     assert [h['title'] for h in out['other']['headlines']] == ['Alito speaks at dinner']
-    assert out['other']['tags'] == [('alito', 'Alito', 1)]
-    assert out['other']['headlines'][0]['tag_links'] == [{'tag': 'Alito', 'docket': None}]
+    assert out['other']['topics'] == [('retirement', 1)]
 
 
 def test_nice_name():
     assert sc.nice_name('DEPARTMENT OF AIR FORCE V. PRUTEHI GUAHAN') == 'Department of Air Force v. Prutehi Guahan'
     assert sc.nice_name('DEPTARTMENT OF HOMELAND SECURITY V. D. V. D.').endswith('v. D. V. D.')
     assert sc.nice_name('HOFFMANN V. WBI ENERGY TRANSMISSION, INC.') == 'Hoffmann v. WBI Energy Transmission, Inc.'
+

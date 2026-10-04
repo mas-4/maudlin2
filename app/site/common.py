@@ -109,12 +109,18 @@ def stamp_build():
     j2env.globals['build_version'] = now.strftime('%Y%m%d%H%M')
     j2env.globals['built_at_text'] = now.astimezone(Constants.TimeConstants.timezone).strftime(
         '%#I:%M %p ET' if os.name == 'nt' else '%-I:%M %p ET')
-    j2env.globals['nav'] = j2env.get_template('nav.html').render()
+    from app.site.page_trackers import TRACKERS
+    j2env.globals['nav'] = j2env.get_template('nav.html').render(trackers=TRACKERS)
 
 
 stamp_build()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
 j2env.globals['enumerate'] = enumerate
+# What "spicy" means wherever the site says it (tooltips)
+j2env.globals['spicy_tip'] = ("Spicy means loaded wording: words the outlet chose that add emotion, judgment or alarm "
+                              "beyond the facts (“slams”, “chaos”, “meltdown”). Our local language model scores "
+                              "each headline 0 (plain) to 2 (built to provoke); words quoted from someone else don't "
+                              "count. A word's spiciness is the average of the headlines using it.")
 # Every page's feeling emoji come from the one table in newsfilter, so changing one is a one-line edit
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTION_BOOKENDS  # noqa: E402
 j2env.globals['emotion_emoji'] = EMOTION_EMOJI
