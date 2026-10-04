@@ -64,6 +64,35 @@ SOURCES = [
     _source('yt_destiny', 'Destiny', 'video', 'left', YOUTUBE + 'UCLOPC6bOBuiSBAJ16JXLAHg', True),
     _source('yt_vaush', 'Vaush', 'video', 'left', YOUTUBE + 'UCdUD6racxisHiSX9iWFcuug', True),
     _source('yt_majority', 'The Majority Report', 'video', 'left', YOUTUBE + 'UC-3jIAlnQmbbVMV6gR7K8aQ', True),
+    _source('yt_pakman', 'David Pakman Show', 'video', 'left', YOUTUBE + 'UCvixJtaXuNdMPUGdOPcY8Ag', True),
+    _source('yt_secular', 'Secular Talk', 'video', 'left', YOUTUBE + 'UCldfgbzNILYZA4dmDt4Cd6A', True),
+    _source('yt_btc', 'Brian Tyler Cohen', 'video', 'left', YOUTUBE + 'UCR6fEDtZ7_McUwc1fI8_xKw', True),
+    _source('yt_meidas', 'MeidasTouch', 'video', 'left', YOUTUBE + 'UCJgZJZZbnLFPr5GJdCuIwpA', True),
+    _source('yt_tyt', 'The Young Turks', 'video', 'left', YOUTUBE + 'UC8Ap0a-VRZALdStTdipHGuA', True),
+    _source('yt_mockler', 'Adam Mockler', 'video', 'left', YOUTUBE + 'UC8DA4o0SyaGfyVaBLbF5EXg', True),
+    _source('yt_timcast', 'Timcast IRL', 'video', 'right', YOUTUBE + 'UCgNngs0_WKadTmP_gsyEsAQ', True),
+    _source('yt_benny', 'Benny Johnson', 'video', 'right', YOUTUBE + 'UC4c9dTJByint_q1wbYcDgGg', True),
+    _source('yt_shapiro', 'Ben Shapiro', 'video', 'right', YOUTUBE + 'UCxUQLGMbb2cI8CqiwZ0WhAQ', True),
+    _source('yt_bongino', 'Dan Bongino', 'video', 'right', YOUTUBE + 'UCKFsY0GX1h9uXgJ57elPMbQ', True),
+    _source('yt_walsh', 'Matt Walsh', 'video', 'right', YOUTUBE + 'UCRr5uJtsqLVkqzxbg7Dnw3w', True),
+    # News outlets' own daily news podcasts (feeds found through Apple's podcast directory, Oct 3)
+    _source('reutersworld', 'Reuters World News', 'podcast', 'center', 'https://feeds.megaphone.fm/reutersworldnews', True),
+    _source('bbcglobal', 'BBC Global News Podcast', 'podcast', 'center', 'https://podcasts.files.bbci.co.uk/p02nq0gn.rss',
+            True),
+    _source('wsjwhatsnews', "WSJ What's News", 'podcast', 'center',
+            'https://video-api.shdsvc.dowjones.io/api/podcasts/feed/the%20wall%20street%20journal%20whats%20news', True),
+    _source('bloombergnow', 'Bloomberg News Now', 'podcast', 'center',
+            'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
+            'd9566f78-0464-4367-9dcc-b05700aeec6f/7f880b3c-7f67-4b4b-b520-b05700af9172/podcast.rss', True),
+    _source('politicoplaybook', 'Politico Playbook', 'podcast', 'center', 'https://feeds.megaphone.fm/ASD6963560714',
+            True),
+    _source('economistintel', 'The Intelligence (Economist)', 'podcast', 'center',
+            'https://access.acast.com/rss/d556eb54-6160-4c85-95f4-47d9f5216c49', True),
+    _source('cnn5things', 'CNN 5 Things', 'podcast', 'left', 'https://feeds.megaphone.fm/WMHY2007701094', True),
+    _source('guardianfocus', 'Today in Focus (Guardian)', 'podcast', 'left',
+            'https://www.theguardian.com/news/series/todayinfocus/podcast.xml', True),
+    _source('morningwire', 'Morning Wire', 'podcast', 'right', 'https://rss.pdrl.fm/3f8a3d/feeds.megaphone.fm/BVDWV8747925072',
+            True),
     # Archived for research
     _source('remnant', 'The Remnant', 'podcast', 'right', 'https://feeds.megaphone.fm/DISPME4897766830'),
     _source('daily', 'The Daily (NYT)', 'podcast', 'center', 'https://feeds.simplecast.com/Sl5CSM3S'),
@@ -88,10 +117,26 @@ SOURCES = [
     _source('rufo', 'Christopher F. Rufo', 'newsletter', 'right', 'https://christopherrufo.com/feed'),
     _source('argument', 'The Argument', 'newsletter', 'left', 'https://www.theargumentmag.com/feed'),
     _source('steady', 'Steady (Dan Rather)', 'newsletter', 'left', 'https://steady.substack.com/feed'),
+    # Long-form talk on YouTube: archived (Pod Save America's channel duplicates its podcast)
+    _source('yt_psa', 'Pod Save America (YouTube)', 'video', 'left', YOUTUBE + 'UC0jYTMDGoHT_Q6HQ7SFtGXg'),
+    _source('yt_pbd', 'PBD Podcast', 'video', 'right', YOUTUBE + 'UCIHdDJ0tjn_3j-FS7s_X1kQ'),
+    _source('yt_crowder', 'Steven Crowder', 'video', 'right', YOUTUBE + 'UCMAtX9eFBpwc4LtgvbqsOpQ'),
+    _source('yt_candace', 'Candace Owens', 'video', 'right', YOUTUBE + 'UCkY4fdKOFk3Kiq7g5LLKYLw'),
+    _source('yt_rogan', 'Joe Rogan Experience', 'video', 'crossover', YOUTUBE + 'UCzQUP1qoWDoEbmsQxvdjxgQ'),
+    _source('yt_theo', 'Theo Von', 'video', 'crossover', YOUTUBE + 'UC5AQEUAwCh1sGDvkQtkDWUQ'),
+    _source('yt_flagrant', 'Flagrant', 'video', 'crossover', YOUTUBE + 'UCvYrhzKs1c8LajTP687ifEA'),
+    _source('yt_dore', 'The Jimmy Dore Show', 'video', 'crossover', YOUTUBE + 'UC3M7l8ved_rYQ45AVzS0RGA'),
     # NPR's 5-minute newscast at the top of every hour: titles are only timestamps and the feed holds the last four,
     # so it's read hourly and archived (its audio links) for transcription later, not shown
     _source('nprnewsnow', 'NPR News Now', 'podcast', 'center', 'https://feeds.npr.org/500005/podcast.xml',
             refresh=td(minutes=55)),
+    # ABC's hourly newscast: the feed holds only the latest, so it's read hourly too
+    _source('abcupdate', 'ABC News Update', 'podcast', 'center', 'https://feeds.megaphone.fm/ESP9792844572',
+            refresh=td(minutes=55)),
+    _source('nbctopstory', 'Top Story with Tom Llamas (NBC)', 'podcast', 'center', 'https://podcastfeeds.nbcnews.com/l7QocwtX'),
+    _source('ajthetake', 'The Take (Al Jazeera)', 'podcast', 'center',
+            'https://www.omnycontent.com/d/playlist/9c074afa-3313-47e8-b802-a9f900789975/'
+            '09af2160-238f-48b2-b20b-ad4b00ebd8e7/b86dddc1-67a5-41c2-a13c-ad4b00ebd8f5/podcast.rss'),
 ]
 BY_KEY = {s['key']: s for s in SOURCES}
 
