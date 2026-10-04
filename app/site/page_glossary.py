@@ -38,7 +38,7 @@ class GlossaryPage:
             'break_minutes': ph.BREAK_WINDOW_MINUTES, 'fast_break': ph.FAST_BREAK,
             'blind_outlets': ph.BLINDSPOT_MIN_OUTLETS, 'blind_share': round(100 * ph.BLINDSPOT_SHARE),
             'blind_lift': ph.BLINDSPOT_LIFT,
-            'edit_days': edits.WINDOW_DAYS, 'emotion_days': page_emotions.WINDOW_DAYS,
+            'edit_days': edits.WINDOW_DAYS, 'labels_days': 30, 'emotion_days': page_emotions.WINDOW_DAYS,
             'outlet_days': page_agencies.WINDOW_DAYS,
             'estimate_days': lean_estimate.WINDOW_DAYS, 'estimate_strength': lean_estimate.MIN_STRENGTH,
             'estimate_rank': lean_estimate.MIN_RANK_AGREEMENT, 'lean_quality': j2env.globals.get('lean_quality'),

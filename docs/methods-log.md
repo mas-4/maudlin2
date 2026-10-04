@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Loaded labels (#150).** A new page counts contested vocabulary in 30 days of news headlines by side, from a
+  hand-curated lexicon (epithets.csv: 11 families, e.g. "illegal alien" / "undocumented immigrant", judges by
+  appointing president, labels for opponents, the center's people descriptors). Each week, phrases one side uses far
+  more than the other (log-odds with an informative prior, from 3+ outlets on that side) are mined as candidates for
+  the lexicon, plus center-vs-rest; candidates are reviewed, never published on their own.
 - **Aggregators aren't outlets (#151).** Google News, Drudge Report, RealClearPolitics and Political Wire no longer count
   toward stories, lean, the news-day sticker or the cloud (they mostly link to other outlets' stories); their live
   headlines are matched to stories (embedding 0.7) and shown as "picked up by" on the cards.

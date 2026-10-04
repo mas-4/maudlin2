@@ -26,7 +26,7 @@ from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html']
-NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'glossary.html']
+NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'labels.html', 'agencies.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
