@@ -42,14 +42,12 @@
             <button data-cloud="side">⚖️ left to right</button>
             <button data-cloud="spice">🌶️ plain to spicy</button>
         </div>
-        <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Click a word to see how outlets are using it, and the feeling its headlines stir.">
-            <span class="key-part"><span class="key-big">BIGGER</span> = more outlets</span>
-            <span class="key-sep" aria-hidden="true">·</span>
-            <span class="key-part">color = who's saying it:
-                <b style="color: #1a5cff">left</b>, <b style="color: #e0102e">right</b>,
-                <span class="balanced-text">both</span> or <b style="color: #8a8f98">center</b></span>
-            <span class="key-sep" aria-hidden="true">·</span>
-            <span class="key-part key-click"><span class="key-point" aria-hidden="true">👆</span> click a word</span></figcaption>
+        <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Poke (click or tap) a word to see how outlets are using it, and the feeling its headlines stir.">
+            <span class="key-part"><span class="key-big">BIGGER</span> <span>= more outlets</span></span>
+            <span class="key-part"><span>color = who's saying it</span>
+                <span><b style="color: #1a5cff">left</b>, <b style="color: #e0102e">right</b>,
+                <span class="balanced-text">both</span>, or <b style="color: #8a8f98">center</b></span></span>
+            <span class="key-part key-click"><span class="key-point" aria-hidden="true">👆</span> poke a word</span></figcaption>
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
     {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up #}
@@ -781,7 +779,9 @@
         <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
         <button data-sort="spiciest" title="Most loaded wording first">🌶️ spiciest</button>
         <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
-        {% if blindspots %}<button data-filter="blindspots" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
+        {% if blindspots %}<button data-filter="blindspot" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
+        {% if show_coverage %}<button data-filter="shows" class="toggle" title="Only stories the news podcasts, newsletters and streams are talking about">🎙️ in podcasts</button>{% endif %}
+        {% if clusters|selectattr('curators')|list %}<button data-filter="picked" class="toggle" title="Only stories an aggregator (Google News, Drudge Report, RealClearPolitics, Political Wire) is linking to now">📌 aggregated</button>{% endif %}
     </div>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
@@ -789,6 +789,8 @@
                  data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
                  {% if cluster['blindspot'] %}data-blindspot="{{ cluster['blindspot']['side'] }}"{% endif %}
+                 {% if show_coverage is defined and show_coverage.get(cluster['cluster']) %}data-shows="1"{% endif %}
+                 {% if cluster['curators'] %}data-picked="1"{% endif %}
                  style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
                 {% if cluster['saga'] %}
                     <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
@@ -890,19 +892,22 @@
                 ev.preventDefault();
                 popCard(document.getElementById(a.getAttribute('href').slice(1)));
             }));
-            // 🙈 narrows the cards to blindspots (a filter, toggled on and off) and works with any sort
+            // 🙈 blindspots, 🎙️ in podcasts and 📌 aggregated narrow the cards (each toggled on and off, together
+            // they all have to hold) and work with any sort
             const all = cards;
-            let sort = SORTS.newest, onlyBlind = false;
+            let sort = SORTS.newest;
+            const only = new Set();
             document.querySelector('.story-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
-                if (button.dataset.filter === 'blindspots') {
-                    onlyBlind = button.classList.toggle('active');
+                if (button.dataset.filter) {
+                    if (button.classList.toggle('active')) only.add(button.dataset.filter);
+                    else only.delete(button.dataset.filter);
                 } else {
                     sort = SORTS[button.dataset.sort];
                     document.querySelectorAll('.story-sort button[data-sort]').forEach((b) => b.classList.toggle('active', b === button));
                 }
-                all.forEach((card) => { card.hidden = onlyBlind && !card.dataset.blindspot; });
+                all.forEach((card) => { card.hidden = [...only].some((f) => !card.dataset[f]); });
                 cards = all.filter((card) => !card.hidden).sort(sort);
                 layout(true);
             });

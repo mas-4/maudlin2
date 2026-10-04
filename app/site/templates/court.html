@@ -1,0 +1,85 @@
+{% extends "page.html" %}
+
+{% macro lean_meter(sides) %}
+    {% set l, c, r = sides.get('left', 0), sides.get('center', 0), sides.get('right', 0) %}
+    <span class="bs-meter court-meter" title="{{ l }} left-leaning, {{ c }} center, {{ r }} right-leaning outlets{% if sides.get('unrated') %}, {{ sides.unrated }} not rated{% endif %}">
+        <span class="bs-end" aria-hidden="true">🫏</span>
+        <span class="bs-track">
+            {% if l %}<span class="bs-seg bs-left" style="flex: {{ l }}"></span>{% endif %}
+            {% if c %}<span class="bs-seg bs-center" style="flex: {{ c }}"></span>{% endif %}
+            {% if r %}<span class="bs-seg bs-right" style="flex: {{ r }}"></span>{% endif %}
+        </span>
+        <span class="bs-end" aria-hidden="true">🐘</span>
+    </span>
+{% endmacro %}
+
+{% macro headline_list(rows) %}
+    <ul class="court-headlines">
+        {% for h in rows %}
+            <li><span class="court-stage" title="{{ h.stage }}">{{ h.emoji }}</span>
+                <span class="edit-chip" style="{{ h.style }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
+                <a href="{{ h.url|e }}">{{ h.title|e }}</a>
+                <span class="court-when">{{ h.when }}{% if h.via == 'issue' %} · <span title="Names no party; the model matched it to this case from the case's other headlines">by issue</span>{% endif %}</span></li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
+
+{% block content %}
+    <h2>⚖️ The Supreme Court</h2>
+    <p class="poll-note">Who's covering the Court's cases{% if term %} in October Term {{ term }}{% endif %}, from which
+        side and at which stage: {{ total }} headlines about the US Supreme Court in the last {{ window_days }} days.</p>
+    <details class="how-it-works">
+        <summary>How this works</summary>
+        <p class="poll-note">Headlines that name the Court or a justice are read by our local language model, which
+            says whether each is about the US Supreme Court (not a state's or another country's), what case or issue
+            it's about, and which stage it reports:
+            {% for stage, emoji in stage_emoji.items() %}{{ emoji }} {{ stage }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+        <p class="poll-note">The cases come from the Court's own
+            {% if source %}<a href="{{ source|e }}">Granted &amp; Noted list</a>{% else %}Granted &amp; Noted list{% endif %},
+            checked weekly. A headline joins a case when it names a party only that case has ("Suncor", not
+            "Congress"); one that names no party is shown the cases already in the news, with their headlines, and
+            the model says which one it's about, if any ("by issue"). The meter counts each outlet once per case, by its AllSides
+            rating.</p>
+    </details>
+
+    {% if covered %}
+        <h3>Cases in the news</h3>
+        <div class="court-cases">
+            {% for c in covered %}
+                <section class="court-case">
+                    <h4><a href="{{ c.docket_url }}">{{ c.name|e }}</a></h4>
+                    <p class="court-meta">No. {{ c.docket }}{% if c.argued_text %} · {% if c.argued_on <= today %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}
+                        · {{ c.outlets }} outlet{{ 's' if c.outlets != 1 }}
+                        · {% for stage, n in c.stages.items() %}<span title="{{ stage }}">{{ stage_emoji[stage] }} {{ n }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
+                    {{ lean_meter(c.sides) }}
+                    {{ headline_list(c.rows[:shown]) }}
+                    {% if c.rows|length > shown %}
+                        <details><summary>{{ c.rows|length - shown }} more</summary>{{ headline_list(c.rows[shown:]) }}</details>
+                    {% endif %}
+                </section>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if other.rows %}
+        <h3>Other Court news</h3>
+        <p class="poll-note">About the Court or the justices but not tied to one case on the docket: emergency orders,
+            the justices themselves, previews of the term. {{ other.outlets }} outlets.</p>
+        {{ lean_meter(other.sides) }}
+        {{ headline_list(other.rows) }}
+    {% endif %}
+
+    {% if term_cases %}
+        <h3>This term's cases</h3>
+        <table class="court-term">
+            <thead><tr><th>Case</th><th>Argument</th><th>Outlets covering</th></tr></thead>
+            <tbody>
+            {% for c in term_cases %}
+                <tr><td><a href="{{ c.docket_url }}">{{ c.name|e }}</a> <span class="court-when">No. {{ c.docket }}</span></td>
+                    <td>{{ c.argued_text or 'not set' }}</td>
+                    <td>{% if c.outlets %}{{ c.outlets }} {{ lean_meter(c.sides) }}{% else %}<span class="court-when">none yet</span>{% endif %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

@@ -5,6 +5,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Supreme Court page (#144).** Headlines naming the Court or a justice are read by the local language model,
+  which says whether each is about the US Supreme Court (not a state's or another country's), the case or issue in a
+  few words, and the stage it reports (case taken, argument, ruling, emergency order, the justices, nomination or
+  retirement, term preview); answers are cached per headline, and at most 80 new ones are asked per run. Cases come
+  from the Court's Granted & Noted list (a public-domain government record, fetched at most weekly). A headline joins
+  a case when it names a party only that case has ("Suncor", not "Congress" or "Johnson", which turn up in court news
+  about anything). A headline that names no party is shown the cases the press has named a party of, each with the
+  court it came from and up to three of its party-naming headlines, and the model picks one or "none" (term previews
+  covering several cases aren't asked). The embedding model couldn't do this step: it scored "Big Oil climate suits"
+  further from the Boulder climate case than "Trump, climate, AR-15s". On Oct 4 the Boulder climate case went from 4
+  outlets by party name alone to 23. The lean meter counts each outlet once per case. Window: 14 days.
 - **Story threshold re-tested; it stays at 0.70.** Stories are still the connected groups of headlines whose
   embeddings are 0.70 alike or more. On one day's headlines (6,888) the local model judged about 1,000 headline
   pairs, under two wordings, keeping the pairs both wordings agreed on. One set was spread across the similarity

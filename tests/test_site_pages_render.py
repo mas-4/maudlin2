@@ -17,17 +17,19 @@ import pytest
 from bs4 import BeautifulSoup
 from sqlalchemy import event
 
-from app.analysis import abtests, clustering, llm, sagas
+from app.analysis import abtests, clustering, llm, sagas, scotus
 from app.models import engine
 from app.site import page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
+from app.site.page_court import CourtPage
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
-PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html']
-NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'archive.html', 'glossary.html']
+PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
+NAV_LINKS = ['headlines.html', 'edits.html', 'emotions.html', 'agencies.html', 'court.html', 'archive.html',
+             'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
@@ -48,6 +50,24 @@ AB_TEST = {'url': 'https://slate.com/a.html', 'agency': 'Slate', 'bias': -2, 'st
            'started': dt(2026, 10, 4, 12), 'latest': dt(2026, 10, 4, 15),
            'variants': [{'text': 'Kept <wording>', 'default': True, 'live': True, 'won': True, 'hours': 3},
                         {'text': 'Dropped wording', 'default': False, 'live': False, 'won': False, 'hours': 0.5}]}
+
+
+COURT_ROW = {'title': 'Justices weigh <Suncor> climate suit', 'first': dt(2026, 10, 5, 14), 'agency': 'Fox News',
+             'bias': 2, 'rated': True, 'url': 'https://example.com/a?b=1&c=2', 'stage': 'argument',
+             'issue': 'climate suit', 'side': 'right', 'via': 'party'}
+COURT = {'term': 2026, 'source': 'https://www.supremecourt.gov/orders/26grantednotedlist.pdf', 'window_days': 14,
+         'total': 2,
+         'covered': [{'docket': '25-170', 'name': 'Suncor Energy v. Commissioners of Boulder County', 'raw': 'X',
+                      'granted': '2/23/26', 'argued': '10/5/26', 'outlets': 1, 'sides': {'right': 1},
+                      'stages': {'argument': 1}, 'headlines': [COURT_ROW]}],
+         'cases': [{'docket': '25-170', 'name': 'Suncor Energy v. Commissioners of Boulder County', 'raw': 'X',
+                    'granted': '2/23/26', 'argued': '10/5/26', 'outlets': 1, 'sides': {'right': 1},
+                    'stages': {'argument': 1}, 'headlines': [COURT_ROW]},
+                   {'docket': '25-1311', 'name': 'Apple Inc. v. Epic Games, Inc.', 'raw': 'X', 'granted': '6/1/26',
+                    'argued': None, 'outlets': 0, 'sides': {}, 'stages': {}, 'headlines': []}],
+         'other': {'outlets': 1, 'sides': {'left': 1}, 'stages': {'the justices': 1},
+                   'headlines': [{**COURT_ROW, 'title': 'Alito speaks', 'agency': 'CNN', 'bias': -1,
+                                  'stage': 'the justices', 'side': 'left', 'via': None}]}}
 
 
 def refuse_connection(*args, **kwargs):
@@ -74,6 +94,9 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(ph, 'link_sagas', lambda headlines, stories, story_of: {})  # writes sagas to the database
         # A/B tests: a canned one, so the section renders before the database has the table (prod migrates it)
         mp.setattr(abtests, 'tests', lambda: [AB_TEST])
+        # The Supreme Court page: canned coverage (the real one asks the language model and reads the docket file)
+        mp.setattr(scotus, 'coverage', lambda: COURT)
+        mp.setattr(scotus, 'refresh_docket', lambda: None)
         mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
         snapshot = sorted(glob.glob(os.path.expanduser(
             '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
@@ -91,7 +114,7 @@ def site(data_handler, tmp_path_factory):
         headlines = ph.HeadlinesPage(dh)
         try:
             headlines.generate()
-            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage):
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage):
                 page(data_handler).generate()
         finally:
             event.remove(engine, 'before_cursor_execute', no_writes)
@@ -316,3 +339,18 @@ def test_edits_page_shows_ab_tests_escaped(site):
     assert test.select_one('.ab-won a').get_text() == 'Kept <wording>'  # escaped, not parsed as a tag
     assert 'shown without javascript' in test.select_one('.ab-won').get_text()
     assert test.select_one('.ab-lost').get_text().startswith('Dropped wording')
+
+
+def test_court_page(site):
+    court = site['soup']['court.html']
+    cards = court.select('.court-case')
+    assert len(cards) == 1
+    assert cards[0].select_one('h4 a')['href'].endswith('/25-170.html')
+    assert 'argued Oct 5' in cards[0].get_text() or 'to be argued Oct 5' in cards[0].get_text()
+    headline = cards[0].select_one('.court-headlines a')
+    assert headline.get_text() == 'Justices weigh <Suncor> climate suit'  # escaped, not markup
+    assert headline['href'] == 'https://example.com/a?b=1&c=2'
+    rows = court.select('.court-term tbody tr')
+    assert [r.select_one('a').get_text() for r in rows][-1] == 'Apple Inc. v. Epic Games, Inc.'  # unset date last
+    assert 'none yet' in rows[-1].get_text()
+    assert 'Alito speaks' in court.get_text()

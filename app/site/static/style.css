@@ -1077,19 +1077,26 @@ figure.wordcloud figcaption {
     padding: 0 16px;
 }
 
-/* The cloud's key, kept to a glance: the size cue in big type, what the colors compare, and a pointing hand that
-   bobs toward the cloud so it's clear the words open */
+/* The cloud's key, kept to a glance: two short stacked notes (the size cue in big type, what the colors compare)
+   and a pointing hand that bobs toward the cloud so it's clear the words open */
 figure.wordcloud figcaption.cloud-key {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: center;
-    gap: 0.3em 0.7em;
+    gap: 0.6em 2em;
     margin: 0.6em 0 1.4em;
     color: #1f1f2e;
     font-family: 'Comic Neue', 'Comic Sans MS', cursive;
     font-size: 1.05em;
     text-shadow: 0 0 4px #ffffff, 0 0 8px #ffffff, 0 0 12px #ffffff;
+}
+
+.key-part {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
 }
 
 .key-big {
@@ -1098,13 +1105,11 @@ figure.wordcloud figcaption.cloud-key {
     line-height: 1;
 }
 
-.key-sep {
-    color: #8a8f98;
-    font-weight: 700;
-}
-
 .key-click {
+    flex-direction: row;
+    gap: 0.3em;
     font-weight: 700;
+    font-size: 1.15em;
 }
 
 .key-point {
@@ -1905,9 +1910,10 @@ table.emotion-matrix th span:not(.matrix-emoji) {
     outline-offset: 4px;
 }
 
-/* A living cloud: words sway */
+/* A living cloud: words sway. Pointing at one turns the cursor into the key's cartoon hand (the 👆 emoji with
+   the same yellow hard shadow), fingertip as the hot spot; the plain pointer where SVG cursors aren't drawn */
 .cloud-word {
-    cursor: pointer;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cfilter id='s'%3E%3CfeDropShadow dx='2' dy='2' stdDeviation='0' flood-color='%23ffc400'/%3E%3C/filter%3E%3Ctext x='3' y='36' font-size='34' filter='url%28%23s%29'%3E%F0%9F%91%86%3C/text%3E%3C/svg%3E") 17 4, pointer;
 }
 
 .cloud-wiggle {
@@ -2728,4 +2734,87 @@ h1 {
     margin-left: 0.5em;
     color: #666;
     cursor: help;
+}
+
+/* Supreme Court page: a card per case in the news, its lean meter and headlines, then the term's docket */
+.court-cases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    gap: 18px;
+}
+
+.court-case {
+    background: color-mix(in srgb, var(--pop, #3a86ff) 10%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--pop, #3a86ff);
+    padding: 0.6em 1em 0.8em;
+    min-width: 0;
+}
+
+.court-case:nth-child(5n + 1) { --pop: #3a86ff; }
+.court-case:nth-child(5n + 2) { --pop: #ffc400; }
+.court-case:nth-child(5n + 3) { --pop: #00c2a8; }
+.court-case:nth-child(5n + 4) { --pop: #ff4fa3; }
+.court-case:nth-child(5n + 5) { --pop: #ff6b1a; }
+
+.court-case h4 {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.2em 0;
+}
+
+.court-meta, .court-when {
+    font-size: 0.85em;
+    color: #555;
+}
+
+.court-meta {
+    margin: 0 0 0.3em;
+}
+
+.court-headlines {
+    list-style: none;
+    padding-left: 0;
+    margin: 0.5em 0 0;
+}
+
+.court-headlines li {
+    margin: 0 0 0.45em;
+    line-height: 1.35;
+}
+
+.court-stage {
+    display: inline-block;
+    width: 1.4em;
+}
+
+.court-headlines .edit-chip {
+    font-size: 0.8em;
+    padding: 1px 8px;
+}
+
+.court-meter {
+    max-width: 320px;
+}
+
+.court-term {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.court-term th, .court-term td {
+    text-align: left;
+    padding: 0.35em 0.5em;
+    border-bottom: 1px solid #ddd;
+    vertical-align: middle;
+}
+
+.court-term .court-meter {
+    display: inline-flex;
+    width: 140px;
+    vertical-align: middle;
+}
+
+@media (max-width: 600px) {
+    .court-term th:nth-child(2), .court-term td:nth-child(2) { display: none; }
 }
