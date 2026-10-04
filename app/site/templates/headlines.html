@@ -140,8 +140,7 @@
         // interleaved but drift in order: biggest toward the top left, left-leaning toward the left, and so on.
         let cloudMode = 'size';  // biggest first
         // A word's feeling as a pair of emoji around it, rising in intensity: 😰fear😱, 🤢disgust🤮
-        const BOOKENDS = {'😨': ['😰', '😱'], '🤢': ['🤢', '🤮'], '😠': ['😠', '😡'], '😢': ['😢', '😭'],
-                          '😲': ['😲', '🤯'], '😄': ['😄', '🥳'], '🤞': ['🤞', '🙏'], '🥛': ['🥛', '🥛']};
+        const BOOKENDS = {{ cloud_bookends|tojson }};
         // Every sort runs from the top left to the bottom right: a word starts its search along the diagonal at its
         // rank, spread at random across it
         const diagonal = (t, random) => {
@@ -292,7 +291,9 @@
                 </defs>
                 <path d="M ${at(0.2, 0.22)} Q ${at(0.68, 0.18)} ${at(0.86, 0.8)}" fill="none" stroke="url(#arrow-ink)"
                       stroke-width="${thick}" stroke-linecap="round" marker-end="url(#arrow-head)"/>`;
-            svg.insertBefore(g, svg.querySelector('.cloud-word'));
+            // On top of the words (their paper cutouts would hide it underneath), see-through and untouchable so
+            // words stay readable and clickable through it
+            svg.appendChild(g);
         }
 
         // Sticker-style labels at the two ends of a sorted cloud: under the news-day sticker, and the bottom right
@@ -336,10 +337,13 @@
             svg.innerHTML = `<defs><linearGradient id="balanced" x1="0" x2="1" y1="0" y2="0">
                 <stop offset="0" stop-color="#1a5cff"/><stop offset="1" stop-color="#e0102e"/></linearGradient></defs>`;
             el.appendChild(svg);  // attach first: text has no measurable width until it's on the page
+            [...placed].sort((a, b) => b.px - a.px).forEach((d, i) => d.__order = i);
             for (const d of placed) {
-                // A group per word so the emoji badge rotates with it
+                // A group per word so the emoji badge rotates with it; it pops in, biggest words first
                 const g = document.createElementNS(ns, 'g');
-                g.setAttribute('class', 'cloud-word');
+                g.setAttribute('class', 'cloud-word pop-in');
+                g.style.setProperty('--pop-delay', `${Math.min(0.6, d.__order * 0.007).toFixed(3)}s`);
+                g.addEventListener('animationend', (ev) => { if (ev.animationName === 'word-pop') g.classList.remove('pop-in'); });
                 g.__word = d;
                 g.__pos = {x: d.x, y: d.y, rotate: d.rotate};
                 placeWord(g);
@@ -842,7 +846,7 @@
                 <button data-filter="metric" data-value="seen">🕒 first seen</button>
                 <button data-filter="metric" data-value="mood" title="How grim or upbeat the news is">🌦️ mood</button>
                 <button data-filter="metric" data-value="spin" title="How loaded the wording is">🌶️ spin</button>
-                <button data-filter="metric" data-value="feeling" title="The feelings it's most likely to stir, strongest first">😨 feeling</button>
+                <button data-filter="metric" data-value="feeling" title="The feelings it's most likely to stir, strongest first">{{ emotion_emoji.fear }} feeling</button>
                 <button data-filter="metric" data-value="story" title="Which current story it's part of">📰 story</button>
             </div>
             <div class="table-filters" role="group" aria-label="Filter headlines">

@@ -10,6 +10,7 @@ from app.registry import Scrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
 from app.trends import fetch_trends
 from app.investigations import fetch_investigations
+from app.site import wiki
 from app.polling import fetch_polls, fetch_aggregates
 from app.builder import build
 from app.utils import Config, get_logger
@@ -121,6 +122,7 @@ def main(args: argparse.Namespace):
         if not args.scraper:
             fetch_trends()
             fetch_investigations()
+            wiki.refresh()  # weekly: each outlet's Wikipedia opening and Wikidata facts
             fetch_polls()
             fetch_aggregates()
     build()

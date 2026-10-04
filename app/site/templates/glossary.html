@@ -48,7 +48,7 @@
                 (a charged word or two, like "slams" or "chaos"), 🌶️🌶️ loaded+ (built to provoke). Words quoted from
                 someone don't count.</p>
         {% endcall %}
-        {% call term('😨', 'Feelings', 'feelings') %}
+        {% call term(emotion_emoji.fear, 'Feelings', 'feelings') %}
             <p>The feelings a headline is most likely to stir in a reader, ranked, up to three, from:
                 {% for e, emoji in emotions %}{{ emoji }} {{ e }}{% if not loop.last %}, {% endif %}{% endfor %}.
                 Like ranked-choice voting, each headline's vote is split 3:2:1 across its picks, and a story's or

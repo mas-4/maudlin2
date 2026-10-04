@@ -115,6 +115,10 @@ def stamp_build():
 stamp_build()
 j2env.globals['footer'] = j2env.get_template('footer.html').render()
 j2env.globals['enumerate'] = enumerate
+# Every page's feeling emoji come from the one table in newsfilter, so changing one is a one-line edit
+from app.analysis.newsfilter import EMOTION_EMOJI, EMOTION_BOOKENDS  # noqa: E402
+j2env.globals['emotion_emoji'] = EMOTION_EMOJI
+j2env.globals['cloud_bookends'] = {EMOTION_EMOJI[e]: list(pair) for e, pair in EMOTION_BOOKENDS.items()}
 j2env.globals['icons'] = {}  # outlet name -> icon path, filled by the build (see favicons.publish)
 
 

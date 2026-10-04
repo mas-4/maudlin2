@@ -87,8 +87,11 @@ one to three of these, strongest first. List only feelings it really carries; pl
 Headline: {title}"""
 
 EMOTIONS = ["fear", "anger", "sadness", "disgust", "surprise", "joy", "hope", "neutral"]
-EMOTION_EMOJI = {'fear': '😨', 'anger': '😠', 'sadness': '😢', 'disgust': '🤢', 'surprise': '😲', 'joy': '😄',
+EMOTION_EMOJI = {'fear': '😱', 'anger': '🤬', 'sadness': '😭', 'disgust': '🤮', 'surprise': '🤯', 'joy': '😄',
                  'hope': '🤞', 'neutral': '🥛'}  # neutral is a glass of milk
+# A strong feeling's pair of emoji around a cloud word, rising in intensity (😰fear😱)
+EMOTION_BOOKENDS = {'fear': ('😰', '😱'), 'anger': ('😡', '🤬'), 'sadness': ('😢', '😭'), 'disgust': ('🤢', '🤮'),
+                    'surprise': ('😲', '🤯'), 'joy': ('😄', '🥳'), 'hope': ('🤞', '🙏'), 'neutral': ('🥛', '🥛')}
 
 SCHEMA = {
     "type": "object",

@@ -6,6 +6,7 @@ from datetime import datetime as dt, timedelta as td
 import pandas as pd
 import pytz
 
+from app.site import wiki
 from app.analysis.edits import find_edits, edit_rates
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.stories import framing_scores
@@ -79,6 +80,7 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
     rates = rates.set_index('agency')['per_100'] if not rates.empty else pd.Series(dtype=float)
 
     out = []
+    background = wiki.all_info()
     for name, p in profiles.iterrows():
         bias, mood = int(p['bias']), (p['mood'] / 2 if pd.notna(p['mood']) else None)  # event score is -2 to 2
         rated = bool(p['rated'])
@@ -93,6 +95,7 @@ def outlet_profiles(live: pd.Series) -> list[dict]:
             'flag': flag(Country(int(p['country']))), 'country': str(Country(int(p['country']))),
             'headlines': int(p['headlines']), 'live': int(live.get(name, 0)),
             'spice': None, 'mood': None, 'framing': None, 'edits': None, 'feeling': None,
+            'wiki': background.get(name),
         }
         if pd.notna(p['spice']):
             card['spice'] = {'value': round(float(p['spice']), 2), 'badge': spin(p['spice'])}

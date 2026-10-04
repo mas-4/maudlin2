@@ -19,7 +19,10 @@
         scale. 📚 Reliability: Wikipedia's
         <a href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources">perennial sources</a> list
         (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>), which says whether Wikipedia editors
-        will cite a source. Both as of October 3, 2026. The badges on the cards are our own measurements.
+        will cite a source. Both as of October 3, 2026. 🏢 About: each outlet's opening lines are quoted from its
+        Wikipedia article (CC BY-SA 4.0), and its owner, founding year and headquarters come from
+        <a href="https://www.wikidata.org/">Wikidata</a> (CC0), refreshed weekly. The badges on the cards are our own
+        measurements.
         {% if lean_quality %}<br>✏️ Outlets marked <em>est.</em> aren't rated by AllSides; their lean is our estimate from
         their headlines' wording, published only when the model is confident. Tested by hiding each rated outlet in turn,
         it calls a side for {{ lean_quality.called }} of {{ lean_quality.outlets }} and gets
@@ -71,6 +74,15 @@
                     <span class="edit-chip outlet-name" style="{{ o.style }}" title="{{ o.name }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
                     <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
                 </div>
+                {% if o.wiki %}
+                    {% set w = o.wiki %}
+                    <div class="outlet-about">
+                        {% if w.owner or w.parent %}<span>🏢 {{ (w.owner or w.parent)|join(', ') }}{% if w.owner and w.parent and w.parent != w.owner %} (part of {{ w.parent|join(', ') }}){% endif %}</span>{% endif %}
+                        {% if w.founded %}<span>📅 since {{ w.founded }}</span>{% endif %}
+                        {% if w.headquarters %}<span>📍 {{ w.headquarters[0] }}</span>{% endif %}
+                    </div>
+                    {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
+                {% endif %}
                 <div class="outlet-facts">
                     {% if o.lean_url %}<a href="{{ o.lean_url }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% elif o.estimate %}<span title="Not rated by AllSides; estimated from its headlines' wording">⚖️ est. {{ o.estimate }} (ours)</span>{% else %}⚖️ not rated by AllSides{% endif %}
                     · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% if o.reliability_note %} ({{ o.reliability_note }}){% endif %}{% else %}not on Wikipedia's list{% endif %}

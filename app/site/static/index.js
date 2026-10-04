@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < flecks; i++) {
             const px = Math.round(rand(10, 20));
             html += sprite(pick(FLECKS)(pick([...COLORS, INK])), {box: 12, px}, `${rand(0, 100).toFixed(1)}%`,
-                `${rand(0, 100).toFixed(1)}%`, ' opacity: 0.55;');
+                `${rand(0, 100).toFixed(1)}%`, ' opacity: 0.4;');
         }
         const layer = document.createElement('div');
         layer.id = 'memphis';

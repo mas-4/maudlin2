@@ -1,0 +1,142 @@
+# Each outlet's English Wikipedia article, for the short description and Wikidata facts on the outlets page
+# (app/site/wiki.py). Titles were matched by hand and checked against the API; fix a wrong match here.
+outlet,wikipedia
+ABC News,ABC News (United States)
+AP,Associated Press
+Al Jazeera,Al Jazeera Media Network
+Alternet,AlterNet
+Axios,Axios (website)
+BBC,BBC News
+Bloomberg,Bloomberg News
+Breitbart,Breitbart News
+Business Insider,Business Insider
+CBC,CBC News
+CBS News,CBS News
+CNBC,CNBC
+CNN,CNN
+Caixin Global,Caixin
+Chicago Tribune,Chicago Tribune
+Compact,Compact (American magazine)
+Crooks and Liars,Crooks and Liars
+Current Affairs,Current Affairs (magazine)
+Daily Mail,Daily Mail
+Der Spiegel,Der Spiegel
+Drudge Report,Drudge Report
+Financial Times,Financial Times
+Forbes,Forbes
+Foreign Affairs,Foreign Affairs
+Foreign Policy,Foreign Policy
+Fortune,Fortune (magazine)
+Fox Business,Fox Business
+Fox News,Fox News
+France24,France 24
+Global Times,Global Times
+Google News,Google News
+HuffPost,HuffPost
+Independent Journal Review,Independent Journal Review
+India Times,Indiatimes
+Jacobin,Jacobin (magazine)
+Just the News,Just the News
+Le Monde,Le Monde
+Los Angeles Times,Los Angeles Times
+MSNBC,MSNBC
+MarketWatch,MarketWatch
+Mediaite,Mediaite
+Military.com,Military.com
+Mother Jones,Mother Jones (magazine)
+NBC News,NBC News
+NDTV,NDTV
+NPR,NPR
+National Post,National Post
+National Review,National Review
+New York Magazine,New York (magazine)
+New York Post,New York Post
+New York Times,The New York Times
+New Yorker,The New Yorker
+News 18,News18
+News Nation,NewsNation
+Newsmax,Newsmax
+Newsweek,Newsweek
+Nikkei Asia,Nikkei Asia
+One America News Network,One America News Network
+PBS NewsHour,PBS News Hour
+Political Wire,Political Wire
+Politico,Politico
+ProPublica,ProPublica
+Puck,Puck (media company)
+Punchbowl News,Punchbowl News
+Quillette,Quillette
+RT,RT (TV network)
+Radio Free Europe Radio Liberty,Radio Free Europe/Radio Liberty
+Raw Story,Raw Story
+Real Clear Politics,RealClearPolitics
+Reason,Reason (magazine)
+Red State,RedState
+Reuters,Reuters
+Rolling Stone,Rolling Stone
+Salon,Salon (website)
+Scripps News,Scripps News
+Semafor,Semafor (website)
+Sky News,Sky News
+Slate,Slate (magazine)
+South China Morning Post,South China Morning Post
+Star Tribune,Star Tribune
+Straight Arrow News,Straight Arrow News
+Sydney Morning Herald,The Sydney Morning Herald
+Taipei Times,Taipei Times
+Talking Points Memo,Talking Points Memo
+Tampa Bay Times,Tampa Bay Times
+The 19th,The 19th
+The American Conservative,The American Conservative
+The American Prospect,The American Prospect
+The Atlantic,The Atlantic
+The Blaze,TheBlaze
+The Bulwark,The Bulwark (website)
+The Christian Science Monitor,The Christian Science Monitor
+The Daily Beast,The Daily Beast
+The Daily Caller,The Daily Caller
+The Daily Kos,Daily Kos
+The Daily Signal,The Daily Signal
+The Daily Wire,The Daily Wire
+The Dispatch,The Dispatch
+The Economist,The Economist
+The Epoch Times,The Epoch Times
+The Federalist,The Federalist (website)
+The Gateway Pundit,The Gateway Pundit
+The Globe and Mail,The Globe and Mail
+The Guardian,The Guardian
+The Hill,The Hill (newspaper)
+The Independent,The Independent
+The Indian Express,The Indian Express
+The Intercept,The Intercept
+The Japan Times,The Japan Times
+The Kyiv Independent,The Kyiv Independent
+The Lever,The Lever
+The Moscow Times,The Moscow Times
+The Nation,The Nation
+The New Republic,The New Republic
+The Post Millennial,The Post Millennial
+The Sun,The Sun (United Kingdom)
+The Telegraph,The Daily Telegraph
+The Times of India,The Times of India
+The Wall Street Journal,The Wall Street Journal
+The Washington Free Beacon,The Washington Free Beacon
+The Washington Post,The Washington Post
+The Washington Sun,
+The Washington Times,The Washington Times
+The Week,The Week
+Time,Time (magazine)
+Toronto Sun,Toronto Sun
+Townhall,Townhall
+USA Today,USA Today
+UnHerd,UnHerd
+Vanity Fair,Vanity Fair (magazine)
+Voice of America,Voice of America
+Vox,Vox (website)
+Washington Examiner,Washington Examiner
+Washington Reporter,
+Winnipeg Free Press,Winnipeg Free Press
+Xinhua,Xinhua News Agency
+Yahoo News,Yahoo News
+Zeteo,
+livemint.com,Mint (newspaper)
