@@ -2,7 +2,9 @@
 // bignews.day marked "maudlin:": cloud.obstacles([{x0, y0, x1, y1}, ...]) marks rectangles of the layout as taken
 // before any word is placed, so words flow around them (the news-day sticker in the cloud's corner); and
 // cloud.origin(function(d, i) { return [x, y]; }) sets where each word starts its spiral search instead of near the
-// middle, so a layout can be ordered (big words toward one corner, left-leaning words toward the left) yet still packed.
+// middle, so a layout can be ordered (big words toward one corner, left-leaning words toward the left) yet still packed;
+// cloud.accept(function(d, x, y) { return bool; }) turns down spots during that search, so a word that can't find room
+// near its place in the order is left out rather than packed somewhere that misreads it.
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g=(g.d3||(g.d3 = {}));g=(g.layout||(g.layout = {}));g.cloud = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 // Word cloud layout by Jason Davies, https://www.jasondavies.com/wordcloud/
 // Algorithm due to Jonathan Feinberg, https://s3.amazonaws.com/static.mrfeinberg.com/bv_ch03.pdf
@@ -36,6 +38,7 @@ module.exports = function() {
       random = Math.random,
       obstacles = [],  // maudlin
       origin = null,  // maudlin
+      accept = null,  // maudlin
       cloud = {},
       canvas = cloudCanvas;
 
@@ -159,6 +162,7 @@ module.exports = function() {
 
       if (tag.x + tag.x0 < 0 || tag.y + tag.y0 < 0 ||
           tag.x + tag.x1 > size[0] || tag.y + tag.y1 > size[1]) continue;
+      if (accept && !accept(tag, tag.x, tag.y)) continue;  // maudlin
       // TODO only check for collisions within current bounds.
       if (!bounds || collideRects(tag, bounds)) {
         if (!cloudCollide(tag, board, size[0])) {
@@ -232,6 +236,11 @@ module.exports = function() {
   // maudlin
   cloud.origin = function(_) {
     return arguments.length ? (origin = _, cloud) : origin;
+  };
+
+  // maudlin
+  cloud.accept = function(_) {
+    return arguments.length ? (accept = _, cloud) : accept;
   };
 
   // maudlin
