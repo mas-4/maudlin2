@@ -189,3 +189,19 @@ def test_nice_name():
     assert sc.nice_name('DEPTARTMENT OF HOMELAND SECURITY V. D. V. D.').endswith('v. D. V. D.')
     assert sc.nice_name('HOFFMANN V. WBI ENERGY TRANSMISSION, INC.') == 'Hoffmann v. WBI Energy Transmission, Inc.'
 
+
+
+def test_story_glosses_cache_and_cap(monkeypatch, tmp_path):
+    monkeypatch.setattr(sc, 'STORY_GLOSSES', str(tmp_path / 'g.json'))
+    monkeypatch.setattr(sc, 'MAX_STORY_GLOSSES', 1)
+    monkeypatch.setattr(llm, 'model', lambda: 'stub')
+    asked = []
+    monkeypatch.setattr(llm, 'complete_json', lambda p, s, max_tokens: asked.append(p) or {'name': 'Pike execution.'})
+    groups = [['Pike survives', 'Pike botched'], ['Alito retires', 'Alito stays']]
+    assert sc.story_glosses(groups) == ['Pike execution', None]  # one new name a run here
+    assert sc.story_glosses(groups) == ['Pike execution', 'Pike execution'] and len(asked) == 2
+
+
+def test_paywall_badge_is_stripped():
+    assert sc.PAYWALL.sub('', "This Content is Available for Slate Plus members only true Pike's Execution") == \
+        "Pike's Execution"

@@ -105,6 +105,12 @@
 
     <script>
         (function () {
+            // Phones: the lineup's lean groups stack masonry-style (each into the shorter of two columns), so a long
+            // group doesn't leave a hole beside a short one; wide screens keep the five groups side by side in order
+            if (matchMedia('(max-width: 700px)').matches) {
+                const lineup = document.querySelector('.lineup');
+                if (lineup) packColumns(lineup, [...lineup.querySelectorAll('.lineup-column')], 150);
+            }
             const box = document.querySelector('.outlet-cards');
             const all = [...box.querySelectorAll('.outlet-card')];
             let order = all;

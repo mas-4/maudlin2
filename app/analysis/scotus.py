@@ -465,8 +465,13 @@ def judge(row: dict, cache: dict, cases: list[dict] = (), ask: bool = True):
     return cache[key]
 
 
+# Slate's paywall badge, read into some headlines before its scraper was fixed (Oct 2-3)
+PAYWALL = re.compile(r'^\s*This Content is Available for Slate Plus members only true\s*', re.I)
+
+
 def candidates(since: dt) -> list[dict]:
-    """Headlines first seen since `since` that name the Court or a justice, newest first, one per outlet and title."""
+    """Headlines first seen since `since` that name the Court or a justice, newest first, one per outlet and
+    article."""
     with Session() as session:
         rows = session.query(
             Headline.processed, Headline.first_accessed, Agency.name, Agency._bias, Agency.lean_rated, Article.url,  # noqa
@@ -478,13 +483,52 @@ def candidates(since: dt) -> list[dict]:
         ).order_by(Headline.first_accessed.desc()).all()
     seen, out = set(), []
     for title, first, agency, bias, rated, url, country, event, afinn, vader, loaded, ranks in rows:
-        if not title or agency in AGGREGATORS or not CANDIDATE.search(title) or (agency, title) in seen:
+        title = PAYWALL.sub('', title or '').strip()
+        # One row per article and outlet (the newest wording): an outlet's front-page variants and bylined copies of
+        # one article are one headline
+        if not title or agency in AGGREGATORS or not CANDIDATE.search(title) or (agency, url) in seen:
             continue
-        seen.add((agency, title))
+        seen.add((agency, url))
         out.append({'title': title, 'first': first, 'agency': agency, 'bias': bias, 'rated': bool(rated), 'url': url,
                     'country': str(Country(country)) if country is not None else '', 'event_score': event,
                     'afinn': afinn or 0.0, 'vader_compound': vader or 0.0, 'loaded_score': loaded,
                     'emotion_ranks': ranks})
+    return out
+
+
+STORY_GLOSSES = os.path.join(Config.data, 'scotus_story_glosses.json')
+STORY_GLOSS_PROMPT = """These headlines from different outlets are about one Supreme Court story:
+{titles}
+
+Name the story in 2 to 6 words, built around the person, place, case or group it's about, the way a news section \
+would label it (for example "Christa Pike's botched execution" or "Alito's retirement talk"). Use only what the \
+headlines say.
+
+name: the few words"""
+STORY_GLOSS_SCHEMA = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
+MAX_STORY_GLOSSES = 30  # new ones a run
+
+
+def story_glosses(groups: list[list[str]]) -> list:
+    """A short name for each group of headlines (the model, cached by the group's first headlines), or None."""
+    try:
+        with open(STORY_GLOSSES) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    before, out = len(cache), []
+    for titles in groups:
+        sample = sorted(dict.fromkeys(titles))[:8]
+        key = _key(*sample)
+        if key not in cache and len(cache) - before < MAX_STORY_GLOSSES:
+            answer = llm.complete_json(STORY_GLOSS_PROMPT.format(titles='\n'.join(f'- {t}' for t in sample)),
+                                       STORY_GLOSS_SCHEMA, max_tokens=40)
+            if answer and answer.get('name', '').strip():
+                cache[key] = {'name': answer['name'].strip().strip('."'), 'titles': sample, 'model': llm.model()}
+        out.append(cache[key]['name'] if key in cache else None)
+    if len(cache) > before:
+        with open(STORY_GLOSSES, 'w') as f:
+            json.dump(cache, f)
     return out
 
 

@@ -52,6 +52,18 @@
                 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') menu.open = false; });
             }
 
+            // Back to the top: a button that shows up once the reader is a couple of screens down
+            const top = document.createElement('button');
+            top.className = 'to-top';
+            top.type = 'button';
+            top.setAttribute('aria-label', 'Back to the top');
+            top.textContent = '⬆️';
+            top.addEventListener('click', () => scrollTo({top: 0, behavior: 'smooth'}));
+            document.body.appendChild(top);
+            const showTop = () => top.classList.toggle('shown', scrollY > innerHeight * 1.5);
+            addEventListener('scroll', showTop, {passive: true});
+            showTop();
+
             // Phone-width menu
             const toggle = nav.querySelector('.nav-toggle');
             toggle.addEventListener('click', () => {

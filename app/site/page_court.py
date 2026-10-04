@@ -115,10 +115,11 @@ class CourtPage:
         # The other Court news: a card per story (titled by its most central headline), then the headlines in no
         # story, a card per topic (a headline counts under its first topic)
         grouped, rest = court_stories(data['other']['headlines'])
-        stories = [{'lead': hs[0], 'rows': rows(hs), 'outlets': len(one_per_outlet(hs)),
+        names = scotus.story_glosses([[h['title'] for h in hs] for hs in grouped])
+        stories = [{'lead': hs[0], 'name': name, 'rows': rows(hs), 'outlets': len(one_per_outlet(hs)),
                     'topics': list(dict.fromkeys(t for h in hs for t in h['topics']))[:3],
                     'stage_list': Counter(h['stage'] for h in hs).most_common(), **analysis(hs, baseline)}
-                   for hs in grouped]
+                   for hs, name in zip(grouped, names)]
         by_topic = {}
         for h in rest:
             by_topic.setdefault(h['topics'][0] if h['topics'] else 'the Court', []).append(h)

@@ -868,7 +868,7 @@
                     <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<span class="edit-chip" style="{{ chip_style(a, 0) }}">{{ outlet_icon(a) }}{{ short_name(a) }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
                 {% endif %}
                 </div>
-                <p class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</p>
+                <div class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</div>
             </div>
         {% endfor %}
     </div>

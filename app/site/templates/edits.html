@@ -65,9 +65,23 @@
         <h3>Rewrites</h3>
     {% endif %}
 
-    <div class="edits">
+    {% if edits %}
+        {# Search, sorts and shift filters, like the front page's stories bar #}
+        <div class="table-filters story-sort edit-tools" role="group" aria-label="Search, sort and filter rewrites">
+            <span class="bar-group"><input type="search" class="edit-search" placeholder="🔎 search outlets and wording" aria-label="Search rewrites"></span>
+            <span class="bar-group"><span class="bar-label">sort:</span>
+                <button type="button" data-sort="newest" class="active">✨ newest</button>
+                <button type="button" data-sort="oldest">🕰️ oldest</button>
+                <button type="button" data-sort="outlet">🔤 outlet</button></span>
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">only:</span>
+                {% for note in shift_notes %}<button type="button" data-filter="{{ note|e }}">{{ note|e }}</button>{% endfor %}</span>
+        </div>
+        <p class="edit-count" aria-live="polite"></p>
+    {% endif %}
+    <div class="edits" id="rewrites">
         {% for edit in edits %}
-            <div class="edit">
+            <div class="edit" data-when="{{ edit.when }}" data-agency="{{ edit.agency|lower|e }}" data-shifts="{{ edit.shifts|join('|')|e }}">
                 <div class="edit-meta">
                     <span class="edit-chip" style="{{ edit.style }}" title="{{ edit.bias }}">{{ outlet_icon(edit.agency) }}{{ short_name(edit.agency) }}</span>
                     <span class="edit-source">{{ edit.source }}</span>
@@ -82,4 +96,43 @@
             <p>No headline changes yet.</p>
         {% endfor %}
     </div>
+    <script>
+        (function () {
+            const box = document.getElementById("rewrites"), tools = document.querySelector(".edit-tools");
+            if (!tools) return;
+            const all = [...box.querySelectorAll('.edit')];
+            all.forEach((e) => { e.dataset.text = e.textContent.toLowerCase().replace(/\s+/g, ' '); });
+            const count = document.querySelector('.edit-count');
+            const SORTS = {
+                newest: (a, b) => b.dataset.when - a.dataset.when,
+                oldest: (a, b) => a.dataset.when - b.dataset.when,
+                outlet: (a, b) => a.dataset.agency.localeCompare(b.dataset.agency) || b.dataset.when - a.dataset.when,
+            };
+            let sort = SORTS.newest, query = '';
+            const only = new Set();
+            function apply() {
+                const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+                let shown = 0;
+                all.sort(sort).forEach((e) => {
+                    const shifts = e.dataset.shifts.split('|');
+                    e.hidden = !words.every((w) => e.dataset.text.includes(w)) || [...only].some((f) => !shifts.includes(f));
+                    shown += !e.hidden;
+                    box.appendChild(e);
+                });
+                count.textContent = shown === all.length ? '' : `${shown} of ${all.length} rewrites`;
+            }
+            tools.querySelector('.edit-search').addEventListener('input', (ev) => { query = ev.target.value; apply(); });
+            tools.addEventListener('click', (ev) => {
+                const b = ev.target.closest('button');
+                if (!b) return;
+                if (b.dataset.filter) {
+                    if (b.classList.toggle('active')) only.add(b.dataset.filter); else only.delete(b.dataset.filter);
+                } else {
+                    sort = SORTS[b.dataset.sort];
+                    tools.querySelectorAll('button[data-sort]').forEach((o) => o.classList.toggle('active', o === b));
+                }
+                apply();
+            });
+        })();
+    </script>
 {% endblock content %}

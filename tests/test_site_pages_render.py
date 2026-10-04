@@ -101,6 +101,7 @@ def site(data_handler, tmp_path_factory):
         # The Supreme Court page: canned coverage (the real one asks the language model and reads the docket file)
         mp.setattr(scotus, 'coverage', lambda: COURT)
         mp.setattr(scotus, 'refresh_docket', lambda: None)
+        mp.setattr(scotus, 'story_glosses', lambda groups: ['<Named> story'] * len(groups))
         mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
         snapshot = sorted(glob.glob(os.path.expanduser(
             '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
@@ -375,3 +376,20 @@ def test_nav_trackers_menu(site):
     menu = site['soup']['edits.html'].select_one('nav .nav-menu')
     assert menu.select_one('summary').get_text(strip=True) == 'trackers'
     assert [a['href'] for a in menu.select('.nav-menu-list a')] == [t['href'] for t in TRACKERS]
+
+
+def test_edits_page_is_searchable_and_sortable(site):
+    edits = site['soup']['edits.html']
+    if not edits.select('#rewrites > .edit'):
+        pytest.skip('no rewrites in the window')
+    tools = edits.select_one('.edit-tools')
+    assert tools.select_one('input.edit-search')
+    assert [b['data-sort'] for b in tools.select('button[data-sort]')] == ['newest', 'oldest', 'outlet']
+    first = edits.select_one('#rewrites > .edit')
+    assert first['data-when'].isdigit() and first['data-agency']
+
+
+def test_story_outlet_chips_stay_in_their_box(front):
+    # A <p> can't hold the coverage lines' own <p>s: the browser closes it early and the chips fall out of it
+    cards = front.select('.story')
+    assert cards and all(card.select('.story-outlets .storylink') for card in cards)

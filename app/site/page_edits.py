@@ -72,6 +72,7 @@ class EditsPage:
                 'bias': 'not rated' if edit['agency'] in j2env.globals['unrated'] else str(Bias(int(edit['bias']))),
                 'before_html': edit['before_html'], 'after_html': edit['after_html'],
                 'between': f"{eastern(edit['last_seen_before'])} and {eastern(edit['first_seen_after'])} ET",
+                'when': int(pd.Timestamp(edit['first_seen_after']).timestamp()),
                 'shifts': shifts(judgment, edit),
                 'change': judgment.get('change') if judgment else None,
                 'source': kinds.get(edit['agency'], 'front page'),
@@ -80,6 +81,7 @@ class EditsPage:
         ab = [{**t, 'style': chip_style(t['agency'], t['bias']), 'started': eastern(t['started']),
                'latest': eastern(t['latest'])} for t in abtests.tests()]
         self.context.update({
+            'shift_notes': [n for n in NOTES.values() if any(n in r['shifts'] for r in rows)],
             'tests': ab,
             'edits': rows,
             'minor_count': len(minor),

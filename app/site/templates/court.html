@@ -61,7 +61,7 @@
 {% endmacro %}
 
 {% macro outlet_chips(a) %}
-    <p class="story-outlets">{% for c in a.chips %}<a class="storylink" href="{{ c.url|e }}" style="{{ c.style }}" title="{{ c.agency|e }}">{{ outlet_icon(c.agency) }}{{ c.short }}</a>{% endfor %}</p>
+    <div class="story-outlets">{% for c in a.chips %}<a class="storylink" href="{{ c.url|e }}" style="{{ c.style }}" title="{{ c.agency|e }}">{{ outlet_icon(c.agency) }}{{ c.short }}</a>{% endfor %}</div>
 {% endmacro %}
 
 {% block content %}
@@ -148,7 +148,9 @@
         <div class="court-cards">
             {% for t in stories %}
                 <div class="story court-story">
-                    <h4>{{ t.lead.title|e }}</h4>
+                    {% if t.name %}<h4>{{ t.name|e }}</h4>
+                        <p class="court-meta">“{{ t.lead.title|e }}”</p>
+                    {% else %}<h4>{{ t.lead.title|e }}</h4>{% endif %}
                     <p class="court-stages">📰 <b>{{ t.outlets }}</b> outlets
                         {% for stage, n in t.stage_list %} · <span title="{{ stage }}">{{ stage_emoji[stage] }} {{ stage }}{% if t.stage_list|length > 1 %} {{ n }}{% endif %}</span>{% endfor %}
                         {% for topic in t.topics %} <span class="court-topic-word">#{{ topic|e }}</span>{% endfor %}</p>
