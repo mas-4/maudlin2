@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **How a claim's motif is judged.** A motif is the story's shape as its tellers tell it: not whether it's true, and
+  not whether a poster tells it or argues against it. (Calling a claim a "false accusation" puts a verdict into
+  the classification; that's the fact-checkers' part, shown separately.) The site presents shapes only in the
+  tellers' voice ("the story casts…"). The model's prompt and the hand check ask the same question.
 - **A folklore card withheld after a misreading.** "Trans women are predators and their identities are inherently
   tied to dark kinks", told by 12 people and labeled right-wing, was a group of mostly trans people talking about
   their own gender; one post's line, from one trans woman arguing with others, became the group's "shared claim".

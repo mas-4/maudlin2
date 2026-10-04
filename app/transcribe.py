@@ -131,7 +131,8 @@ def download(url: str, folder: str) -> Optional[str]:
 
 
 def pending(limit: int = 50) -> list[SideItem]:
-    """Untranscribed recent items with audio, hourly newscasts first, then shows on the site, newest first."""
+    """Untranscribed recent items with audio, hourly newscasts first, then shows on the site, then call-ins and
+    focus groups, newest first."""
     from app import sidefeeds
     published = {s['key'] for s in sidefeeds.SOURCES if s['publish']}
     since = dt.now(pytz.UTC).replace(tzinfo=None) - RECENT
@@ -141,8 +142,13 @@ def pending(limit: int = 50) -> list[SideItem]:
                                         SideItem.id.notin_(done)).all()
         s.expunge_all()
 
+    voices = {s['key'] for s in sidefeeds.SOURCES if s['kind'] == 'call-in'} | {'focusgroup'}
+
     def rank(item):
-        tier = 0 if item.source in PRIORITY else 1 if item.source in published else 2
+        # Hourly newscasts, then shows on the site, then ordinary people's voices (call-ins, focus groups), then the
+        # rest of the archive (long talk shows and streams)
+        tier = (0 if item.source in PRIORITY else 1 if item.source in published else 2 if item.source in voices
+                else 3)
         return tier, -item.published.timestamp()
     return sorted(rows, key=rank)[:limit]
 

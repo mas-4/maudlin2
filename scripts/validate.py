@@ -119,6 +119,7 @@ button.chosen {{ background: var(--no); color: #fff; }} button.ok.chosen {{ back
 .save {{ margin-top: .4em; font-weight: 700; }} .save:disabled {{ opacity: .4; cursor: default; }}
 footer {{ font-size: .9em; color: #444; margin: 1.5em 0; }}
 </style></head><body>
+<nav><b>Label check</b> <a href="/motifs">Motif check</a></nav>
 <h1>Label check</h1>
 <p>Is the model right? Tap ✓ for a label that's right, or the value it should be (dashed: the model's pick; tapping
 that counts as ✓). Feelings: tap every one the headline is likely to stir. Save each card; reload for more.</p>
@@ -161,9 +162,90 @@ document.querySelectorAll('.card').forEach((card) => {{
 </script></body></html>"""
 
 
+MOTIFS = os.path.join(FOLDER, 'motifs')  # the blind test of motif picking (claims.json, picks-*.json)
+MOTIF_VERDICTS = os.path.join(FOLDER, 'motif_verdicts.jsonl')
+MOTIF_BATCH = 10
+
+
+def motif_questions() -> list[dict]:
+    """Every distinct (claim, motif) a model or Claude picked, not yet answered, in a fixed shuffled order. Which
+    model picked it is never shown."""
+    import glob
+    try:
+        claims = {str(c['id']): c for c in json.load(open(os.path.join(MOTIFS, 'claims.json')))}
+    except OSError:
+        return []
+    picked = set()
+    for path in glob.glob(os.path.join(MOTIFS, 'picks-*.json')):
+        picked |= {(cid, code) for cid, code in json.load(open(path)).items() if code and code != 'none'}
+    try:
+        with open(MOTIF_VERDICTS) as f:
+            done = {(v['claim'], v['code']) for v in map(json.loads, f) if v}
+    except OSError:
+        done = set()
+    todo = sorted(picked - done)
+    random.Random(4).shuffle(todo)
+    out = []
+    for cid, code in todo:
+        c = claims.get(cid)
+        entry = next((x for x in (c or {}).get('candidates', []) if x['code'] == code), None)
+        if c and entry:
+            out.append({'claim_id': cid, 'claim': c['claim'], 'kind': c['kind'], 'source': c.get('source', ''),
+                        'title': c.get('title', ''), 'code': code, 'text': entry['text']})
+    return out
+
+
+CHAPTER_NAMES = {'A': 'Mythological motifs', 'B': 'Animals', 'C': 'Tabu', 'D': 'Magic', 'E': 'The dead',
+                 'F': 'Marvels', 'G': 'Ogres', 'H': 'Tests', 'J': 'The wise and the foolish', 'K': 'Deceptions',
+                 'L': 'Reversal of fortune', 'M': 'Ordaining the future', 'N': 'Chance and fate', 'P': 'Society',
+                 'Q': 'Rewards and punishments', 'R': 'Captives and fugitives', 'S': 'Unnatural cruelty', 'T': 'Sex',
+                 'U': 'The nature of life', 'V': 'Religion', 'W': 'Traits of character', 'X': 'Humor',
+                 'Z': 'Miscellaneous groups of motifs'}
+
+
+def motif_page() -> str:
+    todo = motif_questions()
+    cards = []
+    for q in todo[:MOTIF_BATCH]:
+        where = (f'<p class="outlet">fact-checked by {html.escape(q["source"])}: {html.escape(q["title"])}</p>'
+                 if q['kind'] == 'fact-check' else '<p class="outlet">retold online (the model\'s summary)</p>')
+        cards.append(f"""
+<section class="card" data-claim="{q['claim_id']}" data-code="{html.escape(q['code'])}">
+  {where}
+  <h2>{html.escape(q['claim'])}</h2>
+  <p>Is this a modern instance of <b>{html.escape(q['code'])}</b>: <i>{html.escape(q['text'])}</i>
+    <span class="said">({html.escape(q['code'][0])}, {CHAPTER_NAMES.get(q['code'][0], '')})</span>?</p>
+  <div class="row"><button type="button" data-a="yes">✓ yes</button><button type="button" data-a="no">✗ no</button>
+    <button type="button" data-a="unsure">🤷 not sure</button></div>
+</section>""")
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motif check</title><style>
+body {{ font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 760px; padding: 16px; }}
+.card {{ border: 2px solid #1f1f2e; border-radius: 12px; padding: 12px 14px; margin: 14px 0; background: #fff; box-shadow: 4px 4px 0 #ffc400; }}
+.card.done {{ opacity: .45; box-shadow: none; }} .outlet {{ margin: 0; font-size: .85em; color: #555; }}
+h2 {{ font-size: 1.1em; margin: .3em 0 .5em; }} .said {{ font-size: .85em; color: #555; }}
+.row {{ display: flex; gap: 8px; }} button {{ font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 4px 12px; cursor: pointer; }}
+nav a {{ margin-right: 1em; }}
+</style></head><body>
+<nav><a href="/">Label check</a> <b>Motif check</b></nav>
+<h1>Motif check</h1>
+<p>Each card is a claim and one entry from Thompson's Motif-Index. Is the claim, as the people telling it tell it, a modern
+version of that motif: the same situation or trick, with today's people and things in place of the old ones? Judge
+only the story's shape, not whether it's true or whether you agree. A shared word isn't enough. You're
+not told which model suggested it. {len(todo)} left; tap an answer and the card is saved. Reload for more.</p>
+{''.join(cards) or '<p>Nothing left to check.</p>'}
+<script>
+document.querySelectorAll('.card').forEach((card) => card.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {{
+  const r = await fetch('/motif-verdict', {{method: 'POST', headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{claim: card.dataset.claim, code: card.dataset.code, answer: b.dataset.a}})}});
+  if (r.ok) {{ card.classList.add('done'); card.querySelectorAll('button').forEach((x) => x.disabled = true); b.style.background = '#ffc400'; }}
+}})));
+</script></body></html>"""
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        body = page().encode()
+        body = (motif_page() if self.path.startswith('/motifs') else page()).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
@@ -171,10 +253,20 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+        if self.path == '/motif-verdict':
+            if data.get('answer') not in ('yes', 'no', 'unsure') or not data.get('code'):
+                self.send_error(400)
+                return
+            data['at'] = dt.now().isoformat(timespec='seconds')
+            with open(MOTIF_VERDICTS, 'a') as f:
+                f.write(json.dumps({k: data[k] for k in ('claim', 'code', 'answer', 'at')}) + '\n')
+            self.send_response(204)
+            self.end_headers()
+            return
         if self.path != '/verdict':
             self.send_error(404)
             return
-        data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
         if not isinstance(data.get('headline_id'), int):
             self.send_error(400)
             return

@@ -141,6 +141,35 @@ SOURCES = [
     _source('ajthetake', 'The Take (Al Jazeera)', 'podcast', 'center',
             'https://www.omnycontent.com/d/playlist/9c074afa-3313-47e8-b802-a9f900789975/'
             '09af2160-238f-48b2-b20b-ad4b00ebd8e7/b86dddc1-67a5-41c2-a13c-ad4b00ebd8f5/podcast.rss'),
+    # The streamers' and YouTube shows' own podcast feeds (#158, #164): their audio, which the YouTube channels above
+    # only give titles for. Official feeds only (found in Apple's directory by publisher, Oct 4), never fans'
+    # re-uploads; archived and transcribed, never shown
+    _source('pod_majority', 'The Majority Report (podcast)', 'podcast', 'left', 'https://majorityfm.libsyn.com/rss'),
+    _source('pod_pakman', 'David Pakman Show (podcast)', 'podcast', 'left', 'https://feeds.megaphone.fm/SHHWD4599743349'),
+    _source('pod_kulinski', 'The Kyle Kulinski Show', 'podcast', 'left', 'https://rss.buzzsprout.com/2035634.rss'),
+    _source('pod_btc', 'No Lie with Brian Tyler Cohen', 'podcast', 'left', 'https://rss.art19.com/no-lie'),
+    _source('pod_meidas', 'The MeidasTouch Podcast', 'podcast', 'left',
+            'https://rss.amperwave.net/v2/feed/audacynetwork/16aa3c6bf526fae9db63070c73cad09f'),
+    _source('pod_tyt', 'The Young Turks (podcast)', 'podcast', 'left',
+            'https://rss.pdrl.fm/5e32e9/feeds.megaphone.fm/theyoungturks'),
+    _source('pod_mockler', 'The Adam Mockler Show', 'podcast', 'left', 'https://audioboom.com/channels/5174578.rss'),
+    _source('pod_timcast', 'Timcast IRL (podcast)', 'podcast', 'right',
+            'https://rss.libsyn.com/shows/574450/destinations/4973860.xml'),
+    _source('pod_benny', 'The Benny Show', 'podcast', 'right', 'https://feeds.megaphone.fm/BENNYMED7549931483'),
+    _source('pod_bongino', 'The Dan Bongino Show', 'podcast', 'right', 'https://feeds.megaphone.fm/WWO3519750118'),
+    _source('pod_walsh', 'The Matt Walsh Show', 'podcast', 'right',
+            'https://rss.pdrl.fm/1fc256/feeds.megaphone.fm/BVDWV7762869899'),
+    _source('pod_crowder', 'Louder with Crowder', 'podcast', 'right',
+            'https://rss.libsyn.com/shows/576250/destinations/4990850.xml'),
+    _source('pod_candace', 'Candace (podcast)', 'podcast', 'right', 'https://feeds.megaphone.fm/candace'),
+    _source('pod_pbd', 'PBD Podcast (podcast)', 'podcast', 'right', 'https://anchor.fm/s/2fa50a94/podcast/rss'),
+    _source('pod_rogan', 'The Joe Rogan Experience (podcast)', 'podcast', 'crossover',
+            'https://feeds.megaphone.fm/GLT1412515089'),
+    _source('pod_theo', 'This Past Weekend w/ Theo Von', 'podcast', 'crossover',
+            'https://feeds.megaphone.fm/thispastweekend'),
+    _source('pod_flagrant', 'Flagrant (podcast)', 'podcast', 'crossover', 'https://feeds.megaphone.fm/APPI6857213837'),
+    _source('pod_dore', 'The Jimmy Dore Show (podcast)', 'podcast', 'crossover',
+            'https://thejimmydoreshow.libsyn.com/rss'),
     # Call-in shows (#153): ordinary people phoning in about the news, as raw talk for the folklore research; archived
     # and transcribed, never shown. Full shows with callers in free feeds: none on the left (Hartmann's and the
     # Majority Report's caller hours are YouTube-only or for members), so public radio stands in there. iHeart's

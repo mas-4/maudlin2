@@ -58,9 +58,10 @@ def test_pending_order_and_filters(db):
     show = add(db, 'remnant', 1)
     newscast = add(db, 'nprnewsnow', 5)
     published = add(db, 'psa', 2)
+    caller = add(db, 'jessekelly', 4)  # ordinary voices come before the long shows
     add(db, 'psa', 24 * 5)  # too old
     add(db, 'psa', 3, audio=None)  # no audio
-    assert [i.id for i in tr.pending()] == [newscast, published, show]
+    assert [i.id for i in tr.pending()] == [newscast, published, caller, show]
 
 
 def test_transcribe_pending_stores_and_skips_done(db, monkeypatch):
