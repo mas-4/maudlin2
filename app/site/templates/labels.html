@@ -1,0 +1,47 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h1>Loaded labels</h1>
+    <p class="table-intro">The same thing, named differently depending on who's talking: "illegal alien" or "undocumented
+        immigrant", "Biden judge" or "federal judge", "MAGA" or "Trump voters". For each, how many news headlines used
+        it in the last {{ days }} days, and from which side (blue left-leaning, gray center, red right-leaning outlets,
+        by AllSides; the tick marks how our rated outlets split as a group: {{ pool.left }}% left, {{ pool.center }}%
+        center, {{ pool.right }}% right). {{ "{:,}".format(headlines) }} headlines read.</p>
+
+    <div class="label-families">
+        {% for fam in families %}
+            <section class="label-family">
+                <h2>{{ fam.family }}</h2>
+                {% for t in fam.terms if t.total %}
+                    {% set rated = t.left + t.center + t.right %}
+                    <div class="label-term">
+                        <div class="label-term-head">
+                            <span class="label-word">“{{ t.term }}”</span>
+                            <span class="trend-posts">{{ t.total }} headline{{ 's' if t.total != 1 }}{% if t.note %} · {{ t.note }}{% endif %}</span>
+                        </div>
+                        {% if rated %}
+                            <span class="bs-meter" title="{{ t.left }} left, {{ t.center }} center, {{ t.right }} right{% if t.unrated %}, {{ t.unrated }} from unrated outlets{% endif %}">
+                                <span class="bs-end" aria-hidden="true">🫏</span>
+                                <span class="bs-track">
+                                    {% if t.left %}<span class="bs-seg bs-left" style="flex: {{ t.left }}"></span>{% endif %}
+                                    {% if t.center %}<span class="bs-seg bs-center" style="flex: {{ t.center }}"></span>{% endif %}
+                                    {% if t.right %}<span class="bs-seg bs-right" style="flex: {{ t.right }}"></span>{% endif %}
+                                    <span class="bs-tick" style="left: {{ pool.left }}%"></span>
+                                </span>
+                                <span class="bs-end" aria-hidden="true">🐘</span>
+                            </span>
+                        {% endif %}
+                        <div class="label-outlets">
+                            {% for o in t.outlets %}<span class="edit-chip" style="{{ chip_style(o.name, o.bias) }}" title="{{ o.name }}: {{ o.n }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }} {{ o.n }}</span>{% endfor %}
+                        </div>
+                        {% if t.example %}<p class="label-example">e.g. <a href="{{ t.example.url }}">{{ t.example.title }}</a> ({{ short_name(t.example.agency) }})</p>{% endif %}
+                    </div>
+                {% endfor %}
+            </section>
+        {% endfor %}
+    </div>
+    <p class="table-intro">The list is curated by hand and grows: each week we mine the two- and three-word phrases one
+        side uses far more than the other, and add the ones that are really vocabulary, not just a story one side covered
+        more. A word can mean different things in different headlines ("regime" for a foreign government or a domestic
+        one), so the counts are a starting point for reading the headlines, not a verdict.</p>
+{% endblock content %}

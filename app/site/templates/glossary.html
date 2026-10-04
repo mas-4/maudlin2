@@ -134,6 +134,13 @@
                 counts only if the old headline left before the new one appeared; live blogs, reused links and minor
                 changes (capitalization, punctuation, a label like "WATCH:") are skipped.</p>
         {% endcall %}
+        {% call term('🏷️', 'Loaded labels', 'labels') %}
+            <p>On the loaded labels page: the same thing named differently depending on who's talking ("illegal alien" or
+                "undocumented immigrant", "Biden judge", "MAGA", and the center's own polite ones like "embattled" or
+                "populist"), counted in {{ labels_days }} days of news headlines by side. The list is curated by hand;
+                each week we mine phrases one side uses far more than the other (the log-odds ratio with an informative
+                prior) and add the ones that are really vocabulary rather than one side's bigger story.</p>
+        {% endcall %}
         {% call term('📡', 'Wire copy', 'wire') %}
             <p>On the outlets page: the share of an outlet's headlines over the last week that are AP or Reuters
                 headlines, word for word or nearly (very close in meaning and sharing most of their words). Outlets

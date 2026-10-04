@@ -2490,3 +2490,59 @@ h1 {
     letter-spacing: -0.1em;
     color: #ff4fa3;
 }
+
+/* Loaded labels page */
+.label-families {
+    columns: 2 26em;
+    column-gap: 1.5em;
+}
+
+.label-family {
+    break-inside: avoid;
+    margin: 0 0 1.5em;
+    padding: 0.6em 1em 0.8em;
+    background: var(--card-bg, #efede6);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #1f1f2e;
+}
+
+.label-family h2 {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-size: 1.3em;
+    margin: 0.2em 0 0.5em;
+}
+
+.label-term {
+    margin: 0 0 0.9em;
+}
+
+.label-term-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5em;
+}
+
+.label-word {
+    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.label-outlets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 0.3em;
+}
+
+.label-outlets .edit-chip {
+    font-size: 0.75em;
+    padding: 1px 8px;
+}
+
+.label-example {
+    font-size: 0.85em;
+    color: #555;
+    margin: 0.3em 0 0;
+}

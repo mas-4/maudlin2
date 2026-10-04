@@ -1,0 +1,48 @@
+# Contested vocabulary: the same thing named differently depending on who's talking (app/analysis/epithets.py).
+# family groups competing names for one thing; pattern is a case-insensitive regular expression matched against
+# headlines. Curated by hand; candidates come from the weekly side-word mining (data/epithet_candidates.json).
+family,term,pattern,note
+People who entered illegally,illegal alien,\billegal aliens?\b,
+People who entered illegally,illegal immigrant,\billegal immigrants?\b,
+People who entered illegally,illegals,\billegals\b,
+People who entered illegally,undocumented immigrant,\bundocumented (?:immigrants?|migrants?|people|workers)\b,
+People who entered illegally,migrant,\bmigrants?\b,also covers legal migration
+People who entered illegally,asylum seeker,\basylum[- ]seekers?\b,
+Judges,activist judge,\bactivist judges?\b,
+Judges,Biden judge,\bbiden(?:-appointed| appointed)? judges?\b|\bbiden-appointed\b,
+Judges,Obama judge,\bobama(?:-appointed| appointed)? judges?\b|\bobama-appointed\b,
+Judges,Trump judge,\btrump(?:-appointed| appointed)? judges?\b|\btrump-appointed\b,
+Judges,rogue judge,\brogue judges?\b,
+Labels for opponents,MAGA,\bmaga\b,
+Labels for opponents,far-right,\bfar[- ]right\b,
+Labels for opponents,radical left,\bradical[- ]left\b,
+Labels for opponents,far-left,\bfar[- ]left\b,
+Labels for opponents,leftist,\bleftists?\b,
+Labels for opponents,woke,\bwoke\b,
+Labels for opponents,regime,\bregime\b,also used for foreign governments
+The Democratic Party,Democrat (as an adjective),\bDemocrat(?:-(?:led|controlled|run|backed|aligned)|\s+(?:lawmakers?|leaders?|senators?|governors?|mayors?|states?|cities|city|policies|voters|candidates?|officials?|establishment|machine|operatives?|donors?|base|majority|minority|primary|primaries|congress(?:man|men|woman|women)|legislators?|politicians?|strategists?|members?|attorneys? general|party|rep|reps|sen|hopefuls?|incumbents?|nominees?))\b,"""Democrat Party"", ""Democrat-led"", ""Democrat senators"""
+The Democratic Party,Democratic (as an adjective),\bDemocratic(?:-(?:led|controlled|run|backed|aligned)|\s+(?:lawmakers?|leaders?|senators?|governors?|mayors?|states?|cities|city|policies|voters|candidates?|officials?|establishment|machine|operatives?|donors?|base|majority|minority|primary|primaries|congress(?:man|men|woman|women)|legislators?|politicians?|strategists?|members?|attorneys? general|party|rep|reps|sen|hopefuls?|incumbents?|nominees?))\b,
+Terrorism,radical Islamic terrorism,\bradical islamic\b,
+Terrorism,Islamist,\bislamists?\b,
+Terrorism,jihadist,\bjihad(?:ist|is)s?\b,
+Abortion,pro-life,\bpro-life\b,
+Abortion,anti-abortion,\banti-abortion\b,
+Abortion,abortion rights,\babortion[- ]rights\b,
+Abortion,pro-abortion,\bpro-abortion\b,
+Gaza,genocide,\bgenocide\b,also used for other conflicts
+Gaza,pro-Palestinian,\bpro-palestinian\b,
+Gaza,pro-Hamas,\bpro-hamas\b,
+Gaza,Hamas-run,\bhamas-run\b,
+Guns,gun control,\bgun control\b,
+Guns,gun safety,\bgun safety\b,
+Guns,gun rights,\bgun rights\b,
+Climate,climate crisis,\bclimate (?:crisis|emergency)\b,
+Climate,climate change,\bclimate change\b,
+Climate,climate alarmism,\bclimate (?:alarm\w*|hoax|cult)\b,
+Describing people,embattled,\bembattled\b,the center's polite epithets
+Describing people,controversial,\bcontroversial\b,
+Describing people,populist,\bpopulists?\b,
+Describing people,firebrand,\bfirebrands?\b,
+Describing people,strongman,\bstrongm[ae]n\b,
+Describing people,hardline,\bhard-?lin(?:e|er|ers)\b,
+Describing people,divisive,\bdivisive\b,
