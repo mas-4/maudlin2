@@ -75,7 +75,8 @@
                 el.scrollIntoView({behavior: 'smooth', block: 'start'});
             }));
             // Phones: a 🧭 button from the start with the list folded; the list opens on its own once the reader is
-            // past the cloud, unless they've already opened or closed it themselves
+            // past the cloud, unless they've already opened or closed it themselves. Like on wide screens, only the
+            // section on screen shows its label; the rest are just their emoji, so the rail stays out of the way
             const nav = document.querySelector('.page-toc'), toggle = document.querySelector('.toc-toggle');
             const fold = (open) => { nav.classList.toggle('open', open); toggle.setAttribute('aria-expanded', open); };
             let chosen = false;
@@ -788,16 +789,18 @@
     {% endif %}
     <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
     <div class="table-filters story-sort" role="group" aria-label="Sort and filter stories">
-        <span class="bar-label">sort:</span>
+        <span class="bar-group"><span class="bar-label">sort:</span>
         <button data-sort="newest" class="active" title="Most recently broken first">✨ newest</button>
         <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
         <button data-sort="spiciest" title="Spiciest first. {{ spicy_tip }}">🌶️ spiciest</button>
         <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
+        </span>
         <span class="bar-divider" aria-hidden="true"></span>
-        <span class="bar-label">only:</span>
+        <span class="bar-group"><span class="bar-label">only:</span>
         {% if blindspots %}<button data-filter="blindspot" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
         {% if show_coverage %}<button data-filter="shows" class="toggle" title="Only stories the news podcasts, newsletters and streams are talking about">🎙️ in podcasts</button>{% endif %}
         {% if clusters|selectattr('curators')|list %}<button data-filter="picked" class="toggle" title="Only stories an aggregator (Google News, Drudge Report, RealClearPolitics, Political Wire) is linking to now">📌 aggregated</button>{% endif %}
+        </span>
     </div>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}

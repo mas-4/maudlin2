@@ -1605,9 +1605,6 @@ body.toc-on .page-toc {
         opacity: 1;
         pointer-events: auto;
     }
-    .page-toc a .toc-label {
-        max-width: 10em;
-    }
 }
 
 #trending, #current-stories, #every-headline, #sagas, #investigations, #shows {
@@ -3024,7 +3021,7 @@ h1 {
 
 .nav-menu-list {
     position: absolute;
-    top: calc(100% + 6px);
+    top: calc(100% + 8px);
     left: 0;
     z-index: 50;
     display: flex;
@@ -3037,6 +3034,17 @@ h1 {
     border: 3px solid #1f1f2e;
     border-radius: 14px;
     box-shadow: 6px 6px 0 #ffc400;
+}
+
+/* An invisible bridge over the gap between the summary and the list, so the pointer never leaves the menu on its way
+   down */
+.nav-menu-list::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    right: -3px;
+    top: -14px;
+    height: 14px;
 }
 
 .nav-menu-list a {
@@ -3122,4 +3130,48 @@ h1 {
 /* Spice meter on the court cards: plain bread to hot pepper */
 .spice-track {
     background: linear-gradient(90deg, #f4efe6, #ffd666 50%, #ff7a59);
+}
+
+/* The stories bar's two groups (sort, only) each keep together; on phones each takes a row of its own, with smaller
+   buttons, and the divider goes */
+.story-sort .bar-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    background: none;
+}
+
+.story-sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+@media (max-width: 700px) {
+    .story-sort .bar-divider {
+        display: none;
+    }
+
+    .story-sort .bar-group {
+        width: 100%;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .story-sort .bar-group button {
+        font-size: 0.85em;
+        padding: 0.25em 0.65em;
+    }
+
+    .story-sort .bar-label {
+        width: 100%;
+        text-align: center;
+        font-size: 0.85em;
+        background: none;
+        padding: 0;
+    }
 }

@@ -40,8 +40,11 @@
             if (menu) {
                 if (menu.querySelector('a[aria-current]')) menu.classList.add('current');
                 if (matchMedia('(hover: hover)').matches) {
-                    menu.addEventListener('mouseenter', () => { menu.open = true; });
-                    menu.addEventListener('mouseleave', () => { menu.open = false; });
+                    // Closing waits a moment, so a mouse on its way down to the list (or wobbling past its edge) doesn't
+                    // shut it
+                    let closing = null;
+                    menu.addEventListener('mouseenter', () => { clearTimeout(closing); menu.open = true; });
+                    menu.addEventListener('mouseleave', () => { closing = setTimeout(() => { menu.open = false; }, 350); });
                     // Hovering already opened it, so a click keeps it open rather than toggling it shut
                     menu.querySelector('summary').addEventListener('click', (ev) => { ev.preventDefault(); menu.open = true; });
                 }
