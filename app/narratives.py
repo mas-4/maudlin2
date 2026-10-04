@@ -46,8 +46,9 @@ SAMPLE = 10  # versions shown to the model
 LABEL_TOP = 150  # biggest candidate groups labeled per report
 FOLK_VARIETY = 0.5  # wording at least this varied: told, not pasted
 COPY_VARIETY = 0.2  # under this: the same words
-GENRES = ['rumor', 'contemporary legend', 'conspiracy theory', 'prophecy or prediction', 'cautionary tale',
-          'atrocity story', 'trickster tale', 'joke formula or meme', 'proverb or catchphrase', 'personal testimony',
+GENRES = ['rumor', 'contemporary legend', 'conspiracy theory', 'folk belief', 'prophecy or prediction',
+          'cautionary tale', 'atrocity story', 'trickster tale', 'joke formula or meme', 'proverb or catchphrase',
+          'personal testimony', 'news report or shared reaction',
           'none: a shared topic, not a retold narrative']
 MOTIF_CHAPTERS = ['A Mythological motifs', 'B Animals', 'C Tabu', 'D Magic', 'E The dead', 'F Marvels', 'G Ogres',
                   'H Tests', 'J The wise and the foolish', 'K Deceptions', 'L Reversal of fortune',
@@ -57,8 +58,10 @@ MOTIF_CHAPTERS = ['A Mythological motifs', 'B Animals', 'C Tabu', 'D Magic', 'E 
 PROMPT = """These posts were written by different people:
 {posts}
 
-Do they retell the same narrative (one claim, rumor, legend, joke or saying that people repeat in their own words),
-or do they only share a topic? Answer in the fields below.
+Do they retell the same narrative (one claim, rumor, legend, belief, joke or saying that people repeat in their own
+words), or do they only share a topic? Reporting or reacting to the same news event is "news report or shared
+reaction", not a legend or rumor: a legend or rumor is a story told as true that isn't plain reporting of the day's
+news. Answer in the fields below.
 
 narrative: the shared claim or story in one plain sentence, or "" if there is none
 retold: true if they retell one narrative, false if they only share a topic

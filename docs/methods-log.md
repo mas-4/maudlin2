@@ -5,6 +5,22 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **What people say, unprompted (research only, #153, #142).** Each run samples five minutes of Bluesky's public
+  stream (Jetstream) and three pages of mas.to's federated timeline, on a thread during the scrape. Kept: post text,
+  reply/quote flags, a salted fingerprint of the author. Handles in text become "@someone", links just their site;
+  images and video are never fetched. Skipped: non-English (by script and common words, since posts often don't say),
+  posts their authors labeled sensitive, sex spam, Mastodon accounts that haven't opted in to being searchable or are
+  marked as bots. Deleted posts are deleted here too; raw text expires after 30 days. Once a night the day's posts are
+  grouped into paraphrase groups (mxbai embeddings, mutual nearest neighbours at 0.78, accounts posting more than 20
+  times in six hours and bare link shares left out), and each group of 5+ people is scored for wording variety (one
+  minus mean word overlap): varied wording from many people is a told narrative, the same words copypasta. The local
+  model labels the biggest groups: the shared claim, whether it's retold or just a shared topic, genre (rumor,
+  contemporary legend, conspiracy theory, folk belief, joke formula, testimony, news reaction...), Thompson
+  Motif-Index chapter and a motif, Propp-style roles (villain, victim, hero), politics and side. Each narrative is
+  matched to the nearest current story and to the nearest words in The Focus Group transcripts (12 episodes,
+  Ep50-61, transcribed Oct 4). The first report (40 minutes of stream, 15,430 posts) found 13 retold narratives,
+  among them a folk belief that Trump is being kept alive by doctors because "they need him alive" and a contemporary
+  legend of "Julie bots". Reports stay in data/narratives; nothing is published.
 - **Stories use a bigger embedding model.** Four models were compared on the day's 6,733 headlines at equal
   coverage (the threshold at which each put about 700, 900 and 1,100 headlines into stories of 6+ outlets), with
   precision from cross-outlet pairs sampled inside each model's stories and recall from a shared pool of 657 pairs

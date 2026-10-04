@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime as dt
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -20,6 +21,7 @@ from utils.emailer import send_notification
 import threading
 
 logger = get_logger(__name__)
+NARRATIVE_HOUR = 4  # the run that writes the day's narrative report
 
 
 class SeleniumThread(threading.Thread):
@@ -153,6 +155,10 @@ def main(args: argparse.Namespace):
         # The language model is done for this run: Whisper gets the GPU for up to ten minutes
         from app.transcribe import transcribe_pending
         transcribe_pending(budget=600)
+        # Once a night, the day's narratives (research only, #142): the GPU has nothing else to do at 4 AM
+        if dt.now().hour == NARRATIVE_HOUR:
+            from app import narratives
+            narratives.report(hours=24)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 
