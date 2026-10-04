@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Transcription: temporary failures retry.** Out-of-memory and network errors are no longer recorded as failures
+  (they stopped every item for good on the first prod run); only a missing or unreadable file is. Transcription
+  waits for the language model to unload first and skips the round if it can't. The test suite no longer calls the
+  real language model (it was loading it onto the shared GPU mid-transcription).
 - **More shows.** News outlets' own daily podcasts shown (Reuters World News, BBC Global News, WSJ What's News,
   Bloomberg News Now, Politico Playbook, The Economist's Intelligence, CNN 5 Things, the Guardian's Today in Focus,
   Morning Wire); more political YouTube channels shown (Pakman, Secular Talk, Brian Tyler Cohen, MeidasTouch, TYT,

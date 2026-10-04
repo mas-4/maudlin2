@@ -1,5 +1,6 @@
 """app/transcribe.py: ad trimming, the queue and storage, with a fake model and fake downloads (no GPU, no network)."""
 import json
+import subprocess
 from datetime import datetime as dt, timedelta as td
 from types import SimpleNamespace
 
@@ -64,7 +65,7 @@ def test_pending_order_and_filters(db):
 
 def test_transcribe_pending_stores_and_skips_done(db, monkeypatch):
     item = add(db, 'nprnewsnow', 1)
-    monkeypatch.setattr(tr, 'free_gpu', lambda: None)
+    monkeypatch.setattr(tr, 'free_gpu', lambda: True)
     monkeypatch.setattr(tr, 'PAUSE', 0)
     monkeypatch.setattr(tr, 'download', lambda url, folder: 'unused')
     monkeypatch.setattr(tr, 'decode', lambda path: np.zeros(16000 * 10, np.float32))
@@ -83,17 +84,50 @@ def test_transcribe_pending_stores_and_skips_done(db, monkeypatch):
 def test_too_big_and_failed_items_are_recorded_not_retried(db, monkeypatch):
     add(db, 'nprnewsnow', 1)
     add(db, 'psa', 2)
-    monkeypatch.setattr(tr, 'free_gpu', lambda: None)
+    monkeypatch.setattr(tr, 'free_gpu', lambda: True)
     monkeypatch.setattr(tr, 'PAUSE', 0)
 
     def download(url, folder):
         if download.calls:
-            raise RuntimeError('404')
+            raise subprocess.CalledProcessError(1, 'ffmpeg')  # unreadable audio: won't get better
         download.calls += 1
         return None  # the first is too big
     download.calls = 0
     monkeypatch.setattr(tr, 'download', download)
     assert tr.transcribe_pending(budget=60) == 0
     with db() as s:
-        assert sorted(t.model for t in s.query(SideTranscript)) == ['failed: RuntimeError', 'skipped: over the size limit']
+        assert sorted(t.model for t in s.query(SideTranscript)) == ['failed: CalledProcessError',
+                                                                     'skipped: over the size limit']
     assert tr.pending() == []
+
+
+def test_out_of_memory_is_not_recorded_and_stops_the_round(db, monkeypatch):
+    add(db, 'nprnewsnow', 1)
+    add(db, 'nprnewsnow', 2)
+    monkeypatch.setattr(tr, 'free_gpu', lambda: True)
+    monkeypatch.setattr(tr, 'PAUSE', 0)
+    calls = []
+
+    def download(url, folder):
+        calls.append(url)
+        raise RuntimeError('CUDA failed with error out of memory')
+    monkeypatch.setattr(tr, 'download', download)
+    assert tr.transcribe_pending(budget=60) == 0
+    assert len(calls) == 1  # stopped after the first
+    with db() as s:
+        assert s.query(SideTranscript).count() == 0
+    assert len(tr.pending()) == 2  # both wait for the next run
+
+
+def test_busy_gpu_skips_the_round(db, monkeypatch):
+    add(db, 'nprnewsnow', 1)
+    monkeypatch.setattr(tr, 'free_gpu', lambda: False)
+    monkeypatch.setattr(tr, 'download', lambda url, folder: pytest.fail('should not download'))
+    assert tr.transcribe_pending(budget=60) == 0
+
+
+def test_permanent_errors():
+    response = SimpleNamespace(status_code=404)
+    assert tr.permanent(type('E', (Exception,), {'response': response})('gone'))
+    assert not tr.permanent(RuntimeError('CUDA failed with error out of memory'))
+    assert not tr.permanent(tr.rq.ConnectionError('offline'))

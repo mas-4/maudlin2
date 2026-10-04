@@ -64,14 +64,35 @@ def model():
     return _model
 
 
-def free_gpu():
-    """Ask Ollama to unload its model so Whisper has the GPU's memory; the next run loads it again."""
-    try:
-        loaded = rq.get(f'{OLLAMA}/api/ps', timeout=5).json().get('models', [])
+def free_gpu(wait: float = 30) -> bool:
+    """Ask Ollama to unload its model so Whisper has the GPU's memory (the next run loads it again), and wait until
+    it has. False if something keeps it loaded (another job using the language model)."""
+    deadline = time.time() + wait
+    while True:
+        try:
+            loaded = rq.get(f'{OLLAMA}/api/ps', timeout=5).json().get('models', [])
+        except Exception:  # noqa: no Ollama running means nothing to free
+            return True
+        if not loaded:
+            return True
+        if time.time() > deadline:
+            return False
         for m in loaded:
-            rq.post(f'{OLLAMA}/api/generate', json={'model': m['name'], 'keep_alive': 0}, timeout=30)
-    except Exception:  # noqa: no Ollama running means nothing to free
-        pass
+            try:
+                rq.post(f'{OLLAMA}/api/generate', json={'model': m['name'], 'keep_alive': 0}, timeout=30)
+            except Exception:  # noqa
+                pass
+        time.sleep(2)
+
+
+def permanent(error: Exception) -> bool:
+    """Whether an error will happen again on retry (the file is gone or unreadable), as opposed to something passing
+    (the GPU out of memory, a network blip), which should just wait for the next run."""
+    text = str(error).lower()
+    if 'out of memory' in text or 'cuda' in text or isinstance(error, (rq.ConnectionError, rq.Timeout)):
+        return False
+    status = getattr(getattr(error, 'response', None), 'status_code', None)
+    return status in (404, 410) or isinstance(error, subprocess.CalledProcessError)
 
 
 def decode(path: str) -> np.ndarray:
@@ -131,7 +152,9 @@ def transcribe_pending(budget: float = 600) -> int:
     items = pending()
     if not items:
         return 0
-    free_gpu()
+    if not free_gpu():
+        logger.info("Transcribe: the language model is busy; trying next run")
+        return 0
     started, done = time.time(), 0
     for item in items:
         if time.time() - started > budget:
@@ -150,8 +173,12 @@ def transcribe_pending(budget: float = 600) -> int:
             save(item.id, kept, len(audio) / 16000)
             done += 1
         except Exception as e:  # noqa: one bad file mustn't stop the rest
-            logger.warning("Transcribe: %s failed (%s)", item.title, e)
-            save(item.id, [], 0, model=f'failed: {type(e).__name__}'[:64])  # recorded, not retried every hour
+            if permanent(e):
+                logger.warning("Transcribe: %s failed for good (%s)", item.title, e)
+                save(item.id, [], 0, model=f'failed: {type(e).__name__}'[:64])  # recorded, not retried every hour
+            else:
+                logger.warning("Transcribe: %s failed for now (%s); stopping until next run", item.title, e)
+                break  # out of memory or offline: the rest would fail the same way
         time.sleep(PAUSE)
     logger.info("Transcribed %d of %d pending items in %.0fs", done, len(items), time.time() - started)
     return done

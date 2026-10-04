@@ -20,6 +20,10 @@ def pytest_sessionstart(session):
     # Pages the tests render go to a scratch folder, never the real build: the pre-commit hook runs these tests, and
     # pages written without the build's setup (icons, ratings) were overwriting the preview
     Config.build = tempfile.mkdtemp(prefix='maudlin-test-build-')
+    # No test talks to the real language model: it would load the model on the shared GPU (pushing out the hourly
+    # run's transcription) and make results depend on it. Tests that need answers fake llm.backend themselves.
+    from app.analysis import llm
+    llm.backend = lambda: None
 
 
 @pytest.fixture(scope='session')
