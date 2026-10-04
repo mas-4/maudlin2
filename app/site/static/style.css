@@ -2429,3 +2429,10 @@ h1 {
 .saga-past {
     font-style: italic;
 }
+
+/* What a headline rewrite changed, in the model's words (edits page) */
+.edit-change {
+    font-style: italic;
+    color: #444;
+    margin-left: 0.3em;
+}

@@ -12,6 +12,9 @@ Every article url can collect several headlines over time. Most pairs aren't edi
   are kept apart as minor."""
 import difflib
 import html
+import hashlib
+import json
+import os
 import re
 from datetime import datetime as dt, timedelta as td
 
@@ -20,7 +23,8 @@ import pytz
 from sqlalchemy import func
 
 from app.models import Session, Headline, Article, Agency
-from app.utils import get_logger
+from app.analysis import llm
+from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
 
@@ -33,6 +37,8 @@ CAPS_KICKER = re.compile(r'^(?:[A-Z][A-Z0-9\s\'’&]{1,30}(?:\s*[:—–|]|\s{2,
 LABEL_KICKER = re.compile(
     r'^(?:(?:exclusive|watch|video|live|breaking|opinion|analysis|updated?)\s*[:—–|-]\s*)+', re.IGNORECASE)
 ELLIPSIS = re.compile(r'^[…\s.]+|[…\s.]+$')
+LIST_NUMBER = re.compile(r'^\s*\d{1,2}\s*[,.)]\s+')  # a rank from a "most read" list, not part of the headline
+VIEW_COUNT = re.compile(r'^\s*[\d.,]+[kKmM]?\s+views\s*:\s*', re.IGNORECASE)  # "114.7k views : "
 # Live blogs keep one url and swap in a headline for each new development, so their changes aren't edits
 # (an all-caps LIVE tag counts; the plain word "live" doesn't: "Live music returns", "Best cities to live in")
 LIVE = re.compile(r'(?-i:\bLIVE\b)|\blive (?:updates?|blog|coverage)\b|\bas it happened\b', re.IGNORECASE)
@@ -47,7 +53,7 @@ def _words(text: str) -> list[str]:
 
 def _core(text: str) -> list[str]:
     """The words that carry a headline's meaning, without kickers, case or punctuation."""
-    text = ELLIPSIS.sub('', text.strip())
+    text = ELLIPSIS.sub('', LIST_NUMBER.sub('', VIEW_COUNT.sub('', text.strip())))
     return _words(LABEL_KICKER.sub('', CAPS_KICKER.sub('', text)))
 
 
@@ -110,7 +116,9 @@ def find_edits(days: int = WINDOW_DAYS) -> tuple[pd.DataFrame, pd.DataFrame]:
                 continue
             if LIVE.search(old['title']) or LIVE.search(new['title']) or overlap(old['title'], new['title']) < MIN_OVERLAP:
                 continue  # a live blog or a reused url, not a rewrite
-            old_html, new_html = diff_html(old['title'].strip(), new['title'].strip())
+            clean = lambda t: LIST_NUMBER.sub('', VIEW_COUNT.sub('', t.strip())).strip()  # noqa: E731
+            old['title'], new['title'] = clean(old['title']), clean(new['title'])
+            old_html, new_html = diff_html(old['title'], new['title'])
             row = {
                 'agency': new['agency'], 'bias': new['bias'], 'url': new['url'],
                 'before': old['title'].strip(), 'after': new['title'].strip(),
@@ -140,3 +148,46 @@ def edit_rates(edits: pd.DataFrame, days: int = WINDOW_DAYS, min_headlines: int 
     rates['edits'] = rates['agency'].map(counts).fillna(0).astype(int)
     rates['per_100'] = 100 * rates['edits'] / rates['headlines']
     return rates.sort_values(['per_100', 'edits'], ascending=False)
+
+
+# What a rewrite changed, judged by the language model looking at both versions side by side. Comparing two separate
+# scores (each version scored on its own) mostly measured scoring noise: identical headlines came out "plainer"
+JUDGMENTS = os.path.join(Config.data, 'edit_judgments.json')
+JUDGE_PROMPT = """A news outlet rewrote a headline.
+
+Before: {before}
+After: {after}
+
+change: in under 12 words, what the rewrite changed (e.g. "softened 'slams' to 'criticizes'", "added the death toll",
+"named the suspect", "only fixed a typo")
+wording: more_loaded (the outlet's own words got more emotional or judgmental), plainer, or same
+news: better (the event now sounds better for the people involved), worse, or same"""
+JUDGE_SCHEMA = {"type": "object", "properties": {
+    "change": {"type": "string", "maxLength": 100},
+    "wording": {"type": "string", "enum": ["more_loaded", "plainer", "same"]},
+    "news": {"type": "string", "enum": ["better", "worse", "same"]}},
+    "required": ["change", "wording", "news"]}
+
+
+def judge_edits(pairs: list[tuple[str, str]]) -> dict[tuple[str, str], dict]:
+    """(before, after) -> {change, wording, news}, from a cache of earlier judgments; new pairs are judged once."""
+    try:
+        with open(JUDGMENTS) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    key = lambda b, a: hashlib.sha1(f'{b}\n{a}'.encode()).hexdigest()  # noqa: E731
+    fresh = 0
+    for before, after in pairs:
+        k = key(before, after)
+        if k in cache or llm.backend() is None:
+            continue
+        answer = llm.complete_json(JUDGE_PROMPT.format(before=before, after=after), JUDGE_SCHEMA, max_tokens=80)
+        if answer:
+            cache[k] = {**answer, 'model': llm.model()}
+            fresh += 1
+    if fresh:
+        with open(JUDGMENTS, 'w') as f:
+            json.dump(cache, f)
+        logger.info("Judged %d new headline changes", fresh)
+    return {(b, a): cache[key(b, a)] for b, a in pairs if key(b, a) in cache}

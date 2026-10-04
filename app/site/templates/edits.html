@@ -49,6 +49,7 @@
                     <span class="edit-source">{{ edit.source }}</span>
                     <span>changed between {{ edit.between }}</span>
                     {% for note in edit.shifts %}<span class="trend-both">{{ note }}</span>{% endfor %}
+                    {% if edit.change %}<span class="edit-change" title="The language model's reading of the two versions side by side">✏️ {{ edit.change }}</span>{% endif %}
                 </div>
                 <p class="edit-before">{{ edit.before_html|safe }}</p>
                 <p class="edit-after"><a href="{{ edit.url }}">{{ edit.after_html|safe }}</a></p>

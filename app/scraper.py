@@ -22,6 +22,9 @@ from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
 
 logger = get_logger(__name__)
 
+LIST_NUMBER = r'^\s*\d{1,2}\s*[,.)]\s+'  # a list rank before a headline; "1.5 million" has no space, so it stays
+VIEW_COUNT = r'^\s*[\d.,]+[kKmM]?\s+views\s*:\s*'  # "114.7k views : " counters some sites put before a headline
+
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score', 'event_score',
                                            'loaded_score', 'emotion', 'emotion_ranks', 'scored_by', 'scored_at',
                                            'affected'])
@@ -126,6 +129,8 @@ class Scraper(ABC, Thread):
 
         t = time.time()
         df['title'] = df['raw'].apply(extract_text)
+        # A rank from a "most read" list isn't part of the headline ("4 , Trump defiant…", "2. Storm hits…")
+        df['title'] = df['title'].str.replace(VIEW_COUNT, '', regex=True).str.replace(LIST_NUMBER, '', regex=True)
         logger.debug("Extracted text in %f seconds", time.time() - t)
 
         t = time.time()

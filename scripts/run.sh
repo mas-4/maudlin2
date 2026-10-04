@@ -33,6 +33,9 @@ if journalctl -q -k --since "-5min" 2>/dev/null | grep -q "PM: suspend exit"; th
     woke=1
 fi
 
+# A copy of the database before anything touches it (the newest 5 are kept; nightly copies are separate)
+scripts/backup.sh run || echo "Backup before the run failed; running anyway" >&2
+
 .venv/bin/alembic upgrade head || { echo "Database migration failed; not running" >&2; exit 1; }
 .venv/bin/python main.py --run-selenium
 status=$?

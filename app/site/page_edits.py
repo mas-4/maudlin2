@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from app.analysis.edits import find_edits, edit_rates, WINDOW_DAYS
+from app.analysis.edits import judge_edits, find_edits, edit_rates, WINDOW_DAYS
 from app.site.common import TemplateHandler, chip_style, j2env
 from app.site.data import DataHandler
 from app.utils.constants import Bias
@@ -18,19 +18,28 @@ def eastern(timestamp) -> str:
     return pd.Timestamp(timestamp).tz_localize('UTC').tz_convert('US/Eastern').strftime(TIME)
 
 
-def shifts(edit) -> list[str]:
-    """Plain-words notes on how the rewrite moved the llm's scores, when both versions were scored."""
+NOTES = {('wording', 'more_loaded'): 'more loaded wording', ('wording', 'plainer'): 'plainer wording',
+         ('news', 'better'): 'reads as better news', ('news', 'worse'): 'reads as worse news'}
+
+
+def shifts(judgment, edit) -> list[str]:
+    """Notes on how a rewrite moved the wording or the news, shown only when two independent readings agree on the
+    direction: the language model's side-by-side judgment of both versions, and the change between each version's own
+    scores. Either alone is noisy (one called an added apostrophe "more loaded"); both agreeing is worth showing."""
+    if not judgment:
+        return []
     notes = []
-    if pd.notna(edit['loaded_before']) and pd.notna(edit['loaded_after']):
-        if edit['loaded_after'] > edit['loaded_before']:
-            notes.append('more loaded wording')
-        elif edit['loaded_after'] < edit['loaded_before']:
-            notes.append('plainer wording')
-    if pd.notna(edit['event_before']) and pd.notna(edit['event_after']):
-        if edit['event_after'] > edit['event_before']:
-            notes.append('reads as better news')
-        elif edit['event_after'] < edit['event_before']:
-            notes.append('reads as worse news')
+
+    def moved(field):
+        before, after = edit[f'{field}_before'], edit[f'{field}_after']
+        if pd.isna(before) or pd.isna(after) or before == after:
+            return None
+        return 'up' if after > before else 'down'
+    agree = {('wording', 'more_loaded'): moved('loaded') == 'up', ('wording', 'plainer'): moved('loaded') == 'down',
+             ('news', 'better'): moved('event') == 'up', ('news', 'worse'): moved('event') == 'down'}
+    for (field, value), note in NOTES.items():
+        if judgment.get(field) == value and agree[(field, value)]:
+            notes.append(note)
     return notes
 
 
@@ -53,14 +62,17 @@ class EditsPage:
         logger.info("Generating edits page...")
         edits, minor = find_edits()
         kinds = source_kinds()
+        judged = judge_edits([(e['before'], e['after']) for _, e in edits.iterrows()]) if not edits.empty else {}
         rows = []
         for _, edit in edits.iterrows():
+            judgment = judged.get((edit['before'], edit['after']))
             rows.append({
                 'agency': edit['agency'], 'url': edit['url'], 'style': chip_style(edit['agency'], edit['bias']),
                 'bias': 'not rated' if edit['agency'] in j2env.globals['unrated'] else str(Bias(int(edit['bias']))),
                 'before_html': edit['before_html'], 'after_html': edit['after_html'],
                 'between': f"{eastern(edit['last_seen_before'])} and {eastern(edit['first_seen_after'])} ET",
-                'shifts': shifts(edit),
+                'shifts': shifts(judgment, edit),
+                'change': judgment.get('change') if judgment else None,
                 'source': kinds.get(edit['agency'], 'front page'),
             })
         rates = edit_rates(edits)

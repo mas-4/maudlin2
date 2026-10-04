@@ -5,6 +5,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Headline changes: junk prefixes.** A rank from a "most read" list ("4 , ") or a view counter ("114.7k views : ")
+  before a headline is stripped when scraping and ignored when comparing versions, so a story moving from #4 to #2
+  is no longer a "change".
+- **Headline changes: how a rewrite changed.** The language model reads both versions side by side and says, in a few
+  words, what the rewrite changed ("added the death toll"), cached once per change. "Plainer wording" / "reads as
+  better news" notes show only when that side-by-side reading and the two versions' own scores agree on the
+  direction; either alone was noise (identical headlines came out "plainer").
+- **Backups every run.** Each run first takes an online copy of the database (newest 5 kept), besides the nightly
+  copies (30 days).
 - **Trending ranks by what's on front pages now.** "Trending in the news" ranks stories by the share of outlets
   carrying them on their front page right now, weighted by age the same way as the news-day sticker (full weight
   for 12 hours, then halving every 24), instead of every outlet that covered them in the last day. A story outlets
