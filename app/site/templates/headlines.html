@@ -558,9 +558,12 @@
                 <ul class="investigation-list">
                     {% for p in investigations %}
                         <li>
-                            <a class="investigation-source" href="{{ p.home }}">{{ p.source }}</a>
-                            <span class="trend-posts">{{ p.date }}</span>
-                            <a href="{{ p.url }}" title="{{ p.summary }}">{{ p.title }}</a>
+                            <div class="investigation-meta">
+                                <a class="investigation-source" href="{{ p.home }}" title="{{ p.source }}: {{ p.about }}"
+                                   style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.short }}</a>
+                                <span class="trend-posts">{{ p.date }}</span>
+                            </div>
+                            <a class="investigation-title" href="{{ p.url }}" title="{{ p.summary }}">{{ p.title }}</a>
                             {% if p.story is not none %}<a class="trend-both investigation-story" href="#story-{{ p.story }}" title="Related to: {{ p.story_title }}">📰 in the news</a>{% endif %}
                         </li>
                     {% endfor %}

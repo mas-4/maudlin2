@@ -25,16 +25,26 @@ logger = get_logger(__name__)
 CACHE = os.path.join(Config.data, 'investigations.json')
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 KEEP = 20  # newest items kept per source
+# Each outfit's chip on the front page: a short name, an emoji for what it does, a color, and a one-line description
 SOURCES = [
-    {'key': 'bellingcat', 'name': 'Bellingcat', 'home': 'https://www.bellingcat.com/',
-     'feed': 'https://www.bellingcat.com/feed/'},
-    {'key': 'icij', 'name': 'ICIJ', 'home': 'https://www.icij.org/', 'feed': 'https://www.icij.org/feed/'},
-    {'key': 'occrp', 'name': 'OCCRP', 'home': 'https://www.occrp.org/en', 'feed': 'https://www.occrp.org/en/feed'},
-    {'key': 'dfrlab', 'name': 'DFRLab', 'home': 'https://dfrlab.org/', 'feed': 'https://dfrlab.org/feed/'},
-    {'key': 'citizenlab', 'name': 'Citizen Lab', 'home': 'https://citizenlab.ca/',
-     'feed': 'https://citizenlab.ca/feed/'},
-    {'key': 'justsecurity', 'name': 'Just Security', 'home': 'https://www.justsecurity.org/',
-     'feed': 'https://www.justsecurity.org/feed/'},
+    {'key': 'bellingcat', 'name': 'Bellingcat', 'short': 'Bellingcat', 'emoji': '🛰️', 'color': '#ff6b1a',
+     'about': 'Open-source investigations from satellite images, video and social media',
+     'home': 'https://www.bellingcat.com/', 'feed': 'https://www.bellingcat.com/feed/'},
+    {'key': 'icij', 'name': 'ICIJ', 'short': 'ICIJ', 'emoji': '🌐', 'color': '#3a86ff',
+     'about': 'International Consortium of Investigative Journalists: cross-border leaks like the Panama Papers',
+     'home': 'https://www.icij.org/', 'feed': 'https://www.icij.org/feed/'},
+    {'key': 'occrp', 'name': 'OCCRP', 'short': 'OCCRP', 'emoji': '🕵️', 'color': '#8a5cff',
+     'about': 'Organized Crime and Corruption Reporting Project',
+     'home': 'https://www.occrp.org/en', 'feed': 'https://www.occrp.org/en/feed'},
+    {'key': 'dfrlab', 'name': 'DFRLab', 'short': 'DFRLab', 'emoji': '🧪', 'color': '#00c2a8',
+     'about': "The Atlantic Council's Digital Forensic Research Lab: disinformation and influence operations",
+     'home': 'https://dfrlab.org/', 'feed': 'https://dfrlab.org/feed/'},
+    {'key': 'citizenlab', 'name': 'Citizen Lab', 'short': 'Citizen Lab', 'emoji': '🔐', 'color': '#ff4fa3',
+     'about': 'University of Toronto lab tracking spyware and digital threats to civil society',
+     'home': 'https://citizenlab.ca/', 'feed': 'https://citizenlab.ca/feed/'},
+    {'key': 'justsecurity', 'name': 'Just Security', 'short': 'Just Security', 'emoji': '⚖️', 'color': '#ffc400',
+     'about': 'National security law and policy, from NYU Law',
+     'home': 'https://www.justsecurity.org/', 'feed': 'https://www.justsecurity.org/feed/'},
 ]
 
 
@@ -122,6 +132,8 @@ def recent(days: int = 14, limit: int = 8) -> list[dict]:
         fresh = [i for i in cache.get(source['key'], {}).get('items', [])
                  if i.get('published') and dt.fromisoformat(i['published']) >= since]
         fresh.sort(key=lambda i: dt.fromisoformat(i['published']), reverse=True)
-        pieces += [{**item, 'source': source['name'], 'home': source['home']} for item in fresh[:2]]
+        pieces += [{**item, 'source': source['name'], 'home': source['home'], 'short': source['short'],
+                    'emoji': source['emoji'], 'color': source['color'], 'about': source['about']}
+                   for item in fresh[:2]]
     pieces.sort(key=lambda p: dt.fromisoformat(p['published']), reverse=True)
     return pieces[:limit]
