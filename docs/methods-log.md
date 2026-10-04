@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Bright side removed.** Its picks (hope/joy plus a "widely good news" model check) read as feel-good filler rather
+  than a measure.
+- **Blindspots move onto story cards.** Same rule; the separate box is gone. A blindspot's card shows a lean meter
+  (left/center/right counts) with a tick where an average story splits, and a 🙈 filter shows only blindspots.
 - **Transcription: temporary failures retry.** Out-of-memory and network errors are no longer recorded as failures
   (they stopped every item for good on the first prod run); only a missing or unreadable file is. Transcription
   waits for the language model to unload first and skips the round if it can't. The test suite no longer calls the

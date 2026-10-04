@@ -522,47 +522,6 @@
                 </ol>
             </section>
         {% endif %}
-        {% if bright_side %}
-            <section class="trending trending-news bright-side">
-                <h3>☀️ The bright side</h3>
-                <ol>
-                    {% for item in bright_side %}
-                        <li>
-                            <span class="bright-emoji">{{ item.emoji }}</span>
-                            {% if item.kind == 'story' %}
-                                <span class="bright-kind" title="A story covered by several outlets">📰 story</span>
-                                <a class="bright-story" href="#story-{{ item.cluster }}">{{ item.title }}</a>
-                                <span class="trend-posts">{{ item.outlets }} outlets</span>
-                            {% else %}
-                                <span class="bright-kind" title="One outlet's headline">🔗 article</span>
-                                <span class="edit-chip" style="{{ chip_style(item.agency, item.bias) }}">{{ outlet_icon(item.agency) }}{{ short_name(item.agency) }}</span>
-                                <a href="{{ item.url }}">{{ item.title }}</a>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ol>
-            </section>
-        {% endif %}
-        {% if blindspots %}
-            <section class="trending trending-news blindspots" id="blindspots">
-                <h3>🙈 Blindspots <span class="blindspot-note">stories almost only one side is covering</span></h3>
-                <div class="blindspot-sides">
-                    {% for side, emoji in [('left', '🫏'), ('right', '🐘')] %}
-                        <div class="blindspot-side blindspot-{{ side }}">
-                            <h4>{{ emoji }} mostly {{ side }}</h4>
-                            {% for s in blindspots[side] %}
-                                <div class="blindspot">
-                                    <a class="blindspot-story" href="#story-{{ s.cluster }}">{{ s.title }}</a>
-                                    <span class="blindspot-split" title="Rated outlets covering it">{{ s.left }} left · {{ s.center }} center · {{ s.right }} right</span>
-                                </div>
-                            {% else %}
-                                <p class="blindspot-none">none right now</p>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
-                </div>
-            </section>
-        {% endif %}
         {% if investigations %}
             <section class="trending trending-news investigations" id="investigations">
                 <h3>🔎 Investigations <span class="blindspot-note">open-source and investigative reporting, not front pages</span></h3>
@@ -797,7 +756,7 @@
                             <li{% if not part.now %} class="saga-earlier"{% endif %}>
                                 {% if part.now %}<a class="saga-part" href="#story-{{ part.cluster }}">{{ part.title }}</a>
                                 {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
-                                <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}earlier, {{ part.age }} ago{% endif %}</span>
+                                <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}off the front pages · {{ part.age }} ago{% endif %}</span>
                                 {% for f in part.feelings %}<span title="{{ f.name }}">{{ f.emoji }}</span>{% endfor %}
                             </li>
                         {% endfor %}
@@ -814,12 +773,14 @@
         <button data-sort="spiciest" title="Most loaded wording first">🌶️ spiciest</button>
         <button data-sort="lopsided" title="Coverage leaning hardest to one side first">⚖️ most one-sided</button>
         <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
+        {% if blindspots %}<button data-filter="blindspots" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
     </div>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
             <div class="story" id="story-{{ cluster['cluster'] }}" data-age="{{ cluster['first']|round|int }}"
                  data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
+                 {% if cluster['blindspot'] %}data-blindspot="{{ cluster['blindspot']['side'] }}"{% endif %}
                  style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
                 {% if cluster['saga'] %}
                     <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
@@ -827,6 +788,22 @@
                         🧵 {{ cluster['saga']['name'] }} · part {{ cluster['saga']['part_of'][cluster['cluster']] }} of {{ cluster['saga']['size'] }}</div>
                 {% endif %}
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
+                {% if cluster['blindspot'] %}
+                    {% set b = cluster['blindspot'] %}
+                    <div class="card-blindspot" title="A blindspot: {{ b.share }}% of the rated outlets covering it lean {{ b.side }}, far more than our outlets do as a group ({{ b.left }} left, {{ b.center }} center, {{ b.right }} right). The tick marks where an average story splits.">
+                        <span class="card-blindspot-label">🙈 blindspot: mostly {{ b.side }}</span>
+                        <span class="bs-meter">
+                            <span class="bs-end" aria-hidden="true">🫏</span>
+                            <span class="bs-track">
+                                {% if b.left %}<span class="bs-seg bs-left" style="flex: {{ b.left }}"></span>{% endif %}
+                                {% if b.center %}<span class="bs-seg bs-center" style="flex: {{ b.center }}"></span>{% endif %}
+                                {% if b.right %}<span class="bs-seg bs-right" style="flex: {{ b.right }}"></span>{% endif %}
+                                {% if blindspots %}<span class="bs-tick" style="left: {{ blindspots.pool.left }}%"></span>{% endif %}
+                            </span>
+                            <span class="bs-end" aria-hidden="true">🐘</span>
+                        </span>
+                    </div>
+                {% endif %}
                 <div class="meters">
                     {% for feeling in cluster['feelings'] %}
                         <span class="story-feeling" title="{{ feeling['share'] }}% of the feeling in its headlines">
@@ -894,15 +871,24 @@
             }
             layout();
             addEventListener('resize', () => layout());
-            document.querySelectorAll('.saga-part, .blindspot-story, .investigation-story').forEach((a) => a.addEventListener('click', (ev) => {
+            document.querySelectorAll('.saga-part, .investigation-story').forEach((a) => a.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 popCard(document.getElementById(a.getAttribute('href').slice(1)));
             }));
+            // 🙈 narrows the cards to blindspots (a filter, toggled on and off) and works with any sort
+            const all = cards;
+            let sort = SORTS.newest, onlyBlind = false;
             document.querySelector('.story-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
-                cards = [...cards].sort(SORTS[button.dataset.sort]);
-                document.querySelectorAll('.story-sort button').forEach((b) => b.classList.toggle('active', b === button));
+                if (button.dataset.filter === 'blindspots') {
+                    onlyBlind = button.classList.toggle('active');
+                } else {
+                    sort = SORTS[button.dataset.sort];
+                    document.querySelectorAll('.story-sort button[data-sort]').forEach((b) => b.classList.toggle('active', b === button));
+                }
+                all.forEach((card) => { card.hidden = onlyBlind && !card.dataset.blindspot; });
+                cards = all.filter((card) => !card.hidden).sort(sort);
                 layout(true);
             });
         })();

@@ -50,8 +50,6 @@ INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a curr
 BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
-BRIGHT_COUNT = 6  # items in the bright side box
-BRIGHT_SAME_EVENT = 0.6  # headline similarity at which two picks are the same event
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
 FAST_BREAK = 8  # outlets within that window to count as a fast break
 NEWS_DAY_HALF_LIFE_HOURS = 24
@@ -115,25 +113,6 @@ def break_speed(headlines: list[dict]) -> Optional[int]:
         seen = pd.Timestamp(h['first_seen'])
         by_outlet[h['agency']] = min(by_outlet.get(h['agency'], seen), seen)
     return sum(t - starts[0] <= td(minutes=BREAK_WINDOW_MINUTES) for t in by_outlet.values())
-
-
-GOOD_NEWS_PROMPT = """Would most readers, across the political spectrum, see this headline as genuinely good news: \
-something to feel glad or hopeful about? Answer false when it's mainly good for a company, a party or one side; when \
-people disagree about it (corporate investments, expansions and deals, new government spending or payments, policy \
-moves); or when it's a business or market story. Rescues, recoveries, discoveries, sports wins, kindness, records and \
-progress on shared problems are the kind of thing that counts.
-
-Headline: {title}"""
-GOOD_NEWS_SCHEMA = {"type": "object", "properties": {"good_news": {"type": "boolean"}}, "required": ["good_news"]}
-_good_news: dict[str, bool] = {}
-
-
-def widely_good(title: str) -> bool:
-    """The bright side's last check, asked of the language model. Without one, everything passes."""
-    if title not in _good_news:
-        answer = llm.complete_json(GOOD_NEWS_PROMPT.format(title=title), GOOD_NEWS_SCHEMA, max_tokens=16)
-        _good_news[title] = True if answer is None else bool(answer.get('good_news'))
-    return _good_news[title]
 
 
 def weather(mood: float) -> tuple[str, str]:
@@ -411,7 +390,7 @@ class HeadlinesPage:
                     saga['parts'].append({'cluster': int(k), 'title': self.context['titles'][k], 'now': True,
                                           'outlets': by_id[k]['outlets'], 'age': age_text(by_id[k]['first'] / 3600),
                                           'feelings': by_id[k]['feelings'][:1]})
-                else:  # an earlier part, off the front pages
+                else:  # a part that has left the front pages (not necessarily an older one)
                     saga['parts'].append({'cluster': None, 'title': part['label'] or 'An earlier part', 'now': False,
                                           'outlets': part['outlets'],
                                           'age': age_text((now - part['first_seen']).total_seconds() / 3600),
@@ -422,7 +401,6 @@ class HeadlinesPage:
         self.make_agency_lists(clusters_list)
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
-        self.bright_side(clusters_list)
         self.blindspots(clusters_list)
         self.investigations(clusters_list)
         self.shows(clusters_list)
@@ -472,45 +450,6 @@ class HeadlinesPage:
                           'speed': max((speeds.get(k) or 0) for k in members) or None,
                           'also_on': sorted({name for k in members for name in on.get(k, [])})})
         self.context['news_trends'] = items
-
-    def bright_side(self, clusters_list):
-        """Good news, for a breather: current stories whose headlines run upbeat, or whose strongest feeling is hope
-        or joy, then (to fill the box) the most upbeat individual headlines on front pages right now."""
-        # Upbeat isn't enough on its own: the mood score rates the event for the people directly involved, so a
-        # company's billion-dollar data center investment reads as good news. Hope or joy is what readers feel.
-        hopeful = lambda c: c['emotion'] and c['emotion']['name'] in ('hope', 'joy')
-        stories = [c for c in clusters_list if hopeful(c) and c['mood']['value'] >= 0]
-        stories.sort(key=lambda c: -c['mood']['value'])
-        stories = [c for c in stories if widely_good(self.context['titles'][c['cluster']])]
-        items = [{'kind': 'story', 'cluster': int(c['cluster']), 'title': self.context['titles'][c['cluster']],
-                  'outlets': len({a['agency'] for a in c['data']}),
-                  'emoji': c['emotion']['emoji'] if c['emotion'] and c['emotion']['name'] in ('hope', 'joy')
-                  else weather(c['mood']['value'])[0]}
-                 for c in stories[:BRIGHT_COUNT]]
-        if len(items) < BRIGHT_COUNT:
-            df = self.dh.main_headline_df
-            ranks = df['emotion_ranks'].fillna('')
-            upbeat = df[df['live'] & (df['event_score'] >= 1) & ranks.str.match(r'(hope|joy)')]
-            upbeat = upbeat.assign(top=ranks[upbeat.index].str.split(',').str[0]).sort_values(
-                ['event_score', 'first_accessed'], ascending=False).drop_duplicates('title')
-            in_stories = {a['url'] for c in stories for a in c['data']}
-            # One headline per event: skip any too close in meaning to one already in the box
-            chosen = [embed([i['title']])[0] for i in items]
-            for r in upbeat.itertuples():
-                if len(items) >= BRIGHT_COUNT:
-                    break
-                if r.url in in_stories:
-                    continue
-                vector = embed([r.title])[0]
-                if any(float(np.dot(vector, c) / (np.linalg.norm(vector) * np.linalg.norm(c) or 1)) >= BRIGHT_SAME_EVENT
-                       for c in chosen):
-                    continue
-                if not widely_good(r.title):
-                    continue
-                chosen.append(vector)
-                items.append({'kind': 'headline', 'title': r.title, 'url': r.url, 'agency': r.agency,
-                              'bias': int(r.bias), 'emoji': EMOTION_EMOJI.get(r.top, '☀️') if r.top in ('hope', 'joy') else '☀️'})
-        self.context['bright_side'] = items
 
     def investigations(self, clusters_list):
         """The newest pieces from open-source and investigative outfits (app/investigations.py), each pointed at the
@@ -628,8 +567,12 @@ class HeadlinesPage:
                 if share >= BLINDSPOT_SHARE and share >= BLINDSPOT_LIFT * sides[side]:
                     found[side].append({'cluster': int(c['cluster']), 'title': self.context['titles'][c['cluster']],
                                         'share': round(100 * share), **counts})
+                    c['blindspot'] = {'side': side, 'share': round(100 * share), **counts}  # for its story card
         for side in found:
             found[side].sort(key=lambda s: (-s['share'], -(s['left'] + s['right'] + s['center'])))
+        # Where an average story would split, for the tick on each blindspot's meter
+        found['pool'] = {'left': round(100 * sides['left']), 'center': round(100 * (1 - sides['left'] - sides['right'])),
+                         'right': round(100 * sides['right'])}
         self.context['blindspots'] = found if found['left'] or found['right'] else None
         logger.info("Blindspots: %d mostly left, %d mostly right", len(found['left']), len(found['right']))
 

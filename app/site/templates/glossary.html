@@ -75,7 +75,7 @@
                 (Cornell, Iranian), not a common word (rally).</p>
             <p>Sagas are kept: each hour today's stories are compared with the last week's, so a saga gathers parts
                 across days and never loses one when its earlier parts leave the front pages. A saga shows while any
-                of its parts is current; earlier parts are listed, quieter, with when they ran. Sagas count once in
+                of its parts is current; parts that have left the front pages are listed, quieter, with when they ran. Sagas count once in
                 trending and the news-day sticker.</p>
         {% endcall %}
         {% call term('🚨', 'News day', 'news-day') %}
@@ -91,12 +91,9 @@
         {% call term('🙈', 'Blindspots', 'blindspots') %}
             <p>Stories almost only one side is covering: at least {{ blind_outlets }} rated outlets, {{ blind_share }}%+
                 of them from one side, and that side's share at least {{ blind_lift }}× its share of all our rated
-                outlets.</p>
-        {% endcall %}
-        {% call term('☀️', 'The bright side', 'bright-side') %}
-            <p>Good news, for a breather: stories and headlines whose strongest feeling is hope or joy, and that the
-                language model agrees most readers across the spectrum would be glad about (so not a company's deal
-                or a party's win).</p>
+                outlets. Their story cards carry a 🙈 label and a meter of who's covering them (blue left, gray center,
+                red right) with a tick where an average story would split; the 🙈 button above the cards shows only
+                blindspots.</p>
         {% endcall %}
     </div>
 

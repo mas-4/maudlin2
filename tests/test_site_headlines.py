@@ -1,5 +1,5 @@
 """app/site/page_headlines.py: the front page's pure helpers and the HeadlinesPage methods that work on small
-synthetic frames. No database, no language model and no embedding model: `embed`, `widely_good`, `find_edits` and
+synthetic frames. No database, no language model and no embedding model: `embed`, `find_edits` and
 `recent_investigations` are monkeypatched wherever a method reaches for them."""
 import zlib
 from datetime import datetime as dt, timedelta as td
@@ -347,107 +347,6 @@ def test_blindspots_none_when_no_clusters():
 # </editor-fold>
 
 
-# <editor-fold desc="bright side and the good-news check">
-@pytest.fixture
-def fresh_good_news(monkeypatch):
-    monkeypatch.setattr(ph, '_good_news', {})
-
-
-def test_widely_good_without_a_model_passes_everything(fresh_good_news, monkeypatch):
-    calls = []
-    monkeypatch.setattr(ph.llm, 'complete_json', lambda *a, **k: calls.append(a) or None)
-    assert ph.widely_good('Puppy rescued') is True
-    assert ph.widely_good('Puppy rescued') is True
-    assert len(calls) == 1  # cached
-
-
-@pytest.mark.parametrize('answer, good', [({'good_news': False}, False), ({'good_news': True}, True), ({}, False)])
-def test_widely_good_uses_the_models_answer(fresh_good_news, monkeypatch, answer, good):
-    monkeypatch.setattr(ph.llm, 'complete_json', lambda prompt, schema, max_tokens: answer)
-    assert ph.widely_good('Company expands') is good
-
-
-def story(cid, mood, emotion=None, urls=('u',)):
-    emotion = {'name': emotion, 'emoji': ph.EMOTION_EMOJI[emotion]} if emotion else {}
-    return {'cluster': cid, 'mood': {'value': mood}, 'emotion': emotion,
-            'data': [{'agency': f'A{i}', 'url': f'{u}-{cid}'} for i, u in enumerate(urls)]}
-
-
-def headlines_frame(rows):
-    base = {'live': True, 'event_score': 2, 'emotion_ranks': 'hope', 'agency': 'AP', 'bias': -1,
-            'first_accessed': pd.Timestamp('2026-10-03 09:00', tz='US/Eastern')}
-    return pd.DataFrame([{**base, **r} for r in rows])
-
-
-def run_bright(clusters, headlines=None, bad=(), embedder=None, monkeypatch=None):
-    monkeypatch.setattr(ph, 'widely_good', lambda title: title not in bad)
-    monkeypatch.setattr(ph, 'embed', embedder or FakeEmbed())
-    page = make_page(main_df=headlines if headlines is not None else headlines_frame([{'title': '', 'url': ''}]).iloc[:0],
-                     titles={c['cluster']: f'Story {c["cluster"]}' for c in clusters})
-    page.bright_side(clusters)
-    return page.context['bright_side']
-
-
-def test_bright_side_stories_need_hope_or_joy_and_no_gloom(monkeypatch):
-    clusters = [story(1, 0.3, 'hope', urls=('a', 'b', 'c')), story(2, 0.9, 'joy'), story(3, 0.0, 'hope'),
-                story(4, -0.01, 'joy'), story(5, 0.9, 'fear'), story(6, 0.9), story(7, 0.5, 'hope')]
-    items = run_bright(clusters, bad={'Story 7'}, monkeypatch=monkeypatch)
-    assert [i['cluster'] for i in items] == [2, 1, 3]  # by mood, 0 included, gloomy/fearful/flat/vetoed out
-    assert items[1] == {'kind': 'story', 'cluster': 1, 'title': 'Story 1', 'outlets': 3,
-                        'emoji': ph.EMOTION_EMOJI['hope']}
-    assert items[0]['emoji'] == ph.EMOTION_EMOJI['joy']
-
-
-def test_bright_side_full_box_needs_no_headlines(monkeypatch):
-    def no_embedding(texts):
-        raise AssertionError('embed called')
-    clusters = [story(k, 0.5, 'hope') for k in range(ph.BRIGHT_COUNT + 2)]
-    items = run_bright(clusters, embedder=no_embedding, monkeypatch=monkeypatch)
-    assert len(items) == ph.BRIGHT_COUNT
-    assert all(i['kind'] == 'story' for i in items)
-
-
-def test_bright_side_fills_with_upbeat_live_headlines(monkeypatch):
-    df = headlines_frame([
-        {'title': 'Best', 'url': 'h1', 'event_score': 2, 'emotion_ranks': 'joy,hope'},
-        {'title': 'Good', 'url': 'h2', 'event_score': 1, 'emotion_ranks': 'hope'},
-        {'title': 'Meh', 'url': 'h3', 'event_score': 0, 'emotion_ranks': 'hope'},  # not upbeat enough
-        {'title': 'Gone', 'url': 'h4', 'live': False},  # off the front page
-        {'title': 'Scary', 'url': 'h5', 'emotion_ranks': 'fear,hope'},  # hope isn't its top feeling
-        {'title': 'Unranked', 'url': 'h6', 'emotion_ranks': None},
-        {'title': 'In story', 'url': 'a-1'},  # already in a story card
-        {'title': 'Vetoed', 'url': 'h7'},
-    ])
-    items = run_bright([story(1, 0.5, 'hope', urls=('a',))], df, bad={'Vetoed'}, monkeypatch=monkeypatch)
-    assert [i['title'] for i in items] == ['Story 1', 'Best', 'Good']
-    assert items[1] == {'kind': 'headline', 'title': 'Best', 'url': 'h1', 'agency': 'AP', 'bias': -1,
-                        'emoji': ph.EMOTION_EMOJI['joy']}
-    assert items[2]['emoji'] == ph.EMOTION_EMOJI['hope']
-
-
-def test_bright_side_headlines_newest_first_within_a_score(monkeypatch):
-    df = headlines_frame([
-        {'title': 'Older', 'url': 'h1', 'first_accessed': pd.Timestamp('2026-10-03 08:00', tz='US/Eastern')},
-        {'title': 'Newer', 'url': 'h2', 'first_accessed': pd.Timestamp('2026-10-03 10:00', tz='US/Eastern')},
-        {'title': 'Newer', 'url': 'h3'},  # the same title twice shows once
-    ])
-    items = run_bright([], df, monkeypatch=monkeypatch)
-    assert [i['title'] for i in items] == ['Newer', 'Older']
-
-
-def test_bright_side_one_headline_per_event(monkeypatch):
-    a, b = unit(0), unit(1)
-    embedder = FakeEmbed({'Story 1': a, 'Same event': mix(a, b, 0.61), 'Related': mix(a, b, 0.59)})
-    df = headlines_frame([{'title': 'Same event', 'url': 'h1'}, {'title': 'Related', 'url': 'h2'}])
-    items = run_bright([story(1, 0.5, 'joy')], df, embedder=embedder, monkeypatch=monkeypatch)
-    assert [i['title'] for i in items] == ['Story 1', 'Related']
-
-
-def test_bright_side_caps_headlines(monkeypatch):
-    df = headlines_frame([{'title': f'Nice thing {k}', 'url': f'h{k}'} for k in range(ph.BRIGHT_COUNT + 4)])
-    items = run_bright([], df, monkeypatch=monkeypatch)
-    assert len(items) == ph.BRIGHT_COUNT
-# </editor-fold>
 
 
 # <editor-fold desc="investigations">

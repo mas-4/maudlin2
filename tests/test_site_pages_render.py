@@ -65,7 +65,6 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(ph, 'sync_stories', lambda df: {})
         mp.setattr(ph, 'label_stories', lambda df, stories: {})
         mp.setattr(ph, 'link_sagas', lambda headlines, stories, story_of: {})  # writes sagas to the database
-        mp.setattr(ph, '_good_news', {})
         mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
         snapshot = sorted(glob.glob(os.path.expanduser(
             '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
