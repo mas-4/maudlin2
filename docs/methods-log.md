@@ -5,6 +5,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Narrative labels from one point of view, and only when most posts are about it.** The labeler now names the claim
+  most posts share (one or two posts' claim isn't the narrative), says for each part (villain, victim, hero)
+  whether the story has one before naming it (it used to fill every part: "hero: the Bills"), and casts parts and
+  side from the tellers' point of view. Each narrative's sampled posts are then asked one by one whether they're
+  about its claim (telling it or arguing over it alike); under half, it's not counted. On the side: the model's
+  guess is unchecked (it called trans people's own posts "right"), so the site shows a side only from evidence,
+  the AllSides lean of outlets whose articles the posts share (two or more rated shares); the guess shows only in
+  local previews. News reactions get no cast or motif. Re-run on the flagged groups: the Jets penalty and the
+  trans group's misreading are fixed; perspective still sometimes mixes ("Canadians in Florida").
 - **How a claim's motif is judged.** A motif is the story's shape as its tellers tell it: not whether it's true, and
   not whether a poster tells it or argues against it. (Calling a claim a "false accusation" puts a verdict into
   the classification; that's the fact-checkers' part, shown separately.) The site presents shapes only in the

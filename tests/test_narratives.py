@@ -28,3 +28,13 @@ def test_groups_join_mutual_neighbours_only(monkeypatch):
     monkeypatch.setattr(n, 'NEIGHBOURS', 1)
     posts = [{'text': str(i)} for i in range(5)]
     assert sorted(sorted(g) for g in n.groups(posts)) == [[0, 1], [2, 3]]
+
+
+def test_shared_side_needs_enough_rated_shares():
+    from app.narratives import shared_side
+    leans = {'Fox News': 2, 'Breitbart': 2, 'NPR': -1, 'Reuters': 0}
+    assert shared_side([('Fox News', 3), ('NPR', 1)], leans) == 'right'
+    assert shared_side([('NPR', 2), ('Reuters', 1)], leans) == 'left'
+    assert shared_side([('Reuters', 4)], leans) == 'center'
+    assert shared_side([('Fox News', 1)], leans) is None  # one share isn't enough
+    assert shared_side([('Some blog', 9)], leans) is None  # unrated outlets don't count

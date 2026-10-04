@@ -422,7 +422,8 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         html = (tmp_path / 'folklore.html').read_text()
         assert 'They are &lt;keeping&gt; him alive' in html and 'Same issue as: Trump health' in html
         assert 'These are rumors, not facts.' in html
-        assert '🏛️ left-wing' in html  # not a bare "left"/"right", which reads as "correct"
+        # Not a bare "left"/"right" (reads as "correct"); the model's guess only in previews
+        assert ('🏛️ left-wing (model' in html) is shows_posts
         assert 'Only six people' not in html and '1 more told by fewer' in html
         assert ('the kept king' in html) is shows_posts  # the model's own motif phrase: previews only
         assert 'Motif-Index</a> D · Magic' in html and 'transformations, enchantments' in html

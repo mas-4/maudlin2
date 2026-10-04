@@ -57,6 +57,7 @@ GENRE_NOTES = {
     'news report or shared reaction': 'many people passing on, or reacting to, the same news; not folklore in '
                                       'itself, kept for comparison',
 }
+NOT_STORIES = {'news report or shared reaction', 'none: a shared topic, not a retold narrative'}  # no cast or motif
 SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#8a8f98'}
 
 
@@ -106,8 +107,13 @@ class FolklorePage:
                         'chapter': '' if label.get('motif_chapter') in (None, '', 'none') else label['motif_chapter'],
                         'motif': label.get('motif', ''),
                         'villain': label.get('villain'), 'victim': label.get('victim'), 'hero': label.get('hero'),
-                        'politics': bool(label.get('politics')), 'side': label.get('side', 'none'),
-                        'side_ink': SIDE_INK.get(label.get('side'), '#8a8f98'),
+                        'politics': bool(label.get('politics')),
+                        # Shown on the site only from evidence (the lean of the outlets its posts share); the
+                        # model's guess, unchecked, only in previews
+                        'side': g.get('shared_side') or (label.get('side', 'none') if Config.debug else None),
+                        'side_from': 'shares' if g.get('shared_side') else 'model',
+                        'side_ink': SIDE_INK.get(g.get('shared_side') or label.get('side'), '#8a8f98'),
+                        'story_shape': label.get('genre') not in NOT_STORIES,
                         'story': g.get('story'), 'articles': g.get('articles') or [],
                         'factchecks': g.get('factchecks') or [],
                         'examples': g['examples'][:4] if Config.debug else [],

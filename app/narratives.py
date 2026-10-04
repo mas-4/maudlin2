@@ -65,25 +65,44 @@ PROMPT = """These posts were written by different people:
 Do they retell the same narrative (one claim, rumor, legend, belief, joke or saying that people repeat in their own
 words), or do they only share a topic? Reporting or reacting to the same news event is "news report or shared
 reaction", not a legend or rumor: a legend or rumor is a story told as true that isn't plain reporting of the day's
-news. Answer in the fields below.
+news. A claim made in only one or two of the posts is not their narrative. Answer in the fields below.
 
-narrative: the shared claim or story in one plain sentence, or "" if there is none
-retold: true if they retell one narrative, false if they only share a topic
+narrative: the claim or story most of the posts share, in one plain sentence, or "" if there is none
+retold: true if most of the posts retell that one narrative, false if they only share a topic
 genre: one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index it fits best, one of {chapters}
 motif: the specific motif in a few words of your own, describing these posts, or ""
-villain: who is cast as the villain, or ""
-victim: who is cast as the victim, or ""
-hero: who is cast as the hero or rescuer, or ""
+For the parts below, take the point of view of the people telling the narrative: how THEY cast it, whether or not
+it's true. Many stories have no villain, no victim or no hero; say so rather than filling a part.
+has_villain: does the story, as its tellers tell it, cast someone as the villain who does harm?
+villain: who, or "" if not
+has_victim: does it cast someone as the victim who suffers harm?
+victim: who, or "" if not
+has_hero: does it cast someone as the hero or rescuer who sets things right?
+hero: who, or "" if not
 politics: true if it is about politics or public life
-side: "left", "right", "both" or "none" (whose politics it carries)"""
+side: whose politics the people telling it carry: "left", "right", "both" or "none" (no politics)"""
 SCHEMA = {"type": "object", "properties": {
     "narrative": {"type": "string"}, "retold": {"type": "boolean"}, "genre": {"type": "string", "enum": GENRES},
     "motif_chapter": {"type": "string", "enum": MOTIF_CHAPTERS}, "motif": {"type": "string"},
-    "villain": {"type": "string"}, "victim": {"type": "string"}, "hero": {"type": "string"},
+    "has_villain": {"type": "boolean"}, "villain": {"type": "string"},
+    "has_victim": {"type": "boolean"}, "victim": {"type": "string"},
+    "has_hero": {"type": "boolean"}, "hero": {"type": "string"},
     "politics": {"type": "boolean"}, "side": {"type": "string", "enum": ['left', 'right', 'both', 'none']}},
-    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", "villain", "victim", "hero", "politics",
-                 "side"]}
+    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", "has_villain", "villain", "has_victim",
+                 "victim", "has_hero", "hero", "politics", "side"]}
+# A narrative counts only if at least this share of its sampled posts are about its claim (telling it or arguing
+# over it alike). Oct 4: a group of trans people talking about their own gender was labeled with an anti-trans claim
+# one of them had quoted
+ABOUT_SHARE = 0.5
+ABOUT_PROMPT = """A claim: {claim}
+
+A post: {post}
+
+Is this post about that claim: telling it, repeating it, joking about it or arguing over it? Or is it about \
+something else?"""
+ABOUT_SCHEMA = {"type": "object", "properties": {"about": {"type": "string", "enum": ["the claim", "something else"]}},
+                "required": ["about"]}
 WORD = re.compile(r"[a-z0-9']+")
 NOISE = re.compile(r'@someone|\[link: [^\]]*\]|(?:[a-z0-9-]+\.)+[a-z]{2,}/\S*')  # the last: links stored before Oct 4
 
@@ -206,15 +225,34 @@ def describe(posts: list[dict], members: list[int], rng: random.Random) -> dict:
 def label(group: dict, cache: dict) -> dict | None:
     from app.analysis import llm
     shown = sorted(group['examples'])
-    key = hashlib.sha1(json.dumps(shown).encode()).hexdigest()
+    key = hashlib.sha1((PROMPT + json.dumps(shown)).encode()).hexdigest()
     if key not in cache:
         answer = llm.complete_json(PROMPT.format(posts='\n'.join(f'- {t[:280]}' for t in shown),
                                                  genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS)),
-                                   SCHEMA, max_tokens=400)
+                                   SCHEMA, max_tokens=500)
         if not answer:
             return None
+        for part in ('villain', 'victim', 'hero'):  # a part the model says the story lacks stays empty
+            if not answer.get(f'has_{part}'):
+                answer[part] = ''
         cache[key] = {**answer, 'model': llm.model()}
     return cache[key]
+
+
+def about(group: dict, claim: str, cache: dict) -> float:
+    """The share of the group's sampled posts that are about its claim, asked one post at a time (small models lose
+    track of numbered lists)."""
+    from app.analysis import llm
+    votes = []
+    for post in group['examples']:
+        key = hashlib.sha1(f'{ABOUT_PROMPT}\n{claim}\n{post}'.encode()).hexdigest()
+        if key not in cache:
+            answer = llm.complete_json(ABOUT_PROMPT.format(claim=claim, post=post[:400]), ABOUT_SCHEMA, max_tokens=20)
+            if not answer:
+                continue
+            cache[key] = answer['about']
+        votes.append(cache[key] == 'the claim')
+    return sum(votes) / len(votes) if votes else 0.0
 
 
 CANDIDATES = 3  # nearest stories or passages the model is asked about
@@ -301,6 +339,24 @@ def story_link(group: dict, candidates: list[str], cache: dict) -> dict | None:
     return {'label': candidates[int(number) - 1], 'relation': 'same event' if how == 'event' else 'same issue'}
 
 
+def rated_leans() -> dict[str, int]:
+    """Outlet -> its AllSides lean (-2 left to 2 right), for the outlets AllSides rates."""
+    from app.models import Session, Agency
+    with Session() as s:
+        return {name: bias for name, bias in s.query(Agency.name, Agency._bias).filter(Agency.lean_rated)}  # noqa
+
+
+def shared_side(shares: list[tuple[str, int]], leans: dict[str, int], least: int = 2) -> str | None:
+    """Which side passes the story around, from the rated outlets whose articles its posts share (at least `least`
+    shares): 'left', 'right' or 'center', or None without enough to go on. Evidence, unlike the model's guess."""
+    rated = [(leans[outlet], n) for outlet, n in shares if outlet in leans]
+    total = sum(n for _, n in rated)
+    if total < least:
+        return None
+    mean = sum(lean * n for lean, n in rated) / total
+    return 'left' if mean <= -0.5 else 'right' if mean >= 0.5 else 'center'
+
+
 def articles(urls: list[str]) -> dict[str, dict]:
     """The articles in our own database at these addresses (http or https, with or without www or a trailing slash):
     url -> {title, outlet, story} with the headline it was last seen under and the story it's in, if any."""
@@ -369,13 +425,20 @@ def report(hours: float = 6) -> dict:
         cache = {}
     for g in [g for g in found if g['kind'] != 'copypasta'][:LABEL_TOP]:
         g['label'] = label(g, cache)
+        lab = g['label']
+        if lab and lab.get('retold') and lab.get('narrative'):
+            g['about'] = round(about(g, lab['narrative'], cache), 2)
+            if g['about'] < ABOUT_SHARE:  # most posts aren't about it: a topic with one post's claim, not a narrative
+                g['label'] = {**lab, 'retold': False, 'misread': True}
     with open(JUDGMENTS, 'w') as f:
         json.dump(cache, f)
     # Cross-checks, by embedding each narrative's claim (or its versions) against voters' words and today's stories
     narratives = [g for g in found if (g.get('label') or {}).get('retold')]
     # The articles their posts share, looked up in our own database: an exact tie to a story, no guessing
     known = articles(sorted({url for g in narratives for url, _ in g['shared']}))
+    leans = rated_leans()
     for g in narratives:
+        g['shared_side'] = shared_side([(known[url]['outlet'], n) for url, n in g['shared'] if url in known], leans)
         g['articles'] = [{**known[url], 'shares': n} for url, n in g['shared'] if url in known][:3]
         g['outside'] = [{'url': url, 'shares': n} for url, n in g['shared'] if url not in known][:3]
     segments = focus_group_segments()
