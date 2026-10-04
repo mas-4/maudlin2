@@ -2,6 +2,14 @@
 
 {% block content %}
     <h2>🧶 Folklore</h2>
+    <div class="rumor-warning" role="note">
+        <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>
+        <p>Everything on this page is <b>what people are saying</b>, summarized by a language model, not what is true.
+            A claim appearing here does not mean it's true, and many are false. Its genre, motif and cast (villain,
+            victim, hero) describe <b>the shape of the story as its tellers tell it</b>, the way a folklorist
+            classifies a legend: they are not truth claims, and they're the same whether people tell the story or
+            argue against it. Where a fact-checker has examined a claim, the check is linked (🔎).</p>
+    </div>
     <p class="wip-banner">🚧 <b>Work in progress.</b> An experiment in finding the stories people retell in their own
         words: rumors, legends, beliefs, jokes and sayings, not the news itself. Read from a sample of public Bluesky and
         Mastodon posts; the labels are a small local language model's best guess and are often wrong.</p>
@@ -68,7 +76,7 @@
             {% for c in cards %}
                 <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}">
                     <h4>{{ c.claim|e }}</h4>
-                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}">🏛️ {{ c.side if c.side != 'none' else 'politics' }}</span>{% endif %}</p>
+                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}">🏛️ {{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides'}.get(c.side, 'politics') }}</span>{% endif %}</p>
                     <div class="meters">
                         <div class="meter" title="{{ c.people }} different people, {{ c.posts }} posts">
                             <span class="meter-label">told by {{ c.people }} people</span>
