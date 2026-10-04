@@ -319,6 +319,12 @@ blockquote::before, blockquote::after, q::before, q::after {
     line-height: 1;
 }
 
+.meter-end-word {
+    font-size: 0.75em;
+    color: #555;
+    white-space: nowrap;
+}
+
 .meter-track {
     position: relative;
     flex: 1;

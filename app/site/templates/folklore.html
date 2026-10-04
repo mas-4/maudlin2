@@ -51,8 +51,9 @@
                 <b>hero</b> who fights back or sets things right. The names in each part are the model's words for
                 who the posts cast there, and a part is left out when the posts don't fill it.</p>
             <h3>Wording and tellers</h3>
-            <p class="poll-note"><b>Told by</b> counts different accounts, not posts. <b>Wording</b> runs from 📋 the
-                same words (pasted) to 🗣️ told in many ways; folklore is usually told many ways.</p>
+            <p class="poll-note"><b>Told by</b> counts different accounts, not posts. <b>How they say it</b> runs from 📋
+                copied (the same words, pasted) to 🗣️ each in their own words; folklore is retold in people's own
+                words, while coordinated posting and copypasta are copied.</p>
         </details>
 
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter narratives">
@@ -72,11 +73,11 @@
                         <div class="meter" title="{{ c.people }} different people, {{ c.posts }} posts">
                             <span class="meter-label">told by {{ c.people }} people</span>
                         </div>
-                        <div class="meter" title="How varied their wording is: 0% the same words (pasted), 100% nothing in common. Folklore is told in many ways; copypasta is pasted">
-                            <span class="meter-label">wording</span>
-                            <span class="meter-bar"><span class="meter-end" title="the same words">📋</span>
+                        <div class="meter" title="How much their posts share the same words: on average {{ 100 - c.variety_pct }}% of the words in one version are in another. Folklore is retold in people's own words; copypasta is pasted">
+                            <span class="meter-label">how they say it: {% if c.variety >= 0.5 %}each in their own words{% else %}mostly the same words, copied{% endif %}</span>
+                            <span class="meter-bar"><span class="meter-end" title="the same words, copied">📋</span><span class="meter-end-word">copied</span>
                                 <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct }}%"></span></span>
-                                <span class="meter-end" title="told many ways">🗣️</span></span>
+                                <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
                     {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif %}: <i>{{ c.motif|e }}</i>{% endif %}</p>{% endif %}
