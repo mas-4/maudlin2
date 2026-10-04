@@ -13,6 +13,7 @@ import requests as rq
 import validators
 from bs4 import BeautifulSoup as Soup, Tag, NavigableString  # noqa not declared in __all__
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.firefox.options import Options
 
 from app import scraper_health
@@ -309,6 +310,9 @@ class SeleniumResourceManager:
             cls._instance = super().__new__(cls)
             options = Options()
             options.add_argument("--headless")
+            # Ready once the page's own HTML is in, not after every ad and image: Newsmax's full load ran past the
+            # timeout every other hour and threw away a page whose headlines were already there
+            options.page_load_strategy = 'eager'
             cls._instance._driver = webdriver.Firefox(options=options)
             cls._instance._driver.set_page_load_timeout(Config.timeout)
         return cls._instance
@@ -318,12 +322,22 @@ class SeleniumResourceManager:
 
     def quit(self):
         self._driver.quit()
-        # force kill the driver
-        os.system(f"kill -9 {self._driver.service.process.pid}")
+        # force kill the driver, if quitting didn't already end it
+        try:
+            os.kill(self._driver.service.process.pid, 9)
+        except (ProcessLookupError, AttributeError):
+            pass
 
     def get_html(self, url):
         with self.lock:
-            self._driver.get(url)
+            try:
+                self._driver.get(url)
+            except TimeoutException:
+                # Whatever loaded before the timeout usually has the headlines; keep it unless it's an empty shell
+                html = self._driver.page_source
+                if len(html) < 20_000:
+                    raise
+                logger.warning("Timed out loading %s; using the %d characters that loaded", url, len(html))
             return self._driver.page_source
 
 
