@@ -38,9 +38,9 @@
             <p class="poll-note">Stith Thompson's <i>Motif-Index of Folk-Literature</i> (1932–36, revised 1955–58) is
                 the folklorists' standard catalog of the recurring elements in folktales, myths and legends from
                 around the world, sorted into lettered chapters, A to Z. The model picks the chapter a narrative fits
-                best, then names its motif in its own words (the phrase after the chapter is the model's, not an
-                entry from the index). It's a rough way to see which old story shapes today's narratives reuse: the
-                hidden ruler, the poisoned well, the fool who gets his comeuppance. Chapters on this page:</p>
+                best. It's a rough way to see which old story shapes today's narratives reuse. Only chapters are
+                shown: matching a narrative to one of the index's 46,000 specific motifs is still being tested, by
+                hand, and isn't reliable enough to publish. Chapters on this page:</p>
             <ul class="label-notes">{% for ch in chapters_seen %}
                 <li><b>{{ ch[0] }} · {{ ch[2:]|e }}</b>: {{ chapter_notes.get(ch[0], '') }}</li>{% endfor %}
             </ul>
@@ -80,7 +80,7 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
-                    {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif %} · <span title="The model's own words for the motif, not an entry from the index">the model's motif: <i>{{ c.motif|e }}</i></span>{% endif %}</p>{% endif %}
+                    {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif and preview %} · <span title="Preview only: the model's own words for the motif, not an entry from the index">the model's motif: <i>{{ c.motif|e }}</i></span>{% endif %}</p>{% endif %}
                     {% if c.factchecks %}
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
                             {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
