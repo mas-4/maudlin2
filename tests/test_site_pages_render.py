@@ -29,7 +29,7 @@ from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'narratives.html', 'emotions.html',
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'folklore.html', 'emotions.html',
              'archive.html', 'feed.xml', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -403,20 +403,23 @@ def test_story_cards_carry_a_stable_share_anchor(front, site):
             assert card['data-share'] == f's-{story_of[cluster]}'
 
 
-def test_narratives_page_never_publishes_posts(monkeypatch, tmp_path):
-    from app.site import page_narratives as pn
+def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
+    from app.site import page_folklore as pn
     report = {'posts': 100, 'authors': 80, 'hours': 24, 'made': '2026-10-05T04:00', 'found': [
         {'authors': 12, 'posts': 14, 'variety': 0.9, 'kind': 'told', 'examples': ['A <secret> post by someone'],
          'label': {'retold': True, 'narrative': 'They are <keeping> him alive', 'genre': 'folk belief',
                    'motif_chapter': 'D Magic', 'motif': 'the kept king', 'villain': 'doctors', 'victim': '',
                    'hero': '', 'politics': True, 'side': 'left'},
          'story': {'label': 'Trump health', 'relation': 'same issue'}, 'voters': []},
+        {'authors': 6, 'posts': 6, 'variety': 0.8, 'kind': 'told', 'examples': ['few'],
+         'label': {'retold': True, 'narrative': 'Only six people say this'}},
         {'authors': 9, 'posts': 9, 'variety': 0.0, 'kind': 'copypasta', 'examples': ['Pasted <words>']}]}
     monkeypatch.setattr(pn, 'latest_report', lambda: report)
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     for debug, shows_posts in ((False, False), (True, True)):
         monkeypatch.setattr(Config, 'debug', debug)
-        pn.NarrativesPage().generate()
-        html = (tmp_path / 'narratives.html').read_text()
+        pn.FolklorePage().generate()
+        html = (tmp_path / 'folklore.html').read_text()
         assert 'They are &lt;keeping&gt; him alive' in html and 'Same issue as: Trump health' in html
+        assert 'Only six people' not in html and '1 more told by fewer' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts

@@ -5,7 +5,7 @@ TRACKERS = [
      'about': 'Headlines outlets rewrote after publishing, and the wordings they A/B test.'},
     {'href': 'court.html', 'emoji': '⚖️', 'name': 'The Supreme Court',
      'about': "This term's cases: who's covering which, from which side, at which stage."},
-    {'href': 'narratives.html', 'emoji': '🧶', 'name': 'Narratives (work in progress)',
+    {'href': 'folklore.html', 'emoji': '🧶', 'name': 'Folklore (work in progress)',
      'about': 'Rumors, legends and sayings people retell in their own words, from Bluesky and Mastodon.'},
     {'href': 'emotions.html', 'emoji': '😱', 'name': 'Emotions',
      'about': "The feelings each outlet's headlines are likely to stir."},

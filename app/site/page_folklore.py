@@ -1,4 +1,4 @@
-"""Narratives (work in progress, #142): the folklore-shaped narratives in what people say on Bluesky and Mastodon, from the
+"""Folklore (work in progress, #142): the folklore-shaped narratives in what people say on Bluesky and Mastodon, from the
 latest nightly report (app/narratives.py). A card per retold narrative: the claim in the model's words, how many
 people tell it and how varied their wording is, its genre and Motif-Index motif, who it casts as villain, victim and
 hero, and the news story it rides on.
@@ -21,6 +21,10 @@ GENRE_EMOJI = {'rumor': '🗣️', 'contemporary legend': '🏙️', 'conspiracy
                'prophecy or prediction': '🔭', 'cautionary tale': '⚠️', 'atrocity story': '🩸', 'trickster tale': '🦊',
                'joke formula or meme': '🤡', 'proverb or catchphrase': '📜', 'personal testimony': '🙋',
                'news report or shared reaction': '📣'}
+# Fewer tellers than this aren't shown: at five to nine people (half of what the finder keeps) most groups are a
+# handful reacting to the same news, not a story people retell. The floor grows with the sample, 1 in PEOPLE_SHARE.
+MIN_PEOPLE = 10
+PEOPLE_SHARE = 2500
 SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#8a8f98'}
 
 
@@ -32,18 +36,21 @@ def latest_report() -> dict | None:
         return json.load(f)
 
 
-class NarrativesPage:
+class FolklorePage:
     def __init__(self, dh=None):
-        self.template = TemplateHandler('narratives.html')
+        self.template = TemplateHandler('folklore.html')
 
     def generate(self):
-        logger.info("Generating narratives page...")
+        logger.info("Generating folklore page...")
         report = latest_report()
-        cards, copies = [], []
+        cards, copies, fewer = [], [], 0
+        floor = max(MIN_PEOPLE, round(report['authors'] / PEOPLE_SHARE)) if report else MIN_PEOPLE
         if report:
             for g in report['found']:
                 label = g.get('label') or {}
-                if label.get('retold'):
+                if label.get('retold') and g['authors'] < floor:
+                    fewer += 1
+                elif label.get('retold'):
                     cards.append({
                         'claim': label.get('narrative') or '', 'people': g['authors'], 'posts': g['posts'],
                         'variety': g['variety'], 'variety_pct': round(100 * g['variety']),
@@ -52,15 +59,15 @@ class NarrativesPage:
                         'villain': label.get('villain'), 'victim': label.get('victim'), 'hero': label.get('hero'),
                         'politics': bool(label.get('politics')), 'side': label.get('side', 'none'),
                         'side_ink': SIDE_INK.get(label.get('side'), '#8a8f98'),
-                        'story': g.get('story'), 'voters': g.get('voters') or [],
+                        'story': g.get('story'), 'articles': g.get('articles') or [],
                         'examples': g['examples'][:4] if Config.debug else [],
                     })
                 elif g['kind'] == 'copypasta':
                     copies.append({'people': g['authors'], 'posts': g['posts'],
                                    'example': g['examples'][0] if Config.debug else None})
         self.template.write({
-            'title': 'Narratives', 'report': report, 'cards': cards, 'copies': copies,
-            'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
+            'title': 'Folklore', 'report': report, 'cards': cards, 'copies': copies,
+            'floor': floor, 'fewer': fewer, 'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
             'preview': Config.debug,
         })
         logger.info("...%d narratives, %d copypasta groups", len(cards), len(copies))

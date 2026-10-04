@@ -870,7 +870,7 @@
                     </div>
                 {% endif %}
                 {% if cluster['curators'] %}
-                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<span class="edit-chip" style="{{ chip_style(a, 0) }}">{{ outlet_icon(a) }}{{ short_name(a) }}</span>{% if not loop.last %} {% endif %}{% endfor %}</p>
+                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ outlet_home(a) or '#' }}" style="{{ chip_style(a, 0) }}" title="{{ a }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
                 {% endif %}
                 </div>
                 <div class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</div>
@@ -946,8 +946,31 @@
     <h1>Every headline right now</h1>
     <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, how grim or
         upbeat its news, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
-    <p class="table-download"><a href="{{ table_file }}" download="{{ table_download }}">⬇️ Download these headlines as JSON</a>
-        <span title="bias: outlet lean from AllSides, -2 left to 2 right (CC BY-NC 4.0), only where rated is true · mood: -2 grim to 2 upbeat · loaded: 0 plain to 2 loaded · seen: first seen, Unix seconds · feelings: strongest first · story: the card it's on this hour (numbers change every run)">ⓘ fields</span></p>
+    <p class="table-download"><a href="{{ table_file }}" download="{{ table_download }}">⬇️ Download these headlines as JSON</a></p>
+    <details class="table-fields">
+        <summary>What's in the file</summary>
+        <p>A list with one object per headline live on a front page this hour, sorted by buzz. Each has these fields:</p>
+        <table>
+            <thead><tr><th>Field</th><th>Type</th><th>What it is</th></tr></thead>
+            <tbody>
+            <tr><td><code>agency</code></td><td>text</td><td>The outlet.</td></tr>
+            <tr><td><code>bias</code></td><td>number</td><td>The outlet's lean from AllSides: -2 left, -1 lean left, 0 center, 1 lean right, 2 right. AllSides ratings are CC BY-NC 4.0. Meaningful only where <code>rated</code> is true.</td></tr>
+            <tr><td><code>rated</code></td><td>true / false</td><td>Whether AllSides rates the outlet; when false, <code>bias</code> is 0 and means nothing.</td></tr>
+            <tr><td><code>url</code></td><td>text</td><td>The article.</td></tr>
+            <tr><td><code>title</code></td><td>text</td><td>The headline as it appears on the outlet's front page.</td></tr>
+            <tr><td><code>seen</code></td><td>number or null</td><td>When we first saw the article, in Unix seconds (UTC).</td></tr>
+            <tr><td><code>buzz</code></td><td>number</td><td>0 to 100: the headline's percentile among this hour's headlines for how many of the day's most common words and phrases it uses.</td></tr>
+            <tr><td><code>topic</code>, <code>topic_url</code></td><td>text</td><td>A topic page it belongs to, if any (often empty).</td></tr>
+            <tr><td><code>mood</code></td><td>number or null</td><td>How grim or upbeat the news in it is, as our local language model reads it: -2 grim, -1, 0 plain, 1, 2 upbeat. Null when not yet scored.</td></tr>
+            <tr><td><code>loaded</code></td><td>number or null</td><td>How loaded the outlet's own wording is: 0 plain, 1 one or two charged words, 2 built to provoke. Words quoted from someone else don't count.</td></tr>
+            <tr><td><code>feelings</code></td><td>list</td><td>The feelings it's likely to stir, strongest first, each as <code>[emoji, name]</code> (fear, anger, sadness, disgust, surprise, joy, hope).</td></tr>
+            <tr><td><code>story</code></td><td>number or null</td><td>The story card it's on this hour. These numbers change every run: use <code>story_title</code> to match across downloads.</td></tr>
+            <tr><td><code>story_title</code>, <code>story_size</code></td><td>text, number</td><td>That story's title and how many headlines it has.</td></tr>
+            </tbody>
+        </table>
+        <p>The scores are a small model's readings and are often wrong in either direction; how they're made is on
+            <a href="glossary.html">How it works</a>. The file is rebuilt every hour, so downloads are snapshots.</p>
+    </details>
     <section class="headline-table">
         <div class="table-controls">
             <div class="table-filters" role="group" aria-label="Measure to show">

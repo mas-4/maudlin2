@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Folklore page floor: 10 people.** In the first full report (25,095 accounts), half of the 60 retold narratives
+  had five to nine tellers, and those were mostly a handful reacting to one news item or game. The page shows
+  narratives told by at least 10 people, or 1 in 2,500 accounts sampled if that's more; the report keeps the rest.
+- **Shared article links kept (research only).** A link in a post to an article on a site we scrape is kept whole
+  (without its query string), since it ties the post to a story exactly; other links are still cut to their site.
 - **What people say, unprompted (research only, #153, #142).** Each run samples five minutes of Bluesky's public
   stream (Jetstream) and three pages of mas.to's federated timeline, on a thread during the scrape. Kept: post text,
   reply/quote flags, a salted fingerprint of the author. Handles in text become "@someone", links just their site;

@@ -3210,9 +3210,23 @@ h1 {
     white-space: nowrap;
 }
 
+/* Quotes and one-sided phrases run like text, chip by chip, so a long one carries on to the next line where it ends
+   up instead of each taking a line of its own */
+.story-quotes, .story-wording {
+    display: block !important;
+    line-height: 2.1;
+}
+
 .quote-chip, .wording-chip {
-    max-width: 100%;
+    display: inline;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
     overflow-wrap: anywhere;
+    margin-right: 4px;
+}
+
+.story-curators a.edit-chip {
+    text-decoration: none;
 }
 
 /* A story card's coverage lines (headline count, first seen, still showing) read as notes, not body text */
@@ -3391,3 +3405,35 @@ h1 {
 .role-villain { background: #ffe3e7; }
 .role-victim { background: #e3ebff; }
 .role-hero { background: #d9f7f2; }
+
+/* The every-headline download's field guide */
+.table-fields {
+    max-width: 760px;
+    margin: 0 auto 1em;
+    padding: 0.4em 0.9em;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    font-size: 0.9em;
+}
+
+.table-fields summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.table-fields table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-fields th, .table-fields td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.3em 0.4em;
+    border-bottom: 1px solid #ddd;
+}
+
+.table-fields code {
+    white-space: nowrap;
+}

@@ -1,14 +1,14 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <h2>🧶 Narratives</h2>
+    <h2>🧶 Folklore</h2>
     <p class="wip-banner">🚧 <b>Work in progress.</b> An experiment in finding the stories people retell in their own
         words: rumors, legends, beliefs, jokes and sayings, not the news itself. Read from a sample of public Bluesky and
         Mastodon posts; the labels are a small local language model's best guess and are often wrong.</p>
     {% if report %}
         <p class="poll-note">From {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
             in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }}: {{ cards|length }} narratives told by
-            at least five people each in their own words, and {{ copies|length }} copypasta (the same words, pasted).</p>
+            at least {{ floor }} people each in their own words ({{ fewer }} more told by fewer aren't shown), and {{ copies|length }} copypasta (the same words, pasted).</p>
         <details class="how-it-works">
             <summary>How this works</summary>
             <p class="poll-note">Folklore travels as variants: one claim or story told by many unrelated people, each
@@ -18,9 +18,10 @@
                 bots and accounts posting many times an hour are left out.</p>
             <p class="poll-note">For each big group, our local language model reads a few versions and says what they
                 share, whether it's retold or just a shared topic, its genre, its chapter of Thompson's Motif-Index (the
-                folklorist's catalog of story elements), and who it casts as villain, victim and hero. A link to the day's
-                news appears only when the model, choosing among the closest stories with "none" on offer, picks
-                one.</p>
+                folklorist's catalog of story elements), and who it casts as villain, victim and hero. When the posts share
+                articles from outlets we follow, those articles are shown (an exact link to the story); otherwise a
+                link to the day's news appears only when the model, choosing among the closest stories with "none" on
+                offer, picks one.</p>
             <p class="poll-note">People's posts are never shown here, only the model's summary of what they share;
                 accounts are never identified. Raw posts are kept 30 days for this research and never published.</p>
         </details>
@@ -57,6 +58,9 @@
                             {% if c.hero %}<span class="role role-hero" title="Cast as the hero">🦸 {{ c.hero|e }}</span>{% endif %}
                         </p>
                     {% endif %}
+                    {% for a in c.articles %}
+                        <p class="narrative-link">📎 Sharing{% if a.shares > 1 %} ({{ a.shares }}×){% endif %}: <a href="{{ a.url|e }}">{{ a.title|e }}</a> <span class="court-when">{{ a.outlet|e }}{% if a.story %} · in the story “{{ a.story|e }}”{% endif %}</span></p>
+                    {% endfor %}
                     {% if c.story %}
                         <p class="narrative-link">{% if c.story.relation == 'same event' %}📰 In the news: {% else %}🔗 Same issue as: {% endif %}{{ c.story.label|e }}</p>
                     {% endif %}

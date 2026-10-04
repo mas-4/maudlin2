@@ -154,6 +154,16 @@ def short_name(name: str) -> str:
 
 
 j2env.globals['short_name'] = short_name
+
+
+def outlet_home(name: str) -> str:
+    """An outlet's homepage, from its scraper ('' when it has none)."""
+    from app.registry import Scrapers
+    homes = j2env.globals.setdefault('_homes', {s.agency: s.url for s in Scrapers if getattr(s, 'url', None)})
+    return homes.get(name, '')
+
+
+j2env.globals['outlet_home'] = outlet_home
 j2env.globals['short_names'] = SHORT_NAMES
 j2env.globals['unrated'] = set()  # outlets AllSides doesn't rate, filled by the build
 j2env.globals['lean_estimates'] = {}  # our estimate for some of them (app/analysis/lean_estimate.py)

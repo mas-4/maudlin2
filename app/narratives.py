@@ -119,13 +119,15 @@ def load(hours: float) -> list[dict]:
     from app.vernacular import DB
     since = (dt.now(timezone.utc) - td(hours=hours)).isoformat(timespec='seconds')
     con = sqlite3.connect(DB)
-    rows = con.execute('SELECT key, author, text, reply, source FROM post WHERE collected >= ?', (since,)).fetchall()
+    rows = con.execute('SELECT key, author, text, reply, source, links FROM post WHERE collected >= ?',
+                       (since,)).fetchall()
     con.close()
     # Feeds and bots post far more than people: an account with more than FEED_POSTS posts in the window is left
     # out, and so is a bare link share (a headline and its link), which is a story being passed on, not told
     from app.vernacular import ADULT, english
-    per_author = Counter(a for _, a, _, _, _ in rows)
-    return [{'key': k, 'author': a, 'text': t, 'reply': r, 'source': s} for k, a, t, r, s in rows
+    per_author = Counter(row[1] for row in rows)
+    return [{'key': k, 'author': a, 'text': t, 'reply': r, 'source': s, 'links': json.loads(links or '[]')}
+            for k, a, t, r, s, links in rows
             if len(NOISE.sub('', t).strip()) >= MIN_CHARS and english(t) and not ADULT.search(t) and per_author[a] <= FEED_POSTS * max(1, hours / 6)
             and not ('[link:' in t and len(NOISE.sub('', t).strip()) < 120) and '[BOT]' not in t]
 
@@ -191,7 +193,9 @@ def describe(posts: list[dict], members: list[int], rng: random.Random) -> dict:
     kind = 'copypasta' if var < COPY_VARIETY or exact >= 0.5 * len(texts) else \
         'told' if var >= FOLK_VARIETY else 'echoed'
     distinct = list(dict.fromkeys(texts))
+    shared = Counter(url for i in members for url in posts[i].get('links') or [])
     return {'members': members, 'posts': len(members), 'authors': authors, 'variety': var, 'kind': kind,
+            'shared': shared.most_common(5),
             'replies': round(sum(posts[i]['reply'] for i in members) / len(members), 2),
             'sources': dict(Counter(posts[i]['source'] for i in members)),
             'examples': rng.sample(distinct, min(len(distinct), SAMPLE))}
@@ -295,6 +299,36 @@ def story_link(group: dict, candidates: list[str], cache: dict) -> dict | None:
     return {'label': candidates[int(number) - 1], 'relation': 'same event' if how == 'event' else 'same issue'}
 
 
+def articles(urls: list[str]) -> dict[str, dict]:
+    """The articles in our own database at these addresses (http or https, with or without www or a trailing slash):
+    url -> {title, outlet, story} with the headline it was last seen under and the story it's in, if any."""
+    from app.models import Session, Article, Agency, Headline, Story, StoryHeadline
+    from urllib.parse import urlsplit
+    variants = {}
+    for url in urls:
+        parts = urlsplit(url)
+        host = parts.netloc.removeprefix('www.')
+        for scheme in ('https', 'http'):
+            for h in (host, 'www.' + host):
+                for path in {parts.path, parts.path.rstrip('/'), parts.path.rstrip('/') + '/'}:
+                    variants[f'{scheme}://{h}{path}'] = url
+    found = {}
+    with Session() as s:
+        keys = list(variants)
+        for start in range(0, len(keys), 500):
+            rows = s.query(Article.url, Agency.name, Headline.processed, Story.label).join(Article.agency).join(
+                Headline, Headline.article_id == Article.id).outerjoin(
+                StoryHeadline, StoryHeadline.headline_id == Headline.id).outerjoin(
+                Story, Story.id == StoryHeadline.story_id).filter(Article.url.in_(keys[start:start + 500])).order_by(
+                Headline.last_accessed).all()
+            for url, outlet, title, story in rows:  # later headlines win: the latest wording
+                original = variants[url]
+                entry = found.setdefault(original, {'url': original, 'outlet': outlet, 'title': title, 'story': None})
+                entry['title'] = title or entry['title']
+                entry['story'] = story or entry['story']
+    return found
+
+
 def focus_group_segments(window: int = 3) -> list[dict]:
     """The Focus Group transcripts in short windows of consecutive segments (a few sentences each)."""
     from app.models import Session, SideItem, SideTranscript
@@ -337,6 +371,11 @@ def report(hours: float = 6) -> dict:
         json.dump(cache, f)
     # Cross-checks, by embedding each narrative's claim (or its versions) against voters' words and today's stories
     narratives = [g for g in found if (g.get('label') or {}).get('retold')]
+    # The articles their posts share, looked up in our own database: an exact tie to a story, no guessing
+    known = articles(sorted({url for g in narratives for url, _ in g['shared']}))
+    for g in narratives:
+        g['articles'] = [{**known[url], 'shares': n} for url, n in g['shared'] if url in known][:3]
+        g['outside'] = [{'url': url, 'shares': n} for url, n in g['shared'] if url not in known][:3]
     segments = focus_group_segments()
     stories = current_stories()
     if narratives:
@@ -386,6 +425,9 @@ def markdown(out: dict) -> str:
         lines.append(f"{g['authors']} people, {g['posts']} posts, wording variety {g['variety']} ({g['kind']}); "
                      f"{lab['genre']}; motif {lab['motif_chapter']}: {lab['motif'] or '-'}; "
                      f"politics: {lab['politics']} ({lab['side']}){'; ' + roles if roles else ''}")
+        for a in g.get('articles') or []:
+            lines.append(f"Sharing ({a['shares']}x): {a['title']} ({a['outlet']}) {a['url']}"
+                         + (f" [story: {a['story']}]" if a['story'] else ''))
         story = g.get('story')
         if story and story['relation'] == 'same event':
             lines.append(f"In the news: {story['label']}")

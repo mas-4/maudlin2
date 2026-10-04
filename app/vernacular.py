@@ -31,10 +31,10 @@ JETSTREAM = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=a
 MINUTES = 5  # listened per run
 RETENTION_DAYS = 30
 MIN_CHARS = 20  # shorter is mostly "lol", emoji, single words
-INSERT = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media) '
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-INSERT_SOURCE = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media, source) '
-                 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+INSERT = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media, links) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+INSERT_SOURCE = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media, links, '
+                 'source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
 MENTION = re.compile(r'@[\w.-]+(?:\.[a-z]{2,})+|@\w+')
 LINK = re.compile(r'https?://(?:www\.)?([^/\s]+)\S*')
 
@@ -44,12 +44,55 @@ def scrub(text: str) -> str:
     return LINK.sub(r'[link: \1]', MENTION.sub('@someone', text)).strip()
 
 
+_news = None
+
+
+def news_domains() -> set[str]:
+    """The sites of the outlets we scrape: links to their articles are kept whole (public, and they tie a post to a
+    story exactly); every other link is cut to its site."""
+    global _news
+    if _news is None:
+        from urllib.parse import urlsplit
+        from app.registry import Scrapers
+        _news = {urlsplit(s.url).netloc.lower().removeprefix('www.') for s in Scrapers if getattr(s, 'url', None)}
+    return _news
+
+
+def article_links(urls) -> str | None:
+    """The links among `urls` that go to an article on a site we scrape, without tracking parameters, as JSON."""
+    from urllib.parse import urlsplit, urlunsplit
+    out = []
+    for url in urls:
+        try:
+            parts = urlsplit(url)
+        except ValueError:
+            continue
+        host = parts.netloc.lower().removeprefix('www.')
+        if host in news_domains() and len(parts.path) > 8:  # an article, not the homepage
+            out.append(urlunsplit((parts.scheme or 'https', parts.netloc.lower(), parts.path, '', '')))
+    return json.dumps(sorted(set(out))) if out else None
+
+
+def bluesky_links(record: dict) -> list[str]:
+    """Every link a Bluesky post carries: in its text's link markup and its link card (also inside a quote)."""
+    urls = [f.get('uri', '') for facet in record.get('facets') or [] for f in facet.get('features') or []
+            if 'link' in f.get('$type', '')]
+    embed = record.get('embed') or {}
+    for part in (embed, embed.get('media') or {}):
+        external = part.get('external') or {}
+        if external.get('uri'):
+            urls.append(external['uri'])
+    return urls
+
+
 def connect() -> sqlite3.Connection:
     con = sqlite3.connect(DB, timeout=30)
     con.execute("""CREATE TABLE IF NOT EXISTS post (
         key TEXT PRIMARY KEY, author TEXT NOT NULL, created TEXT, collected TEXT NOT NULL, text TEXT NOT NULL,
         reply INTEGER NOT NULL DEFAULT 0, quote INTEGER NOT NULL DEFAULT 0, media INTEGER NOT NULL DEFAULT 0,
-        source TEXT NOT NULL DEFAULT 'bluesky')""")
+        source TEXT NOT NULL DEFAULT 'bluesky', links TEXT)""")
+    if 'links' not in {row[1] for row in con.execute('PRAGMA table_info(post)')}:
+        con.execute('ALTER TABLE post ADD COLUMN links TEXT')  # article links, added Oct 4
     con.execute('CREATE INDEX IF NOT EXISTS ix_post_collected ON post (collected)')
     con.execute('CREATE INDEX IF NOT EXISTS ix_post_author ON post (author)')
     return con
@@ -125,7 +168,7 @@ def row(message: dict, pepper: str):
     now = dt.now(timezone.utc).isoformat(timespec='seconds')
     return 'create', (key, fingerprint(did, pepper), record.get('createdAt'), now, scrub(record['text']),
                       int('reply' in record), int('record' in kind),
-                      int('images' in kind or 'video' in kind or 'media' in kind))
+                      int('images' in kind or 'video' in kind or 'media' in kind), article_links(bluesky_links(record)))
 
 
 def sample(minutes: float = MINUTES, url: str = JETSTREAM) -> int:
@@ -178,13 +221,15 @@ def mastodon_row(status: dict, pepper: str):
     if status.get('reblog') or not account.get('indexable') or account.get('bot') or status.get('sensitive') \
             or status.get('spoiler_text') or (status.get('language') or 'en') != 'en':
         return None
-    text = scrub(BeautifulSoup(status.get('content') or '', 'html.parser').get_text(' ', strip=True))
+    soup = BeautifulSoup(status.get('content') or '', 'html.parser')
+    text = scrub(soup.get_text(' ', strip=True))
+    links = [a.get('href', '') for a in soup.find_all('a')] + [(status.get('card') or {}).get('url') or '']
     if len(text) < MIN_CHARS or not english(text) or ADULT.search(text):
         return None
     now = dt.now(timezone.utc).isoformat(timespec='seconds')
     return (fingerprint(status.get('uri', ''), pepper), fingerprint(account.get('uri', ''), pepper),
             status.get('created_at'), now, text, int(bool(status.get('in_reply_to_id'))), int(bool(status.get('quote'))),
-            int(bool(status.get('media_attachments'))), 'mastodon')
+            int(bool(status.get('media_attachments'))), article_links(links), 'mastodon')
 
 
 def mastodon_sample(pages: int = MASTODON_PAGES) -> int:
