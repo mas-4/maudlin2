@@ -771,7 +771,6 @@
         <button data-sort="newest" class="active" title="Most recently broken first">✨ newest</button>
         <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
         <button data-sort="spiciest" title="Most loaded wording first">🌶️ spiciest</button>
-        <button data-sort="lopsided" title="Coverage leaning hardest to one side first">⚖️ most one-sided</button>
         <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
         {% if blindspots %}<button data-filter="blindspots" class="toggle" title="Only stories almost one side is covering">🙈 blindspots</button>{% endif %}
     </div>
@@ -847,7 +846,6 @@
                 newest: (a, b) => num(a, 'age') - num(b, 'age'),
                 biggest: (a, b) => num(b, 'size') - num(a, 'size') || num(a, 'age') - num(b, 'age'),
                 spiciest: (a, b) => num(b, 'spice') - num(a, 'spice'),
-                lopsided: (a, b) => num(b, 'lean') - num(a, 'lean'),
                 grimmest: (a, b) => num(a, 'mood') - num(b, 'mood'),
             };
             let count = 0;

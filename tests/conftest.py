@@ -1,11 +1,15 @@
 import os
 import tempfile
 
-import pytest
+# Before any app module sets up its logger: test runs (the pre-commit hook included) must not write into the real
+# log, which lives in the data folder prod shares
+os.environ['MAUDLIN_LOG_FILE'] = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-log-'), 'app.log')
 
-from app.utils.config import Config
-from app.utils.constants import Constants
-from app.site.data import DataHandler
+import pytest  # noqa: E402
+
+from app.utils.config import Config  # noqa: E402
+from app.utils.constants import Constants  # noqa: E402
+from app.site.data import DataHandler  # noqa: E402
 
 
 def pytest_addoption(parser):

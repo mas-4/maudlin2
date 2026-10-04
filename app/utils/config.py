@@ -58,7 +58,7 @@ class Config:
     headline_cutoff = 128
 
     data = os.path.join(Constants.Paths.ROOT, 'data')
-    log_file = f'{data}/app.log'
+    log_file = os.environ.get('MAUDLIN_LOG_FILE') or f'{data}/app.log'  # tests send theirs elsewhere (conftest.py)
     if not os.path.exists(data):
         os.makedirs(data)
     dayreport_file = os.path.join(data, 'day-report.json')
