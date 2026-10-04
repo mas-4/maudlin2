@@ -539,7 +539,7 @@ class HeadlinesPage:
     def investigations(self, clusters_list):
         """The newest pieces from open-source and investigative outfits (app/investigations.py), each pointed at the
         current story it's about when one is close enough in meaning."""
-        pieces = recent_investigations()
+        pieces = recent_investigations(days=14, limit=40, per_source=6)  # each on the story it covers
         if pieces and clusters_list:
             ids = [c['cluster'] for c in clusters_list]
             titles = [self.context['titles'][k] for k in ids]

@@ -3470,6 +3470,33 @@ h1 {
 
 .shape-family { color: #555; }
 
+.source-list {
+    list-style: none;
+    margin: 0.4em 0;
+    padding: 0;
+    columns: 2 22em;
+    column-gap: 2em;
+}
+
+.source-list li {
+    break-inside: avoid;
+    margin: 0 0 0.5em;
+    line-height: 1.35;
+}
+
+.source-name {
+    font-weight: 700;
+    border-left: 4px solid;
+    padding-left: 0.4em;
+}
+
+.source-lean, .source-use, .source-about {
+    display: block;
+    padding-left: 0.65em;
+    font-size: 0.85em;
+    color: #555;
+}
+
 .narrative-claim {
     margin: 0.3em 0;
     font-style: italic;

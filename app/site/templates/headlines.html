@@ -57,8 +57,6 @@
     <nav class="page-toc" aria-label="On this page">
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
-        {% if investigations %}<a href="#investigations"><span class="toc-emoji">🔎</span><span class="toc-label">investigations</span></a>{% endif %}
-        {% if shows %}<a href="#shows"><span class="toc-emoji">🎙️</span><span class="toc-label">shows</span></a>{% endif %}
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
         <a href="#current-stories"><span class="toc-emoji">📰</span><span class="toc-label">stories</span></a>
         <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
@@ -544,41 +542,6 @@
                 </ol>
             </section>
         {% endif %}
-        {% if investigations %}
-            <section class="trending trending-news investigations" id="investigations">
-                <h3>🔎 Investigations <span class="blindspot-note">open-source and investigative reporting, not front pages</span></h3>
-                <ul class="investigation-list">
-                    {% for p in investigations %}
-                        <li>
-                            <div class="investigation-meta">
-                                <a class="investigation-source" href="{{ p.home }}" title="{{ p.source }}: {{ p.about }}"
-                                   style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.short }}</a>
-                                <span class="trend-posts">{{ p.date }}</span>
-                            </div>
-                            <a class="investigation-title" href="{{ p.url }}" title="{{ p.summary }}">{{ p.title }}</a>
-                            {% if p.story is not none %}<a class="trend-both investigation-story" href="#story-{{ p.story }}" title="Related to: {{ p.story_title }}">📰 in the news</a>{% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </section>
-        {% endif %}
-        {% if shows %}
-            <section class="trending trending-news investigations shows" id="shows">
-                <h3>🎙️ On the shows <span class="blindspot-note">news-of-the-day podcasts, newsletters and streams</span></h3>
-                <ul class="investigation-list">
-                    {% for p in shows %}
-                        <li>
-                            <div class="investigation-meta">
-                                <span class="investigation-source" style="--chip: {{ p.color }}" title="{{ p.source }} ({{ p.kind }})"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</span>
-                                <span class="trend-posts">{{ p.date }}</span>
-                            </div>
-                            <a class="investigation-title" href="{{ p.url }}" title="{{ p.summary }}">{{ p.title }}</a>
-                            {% if p.story is not none %}<a class="trend-both investigation-story" href="#story-{{ p.story }}" title="Related to: {{ p.story_title }}">📰 in the news</a>{% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </section>
-        {% endif %}
         {% for box in trend_boxes %}
             <section class="trending">
                 <h3>{{ box.heading }}</h3>
@@ -872,6 +835,13 @@
                     <div class="story-shows">
                         <span class="story-shows-label">🎙️ on the shows</span>
                         {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
+                    </div>
+                {% endif %}
+                {% set investigated = (investigations or [])|selectattr('story', 'equalto', cluster['cluster'])|list %}
+                {% if investigated %}
+                    <div class="story-shows story-investigated">
+                        <span class="story-shows-label" title="Investigative and open-source reporting on this story">🕵️ investigated by</span>
+                        {% for p in investigated %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title|e }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.short }}</a>{% endfor %}
                     </div>
                 {% endif %}
                 {% set joked = satire_of.get(cluster['cluster']) if satire_of is defined else none %}

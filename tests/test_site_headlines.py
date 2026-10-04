@@ -352,7 +352,7 @@ def test_blindspots_none_when_no_clusters():
 
 # <editor-fold desc="investigations">
 def run_investigations(pieces, clusters, embedder, monkeypatch):
-    monkeypatch.setattr(ph, 'recent_investigations', lambda: [dict(p) for p in pieces])
+    monkeypatch.setattr(ph, 'recent_investigations', lambda **k: [dict(p) for p in pieces])
     monkeypatch.setattr(ph, 'embed', embedder)
     page = make_page(titles={c['cluster']: f'Story {c["cluster"]}' for c in clusters})
     page.investigations(clusters)

@@ -37,12 +37,24 @@ def prompt_fields() -> str:
     classes = '; '.join(f'"{k}" ({v})' for k, v in RUMOR_CLASSES.items())
     scopes = '; '.join(f'"{k}" ({v})' for k, v in CONSPIRACY_SCOPES.items())
     return (f"rumor_class: what drives it, as its tellers tell it, one of {classes}\n"
-            f"conspiracy: what scope of secret plot it claims, one of {scopes}\n"
+            f"secret_plot: does the claim say that a hidden group SECRETLY planned something or secretly controls "
+            f"something? A claim about what a government, court, campaign or company openly did or said, or a claim "
+            f"that is just wrong, is false. Most claims are false\n"
+            f"conspiracy: if secret_plot is true, its scope, one of {scopes}; otherwise \"not a conspiracy\"\n"
             f"family: its subject family, one of {'; '.join(FAMILIES)}")
 
 
 SCHEMA_FIELDS = {
     'rumor_class': {"type": "string", "enum": list(RUMOR_CLASSES)},
+    'secret_plot': {"type": "boolean"},
     'conspiracy': {"type": "string", "enum": list(CONSPIRACY_SCOPES)},
     'family': {"type": "string", "enum": FAMILIES},
 }
+
+
+def settle(label: dict) -> dict:
+    """A scope only when the model says a secret plot is claimed (asked first: on its own, a small model calls any
+    claim about a government a conspiracy)."""
+    if label and not label.get('secret_plot', True):
+        label['conspiracy'] = 'not a conspiracy'
+    return label

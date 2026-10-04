@@ -8,7 +8,7 @@ from app.analysis import factchecks
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app.site.common import TemplateHandler
 from app.site.page_folklore import GENRE_EMOJI
-from app.utils import get_logger
+from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
 
@@ -41,6 +41,7 @@ class RumorsPage:
                           'date': item['published'][:10]})
         count = lambda key: Counter(c[key] for c in cards if c[key]).most_common()
         self.template.write({
+            'preview': Config.debug,  # the conspiracy scope shows only in previews until it's reliable (Oct 4)
             'title': 'Rumors', 'cards': cards, 'days': DAYS, 'rumor_classes': RUMOR_CLASSES,
             'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
             'class_counts': count('rumor_class'), 'scope_counts': count('conspiracy'),

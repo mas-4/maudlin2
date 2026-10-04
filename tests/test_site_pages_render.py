@@ -29,7 +29,7 @@ from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'folklore.html', 'rumors.html', 'emotions.html',
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'folklore.html', 'rumors.html', 'beyond.html', 'emotions.html',
              'archive.html', 'feed.xml', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -423,7 +423,8 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         html = (tmp_path / 'folklore.html').read_text()
         assert 'They are &lt;keeping&gt; him alive' in html and 'Same issue as: Trump health' in html
         assert 'These are rumors, not facts.' in html
-        assert '😨 dread rumor' in html and '🕵️ event conspiracy' in html and 'data-rumor="dread"' in html
+        assert '😨 dread rumor' in html and 'data-rumor="dread"' in html
+        assert ('🕵️ event conspiracy' in html) is shows_posts  # held to previews until it's reliable
         # Not a bare "left"/"right" (reads as "correct"); the model's guess only in previews
         assert ('🏛️ left-wing (model' in html) is shows_posts
         assert 'Only six people' not in html and '1 more told by fewer' in html
@@ -494,3 +495,22 @@ def test_rumors_page_lists_labeled_fact_checks(monkeypatch, tmp_path):
     assert 'Did a &lt;bison&gt; herd save a hiker?' in html and '🌈 wish rumor' in html
     assert 'conspiracy</span>' not in html and 'Unlabeled' not in html  # no plot claimed; not labeled yet
     assert 'These are rumors, not facts.' in html
+
+
+def test_beyond_page_tags_pieces_and_lists_every_source(monkeypatch, tmp_path):
+    from app.site import page_beyond as pb
+    monkeypatch.setattr(pb.sidefeeds, 'recent', lambda **k: [
+        {'title': 'Ep. 9: <the> filibuster', 'url': 'https://pod.example/9', 'summary': '', 'source': 'Show A',
+         'kind': 'podcast', 'group': 'left', 'published': '2026-10-04T12:00:00+00:00'}])
+    monkeypatch.setattr(pb.investigations, 'recent', lambda **k: [])
+    monkeypatch.setattr(pb.subjects, 'tag', lambda items: {'https://pod.example/9': ['Congress and legislation']})
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    pb.BeyondPage().generate()
+    html = (tmp_path / 'beyond.html').read_text()
+    assert 'Ep. 9: &lt;the&gt; filibuster' in html and 'Congress and legislation' in html
+    assert 'The Jesse Kelly Show' in html and 'archived for research, not shown; transcribed' in html
+    assert 'Bellingcat' in html and 'PolitiFact' in html
+
+
+def test_front_page_has_no_link_list_blocks(front):
+    assert front.select_one('#investigations') is None and front.select_one('#shows') is None

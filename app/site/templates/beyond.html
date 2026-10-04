@@ -1,0 +1,63 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>🎙️ Beyond the front pages</h2>
+    <p class="poll-note">Besides the outlets' front pages, we follow {{ total_sources }} other sources: news-of-the-day
+        podcasts, newsletters and streams, call-in shows, investigative desks, fact-checkers and satire. Here's what
+        the shows and investigations are talking about lately, tagged by subject by our local language model (a rough
+        read), and below, <a href="#sources">every source</a> and what we do with it.</p>
+    {% if items %}
+        <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter pieces">
+            <span class="bar-group"><span class="bar-label">kind:</span>
+                {% for k, n in kind_counts %}<button type="button" data-kind="{{ k }}">{{ kinds.get(k, ('', k))[0] }} {{ kinds.get(k, ('', k))[1]|lower }} <b>{{ n }}</b></button>{% endfor %}</span>
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">subject:</span>
+                {% for k, n in subject_counts %}<button type="button" data-subject="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+        </div>
+        <div class="court-cards narrative-cards beyond-cards">
+            {% for p in items %}
+                <div class="story court-story narrative" data-kind="{{ p.kind }}" data-subjects="|{{ p.subjects|join('|')|e }}|">
+                    <p class="investigation-meta"><span class="investigation-source" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.kind_emoji }}</span>{{ p.source|e }}</span>
+                        <span class="trend-posts">{{ p.date }}</span></p>
+                    <h4><a href="{{ p.url|e }}">{{ p.title|e }}</a></h4>
+                    {% if p.subjects %}<p class="rumor-shape">{% for s in p.subjects %}<span class="shape-family subject-tag">{{ s|e }}</span>{% endfor %}</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <script>
+            (function () {
+                const box = document.querySelector('.beyond-cards');
+                const all = [...box.querySelectorAll('.narrative')];
+                const repack = packColumns(box, all, 320);
+                const pick = {kind: null, subject: null};
+                document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
+                    const b = ev.target.closest('button');
+                    if (!b) return;
+                    const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
+                    pick[key] = pick[key] === b.dataset[key] ? null : b.dataset[key];
+                    document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
+                    repack(all.filter((c) => (!pick.kind || c.dataset.kind === pick.kind)
+                        && (!pick.subject || c.dataset.subjects.includes(`|${pick.subject}|`))));
+                });
+            })();
+        </script>
+    {% endif %}
+
+    <h3 id="sources">Every source we follow beyond the front pages</h3>
+    <p class="poll-note">Leans are loose, by reputation, for balance and colors (the outlets' own ratings are on
+        <a href="agencies.html">Outlets</a>). "Archived" sources are kept for research (how people and shows talk
+        about the news) and never republished.</p>
+    {% for group in directory %}
+        <details class="how-it-works source-group"{% if loop.first %} open{% endif %}>
+            <summary>{{ group.emoji }} {{ group.heading }} ({{ group.rows|length }})</summary>
+            <ul class="source-list">
+                {% for r in group.rows %}
+                    <li><span class="source-name" style="border-color: {{ r.color or '#b8b8c8' }}">{% if r.home %}<a href="{{ r.home }}">{{ r.name|e }}</a>{% else %}{{ r.name|e }}{% endif %}</span>
+                        {% if r.lean %}<span class="source-lean">{{ r.lean }}</span>{% endif %}
+                        <span class="source-use">{{ r.use }}</span>
+                        {% if r.about %}<span class="source-about">{{ r.about|e }}</span>{% endif %}</li>
+                {% endfor %}
+            </ul>
+        </details>
+    {% endfor %}
+{% endblock %}

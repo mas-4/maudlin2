@@ -100,7 +100,7 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
     """Label the fact-checks from the last LABEL_DAYS that have no labels yet (at most `limit` model calls); returns
     every label, url -> labels."""
     from app.analysis import llm
-    from app.analysis.rumor_shapes import prompt_fields
+    from app.analysis.rumor_shapes import prompt_fields, settle
     from app.narratives import GENRES, MOTIF_CHAPTERS
     labels = load_labels()
     items = _items(LABEL_DAYS) if items is None else items
@@ -116,7 +116,7 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
             genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS), shapes=prompt_fields()),
             schema, max_tokens=300)
         if answer:
-            labels[item['url']] = {**answer, 'model': llm.model()}
+            labels[item['url']] = {**settle(answer), 'model': llm.model()}
     with open(LABELS, 'w') as f:
         json.dump(labels, f)
     logger.info("Fact-checks: labeled %d (%d in all)", len(todo), len(labels))

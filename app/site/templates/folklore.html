@@ -81,7 +81,7 @@
             {% if class_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">rumor:</span>
                 {% for k, n in class_counts %}<button type="button" data-rumor="{{ k }}" title="{{ rumor_classes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
-            {% if scope_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            {% if scope_counts and preview %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">conspiracy:</span>
                 {% for k, n in scope_counts %}<button type="button" data-scope="{{ k }}" title="{{ conspiracy_scopes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             <span class="bar-divider" aria-hidden="true"></span>
@@ -97,7 +97,7 @@
                     {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
                         <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
                             {% if c.rumor_class %}<span class="shape-chip">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor</span>{% endif %}
-                            {% if c.conspiracy %}<span class="shape-chip">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy</span>{% endif %}
+                            {% if c.conspiracy and preview %}<span class="shape-chip">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy</span>{% endif %}
                             {% if c.family %}<span class="shape-family">{{ c.family|e }}</span>{% endif %}
                         </p>
                     {% endif %}

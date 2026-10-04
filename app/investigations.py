@@ -122,8 +122,8 @@ def fetch_investigations():
                 len(cache))
 
 
-def recent(days: int = 14, limit: int = 8) -> list[dict]:
-    """The newest pieces across sources, newest first, at most two per source so one busy source can't fill it."""
+def recent(days: int = 14, limit: int = 8, per_source: int = 2) -> list[dict]:
+    """The newest pieces across sources, newest first, at most `per_source` each so one busy source can't fill it."""
     cache = _load()
     since = dt.now(pytz.UTC) - td(days=days)
     pieces = []
@@ -134,6 +134,6 @@ def recent(days: int = 14, limit: int = 8) -> list[dict]:
         fresh.sort(key=lambda i: dt.fromisoformat(i['published']), reverse=True)
         pieces += [{**item, 'source': source['name'], 'home': source['home'], 'short': source['short'],
                     'emoji': source['emoji'], 'color': source['color'], 'about': source['about']}
-                   for item in fresh[:2]]
+                   for item in fresh[:per_source]]
     pieces.sort(key=lambda p: dt.fromisoformat(p['published']), reverse=True)
     return pieces[:limit]

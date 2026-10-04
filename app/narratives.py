@@ -83,7 +83,7 @@ has_hero: does it cast someone as the hero or rescuer who sets things right?
 hero: who, or "" if not
 politics: true if it is about politics or public life
 side: whose politics the people telling it carry: "left", "right", "both" or "none" (no politics)"""
-from app.analysis.rumor_shapes import SCHEMA_FIELDS as SHAPE_FIELDS, prompt_fields  # noqa: E402
+from app.analysis.rumor_shapes import SCHEMA_FIELDS as SHAPE_FIELDS, prompt_fields, settle  # noqa: E402
 
 SCHEMA = {"type": "object", "properties": {
     "narrative": {"type": "string"}, "retold": {"type": "boolean"}, "genre": {"type": "string", "enum": GENRES},
@@ -237,6 +237,7 @@ def label(group: dict, cache: dict) -> dict | None:
                                    SCHEMA, max_tokens=600)
         if not answer:
             return None
+        settle(answer)  # a conspiracy scope only when a secret plot is claimed
         for part in ('villain', 'victim', 'hero'):  # a part the model says the story lacks stays empty
             if not answer.get(f'has_{part}'):
                 answer[part] = ''

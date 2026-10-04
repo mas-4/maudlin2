@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Beyond the front pages.** The front page's "Investigations" and "On the shows" link lists are gone (we're not an
+  aggregator): each piece now shows on the story it covers (🕵️ investigated by, 🎙️ on the shows), and a new page
+  lists what the shows, newsletters, streams and investigative desks discuss, tagged by subject by the local model
+  (one to three from a fixed list of 35), plus a directory of all 121 sources beyond the front pages and what we do
+  with each. Subject tags pad: asked for one to three, the model gives two or three even for teaser titles; asking
+  for one unless others are plainly discussed only partly helps.
+- **Conspiracy scope held back.** Even asked first whether a secret plot is claimed, the 8B model called 43 of 94
+  fact-checked claims conspiracies (e.g. "Jon Husted pushed for data centers and tax incentives"). The scope shows
+  only in local previews until a confidence cascade (the model's own answer probabilities, with unsure answers sent
+  to a bigger local model) is calibrated against hand checks. Rumor class and subject stay on the site.
 - **Rumor shapes: three open label sets, and a Rumors page.** Thompson's index fits folktales, not modern political
   rumor: in a blind test (151 claims: folklore narratives and fact-checked claims; up to 16 candidate entries each
   by meaning), the local 8B model picked a motif for 30 of its first 53 claims and the user accepted 1 of 6 checked;
