@@ -1077,6 +1077,42 @@ figure.wordcloud figcaption {
     padding: 0 16px;
 }
 
+/* The cloud's key, kept to a glance: the size cue in big type, the colors as chips, and how to open a word */
+figure.wordcloud figcaption.cloud-key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45em 0.6em;
+    margin: 0.6em 0 1.4em;
+    color: #1f1f2e;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+.key-big {
+    font-size: 2.3em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-shadow: 0 0 6px #ffffff, 0 0 12px #ffffff;
+}
+
+.key-chip, .key-click {
+    padding: 0.15em 0.75em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    font-size: 1.05em;
+}
+
+.key-click {
+    border-style: dashed;
+    box-shadow: none;
+    font-size: 0.95em;
+}
+
 .balanced-text {
     background: linear-gradient(90deg, #1a5cff, #e0102e);
     -webkit-background-clip: text;
@@ -2345,7 +2381,7 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
 }
 
 /* Text that sits straight on the page gets a paper backing so the 90s shapes behind it don't fight it */
-.table-intro, .table-filters > span, .more-link a {
+.table-intro, .table-filters > span {
     background: rgba(255, 255, 255, 0.92);
     border-radius: 10px;
 }
@@ -2358,8 +2394,29 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
     padding: 0.1em 0.5em;
 }
 
+/* The way through to every headline: a chunky ink-outlined button, like the cards above it, that hops when pointed at */
 .more-link a {
-    padding: 0.1em 0.5em;
+    display: inline-block;
+    padding: 0.55em 1.3em;
+    background: white;
+    color: #1f1f2e;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    text-decoration: none;
+    border: 3px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 5px 5px 0 #ffc400;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.more-link a:hover, .more-link a:focus-visible {
+    transform: translate(-2px, -2px) rotate(-1.5deg);
+    box-shadow: 7px 7px 0 #ffc400;
+}
+
+.more-link a:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 #ffc400;
 }
 
 /* Headings keep their place on the page; a white glow lifts them off the shapes instead of a box */

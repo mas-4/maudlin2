@@ -42,12 +42,13 @@
             <button data-cloud="side">⚖️ left to right</button>
             <button data-cloud="spice">🌶️ plain to spicy</button>
         </div>
-        <figcaption>Bigger words are used by more outlets. Color shows who uses a word:
-            <span style="color: #1a5cff; font-weight: bold">mostly left-leaning outlets</span>,
-            <span style="color: #e0102e; font-weight: bold">mostly right-leaning outlets</span>,
-            <span class="balanced-text">both sides</span>, or
-            <span style="color: #8a8f98; font-weight: bold">mostly center outlets</span>.
-            Click a word to see how outlets are using it, and the feeling its headlines stir.</figcaption>
+        <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Click a word to see how outlets are using it, and the feeling its headlines stir.">
+            <span class="key-big">MORE OUTLETS</span>
+            <span class="key-chip" style="color: #1a5cff">left</span>
+            <span class="key-chip" style="color: #e0102e">right</span>
+            <span class="key-chip"><span class="balanced-text">both</span></span>
+            <span class="key-chip" style="color: #8a8f98">center</span>
+            <span class="key-click"><span aria-hidden="true">🖱️</span> click a word</span></figcaption>
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
     {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up #}

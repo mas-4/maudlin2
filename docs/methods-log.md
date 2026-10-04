@@ -5,6 +5,18 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Story threshold re-tested; it stays at 0.70.** Stories are still the connected groups of headlines whose
+  embeddings are 0.70 alike or more. On one day's headlines (6,888) the local model judged about 1,000 headline
+  pairs, under two wordings, keeping the pairs both wordings agreed on. One set was spread across the similarity
+  range; it measures how many same-story pairs end up in one story (recall). The other was drawn from inside the
+  stories each threshold would make, grouped by the highest threshold that still joins each pair; it measures how
+  often a story's headlines really belong together (precision). Pairs that only join below 0.70 are the same story
+  73% of the time between 0.675 and 0.70, 51% between 0.65 and 0.675, and 16% between 0.625 and 0.65, because
+  low thresholds chain unrelated stories (the largest group grows from 127 headlines at 0.70 to 451 at 0.60). Scored
+  with precision counting double (F0.5), 0.69 and 0.70 were best and within noise of each other. Lowering to 0.65
+  catches more same-story pairs (recall 0.79 to 0.88) but drops precision from 0.85 to 0.75. Splitting the chains
+  instead with Louvain communities or mutual nearest neighbors scored lower. A threshold has no gradient (scores move
+  in steps as it crosses pairs), so it was swept every 0.005 from 0.55 to 0.80.
 - **Saga links checked by the language model.** Before two stories first join a saga, the model reads a few headlines
   from each side by side and says whether they're one running story; the similarity and shared-name rules still
   apply first. A shared name alone had linked separate Supreme Court cases and separate plots by Iranian nationals.

@@ -340,7 +340,7 @@ class HeadlinesPage:
         global DB_START
         DB_START = first_scrape()
         n_samples_per_cluster = 6
-        threshold = 0.7  # embedding cosine; tuned against a day of headlines
+        threshold = 0.7  # embedding cosine; re-tested Oct 4 2026 against model-judged pairs (methods log)
         df = df[
             (df['country'] == Country.us.name)
             |
