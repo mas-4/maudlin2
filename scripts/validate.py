@@ -54,7 +54,7 @@ def batch(n: int = BATCH) -> list[dict]:
         if hid in done or not title:
             continue
         item = {'headline_id': hid, 'title': title.strip(), 'agency': agency, 'mood': int(mood),
-                'spice': int(loaded), 'feelings': [e for e in (ranks or '').split(',') if e in FEELINGS][:2],
+                'spice': int(loaded), 'feelings': [e for e in (ranks or '').split(',') if e in FEELINGS][:3],
                 'url': url}
         pool.setdefault((item['mood'], item['spice']), []).append(item)
     rng = random.Random()
@@ -120,8 +120,8 @@ button.chosen {{ background: var(--no); color: #fff; }} button.ok.chosen {{ back
 footer {{ font-size: .9em; color: #444; margin: 1.5em 0; }}
 </style></head><body>
 <h1>Label check</h1>
-<p>Is the model right? Tap ✓ for a label that's right, or the value it should be (dashed: the model's pick). Feelings
-take one or two. Save each card; reload for more.</p>
+<p>Is the model right? Tap ✓ for a label that's right, or the value it should be (dashed: the model's pick; tapping
+that counts as ✓). Feelings: tap every one the headline is likely to stir. Save each card; reload for more.</p>
 {''.join(cards) or '<p>Nothing left to check from the last two days.</p>'}
 <footer>So far: mood right {pct('mood')}, spice right {pct('spice')}, feelings right {pct('feelings')}
 ({st['headlines']} headlines). Most common mood misses (model, should be): {st['mood_misses']}</footer>
@@ -141,10 +141,14 @@ document.querySelectorAll('.card').forEach((card) => {{
     if (m === 'feelings') {{
       b.classList.toggle('chosen');
       const picked = [...card.querySelectorAll('[data-measure="feelings"].chosen')].map((x) => x.dataset.value);
-      if (picked.length) verdict.feelings = {{ok: false, should: picked}}; else delete verdict.feelings;
+      const model = JSON.parse(card.dataset.model).feelings;
+      const same = picked.length === model.length && picked.every((e) => model.includes(e));
+      if (picked.length) verdict.feelings = same ? {{ok: true}} : {{ok: false, should: picked}}; else delete verdict.feelings;
     }} else {{
       card.querySelectorAll(`[data-measure="${{m}}"]`).forEach((x) => x.classList.toggle('chosen', x === b));
-      verdict[m] = {{ok: false, should: Number(b.dataset.value)}};
+      const model = JSON.parse(card.dataset.model)[m];
+      // Picking the model's own value is agreeing with it
+      verdict[m] = Number(b.dataset.value) === model ? {{ok: true}} : {{ok: false, should: Number(b.dataset.value)}};
     }}
     ready();
   }}));
