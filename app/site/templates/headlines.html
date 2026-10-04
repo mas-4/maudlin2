@@ -804,7 +804,7 @@
     </div>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
-            <div class="story" id="story-{{ cluster['cluster'] }}" data-age="{{ cluster['first']|round|int }}"
+            <div class="story" id="story-{{ cluster['cluster'] }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']] }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
                  data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
                  {% if cluster['blindspot'] %}data-blindspot="{{ cluster['blindspot']['side'] }}"{% endif %}

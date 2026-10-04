@@ -226,3 +226,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (document.body) draw(); else document.addEventListener('DOMContentLoaded', draw);
 })();
+
+// Share: a 🔗 on each card copies a link straight to it. Story cards use their saved story's id (data-share, "s-123"),
+// which lasts across runs, where the card's own id is the hour's cluster number; other cards use their id. Opening
+// such a link scrolls to the card once the page has laid its cards out.
+document.addEventListener('DOMContentLoaded', () => {
+    const copy = async (text) => {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (e) {  // no clipboard API outside https (the local preview): the old way
+            const area = Object.assign(document.createElement('textarea'), {value: text});
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand('copy');
+            area.remove();
+        }
+    };
+    document.querySelectorAll('.story, .court-story[id], .outlet-card[id]').forEach((card) => {
+        const anchor = card.dataset.share || card.id;
+        if (!anchor) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'share-link';
+        button.title = 'Copy a link to this';
+        button.setAttribute('aria-label', 'Copy a link to this');
+        button.textContent = '🔗';
+        button.dataset.anchor = anchor;
+        card.prepend(button);
+    });
+    // One listener for every share button, so copies of a card (popped up over the page) work too
+    document.addEventListener('click', async (ev) => {
+        const button = ev.target.closest('.share-link');
+        if (!button) return;
+        ev.stopPropagation();
+        await copy(location.origin + location.pathname + '#' + button.dataset.anchor);
+        button.textContent = '✓ copied';
+        button.classList.add('copied');
+        setTimeout(() => { button.textContent = '🔗'; button.classList.remove('copied'); }, 1600);
+    });
+    const wanted = decodeURIComponent(location.hash.slice(1));
+    const target = wanted && document.querySelector(`[data-share="${CSS.escape(wanted)}"]`);
+    if (target) addEventListener('load', () => setTimeout(() => target.scrollIntoView({block: 'start'}), 300));
+});

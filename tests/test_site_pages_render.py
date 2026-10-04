@@ -393,3 +393,11 @@ def test_story_outlet_chips_stay_in_their_box(front):
     # A <p> can't hold the coverage lines' own <p>s: the browser closes it early and the chips fall out of it
     cards = front.select('.story')
     assert cards and all(card.select('.story-outlets .storylink') for card in cards)
+
+
+def test_story_cards_carry_a_stable_share_anchor(front, site):
+    story_of = site['context'].get('story_of') or {}
+    for card in front.select('.story'):
+        cluster = int(card['id'].removeprefix('story-'))
+        if cluster in story_of:
+            assert card['data-share'] == f's-{story_of[cluster]}'

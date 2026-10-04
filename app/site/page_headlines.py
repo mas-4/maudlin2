@@ -416,6 +416,7 @@ class HeadlinesPage:
         df['deviation'] = sentiment - sentiment.groupby(df['cluster']).transform('mean')
         stories = sync_stories(df)
         self.story_of = {int(k): story.id for k, story in stories.items()}  # cluster -> saved story, for sagas
+        self.context['story_of'] = self.story_of  # stable ids for share links (cluster numbers change every run)
         self.summarize(df, label_stories(df, stories))
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
