@@ -71,8 +71,7 @@ narrative: the shared claim or story in one plain sentence, or "" if there is no
 retold: true if they retell one narrative, false if they only share a topic
 genre: one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index it fits best, one of {chapters}
-motif: the specific motif in a few words (for example "the poisoned well", "the stranger who steals children",
-"the hidden ruler"), or ""
+motif: the specific motif in a few words of your own, describing these posts, or ""
 villain: who is cast as the villain, or ""
 victim: who is cast as the victim, or ""
 hero: who is cast as the hero or rescuer, or ""

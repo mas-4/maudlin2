@@ -80,7 +80,7 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
-                    {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif %}: <i>{{ c.motif|e }}</i>{% endif %}</p>{% endif %}
+                    {% if c.chapter %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif %} · <span title="The model's own words for the motif, not an entry from the index">the model's motif: <i>{{ c.motif|e }}</i></span>{% endif %}</p>{% endif %}
                     {% if c.factchecks %}
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
                             {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
