@@ -885,7 +885,7 @@ they have in common. Write it the way its tellers tell it, as if it were so; nev
 the motif's own name names them: then it is a named narrative, and the note keeps that name. Start with what \
 happens, not with "This motif", "A motif" or "Stories"."""
 GLOSS_SCHEMA = {"type": "object", "properties": {"common": {"type": "string", "maxLength": 500},
-                                                 "note": {"type": "string", "maxLength": 240}},
+                                                 "note": {"type": "string", "maxLength": 320}},
                 "required": ["common", "note"]}
 GLOSS_CLAIMS = 8  # claims shown when drafting a note
 GLOSS_MIN = 3  # claims a motif needs before the model drafts its note: with one or two it restated them (Oct 5)
@@ -905,8 +905,8 @@ def gloss(entry: dict) -> str | None:
     for attempt in range(3):
         answer = llm.complete_json(prompt, GLOSS_SCHEMA, max_tokens=600, model=MODEL)
         note = ' '.join((answer or {}).get('note', '').split())
-        if not note:
-            continue
+        if not note or note[-1] not in '.!?"\u201d':
+            continue  # none, or cut off at the length limit mid-sentence
         if re.search(r'\b(the user|scope note|motif)\b', note, re.I):
             continue  # the model talking about the task, not answering it
         judged = VERDICT_WORDS.search(note) and not about_falsehood

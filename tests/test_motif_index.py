@@ -314,5 +314,6 @@ def test_a_draft_that_judges_or_names_is_asked_for_again(monkeypatch, tmp_path):
     entry = {'id': 'M1', 'name': 'Political bribes', 'claims': [{'claim': 'a'}]}
     assert mi.gloss(entry) == 'Politicians take bribes from wealthy donors.'
     # A named narrative keeps its own names; a note about the task itself is never kept
-    answers = iter([{'common': 'x', 'note': 'The user wants a scope note.'}, {'common': 'x', 'note': 'Texas turns blue.'}])
+    answers = iter([{'common': 'x', 'note': 'The user wants a scope note.'}, {'common': 'x', 'note': 'Texas turns blue and'},
+                    {'common': 'x', 'note': 'Texas turns blue.'}])
     assert mi.gloss({'id': 'M2', 'name': 'Blue Texas', 'claims': [{'claim': 'b'}]}) == 'Texas turns blue.'
