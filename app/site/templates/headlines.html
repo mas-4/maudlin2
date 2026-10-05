@@ -786,8 +786,8 @@
         {% if clusters|selectattr('curators')|list %}<button data-filter="picked" class="toggle" title="Only stories an aggregator (Google News, Drudge Report, RealClearPolitics, Political Wire) is linking to now">📌 aggregated</button>{% endif %}
         </span>
         {% if entity_chips %}<span class="bar-divider" aria-hidden="true"></span>
-        <span class="bar-group entity-group"><span class="bar-label">about:</span>
-        {% for name, n in entity_chips %}<button data-entity="{{ name|e }}" title="The {{ n }} current stories that name {{ name|e }}">{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
+        <span class="bar-group entity-group"><span class="bar-label">mentioned:</span>
+        {% for name, n in entity_chips %}<button data-entity="{{ name|e }}" title="The {{ n }} current stories whose headlines mention {{ name|e }}">{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
         </span>{% endif %}
     </div>
     <div class="stories">
