@@ -343,6 +343,123 @@ document.getElementById('search').addEventListener('input', (ev) => {{
 </script></body></html>"""
 
 
+DRAG_SNIPPET = r"""<style>
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+.dz-handle { cursor: grab; border-radius: 6px; } .dz-handle:hover { background: #eef9f7; }
+.dz-handle::before { content: '⠿ '; color: #999; }
+body.dragging .dz-target { outline: 1px dashed #999; outline-offset: 1px; }
+.dz-ghost { position: fixed; pointer-events: none; z-index: 1000; display: none; max-width: 28em; background: #fff;
+  border: 2px solid #1f1f2e; border-radius: 10px; padding: 4px 10px; box-shadow: 3px 3px 0 #00c2a8; font-size: .9em; }
+.dz-ghost .dz-say { color: #333; font-size: .9em; margin-top: 3px; font-weight: 600; }
+.dz-zones { position: absolute; z-index: 999; display: flex; flex-direction: column; gap: 2px; background: #fffdf6;
+  border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); padding: 2px; box-sizing: border-box; }
+.dz-name { flex: none; line-height: 20px; font-weight: 700; font-size: .85em; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dz-row { flex: 1; display: flex; gap: 4px; }
+.dz-zone { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 40px;
+  padding: 2px 6px; border: 2px dashed #1f1f2e; border-radius: 8px; background: #eef9f7; font-weight: 700; font-size: .85em; }
+.dz-zone.hot { background: #c8f7c5; border-style: solid; }
+</style>
+<script>
+// Click and drag with drop zones (mouse, pen or touch): dragging something over a target splits the target into the
+// choices that drop allows, each saying what it does; letting go on one does it, anywhere else does nothing (as does
+// Escape). A press without moving is a click; on touch, hold a moment before dragging, so a swipe still scrolls.
+// o: {handle, target: selectors; item(handleEl); label(item); name(targetEl): shown over the zones;
+//     zones(item, targetEl) -> [{label, say, run} or null]}
+function dragZones(o) {
+  let drag = null, over = null, zoneEl = null, hot = null, justDragged = false;
+  addEventListener('click', (e) => { if (justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  const ghost = Object.assign(document.createElement('div'), {className: 'dz-ghost'});
+  document.body.appendChild(ghost);
+  const tag = () => document.querySelectorAll(o.handle).forEach((h) => h.classList.add('dz-handle'));
+  new MutationObserver(tag).observe(document.body, {childList: true, subtree: true}); tag();
+  function clearZones() { if (zoneEl) zoneEl.remove(); zoneEl = null; over = null; hot = null; }
+  function showZones(t) {
+    if (t === over) return;
+    clearZones();
+    if (!t) return;
+    const zs = o.zones(drag.item, t).filter(Boolean);
+    if (!zs.length) return;
+    over = t;
+    const r = t.getBoundingClientRect(), h = Math.max(Math.min(r.height, 50), 44) + 24;
+    // Over a short target, centred on it; over a tall one (a whole card), where the pointer is
+    const top = r.height <= 60 ? r.top - (h - r.height) / 2 : Math.max(r.top, Math.min(drag.y - h / 2, r.bottom - h));
+    zoneEl = Object.assign(document.createElement('div'), {className: 'dz-zones'});
+    Object.assign(zoneEl.style, {left: r.left + scrollX + 'px', top: top + scrollY + 'px', width: r.width + 'px', height: h + 'px'});
+    zoneEl.innerHTML = `<div class="dz-row">${zs.map((z, i) => `<div class="dz-zone" data-z="${i}">${z.label}</div>`).join('')}</div><div class="dz-name"></div>`;
+    zoneEl.lastChild.textContent = o.name ? o.name(t) : '';
+    zoneEl.zs = zs; document.body.appendChild(zoneEl);
+  }
+  function hit(x, y) {
+    const el = document.elementFromPoint(x, y);
+    const z = el && el.closest('.dz-zone');
+    if (z) return {zone: zoneEl.zs[+z.dataset.z], zEl: z, t: over};
+    if (el && zoneEl && zoneEl.contains(el)) return {t: over};
+    const t = el && el.closest(o.target);
+    return {t: t && t !== drag.el ? t : null};
+  }
+  function update() {
+    const h = hit(drag.x, drag.y);
+    if (!h.zone) showZones(h.t);
+    if (hot) hot.classList.remove('hot');
+    hot = h.zEl || null;
+    if (hot) hot.classList.add('hot');
+    ghost.innerHTML = '';
+    ghost.append(o.label(drag.item));
+    if (h.zone) ghost.appendChild(Object.assign(document.createElement('div'), {className: 'dz-say', textContent: h.zone.say}));
+    // Above the pointer, so it never covers the zones under it
+    ghost.style.left = Math.max(8, Math.min(drag.x + 14, innerWidth - ghost.offsetWidth - 8)) + 'px';
+    ghost.style.top = Math.max(4, drag.y - ghost.offsetHeight - 14) + 'px';
+    return h;
+  }
+  function start() {
+    drag.on = true; document.body.classList.add('dragging');
+    document.querySelectorAll(o.target).forEach((t) => t.classList.add('dz-target'));
+    ghost.style.display = 'block'; update(); scroll();
+  }
+  function scroll() {  // near the window's top or bottom edge the page scrolls, so far targets can be reached
+    if (!drag || !drag.on) return;
+    const edge = 70, y = drag.y;
+    const speed = y < edge ? -(edge - y) / 3 : y > innerHeight - edge ? (y - (innerHeight - edge)) / 3 : 0;
+    if (speed) { scrollBy(0, speed); clearZones(); update(); }
+    requestAnimationFrame(scroll);
+  }
+  function end(ev, cancel) {
+    if (!drag) return;
+    clearTimeout(drag.timer);
+    const d = drag, h = d.on && !cancel ? hit(ev.clientX, ev.clientY) : {};
+    drag = null; clearZones();
+    ghost.style.display = 'none'; document.body.classList.remove('dragging');
+    document.querySelectorAll('.dz-target').forEach((t) => t.classList.remove('dz-target'));
+    if (!d.on) return;
+    justDragged = true; setTimeout(() => { justDragged = false; }, 0);  // the click a drag ends with is no click
+    if (h.zone) h.zone.run();
+  }
+  document.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || ev.target.closest('button, input, select, a, dialog')) return;
+    const handle = ev.target.closest(o.handle); if (!handle) return;
+    const item = o.item(handle); if (!item) return;
+    drag = {item, el: handle, x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, on: false, touch: ev.pointerType === 'touch'};
+    if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) start(); }, 350);
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    drag.x = ev.clientX; drag.y = ev.clientY;
+    const moved = Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy);
+    if (!drag.on) {
+      if (drag.touch) { if (moved > 8) { clearTimeout(drag.timer); drag = null; } return; }  // a swipe: let it scroll
+      if (moved < 6) return;
+      start();
+    }
+    ev.preventDefault(); update();
+  });
+  document.addEventListener('touchmove', (ev) => { if (drag && drag.on) ev.preventDefault(); }, {passive: false});
+  document.addEventListener('pointerup', (ev) => end(ev, false));
+  document.addEventListener('pointercancel', (ev) => end(ev, true));
+  addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && drag) end(ev, true); });
+}
+</script>"""
+
+
 BOARD_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Motif board</title><style>
 * { box-sizing: border-box; }
@@ -358,7 +475,6 @@ main { display: grid; grid-template-columns: 230px 1fr; gap: 14px; padding: 14px
 aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow: auto; }
 .group { border: 2px solid #1f1f2e; border-radius: 10px; background: #fff; padding: 6px 10px; margin-bottom: 8px; cursor: pointer; }
 .group.on { background: #ffe9a8; } .group .n { color: #555; font-size: .85em; float: right; }
-.group.target, .motif.target { outline: 3px dashed #ff4fa3; outline-offset: 2px; }
 .group.new { border-style: dashed; color: #555; }
 .grid { display: flex; gap: 14px; align-items: flex-start; } .grid .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 details.detail { background: #f4f1e6; border-radius: 10px; padding: 6px 10px; margin-bottom: 8px; } details.detail summary { cursor: pointer; font-weight: 600; }
@@ -385,10 +501,6 @@ ul.examples li { font-size: .85em; margin: .3em 0; } .lab { font-size: .78em; ba
 .motif li .txt { cursor: pointer; } .motif li .txt:hover { text-decoration: underline dotted; }
 .motif li, .motif .head { user-select: none; touch-action: manipulation; }
 body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
-.ghost { display: none; position: fixed; z-index: 30; pointer-events: none; max-width: 320px; padding: 4px 10px; background: #ffc400;
-  border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 3px 3px 0 #1f1f2e; font-size: .85em; }
-#toast { display: none; position: fixed; z-index: 25; left: 50%; bottom: 18px; transform: translateX(-50%); background: #fffdf6;
-  border: 2px solid #1f1f2e; border-radius: 12px; box-shadow: 4px 4px 0 #00c2a8; padding: 8px 14px; max-width: 94vw; }
 dialog { border: 2px solid #1f1f2e; border-radius: 14px; box-shadow: 6px 6px 0 #ffc400; width: min(640px, 94vw); max-height: 86vh;
   padding: 12px 16px; background: #fffdf6; color: #1f1f2e; } dialog::backdrop { background: rgba(31, 31, 46, .35); }
 dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: absolute; right: 10px; top: 8px; }
@@ -421,12 +533,11 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 </aside>
 <section class="grid" id="grid"></section>
 </main>
-<div id="toast" role="status"></div>
 <dialog id="addclaims"><button class="small x" data-close="1">✕</button><div id="addclaims-body"></div></dialog>
 <dialog id="mergepick"><button class="small x" data-close="1">✕</button><div id="mergepick-body"></div></dialog>
-<dialog id="choose"><div id="choose-body"></div></dialog>
 <dialog id="similar"><button class="small x" data-close="1">✕</button><div id="similar-body"></div></dialog>
 <dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
+<!--DRAG-->
 <script>
 let data = {groups: [], entries: []}, filter = 'all';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -613,84 +724,48 @@ $('#picker').addEventListener('click', (ev) => {
   else if (b.dataset.alsonew && name.trim()) done({action: 'also_new', claim, source: from, name});
 });
 
-// Click and drag (mouse, pen or touch): a claim onto a motif adds it there (with a one-click 'take it out of' the old
-// one), a motif onto a motif merges them, a motif onto a group files it, a claim onto '+ new motif' starts one.
-// A press without movement is a click. On touch, hold a moment before dragging, so a swipe still scrolls.
-let drag = null, justDragged = false;
-const ghost = document.createElement('div');
-ghost.className = 'ghost'; document.body.appendChild(ghost);
-function targetAt(x, y) {
-  const el = document.elementFromPoint(x, y);
-  return el && el.closest('.motif, .group');
-}
-function mark(t) { document.querySelectorAll('.target').forEach((x) => x !== t && x.classList.remove('target')); if (t) t.classList.add('target'); }
-function startDrag() {
-  drag.on = true; document.body.classList.add('dragging');
-  ghost.textContent = drag.item.type === 'claim' ? '🧩 ' + drag.item.claim.slice(0, 70) : '🧩 ' + drag.item.name;
-  ghost.style.display = 'block'; moveGhost(drag.x, drag.y); scrollLoop();
-}
-function moveGhost(x, y) { ghost.style.left = (x + 12) + 'px'; ghost.style.top = (y + 12) + 'px'; }
-function scrollLoop() {  // near the window's top or bottom edge, the page scrolls so far cards can be reached
-  if (!drag || !drag.on) return;
-  const edge = 80, y = drag.y;
-  const speed = y < edge ? -(edge - y) / 3 : y > innerHeight - edge ? (y - (innerHeight - edge)) / 3 : 0;
-  if (speed) { scrollBy(0, speed); mark(targetAt(drag.x, drag.y)); }
-  requestAnimationFrame(scrollLoop);
-}
-document.addEventListener('pointerdown', (ev) => {
-  if (ev.button !== 0 || ev.target.closest('button, input, select, a, dialog')) return;
-  const li = ev.target.closest('.motif li[data-claim]'), head = ev.target.closest('.motif .head'), m = ev.target.closest('.motif');
-  if (!m || (!li && !head)) return;
-  const e = data.entries.find((x) => x.id === m.dataset.id);
-  const item = li ? {type: 'claim', claim: li.dataset.claim, from: e.id, fromName: e.name} : {type: 'motif', id: e.id, name: e.name};
-  drag = {item, x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, on: false, touch: ev.pointerType === 'touch'};
-  if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) startDrag(); }, 350);
-});
-document.addEventListener('pointermove', (ev) => {
-  if (!drag) return;
-  drag.x = ev.clientX; drag.y = ev.clientY;
-  const moved = Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy);
-  if (!drag.on) {
-    if (drag.touch) { if (moved > 8) { clearTimeout(drag.timer); drag = null; } return; }  // a swipe: let it scroll
-    if (moved < 6) return;
-    startDrag();
-  }
-  ev.preventDefault(); moveGhost(ev.clientX, ev.clientY); mark(targetAt(ev.clientX, ev.clientY));
-});
-document.addEventListener('touchmove', (ev) => { if (drag && drag.on) ev.preventDefault(); }, {passive: false});
-function endDrag(ev, cancel) {
-  if (!drag) return;
-  clearTimeout(drag.timer);
-  const d = drag; drag = null;
-  ghost.style.display = 'none'; document.body.classList.remove('dragging'); mark(null);
-  if (!d.on) return;
-  justDragged = true; setTimeout(() => { justDragged = false; }, 0);
-  if (cancel) return;
-  const t = targetAt(ev.clientX, ev.clientY);
-  if (t) dropOn(d.item, t);
-}
-document.addEventListener('pointerup', (ev) => endDrag(ev, false));
-document.addEventListener('pointercancel', (ev) => endDrag(ev, true));
-addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && drag) endDrag(ev, true); });
-async function dropOn(item, t) {
-  if (t.classList.contains('motif')) {
-    const target = data.entries.find((x) => x.id === t.dataset.id);
-    if (item.type === 'claim') {
-      if (target.id === item.from || target.claims.some((c) => c.claim === item.claim)) return;
-      await act({action: 'also', claim: item.claim, source: item.from, target: target.id});
-      toast(`Added to “${target.name}”.`, [[`also take it out of “${item.fromName}”`, () => act({action: 'unfile', claim: item.claim, id: item.from})]]);
-    } else if (item.id !== target.id) {
-      chooseMotifDrop(item, target);
+// Click and drag with drop zones (DRAG_SNIPPET): a claim onto a motif (add it there, or move it there out of its
+// motif), a motif onto a motif (merge, under it, over it, related), a motif onto a group, a claim onto '+ new motif'
+let justDragged = false;  // the drag snippet swallows the click a drag ends with
+const entry = (id) => data.entries.find((x) => x.id === id);
+dragZones({
+  handle: '.motif li[data-claim], .motif .head', target: '.motif, .group',
+  item: (h) => {
+    const e = entry(h.closest('.motif').dataset.id);
+    return h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: e.id, fromName: e.name} : {type: 'motif', id: e.id, name: e.name};
+  },
+  label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : item.name),
+  name: (t) => t.classList.contains('motif') ? 'onto 🧩 ' + entry(t.dataset.id).name : '',
+  zones: (item, t) => {
+    if (t.classList.contains('motif')) {
+      const m = entry(t.dataset.id), q = (x) => '\u201c' + x + '\u201d';
+      if (item.type === 'claim') {
+        if (m.id === item.from || m.claims.some((c) => c.claim === item.claim)) return [];
+        return [{label: '＋ add here', say: `The claim is filed under ${q(m.name)} too; it stays in ${q(item.fromName)}.`,
+                 run: () => act({action: 'also', claim: item.claim, source: item.from, target: m.id})},
+                {label: '⇢ move here', say: `The claim moves to ${q(m.name)}, out of ${q(item.fromName)}.`,
+                 run: () => act({action: 'move', claim: item.claim, source: item.from, target: m.id})}];
+      }
+      if (m.id === item.id) return [];
+      return [{label: '⤵ merge into it', say: `${q(item.name)} goes; its claims join ${q(m.name)}.`,
+               run: () => act({action: 'merge', source: item.id, target: m.id})},
+              {label: '⊂ under it', say: `${q(item.name)} becomes a kind of ${q(m.name)}: both stay.`,
+               run: () => act({action: 'parent', id: item.id, parent: m.id})},
+              {label: '⊃ over it', say: `${q(m.name)} becomes a kind of ${q(item.name)}: both stay.`,
+               run: () => act({action: 'parent', id: m.id, parent: item.id})},
+              {label: '↔ related', say: `Near each other, but different stories: both stay as they are, linked.`,
+               run: () => act({action: 'relate', a: item.id, b: m.id})}];
     }
-    return;
-  }
-  const g = t.dataset.g;
-  if (g === 'newmotif' && item.type === 'claim') {
-    const n = prompt('Name the new motif'); if (n) act({action: 'also_new', claim: item.claim, source: item.from, name: n});
-  } else if (item.type === 'motif' && (g.startsWith('G') || g === 'none')) {
-    act({action: 'group_assign', id: item.id, group: g === 'none' ? null : g});
-  }
-}
+    const g = t.dataset.g, name = t.textContent.replace(/^\d+/, '').replace(/[✎🗑]/g, '').trim();
+    if (g === 'newmotif' && item.type === 'claim')
+      return [{label: '＋ new motif', say: 'Start a new motif with this claim (you name it next).',
+               run: () => { const n = prompt('Name the new motif'); if (n) act({action: 'also_new', claim: item.claim, source: item.from, name: n}); }}];
+    if (item.type === 'motif' && (g.startsWith('G') || g === 'none'))
+      return [{label: g === 'none' ? '⇢ ungroup' : '⇢ file in this group', say: g === 'none' ? `${item.name} leaves its group.` : `${item.name} goes in the group ${name}.`,
+               run: () => act({action: 'group_assign', id: item.id, group: g === 'none' ? null : g})}];
+    return [];
+  },
+});
 // '＋ more like this': the claims closest to a motif; each add or 'not this' recomputes the list from the motif's claims
 let simFor = null;
 async function openSimilar(id) { simFor = id; $('#similar').showModal(); await drawSimilar(); }
@@ -782,36 +857,12 @@ $('#mergepick').addEventListener('click', (ev) => {
 });
 
 // A motif dropped on another: merge them, or make it a kind of the other
-function chooseMotifDrop(item, target) {
-  $('#choose-body').innerHTML = `<h2>🧩 ${esc(item.name)} → 🧩 ${esc(target.name)}</h2>
-    <p><button class="add" data-c="kind">⊂ “${esc(item.name)}” is a kind of “${esc(target.name)}”</button></p>
-    <p><button data-c="related">↔ related: near each other, but different stories</button></p>
-    <p><button data-c="merge">⤵ merge them: “${esc(item.name)}” joins “${esc(target.name)}” (its name goes)</button></p>
-    <p><button data-c="cancel">cancel</button></p>`;
-  $('#choose').onclick = (ev) => {
-    const b = ev.target.closest('button'); if (!b && ev.target !== $('#choose')) return;
-    $('#choose').close();
-    if (b && b.dataset.c === 'kind') act({action: 'parent', id: item.id, parent: target.id});
-    else if (b && b.dataset.c === 'merge') act({action: 'merge', source: item.id, target: target.id});
-    else if (b && b.dataset.c === 'related') act({action: 'relate', a: item.id, b: target.id});
-  };
-  $('#choose').showModal();
-}
-
-let toastTimer;
-function toast(text, buttons) {
-  const box = $('#toast');
-  box.innerHTML = esc(text) + ' ' + buttons.map(([label], i) => `<button class="small" data-t="${i}">${esc(label)}</button>`).join(' ');
-  box.style.display = 'block';
-  box.onclick = (ev) => { const b = ev.target.closest('button'); if (b) { buttons[+b.dataset.t][1](); box.style.display = 'none'; } };
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { box.style.display = 'none'; }, 9000);
-}
 $('#reset-done').addEventListener('click', () => { if (confirm('Bring back every motif marked done?')) act({action: 'reset_done'}); });
 $('#add-motif').addEventListener('click', () => { const n = prompt('Name the new motif (claims can be moved into it)'); if (n) act({action: 'add', name: n}); });
 ['#q', '#sort', '#multi', '#showdone'].forEach((s) => $(s).addEventListener('input', render));
 let resizeTimer; addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
 fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
-</script></body></html>"""
+</script></body></html>""".replace('<!--DRAG-->', DRAG_SNIPPET)
 
 
 EMPTY_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1023,121 +1074,6 @@ def claim_detail(claim: str) -> dict:
     else:
         out['kind'] = 'folklore (not in the latest report)'
     return out
-
-
-DRAG_SNIPPET = r"""<style>
-body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
-.dz-handle { cursor: grab; border-radius: 6px; } .dz-handle:hover { background: #eef9f7; }
-.dz-handle::before { content: '⠿ '; color: #999; }
-body.dragging .dz-target { outline: 1px dashed #999; outline-offset: 1px; }
-.dz-ghost { position: fixed; pointer-events: none; z-index: 1000; display: none; max-width: 28em; background: #fff;
-  border: 2px solid #1f1f2e; border-radius: 10px; padding: 4px 10px; box-shadow: 3px 3px 0 #00c2a8; font-size: .9em; }
-.dz-ghost .dz-say { color: #333; font-size: .9em; margin-top: 3px; font-weight: 600; }
-.dz-zones { position: absolute; z-index: 999; display: flex; flex-direction: column; gap: 2px; background: #fffdf6;
-  border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); padding: 2px; box-sizing: border-box; }
-.dz-name { flex: none; line-height: 20px; font-weight: 700; font-size: .85em; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dz-row { flex: 1; display: flex; gap: 4px; }
-.dz-zone { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 40px;
-  padding: 2px 6px; border: 2px dashed #1f1f2e; border-radius: 8px; background: #eef9f7; font-weight: 700; font-size: .85em; }
-.dz-zone.hot { background: #c8f7c5; border-style: solid; }
-</style>
-<script>
-// Click and drag with drop zones (mouse, pen or touch): dragging something over a target splits the target into the
-// choices that drop allows, each saying what it does; letting go on one does it, anywhere else does nothing (as does
-// Escape). A press without moving is a click; on touch, hold a moment before dragging, so a swipe still scrolls.
-// o: {handle, target: selectors; item(handleEl); label(item); name(targetEl): shown over the zones;
-//     zones(item, targetEl) -> [{label, say, run} or null]}
-function dragZones(o) {
-  let drag = null, over = null, zoneEl = null, hot = null, justDragged = false;
-  addEventListener('click', (e) => { if (justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
-  const ghost = Object.assign(document.createElement('div'), {className: 'dz-ghost'});
-  document.body.appendChild(ghost);
-  const tag = () => document.querySelectorAll(o.handle).forEach((h) => h.classList.add('dz-handle'));
-  new MutationObserver(tag).observe(document.body, {childList: true, subtree: true}); tag();
-  function clearZones() { if (zoneEl) zoneEl.remove(); zoneEl = null; over = null; hot = null; }
-  function showZones(t) {
-    if (t === over) return;
-    clearZones();
-    if (!t) return;
-    const zs = o.zones(drag.item, t).filter(Boolean);
-    if (!zs.length) return;
-    over = t;
-    const r = t.getBoundingClientRect(), h = Math.max(r.height, 44) + 24;
-    zoneEl = Object.assign(document.createElement('div'), {className: 'dz-zones'});
-    Object.assign(zoneEl.style, {left: r.left + scrollX + 'px', top: r.top + scrollY - (h - r.height) / 2 + 'px', width: r.width + 'px', height: h + 'px'});
-    zoneEl.innerHTML = `<div class="dz-row">${zs.map((z, i) => `<div class="dz-zone" data-z="${i}">${z.label}</div>`).join('')}</div><div class="dz-name"></div>`;
-    zoneEl.lastChild.textContent = o.name ? o.name(t) : '';
-    zoneEl.zs = zs; document.body.appendChild(zoneEl);
-  }
-  function hit(x, y) {
-    const el = document.elementFromPoint(x, y);
-    const z = el && el.closest('.dz-zone');
-    if (z) return {zone: zoneEl.zs[+z.dataset.z], zEl: z, t: over};
-    if (el && zoneEl && zoneEl.contains(el)) return {t: over};
-    const t = el && el.closest(o.target);
-    return {t: t && t !== drag.el ? t : null};
-  }
-  function update() {
-    const h = hit(drag.x, drag.y);
-    if (!h.zone) showZones(h.t);
-    if (hot) hot.classList.remove('hot');
-    hot = h.zEl || null;
-    if (hot) hot.classList.add('hot');
-    ghost.innerHTML = '';
-    ghost.append(o.label(drag.item));
-    if (h.zone) ghost.appendChild(Object.assign(document.createElement('div'), {className: 'dz-say', textContent: h.zone.say}));
-    // Above the pointer, so it never covers the zones under it
-    ghost.style.left = Math.max(8, Math.min(drag.x + 14, innerWidth - ghost.offsetWidth - 8)) + 'px';
-    ghost.style.top = Math.max(4, drag.y - ghost.offsetHeight - 14) + 'px';
-    return h;
-  }
-  function start() {
-    drag.on = true; document.body.classList.add('dragging');
-    document.querySelectorAll(o.target).forEach((t) => t.classList.add('dz-target'));
-    ghost.style.display = 'block'; update(); scroll();
-  }
-  function scroll() {  // near the window's top or bottom edge the page scrolls, so far targets can be reached
-    if (!drag || !drag.on) return;
-    const edge = 70, y = drag.y;
-    const speed = y < edge ? -(edge - y) / 3 : y > innerHeight - edge ? (y - (innerHeight - edge)) / 3 : 0;
-    if (speed) { scrollBy(0, speed); clearZones(); update(); }
-    requestAnimationFrame(scroll);
-  }
-  function end(ev, cancel) {
-    if (!drag) return;
-    clearTimeout(drag.timer);
-    const d = drag, h = d.on && !cancel ? hit(ev.clientX, ev.clientY) : {};
-    drag = null; clearZones();
-    ghost.style.display = 'none'; document.body.classList.remove('dragging');
-    document.querySelectorAll('.dz-target').forEach((t) => t.classList.remove('dz-target'));
-    if (!d.on) return;
-    justDragged = true; setTimeout(() => { justDragged = false; }, 0);  // the click a drag ends with is no click
-    if (h.zone) h.zone.run();
-  }
-  document.addEventListener('pointerdown', (ev) => {
-    if (ev.button !== 0 || ev.target.closest('button, input, select, a, dialog')) return;
-    const handle = ev.target.closest(o.handle); if (!handle) return;
-    const item = o.item(handle); if (!item) return;
-    drag = {item, el: handle, x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, on: false, touch: ev.pointerType === 'touch'};
-    if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) start(); }, 350);
-  });
-  document.addEventListener('pointermove', (ev) => {
-    if (!drag) return;
-    drag.x = ev.clientX; drag.y = ev.clientY;
-    const moved = Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy);
-    if (!drag.on) {
-      if (drag.touch) { if (moved > 8) { clearTimeout(drag.timer); drag = null; } return; }  // a swipe: let it scroll
-      if (moved < 6) return;
-      start();
-    }
-    ev.preventDefault(); update();
-  });
-  document.addEventListener('touchmove', (ev) => { if (drag && drag.on) ev.preventDefault(); }, {passive: false});
-  document.addEventListener('pointerup', (ev) => end(ev, false));
-  document.addEventListener('pointercancel', (ev) => end(ev, true));
-  addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && drag) end(ev, true); });
-}
-</script>"""
 
 
 SINGLES_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
