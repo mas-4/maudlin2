@@ -561,3 +561,42 @@ def is_done(entry: dict) -> str | None:
     if 'done' not in entry:
         return None
     return 'done' if {key(c['claim']) for c in entry['claims']} <= set(entry['done']) else 'new'
+
+
+def similar(eid: str, n: int = 15) -> list[dict]:
+    """The claims closest in meaning to a motif (its name and all its claims together), for adding by hand on the motif
+    board: every claim in the index that isn't in it already and that a person hasn't said isn't it. Recomputed after
+    each choice, so the motif's claims steer what comes next."""
+    from app.narratives import embed
+    index = load()
+    entry = index['entries'][eid]
+    have = {key(c['claim']) for c in entry['claims']}
+    rejected = set(entry.get('not_claims', []))
+    found = {}
+    for e in live(index):
+        for c in e['claims']:
+            k = key(c['claim'])
+            if k in have or k in rejected:
+                continue
+            item = found.setdefault(k, {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
+                                        'motifs': []})
+            item['motifs'].append({'id': e['id'], 'name': e['name']})
+    if not found:
+        return []
+    items = list(found.values())
+    v = embed([entry['name'] + '. ' + '; '.join(c['claim'] for c in entry['claims'])] + [i['claim'] for i in items])
+    sims = v[1:] @ v[0]
+    for i, s in zip(items, sims):
+        i['score'] = round(float(s), 3)
+    return sorted(items, key=lambda i: -i['score'])[:n]
+
+
+@exclusive
+def reject(claim: str, eid: str):
+    """A person says this claim isn't this motif: it's never suggested for it, or filed under it by the model"""
+    index = load()
+    entry = index['entries'][eid]
+    k = key(claim)
+    if k not in entry.setdefault('not_claims', []):
+        entry['not_claims'].append(k)
+    save(index)

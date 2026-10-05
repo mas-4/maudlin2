@@ -144,3 +144,17 @@ def test_done_marks_hide_a_motif_until_a_new_claim_comes_in(monkeypatch, tmp_pat
     assert mi.board()['entries'][0]['done'] == 'new'  # back, flagged
     mi.reset_done()
     assert mi.board()['entries'][0]['done'] is None
+
+
+def test_more_like_this_ranks_other_claims_and_remembers_not_this(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 3, 'claims': {mi.key(t): [i] for t, i in (('a', 'M001'), ('b', 'M002'), ('c', 'M002'))},
+             'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [claim('a')]},
+                         'M002': {'id': 'M002', 'name': 'y', 'claims': [claim('b'), claim('c')]}}})
+    vec = {'x. a': [1, 0], 'b': [0.9, 0.1], 'c': [0, 1]}
+    from app import narratives
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.array([vec[t] for t in texts], float))
+    assert [i['claim'] for i in mi.similar('M001')] == ['b', 'c']  # closest first, its own claim left out
+    mi.reject('b', 'M001')
+    assert [i['claim'] for i in mi.similar('M001')] == ['c']

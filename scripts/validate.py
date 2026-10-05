@@ -364,8 +364,9 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 .pick { max-height: 46vh; overflow: auto; border-top: 1px dashed #ccc; margin-top: 6px; }
 .pick div { display: flex; gap: 6px; align-items: center; padding: 4px 2px; border-bottom: 1px dashed #eee; }
 .pick div .nm { flex: 1; } .pick div .ct { color: #777; font-size: .8em; }
-.pick button.add { background: #c8f7c5; font-weight: 700; }
+.pick button.add, .acts button.add { background: #c8f7c5; font-weight: 700; }
 .pick div.newfromq { background: #fff3c4; border-radius: 8px; }
+.pick .simrow .meta { display: block; color: #666; font-size: .8em; } .meta { color: #666; font-size: .85em; font-weight: normal; }
 @media (max-width: 700px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
 </style></head><body>
 <header>
@@ -388,6 +389,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 <section class="grid" id="grid"></section>
 </main>
 <div id="toast" role="status"></div>
+<dialog id="similar"><button class="small x" data-close="1">✕</button><div id="similar-body"></div></dialog>
 <dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
 <script>
 let data = {groups: [], entries: []}, filter = 'all';
@@ -433,7 +435,7 @@ function render() {
         <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
         <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
-      <div class="acts"><button class="small" data-mact="rename">✎ rename</button>
+      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="rename">✎ rename</button>
         ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
   }).join('') || '<p>No motifs here.</p>';
 }
@@ -458,7 +460,8 @@ document.addEventListener('click', (ev) => {
   }
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
-    if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
+    if (a === 'more') openSimilar(e.id);
+    else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
     else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
     else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
     else if (a === 'delete' && confirm(`Delete “${e.name}”? Its ${e.claims.length} claims keep their other motifs and aren't filed here again.`)) act({action: 'delete', id: e.id});
@@ -598,6 +601,37 @@ async function dropOn(item, t) {
     act({action: 'group_assign', id: item.id, group: g === 'none' ? null : g});
   }
 }
+// '＋ more like this': the claims closest to a motif; each add or 'not this' recomputes the list from the motif's claims
+let simFor = null;
+async function openSimilar(id) { simFor = id; $('#similar').showModal(); await drawSimilar(); }
+async function drawSimilar() {
+  const e = data.entries.find((x) => x.id === simFor);
+  if (!e) { $('#similar').close(); return; }
+  $('#similar-body').innerHTML = `<h2>More like 🧩 ${esc(e.name)} <span class="meta">(${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})</span></h2><p class="meta">Finding the closest claims…</p>`;
+  const r = await fetch('/motif-similar.json?id=' + encodeURIComponent(simFor));
+  const items = r.ok ? await r.json() : [];
+  $('#similar-body').innerHTML = `<h2>More like 🧩 ${esc(e.name)} <span class="meta">(${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})</span></h2>
+    <p class="meta">Closest first. Each choice reshuffles the list around the motif's claims.</p>
+    <div class="pick">${items.map((i, n) => `<div class="simrow"><span class="nm">${esc(i.claim)}
+      <span class="meta">${esc(i.source === 'narrative' ? 'online' : i.source)} · now in ${i.motifs.map((m) => esc(m.name)).join(', ')}</span></span>
+      <span class="ct" title="how close, 0 to 1">${i.score.toFixed(2)}</span>
+      <button class="small add" data-simadd="${n}">+ add</button><button class="small" data-simno="${n}" title="not this motif: never suggested or filed here">✗ not this</button></div>`).join('')
+      || '<p>No other claims to suggest.</p>'}</div>`;
+  $('#similar-body').items = items;
+}
+$('#similar').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (ev.target === $('#similar') || (b && b.dataset.close)) { $('#similar').close(); return; }
+  if (!b) return;
+  const items = $('#similar-body').items || [];
+  const i = items[+(b.dataset.simadd ?? b.dataset.simno)];
+  if (!i) return;
+  b.closest('.simrow').style.opacity = .4;
+  if (b.dataset.simadd !== undefined) await act({action: 'also', claim: i.claim, source: i.motifs[0].id, target: simFor});
+  else await act({action: 'reject', claim: i.claim, id: simFor});
+  drawSimilar();
+});
+
 let toastTimer;
 function toast(text, buttons) {
   const box = $('#toast');
@@ -670,6 +704,8 @@ def board_action(data: dict):
         mi.move(data['claim'], data['source'], mi.add(data['name']))
     elif act == 'unfile' and text('claim') and data.get('id') in live:
         mi.unfile(data['claim'], data['id'])
+    elif act == 'reject' and text('claim') and data.get('id') in live:
+        mi.reject(data['claim'], data['id'])
     elif act == 'done' and data.get('id') in live:
         mi.mark_done(data['id'], bool(data.get('done', True)))
     elif act == 'reset_done':
@@ -807,6 +843,14 @@ def organizer_action(data: dict):
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith('/motif-similar.json'):
+            from urllib.parse import urlparse, parse_qs
+            from app.analysis import motif_index
+            eid = parse_qs(urlparse(self.path).query).get('id', [''])[0]
+            if eid not in {e['id'] for e in motif_index.live(motif_index.load())}:
+                self.send_error(404)
+                return
+            return self.send_json(motif_index.similar(eid))
         if self.path.startswith('/motif-board.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.board())
