@@ -334,6 +334,8 @@ def board_action(data: dict):
         mi.file_by_hand({'claim': data['claim'].strip(), 'source': data.get('source', ''), 'ref': data.get('ref', '')}, data['id'])
     elif act == 'note' and data.get('id') in live and isinstance(data.get('note'), str):
         mi.set_note(data['id'], data['note'])
+    elif act == 'keep_note' and data.get('id') in live:
+        mi.keep_note(data['id'])
     elif act == 'stands_alone' and data.get('id') in live:
         mi.stands_alone(data['id'], data.get('alone', True) is not False)
     elif act == 'correct' and text('claim') and text('text'):

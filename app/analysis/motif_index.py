@@ -148,7 +148,7 @@ def entry_of(index: dict, claim: str) -> dict | None:
 
 
 def described(entry: dict) -> str:
-    """A motif as the model reads it when matching: its name, and its scope note when a person wrote one (an
+    """A motif as the model reads it when matching: its name, and its scope note, a person's or the model's draft (an
     evocative name, 'Leviathan', says less to the model than 'a giant sea creature menaces a ship')"""
     return entry['name'] + (f" ({entry['note']})" if entry.get('note') else '')
 
@@ -297,7 +297,12 @@ def nightly(budget: float | None = None):
                            'date': item['published'][:10]})
     from app.analysis import focus_group  # what voters say in focus groups: a source of its own
     claims += [{**c, 'claim': corrected(c['claim'], index)} for c in focus_group.claims()]
-    return file_claims(claims, budget=budget)
+    import time
+    started = time.time()
+    index = file_claims(claims, budget=budget)
+    # New motifs get the model's draft of a scope note (shown on the board to keep or edit; used in matching at once)
+    gloss_missing(budget=None if budget is None else max(30, budget - (time.time() - started)))
+    return index
 
 
 def fits(label: dict) -> bool:
@@ -513,7 +518,7 @@ def board() -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
     index = load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
-                'done': is_done(e), 'note': e.get('note', ''),
+                'done': is_done(e), 'note': e.get('note', ''), 'note_by': e.get('note_by', 'person' if e.get('note') else ''),
                 'parents': [p for p in parents_of(e) if p in index['entries'] and not index['entries'][p].get('merged_into')],
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
                                    if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
@@ -840,12 +845,73 @@ def stands_alone(eid: str, alone: bool = True):
 
 @exclusive
 def set_note(eid: str, note: str):
-    """A motif's scope note: one plain line on what it covers, beside its name (used in matching and shown on the
-    site); empty removes it"""
+    """A person's scope note for a motif: one plain line on what it covers, beside its name (used in matching and
+    shown on the site); empty removes it"""
     index = load()
     note = ' '.join(note.split())
+    entry = index['entries'][eid]
     if note:
-        index['entries'][eid]['note'] = note
+        entry['note'], entry['note_by'] = note, 'person'
     else:
-        index['entries'][eid].pop('note', None)
+        entry.pop('note', None)
+        entry.pop('note_by', None)
     save(index)
+
+
+def keep_note(eid: str):
+    """A person keeps the model's drafted note as it is: it's theirs now, and shown on the site"""
+    index = load()
+    if index['entries'][eid].get('note'):
+        index['entries'][eid]['note_by'] = 'person'
+        save(index)
+
+
+def public_note(entry: dict) -> str:
+    """The note the site shows: a person's (written or kept), never the model's draft"""
+    return entry.get('note', '') if entry.get('note') and entry.get('note_by') != 'model' else ''
+
+
+GLOSS_PROMPT = """A motif in our index of recurring rumor and narrative shapes: {name}
+Claims people are telling that are filed under it:
+{claims}
+
+Write its scope note: one plain sentence saying what kind of story this motif covers, as the people telling such \
+stories tell it (what they say is going on, not whether it's true): general enough to fit new stories of the same \
+kind about other people, places or years, and specific enough to tell it apart from neighbouring motifs. No names \
+of people, places, organizations or dates. Don't start with "This motif" or "Stories"; start with what happens \
+(for example: "A public figure's looks are taken as proof of bad character.")."""
+GLOSS_SCHEMA = {"type": "object", "properties": {"note": {"type": "string", "maxLength": 240}}, "required": ["note"]}
+GLOSS_CLAIMS = 8  # claims shown when drafting a note
+
+
+def gloss(entry: dict) -> str | None:
+    """The model's draft of a motif's scope note, from its name and claims"""
+    claims = '\n'.join(f'- {c["claim"][:180]}' for c in entry['claims'][-GLOSS_CLAIMS:]) or '(none yet)'
+    answer = llm.complete_json(GLOSS_PROMPT.format(name=entry['name'], claims=claims), GLOSS_SCHEMA, max_tokens=300,
+                               model=MODEL)
+    note = ' '.join((answer or {}).get('note', '').split())
+    return note or None
+
+
+def gloss_missing(budget: float | None = None) -> int:
+    """Draft notes for the motifs with claims and no note (a person's note is never replaced), for at most `budget`
+    seconds; how many were drafted"""
+    import time
+    started, done = time.time(), 0
+    for eid in [e['id'] for e in live(load()) if e['claims'] and not e.get('note')]:
+        if budget is not None and time.time() - started > budget:
+            break
+        entry = load()['entries'][eid]
+        note = gloss(entry)
+        if not note:
+            continue
+        with locked():
+            index = load()
+            e = index['entries'].get(eid)
+            if e and not e.get('note'):  # a person may have written one meanwhile
+                e['note'], e['note_by'] = note, 'model'
+                save(index)
+                done += 1
+    if done:
+        logger.info("Motif index: drafted %d scope notes", done)
+    return done

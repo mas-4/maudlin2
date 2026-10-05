@@ -28,6 +28,7 @@ ul.examples li { font-size: .85em; margin: .3em 0; } .lab { font-size: .78em; ba
 .kindof { font-size: .78em; color: #5a3fc0; } .kinds { font-size: .78em; color: #5a3fc0; }
 #choose button { font-size: .95em; padding: 5px 12px; } #choose button.add { background: #c8f7c5; font-weight: 700; }
 .motif .note { font-size: .8em; font-style: italic; color: #444; margin: 2px 0; }
+.motif .note.draft { color: #666; } .draft-tag { font-style: normal; font-size: .85em; background: #eef; border: 1px dashed #99a; border-radius: 6px; padding: 0 4px; }
 .donebtn { float: right; margin-left: 6px; background: #c8f7c5; } .motif.isdone { opacity: .55; }
 .newpill, .motif .gpill { display: inline-block; white-space: nowrap; }  /* a badge moves down whole, never split */
 .newpill { font-size: .75em; background: #ff4fa3; color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
@@ -119,7 +120,7 @@ function render() {
         ${e.parents.length ? `<div class="kindof">↳ kind of ${e.parents.map((p) => `🧩 ${esc((data.entries.find((x) => x.id === p) || {}).name || p)} <button class="small" data-unparent="${p}" title="no longer a kind of it">✗</button>`).join(' ')}</div>` : ''}
         ${(() => { const kids = data.entries.filter((x) => x.parents.includes(e.id)); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
         ${e.related.length ? `<div class="kinds">↔ related: ${e.related.map((r) => `${esc((data.entries.find((x) => x.id === r) || {}).name || r)} <button class="small" data-unrelate="${r}" title="not related">✗</button>`).join(' ')}</div>` : ''}
-        ${e.note ? `<div class="note">${esc(e.note)}</div>` : ''}
+        ${e.note ? `<div class="note${e.note_by === 'model' ? ' draft' : ''}">${esc(e.note)}${e.note_by === 'model' ? ` <span class="draft-tag" title="the model drafted this note: used in matching now, shown on the site once you keep or edit it">model's draft</span> <button class="small" data-mact="keepnote" title="keep this note as it is (it goes on the site)">✓ keep</button>` : ''}</div>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
         <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
@@ -164,6 +165,7 @@ document.addEventListener('click', (ev) => {
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
     if (a === 'more') openSimilar(e.id);
+    else if (a === 'keepnote') act({action: 'keep_note', id: e.id});
     else if (a === 'note') { const n = prompt('What does this motif cover? One plain line (leave empty to remove):', e.note || ''); if (n !== null) act({action: 'note', id: e.id, note: n}); }
     else if (a === 'mergepick') openMergePick(e.id);
     else if (a === 'addclaims') openAddClaims(e.id);

@@ -91,7 +91,7 @@ def motif_counts(cards: list[dict]) -> list[tuple[dict, int]]:
 
 def motif_cards(index: dict, claim: str) -> list[dict]:
     """The motif-index entries a claim is filed under, for its card: id, name and how many claims each holds."""
-    return [{'id': e['id'], 'name': e['name'], 'count': len(e['claims']), 'note': e.get('note', '')}
+    return [{'id': e['id'], 'name': e['name'], 'count': len(e['claims']), 'note': motif_index.public_note(e)}
             for e in (motif_index.entries_of(index, claim) if claim else [])]
 
 

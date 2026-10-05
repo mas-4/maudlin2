@@ -277,3 +277,23 @@ def test_a_scope_note_is_read_with_the_name_when_matching(monkeypatch, tmp_path)
     assert mi.board()['entries'][0]['note'] == 'a giant sea creature menaces a ship'
     mi.set_note('M001', '')
     assert 'note' not in mi.load()['entries']['M001']
+
+
+def test_the_model_drafts_notes_a_person_keeps_or_replaces(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 4, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Punchable face', 'claims': [{'claim': 'his smirk proves he is evil', 'source': 's'}]},
+        'M002': {'id': 'M002', 'name': 'Mine', 'note': 'what a person wrote', 'claims': [{'claim': 'b', 'source': 's'}]},
+        'M003': {'id': 'M003', 'name': 'Empty', 'claims': []}}})
+    monkeypatch.setattr(mi.llm, 'complete_json', lambda prompt, *a, **k: {'note': " A public figure's looks  are taken as proof of bad character. "}
+                        if 'Punchable face' in prompt and 'smirk' in prompt else None)
+    assert mi.gloss_missing() == 1  # a person's note is never replaced; a motif with no claims waits
+    index = mi.load()
+    m1, m2 = index['entries']['M001'], index['entries']['M002']
+    assert m1['note'] == "A public figure's looks are taken as proof of bad character." and m1['note_by'] == 'model'
+    assert 'proof of bad character' in mi.described(m1)  # matching uses the draft at once
+    assert mi.public_note(m1) == '' and mi.public_note(m2) == 'what a person wrote'  # the site, only a person's
+    mi.keep_note('M001')
+    assert mi.public_note(mi.load()['entries']['M001']).startswith("A public figure's")
+    mi.set_note('M001', 'looks as proof of character')
+    assert mi.load()['entries']['M001']['note_by'] == 'person'

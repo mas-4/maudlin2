@@ -19,7 +19,7 @@ class MotifsPage:
         entries = []
         for e in motif_index.live(index):
             sources = Counter('people online' if c['source'] == 'narrative' else c['source'] for c in e['claims'])
-            entries.append({**e, 'count': len(e['claims']), 'sources': sources.most_common(),
+            entries.append({**e, 'note': motif_index.public_note(e), 'count': len(e['claims']), 'sources': sources.most_common(),
                             'claims': sorted(e['claims'], key=lambda c: c.get('date', ''), reverse=True)})
         entries.sort(key=lambda e: (-e['count'], e['id']))
         self.template.write({'title': 'Motif index', 'entries': entries,
