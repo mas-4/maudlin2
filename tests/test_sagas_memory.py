@@ -124,7 +124,7 @@ def test_same_saga_caches_and_never_links_without_an_answer(monkeypatch, tmp_pat
     assert sg.same_saga(['Supreme Court takes detention case'], ['Supreme Court takes climate case']) is False
     calls = []
     monkeypatch.setattr(sg.llm, 'complete_json',
-                        lambda *a, **k: calls.append(a) or {'reason': 'different cases', 'same_story': False})
+                        lambda *a, **k: calls.append(a) or {'reason': 'different cases', 'verdict': 'separate stories'})
     monkeypatch.setattr(sg.llm, 'model', lambda: 'fake')
     for _ in range(2):  # either order, asked once
         assert sg.same_saga(['Supreme Court takes climate case'], ['Supreme Court takes detention case']) is False
@@ -137,19 +137,20 @@ def test_same_saga_needs_both_wordings(monkeypatch, tmp_path):
     monkeypatch.setattr(sg.llm, 'model', lambda: 'fake')
     calls = []
 
-    def answer(prompt, schema, max_tokens):
+    def answer(prompt, schema, max_tokens, model=None):
         calls.append(prompt)
-        return {'reason': 'r', 'same_story': prompt.startswith('Two groups')}  # the first wording says yes, the second no
+        # the first wording says yes, the second no
+        return {'reason': 'r', 'verdict': 'one running story' if prompt.startswith('Two groups') else 'separate stories'}
     monkeypatch.setattr(sg.llm, 'complete_json', answer)
     a, b = ['Man bailed over RAF base plot'], ['Two Iranians in court over plot against Jews']
     assert sg.same_saga(a, b) is False and len(calls) == 2
     assert sg.same_saga(a, b) is False and len(calls) == 2  # cached
-    # A yes cached before the second wording existed is asked the second wording once
+    # A verdict cached by an older judge is asked again, both wordings
     monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'old.json'))
     key = sg.hashlib.sha1(sg.json.dumps(sorted([sg._sample(a), sg._sample(b)])).encode()).hexdigest()
     sg.json.dump({key: {'reason': 'r', 'same_story': True, 'a': a, 'b': b}}, open(tmp_path / 'old.json', 'w'))
-    assert sg.same_saga(a, b) is False and len(calls) == 3
+    assert sg.same_saga(a, b) is False and len(calls) == 4
     # Both wordings yes: linked
     monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'yes.json'))
-    monkeypatch.setattr(sg.llm, 'complete_json', lambda *x, **k: {'reason': 'r', 'same_story': True})
+    monkeypatch.setattr(sg.llm, 'complete_json', lambda *x, **k: {'reason': 'r', 'verdict': 'one running story'})
     assert sg.same_saga(['Cornell case goes to AG'], ['Hochul picks AG for Cornell case']) is True

@@ -1,5 +1,7 @@
 """Sagas: grouping stories into running stories. The embedding model is replaced by fixed vectors per headline, and
 the llm by a fake, so these run in milliseconds and offline."""
+from collections import Counter
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -176,3 +178,54 @@ def test_name_is_truncated_and_cached(monkeypatch):
     assert len(calls) == 1
     # The prompt lists up to three headlines per story
     assert '- a3' in calls[0] and '- a4' not in calls[0] and '- b1' in calls[0]
+
+
+# The judge (same_saga) and the merge kept across days (_merge)
+
+def judge(monkeypatch, tmp_path, verdicts):
+    from app.analysis import sagas
+    monkeypatch.setattr(sagas, 'JUDGMENTS', str(tmp_path / 'j.json'))
+    asked = []
+
+    def complete_json(prompt, schema, max_tokens=1024, model=None):
+        asked.append(model)
+        return {'reason': 'because', 'verdict': verdicts[len(asked) - 1]}
+    monkeypatch.setattr(llm, 'complete_json', complete_json)
+    return sagas, asked
+
+
+def test_both_wordings_must_say_one_running_story(monkeypatch, tmp_path):
+    sagas, asked = judge(monkeypatch, tmp_path, ['one running story', 'separate stories'])
+    assert not sagas.same_saga(['Man bailed over RAF Fairford plot'], ['US pulls bombers from RAF Fairford'])
+    assert asked == [sagas.JUDGE_MODEL, sagas.JUDGE_MODEL]
+    (tmp_path / 'x').mkdir()
+    sagas, asked = judge(monkeypatch, tmp_path / 'x', ['one running story', 'one running story'])
+    assert sagas.same_saga(['Man bailed over RAF Fairford plot'], ['US pulls bombers from RAF Fairford'])
+
+
+def test_old_verdicts_are_asked_again_but_hand_ones_kept(monkeypatch, tmp_path):
+    import hashlib
+    import json
+    sagas, asked = judge(monkeypatch, tmp_path, ['one running story', 'one running story'])
+    key = lambda a, b: hashlib.sha1(json.dumps(sorted([[a], [b]])).encode()).hexdigest()  # noqa: E731
+    (tmp_path / 'j.json').write_text(json.dumps({
+        key('Cornell case goes to AG', 'Hochul on Cornell'): {'same_story': False, 'model': 'qwen3:8b'},
+        key('Fairford bail', 'Plot against Jews'): {'same_story': False, 'hand': True}}))
+    assert sagas.same_saga(['Cornell case goes to AG'], ['Hochul on Cornell']) and len(asked) == 2
+    assert not sagas.same_saga(['Fairford bail'], ['Plot against Jews']) and len(asked) == 2
+
+
+def test_a_name_in_most_of_one_story_and_a_tenth_of_the_other_is_enough(monkeypatch):
+    """'Fairford' in 42% of the bail story's headlines and 10% of the bombers-pulled story's (Oct 5)"""
+    from app.analysis import sagas
+    monkeypatch.setattr(sagas, 'same_saga', lambda a, b: True)
+    a = ['Fairford man bailed'] * 4 + ['Man bailed'] * 6
+    b = ['Bombers leave Fairford'] + ['Bombers leave base'] * 9
+    c = ['Bombers leave base'] * 10
+    for other, joined in ((b, True), (c, False)):
+        titles = a + other
+        groups = {'a': {'members': ['a'], 'rows': list(range(10))}, 'b': {'members': ['b'], 'rows': list(range(10, 20))}}
+        vectors = np.ones((20, 2)) / np.sqrt(2)
+        bags = [sagas.words(t) for t in titles]
+        out = sagas._merge(groups, vectors, bags, Counter(w for bag in bags for w in bag), 100, {'fairford'}, titles)
+        assert (len(out) == 1) == joined

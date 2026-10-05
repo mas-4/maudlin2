@@ -15,6 +15,7 @@ import json
 import os
 import re
 from collections import Counter
+from typing import Optional
 from datetime import datetime as dt, timedelta as td
 
 import numpy as np
@@ -29,7 +30,9 @@ from app.utils import Config, get_logger
 logger = get_logger(__name__)
 
 SAGA_SIMILARITY = 0.58  # story centers this close may be one saga; unrelated stories sit below ~0.56
-NAME_MIN_SHARE = 0.3  # a distinctive word appears in at least this share of each side's headlines...
+NAME_MIN_SHARE = 0.3  # a distinctive word appears in at least this share of one side's headlines...
+NAME_MIN_OTHER = 0.1  # ...and this share of the other's (for saved sagas; the judge decides): 'Fairford' was in 42% of the
+                      # bail story and 10% of the bombers-pulled one, which 30% on both sides kept apart (Oct 5)
 NAME_MAX_SHARE = 0.04  # ...and in no more than this share of all the day's headlines
 RELATED_SIMILARITY = 0.6  # an unclustered headline this close to a saga's center (with its word) counts toward it
 SAGA_MEMORY = td(days=7)  # saved stories this recent can join today's stories in a saga
@@ -51,6 +54,8 @@ _names: dict[frozenset, str] = {}
 # Iranian nationals both passed the word rule on Oct 4). Verdicts are cached by the headlines shown.
 JUDGMENTS = os.path.join(Config.data, 'saga_judgments.json')
 JUDGE_SAMPLE = 4  # headlines shown from each side
+JUDGE_MODEL = 'qwen3:30b-a3b'  # the 8B said no to parts it called 'related cases, different outcomes' (Oct 5)
+JUDGE_VERSION = 2  # verdicts cached under an older judge are asked again (hand verdicts are kept)
 JUDGE_PROMPT = """Two groups of news headlines. Are they parts of one ongoing news story: the same case, incident, \
 event, investigation or negotiation as it develops? Separate cases at the same court, separate crimes by people of the \
 same nationality, or separate events involving the same person or place are different stories.
@@ -61,8 +66,8 @@ Group 1:
 Group 2:
 {b}
 
-reason: a few words
-same_story: true or false"""
+reason: one sentence
+verdict: "one running story" or "separate stories\""""
 # The same question worded the other way round. A link needs both wordings to say yes: one wording alone linked a
 # British-Iranian man bailed over an RAF base plot with two Iranians charged over a plot against Jews (Oct 4)
 JUDGE_PROMPT_B = """Group 1:
@@ -71,15 +76,26 @@ JUDGE_PROMPT_B = """Group 1:
 Group 2:
 {b}
 
-Would a news editor file these two groups under one running story (one case, incident or investigation followed \
-over time)? Answer no if they are two separate cases or events, even when they share a country, a court, a kind of \
-crime or a person.
+Would a news editor file these two groups under one running story: the same case, incident, event, investigation or \
+negotiation, whether the groups report the same development of it or different developments? Answer no if they are \
+two separate cases or events, even when they share a country, a court, a kind of crime or a person.
 
-reason: a few words
-same_story: true or false"""
-JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 120},
-                                                 "same_story": {"type": "boolean"}},
-                "required": ["reason", "same_story"]}
+reason: one sentence
+verdict: "one running story" or "separate stories\""""
+# Worded verdicts after a reason with room to finish: cut off mid-reason (120, then 400 characters), or answering a
+# bare true/false, the 30B said false after reasoning its way to 'the same developing story' (Cornell, Oct 5). The
+# second wording said 'followed over time', which two groups on the same development aren't: it called them separate
+JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 1000},
+                                                 "verdict": {"type": "string",
+                                                             "enum": ["one running story", "separate stories"]}},
+                "required": ["reason", "verdict"]}
+
+
+def _ask(prompt: str) -> Optional[dict]:
+    answer = llm.complete_json(prompt, JUDGE_SCHEMA, max_tokens=500, model=JUDGE_MODEL)
+    if not answer or answer.get('verdict') not in JUDGE_SCHEMA['properties']['verdict']['enum']:
+        return None
+    return {'reason': answer.get('reason', ''), 'same_story': answer['verdict'] == 'one running story'}
 
 
 def _sample(titles: list[str]) -> list[str]:
@@ -100,20 +116,18 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
     except (OSError, ValueError):
         cache = {}
     entry = cache.get(key)
-    if entry is None or ('second' not in entry and entry.get('same_story')):  # yeses from before the second wording
-        first = entry or None
+    if entry is None or not (entry.get('hand') or entry.get('judge') == JUDGE_VERSION):
         listed = {'a': '\n'.join(f'- {t}' for t in a), 'b': '\n'.join(f'- {t}' for t in b)}
+        first = _ask(JUDGE_PROMPT.format(**listed))
         if first is None:
-            answer = llm.complete_json(JUDGE_PROMPT.format(**listed), JUDGE_SCHEMA, max_tokens=80)
-            if not answer or 'same_story' not in answer:
-                return False
-            first = {**answer, 'a': a, 'b': b, 'model': llm.model()}
+            return False
         second = None
         if first['same_story']:
-            second = llm.complete_json(JUDGE_PROMPT_B.format(**listed), JUDGE_SCHEMA, max_tokens=80)
-            if not second or 'same_story' not in second:
+            second = _ask(JUDGE_PROMPT_B.format(**listed))
+            if second is None:
                 return False
-        entry = {**first, 'second': second, 'same_story': bool(first['same_story'] and second and second['same_story'])}
+        entry = {**first, 'a': a, 'b': b, 'model': JUDGE_MODEL, 'judge': JUDGE_VERSION, 'second': second,
+                 'same_story': bool(first['same_story'] and second and second['same_story'])}
         cache[key] = entry
         with open(JUDGMENTS, 'w') as f:
             json.dump(cache, f)
@@ -217,19 +231,28 @@ def name(stories: pd.DataFrame, clusters: list[int]) -> str:
 def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counter, common: float,
            names_ok: set[str], titles: list[str]) -> dict:
     """Greedy saga merging (as in find_sagas) over `groups`: key -> {'members': [...], 'rows': [title rows]}. Two
-    groups join only if they share a distinctive word that's a name (`names_ok`): sagas are kept for good, so a
+    groups join only if they share a distinctive word that's a name (`names_ok`), in NAME_MIN_SHARE of one side's
+    headlines and NAME_MIN_OTHER of the other's: sagas are kept for good, so a
     shared common noun ("rally") isn't enough to tie two stories together forever. And the language model has to
     agree they're one story (same_saga): a shared name can be an institution or a nationality."""
     def center(rows):
         v = vectors[rows].mean(axis=0)
         return v / np.linalg.norm(v)
 
+    def shares(rows):
+        """Each name rare on the day -> the share of these headlines that carry it"""
+        counts = Counter(w for r in rows for w in bags[r] if w in names_ok and frequency[w] <= common)
+        return {w: n / len(rows) for w, n in counts.items() if n >= NAME_MIN_OTHER * len(rows)}
+
     def distinctive(rows):
-        counts = Counter(w for r in rows for w in bags[r])
-        return {w for w, n in counts.items() if n >= NAME_MIN_SHARE * len(rows) and frequency[w] <= common}
+        return {w for w, share in shares(rows).items() if share >= NAME_MIN_SHARE}
+
+    def shared(a, b):
+        """A name in NAME_MIN_SHARE of one side's headlines and NAME_MIN_OTHER of the other's"""
+        return any(max(names[a][w], names[b][w]) >= NAME_MIN_SHARE for w in names[a].keys() & names[b].keys())
 
     centers = {k: center(g['rows']) for k, g in groups.items()}
-    names = {k: distinctive(g['rows']) for k, g in groups.items()}
+    names = {k: shares(g['rows']) for k, g in groups.items()}
     rejected = set()  # pairs of member sets the language model said aren't one story
 
     def pair(a, b):
@@ -244,7 +267,7 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
         best = None
         for i, j in zip(*np.where(np.triu(similarity, 1) >= SAGA_SIMILARITY)):
             a, b = keys[i], keys[j]
-            if names[a] & names[b] & names_ok and pair(a, b) not in rejected and \
+            if shared(a, b) and pair(a, b) not in rejected and \
                     (best is None or similarity[i, j] > best[0]):
                 best = (similarity[i, j], a, b)
         if best is None:
@@ -256,9 +279,9 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
         groups[a]['members'] += groups[b]['members']
         groups[a]['rows'] += groups[b]['rows']
         del groups[b], centers[b], names[b]
-        centers[a], names[a] = center(groups[a]['rows']), distinctive(groups[a]['rows'])
+        centers[a], names[a] = center(groups[a]['rows']), shares(groups[a]['rows'])
     for k in groups:
-        groups[k]['words'] = names[k]
+        groups[k]['words'] = distinctive(groups[k]['rows'])
         groups[k]['center'] = centers[k]
     return groups
 
