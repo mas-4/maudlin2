@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Motifs for political news, and cleaner names.** Folklore groups that are news reports or shared reactions
+  got no motif, but news is powerful when it confirms a story people already tell (a Russian lab worker's plague
+  death, retold as a bioweapon): political news is now filed in the motif index too. Non-political news, sports
+  picks and shared topics aren't (a WNBA semifinal "prophecy" had become "Valkyries to defeat Aces"). Motif names
+  over seven words are dropped: the model sometimes gave the claim's own sentence, or echoed its instructions, as a
+  name. 25 such entries were removed from the index (10 from sports and moods, 15 sentence names), and their
+  claims refiled where they had no other motif.
+- **Names merged on the "mentioned:" filters.** The model names one subject several ways (Trump / Donald Trump,
+  GOP / Republican Party, Supreme Court / Supreme Court of the United States); names now pass through aliases to
+  one name, seeded for the common cases and curated by hand.
 - **A saga taken apart by hand, and a saga tracker.** The 8B judge had joined an Energy Department employee's
   arrest for aiding the Houthis with the Yemeni offensive against them ("Yemen-Houthi military conflict"); the
   30B keeps them apart, and saved sagas never come apart on their own, so it was taken apart by hand (as the Iran
