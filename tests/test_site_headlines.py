@@ -671,3 +671,28 @@ def test_a_feeds_source_tag_isnt_a_name(monkeypatch, tmp_path):
     named = entities.of_stories({'s1': ["Pike's lawyer speaks - AP News"],
                                  's2': ['Tennessee prisons chief resigns - apnews.com', 'Execution news - reuters.com']})
     assert named == {'s1': ['Christa Pike'], 's2': ['Tennessee']}
+
+
+def test_names_for_one_subject_become_one(monkeypatch, tmp_path):
+    """'Trump' and 'Donald Trump', 'GOP' and 'Republican Party' were separate filters (Oct 5)"""
+    import json
+    from app.analysis import entities, llm
+    monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
+    monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
+    (tmp_path / 'e.json').write_text(json.dumps({'s1': ['Trump', 'GOP'], 's2': ['Donald Trump', 'Republican Party'],
+                                                 's3': ['Supreme Court of the United States', 'Texas']}))
+    monkeypatch.setattr(llm, 'backend', lambda: None)
+    stories = {'s1': ['Trump rallies the GOP'], 's2': ['Donald Trump and the Republican Party'],
+               's3': ['Supreme Court of the United States takes Texas case']}
+    named = entities.of_stories(stories)
+    assert named == {'s1': ['Donald Trump', 'Republican Party'], 's2': ['Donald Trump', 'Republican Party'],
+                     's3': ['Supreme Court', 'Texas']}
+    assert ('Supreme Court', 'Supreme Court of the United States') not in entities.suggestions()  # already one
+    # The organizer: rename a subject to one of its own names, merge another, keep two apart, undo a seed
+    entities.merge('Donald Trump', 'Trump')
+    entities.merge('Texas', 'State of Texas')
+    assert entities.of_stories(stories)['s1'][0] == 'Trump' and entities.of_stories(stories)['s3'][1] == 'State of Texas'
+    entities.unmerge('GOP')
+    assert entities.of_stories(stories)['s1'] == ['Trump', 'GOP']
+    entities.not_same('Texas', 'Texas A&M')
+    assert json.loads((tmp_path / 'a.json').read_text())['not_same'] == [['Texas', 'Texas A&M']]

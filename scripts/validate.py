@@ -119,7 +119,7 @@ button.chosen {{ background: var(--no); color: #fff; }} button.ok.chosen {{ back
 .save {{ margin-top: .4em; font-weight: 700; }} .save:disabled {{ opacity: .4; cursor: default; }}
 footer {{ font-size: .9em; color: #444; margin: 1.5em 0; }}
 </style></head><body>
-<nav><b>Label check</b> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a></nav>
+<nav><b>Label check</b> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/entities">Names</a></nav>
 <h1>Label check</h1>
 <p>Is the model right? Tap ✓ for a label that's right, or the value it should be (dashed: the model's pick; tapping
 that counts as ✓). Feelings: tap every one the headline is likely to stir. Save each card; reload for more.</p>
@@ -227,7 +227,7 @@ h2 {{ font-size: 1.1em; margin: .3em 0 .5em; }} .said {{ font-size: .85em; color
 .row {{ display: flex; gap: 8px; }} button {{ font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 4px 12px; cursor: pointer; }}
 nav a {{ margin-right: 1em; }}
 </style></head><body>
-<nav><a href="/">Label check</a> <b>Motif check</b> <a href="/motif-index">Motif organizer</a></nav>
+<nav><a href="/">Label check</a> <b>Motif check</b> <a href="/motif-index">Motif organizer</a> <a href="/entities">Names</a></nav>
 <h1>Motif check</h1>
 <p>Each card is a claim and one entry from Thompson's Motif-Index. Is the claim, as the people telling it tell it, a modern
 version of that motif: the same situation or trick, with today's people and things in place of the old ones? Judge
@@ -288,7 +288,7 @@ button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-r
 button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1em; }} h2 {{ margin-top: 1.4em; }}
 @media (max-width: 640px) {{ .two {{ grid-template-columns: 1fr; }} }}
 </style></head><body>
-<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <b>Motif organizer</b></nav>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <b>Motif organizer</b> <a href="/entities">Names</a></nav>
 <h1>Motif organizer</h1>
 <p>Our own motif index: {len(entries)} motifs from {sum(len(e['claims']) for e in entries)} claims. A claim can carry up to three motifs. Merge
 duplicates, rename to a reusable framing ("X is / isn't Y"), delete what isn't a motif, or move a claim that landed in
@@ -326,6 +326,100 @@ document.getElementById('search').addEventListener('input', (ev) => {{
 </script></body></html>"""
 
 
+def entities_page() -> str:
+    """The names organizer (#165): one name per subject for the 'mentioned:' filters. Suggested merges first (a name
+    inside another), then every subject with the names that point to it."""
+    from app.analysis import entities
+    esc = html.escape
+    book = entities.load_aliases()
+    counts = entities.all_names()
+    subjects = {}
+    for n, c in counts.items():
+        name = entities.canonical(n, book['aliases'])
+        entry = subjects.setdefault(name, {'stories': 0, 'names': set()})
+        entry['stories'] += c
+        if n != name:
+            entry['names'].add(n)
+    for alias, name in book['aliases'].items():  # aliases a person made, even before any story uses them
+        if alias != name.lower() and name in subjects:
+            subjects[name]['names'].add(alias)
+    pairs = entities.suggestions()
+    suggest = ''.join(f"""
+<section class="card pair">
+  <p class="outlet">one name inside the other</p>
+  <div class="two"><div><b>{esc(a)}</b> <span class="said">{subjects.get(a, {}).get('stories', 0)} stories</span></div>
+    <div><b>{esc(b)}</b> <span class="said">{subjects.get(b, {}).get('stories', 0)} stories</span></div></div>
+  <div class="row"><button data-act="merge" data-source="{esc(a)}" data-target="{esc(b)}">⤵ “{esc(a)}” is “{esc(b)}”</button>
+    <button data-act="merge" data-source="{esc(b)}" data-target="{esc(a)}">⤵ “{esc(b)}” is “{esc(a)}”</button>
+    <button data-act="not_same" data-a="{esc(a)}" data-b="{esc(b)}">✗ different subjects</button></div>
+</section>""" for a, b in pairs[:40])
+    rows = sorted(subjects.items(), key=lambda kv: (-kv[1]['stories'], kv[0].lower()))
+    cards = ''.join(f"""
+<section class="card entry" data-text="{esc((name + ' ' + ' '.join(e['names'])).lower())}">
+  <p class="outlet">{e['stories']} stor{'y' if e['stories'] == 1 else 'ies'}</p>
+  <div class="row"><input class="name" value="{esc(name)}" size="40"><button data-act="rename" data-source="{esc(name)}">rename</button>
+    <button data-act="merge_into" data-source="{esc(name)}">⤵ another name for…</button></div>
+  {'<p class="said">also named: ' + ' '.join(f'{esc(n)} <button class="small" data-act="unmerge" data-name="{esc(n)}">✗ not this</button>' for n in sorted(e['names'])) + '</p>' if e['names'] else ''}
+</section>""" for name, e in rows)
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Names</title><style>
+body {{ font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }}
+.card {{ border: 2px solid #1f1f2e; border-radius: 12px; padding: 8px 14px; margin: 10px 0; background: #fff; box-shadow: 4px 4px 0 #00c2a8; }}
+.pair {{ box-shadow: 4px 4px 0 #ff4fa3; }} .two {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
+.outlet, .said {{ font-size: .85em; color: #555; }} p {{ margin: .3em 0; }}
+.row {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; }} input {{ font: inherit; padding: 3px 6px; }}
+button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }}
+button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1em; }} h2 {{ margin-top: 1.4em; }}
+@media (max-width: 640px) {{ .two {{ grid-template-columns: 1fr; }} }}
+</style></head><body>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <b>Names</b></nav>
+<h1>Names</h1>
+<p>The people, places and groups the local model names in each story, for the “mentioned:” filters on the front page:
+{len(subjects)} subjects under {len(counts)} names. Give each subject one name: merge names for the same subject, rename
+a subject, or keep two apart. Changes go live with the next site build.</p>
+<h2>Suggested merges</h2>
+{suggest or '<p>No suggestions right now.</p>'}
+<h2>Every subject</h2>
+<p><input type="search" id="search" placeholder="search names" size="40"></p>
+{cards}
+<script>
+const post = async (body) => {{
+  const r = await fetch('/entities', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(body)}});
+  if (!r.ok) {{ alert('Failed: ' + await r.text()); return; }}
+  const y = scrollY; location.reload(); setTimeout(() => scrollTo(0, y), 50);
+}};
+document.addEventListener('click', (ev) => {{
+  const b = ev.target.closest('button[data-act]');
+  if (!b) return;
+  const d = b.dataset;
+  if (d.act === 'merge') post({{action: 'merge', source: d.source, target: d.target}});
+  else if (d.act === 'not_same') post({{action: 'not_same', a: d.a, b: d.b}});
+  else if (d.act === 'rename') post({{action: 'merge', source: d.source, target: b.previousElementSibling.value.trim()}});
+  else if (d.act === 'merge_into') {{ const t = prompt('“' + d.source + '” is another name for which subject?'); if (t && t.trim()) post({{action: 'merge', source: d.source, target: t.trim()}}); }}
+  else if (d.act === 'unmerge') post({{action: 'unmerge', name: d.name}});
+}});
+document.getElementById('search').addEventListener('input', (ev) => {{
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('.entry').forEach((c) => {{ c.hidden = q && !c.dataset.text.includes(q); }});
+}});
+</script></body></html>"""
+
+
+def entities_action(data: dict):
+    """Apply one names-organizer action; raises on anything unknown or missing."""
+    from app.analysis import entities
+    act = data.get('action')
+    text = lambda k: isinstance(data.get(k), str) and data[k].strip()  # noqa: E731
+    if act == 'merge' and text('source') and text('target'):
+        entities.merge(data['source'].strip(), data['target'].strip())
+    elif act == 'not_same' and text('a') and text('b'):
+        entities.not_same(data['a'], data['b'])
+    elif act == 'unmerge' and text('name'):
+        entities.unmerge(data['name'].strip())
+    else:
+        raise ValueError(f'unknown action: {data}')
+
+
 def organizer_action(data: dict):
     """Apply one organizer action; raises on anything unknown or missing."""
     from app.analysis import motif_index
@@ -352,7 +446,8 @@ def organizer_action(data: dict):
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         body = (organizer_page() if self.path.startswith('/motif-index') else motif_page()
-                if self.path.startswith('/motifs') else page()).encode()
+                if self.path.startswith('/motifs') else entities_page() if self.path.startswith('/entities')
+                else page()).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
@@ -361,9 +456,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
-        if self.path == '/motif-index':
+        if self.path in ('/motif-index', '/entities'):
             try:
-                organizer_action(data)
+                (organizer_action if self.path == '/motif-index' else entities_action)(data)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
