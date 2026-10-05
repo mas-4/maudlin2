@@ -3146,8 +3146,14 @@ h1 {
     border-radius: 1px;
 }
 
+/* Labels sit straight on the page, so they get the paper backing too (gray on a dotted shape was unreadable) */
 .story-sort .bar-label {
     font-weight: 700;
+    margin-left: 0;
+    padding: 0.1em 0.45em;
+    color: #444;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 8px;
 }
 
 .story-sort button[data-filter] {
@@ -3622,15 +3628,13 @@ h1 {
 }
 
 /* The label column fits 'conspiracy:' in a wide fallback font, with a gap before the first chip (a stray margin
-   and a 6em column ran labels into their chips in Chrome) */
+   and a 6em column ran labels into their chips in Chrome); each label ends at the column's edge */
 .narrative-tools .bar-label {
     position: absolute;
-    left: 0;
-    top: 0.35em;
-    width: 7em;
+    top: 0.3em;
+    right: calc(100% - 7.2em);  /* sized to its word, ending just before the chips, so the paper fits the label */
     margin: 0;
     white-space: nowrap;
-    text-align: right;
 }
 
 @media (max-width: 700px) {
@@ -3678,4 +3682,38 @@ h1 {
     max-width: 50em;
     margin: 0 auto 1em;
     font-size: 0.9em;
+}
+
+/* Our own hover box (index.js), in place of the browser's tooltips: an ink-outlined card with an offset shadow like the
+   chips, tinted by lean where an element asks */
+.tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;  /* above the popped-up story card (50) and chips with their own layer */
+    max-width: min(22em, calc(100vw - 16px));
+    padding: 6px 11px;
+    background: #fffdf3;
+    color: #1f1f2e;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+    font: 14px/1.4 Helvetica, Arial, sans-serif;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+.tooltip.shown {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tooltip {
+        transition: none;
+    }
 }

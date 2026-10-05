@@ -563,23 +563,6 @@
     </div>
 
 
-    <style>
-        .tooltip {
-            position: absolute;
-            z-index: 1000;  /* above the popped-up story card (50) and chips with their own layer */
-            color: black;
-            padding: 5px 10px;
-            font-size: 14px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s;
-            border: 1px solid black;
-            border-radius: 3px;
-            max-width: min(22em, calc(100vw - 16px));
-            white-space: normal;
-            line-height: 1.35;
-        }
-    </style>
 
     <script>
         // Keep "new · first seen 12 min ago" honest as the page sits open: recompute from each story's first-seen time
@@ -664,88 +647,6 @@
             setInterval(updateBroken, 30000);
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const tooltip = document.createElement('div');
-            tooltip.className = 'tooltip';
-            document.body.appendChild(tooltip);
-
-            document.body.addEventListener('mouseover', (e) => {
-                const target = e.target;
-                const title = target.getAttribute('title');
-                if (title) {
-                    target.setAttribute('data-title', title);
-                    target.removeAttribute('title');
-                    const color = target.getAttribute('data-tooltip-color') || '#f4f4f4';
-                    tooltip.style.color = target.getAttribute('data-tooltip-ink') || '#222';
-                    showTooltip(target, title, color);
-                }
-            });
-
-            document.body.addEventListener('mouseout', (e) => {
-                const target = e.target;
-                const title = target.getAttribute('data-title');
-                if (title) {
-                    target.setAttribute('title', title);
-                    target.removeAttribute('data-title');
-                    hideTooltip();
-                }
-            });
-
-            function showTooltip(target, text, color) {
-                tooltip.textContent = text;
-                tooltip.style.backgroundColor = color;
-                tooltip.style.opacity = '1';
-                // Measure at the left edge: measured where it last was (say, near the right edge) it shrinks to the
-                // room left there, and then, moved, lays out wider than measured and sticks out past the window
-                tooltip.style.left = '0px';
-
-                const rect = target.getBoundingClientRect();
-                const tooltipRect = tooltip.getBoundingClientRect();
-
-                let top = rect.bottom + window.scrollY;
-                let left = rect.left + window.scrollX + (rect.width - tooltipRect.width) / 2;
-
-                if (left < 0) left = 0;
-                if (left + tooltipRect.width > window.innerWidth) {
-                    left = window.innerWidth - tooltipRect.width;
-                }
-
-                tooltip.style.top = `${top}px`;
-                tooltip.style.left = `${left}px`;
-            }
-
-            function hideTooltip() {
-                tooltip.style.opacity = '0';
-                // Parked in the corner, so a hidden tooltip never widens the page (phones let you pan to it)
-                tooltip.style.left = '0px';
-                tooltip.style.top = '0px';
-            }
-            // On touch screens a tap fires the hover and nothing ever fires its end: close it on the next scroll or
-            // tap elsewhere, putting the title back on whatever had it
-            const closeTouch = () => {
-                const target = document.querySelector('[data-title]');
-                if (target) {
-                    target.setAttribute('title', target.getAttribute('data-title'));
-                    target.removeAttribute('data-title');
-                }
-                hideTooltip();
-            };
-            addEventListener('scroll', () => { if (matchMedia('(hover: none)').matches) closeTouch(); }, {passive: true});
-            document.addEventListener('touchstart', (e) => { if (!e.target.closest('[data-title]')) closeTouch(); }, {passive: true});
-
-            window.addEventListener('scroll', updateTooltipPosition);
-            window.addEventListener('resize', updateTooltipPosition);
-
-            function updateTooltipPosition() {
-                const target = document.querySelector('[data-title]');
-                if (target) {
-                    const title = target.getAttribute('data-title');
-                    const color = target.getAttribute('data-tooltip-color') || '#f4f4f4';
-                    tooltip.style.color = target.getAttribute('data-tooltip-ink') || '#222';
-                    showTooltip(target, title, color);
-                }
-            }
-        });
     </script>
 
     {% if saga_list %}
@@ -770,7 +671,9 @@
         </div>
     {% endif %}
     <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
-    <div class="table-filters story-sort" role="group" aria-label="Sort and filter stories">
+    <div class="table-filters story-sort" role="group" aria-label="Search, sort and filter stories">
+        <span class="bar-group"><input type="search" class="edit-search story-search" placeholder="🔎 search stories and headlines" aria-label="Search stories"></span>
+        <span class="bar-divider" aria-hidden="true"></span>
         <span class="bar-group"><span class="bar-label">sort:</span>
         <button data-sort="newest" class="active" title="Most recently broken first">✨ newest</button>
         <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
@@ -790,6 +693,7 @@
         {% for name, n in entity_chips %}<button data-entity="{{ name|e }}" title="The {{ n }} current stories whose headlines mention {{ name|e }}">{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
         </span>{% endif %}
     </div>
+    <p class="edit-count story-count" aria-live="polite"></p>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
             <div class="story" id="story-{{ cluster['cluster'] }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']] }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
@@ -935,6 +839,18 @@
             let sort = SORTS.newest;
             const only = new Set();
             let entity = null;  // one named subject at a time, tapped again to clear
+            // The search reads each card's words and its headlines (kept in the outlet chips' hover text), every
+            // word typed has to be there
+            let words = [];
+            const text = new Map(all.map((c) => [c, (c.textContent + ' ' + [...c.querySelectorAll('[title]')]
+                .map((e) => e.title).join(' ')).toLowerCase()]));
+            const counter = document.querySelector('.story-count');
+            let typing;
+            document.querySelector('.story-search').addEventListener('input', (ev) => {
+                words = ev.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+                clearTimeout(typing);
+                typing = setTimeout(() => apply(false), 150);
+            });
             document.querySelector('.story-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
@@ -948,16 +864,21 @@
                     sort = SORTS[button.dataset.sort];
                     document.querySelectorAll('.story-sort button[data-sort]').forEach((b) => b.classList.toggle('active', b === button));
                 }
+                apply(true);
+            });
+            function apply(glide) {
                 // Cards glide to their new places (FLIP: note where each was, re-lay them out, then slide each from
                 // its old spot to its new one); cards coming back fade in. Skipped for readers who ask for less motion
                 const before = new Map(all.filter((c) => !c.hidden).map((c) => [c, c.getBoundingClientRect()]));
                 all.forEach((card) => {
                     card.hidden = [...only].some((f) => !card.dataset[f])
-                        || (entity && !(card.dataset.entities || '').includes(`|${entity.toLowerCase()}|`));
+                        || (entity && !(card.dataset.entities || '').includes(`|${entity.toLowerCase()}|`))
+                        || !words.every((w) => text.get(card).includes(w));
                 });
                 cards = all.filter((card) => !card.hidden).sort(sort);
+                counter.textContent = cards.length === all.length ? '' : cards.length ? `${cards.length} of ${all.length} stories` : 'No current story matches';
                 layout(true);
-                if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                if (glide && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     cards.forEach((card, i) => {
                         const was = before.get(card);
                         const now = card.getBoundingClientRect();
@@ -967,7 +888,7 @@
                         card.animate(motion, {duration: 450, easing: 'cubic-bezier(.2, .8, .2, 1)', delay: Math.min(i, 12) * 15});
                     });
                 }
-            });
+            }
         })();
     </script>
 

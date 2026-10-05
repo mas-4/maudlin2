@@ -268,3 +268,70 @@ document.addEventListener('DOMContentLoaded', () => {
     const target = wanted && document.querySelector(`[data-share="${CSS.escape(wanted)}"]`);
     if (target) addEventListener('load', () => setTimeout(() => target.scrollIntoView({block: 'start'}), 300));
 });
+
+// Our own hover box in place of the browser's tooltips, on every page: whatever has a title shows it here, styled like
+// the site (ink border, offset shadow), tinted by data-tooltip-color / data-tooltip-ink where an element sets them.
+// The title moves to data-title while the box is up, so the browser doesn't show its own on top.
+document.addEventListener('DOMContentLoaded', () => {
+    const tip = document.createElement('div');
+    tip.className = 'tooltip';
+    tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tip);
+    let current = null;
+
+    function place() {
+        if (!current) return;
+        // Measure at the left edge: measured where it last was (say, near the right edge) it shrinks to the room
+        // left there, and then, moved, lays out wider than measured and sticks out past the window
+        tip.style.left = '0px';
+        const rect = current.getBoundingClientRect();
+        const box = tip.getBoundingClientRect();
+        let left = rect.left + scrollX + (rect.width - box.width) / 2;
+        left = Math.max(4, Math.min(left, innerWidth - box.width - 4));
+        // Below the element, or above it when there's no room underneath
+        let top = rect.bottom + scrollY + 8;
+        if (rect.bottom + 8 + box.height > innerHeight && rect.top - 8 - box.height > 0) top = rect.top + scrollY - 8 - box.height;
+        tip.style.top = `${top}px`;
+        tip.style.left = `${left}px`;
+    }
+
+    function show(target) {
+        if (current && current !== target) hide();
+        const text = target.getAttribute('title');
+        if (!text) return;
+        target.setAttribute('data-title', text);
+        target.removeAttribute('title');
+        current = target;
+        tip.textContent = text;
+        tip.style.background = target.getAttribute('data-tooltip-color') || '';
+        tip.style.color = target.getAttribute('data-tooltip-ink') || '';
+        tip.classList.add('shown');
+        place();
+    }
+
+    function hide() {
+        if (current) {
+            current.setAttribute('title', current.getAttribute('data-title'));
+            current.removeAttribute('data-title');
+            current = null;
+        }
+        tip.classList.remove('shown');
+        // Parked in the corner, so a hidden box never widens the page (phones let you pan to it)
+        tip.style.left = '0px';
+        tip.style.top = '0px';
+    }
+
+    document.addEventListener('mouseover', (ev) => {
+        const target = ev.target.closest && ev.target.closest('[title]');
+        if (target && !(target instanceof SVGElement) && target !== document.documentElement) show(target);
+    });
+    document.addEventListener('mouseout', (ev) => {
+        // Moving onto a child (an emoji inside a chip) isn't leaving
+        if (current && !(ev.relatedTarget && current.contains(ev.relatedTarget))) hide();
+    });
+    // On touch screens a tap fires the hover and nothing ever fires its end: close it on the next scroll or a tap
+    // elsewhere
+    addEventListener('scroll', () => { if (matchMedia('(hover: none)').matches) hide(); else place(); }, {passive: true});
+    addEventListener('resize', place);
+    document.addEventListener('touchstart', (ev) => { if (current && !current.contains(ev.target)) hide(); }, {passive: true});
+});
