@@ -441,8 +441,8 @@ def to_check(limit: int | None = None) -> list[dict]:
 @exclusive
 def check(claim: str, eid: str, answer: str):
     """A person's answer to 'is this claim an instance of this motif?', applied at once. Yes or not sure is noted on
-    the filing. No takes the claim out of the motif and keeps it out; a motif left with no claims goes, and a claim
-    left with no motif is filed again next run, among the others."""
+    the filing. No takes the claim out of the motif and keeps it out; a motif the model made left with no claims goes
+    (one a person named stays), and a claim left with no motif is filed again next run, among the others."""
     index = load()
     entry = index['entries'].get(eid)
     found = next((c for c in (entry or {}).get('claims', []) if c['claim'] == claim), None)
@@ -457,7 +457,7 @@ def check(claim: str, eid: str, answer: str):
         index['claims'][k] = [i for i in _ids(index, k) if i != eid]
         if not index['claims'][k]:
             del index['claims'][k]
-        if not entry['claims']:
+        if not entry['claims'] and not entry.get('curated'):  # a model's motif emptied goes; one a person named stays
             del index['entries'][eid]
     save(index)
 
