@@ -421,6 +421,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 <section class="grid" id="grid"></section>
 </main>
 <div id="toast" role="status"></div>
+<dialog id="addclaims"><button class="small x" data-close="1">✕</button><div id="addclaims-body"></div></dialog>
 <dialog id="mergepick"><button class="small x" data-close="1">✕</button><div id="mergepick-body"></div></dialog>
 <dialog id="choose"><div id="choose-body"></div></dialog>
 <dialog id="similar"><button class="small x" data-close="1">✕</button><div id="similar-body"></div></dialog>
@@ -472,7 +473,7 @@ function render() {
         <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
         <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
-      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button>
+      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="addclaims" title="search all claims and add some to this motif">＋ add claims…</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button>
         ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
   });
   // Masonry: each card into the shortest column, in order, so short cards don't leave gaps under them
@@ -511,6 +512,7 @@ document.addEventListener('click', (ev) => {
     const a = b.dataset.mact;
     if (a === 'more') openSimilar(e.id);
     else if (a === 'mergepick') openMergePick(e.id);
+    else if (a === 'addclaims') openAddClaims(e.id);
     else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
     else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
     else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
@@ -711,6 +713,37 @@ $('#similar').addEventListener('click', async (ev) => {
   if (b.dataset.simadd !== undefined) await act({action: 'also', claim: i.claim, source: i.motifs[0].id, target: simFor});
   else await act({action: 'reject', claim: i.claim, id: simFor});
   drawSimilar();
+});
+
+// '＋ add claims…': search every claim (filed or not yet) and add some to this motif; stays open for several
+let addTo = null, addTimer, addFound = [];
+function openAddClaims(id) {
+  addTo = id; const me = data.entries.find((x) => x.id === id);
+  $('#addclaims-body').innerHTML = `<h2>Add claims to 🧩 ${esc(me.name)}</h2>
+    <input type="search" id="ac-q" placeholder="words in the claim (all of them)" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
+    <div class="pick" id="ac-list"><p class="meta">Type to search the claims in the index and the ones not filed yet.</p></div>`;
+  $('#addclaims').showModal();
+  const input = $('#ac-q'); input.focus();
+  input.addEventListener('input', () => { clearTimeout(addTimer); addTimer = setTimeout(() => searchClaims(input.value), 200); });
+}
+async function searchClaims(q) {
+  if (!q.trim()) { $('#ac-list').innerHTML = '<p class="meta">Type to search.</p>'; return; }
+  addFound = await (await fetch('/claims.json?q=' + encodeURIComponent(q))).json();
+  const here = new Set((data.entries.find((x) => x.id === addTo) || {claims: []}).claims.map((c) => c.claim));
+  $('#ac-list').innerHTML = addFound.map((c, n) => `<div class="simrow"><span class="nm">${esc(c.claim)}
+      <span class="meta">${esc(c.source === 'narrative' ? 'online' : c.source)} · ${c.motifs.length ? 'in ' + c.motifs.map((m) => esc(m.name)).join(', ') : 'not filed yet'}</span></span>
+      ${here.has(c.claim) ? '<span class="meta">✓ here</span>' : `<button class="small add" data-ac="${n}">+ add</button>`}</div>`).join('')
+    || '<p class="meta">No claim has all those words.</p>';
+}
+$('#addclaims').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (ev.target === $('#addclaims') || (b && b.dataset.close)) { $('#addclaims').close(); return; }
+  if (!b || b.dataset.ac === undefined) return;
+  const c = addFound[+b.dataset.ac];
+  b.disabled = true;
+  if (c.motifs.length) await act({action: 'also', claim: c.claim, source: c.motifs[0].id, target: addTo});
+  else await act({action: 'file', claim: c.claim, source: c.source, ref: c.ref, id: addTo});
+  b.replaceWith(Object.assign(document.createElement('span'), {className: 'meta', textContent: '✓ added'}));
 });
 
 // '⤵ merge into…': pick the motif this one joins (or, if it isn't the same, mark it a kind of or related)
@@ -999,6 +1032,8 @@ def board_action(data: dict):
         mi.relate(data['a'], data['b'], act == 'relate')
     elif act == 'parent' and data.get('id') in live and data.get('parent') in live:
         mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
+    elif act == 'file' and text('claim') and data.get('id') in live:
+        mi.file_by_hand({'claim': data['claim'].strip(), 'source': data.get('source', ''), 'ref': data.get('ref', '')}, data['id'])
     elif act == 'correct' and text('claim') and text('text'):
         mi.correct_claim(data['claim'], data['text'])
     elif act == 'reject' and text('claim') and data.get('id') in live:
@@ -1159,6 +1194,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/undo.json'):
             found = last_undo()
             return self.send_json({'what': found[1]['what'] if found else None})
+        if self.path.startswith('/claims.json'):
+            from urllib.parse import urlparse, parse_qs
+            from app.analysis import motif_index
+            q = parse_qs(urlparse(self.path).query).get('q', [''])[0].lower().split()
+            found = [c for c in motif_index.searchable_claims() if all(w in c['claim'].lower() for w in q)]
+            return self.send_json(sorted(found, key=lambda c: (bool(c['motifs']), c['claim']))[:60])
         if self.path.startswith('/claim-detail.json'):
             from urllib.parse import urlparse, parse_qs
             return self.send_json(claim_detail(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))

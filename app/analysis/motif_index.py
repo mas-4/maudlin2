@@ -742,3 +742,47 @@ def originals(text: str, index: dict) -> set[str]:
         grew = bool(more)
         found |= more
     return found
+
+
+def searchable_claims() -> list[dict]:
+    """Every claim a person might file by hand: those in the index (with their motifs) and those the nightly filing
+    would take but hasn't (the latest folklore report's, the last LABEL_DAYS of fact-checks), in today's words."""
+    from app.analysis import factchecks
+    from app.site.page_folklore import latest_report, withheld
+    index = load()
+    out = {}
+    for e in live(index):
+        for c in e['claims']:
+            item = out.setdefault(key(c['claim']), {'claim': c['claim'], 'source': c.get('source', ''),
+                                                    'ref': c.get('ref', ''), 'motifs': []})
+            item['motifs'].append({'id': e['id'], 'name': e['name']})
+    report = latest_report() or {}
+    pulled = withheld()
+    for g in report.get('found', []):
+        lab = g.get('label') or {}
+        if lab.get('narrative') and lab['narrative'] not in pulled:
+            text = corrected(lab['narrative'], index)
+            out.setdefault(key(text), {'claim': text, 'source': 'narrative', 'ref': report.get('made', ''), 'motifs': []})
+    labels = factchecks.load_labels()
+    for it in factchecks._items(factchecks.LABEL_DAYS):
+        lab = labels.get(it['url']) or {}
+        if lab.get('claim'):
+            text = corrected(lab['claim'], index)
+            out.setdefault(key(text), {'claim': text, 'source': it['source'], 'ref': it['url'], 'motifs': []})
+    return list(out.values())
+
+
+@exclusive
+def file_by_hand(claim: dict, eid: str):
+    """File a claim (one not in the index yet, or already elsewhere) under a motif a person chose"""
+    index = load()
+    entry = index['entries'][eid]
+    if entry.get('merged_into'):
+        raise ValueError(f'{eid} is gone')
+    k = key(claim['claim'])
+    if not any(key(c['claim']) == k for c in entry['claims']):
+        entry['claims'].append({'claim': claim['claim'], 'source': claim.get('source', ''), 'ref': claim.get('ref', ''),
+                                'date': dt.now().strftime('%Y-%m-%d')})
+    entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
+    index['claims'][k] = list(dict.fromkeys(index['claims'].get(k, []) + [eid]))
+    save(index)

@@ -230,3 +230,13 @@ def test_a_corrected_summary_replaces_the_models_everywhere(monkeypatch, tmp_pat
     assert mi.corrected(old, index) == new and mi.originals(new, index) == {old, new}
     mi.correct_claim(new, 'Hooligan video relabeled as Muslims in Dublin')  # corrected again: the model's words follow
     assert mi.corrected(old) == 'Hooligan video relabeled as Muslims in Dublin'
+
+
+def test_a_claim_not_yet_filed_can_be_filed_by_hand(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'Gaming the system', 'claims': [],
+                                                           'curated': True, 'not_claims': [mi.key('a')]}}})
+    mi.file_by_hand({'claim': 'a', 'source': 'Snopes', 'ref': 'https://x'}, 'M001')
+    index = mi.load()
+    assert index['claims'] == {mi.key('a'): ['M001']} and index['entries']['M001']['claims'][0]['source'] == 'Snopes'
+    assert index['entries']['M001']['not_claims'] == []  # filed by hand: a person's earlier 'not this' is overruled
