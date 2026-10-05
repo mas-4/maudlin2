@@ -74,7 +74,9 @@
             }));
             // Phones: a 🧭 button from the start with the list folded; the list opens on its own once the reader is
             // past the cloud, unless they've already opened or closed it themselves. Like on wide screens, only the
-            // section on screen shows its label; the rest are just their emoji, so the rail stays out of the way
+            // section on screen shows its label; the rest are just their emoji, so the rail stays out of the way.
+            // Keep it opening on its own: the site's owner wants that (folded until tapped is confusing), and asked
+            // twice for it back after it was changed (Oct 5)
             const nav = document.querySelector('.page-toc'), toggle = document.querySelector('.toc-toggle');
             const fold = (open) => { nav.classList.toggle('open', open); toggle.setAttribute('aria-expanded', open); };
             let chosen = false;
