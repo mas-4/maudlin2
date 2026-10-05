@@ -806,7 +806,8 @@ def single_suggestions(n: int = 5) -> list[dict]:
     from app.narratives import embed
     index = load()
     entries = live(index)
-    singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone')]
+    # A single put under a broader motif (a kind of it) has been placed, like one that stands alone
+    singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone') and not e.get('parents')]
     if not singles:
         return []
     texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(c['claim'][:120] for c in e['claims'][-2:])

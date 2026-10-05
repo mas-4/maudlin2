@@ -1036,8 +1036,8 @@ button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; }
 </style></head><body>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Single motifs</b> <a href="/entities">Names</a></nav>
 <h1>Motifs holding one claim</h1>
-<p>Each holds a single claim. Beside it, the motifs closest to that claim: merge it into one, file the claim there too,
-or say it stands alone (it leaves this list). Likeliest merges first. <span id="count" class="meta"></span></p>
+<p>Each holds a single claim. Beside it, the motifs closest to that claim: merge it into one, make it a kind of one
+(a narrower motif under a broader one; both stay), file the claim there too, or say it stands alone (it leaves this list). Likeliest merges first. <span id="count" class="meta"></span></p>
 <div id="list"><p class="meta">Finding the closest motifs…</p></div>
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -1055,6 +1055,7 @@ function draw() {
     <p class="claim">${esc(s.claim)} <span class="meta">${esc(s.source === 'narrative' ? 'online' : s.source)}</span></p>
     ${s.suggest.map((m, k) => `<div class="sug${m.same_claim ? ' same' : ''}"><span class="nm">🧩 ${esc(m.name)} <span class="meta">${m.same_claim ? '<b>same claim</b>' : `${m.size} claim${m.size === 1 ? '' : 's'} · ${m.score.toFixed(2)}`}</span></span>
       <button class="add" data-n="${n}" data-k="${k}" data-do="merge" title="${esc(s.name)} goes; its claim joins ${esc(m.name)}">⤵ merge into</button>
+      <button data-n="${n}" data-k="${k}" data-do="kind" title="${esc(s.name)} is a kind of ${esc(m.name)}: both stay, ${esc(s.name)} under it">⊂ kind of</button>
       ${m.same_claim ? '' : `<button data-n="${n}" data-k="${k}" data-do="also" title="file the claim under ${esc(m.name)} too; ${esc(s.name)} stays">+ file here too</button>`}</div>`).join('')}
     <div class="row"><button data-n="${n}" data-do="alone">✓ stands alone</button></div></div>`).join('') || '<p>None left. 🎉</p>';
 }
@@ -1064,6 +1065,7 @@ document.addEventListener('click', async (ev) => {
   let ok;
   if (b.dataset.do === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
   else if (b.dataset.do === 'also') ok = await act({action: 'also', claim: s.claim, source: s.id, target: m.id});
+  else if (b.dataset.do === 'kind') ok = await act({action: 'parent', id: s.id, parent: m.id});
   else ok = await act({action: 'stands_alone', id: s.id});
   if (ok) {
     // This card, and after a merge the target's own card (no longer holding one claim), are done

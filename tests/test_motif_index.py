@@ -255,6 +255,10 @@ def test_single_claim_motifs_get_the_closest_motifs_to_join(monkeypatch, tmp_pat
         [vec.get(t, [0.9, 0.1] if t.startswith('Folk') else [0, 1]) for t in texts], float))
     [s] = mi.single_suggestions()
     assert s['id'] == 'M001' and [m['name'] for m in s['suggest']] == ['Folk remedy', 'Rigged election']
+    mi.set_parent('M001', 'M002')  # put under a broader motif: placed, off the list
+    assert mi.single_suggestions() == []
+    mi.set_parent('M001', 'M002', False)
+    assert len(mi.single_suggestions()) == 1
     mi.stands_alone('M001')
     assert mi.single_suggestions() == []
 
