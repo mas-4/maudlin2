@@ -45,7 +45,7 @@
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}</p>
                     {% if c.motifs %}
                         <div class="card-section"><p class="section-label" title="Recurring shapes this rumor is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
-                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
                         </div>
                     {% endif %}
                     {% if c.seen is not none %}

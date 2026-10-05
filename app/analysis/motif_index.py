@@ -157,6 +157,12 @@ def entry_of(index: dict, claim: str) -> dict | None:
     return found[0] if found else None
 
 
+def described(entry: dict) -> str:
+    """A motif as the model reads it when matching: its name, and its scope note when a person wrote one (an
+    evocative name, 'Leviathan', says less to the model than 'a giant sea creature menaces a ship')"""
+    return entry['name'] + (f" ({entry['note']})" if entry.get('note') else '')
+
+
 def live(index: dict) -> list[dict]:
     return [e for e in index['entries'].values() if not e.get('merged_into')]
 
@@ -169,13 +175,13 @@ def match(index: dict, phrase: str, claim: str) -> str | None:
     if not entries:
         return None
     # Each entry by its name and its claims' phrases together, so a curated name still matches its kind
-    texts = [e['name'] + '. ' + '; '.join(e.get('phrases', [])[:5]) for e in entries]
+    texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) for e in entries]
     v = embed([phrase] + texts)
     sims = v[1:] @ v[0]
     top = [int(i) for i in np.argsort(-sims)[:CANDIDATES] if sims[i] >= MATCH_FLOOR]
     if not top:
         return None
-    options = '\n'.join(f'{n}. {entries[i]["name"]} (e.g. ' + '; '.join(
+    options = '\n'.join(f'{n}. {described(entries[i])} (e.g. ' + '; '.join(
         f'"{x["claim"][:110]}"' for x in entries[i]['claims'][-2:]) + ')' for n, i in enumerate(top, 1))
     schema = {"type": "object", "properties": {
         "reason": {"type": "string", "maxLength": 1000},  # cut off mid-reason, the 30B answers no (as with sagas)
@@ -192,7 +198,7 @@ def closest(index: dict, claim: str) -> list[dict]:
     entries = [e for e in live(index) if key(claim) not in e.get('not_claims', [])]  # a person said it isn't
     if not entries:
         return []
-    texts = [e['name'] + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(x['claim'][:120] for x in e['claims'][-2:])
+    texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(x['claim'][:120] for x in e['claims'][-2:])
              for e in entries]
     v = embed([claim] + texts)
     sims = v[1:] @ v[0]
@@ -204,7 +210,7 @@ def name_claim(claim: str, shown: list[dict]) -> dict | None:
     if not shown:
         named = llm.complete_json(NAME_PROMPT.format(claim=claim), NAME_SCHEMA, max_tokens=160, model=MODEL)
         return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)]}
-    options = '\n'.join(f'{n}. {e["name"]} (e.g. "{e["claims"][-1]["claim"][:110]}")' if e['claims'] else
+    options = '\n'.join(f'{n}. {described(e)} (e.g. "{e["claims"][-1]["claim"][:110]}")' if e['claims'] else
                         f'{n}. {e["name"]}' for n, e in enumerate(shown, 1))
     schema = {"type": "object", "properties": {
         "reason": {"type": "string", "maxLength": 1000},
@@ -515,7 +521,7 @@ def board() -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
     index = load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
-                'done': is_done(e),
+                'done': is_done(e), 'note': e.get('note', ''),
                 'parents': [p for p in parents_of(e) if p in index['entries'] and not index['entries'][p].get('merged_into')],
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
                                    if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
@@ -797,7 +803,7 @@ def single_suggestions(n: int = 5) -> list[dict]:
     singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone')]
     if not singles:
         return []
-    texts = [e['name'] + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(c['claim'][:120] for c in e['claims'][-2:])
+    texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(c['claim'][:120] for c in e['claims'][-2:])
              for e in entries]
     v = embed([e['claims'][0]['claim'] for e in singles] + texts)
     claims_v, motifs_v = v[:len(singles)], v[len(singles):]
@@ -823,4 +829,17 @@ def stands_alone(eid: str, alone: bool = True):
         index['entries'][eid]['stands_alone'] = True
     else:
         index['entries'][eid].pop('stands_alone', None)
+    save(index)
+
+
+@exclusive
+def set_note(eid: str, note: str):
+    """A motif's scope note: one plain line on what it covers, beside its name (used in matching and shown on the
+    site); empty removes it"""
+    index = load()
+    note = ' '.join(note.split())
+    if note:
+        index['entries'][eid]['note'] = note
+    else:
+        index['entries'][eid].pop('note', None)
     save(index)

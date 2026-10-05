@@ -257,3 +257,15 @@ def test_single_claim_motifs_get_the_closest_motifs_to_join(monkeypatch, tmp_pat
     assert s['id'] == 'M001' and [m['name'] for m in s['suggest']] == ['Folk remedy', 'Rigged election']
     mi.stands_alone('M001')
     assert mi.single_suggestions() == []
+
+
+def test_a_scope_note_is_read_with_the_name_when_matching(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'Leviathan',
+                                                           'claims': [{'claim': 'a', 'source': 's'}]}}})
+    mi.set_note('M001', '  a giant   sea creature menaces a ship ')
+    entry = mi.load()['entries']['M001']
+    assert mi.described(entry) == 'Leviathan (a giant sea creature menaces a ship)'
+    assert mi.board()['entries'][0]['note'] == 'a giant sea creature menaces a ship'
+    mi.set_note('M001', '')
+    assert 'note' not in mi.load()['entries']['M001']

@@ -23,6 +23,7 @@
                 <div class="story court-story narrative motif-entry" id="{{ e.id }}" data-text="{{ (e.name ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
                     <p class="court-when">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %}</p>
                     <h4>🧩 {{ e.name|e }}</h4>
+                    {% if e.note %}<p class="motif-note">{{ e.note|e }}</p>{% endif %}
                     <p class="court-stages">{{ e.count }} claim{{ '' if e.count == 1 else 's' }}: {% for s, n in e.sources %}{{ s|e }}{% if n > 1 %} ×{{ n }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
                     <ul class="story-checks motif-claims">
                         {% for c in e.claims[:8] %}

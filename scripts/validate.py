@@ -370,6 +370,7 @@ ul.examples li { font-size: .85em; margin: .3em 0; } .lab { font-size: .78em; ba
 .motif .name { font-weight: 700; } .motif .meta { font-size: .78em; color: #666; }
 .kindof { font-size: .78em; color: #5a3fc0; } .kinds { font-size: .78em; color: #5a3fc0; }
 #choose button { font-size: .95em; padding: 5px 12px; } #choose button.add { background: #c8f7c5; font-weight: 700; }
+.motif .note { font-size: .8em; font-style: italic; color: #444; margin: 2px 0; }
 .donebtn { float: right; margin-left: 6px; background: #c8f7c5; } .motif.isdone { opacity: .55; }
 .newpill, .motif .gpill { display: inline-block; white-space: nowrap; }  /* a badge moves down whole, never split */
 .newpill { font-size: .75em; background: #ff4fa3; color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
@@ -467,13 +468,14 @@ function render() {
         ${e.parents.length ? `<div class="kindof">↳ kind of ${e.parents.map((p) => `🧩 ${esc((data.entries.find((x) => x.id === p) || {}).name || p)} <button class="small" data-unparent="${p}" title="no longer a kind of it">✗</button>`).join(' ')}</div>` : ''}
         ${(() => { const kids = data.entries.filter((x) => x.parents.includes(e.id)); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
         ${e.related.length ? `<div class="kinds">↔ related: ${e.related.map((r) => `${esc((data.entries.find((x) => x.id === r) || {}).name || r)} <button class="small" data-unrelate="${r}" title="not related">✗</button>`).join(' ')}</div>` : ''}
+        ${e.note ? `<div class="note">${esc(e.note)}</div>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
         <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
         <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
         <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
-      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="addclaims" title="search all claims and add some to this motif">＋ add claims…</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button>
+      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="addclaims" title="search all claims and add some to this motif">＋ add claims…</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button><button class="small" data-mact="note" title="a plain one-line description of what this motif covers (shown on the site, used in matching)">✎ note</button>
         ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
   });
   // Masonry: each card into the shortest column, in order, so short cards don't leave gaps under them
@@ -511,6 +513,7 @@ document.addEventListener('click', (ev) => {
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
     if (a === 'more') openSimilar(e.id);
+    else if (a === 'note') { const n = prompt('What does this motif cover? One plain line (leave empty to remove):', e.note || ''); if (n !== null) act({action: 'note', id: e.id, note: n}); }
     else if (a === 'mergepick') openMergePick(e.id);
     else if (a === 'addclaims') openAddClaims(e.id);
     else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
@@ -1080,6 +1083,8 @@ def board_action(data: dict):
         mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
     elif act == 'file' and text('claim') and data.get('id') in live:
         mi.file_by_hand({'claim': data['claim'].strip(), 'source': data.get('source', ''), 'ref': data.get('ref', '')}, data['id'])
+    elif act == 'note' and data.get('id') in live and isinstance(data.get('note'), str):
+        mi.set_note(data['id'], data['note'])
     elif act == 'stands_alone' and data.get('id') in live:
         mi.stands_alone(data['id'], data.get('alone', True) is not False)
     elif act == 'correct' and text('claim') and text('text'):

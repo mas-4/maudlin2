@@ -3877,3 +3877,10 @@ h1 {
     padding-left: 0;
     margin: 0 0.25em 0 0;
 }
+
+/* A motif's scope note: one plain line on what it covers, under its name in the BND Motif Index */
+.motif-note {
+    font-style: italic;
+    color: #444;
+    margin: 0 0 0.4em;
+}
