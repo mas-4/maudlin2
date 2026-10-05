@@ -421,6 +421,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 <section class="grid" id="grid"></section>
 </main>
 <div id="toast" role="status"></div>
+<dialog id="mergepick"><button class="small x" data-close="1">✕</button><div id="mergepick-body"></div></dialog>
 <dialog id="choose"><div id="choose-body"></div></dialog>
 <dialog id="similar"><button class="small x" data-close="1">✕</button><div id="similar-body"></div></dialog>
 <dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
@@ -471,7 +472,7 @@ function render() {
         <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
         <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
-      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="rename">✎ rename</button>
+      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button>
         ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
   });
   // Masonry: each card into the shortest column, in order, so short cards don't leave gaps under them
@@ -509,6 +510,7 @@ document.addEventListener('click', (ev) => {
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
     if (a === 'more') openSimilar(e.id);
+    else if (a === 'mergepick') openMergePick(e.id);
     else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
     else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
     else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
@@ -709,6 +711,34 @@ $('#similar').addEventListener('click', async (ev) => {
   if (b.dataset.simadd !== undefined) await act({action: 'also', claim: i.claim, source: i.motifs[0].id, target: simFor});
   else await act({action: 'reject', claim: i.claim, id: simFor});
   drawSimilar();
+});
+
+// '⤵ merge into…': pick the motif this one joins (or, if it isn't the same, mark it a kind of or related)
+let mergeFrom = null;
+function openMergePick(id) { mergeFrom = id; $('#mergepick').showModal(); drawMergePick(''); }
+function drawMergePick(q) {
+  const me = data.entries.find((x) => x.id === mergeFrom), lower = q.trim().toLowerCase();
+  const list = data.entries.filter((e) => e.id !== mergeFrom && (!lower || e.name.toLowerCase().includes(lower)
+    || e.claims.some((c) => c.claim.toLowerCase().includes(lower))))
+    .sort((a, b) => (lower ? b.name.toLowerCase().includes(lower) - a.name.toLowerCase().includes(lower) : 0) || b.claims.length - a.claims.length);
+  $('#mergepick-body').innerHTML = `<h2>Merge 🧩 ${esc(me.name)} into…</h2>
+    <p class="meta">It goes; its ${me.claims.length} claim${me.claims.length === 1 ? '' : 's'} join the motif you pick, which keeps its name.</p>
+    <input type="search" id="mp-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
+    <div class="pick">${list.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
+      <button class="small add" data-mp="merge" data-id="${e.id}">⤵ merge into</button>
+      <button class="small" data-mp="kind" data-id="${e.id}" title="not the same: “${esc(me.name)}” is a kind of it">⊂ kind of</button>
+      <button class="small" data-mp="related" data-id="${e.id}" title="not the same: near each other">↔ related</button></div>`).join('') || '<p>No motif matches.</p>'}</div>`;
+  const input = $('#mp-q'); input.focus(); input.setSelectionRange(q.length, q.length);
+  input.addEventListener('input', () => drawMergePick(input.value));
+}
+$('#mergepick').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (ev.target === $('#mergepick') || (b && b.dataset.close)) { $('#mergepick').close(); return; }
+  if (!b || !b.dataset.mp) return;
+  $('#mergepick').close();
+  if (b.dataset.mp === 'merge') act({action: 'merge', source: mergeFrom, target: b.dataset.id});
+  else if (b.dataset.mp === 'kind') act({action: 'parent', id: mergeFrom, parent: b.dataset.id});
+  else act({action: 'relate', a: mergeFrom, b: b.dataset.id});
 });
 
 // A motif dropped on another: merge them, or make it a kind of the other
