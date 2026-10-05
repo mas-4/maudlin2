@@ -360,7 +360,9 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .group.on { background: #ffe9a8; } .group .n { color: #555; font-size: .85em; float: right; }
 .group.target, .motif.target { outline: 3px dashed #ff4fa3; outline-offset: 2px; }
 .group.new { border-style: dashed; color: #555; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; align-items: start; }
+.grid { display: flex; gap: 14px; align-items: flex-start; } .grid .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+details.detail { background: #f4f1e6; border-radius: 10px; padding: 6px 10px; margin-bottom: 8px; } details.detail summary { cursor: pointer; font-weight: 600; }
+ul.examples li { font-size: .85em; margin: .3em 0; } .lab { font-size: .78em; background: #e6e0ff; border-radius: 999px; padding: 0 7px; margin-right: 4px; }
 .motif { border: 2px solid #1f1f2e; border-radius: 12px; background: #fff; margin: 0;
   box-shadow: 4px 4px 0 #00c2a8; }
 .motif.one { box-shadow: 3px 3px 0 #ddd; }
@@ -453,7 +455,7 @@ function render() {
     few: (a, b) => a.claims.length - b.claims.length || newest(a, b),
     size: (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id)}[sort]);
   const gname = Object.fromEntries(data.groups.map((g) => [g.id, g.name]));
-  $('#grid').innerHTML = list.map((e) => {
+  const html = list.map((e) => {
     // New claims (since the motif was marked done) first, so they're never hidden behind 'show all'
     const ordered = [...e.claims.filter((c) => c.new), ...e.claims.filter((c) => !c.new)];
     const shown = expanded.has(e.id) ? ordered : ordered.slice(0, Math.max(6, e.claims.filter((c) => c.new).length));
@@ -471,7 +473,17 @@ function render() {
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
       <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="rename">✎ rename</button>
         ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
-  }).join('') || '<p>No motifs here.</p>';
+  });
+  // Masonry: each card into the shortest column, in order, so short cards don't leave gaps under them
+  const grid = $('#grid');
+  if (!html.length) { grid.innerHTML = '<p>No motifs here.</p>'; return; }
+  const n = Math.max(1, Math.floor(grid.clientWidth / 300));
+  grid.innerHTML = '<div class="col"></div>'.repeat(n);
+  const cols = [...grid.children], tmp = document.createElement('div');
+  for (const h of html) {
+    tmp.innerHTML = h;
+    cols.reduce((a, b) => (b.offsetHeight < a.offsetHeight ? b : a)).appendChild(tmp.firstElementChild);
+  }
 }
 document.addEventListener('click', (ev) => {
   const g = ev.target.closest('.group'), m = ev.target.closest('.motif'), b = ev.target.closest('button');
@@ -505,8 +517,28 @@ document.addEventListener('click', (ev) => {
   }
 });
 // Click a claim: its motifs now, and every other motif to move it to or file it under as well
-let pick = null;
-function openPicker(claim, from) { pick = {claim, from}; $('#picker').showModal(); drawPicker(''); }
+let pick = null, detailHtml = '', detailOpen = true;  // open until closed: the story is what you came for
+function openPicker(claim, from) { pick = {claim, from}; detailHtml = ''; $('#picker').showModal(); drawPicker(''); loadDetail(claim); }
+async function loadDetail(claim) {
+  const d = await (await fetch('/claim-detail.json?claim=' + encodeURIComponent(claim))).json();
+  const lab = d.label || {};
+  const labels = ['genre', 'rumor_class', 'family', 'villain', 'victim', 'hero'].filter((k) => lab[k] && lab[k] !== 'none')
+    .map((k) => `<span class="lab">${k.replace('_', ' ')}: ${esc(lab[k])}</span>`).join(' ');
+  if (d.kind === 'fact-check') {
+    detailHtml = `<p><b>${esc(d.title || 'Fact-check')}</b> <span class="meta">${esc(d.source)} · ${esc(d.published || '')}</span>
+      ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">read it ↗</a>` : ''}</p>
+      ${d.summary ? `<p class="meta">${esc(d.summary)}</p>` : ''}`;
+  } else if (d.kind === 'folklore') {
+    detailHtml = `<p class="meta">Told by ${d.people} people in ${d.posts} posts (report of ${esc(d.made || '')}). Some of them:</p>
+      <ul class="examples">${(d.examples || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      ${(d.articles || []).length ? `<p class="meta">Sharing: ${(d.articles || []).map((a) => a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title || a.url)}</a>` : esc(a.title || '')).join(' · ')}</p>` : ''}`;
+  } else {
+    detailHtml = `<p class="meta">${esc(d.kind || '')}: no details kept for it.</p>`;
+  }
+  if (labels) detailHtml += `<p>${labels}</p>`;
+  if ((d.model_words || []).length) detailHtml += `<p class="meta">The model's words: “${d.model_words.map(esc).join('”, “')}”</p>`;
+  if (pick && pick.claim === claim) { const el = $('#detail-body'); if (el) el.innerHTML = detailHtml; }
+}
 function drawPicker(q) {
   const {claim, from} = pick, lower = q.trim().toLowerCase();
   const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim));
@@ -521,6 +553,8 @@ function drawPicker(q) {
     <button class="small add" data-alsonew="1" title="make a new motif with this name and file the claim under it too">+ add as a new motif</button>
     <button class="small" data-movenew="1" title="make it and put it in place of “${fromName}”">replace “${fromName}”</button></div>` : '';
   $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
+    <details class="detail" ${detailOpen ? 'open' : ''}><summary>details: what's the story?</summary><div id="detail-body">${detailHtml || 'Loading…'}</div>
+      <p><button class="small" data-correct="1">✎ correct the summary</button></p></details>
     <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take this motif off this claim">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
     <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
     <div class="pick">${newRow}${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
@@ -531,10 +565,19 @@ function drawPicker(q) {
   input.addEventListener('keydown', (ev) => { const add = $('.pick [data-alsonew]');
     if (ev.key === 'Enter' && add && !$('.pick [data-also]')) { ev.preventDefault(); add.click(); } });
 }
+$('#picker').addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('detail')) detailOpen = ev.target.open; }, true);
 $('#picker').addEventListener('click', (ev) => {
   const b = ev.target.closest('button'), {claim, from} = pick || {};
   if (ev.target === $('#picker') || (b && b.dataset.close)) { $('#picker').close(); return; }
   if (!b) return;
+  if (b.dataset.correct) {
+    const t = prompt('Correct the summary (what the story actually claims):', claim);
+    if (t && t.trim() && t.trim() !== claim) {
+      const from = pick.from;  // reopened on the corrected words, details and all
+      act({action: 'correct', claim, text: t.trim()}).then(() => openPicker(t.trim().replace(/\s+/g, ' '), from));
+    }
+    return;
+  }
   const name = ($('#pick-q') || {}).value || '';
   // The picker stays open after each change, redrawn, so several can be made in a row (it closed after one)
   const done = async (body) => {
@@ -696,6 +739,7 @@ function toast(text, buttons) {
 $('#reset-done').addEventListener('click', () => { if (confirm('Bring back every motif marked done?')) act({action: 'reset_done'}); });
 $('#add-motif').addEventListener('click', () => { const n = prompt('Name the new motif (claims can be moved into it)'); if (n) act({action: 'add', name: n}); });
 ['#q', '#sort', '#multi', '#showdone'].forEach((s) => $(s).addEventListener('input', render));
+let resizeTimer; addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
 fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
 </script></body></html>"""
 
@@ -796,6 +840,8 @@ def describe(data: dict, before: dict) -> str:
     parts += [f'→ “{name(k)}”' for k in ('target', 'b', 'parent') if data.get(k)]
     if data.get('name'):
         parts.append(f'as “{data["name"]}”')
+    if data.get('text'):
+        parts.append(f'to “{data["text"][:80]}”')
     return ' '.join(parts)[:160]
 
 
@@ -870,6 +916,38 @@ UNDO_SNIPPET = """<script>
 UNDO_BUTTON = ' <button id="undo-btn" disabled title="undo your last change (Ctrl+Z)">↶ undo</button> <span id="undo-what" style="font-size:.8em;color:#555"></span></nav>'
 
 
+def claim_detail(claim: str) -> dict:
+    """What's behind a claim for the motif board: the fact-check it came from (headline, summary, link, the model's
+    labels) or the folklore group (how many told it, a few of their posts, linked articles, labels). Local only."""
+    from app.analysis import factchecks, motif_index as mi
+    from app.site.page_folklore import latest_report
+    index = mi.load()
+    words = mi.originals(claim, index)
+    filed = next((c for e in mi.live(index) for c in e['claims'] if c['claim'] == claim), {})
+    out = {'claim': claim, 'source': filed.get('source', ''), 'model_words': sorted(words - {claim})}
+    if filed.get('source') and filed['source'] != 'narrative':
+        url = filed.get('ref', '')
+        item = next((i for i in factchecks._items(90) if i.get('url') == url), {})
+        try:
+            with open(os.path.join(Config.data, 'factcheck_labels.json')) as f:
+                label = json.load(f).get(url, {})
+        except (OSError, ValueError):
+            label = {}
+        out.update(kind='fact-check', url=url, title=item.get('title'), summary=item.get('summary'),
+                   published=(item.get('published') or '')[:10], label=label)
+        return out
+    report = latest_report() or {}
+    group = next((g for g in report.get('found', []) if (g.get('label') or {}).get('narrative') in words), None)
+    if group:
+        out.update(kind='folklore', made=report.get('made'), people=group.get('authors'), posts=group.get('posts'),
+                   examples=[str(x)[:400] for x in (group.get('examples') or [])[:6]],
+                   articles=[a if isinstance(a, dict) else {'title': str(a)} for a in (group.get('articles') or [])[:5]],
+                   label=group.get('label') or {})
+    else:
+        out['kind'] = 'folklore (not in the latest report)'
+    return out
+
+
 def board_action(data: dict):
     """One change from the motif board, applied to the index at once (under its lock)."""
     from app.analysis import motif_index as mi
@@ -891,6 +969,8 @@ def board_action(data: dict):
         mi.relate(data['a'], data['b'], act == 'relate')
     elif act == 'parent' and data.get('id') in live and data.get('parent') in live:
         mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
+    elif act == 'correct' and text('claim') and text('text'):
+        mi.correct_claim(data['claim'], data['text'])
     elif act == 'reject' and text('claim') and data.get('id') in live:
         mi.reject(data['claim'], data['id'])
     elif act == 'done' and data.get('id') in live:
@@ -1037,6 +1117,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/undo.json'):
             found = last_undo()
             return self.send_json({'what': found[1]['what'] if found else None})
+        if self.path.startswith('/claim-detail.json'):
+            from urllib.parse import urlparse, parse_qs
+            return self.send_json(claim_detail(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))
         if self.path.startswith('/motif-similar.json'):
             from urllib.parse import urlparse, parse_qs
             from app.analysis import motif_index

@@ -213,3 +213,20 @@ def test_two_motifs_can_be_related_without_being_one(monkeypatch, tmp_path):
     assert {e['id']: e['related'] for e in mi.board()['entries']} == {'M001': ['M003'], 'M003': ['M001']}
     mi.relate('M001', 'M003', False)
     assert all(not e['related'] for e in mi.board()['entries'])
+
+
+def test_a_corrected_summary_replaces_the_models_everywhere(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    old = 'A video shows a large group of Muslims chanting in Dublin in September 2026.'
+    new = 'Old footage of German football hooligans is passed off as Muslims taking over Dublin.'
+    mi.save({'next': 3, 'claims': {mi.key(old): ['M001', 'M002']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Misattributed video', 'claims': [{'claim': old, 'source': 'Lead Stories'}],
+                 'done': [mi.key(old)]},
+        'M002': {'id': 'M002', 'name': 'x', 'claims': [{'claim': old, 'source': 'Lead Stories'}]}}})
+    mi.correct_claim(old, new)
+    index = mi.load()
+    assert [c['claim'] for e in mi.live(index) for c in e['claims']] == [new, new]
+    assert index['claims'] == {mi.key(new): ['M001', 'M002']} and mi.is_done(index['entries']['M001']) == 'done'
+    assert mi.corrected(old, index) == new and mi.originals(new, index) == {old, new}
+    mi.correct_claim(new, 'Hooligan video relabeled as Muslims in Dublin')  # corrected again: the model's words follow
+    assert mi.corrected(old) == 'Hooligan video relabeled as Muslims in Dublin'

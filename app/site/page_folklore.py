@@ -124,7 +124,7 @@ class FolklorePage:
                     fewer += 1
                 elif label.get('retold'):
                     cards.append({
-                        'claim': label.get('narrative') or '', 'people': g['authors'], 'posts': g['posts'],
+                        'claim': motif_index.corrected(label.get('narrative') or '', index), 'people': g['authors'], 'posts': g['posts'],
                         'variety': g['variety'], 'variety_pct': round(100 * g['variety']),
                         'genre': label.get('genre', ''), 'genre_emoji': GENRE_EMOJI.get(label.get('genre'), '🧶'),
                         'chapter': '' if label.get('motif_chapter') in (None, '', 'none') else label['motif_chapter'],
@@ -142,7 +142,7 @@ class FolklorePage:
                         'family': label.get('family') if label.get('family') != 'none' else None,
                         'story': g.get('story'), 'articles': g.get('articles') or [],
                         'factchecks': g.get('factchecks') or [],
-                        'motifs': motif_cards(index, label.get('narrative') or ''),
+                        'motifs': motif_cards(index, motif_index.corrected(label.get('narrative') or '', index)),
                         'examples': g['examples'][:4] if Config.debug else [],
                     })
                 elif g['kind'] == 'copypasta':

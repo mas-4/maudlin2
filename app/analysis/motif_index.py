@@ -287,16 +287,17 @@ def nightly(budget: float | None = None):
     from app.site.page_folklore import NOT_STORIES, withheld
     report = latest_report() or {}
     pulled = withheld()
+    index = load()  # for corrected summaries
     for g in report.get('found', []):
         lab = g.get('label') or {}
         if lab.get('retold') and lab.get('narrative') and lab['narrative'] not in pulled and fits(lab):
-            claims.append({'claim': lab['narrative'], 'source': 'narrative', 'ref': report.get('made', ''),
+            claims.append({'claim': corrected(lab['narrative'], index), 'source': 'narrative', 'ref': report.get('made', ''),
                            'side': g.get('shared_side'), 'date': (report.get('made') or '')[:10]})
     labels = factchecks.load_labels()
     for item in factchecks._items(factchecks.LABEL_DAYS):
         lab = labels.get(item['url']) or {}
         if lab.get('claim') and lab.get('genre') not in NOT_STORIES:  # a roundup or explainer checks no rumor
-            claims.append({'claim': lab['claim'], 'source': item['source'], 'ref': item['url'],
+            claims.append({'claim': corrected(lab['claim'], index), 'source': item['source'], 'ref': item['url'],
                            'date': item['published'][:10]})
     return file_claims(claims, budget=budget)
 
@@ -690,3 +691,54 @@ def relate(a: str, b: str, related: bool = True):
     else:
         index['related'] = [p for p in links if p != pair]
     save(index)
+
+
+# Corrected summaries: a person rewrites the model's one-line summary of a claim on the motif board. Kept in the index
+# ('corrections': the model's wording -> the person's), so undo covers them, and applied wherever claims are read
+# (the nightly filing, the Folklore and Rumors pages), so a corrected claim is never filed again in the old words.
+
+def corrected(text: str, index: dict | None = None) -> str:
+    fixes = (index if index is not None else load()).get('corrections', {})
+    seen = set()
+    while text in fixes and text not in seen:
+        seen.add(text)
+        text = fixes[text]
+    return text
+
+
+@exclusive
+def correct_claim(old: str, new: str):
+    new = ' '.join(new.split())
+    index = load()
+    ko, kn = key(old), key(new)
+    if not new or new == old:
+        return
+    if ko not in index['claims']:
+        raise ValueError('no such claim in the index')
+    for e in index['entries'].values():
+        for c in e['claims']:
+            if key(c['claim']) == ko:
+                c['claim'] = new
+        if ko in e.get('not_claims', []):
+            e['not_claims'] = [kn if k == ko else k for k in e['not_claims']]
+        if ko in e.get('done', []):
+            e['done'] = sorted({kn if k == ko else k for k in e['done']})
+    ids = index['claims'].pop(ko)
+    index['claims'][kn] = list(dict.fromkeys(index['claims'].get(kn, []) + ids))
+    fixes = index.setdefault('corrections', {})
+    for original, current in list(fixes.items()):  # an earlier correction of this claim now leads to the new words
+        if current == old:
+            fixes[original] = new
+    fixes[old] = new
+    save(index)
+
+
+def originals(text: str, index: dict) -> set[str]:
+    """Every wording that leads to `text` (itself included): to find a corrected claim in the reports and labels"""
+    fixes = index.get('corrections', {})
+    found, grew = {text}, True
+    while grew:
+        more = {o for o, c in fixes.items() if c in found} - found
+        grew = bool(more)
+        found |= more
+    return found

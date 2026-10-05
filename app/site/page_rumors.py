@@ -35,7 +35,8 @@ class RumorsPage:
             label = labels.get(item['url'])
             if not label or not label.get('claim'):
                 continue  # not labeled yet, or a roundup that checks no single claim
-            cards.append({**item, 'claim': label['claim'], 'genre': label.get('genre', ''),
+            claim = motif_index.corrected(label['claim'], index)  # a person's correction of the summary, if any
+            cards.append({**item, 'claim': claim, 'genre': label.get('genre', ''),
                           'genre_emoji': GENRE_EMOJI.get(label.get('genre'), '🧶'),
                           'rumor_class': label.get('rumor_class') if label.get('rumor_class') != 'other' else None,
                           'conspiracy': (label.get('conspiracy') if label.get('conspiracy') != 'not a conspiracy'
@@ -43,7 +44,7 @@ class RumorsPage:
                           'family': label.get('family') if label.get('family') != 'none' else None,
                           'date': item['published'][:10],
                           'seen': seen.get(item['url']) if looked else None,
-                          'motifs': motif_cards(index, label['claim'])})
+                          'motifs': motif_cards(index, claim)})
         count = lambda key: Counter(c[key] for c in cards if c[key]).most_common()
         self.template.write({
             'preview': Config.debug,  # the conspiracy scope shows only in previews until it's reliable (Oct 4)
