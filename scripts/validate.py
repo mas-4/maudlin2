@@ -373,7 +373,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 <h1>🧩 Motif board</h1><span id="stats"></span>
 <div class="tools">
   <input type="search" id="q" placeholder="search motifs and claims">
-  <select id="sort"><option value="size">most claims</option><option value="new">newest</option><option value="az">A–Z</option></select>
+  <select id="sort"><option value="size">most claims</option><option value="few">fewest claims</option><option value="new">newest</option><option value="old">oldest</option><option value="az">A–Z</option></select>
   <label><input type="checkbox" id="multi"> only motifs with 2+ claims</label>
   <label><input type="checkbox" id="showdone"> show done</label>
   <button id="reset-done" title="Bring back every motif marked done">↺ reset done</button>
@@ -413,8 +413,10 @@ function render() {
     .filter((e) => !multi || e.claims.length > 1)
     .filter((e) => showDone || e.done !== 'done')
     .filter((e) => !q || (e.name + ' ' + e.claims.map((c) => c.claim).join(' ')).toLowerCase().includes(q));
-  list.sort(sort === 'az' ? (a, b) => a.name.localeCompare(b.name) : sort === 'new' ? (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id)
-    : (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id));
+  const newest = (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id);
+  list.sort({az: (a, b) => a.name.localeCompare(b.name), new: newest, old: (a, b) => newest(b, a),
+    few: (a, b) => a.claims.length - b.claims.length || newest(a, b),
+    size: (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id)}[sort]);
   const gname = Object.fromEntries(data.groups.map((g) => [g.id, g.name]));
   $('#grid').innerHTML = list.map((e) => {
     // New claims (since the motif was marked done) first, so they're never hidden behind 'show all'
