@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Empty motifs{% endblock %}
+{% block head %}<style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 760px; padding: 16px; }
+nav a { margin-right: 1em; } .row { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px dashed #ccc; }
+.row .nm { flex: 1; } .meta { color: #666; font-size: .85em; }
+button { font: inherit; font-size: .9em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+</style>{% endblock %}
+{% block body %}
+<h1>Empty motifs</h1>
+<p>Motifs with no claims: ones you made and never filled, or emptied by moving their claims out. Delete the ones you don't
+want. Deleting one changes nothing else.</p>
+<p><label><input type="checkbox" id="all"> select all</label> <button id="del-sel">🗑 delete selected</button></p>
+<div id="list"></div>
+<script>
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+let data = {entries: []};
+// A motif with kinds under it can be empty on purpose (a 'Blame' over its kinds)
+const empty = () => data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parents.includes(e.id)));
+function render() {
+  const list = empty();
+  document.getElementById('list').innerHTML = list.map((e) => `<div class="row"><input type="checkbox" data-id="${e.id}">
+    <span class="nm">🧩 ${esc(e.name)} <span class="meta">${e.id} · since ${esc(e.first_seen)}${e.curated ? ' · made by hand' : ''}</span></span>
+    <button data-del="${e.id}">🗑 delete</button></div>`).join('') || '<p>No empty motifs. 🎉</p>';
+}
+async function del(ids) {
+  for (const id of ids) {
+    const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'delete', id})});
+    if (r.ok) data = await r.json(); else { alert('Failed: ' + await r.text()); break; }
+  }
+  render();
+}
+document.addEventListener('click', (ev) => { const b = ev.target.closest('[data-del]'); if (b) del([b.dataset.del]); });
+document.getElementById('all').addEventListener('change', (ev) => document.querySelectorAll('#list input').forEach((c) => c.checked = ev.target.checked));
+document.getElementById('del-sel').addEventListener('click', () => {
+  const ids = [...document.querySelectorAll('#list input:checked')].map((c) => c.dataset.id);
+  if (ids.length && confirm(`Delete ${ids.length} empty motif${ids.length === 1 ? '' : 's'}?`)) del(ids);
+});
+fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
+</script>
+{% endblock %}

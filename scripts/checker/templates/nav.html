@@ -1,0 +1,3 @@
+{# The nav every checker page shares: `here` in bold, the undo button on pages that change the index #}
+{% macro navbar(nav, here, undo) %}<nav>{% for href, name in nav %}{% if href == here %}<b>{{ name }}</b>{% else %}<a href="{{ href }}">{{ name }}</a>{% endif %} {% endfor %}
+{%- if undo %} <button id="undo-btn" disabled title="undo your last change (Ctrl+Z)">↶ undo</button> <span id="undo-what" style="font-size:.8em;color:#555"></span>{% endif %}</nav>{% endmacro %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Motif organizer{% endblock %}
+{% block head %}<style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }
+.card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 10px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #ffc400; }
+.pair { box-shadow: 4px 4px 0 #ff4fa3; } .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.side { border: 1.5px dashed #ccc; border-radius: 10px; padding: 6px 10px; } .side-acts { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 6px; }
+.both { border-top: 1px dashed #ccc; padding-top: 6px; } .bothclaims { background: #f4f1e6; border-radius: 8px; padding: 6px 6px 6px 24px; }
+.outlet, .said { font-size: .85em; color: #555; }
+ul { margin: .4em 0; padding-left: 1.2em; } li { margin: .2em 0; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; } input { font: inherit; padding: 3px 6px; }
+button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+button.small { font-size: .75em; padding: 1px 7px; } h2 { margin-top: 1.4em; }
+@media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+</style>{% endblock %}
+{% macro plural(n, word) %}{{ n }} {{ word }}{{ '' if n == 1 else 's' }}{% endmacro %}
+{% macro source(c) %}{{ c.source if c.source != 'narrative' else 'people online' }}{% endmacro %}
+{% macro texts(items, n) %}{% for c in items %}<li>{{ c[:n] }}</li>{% else %}<li class="said">no others</li>{% endfor %}{% endmacro %}
+{# One motif of a pair, with what this motif can do about the other, worded from its side #}
+{% macro side(me, other, claims) %}{% set m, o = by_id[me], by_id[other] %}<div class="side"><b>🧩 {{ m.name }}</b> <span class="said">{{ me }} · {{ plural(m.claims|length, 'claim') }}</span>
+      <button class="small" data-act="rename_prompt" data-id="{{ me }}" data-name="{{ m.name }}" title="rename">✎</button>
+      <ul>{{ claims }}</ul>
+      <div class="side-acts"><span class="said">This one:</span>
+        <button data-act="merge" data-source="{{ me }}" data-target="{{ other }}" title="{{ m.name }} goes; its claims join {{ o.name }}">⤵ merge into “{{ o.name }}”</button>
+        <button data-act="kind_of" data-child="{{ me }}" data-parent="{{ other }}">⊂ is a kind of “{{ o.name }}”</button></div></div>{% endmacro %}
+{% macro pair_card(a, b, header, claims_a, claims_b, shared='') %}
+<section class="card pair">
+  <p class="outlet">{{ header }}</p>
+  {{ shared }}
+  <div class="two">{{ side(a, b, claims_a) }}
+    {{ side(b, a, claims_b) }}</div>
+  <div class="row both"><span class="said">The two:</span>
+    <button data-act="related" data-a="{{ a }}" data-b="{{ b }}" title="near each other, but different stories">↔ related</button>
+    <button data-act="not_same" data-a="{{ a }}" data-b="{{ b }}">✗ not the same</button></div>
+</section>{% endmacro %}
+{% macro first_claims(e) %}{% for c in e.claims[:3] %}<li>{{ c.claim[:140] }} <span class="said">{{ source(c) }}</span></li>{% endfor %}{% endmacro %}
+{% block body %}
+<h1>Motif organizer</h1>
+<p>Our own motif index: {{ entries|length }} motifs from {{ claim_count }} claims. Merge motifs that are one,
+mark one a kind of another, or two as related (near each other, different stories); rename, delete what isn't a motif,
+or move a claim that landed in the wrong place. Changes are saved at once and go live with the next site build.</p>
+<h2>Filed together</h2>
+<p class="said">Motifs the model filed on two or more of the same claims: judge them by what they hold, not their names.</p>
+{% for p in shared %}{% set both %}<p class="said">Both hold:</p><ul class="bothclaims">{{ texts(p.shared, 160) }}</ul>{% endset %}
+{{ pair_card(p.a, p.b, 'filed together on ' ~ plural(p.shared|length, 'claim'), texts(p.only_a, 140), texts(p.only_b, 140), both) }}
+{%- else %}<p>None right now.</p>{% endfor %}
+<h2>Similar names {% if note %}(suggestions unavailable: {{ note }}){% endif %}</h2>
+{% for a, b, sim in pairs %}{{ pair_card(a, b, 'similar names (%.2f)'|format(sim), first_claims(by_id[a]), first_claims(by_id[b])) }}
+{%- else %}<p>No suggestions right now.</p>{% endfor %}
+<h2>Add a motif</h2>
+<div class="row"><input id="new-name" size="60" placeholder="a reusable framing, e.g. the ruler is / isn't fit to lead"><button data-act="add">+ add</button></div>
+<h2>All motifs</h2>
+<p><input type="search" id="search" placeholder="search motifs and claims" size="40"></p>
+{% for e in entries %}
+<section class="card entry" id="{{ e.id }}" data-text="{{ (e.name ~ ' ' ~ e.claims|map(attribute='claim')|join(' '))|lower }}">
+  <p class="outlet">{{ e.id }} · {{ plural(e.claims|length, 'claim') }} · first seen {{ e.first_seen or '' }}{{ ' · ✎ curated' if e.curated }}</p>
+  <div class="row"><input class="name" value="{{ e.name }}" size="60"><button data-act="rename" data-id="{{ e.id }}">rename</button></div>
+  <ul>{% for c in e.claims %}<li>{{ c.claim[:160] }} <span class="said">{{ source(c) }}</span> <button class="small" data-act="move" data-source="{{ e.id }}" data-claim="{{ c.claim }}">move to…</button></li>{% endfor %}</ul>
+  <div class="row"><button data-act="merge_into" data-source="{{ e.id }}">⤵ merge into…</button>
+    <button data-act="delete" data-id="{{ e.id }}">🗑 delete</button></div>
+</section>
+{%- endfor %}
+<script>
+const post = async (body) => {
+  const r = await fetch('/motif-index', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return; }
+  const y = scrollY; location.reload(); setTimeout(() => scrollTo(0, y), 50);
+};
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-act]');
+  if (!b) return;
+  const d = b.dataset;
+  if (d.act === 'rename') post({action: 'rename', id: d.id, name: b.previousElementSibling.value});
+  else if (d.act === 'rename_prompt') { const n = prompt('Rename ' + d.id, d.name); if (n && n.trim() && n.trim() !== d.name) post({action: 'rename', id: d.id, name: n.trim()}); }
+  else if (d.act === 'merge') post({action: 'merge', source: d.source, target: d.target});
+  else if (d.act === 'not_same') post({action: 'not_same', a: d.a, b: d.b});
+  else if (d.act === 'kind_of') post({action: 'kind_of', child: d.child, parent: d.parent});
+  else if (d.act === 'related') post({action: 'related', a: d.a, b: d.b});
+  else if (d.act === 'merge_into') { const t = prompt('Merge ' + d.source + ' into which motif? (its number, e.g. M012)'); if (t) post({action: 'merge', source: d.source, target: t.trim().toUpperCase()}); }
+  else if (d.act === 'delete') { if (confirm('Delete ' + d.id + '? Its claims will not be filed under it again.')) post({action: 'delete', id: d.id}); }
+  else if (d.act === 'move') { const t = prompt('Move this claim to which motif? (its number, or "new")'); if (t) post({action: 'move', claim: d.claim, source: d.source, target: t.trim() === 'new' ? 'new' : t.trim().toUpperCase()}); }
+  else if (d.act === 'add') { const n = document.getElementById('new-name').value.trim(); if (n) post({action: 'add', name: n}); }
+});
+document.getElementById('search').addEventListener('input', (ev) => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('.entry').forEach((c) => { c.hidden = q && !c.dataset.text.includes(q); });
+});
+</script>
+{% endblock %}

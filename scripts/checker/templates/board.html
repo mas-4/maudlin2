@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+{% from "nav.html" import navbar %}
+{% block title %}Motif board{% endblock %}
+{% block head %}<link rel="stylesheet" href="/checker/static/drag.css"><script src="/checker/static/drag.js"></script>
+<style>
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0; }
+header { position: sticky; top: 0; z-index: 5; background: #fffdf6; border-bottom: 2px solid #1f1f2e; padding: 8px 14px; }
+nav a { margin-right: 1em; } h1 { font-size: 1.2em; margin: .3em 0; display: inline-block; margin-right: 1em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+input, select, button { font: inherit; font-size: .9em; }
+input[type=search] { padding: 4px 10px; border: 2px solid #1f1f2e; border-radius: 999px; min-width: 16em; }
+button { border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+button.small { font-size: .75em; padding: 0 6px; }
+main { display: grid; grid-template-columns: 230px 1fr; gap: 14px; padding: 14px; align-items: start; }
+aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow: auto; }
+.group { border: 2px solid #1f1f2e; border-radius: 10px; background: #fff; padding: 6px 10px; margin-bottom: 8px; cursor: pointer; }
+.group.on { background: #ffe9a8; } .group .n { color: #555; font-size: .85em; float: right; }
+.group.new { border-style: dashed; color: #555; }
+.grid { display: flex; gap: 14px; align-items: flex-start; } .grid .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+details.detail { background: #f4f1e6; border-radius: 10px; padding: 6px 10px; margin-bottom: 8px; } details.detail summary { cursor: pointer; font-weight: 600; }
+ul.examples li { font-size: .85em; margin: .3em 0; } .lab { font-size: .78em; background: #e6e0ff; border-radius: 999px; padding: 0 7px; margin-right: 4px; }
+.motif { border: 2px solid #1f1f2e; border-radius: 12px; background: #fff; margin: 0;
+  box-shadow: 4px 4px 0 #00c2a8; }
+.motif.one { box-shadow: 3px 3px 0 #ddd; }
+.motif .head { padding: 7px 10px 4px; cursor: grab; border-bottom: 1px dashed #ccc; }
+.motif .name { font-weight: 700; } .motif .meta { font-size: .78em; color: #666; }
+.kindof { font-size: .78em; color: #5a3fc0; } .kinds { font-size: .78em; color: #5a3fc0; }
+#choose button { font-size: .95em; padding: 5px 12px; } #choose button.add { background: #c8f7c5; font-weight: 700; }
+.motif .note { font-size: .8em; font-style: italic; color: #444; margin: 2px 0; }
+.donebtn { float: right; margin-left: 6px; background: #c8f7c5; } .motif.isdone { opacity: .55; }
+.newpill, .motif .gpill { display: inline-block; white-space: nowrap; }  /* a badge moves down whole, never split */
+.newpill { font-size: .75em; background: #ff4fa3; color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+.motif .gpill { font-size: .75em; background: #ffe9a8; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+.motif ul { list-style: none; margin: 0; padding: 4px 6px 6px; }
+.motif li { font-size: .85em; padding: 3px 4px; border-radius: 6px; cursor: grab; display: flex; gap: 4px; align-items: baseline; }
+.motif li:hover { background: #f4f1e6; }
+.motif li.newclaim { background: #ffe0ef; border-left: 4px solid #ff4fa3; } .motif li .newtag { color: #c2185b; font-weight: 700; font-size: .8em; }
+.motif li .txt { flex: 1; } .motif li .src { color: #777; font-size: .85em; white-space: nowrap; }
+.motif li .ok { color: #00a37a; } .motif .acts { padding: 0 10px 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+.more { color: #555; cursor: pointer; font-size: .8em; padding: 0 10px 6px; }
+.motif li .txt { cursor: pointer; } .motif li .txt:hover { text-decoration: underline dotted; }
+.motif li, .motif .head { user-select: none; touch-action: manipulation; }
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+dialog { border: 2px solid #1f1f2e; border-radius: 14px; box-shadow: 6px 6px 0 #ffc400; width: min(640px, 94vw); max-height: 86vh;
+  padding: 12px 16px; background: #fffdf6; color: #1f1f2e; } dialog::backdrop { background: rgba(31, 31, 46, .35); }
+dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: absolute; right: 10px; top: 8px; }
+.now { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; } .now span { background: #e6f7f2; border: 1.5px solid #1f1f2e;
+  border-radius: 999px; padding: 1px 8px; font-size: .85em; }
+.pick { max-height: 46vh; overflow: auto; border-top: 1px dashed #ccc; margin-top: 6px; }
+.pick div { display: flex; gap: 6px; align-items: center; padding: 4px 2px; border-bottom: 1px dashed #eee; }
+.pick div .nm { flex: 1; } .pick div .ct { color: #777; font-size: .8em; }
+.pick button.add, .acts button.add { background: #c8f7c5; font-weight: 700; }
+.pick div.newfromq { background: #fff3c4; border-radius: 8px; }
+.pick .simrow .meta { display: block; color: #666; font-size: .8em; } .meta { color: #666; font-size: .85em; font-weight: normal; }
+@media (max-width: 700px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
+</style>{% endblock %}
+{% block page %}<header>
+{{ navbar(nav, here, undo) }}<h1>🧩 Motif board</h1><span id="stats"></span> <a href="/motif-empty" id="empty-link"></a> · <a href="/motif-singles">single motifs</a>
+<div class="tools">
+  <input type="search" id="q" placeholder="search motifs and claims">
+  <select id="sort"><option value="size">most claims</option><option value="few">fewest claims</option><option value="new">newest</option><option value="old">oldest</option><option value="az">A–Z</option></select>
+  <label><input type="checkbox" id="multi"> only motifs with 2+ claims</label>
+  <label><input type="checkbox" id="showdone"> show done</label>
+  <button id="reset-done" title="Bring back every motif marked done">↺ reset done</button>
+  <button id="add-motif">+ motif</button>
+</div>
+</header>
+<main>
+<aside>
+  <p class="meta" style="font-size:.8em;color:#555;margin:0 0 6px">Drag a claim onto a motif to add it there, a motif onto another to merge them, make it a kind of the other or mark them related, or onto a group to file it. Click a claim for all its motifs. Tap a group to show only its motifs.</p>
+  <div id="groups"></div>
+</aside>
+<section class="grid" id="grid"></section>
+</main>
+<dialog id="addclaims"><button class="small x" data-close="1">✕</button><div id="addclaims-body"></div></dialog>
+<dialog id="mergepick"><button class="small x" data-close="1">✕</button><div id="mergepick-body"></div></dialog>
+<dialog id="similar"><button class="small x" data-close="1">✕</button><div id="similar-body"></div></dialog>
+<dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
+
+<script>
+let data = {groups: [], entries: []}, filter = 'all';
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const $ = (s) => document.querySelector(s);
+const expanded = new Set();
+async function act(body) {
+  const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return; }
+  data = await r.json(); render(); if (window.refreshUndo) refreshUndo();
+}
+function render() {
+  const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
+  const count = (g) => data.entries.filter((e) => (g === null ? !e.group : e.group === g)).length;
+  const nEmpty = data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parents.includes(e.id))).length;
+  $('#empty-link').textContent = nEmpty ? `· ${nEmpty} empty motif${nEmpty === 1 ? '' : 's'}` : '';
+  const showDone = $('#showdone').checked, left = data.entries.filter((e) => e.done !== 'done').length;
+  $('#stats').textContent = `${data.entries.length} motifs · ${data.entries.reduce((n, e) => n + e.claims.length, 0)} filings · ${data.entries.filter((e) => e.claims.length > 1).length} with 2+ claims · ${left} to go`;
+  const gs = [{id: 'all', name: 'All motifs', n: data.entries.length}, {id: 'none', name: 'Ungrouped', n: count(null)}]
+    .concat(data.groups.map((g) => ({...g, n: count(g.id)})));
+  $('#groups').innerHTML = gs.map((g) => `<div class="group${filter === g.id ? ' on' : ''}" data-g="${g.id}"><span class="n">${g.n}</span>${esc(g.name)}`
+    + (g.id.startsWith('G') ? ` <button class="small" data-gact="rename">✎</button> <button class="small" data-gact="delete">🗑</button>` : '') + '</div>').join('')
+    + `<div class="group new" data-g="+">+ new group</div><div class="group new" data-g="newmotif">+ new motif: drop a claim here</div>`;
+  let list = data.entries.filter((e) => filter === 'all' || (filter === 'none' ? !e.group : e.group === filter))
+    .filter((e) => !multi || e.claims.length > 1)
+    .filter((e) => showDone || e.done !== 'done')
+    .filter((e) => !q || (e.name + ' ' + e.claims.map((c) => c.claim).join(' ')).toLowerCase().includes(q));
+  const newest = (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id);
+  list.sort({az: (a, b) => a.name.localeCompare(b.name), new: newest, old: (a, b) => newest(b, a),
+    few: (a, b) => a.claims.length - b.claims.length || newest(a, b),
+    size: (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id)}[sort]);
+  const gname = Object.fromEntries(data.groups.map((g) => [g.id, g.name]));
+  const html = list.map((e) => {
+    // New claims (since the motif was marked done) first, so they're never hidden behind 'show all'
+    const ordered = [...e.claims.filter((c) => c.new), ...e.claims.filter((c) => !c.new)];
+    const shown = expanded.has(e.id) ? ordered : ordered.slice(0, Math.max(6, e.claims.filter((c) => c.new).length));
+    return `<article class="motif${e.done === 'done' ? ' isdone' : ''}${e.claims.length < 2 ? ' one' : ''}" data-id="${e.id}">
+      <div class="head">${e.done === 'done' ? '<button class="small donebtn" data-mact="undone" title="Show it again">↺ not done</button>'
+          : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? `<span class="newpill" title="Marked done, then new claims came in: they're highlighted, first">${e.claims.filter((c) => c.new).length} new since you looked</span>` : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
+        ${e.parents.length ? `<div class="kindof">↳ kind of ${e.parents.map((p) => `🧩 ${esc((data.entries.find((x) => x.id === p) || {}).name || p)} <button class="small" data-unparent="${p}" title="no longer a kind of it">✗</button>`).join(' ')}</div>` : ''}
+        ${(() => { const kids = data.entries.filter((x) => x.parents.includes(e.id)); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
+        ${e.related.length ? `<div class="kinds">↔ related: ${e.related.map((r) => `${esc((data.entries.find((x) => x.id === r) || {}).name || r)} <button class="small" data-unrelate="${r}" title="not related">✗</button>`).join(' ')}</div>` : ''}
+        ${e.note ? `<div class="note">${esc(e.note)}</div>` : ''}
+        <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
+      <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
+        <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
+        <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
+        <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
+      ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
+      <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="addclaims" title="search all claims and add some to this motif">＋ add claims…</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button><button class="small" data-mact="note" title="a plain one-line description of what this motif covers (shown on the site, used in matching)">✎ note</button>
+        ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
+  });
+  // Masonry: each card into the shortest column, in order, so short cards don't leave gaps under them
+  const grid = $('#grid');
+  if (!html.length) { grid.innerHTML = '<p>No motifs here.</p>'; return; }
+  const n = Math.max(1, Math.floor(grid.clientWidth / 300));
+  grid.innerHTML = '<div class="col"></div>'.repeat(n);
+  const cols = [...grid.children], tmp = document.createElement('div');
+  for (const h of html) {
+    tmp.innerHTML = h;
+    cols.reduce((a, b) => (b.offsetHeight < a.offsetHeight ? b : a)).appendChild(tmp.firstElementChild);
+  }
+}
+document.addEventListener('click', (ev) => {
+  const g = ev.target.closest('.group'), m = ev.target.closest('.motif'), b = ev.target.closest('button');
+  if (g) {
+    const gid = g.dataset.g, gact = b && b.dataset.gact;
+    if (gact === 'rename') { const n = prompt('Rename the group', (data.groups.find((x) => x.id === gid) || {}).name); if (n) act({action: 'group_rename', group: gid, name: n}); return; }
+    if (gact === 'delete') { if (confirm('Delete this group? Its motifs stay, ungrouped.')) act({action: 'group_delete', group: gid}); return; }
+    if (gid === '+') { const n = prompt('Name the new group (a chapter, e.g. "the enemy within")'); if (n) act({action: 'group_add', name: n}); return; }
+    if (gid === 'newmotif') return;  // a drop zone for dragged claims
+    filter = gid; render(); return;
+  }
+  if (!m) return;
+  const e = data.entries.find((x) => x.id === m.dataset.id);
+  if (ev.target.closest('[data-more]')) { expanded.has(e.id) ? expanded.delete(e.id) : expanded.add(e.id); render(); return; }
+  const li = ev.target.closest('li');
+  if (li && !ev.target.closest('button')) { if (!justDragged) openPicker(li.dataset.claim, e.id); return; }
+  if (b && li) {
+    if (b.dataset.cact === 'out' && confirm('Take this claim out of “' + e.name + '” for good?')) act({action: 'unfile', claim: li.dataset.claim, id: e.id});
+    return;
+  }
+  if (b && b.dataset.unrelate) { act({action: 'unrelate', a: e.id, b: b.dataset.unrelate}); return; }
+  if (b && b.dataset.unparent) { act({action: 'parent', id: e.id, parent: b.dataset.unparent, on: false}); return; }
+  if (b && b.dataset.mact) {
+    const a = b.dataset.mact;
+    if (a === 'more') openSimilar(e.id);
+    else if (a === 'note') { const n = prompt('What does this motif cover? One plain line (leave empty to remove):', e.note || ''); if (n !== null) act({action: 'note', id: e.id, note: n}); }
+    else if (a === 'mergepick') openMergePick(e.id);
+    else if (a === 'addclaims') openAddClaims(e.id);
+    else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
+    else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
+    else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
+    else if (a === 'delete' && confirm(`Delete “${e.name}”? Its ${e.claims.length} claims keep their other motifs and aren't filed here again.`)) act({action: 'delete', id: e.id});
+    return;
+  }
+});
+// Click a claim: its motifs now, and every other motif to move it to or file it under as well
+let pick = null, detailHtml = '', detailOpen = true;  // open until closed: the story is what you came for
+function openPicker(claim, from) { pick = {claim, from}; detailHtml = ''; $('#picker').showModal(); drawPicker(''); loadDetail(claim); }
+async function loadDetail(claim) {
+  const d = await (await fetch('/claim-detail.json?claim=' + encodeURIComponent(claim))).json();
+  const lab = d.label || {};
+  const labels = ['genre', 'rumor_class', 'family', 'villain', 'victim', 'hero'].filter((k) => lab[k] && lab[k] !== 'none')
+    .map((k) => `<span class="lab">${k.replace('_', ' ')}: ${esc(lab[k])}</span>`).join(' ');
+  if (d.kind === 'fact-check') {
+    detailHtml = `<p><b>${esc(d.title || 'Fact-check')}</b> <span class="meta">${esc(d.source)} · ${esc(d.published || '')}</span>
+      ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">read it ↗</a>` : ''}</p>
+      ${d.summary ? `<p class="meta">${esc(d.summary)}</p>` : ''}`;
+  } else if (d.kind === 'focus-group') {
+    detailHtml = `<p><b>🎙️ ${esc(d.title || 'The Focus Group')}</b> <span class="meta">${esc(d.published || '')}${d.at != null ? ' · at ' + Math.floor(d.at / 60) + ' min' : ''}</span>
+      ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">episode ↗</a>` : ''}</p>
+      ${d.quote ? `<p>“${esc(d.quote)}” <span class="meta">${esc(d.side || 'a voter')}</span></p>` : ''}`;
+  } else if (d.kind === 'folklore') {
+    detailHtml = `<p class="meta">Told by ${d.people} people in ${d.posts} posts (report of ${esc(d.made || '')}). Some of them:</p>
+      <ul class="examples">${(d.examples || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      ${(d.articles || []).length ? `<p class="meta">Sharing: ${(d.articles || []).map((a) => a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title || a.url)}</a>` : esc(a.title || '')).join(' · ')}</p>` : ''}`;
+  } else {
+    detailHtml = `<p class="meta">${esc(d.kind || '')}: no details kept for it.</p>`;
+  }
+  if (labels) detailHtml += `<p>${labels}</p>`;
+  if ((d.model_words || []).length) detailHtml += `<p class="meta">The model's words: “${d.model_words.map(esc).join('”, “')}”</p>`;
+  if (pick && pick.claim === claim) { const el = $('#detail-body'); if (el) el.innerHTML = detailHtml; }
+}
+function drawPicker(q) {
+  const {claim, from} = pick, lower = q.trim().toLowerCase();
+  const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim));
+  let others = data.entries.filter((e) => !mine.includes(e) && (!lower || e.name.toLowerCase().includes(lower)
+    || e.claims.some((c) => c.claim.toLowerCase().includes(lower))));
+  others.sort((a, b) => (lower ? (b.name.toLowerCase().includes(lower) - a.name.toLowerCase().includes(lower)) : 0) || b.claims.length - a.claims.length);
+  // A person curating isn't held to the model's three motifs a claim: adding is always on offer
+  const fromName = esc((data.entries.find((e) => e.id === from) || {}).name || 'this motif');
+  // What's typed, when no motif has that name: a new motif, first in the list (even when other motifs partly match; Enter adds it when none do)
+  const typed = q.trim(), taken = data.entries.some((e) => e.name.toLowerCase() === typed.toLowerCase());
+  const newRow = typed && !taken ? `<div class="newfromq"><span class="nm">✨ “${esc(typed)}”</span><span class="ct">new</span>
+    <button class="small add" data-alsonew="1" title="make a new motif with this name and file the claim under it too">+ add as a new motif</button>
+    <button class="small" data-movenew="1" title="make it and put it in place of “${fromName}”">replace “${fromName}”</button></div>` : '';
+  $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
+    <details class="detail" ${detailOpen ? 'open' : ''}><summary>details: what's the story?</summary><div id="detail-body">${detailHtml || 'Loading…'}</div>
+      <p><button class="small" data-correct="1">✎ correct the summary</button></p></details>
+    <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take this motif off this claim">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
+    <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
+    <div class="pick">${newRow}${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
+      <button class="small add" data-also="${e.id}" title="file the claim under this motif too, keeping the others">+ add</button>
+      <button class="small" data-move="${e.id}" title="put this motif in place of “${fromName}”">replace “${fromName}”</button></div>`).join('') || (newRow ? '' : '<p>No motif matches.</p>')}</div>`;
+  const input = $('#pick-q'); input.focus(); input.setSelectionRange(q.length, q.length);
+  input.addEventListener('input', () => drawPicker(input.value));
+  input.addEventListener('keydown', (ev) => { const add = $('.pick [data-alsonew]');
+    if (ev.key === 'Enter' && add && !$('.pick [data-also]')) { ev.preventDefault(); add.click(); } });
+}
+$('#picker').addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('detail')) detailOpen = ev.target.open; }, true);
+$('#picker').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button'), {claim, from} = pick || {};
+  if (ev.target === $('#picker') || (b && b.dataset.close)) { $('#picker').close(); return; }
+  if (!b) return;
+  if (b.dataset.correct) {
+    const t = prompt('Correct the summary (what the story actually claims):', claim);
+    if (t && t.trim() && t.trim() !== claim) {
+      const from = pick.from;  // reopened on the corrected words, details and all
+      act({action: 'correct', claim, text: t.trim()}).then(() => openPicker(t.trim().replace(/\s+/g, ' '), from));
+    }
+    return;
+  }
+  const name = ($('#pick-q') || {}).value || '';
+  // The picker stays open after each change, redrawn, so several can be made in a row (it closed after one)
+  const done = async (body) => {
+    const q = ($('#pick-q') || {}).value || '';
+    await act(body);
+    const holders = data.entries.filter((e) => e.claims.some((c) => c.claim === claim));
+    if (!holders.length) { $('#picker').close(); return; }  // its last motif gone: it's filed again next run
+    if (!holders.some((e) => e.id === pick.from)) pick.from = holders[0].id;
+    drawPicker(q);
+  };
+  const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim)).length;
+  if (b.dataset.move) done({action: 'move', claim, source: from, target: b.dataset.move});
+  else if (b.dataset.also) done({action: 'also', claim, source: from, target: b.dataset.also});
+  else if (b.dataset.out && (mine > 1 || confirm('That\'s its last motif: take it off, and it\'s filed again next run?')))
+    done({action: 'unfile', claim, id: b.dataset.out});
+  else if (b.dataset.del) {
+    const e = data.entries.find((x) => x.id === b.dataset.del);
+    if (confirm(`Delete the motif “${e.name}” (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})? Its claims keep their other motifs and aren't filed under it again.`))
+      done({action: 'delete', id: e.id});
+  }
+  else if (b.dataset.movenew && name.trim()) done({action: 'move_new', claim, source: from, name});
+  else if (b.dataset.alsonew && name.trim()) done({action: 'also_new', claim, source: from, name});
+});
+
+// Click and drag with drop zones (DRAG_SNIPPET): a claim onto a motif (add it there, or move it there out of its
+// motif), a motif onto a motif (merge, under it, over it, related), a motif onto a group, a claim onto '+ new motif'
+let justDragged = false;  // the drag snippet swallows the click a drag ends with
+const entry = (id) => data.entries.find((x) => x.id === id);
+dragZones({
+  handle: '.motif li[data-claim], .motif .head', target: '.motif, .group',
+  item: (h) => {
+    const e = entry(h.closest('.motif').dataset.id);
+    return h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: e.id, fromName: e.name} : {type: 'motif', id: e.id, name: e.name};
+  },
+  label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : item.name),
+  name: (t) => t.classList.contains('motif') ? 'onto 🧩 ' + entry(t.dataset.id).name : '',
+  zones: (item, t) => {
+    if (t.classList.contains('motif')) {
+      const m = entry(t.dataset.id), q = (x) => '\u201c' + x + '\u201d';
+      if (item.type === 'claim') {
+        if (m.id === item.from || m.claims.some((c) => c.claim === item.claim)) return [];
+        return [{label: '＋ add here', say: `The claim is filed under ${q(m.name)} too; it stays in ${q(item.fromName)}.`,
+                 run: () => act({action: 'also', claim: item.claim, source: item.from, target: m.id})},
+                {label: '⇢ move here', say: `The claim moves to ${q(m.name)}, out of ${q(item.fromName)}.`,
+                 run: () => act({action: 'move', claim: item.claim, source: item.from, target: m.id})}];
+      }
+      if (m.id === item.id) return [];
+      return [{label: '⤵ merge into it', say: `${q(item.name)} goes; its claims join ${q(m.name)}.`,
+               run: () => act({action: 'merge', source: item.id, target: m.id})},
+              {label: '⊂ under it', say: `${q(item.name)} becomes a kind of ${q(m.name)}: both stay.`,
+               run: () => act({action: 'parent', id: item.id, parent: m.id})},
+              {label: '⊃ over it', say: `${q(m.name)} becomes a kind of ${q(item.name)}: both stay.`,
+               run: () => act({action: 'parent', id: m.id, parent: item.id})},
+              {label: '↔ related', say: `Near each other, but different stories: both stay as they are, linked.`,
+               run: () => act({action: 'relate', a: item.id, b: m.id})}];
+    }
+    const g = t.dataset.g, name = t.textContent.replace(/^\d+/, '').replace(/[✎🗑]/g, '').trim();
+    if (g === 'newmotif' && item.type === 'claim')
+      return [{label: '＋ new motif', say: 'Start a new motif with this claim (you name it next).',
+               run: () => { const n = prompt('Name the new motif'); if (n) act({action: 'also_new', claim: item.claim, source: item.from, name: n}); }}];
+    if (item.type === 'motif' && (g.startsWith('G') || g === 'none'))
+      return [{label: g === 'none' ? '⇢ ungroup' : '⇢ file in this group', say: g === 'none' ? `${item.name} leaves its group.` : `${item.name} goes in the group ${name}.`,
+               run: () => act({action: 'group_assign', id: item.id, group: g === 'none' ? null : g})}];
+    return [];
+  },
+});
+// '＋ more like this': the claims closest to a motif; each add or 'not this' recomputes the list from the motif's claims
+let simFor = null;
+async function openSimilar(id) { simFor = id; $('#similar').showModal(); await drawSimilar(); }
+async function drawSimilar() {
+  const e = data.entries.find((x) => x.id === simFor);
+  if (!e) { $('#similar').close(); return; }
+  $('#similar-body').innerHTML = `<h2>More like 🧩 ${esc(e.name)} <span class="meta">(${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})</span></h2><p class="meta">Finding the closest claims…</p>`;
+  const r = await fetch('/motif-similar.json?id=' + encodeURIComponent(simFor));
+  const items = r.ok ? await r.json() : [];
+  $('#similar-body').innerHTML = `<h2>More like 🧩 ${esc(e.name)} <span class="meta">(${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})</span></h2>
+    <p class="meta">Closest first. Each choice reshuffles the list around the motif's claims.</p>
+    <div class="pick">${items.map((i, n) => `<div class="simrow"><span class="nm">${esc(i.claim)}
+      <span class="meta">${esc(i.source === 'narrative' ? 'online' : i.source)} · now in ${i.motifs.map((m) => esc(m.name)).join(', ')}</span></span>
+      <span class="ct" title="how close, 0 to 1">${i.score.toFixed(2)}</span>
+      <button class="small add" data-simadd="${n}">+ add</button><button class="small" data-simno="${n}" title="not this motif: never suggested or filed here">✗ not this</button></div>`).join('')
+      || '<p>No other claims to suggest.</p>'}</div>`;
+  $('#similar-body').items = items;
+}
+$('#similar').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (ev.target === $('#similar') || (b && b.dataset.close)) { $('#similar').close(); return; }
+  if (!b) return;
+  const items = $('#similar-body').items || [];
+  const i = items[+(b.dataset.simadd ?? b.dataset.simno)];
+  if (!i) return;
+  b.closest('.simrow').style.opacity = .4;
+  if (b.dataset.simadd !== undefined) await act({action: 'also', claim: i.claim, source: i.motifs[0].id, target: simFor});
+  else await act({action: 'reject', claim: i.claim, id: simFor});
+  drawSimilar();
+});
+
+// '＋ add claims…': search every claim (filed or not yet) and add some to this motif; stays open for several
+let addTo = null, addTimer, addFound = [];
+function openAddClaims(id) {
+  addTo = id; const me = data.entries.find((x) => x.id === id);
+  $('#addclaims-body').innerHTML = `<h2>Add claims to 🧩 ${esc(me.name)}</h2>
+    <input type="search" id="ac-q" placeholder="words in the claim (all of them)" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
+    <div class="pick" id="ac-list"><p class="meta">Type to search the claims in the index and the ones not filed yet.</p></div>`;
+  $('#addclaims').showModal();
+  const input = $('#ac-q'); input.focus();
+  input.addEventListener('input', () => { clearTimeout(addTimer); addTimer = setTimeout(() => searchClaims(input.value), 200); });
+}
+async function searchClaims(q) {
+  if (!q.trim()) { $('#ac-list').innerHTML = '<p class="meta">Type to search.</p>'; return; }
+  addFound = await (await fetch('/claims.json?q=' + encodeURIComponent(q))).json();
+  const here = new Set((data.entries.find((x) => x.id === addTo) || {claims: []}).claims.map((c) => c.claim));
+  $('#ac-list').innerHTML = addFound.map((c, n) => `<div class="simrow"><span class="nm">${esc(c.claim)}
+      <span class="meta">${esc(c.source === 'narrative' ? 'online' : c.source)} · ${c.motifs.length ? 'in ' + c.motifs.map((m) => esc(m.name)).join(', ') : 'not filed yet'}</span></span>
+      ${here.has(c.claim) ? '<span class="meta">✓ here</span>' : `<button class="small add" data-ac="${n}">+ add</button>`}</div>`).join('')
+    || '<p class="meta">No claim has all those words.</p>';
+}
+$('#addclaims').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (ev.target === $('#addclaims') || (b && b.dataset.close)) { $('#addclaims').close(); return; }
+  if (!b || b.dataset.ac === undefined) return;
+  const c = addFound[+b.dataset.ac];
+  b.disabled = true;
+  if (c.motifs.length) await act({action: 'also', claim: c.claim, source: c.motifs[0].id, target: addTo});
+  else await act({action: 'file', claim: c.claim, source: c.source, ref: c.ref, id: addTo});
+  b.replaceWith(Object.assign(document.createElement('span'), {className: 'meta', textContent: '✓ added'}));
+});
+
+// '⤵ merge into…': pick the motif this one joins (or, if it isn't the same, mark it a kind of or related)
+let mergeFrom = null;
+function openMergePick(id) { mergeFrom = id; $('#mergepick').showModal(); drawMergePick(''); }
+function drawMergePick(q) {
+  const me = data.entries.find((x) => x.id === mergeFrom), lower = q.trim().toLowerCase();
+  const list = data.entries.filter((e) => e.id !== mergeFrom && (!lower || e.name.toLowerCase().includes(lower)
+    || e.claims.some((c) => c.claim.toLowerCase().includes(lower))))
+    .sort((a, b) => (lower ? b.name.toLowerCase().includes(lower) - a.name.toLowerCase().includes(lower) : 0) || b.claims.length - a.claims.length);
+  $('#mergepick-body').innerHTML = `<h2>Merge 🧩 ${esc(me.name)} into…</h2>
+    <p class="meta">It goes; its ${me.claims.length} claim${me.claims.length === 1 ? '' : 's'} join the motif you pick, which keeps its name.</p>
+    <input type="search" id="mp-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
+    <div class="pick">${list.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
+      <button class="small add" data-mp="merge" data-id="${e.id}">⤵ merge into</button>
+      <button class="small" data-mp="kind" data-id="${e.id}" title="not the same: “${esc(me.name)}” is a kind of it">⊂ kind of</button>
+      <button class="small" data-mp="related" data-id="${e.id}" title="not the same: near each other">↔ related</button></div>`).join('') || '<p>No motif matches.</p>'}</div>`;
+  const input = $('#mp-q'); input.focus(); input.setSelectionRange(q.length, q.length);
+  input.addEventListener('input', () => drawMergePick(input.value));
+}
+$('#mergepick').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (ev.target === $('#mergepick') || (b && b.dataset.close)) { $('#mergepick').close(); return; }
+  if (!b || !b.dataset.mp) return;
+  $('#mergepick').close();
+  if (b.dataset.mp === 'merge') act({action: 'merge', source: mergeFrom, target: b.dataset.id});
+  else if (b.dataset.mp === 'kind') act({action: 'parent', id: mergeFrom, parent: b.dataset.id});
+  else act({action: 'relate', a: mergeFrom, b: b.dataset.id});
+});
+
+// A motif dropped on another: merge them, or make it a kind of the other
+$('#reset-done').addEventListener('click', () => { if (confirm('Bring back every motif marked done?')) act({action: 'reset_done'}); });
+$('#add-motif').addEventListener('click', () => { const n = prompt('Name the new motif (claims can be moved into it)'); if (n) act({action: 'add', name: n}); });
+['#q', '#sort', '#multi', '#showdone'].forEach((s) => $(s).addEventListener('input', render));
+let resizeTimer; addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
+fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
+</script>
+{% endblock %}

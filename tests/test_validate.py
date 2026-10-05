@@ -90,15 +90,44 @@ def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
     monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
     monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
     monkeypatch.setattr(validate, 'MOTIF_VERDICTS', str(tmp_path / 'v.jsonl'))
-    pages = {'organizer': validate.organizer_page(), 'motif check': validate.motif_page(), 'board': validate.BOARD_PAGE,
-             'empty': validate.EMPTY_PAGE, 'singles': validate.SINGLES_PAGE, 'names': validate.entities_page(),
-             'map': validate.MAP_PAGE}
-    for name, html in pages.items():
-        for js in re.findall(r'<script>(.*?)</script>', html, re.S):
-            path = tmp_path / 'page.js'
-            path.write_text(js)
-            result = subprocess.run(['node', '--check', str(path)], capture_output=True, text=True)
-            assert result.returncode == 0, f'{name}: {result.stderr[:300]}'
+    monkeypatch.setattr(validate, 'batch', lambda n=12: [{'headline_id': 1, 'title': "It's <a> headline", 'agency': 'AP',
+                                                          'mood': 0, 'spice': 1, 'feelings': ['fear'], 'url': ''}])
+    monkeypatch.setattr(validate, 'VERDICTS', str(tmp_path / 'verdicts.jsonl'))
+    pages = {'label check': validate.page(), 'organizer': validate.organizer_page(), 'motif check': validate.motif_page(),
+             'names': validate.entities_page()}
+    pages.update({f: validate.render(f, '/x') for f in validate.STATIC_PAGES.values()})
+    scripts = [(name, js) for name, html in pages.items() for js in re.findall(r'<script>(.*?)</script>', html, re.S)]
+    static = os.path.join(validate.CHECKER, 'static')
+    scripts += [(f, open(os.path.join(static, f)).read()) for f in os.listdir(static) if f.endswith('.js')]
+    for name, js in scripts:
+        path = tmp_path / 'page.js'
+        path.write_text(js)
+        result = subprocess.run(['node', '--check', str(path)], capture_output=True, text=True)
+        assert result.returncode == 0, f'{name}: {result.stderr[:300]}'
+    # Every page has the one shared nav, and the label check (it writes the database) no undo button
+    assert all(html.count('<nav>') == 1 and '/motif-map' in html for html in pages.values())
+    assert 'undo-btn' not in pages['label check'] and all('undo-btn' in h for n, h in pages.items() if n != 'label check')
+    assert "It&#39;s &lt;a&gt; headline" in pages['label check']  # escaped by the templates
+
+
+def test_checker_serves_its_shared_scripts_and_nothing_else(monkeypatch):
+    import threading
+    import urllib.error
+    import urllib.request
+    server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = f'http://127.0.0.1:{server.server_port}/checker/static/'
+    try:
+        with urllib.request.urlopen(base + 'drag.js') as r:
+            assert r.headers['Content-Type'].startswith('text/javascript') and b'function dragZones' in r.read()
+        for bad in ('../../validate.py', 'nope.js', '..%2F..%2Fvalidate.py'):
+            try:
+                urllib.request.urlopen(base + bad)
+                raise AssertionError(bad)
+            except urllib.error.HTTPError as e:
+                assert e.code == 404
+    finally:
+        server.shutdown()
 
 
 def test_board_changes_are_logged_with_what_the_model_had_proposed(monkeypatch, tmp_path):

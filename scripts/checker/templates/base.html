@@ -1,0 +1,8 @@
+{% from "nav.html" import navbar %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %}</title>
+<style>nav a { margin-right: 1em; } nav b { margin-right: 1em; }</style>
+{% block head %}{% endblock %}</head><body>
+{% block page %}{{ navbar(nav, here, undo) }}
+{% block body %}{% endblock %}{% endblock %}
+{% if undo %}<script src="/checker/static/undo.js"></script>{% endif %}
+</body></html>

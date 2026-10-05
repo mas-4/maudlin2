@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Names{% endblock %}
+{% block head %}<link rel="stylesheet" href="/checker/static/drag.css"><script src="/checker/static/drag.js"></script>
+<style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }
+.card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 8px 14px; margin: 10px 0; background: #fff; box-shadow: 4px 4px 0 #00c2a8; }
+.pair { box-shadow: 4px 4px 0 #ff4fa3; } .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.outlet, .said { font-size: .85em; color: #555; } p { margin: .3em 0; } .grip { font-weight: 600; }
+.alias { border: 1px dashed #aaa; border-radius: 6px; padding: 0 4px; cursor: grab; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; } input { font: inherit; padding: 3px 6px; }
+button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+button.small { font-size: .75em; padding: 1px 7px; } h2 { margin-top: 1.4em; }
+@media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+</style>{% endblock %}
+{% block body %}
+<h1>Names</h1>
+<p>The people, places and groups the local model names in each story, for the “mentioned:” filters on the front page:
+{{ subjects|length }} subjects under {{ name_count }} names. Give each subject one name: merge names for the same subject, rename
+a subject, or keep two apart. Or drag: a subject by its name line (⠿) onto another subject, or one of its other names
+onto the subject it belongs to. Changes go live with the next site build.</p>
+<h2>Suggested merges</h2>
+{% for a, b in pairs %}
+<section class="card pair">
+  <p class="outlet">one name inside the other</p>
+  <div class="two"><div><b>{{ a }}</b> <span class="said">{{ stories_of(a) }} stories</span></div>
+    <div><b>{{ b }}</b> <span class="said">{{ stories_of(b) }} stories</span></div></div>
+  <div class="row"><button data-act="merge" data-source="{{ a }}" data-target="{{ b }}">⤵ “{{ a }}” is “{{ b }}”</button>
+    <button data-act="merge" data-source="{{ b }}" data-target="{{ a }}">⤵ “{{ b }}” is “{{ a }}”</button>
+    <button data-act="not_same" data-a="{{ a }}" data-b="{{ b }}">✗ different subjects</button></div>
+</section>
+{%- else %}<p>No suggestions right now.</p>{% endfor %}
+<h2>Every subject</h2>
+<p><input type="search" id="search" placeholder="search names" size="40">
+<select id="sort"><option value="most">most stories</option><option value="fewest">fewest stories</option><option value="az">A–Z</option><option value="za">Z–A</option><option value="aliases">most other names</option></select></p>
+<div id="subjects">
+{% for name, e in subjects %}
+<section class="card entry" data-text="{{ (name ~ ' ' ~ e.names|join(' '))|lower }}" data-name="{{ name|lower }}" data-stories="{{ e.stories }}" data-aliases="{{ e.names|length }}">
+  <p class="outlet grip" data-name="{{ name }}" title="drag onto another subject">{{ name }} · {{ e.stories }} stor{{ 'y' if e.stories == 1 else 'ies' }}</p>
+  <div class="row"><input class="name" value="{{ name }}" size="40"><button data-act="rename" data-source="{{ name }}">rename</button>
+    <button data-act="merge_into" data-source="{{ name }}">⤵ another name for…</button></div>
+  {% if e.names %}<p class="said">also named: {% for n in e.names|sort %}<span class="alias" data-name="{{ n }}" title="drag onto another subject to move just this name">{{ n }}</span> <button class="small" data-act="unmerge" data-name="{{ n }}">✗ not this</button>{{ ' ' if not loop.last }}{% endfor %}</p>{% endif %}
+</section>
+{%- endfor %}</div>
+<script>
+const post = async (body) => {
+  const r = await fetch('/entities', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return; }
+  const y = scrollY; location.reload(); setTimeout(() => scrollTo(0, y), 50);
+};
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-act]');
+  if (!b) return;
+  const d = b.dataset;
+  if (d.act === 'merge') post({action: 'merge', source: d.source, target: d.target});
+  else if (d.act === 'not_same') post({action: 'not_same', a: d.a, b: d.b});
+  else if (d.act === 'rename') post({action: 'merge', source: d.source, target: b.previousElementSibling.value.trim()});
+  else if (d.act === 'merge_into') { const t = prompt('“' + d.source + '” is another name for which subject?'); if (t && t.trim()) post({action: 'merge', source: d.source, target: t.trim()}); }
+  else if (d.act === 'unmerge') post({action: 'unmerge', name: d.name});
+});
+document.getElementById('search').addEventListener('input', (ev) => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('.entry').forEach((c) => { c.hidden = q && !c.dataset.text.includes(q); });
+});
+const sorts = {
+  most: (a, b) => b.dataset.stories - a.dataset.stories || a.dataset.name.localeCompare(b.dataset.name),
+  fewest: (a, b) => a.dataset.stories - b.dataset.stories || a.dataset.name.localeCompare(b.dataset.name),
+  az: (a, b) => a.dataset.name.localeCompare(b.dataset.name), za: (a, b) => b.dataset.name.localeCompare(a.dataset.name),
+  aliases: (a, b) => b.dataset.aliases - a.dataset.aliases || b.dataset.stories - a.dataset.stories,
+};
+// Drag a subject (its name line) onto another: one is another name for the other, either way; drag one of a
+// subject's other names onto the subject it belongs to
+dragZones({
+  handle: '.entry .grip, .entry .alias', target: '.entry',
+  item: (h) => ({name: h.dataset.name, alias: h.classList.contains('alias'), of: h.closest('.entry').querySelector('.grip').dataset.name}),
+  label: (i) => '🗣️ ' + i.name,
+  name: (t) => 'onto 🗣️ ' + t.querySelector('.grip').dataset.name,
+  zones: (i, t) => {
+    const other = t.querySelector('.grip').dataset.name, q = (x) => '“' + x + '”';
+    if (other === i.of) return [];
+    if (i.alias) return [{label: '⇢ a name for this one', say: `${q(i.name)} now names ${q(other)} (no longer ${q(i.of)}).`,
+                          run: () => post({action: 'merge', source: i.name, target: other})}];
+    return [{label: '⤵ another name for it', say: `${q(i.name)} is another name for ${q(other)}: its stories and names go under ${q(other)}.`,
+             run: () => post({action: 'merge', source: i.name, target: other})},
+            {label: '⤴ it is another name for this', say: `${q(other)} is another name for ${q(i.name)}: its stories and names go under ${q(i.name)}.`,
+             run: () => post({action: 'merge', source: other, target: i.name})},
+            {label: '✗ different subjects', say: `${q(i.name)} and ${q(other)} are kept apart (never suggested as one).`,
+             run: () => post({action: 'not_same', a: i.name, b: other})}];
+  },
+});
+const box = document.getElementById('subjects');
+document.getElementById('sort').addEventListener('change', (ev) => {
+  [...box.querySelectorAll('.entry')].sort(sorts[ev.target.value]).forEach((c) => box.appendChild(c));
+});
+</script>
+{% endblock %}

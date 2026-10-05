@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Motif check{% endblock %}
+{% block head %}<style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 760px; padding: 16px; }
+.card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 12px 14px; margin: 14px 0; background: #fff; box-shadow: 4px 4px 0 #ffc400; }
+.card.done { opacity: .45; box-shadow: none; } .outlet { margin: 0; font-size: .85em; color: #555; }
+h2 { font-size: 1.1em; margin: .3em 0 .5em; } .said { font-size: .85em; color: #555; } ul.said { margin: .2em 0 .5em; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; } button { font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 4px 12px; cursor: pointer; }
+</style>{% endblock %}
+{% block body %}
+<h1>Motif check</h1>
+<p>Each card is a claim and a motif our index filed it under. Is the claim, as the people telling it tell it, an
+instance of that motif: the same kind of story, whoever it's told about? Judge the story's shape, not whether it's
+true. Answers apply at once: <b>no</b> takes the claim out of that motif for good (a motif left empty goes; a claim
+left with no motif is filed again next run, elsewhere). The most-used motifs come first. {{ todo|length }} filings
+unchecked; reload for more.</p>
+{% for q in todo[:batch] %}
+<section class="card" data-claim="{{ q.claim }}" data-id="{{ q.id }}">
+  <p class="outlet">{% if q.source == 'narrative' %}retold online (the model's summary){% else %}fact-checked by {{ q.source }}{% endif %}</p>
+  <h2>{{ q.claim }}</h2>
+  <p>Is this an instance of <b>🧩 {{ q.name }}</b> <span class="said">({{ q.id }}, {{ q.size }} claim{{ '' if q.size == 1 else 's' }})</span>?</p>
+  {% if q.others %}<p class="said">Also filed there:</p><ul class="said">{% for o in q.others %}<li>{{ o[:150] }}</li>{% endfor %}</ul>{% endif %}
+  <div class="row"><button type="button" data-a="yes">✓ yes</button><button type="button" data-a="no">✗ no, take it out</button>
+    <button type="button" data-a="unsure">🤷 not sure</button></div>
+</section>
+{% else %}<p>Nothing left to check.</p>
+{% endfor %}
+<script>
+document.querySelectorAll('.card').forEach((card) => card.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+  const r = await fetch('/motif-verdict', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({claim: card.dataset.claim, id: card.dataset.id, answer: b.dataset.a})});
+  if (r.ok) { card.classList.add('done'); card.querySelectorAll('button').forEach((x) => x.disabled = true); b.style.background = '#ffc400'; }
+  else alert('Failed: ' + await r.text());
+})));
+</script>
+{% endblock %}
