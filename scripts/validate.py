@@ -369,6 +369,7 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .kindof { font-size: .78em; color: #5a3fc0; } .kinds { font-size: .78em; color: #5a3fc0; }
 #choose button { font-size: .95em; padding: 5px 12px; } #choose button.add { background: #c8f7c5; font-weight: 700; }
 .donebtn { float: right; margin-left: 6px; background: #c8f7c5; } .motif.isdone { opacity: .55; }
+.newpill, .motif .gpill { display: inline-block; white-space: nowrap; }  /* a badge moves down whole, never split */
 .newpill { font-size: .75em; background: #ff4fa3; color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 .motif .gpill { font-size: .75em; background: #ffe9a8; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 .motif ul { list-style: none; margin: 0; padding: 4px 6px 6px; }
