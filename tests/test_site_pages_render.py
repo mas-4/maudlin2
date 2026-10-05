@@ -180,7 +180,10 @@ def test_assets_carry_the_build_version(site, name):
 @pytest.mark.parametrize('name', PAGES)
 def test_page_has_title_and_footer(site, name):
     soup = site['soup'][name]
-    assert soup.title.string.startswith(f'{Config.site_name} - ')
+    if name in ('index.html', 'headlines.html'):  # the home page and its copy
+        assert soup.title.string == 'Big News Day'
+    else:
+        assert soup.title.string.startswith(f'{Config.site_name} - ')
     assert soup.select_one('.site-footer') is not None
     assert soup.html['lang'] == 'en'
 

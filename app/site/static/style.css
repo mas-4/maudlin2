@@ -3618,14 +3618,18 @@ h1 {
     width: auto;
     justify-content: flex-start;
     position: relative;
-    padding-left: 6.5em;  /* a hanging indent: wrapped chips line up under the first chip, not under the label */
+    padding-left: 7.6em;  /* a hanging indent: wrapped chips line up under the first chip, not under the label */
 }
 
+/* The label column fits 'conspiracy:' in a wide fallback font, with a gap before the first chip (a stray margin
+   and a 6em column ran labels into their chips in Chrome) */
 .narrative-tools .bar-label {
     position: absolute;
     left: 0;
     top: 0.35em;
-    width: 6em;
+    width: 7em;
+    margin: 0;
+    white-space: nowrap;
     text-align: right;
 }
 
