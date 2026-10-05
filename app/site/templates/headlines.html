@@ -582,14 +582,14 @@
     </style>
 
     <script>
-        // Keep "BREAKING! 12m ago" honest as the page sits open: recompute from each story's first-seen time
+        // Keep "new · first seen 12 min ago" honest as the page sits open: recompute from each story's first-seen time
         const BREAKING_MINUTES = {{ breaking_minutes }};
         function updateBroken() {
             const now = Date.now();
             document.querySelectorAll('.broken[data-first]').forEach((el) => {
                 const minutes = Math.max(0, Math.floor((now - Date.parse(el.dataset.first)) / 60000));
                 el.innerHTML = minutes < BREAKING_MINUTES
-                    ? `<h3>🚨🚨🚨BREAKING! ${minutes}m ago!</h3>`
+                    ? `<p><span class="new-story">🆕 new</span> first seen ${minutes} min ago</p>`
                     : `<p>First seen ${Math.floor(minutes / 60)} hour${Math.floor(minutes / 60) === 1 ? '' : 's'} ago</p>`;
             });
         }

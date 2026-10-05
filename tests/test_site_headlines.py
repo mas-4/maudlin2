@@ -502,7 +502,7 @@ def test_chip_smileys_and_short_names(chip_globals, monkeypatch):
 @pytest.mark.parametrize('minutes, breaking', [(ph.BREAKING_MINUTES - 1, True), (ph.BREAKING_MINUTES, False)])
 def test_breaking_fallback_text(chip_globals, monkeypatch, minutes, breaking):
     html, _ = run_chips(chip_cluster([{}], first_minutes=minutes), monkeypatch=monkeypatch)
-    assert ('BREAKING!' in html) == breaking
+    assert ('🆕 new' in html) == breaking and 'BREAKING' not in html
     if not breaking:
         assert 'First seen 1 hour ago' in html
 

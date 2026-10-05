@@ -741,8 +741,8 @@ class HeadlinesPage:
             # The page's script keeps this current from data-first; the text here is for readers without javascript
             story_first_seen = min(a['appearance'] for a in cluster['data']).isoformat()
             minutes = cluster['first'] // 60
-            if minutes < BREAKING_MINUTES:
-                fallback = f'<h3>🚨🚨🚨BREAKING! {int(minutes)}m ago!</h3>'
+            if minutes < BREAKING_MINUTES:  # a quiet "new" tag (the old 🚨🚨🚨 BREAKING! headline was the 2024 site's)
+                fallback = f'<p><span class="new-story">🆕 new</span> first seen {int(minutes)} min ago</p>'
             else:
                 hours = int(cluster['first'] // 3600)
                 fallback = f'<p>First seen {hours} hour{"" if hours == 1 else "s"} ago</p>'

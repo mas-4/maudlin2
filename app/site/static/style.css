@@ -2002,6 +2002,7 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 
 
 .fast-break {
+    display: inline-block;  /* one box: the emoji stays with its words */
     white-space: nowrap;
     font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #1f1f2e;
@@ -3244,12 +3245,16 @@ h1 {
     line-height: 2.1;
 }
 
+/* One box per chip: too long for the line, it moves down whole and wraps inside, never wider than the card (broken
+   across lines like text, each piece got its own border and one quote read as two) */
 .quote-chip, .wording-chip {
-    display: inline;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal;
     overflow-wrap: anywhere;
-    margin-right: 4px;
+    vertical-align: top;
+    margin: 0 4px 4px 0;
+    line-height: 1.35;
 }
 
 .story-curators a.edit-chip {
@@ -3522,6 +3527,14 @@ h1 {
 }
 
 .rumor-unseen { color: #8a8f98; }
+
+.new-story {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 0 7px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    background: #fff3b0;
+}
 
 .motif-id {
     font: 700 0.75em ui-monospace, monospace;
