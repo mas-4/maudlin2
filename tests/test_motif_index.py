@@ -296,6 +296,8 @@ def test_the_model_drafts_notes_a_person_keeps_or_replaces(monkeypatch, tmp_path
     assert m1['note'] == "A public figure's looks are taken as proof of bad character." and m1['note_by'] == 'model'
     assert 'proof of bad character' in mi.described(m1)  # matching uses the draft at once
     assert mi.public_note(m1) == '' and mi.public_note(m2) == 'what a person wrote'  # the site, only a person's
+    assert mi.public_note({'note': 'backfilled', 'note_by': 'claude'}) == ''  # the Oct 5 backfill is a draft too
+    assert not mi.needs_gloss({'note': 'backfilled', 'note_by': 'claude', 'claims': [{}] * 9, 'note_claims': 1})
     assert not mi.needs_gloss(m1)  # drafted at 3 claims: redrafted at 6
     assert mi.needs_gloss({**m1, 'claims': m1['claims'] * 2})
     mi.keep_note('M001')

@@ -866,9 +866,12 @@ def keep_note(eid: str):
         save(index)
 
 
+DRAFTS = ('model', 'claude')  # notes drafted, not yet kept: the local model's, or the Oct 5 one-off backfill by Claude
+
+
 def public_note(entry: dict) -> str:
-    """The note the site shows: a person's (written or kept), never the model's draft"""
-    return entry.get('note', '') if entry.get('note') and entry.get('note_by') != 'model' else ''
+    """The note the site shows: a person's (written or kept), never a draft"""
+    return entry.get('note', '') if entry.get('note') and entry.get('note_by') not in DRAFTS else ''
 
 
 GLOSS_PROMPT = """A motif in our index of recurring rumor and narrative shapes: {name}

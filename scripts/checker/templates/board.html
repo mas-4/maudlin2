@@ -80,6 +80,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 <dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
 
 <script>
+const DRAFT = {model: 'the model', claude: 'Claude'};  // who drafted a note not yet kept
 let data = {groups: [], entries: []}, filter = 'all';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const $ = (s) => document.querySelector(s);
@@ -120,7 +121,7 @@ function render() {
         ${e.parents.length ? `<div class="kindof">↳ kind of ${e.parents.map((p) => `🧩 ${esc((data.entries.find((x) => x.id === p) || {}).name || p)} <button class="small" data-unparent="${p}" title="no longer a kind of it">✗</button>`).join(' ')}</div>` : ''}
         ${(() => { const kids = data.entries.filter((x) => x.parents.includes(e.id)); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
         ${e.related.length ? `<div class="kinds">↔ related: ${e.related.map((r) => `${esc((data.entries.find((x) => x.id === r) || {}).name || r)} <button class="small" data-unrelate="${r}" title="not related">✗</button>`).join(' ')}</div>` : ''}
-        ${e.note ? `<div class="note${e.note_by === 'model' ? ' draft' : ''}">${esc(e.note)}${e.note_by === 'model' ? ` <span class="draft-tag" title="the model drafted this note: used in matching now, shown on the site once you keep or edit it">model's draft</span> <button class="small" data-mact="keepnote" title="keep this note as it is (it goes on the site)">✓ keep</button>` : ''}</div>` : ''}
+        ${e.note ? `<div class="note${DRAFT[e.note_by] ? ' draft' : ''}">${esc(e.note)}${DRAFT[e.note_by] ? ` <span class="draft-tag" title="${DRAFT[e.note_by]} drafted this note: used in matching now, shown on the site once you keep or edit it">${DRAFT[e.note_by]}'s draft</span> <button class="small" data-mact="keepnote" title="keep this note as it is (it goes on the site)">✓ keep</button>` : ''}</div>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
         <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
