@@ -327,8 +327,6 @@ input, select, button { font: inherit; font-size: .9em; }
 input[type=search] { padding: 4px 10px; border: 2px solid #1f1f2e; border-radius: 999px; min-width: 16em; }
 button { border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
 button.small { font-size: .75em; padding: 0 6px; }
-.held-bar { display: none; background: #ffc400; border: 2px solid #1f1f2e; border-radius: 10px; padding: 5px 10px; margin-top: 6px; }
-body.holding .held-bar { display: block; }
 main { display: grid; grid-template-columns: 230px 1fr; gap: 14px; padding: 14px; align-items: start; }
 aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow: auto; }
 .group { border: 2px solid #1f1f2e; border-radius: 10px; background: #fff; padding: 6px 10px; margin-bottom: 8px; cursor: pointer; }
@@ -338,7 +336,7 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; align-items: start; }
 .motif { border: 2px solid #1f1f2e; border-radius: 12px; background: #fff; margin: 0;
   box-shadow: 4px 4px 0 #00c2a8; }
-.motif.one { box-shadow: 3px 3px 0 #ddd; } .motif.held { opacity: .5; }
+.motif.one { box-shadow: 3px 3px 0 #ddd; }
 .motif .head { padding: 7px 10px 4px; cursor: grab; border-bottom: 1px dashed #ccc; }
 .motif .name { font-weight: 700; } .motif .meta { font-size: .78em; color: #666; }
 .donebtn { float: right; margin-left: 6px; background: #c8f7c5; } .motif.isdone { opacity: .55; }
@@ -347,11 +345,17 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .motif ul { list-style: none; margin: 0; padding: 4px 6px 6px; }
 .motif li { font-size: .85em; padding: 3px 4px; border-radius: 6px; cursor: grab; display: flex; gap: 4px; align-items: baseline; }
 .motif li:hover { background: #f4f1e6; }
-.motif li.newclaim { background: #ffe0ef; border-left: 4px solid #ff4fa3; } .motif li .newtag { color: #c2185b; font-weight: 700; font-size: .8em; } .motif li.held { background: #ffc400; }
+.motif li.newclaim { background: #ffe0ef; border-left: 4px solid #ff4fa3; } .motif li .newtag { color: #c2185b; font-weight: 700; font-size: .8em; }
 .motif li .txt { flex: 1; } .motif li .src { color: #777; font-size: .85em; white-space: nowrap; }
 .motif li .ok { color: #00a37a; } .motif .acts { padding: 0 10px 8px; display: flex; gap: 5px; flex-wrap: wrap; }
 .more { color: #555; cursor: pointer; font-size: .8em; padding: 0 10px 6px; }
 .motif li .txt { cursor: pointer; } .motif li .txt:hover { text-decoration: underline dotted; }
+.motif li, .motif .head { user-select: none; touch-action: manipulation; }
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+.ghost { display: none; position: fixed; z-index: 30; pointer-events: none; max-width: 320px; padding: 4px 10px; background: #ffc400;
+  border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 3px 3px 0 #1f1f2e; font-size: .85em; }
+#toast { display: none; position: fixed; z-index: 25; left: 50%; bottom: 18px; transform: translateX(-50%); background: #fffdf6;
+  border: 2px solid #1f1f2e; border-radius: 12px; box-shadow: 4px 4px 0 #00c2a8; padding: 8px 14px; max-width: 94vw; }
 dialog { border: 2px solid #1f1f2e; border-radius: 14px; box-shadow: 6px 6px 0 #ffc400; width: min(640px, 94vw); max-height: 86vh;
   padding: 12px 16px; background: #fffdf6; color: #1f1f2e; } dialog::backdrop { background: rgba(31, 31, 46, .35); }
 dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: absolute; right: 10px; top: 8px; }
@@ -375,40 +379,25 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
   <button id="reset-done" title="Bring back every motif marked done">↺ reset done</button>
   <button id="add-motif">+ motif</button>
 </div>
-<div class="held-bar" id="held"></div>
 </header>
 <main>
 <aside>
-  <p class="meta" style="font-size:.8em;color:#555;margin:0 0 6px">Groups: your own chapters. Drop a motif on one to file it; tap one to show only its motifs.</p>
+  <p class="meta" style="font-size:.8em;color:#555;margin:0 0 6px">Drag a claim onto a motif to add it there, a motif onto another to merge them, or onto a group to file it. Click a claim for all its motifs. Tap a group to show only its motifs.</p>
   <div id="groups"></div>
 </aside>
 <section class="grid" id="grid"></section>
 </main>
+<div id="toast" role="status"></div>
 <dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
 <script>
-let data = {groups: [], entries: []}, filter = 'all', held = null;
+let data = {groups: [], entries: []}, filter = 'all';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const $ = (s) => document.querySelector(s);
 const expanded = new Set();
 async function act(body) {
   const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   if (!r.ok) { alert('Failed: ' + await r.text()); return; }
-  data = await r.json(); drop(); render();
-}
-function hold(h) { held = h; document.body.classList.toggle('holding', !!h); render();
-  $('#held').innerHTML = h ? (h.type === 'claim' ? `Holding the claim “${esc(h.claim.slice(0, 90))}”: tap a motif to move it there, or “new motif from it” in the side bar.`
-    : `Holding 🧩 ${esc(h.name)}: tap another motif to merge it into that one, or a group to file it there.`) + ' <button class="small" onclick="drop()">cancel</button>' : ''; }
-function drop() { held = null; document.body.classList.remove('holding'); $('#held').innerHTML = ''; }
-addEventListener('keydown', (e) => { if (e.key === 'Escape') { drop(); render(); } });
-function putOnMotif(target) {
-  if (!held) return;
-  if (held.type === 'claim' && held.from !== target.id) act({action: 'move', claim: held.claim, source: held.from, target: target.id});
-  else if (held.type === 'motif' && held.id !== target.id && confirm(`Merge “${held.name}” into “${target.name}”? It keeps the name “${target.name}”.`))
-    act({action: 'merge', source: held.id, target: target.id});
-  else { drop(); render(); }
-}
-function putOnGroup(gid) {
-  if (held && held.type === 'motif') act({action: 'group_assign', id: held.id, group: gid});
+  data = await r.json(); render();
 }
 function render() {
   const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
@@ -419,7 +408,7 @@ function render() {
     .concat(data.groups.map((g) => ({...g, n: count(g.id)})));
   $('#groups').innerHTML = gs.map((g) => `<div class="group${filter === g.id ? ' on' : ''}" data-g="${g.id}"><span class="n">${g.n}</span>${esc(g.name)}`
     + (g.id.startsWith('G') ? ` <button class="small" data-gact="rename">✎</button> <button class="small" data-gact="delete">🗑</button>` : '') + '</div>').join('')
-    + `<div class="group new" data-g="+">+ new group</div><div class="group new" data-g="newmotif">+ new motif from the held claim</div>`;
+    + `<div class="group new" data-g="+">+ new group</div><div class="group new" data-g="newmotif">+ new motif: drop a claim here</div>`;
   let list = data.entries.filter((e) => filter === 'all' || (filter === 'none' ? !e.group : e.group === filter))
     .filter((e) => !multi || e.claims.length > 1)
     .filter((e) => showDone || e.done !== 'done')
@@ -431,16 +420,16 @@ function render() {
     // New claims (since the motif was marked done) first, so they're never hidden behind 'show all'
     const ordered = [...e.claims.filter((c) => c.new), ...e.claims.filter((c) => !c.new)];
     const shown = expanded.has(e.id) ? ordered : ordered.slice(0, Math.max(6, e.claims.filter((c) => c.new).length));
-    return `<article class="motif${e.done === 'done' ? ' isdone' : ''}${e.claims.length < 2 ? ' one' : ''}${held && held.type === 'motif' && held.id === e.id ? ' held' : ''}" data-id="${e.id}" draggable="true">
+    return `<article class="motif${e.done === 'done' ? ' isdone' : ''}${e.claims.length < 2 ? ' one' : ''}" data-id="${e.id}">
       <div class="head">${e.done === 'done' ? '<button class="small donebtn" data-mact="undone" title="Show it again">↺ not done</button>'
           : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? `<span class="newpill" title="Marked done, then new claims came in: they're highlighted, first">${e.claims.filter((c) => c.new).length} new since you looked</span>` : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
-      <ul>${shown.map((c) => `<li draggable="true" data-claim="${esc(c.claim)}" class="${held && held.type === 'claim' && held.claim === c.claim && held.from === e.id ? 'held' : ''}${c.new ? ' newclaim' : ''}">
+      <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
         <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
         <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
-        <button class="small" data-cact="hold" title="pick up, then tap a motif">✋</button><button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
+        <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
-      <div class="acts"><button class="small" data-mact="hold">✋ pick up</button><button class="small" data-mact="rename">✎ rename</button>
+      <div class="acts"><button class="small" data-mact="rename">✎ rename</button>
         ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
   }).join('') || '<p>No motifs here.</p>';
 }
@@ -451,31 +440,26 @@ document.addEventListener('click', (ev) => {
     if (gact === 'rename') { const n = prompt('Rename the group', (data.groups.find((x) => x.id === gid) || {}).name); if (n) act({action: 'group_rename', group: gid, name: n}); return; }
     if (gact === 'delete') { if (confirm('Delete this group? Its motifs stay, ungrouped.')) act({action: 'group_delete', group: gid}); return; }
     if (gid === '+') { const n = prompt('Name the new group (a chapter, e.g. "the enemy within")'); if (n) act({action: 'group_add', name: n}); return; }
-    if (gid === 'newmotif') { if (held && held.type === 'claim') { const n = prompt('Name the new motif'); if (n) act({action: 'move_new', claim: held.claim, source: held.from, name: n}); } return; }
-    if (held && held.type === 'motif' && gid.startsWith('G')) { putOnGroup(gid); return; }
-    if (held && held.type === 'motif' && gid === 'none') { act({action: 'group_assign', id: held.id, group: null}); return; }
+    if (gid === 'newmotif') return;  // a drop zone for dragged claims
     filter = gid; render(); return;
   }
   if (!m) return;
   const e = data.entries.find((x) => x.id === m.dataset.id);
   if (ev.target.closest('[data-more]')) { expanded.has(e.id) ? expanded.delete(e.id) : expanded.add(e.id); render(); return; }
   const li = ev.target.closest('li');
-  if (li && ev.target.closest('.txt') && !held) { openPicker(li.dataset.claim, e.id); return; }
+  if (li && !ev.target.closest('button')) { if (!justDragged) openPicker(li.dataset.claim, e.id); return; }
   if (b && li) {
-    if (b.dataset.cact === 'hold') hold({type: 'claim', claim: li.dataset.claim, from: e.id});
-    else if (b.dataset.cact === 'out' && confirm('Take this claim out of “' + e.name + '” for good?')) act({action: 'unfile', claim: li.dataset.claim, id: e.id});
+    if (b.dataset.cact === 'out' && confirm('Take this claim out of “' + e.name + '” for good?')) act({action: 'unfile', claim: li.dataset.claim, id: e.id});
     return;
   }
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
-    if (a === 'hold') hold({type: 'motif', id: e.id, name: e.name});
-    else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
+    if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
     else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
     else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
     else if (a === 'delete' && confirm(`Delete “${e.name}”? Its ${e.claims.length} claims keep their other motifs and aren't filed here again.`)) act({action: 'delete', id: e.id});
     return;
   }
-  if (held) putOnMotif(e);
 });
 // Click a claim: its motifs now, and every other motif to move it to or file it under as well
 let pick = null;
@@ -527,23 +511,92 @@ $('#picker').addEventListener('click', (ev) => {
   else if (b.dataset.alsonew && name.trim()) done({action: 'also_new', claim, source: from, name});
 });
 
-// Drag and drop on a computer: the same moves as picking up and tapping
-document.addEventListener('dragstart', (ev) => {
-  const li = ev.target.closest && ev.target.closest('li[data-claim]'), m = ev.target.closest && ev.target.closest('.motif');
-  if (li) held = {type: 'claim', claim: li.dataset.claim, from: m.dataset.id};
-  else if (m) held = {type: 'motif', id: m.dataset.id, name: data.entries.find((x) => x.id === m.dataset.id).name};
-  ev.dataTransfer.setData('text/plain', 'motif-board'); ev.stopPropagation();
+// Click and drag (mouse, pen or touch): a claim onto a motif adds it there (with a one-click 'take it out of' the old
+// one), a motif onto a motif merges them, a motif onto a group files it, a claim onto '+ new motif' starts one.
+// A press without movement is a click. On touch, hold a moment before dragging, so a swipe still scrolls.
+let drag = null, justDragged = false;
+const ghost = document.createElement('div');
+ghost.className = 'ghost'; document.body.appendChild(ghost);
+function targetAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el && el.closest('.motif, .group');
+}
+function mark(t) { document.querySelectorAll('.target').forEach((x) => x !== t && x.classList.remove('target')); if (t) t.classList.add('target'); }
+function startDrag() {
+  drag.on = true; document.body.classList.add('dragging');
+  ghost.textContent = drag.item.type === 'claim' ? '🧩 ' + drag.item.claim.slice(0, 70) : '🧩 ' + drag.item.name;
+  ghost.style.display = 'block'; moveGhost(drag.x, drag.y); scrollLoop();
+}
+function moveGhost(x, y) { ghost.style.left = (x + 12) + 'px'; ghost.style.top = (y + 12) + 'px'; }
+function scrollLoop() {  // near the window's top or bottom edge, the page scrolls so far cards can be reached
+  if (!drag || !drag.on) return;
+  const edge = 80, y = drag.y;
+  const speed = y < edge ? -(edge - y) / 3 : y > innerHeight - edge ? (y - (innerHeight - edge)) / 3 : 0;
+  if (speed) { scrollBy(0, speed); mark(targetAt(drag.x, drag.y)); }
+  requestAnimationFrame(scrollLoop);
+}
+document.addEventListener('pointerdown', (ev) => {
+  if (ev.button !== 0 || ev.target.closest('button, input, select, a, dialog')) return;
+  const li = ev.target.closest('.motif li[data-claim]'), head = ev.target.closest('.motif .head'), m = ev.target.closest('.motif');
+  if (!m || (!li && !head)) return;
+  const e = data.entries.find((x) => x.id === m.dataset.id);
+  const item = li ? {type: 'claim', claim: li.dataset.claim, from: e.id, fromName: e.name} : {type: 'motif', id: e.id, name: e.name};
+  drag = {item, x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, on: false, touch: ev.pointerType === 'touch'};
+  if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) startDrag(); }, 350);
 });
-document.addEventListener('dragover', (ev) => { const t = ev.target.closest('.motif, .group'); if (t && held) { ev.preventDefault(); document.querySelectorAll('.target').forEach((x) => x.classList.remove('target')); t.classList.add('target'); } });
-document.addEventListener('dragend', () => document.querySelectorAll('.target').forEach((x) => x.classList.remove('target')));
-document.addEventListener('drop', (ev) => {
-  ev.preventDefault();
-  const m = ev.target.closest('.motif'), g = ev.target.closest('.group');
-  if (m) putOnMotif(data.entries.find((x) => x.id === m.dataset.id));
-  else if (g && g.dataset.g === 'newmotif' && held && held.type === 'claim') { const n = prompt('Name the new motif'); if (n) act({action: 'move_new', claim: held.claim, source: held.from, name: n}); else drop(); }
-  else if (g && held && held.type === 'motif') g.dataset.g.startsWith('G') ? putOnGroup(g.dataset.g) : g.dataset.g === 'none' ? act({action: 'group_assign', id: held.id, group: null}) : drop();
-  else drop();
+document.addEventListener('pointermove', (ev) => {
+  if (!drag) return;
+  drag.x = ev.clientX; drag.y = ev.clientY;
+  const moved = Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy);
+  if (!drag.on) {
+    if (drag.touch) { if (moved > 8) { clearTimeout(drag.timer); drag = null; } return; }  // a swipe: let it scroll
+    if (moved < 6) return;
+    startDrag();
+  }
+  ev.preventDefault(); moveGhost(ev.clientX, ev.clientY); mark(targetAt(ev.clientX, ev.clientY));
 });
+document.addEventListener('touchmove', (ev) => { if (drag && drag.on) ev.preventDefault(); }, {passive: false});
+function endDrag(ev, cancel) {
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  const d = drag; drag = null;
+  ghost.style.display = 'none'; document.body.classList.remove('dragging'); mark(null);
+  if (!d.on) return;
+  justDragged = true; setTimeout(() => { justDragged = false; }, 0);
+  if (cancel) return;
+  const t = targetAt(ev.clientX, ev.clientY);
+  if (t) dropOn(d.item, t);
+}
+document.addEventListener('pointerup', (ev) => endDrag(ev, false));
+document.addEventListener('pointercancel', (ev) => endDrag(ev, true));
+addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && drag) endDrag(ev, true); });
+async function dropOn(item, t) {
+  if (t.classList.contains('motif')) {
+    const target = data.entries.find((x) => x.id === t.dataset.id);
+    if (item.type === 'claim') {
+      if (target.id === item.from || target.claims.some((c) => c.claim === item.claim)) return;
+      await act({action: 'also', claim: item.claim, source: item.from, target: target.id});
+      toast(`Added to “${target.name}”.`, [[`also take it out of “${item.fromName}”`, () => act({action: 'unfile', claim: item.claim, id: item.from})]]);
+    } else if (item.id !== target.id && confirm(`Merge “${item.name}” into “${target.name}”? It keeps the name “${target.name}”.`)) {
+      act({action: 'merge', source: item.id, target: target.id});
+    }
+    return;
+  }
+  const g = t.dataset.g;
+  if (g === 'newmotif' && item.type === 'claim') {
+    const n = prompt('Name the new motif'); if (n) act({action: 'also_new', claim: item.claim, source: item.from, name: n});
+  } else if (item.type === 'motif' && (g.startsWith('G') || g === 'none')) {
+    act({action: 'group_assign', id: item.id, group: g === 'none' ? null : g});
+  }
+}
+let toastTimer;
+function toast(text, buttons) {
+  const box = $('#toast');
+  box.innerHTML = esc(text) + ' ' + buttons.map(([label], i) => `<button class="small" data-t="${i}">${esc(label)}</button>`).join(' ');
+  box.style.display = 'block';
+  box.onclick = (ev) => { const b = ev.target.closest('button'); if (b) { buttons[+b.dataset.t][1](); box.style.display = 'none'; } };
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { box.style.display = 'none'; }, 9000);
+}
 $('#reset-done').addEventListener('click', () => { if (confirm('Bring back every motif marked done?')) act({action: 'reset_done'}); });
 $('#add-motif').addEventListener('click', () => { const n = prompt('Name the new motif (claims can be moved into it)'); if (n) act({action: 'add', name: n}); });
 ['#q', '#sort', '#multi', '#showdone'].forEach((s) => $(s).addEventListener('input', render));
