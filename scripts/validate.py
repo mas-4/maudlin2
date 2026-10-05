@@ -9,6 +9,7 @@ spice values so the rare ones (very grim, very loaded) get checked as often as t
     .venv/bin/python scripts/validate.py [--port 8766]
 """
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -428,7 +429,7 @@ const expanded = new Set();
 async function act(body) {
   const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   if (!r.ok) { alert('Failed: ' + await r.text()); return; }
-  data = await r.json(); render();
+  data = await r.json(); render(); if (window.refreshUndo) refreshUndo();
 }
 function render() {
   const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
@@ -753,7 +754,7 @@ def motif_context(data: dict) -> dict:
         e = entries.get(eid)
         return e and {'id': eid, 'name': e['name'], 'by': 'person' if e.get('curated') else 'model',
                       'claims': [c['claim'] for c in e['claims'][:8]], 'size': len(e['claims'])}
-    out = {k: motif(data[k]) for k in ('id', 'source', 'target', 'a', 'b') if isinstance(data.get(k), str) and data[k] in entries}
+    out = {k: motif(data[k]) for k in ('id', 'source', 'target', 'a', 'b', 'child', 'parent') if isinstance(data.get(k), str) and data[k] in entries}
     claim = data.get('claim')
     if isinstance(claim, str) and claim:
         out['claim_motifs'] = [motif(i) | {'claims': None} for i in mi._ids(index, mi.key(claim)) if i in entries]
@@ -764,6 +765,105 @@ def log_curation(page: str, data: dict, before: dict):
     os.makedirs(FOLDER, exist_ok=True)
     with open(CURATION_LOG, 'a') as f:
         f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'page': page, 'action': data, 'before': before}) + '\n')
+
+
+# Undo: each change on the organizer pages snapshots the file it touched (the motif index, or the name aliases) so the
+# last ones can be stepped back, newest first. Kept on disk, so a server restart doesn't lose them.
+UNDO = os.path.join(FOLDER, 'undo')
+UNDO_KEEP = 50
+
+
+def undo_paths() -> dict:
+    from app.analysis import entities, motif_index
+    return {'/motif-board': motif_index.INDEX, '/motif-index': motif_index.INDEX, '/motif-verdict': motif_index.INDEX,
+            '/entities': entities.ALIASES}
+
+
+def read_text(path: str) -> str | None:
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def describe(data: dict, before: dict) -> str:
+    """'merge “Government deception” into “False flag operation”' and the like, for the undo button"""
+    name = lambda k: (before.get(k) or {}).get('name') or data.get(k)  # noqa: E731
+    act = data.get('action') or ('motif check: ' + str(data.get('answer')))
+    parts = [act] + [f'“{name(k)}”' for k in ('source', 'id', 'a', 'child') if data.get(k)]
+    parts += [f'→ “{name(k)}”' for k in ('target', 'b', 'parent') if data.get(k)]
+    if data.get('name'):
+        parts.append(f'as “{data["name"]}”')
+    return ' '.join(parts)[:160]
+
+
+def push_undo(path: str, before_text: str | None, what: str):
+    after = read_text(path)
+    if after == before_text:
+        return
+    os.makedirs(UNDO, exist_ok=True)
+    stamp = dt.now().strftime('%Y%m%d-%H%M%S-%f')
+    with open(os.path.join(UNDO, stamp + '.json'), 'w') as f:
+        json.dump({'path': path, 'before': before_text, 'after_sha': hashlib.sha1((after or '').encode()).hexdigest(),
+                   'what': what, 'at': stamp}, f)
+    for old in sorted(os.listdir(UNDO))[:-UNDO_KEEP]:
+        os.remove(os.path.join(UNDO, old))
+
+
+def last_undo() -> tuple[str, dict] | None:
+    try:
+        names = sorted(n for n in os.listdir(UNDO) if n.endswith('.json'))
+    except OSError:
+        return None
+    if not names:
+        return None
+    path = os.path.join(UNDO, names[-1])
+    with open(path) as f:
+        return path, json.load(f)
+
+
+def undo() -> str:
+    """Step back the newest change; refuses if the file changed since (an hourly run filing claims), rather than
+    losing that"""
+    from app.analysis import motif_index
+    found = last_undo()
+    if not found:
+        raise ValueError('nothing to undo')
+    snap_path, snap = found
+    with motif_index.locked():
+        now = read_text(snap['path']) or ''
+        if hashlib.sha1(now.encode()).hexdigest() != snap['after_sha']:
+            raise ValueError('the index has changed since that edit (an hourly run filing claims?), so undoing it '
+                             'would lose those changes: fix it by hand instead')
+        with open(snap['path'] + '.tmp', 'w') as f:
+            f.write(snap['before'] or '')
+        os.replace(snap['path'] + '.tmp', snap['path'])
+    os.remove(snap_path)
+    log_curation('undo', {'action': 'undo', 'undid': snap['what']}, {})
+    return snap['what']
+
+
+UNDO_SNIPPET = """<script>
+(function () {
+  const b = document.getElementById('undo-btn'), w = document.getElementById('undo-what');
+  if (!b) return;
+  async function state() {
+    const d = await (await fetch('/undo.json')).json();
+    b.disabled = !d.what; w.textContent = d.what ? 'undo: ' + d.what : '';
+  }
+  async function undo() {
+    if (b.disabled) return;
+    const r = await fetch('/undo', {method: 'POST'});
+    if (!r.ok) { alert('Can\u2019t undo: ' + await r.text()); return; }
+    location.reload();
+  }
+  b.addEventListener('click', undo);
+  addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.target.closest('input, textarea')) { e.preventDefault(); undo(); } });
+  window.refreshUndo = state; state();
+})();
+</script>"""
+UNDO_BUTTON = ' <button id="undo-btn" disabled title="undo your last change (Ctrl+Z)">↶ undo</button> <span id="undo-what" style="font-size:.8em;color:#555"></span></nav>'
 
 
 def board_action(data: dict):
@@ -930,6 +1030,9 @@ def organizer_action(data: dict):
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith('/undo.json'):
+            found = last_undo()
+            return self.send_json({'what': found[1]['what'] if found else None})
         if self.path.startswith('/motif-similar.json'):
             from urllib.parse import urlparse, parse_qs
             from app.analysis import motif_index
@@ -943,13 +1046,20 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(motif_index.board())
         body = (EMPTY_PAGE if self.path.startswith('/motif-empty') else BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
                 if self.path.startswith('/motifs') else entities_page() if self.path.startswith('/entities')
-                else page()).encode()
+                else page())
+        if self.path.split('?')[0] != '/':  # every organizer page gets the undo button (the label check writes the database)
+            body = body.replace('</nav>', UNDO_BUTTON, 1).replace('</body>', UNDO_SNIPPET + '</body>', 1)
+        body = body.encode()
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Cache-Control', 'no-store')  # a page changed under an open tab shows on reload, never stale
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def remember(self, data: dict, before: dict):
+        if getattr(self, '_undo', None):
+            push_undo(self._undo[0], self._undo[1], describe(data, before))
 
     def send_json(self, value):
         body = json.dumps(value).encode()
@@ -962,12 +1072,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+        if self.path == '/undo':
+            try:
+                what = undo()
+            except ValueError as e:
+                self.send_error(409, str(e)[:300])
+                return
+            return self.send_json({'undid': what})
+        undo_path = undo_paths().get(self.path)
+        self._undo = (undo_path, read_text(undo_path)) if undo_path else None
         if self.path == '/motif-board':
             from app.analysis import motif_index
             try:
                 before = motif_context(data)
                 board_action(data)
                 log_curation('motif board', data, before)
+                self.remember(data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
@@ -978,12 +1098,14 @@ class Handler(BaseHTTPRequestHandler):
                     before = motif_context(data)
                     organizer_action(data)
                     log_curation('motif organizer', data, before)
+                    self.remember(data, before)
                 else:
                     from app.analysis import entities
                     before = {'aliases': {k: v for k, v in entities.load_aliases()['aliases'].items()
                                           if any(isinstance(x, str) and x.lower() in (k, v.lower()) for x in data.values())}}
                     entities_action(data)
                     log_curation('names', data, before)
+                    self.remember(data, {})
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
@@ -996,6 +1118,7 @@ class Handler(BaseHTTPRequestHandler):
                 before = motif_context(data)
                 motif_index.check(data.get('claim', ''), data.get('id', ''), data.get('answer', ''))
                 log_curation('motif check', data, before)
+                self.remember(data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return

@@ -126,3 +126,32 @@ def test_board_changes_are_logged_with_what_the_model_had_proposed(monkeypatch, 
     assert entry['before']['source']['name'] == 'Smug smirk' and entry['before']['source']['by'] == 'model'
     assert entry['before']['target']['by'] == 'person'
     assert [m['name'] for m in entry['before']['claim_motifs']] == ['Smug smirk']
+
+
+def test_undo_steps_back_but_never_over_a_runs_filing(monkeypatch, tmp_path):
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl', 'UNDO': tmp_path / 'undo'}.items():
+        monkeypatch.setattr(validate, k, str(v))
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
+    server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    post = lambda path, body=None: urllib.request.urlopen(urllib.request.Request(  # noqa: E731
+        f'http://127.0.0.1:{server.server_port}{path}', json.dumps(body or {}).encode(), {'Content-Type': 'application/json'}))
+    try:
+        post('/motif-board', {'action': 'rename', 'id': 'M001', 'name': 'Blue Texas'})
+        post('/motif-board', {'action': 'add', 'name': 'Lost golden age'})
+        assert json.loads(post('/undo').read())['undid'] == 'add as “Lost golden age”'
+        assert [e['name'] for e in mi.live(mi.load())] == ['Blue Texas']
+        index = mi.load()  # an hourly run files something in between
+        index['next'] += 1
+        mi.save(index)
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            post('/undo')
+        assert refused.value.code == 409 and mi.live(mi.load())[0]['name'] == 'Blue Texas'
+    finally:
+        server.shutdown()
