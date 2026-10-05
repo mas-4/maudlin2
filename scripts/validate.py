@@ -261,6 +261,20 @@ def organizer_page() -> str:
     <button data-act="kind_of" data-child="{a}" data-parent="{b}" title="{a} is a narrower kind of {b}">⊂ {a} is a kind of {b}</button>
     <button data-act="not_same" data-a="{a}" data-b="{b}">✗ not the same</button></div>
 </section>""" for a, b, sim in pairs if a in by_id and b in by_id)
+    shared = ''.join(f"""
+<section class="card pair">
+  <p class="outlet">filed together on {len(p['shared'])} claim{'' if len(p['shared']) == 1 else 's'}</p>
+  <div class="two"><div><b>{p['a']} 🧩 {esc(by_id[p['a']]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{p['a']}" data-name="{esc(by_id[p['a']]['name'])}" title="rename">✎</button></div>
+    <div><b>{p['b']} 🧩 {esc(by_id[p['b']]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{p['b']}" data-name="{esc(by_id[p['b']]['name'])}" title="rename">✎</button></div></div>
+  <p class="said">Both:</p><ul>{''.join(f'<li>{esc(c[:160])}</li>' for c in p['shared'])}</ul>
+  <div class="two"><div><p class="said">Only {p['a']}:</p><ul>{''.join(f'<li>{esc(c[:140])}</li>' for c in p['only_a']) or '<li class="said">none</li>'}</ul></div>
+    <div><p class="said">Only {p['b']}:</p><ul>{''.join(f'<li>{esc(c[:140])}</li>' for c in p['only_b']) or '<li class="said">none</li>'}</ul></div></div>
+  <div class="row"><button data-act="merge" data-source="{p['b']}" data-target="{p['a']}">⤵ merge into {p['a']}</button>
+    <button data-act="merge" data-source="{p['a']}" data-target="{p['b']}">⤵ merge into {p['b']}</button>
+    <button data-act="kind_of" data-child="{p['b']}" data-parent="{p['a']}">⊂ {p['b']} is a kind of {p['a']}</button>
+    <button data-act="kind_of" data-child="{p['a']}" data-parent="{p['b']}">⊂ {p['a']} is a kind of {p['b']}</button>
+    <button data-act="not_same" data-a="{p['a']}" data-b="{p['b']}">✗ not the same</button></div>
+</section>""" for p in motif_index.shared_pairs() if p['a'] in by_id and p['b'] in by_id)
     cards = ''.join(f"""
 <section class="card entry" id="{e['id']}" data-text="{esc((e['name'] + ' ' + ' '.join(c['claim'] for c in e['claims'])).lower())}">
   <p class="outlet">{e['id']} · {len(e['claims'])} claim{'' if len(e['claims']) == 1 else 's'} · first seen {e.get('first_seen', '')}{' · ✎ curated' if e.get('curated') else ''}</p>
@@ -286,7 +300,10 @@ button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1e
 duplicates, rename to a reusable framing ("X is / isn't Y"), delete what isn't a motif, or move a claim that landed in
 the wrong place. Renamed motifs keep your name; deleted motifs' claims aren't filed again. Changes go live with the
 next site build.</p>
-<h2>Suggested merges {note}</h2>
+<h2>Filed together</h2>
+<p class="said">Motifs the model filed on two or more of the same claims: judge them by what they hold, not their names.</p>
+{shared or '<p>None right now.</p>'}
+<h2>Similar names {note}</h2>
 {suggest or '<p>No suggestions right now.</p>'}
 <h2>Add a motif</h2>
 <div class="row"><input id="new-name" size="60" placeholder="a reusable framing, e.g. the ruler is / isn't fit to lead"><button data-act="add">+ add</button></div>

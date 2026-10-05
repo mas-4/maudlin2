@@ -629,3 +629,26 @@ def set_parent(eid: str, parent: str | None):
     else:
         entries[eid].pop('parent', None)
     save(index)
+
+
+def shared_pairs(least: int = 2) -> list[dict]:
+    """Motifs filed together on at least `least` of the same claims: candidates for being one motif (or one a kind of
+    the other), judged by what they hold rather than by their names. Pairs a person kept apart, or linked as kinds,
+    are left out. Most shared first."""
+    from itertools import combinations
+    index = load()
+    entries = {e['id']: e for e in live(index)}
+    apart = {tuple(sorted(p)) for p in index.get('not_same', [])}
+    together = {}
+    for k, ids in index['claims'].items():
+        for a, b in combinations(sorted({i for i in ids if i in entries}), 2):
+            together.setdefault((a, b), []).append(k)
+    out = []
+    for (a, b), keys in together.items():
+        if len(keys) < least or (a, b) in apart or entries[a].get('parent') == b or entries[b].get('parent') == a:
+            continue
+        text = {key(c['claim']): c['claim'] for c in entries[a]['claims'] + entries[b]['claims']}
+        out.append({'a': a, 'b': b, 'shared': [text[k] for k in keys if k in text],
+                    'only_a': [c['claim'] for c in entries[a]['claims'] if key(c['claim']) not in keys],
+                    'only_b': [c['claim'] for c in entries[b]['claims'] if key(c['claim']) not in keys]})
+    return sorted(out, key=lambda p: (-len(p['shared']), p['a']))
