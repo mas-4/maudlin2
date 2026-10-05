@@ -490,10 +490,20 @@ $('#picker').addEventListener('click', (ev) => {
   if (ev.target === $('#picker') || (b && b.dataset.close)) { $('#picker').close(); return; }
   if (!b) return;
   const name = ($('#pick-new') || {}).value || '';
-  const done = (body) => { $('#picker').close(); act(body); };
+  // The picker stays open after each change, redrawn, so several can be made in a row (it closed after one)
+  const done = async (body) => {
+    const q = ($('#pick-q') || {}).value || '';
+    await act(body);
+    const holders = data.entries.filter((e) => e.claims.some((c) => c.claim === claim));
+    if (!holders.length) { $('#picker').close(); return; }  // its last motif gone: it's filed again next run
+    if (!holders.some((e) => e.id === pick.from)) pick.from = holders[0].id;
+    drawPicker(q);
+  };
+  const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim)).length;
   if (b.dataset.move) done({action: 'move', claim, source: from, target: b.dataset.move});
   else if (b.dataset.also) done({action: 'also', claim, source: from, target: b.dataset.also});
-  else if (b.dataset.out && confirm('Take it out of this motif for good?')) done({action: 'unfile', claim, id: b.dataset.out});
+  else if (b.dataset.out && (mine > 1 || confirm('That\'s its last motif: take it out, and it\'s filed again next run?')))
+    done({action: 'unfile', claim, id: b.dataset.out});
   else if (b.dataset.movenew && name.trim()) done({action: 'move_new', claim, source: from, name});
   else if (b.dataset.alsonew && name.trim()) done({action: 'also_new', claim, source: from, name});
 });
