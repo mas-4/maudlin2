@@ -8,6 +8,7 @@ in chunks and keeps only what the voters say. Quotes are kept for the local chec
 in our words, never the quotes (as with posts)."""
 import json
 import os
+import re
 import time
 
 from app.analysis import llm
@@ -19,6 +20,8 @@ STORE = os.path.join(Config.data, 'focus_group_claims.json')  # episode url -> i
 MODEL = 'qwen3:30b-a3b'
 CHUNK = 6000  # characters of transcript a call
 SOURCE = 'Focus Group'
+FOUND = 0.6  # a quote counts as the voter's words if this share of its four-word runs is in the transcript part
+SAME_QUOTE = 0.6  # two quotes sharing this share of the shorter one's runs are one quote
 PROMPT = """This is part of an episode of a podcast ({title}) that plays recordings of focus groups of voters and has \
 its hosts and guests discuss them. The transcript has no speaker names and may include ads.
 
@@ -80,6 +83,36 @@ def episodes() -> list[dict]:
     return out
 
 
+CONTRACTIONS = [("n't", ' not'), ("'re", ' are'), ("'m", ' am'), ("'ll", ' will'), ("'ve", ' have'), ("'d", ' would'),
+                ("'s", ' is')]  # 's as 'is' even where it's a possessive: both sides are read alike
+
+
+def runs(text: str, n: int = 4) -> set[tuple]:
+    """A text's runs of n words (all of it, for a shorter text)"""
+    text = text.lower().replace('’', "'")
+    for short, full in CONTRACTIONS:  # the model sometimes writes out what the voter said short ("it's", "it is")
+        text = text.replace(short, full)
+    words = re.findall(r"[a-z0-9]+", text)
+    n = min(n, len(words))
+    return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)} if n else set()
+
+
+def checked(claims: list[dict], text: str) -> tuple[list[dict], list[dict]]:
+    """(kept, dropped) of a transcript part's claims. Kept only if the quote is in the transcript (the model sometimes
+    paraphrased, or quoted a host) and isn't mostly an earlier claim's quote (once it paired 'Amy Acton is not
+    credible due to negative ads' with a quote about Vivek Ramaswamy, the one it had just used)."""
+    spoken, kept, dropped = runs(text), [], []
+    for c in claims:
+        q = runs(c['quote'])
+        if not q or len(q & spoken) / len(q) < FOUND:
+            dropped.append(dict(c, why='quote not in the transcript'))
+        elif any(len(q & runs(k['quote'])) / min(len(q), len(runs(k['quote'])) or 1) >= SAME_QUOTE for k in kept):
+            dropped.append(dict(c, why='quote already used for another claim'))
+        else:
+            kept.append(c)
+    return kept, dropped
+
+
 def extract(budget: float | None = None) -> dict:
     """Read the episodes not read yet, newest first, chunk by chunk, saving as it goes, for at most `budget`
     seconds (the next run carries on)."""
@@ -96,13 +129,16 @@ def extract(budget: float | None = None) -> dict:
             chunk = ep['chunks'][entry['read']]
             answer = llm.complete_json(PROMPT.format(title=ep['title'], text=chunk['text']), SCHEMA, max_tokens=900,
                                        model=MODEL)
+            found = []
             for c in (answer or {}).get('claims', []):
                 claim = ' '.join(c.get('claim', '').split())
                 if sum(ch.isalpha() for ch in claim) < 12:  # '...' and other empty fills
                     continue
                 side = c.get('side', '').split('(')[0].strip()  # 'Trump voter (implied by context...)'
-                entry['claims'].append({'claim': claim, 'quote': c.get('quote', '').strip(), 'side': side,
-                                        'at': round(chunk['at'])})
+                found.append({'claim': claim, 'quote': c.get('quote', '').strip(), 'side': side, 'at': round(chunk['at'])})
+            kept, dropped = checked(found, chunk['text'])
+            entry['claims'] += kept
+            entry.setdefault('dropped', []).extend(dropped)
             entry['read'] += 1
             entry['chunks'] = len(ep['chunks'])
             calls += 1
@@ -111,6 +147,27 @@ def extract(budget: float | None = None) -> dict:
         logger.info("Focus Group: %d chunks read; %d claims from %d episodes", calls,
                     sum(len(e['claims']) for e in store.values()), len(store))
     return store
+
+
+def recheck() -> list[str]:
+    """Check the claims read before the quote check (Oct 5) the same way, part by part; the dropped ones move to
+    'dropped' with the reason. Returns the dropped claims, to take out of the motif index."""
+    store, gone = load(), []
+    for ep in episodes():
+        entry = store.get(ep['url'])
+        if not entry:
+            continue
+        kept = []
+        for chunk in ep['chunks']:
+            part = [c for c in entry['claims'] if c.get('at') == round(chunk['at'])]
+            ok, dropped = checked(part, chunk['text'])
+            kept += ok
+            entry.setdefault('dropped', []).extend(dropped)
+            gone += [c['claim'] for c in dropped]
+        kept += [c for c in entry['claims'] if c.get('at') not in {round(ch['at']) for ch in ep['chunks']}]
+        entry['claims'] = kept
+    save(store)
+    return gone
 
 
 def claims() -> list[dict]:
