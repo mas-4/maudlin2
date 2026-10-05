@@ -253,8 +253,8 @@ def organizer_page() -> str:
     suggest = ''.join(f"""
 <section class="card pair">
   <p class="outlet">similar names ({sim:.2f})</p>
-  <div class="two"><div><b>{a} 🧩 {esc(by_id[a]['name'])}</b><ul>{claims_of(by_id[a])}</ul></div>
-    <div><b>{b} 🧩 {esc(by_id[b]['name'])}</b><ul>{claims_of(by_id[b])}</ul></div></div>
+  <div class="two"><div><b>{a} 🧩 {esc(by_id[a]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{a}" data-name="{esc(by_id[a]['name'])}" title="rename">✎</button><ul>{claims_of(by_id[a])}</ul></div>
+    <div><b>{b} 🧩 {esc(by_id[b]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{b}" data-name="{esc(by_id[b]['name'])}" title="rename">✎</button><ul>{claims_of(by_id[b])}</ul></div></div>
   <div class="row"><button data-act="merge" data-source="{b}" data-target="{a}">⤵ merge into {a}</button>
     <button data-act="merge" data-source="{a}" data-target="{b}">⤵ merge into {b}</button>
     <button data-act="not_same" data-a="{a}" data-b="{b}">✗ not the same</button></div>
@@ -302,10 +302,11 @@ document.addEventListener('click', (ev) => {{
   if (!b) return;
   const d = b.dataset;
   if (d.act === 'rename') post({{action: 'rename', id: d.id, name: b.previousElementSibling.value}});
+  else if (d.act === 'rename_prompt') {{ const n = prompt('Rename ' + d.id, d.name); if (n && n.trim() && n.trim() !== d.name) post({{action: 'rename', id: d.id, name: n.trim()}}); }}
   else if (d.act === 'merge') post({{action: 'merge', source: d.source, target: d.target}});
   else if (d.act === 'not_same') post({{action: 'not_same', a: d.a, b: d.b}});
   else if (d.act === 'merge_into') {{ const t = prompt('Merge ' + d.source + ' into which motif? (its number, e.g. M012)'); if (t) post({{action: 'merge', source: d.source, target: t.trim().toUpperCase()}}); }}
-  else if (d.act === 'delete') {{ if (confirm('Delete ' + d.id + '? Its claims won\'t be filed again.')) post({{action: 'delete', id: d.id}}); }}
+  else if (d.act === 'delete') {{ if (confirm('Delete ' + d.id + '? Its claims will not be filed under it again.')) post({{action: 'delete', id: d.id}}); }}
   else if (d.act === 'move') {{ const t = prompt('Move this claim to which motif? (its number, or "new")'); if (t) post({{action: 'move', claim: d.claim, source: d.source, target: t.trim() === 'new' ? 'new' : t.trim().toUpperCase()}}); }}
   else if (d.act === 'add') {{ const n = document.getElementById('new-name').value.trim(); if (n) post({{action: 'add', name: n}}); }}
 }});

@@ -74,3 +74,27 @@ def test_the_motif_board_regroups_moves_merges_and_unfiles(monkeypatch, tmp_path
     assert mi.board()['entries'][0]['group'] is None
     with pytest.raises(ValueError):
         validate.board_action({'action': 'move', 'claim': 'b', 'source': 'M001', 'target': 'M999'})
+
+
+@pytest.mark.skipif(__import__('shutil').which('node') is None, reason='needs node to parse the scripts')
+def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
+    """An unescaped apostrophe ('won't' in a confirm) once broke the motif organizer's whole script, silently"""
+    import re
+    import subprocess
+    from app.analysis import entities, motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    mi.save({'next': 3, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': "it's one", 'claims': [{'claim': "a 'quoted' claim", 'source': 's'}]},
+        'M002': {'id': 'M002', 'name': 'two', 'claims': [{'claim': 'b', 'source': 's'}]}}})
+    monkeypatch.setattr(mi, 'suggestions', lambda: [('M001', 'M002', 0.9)])
+    monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
+    monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
+    monkeypatch.setattr(validate, 'MOTIF_VERDICTS', str(tmp_path / 'v.jsonl'))
+    pages = {'organizer': validate.organizer_page(), 'motif check': validate.motif_page(), 'board': validate.BOARD_PAGE,
+             'empty': validate.EMPTY_PAGE, 'names': validate.entities_page()}
+    for name, html in pages.items():
+        for js in re.findall(r'<script>(.*?)</script>', html, re.S):
+            path = tmp_path / 'page.js'
+            path.write_text(js)
+            result = subprocess.run(['node', '--check', str(path)], capture_output=True, text=True)
+            assert result.returncode == 0, f'{name}: {result.stderr[:300]}'
