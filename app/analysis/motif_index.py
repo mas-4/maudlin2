@@ -36,6 +36,10 @@ CANDIDATES = 5
 # is easier to fix by hand than a wrong one
 MATCH_FLOOR = 0.7
 MAX_NEW = 200  # claims filed a run, at most
+# Naming sees the index first (Oct 5): named one claim at a time without it, 223 of 259 motifs held one claim
+# ('Smug smirk', 'Houthi territorial expansion') and the same name was coined three times as separate entries
+SHOWN = 15  # existing motifs shown when naming a claim, the closest to it
+SHOWN_FLOOR = 0.45  # ...if at least this alike
 
 NAME_PROMPT = """A claim people are telling or arguing over:
 {claim}
@@ -52,6 +56,24 @@ event, make it more general; if it would fit almost any story, make it more spec
 NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 1, "maxItems": 3,
                                                           "items": {"type": "string", "maxLength": 60}}},
                "required": ["motifs"]}
+REUSE_PROMPT = """A claim people are telling or arguing over:
+{claim}
+
+Motifs already in our index, each a recurring rumor or narrative shape, with a claim filed under it:
+{options}
+
+Which of these motifs is this claim another instance of? A motif fits only when the claim is clearly the same \
+kind of story as its example, the same shape told about different people, places or years; a shared topic, group, \
+place or mood isn't enough. Skip any motif whose name only describes one particular event rather than a recurring \
+shape. Use a fitting motif rather than coining a near-copy of it: the index is only useful if the same shape is \
+filed under the same motif. For any shape of this claim none of them covers, name a new motif: three to seven words, terse like a folklorist's label (a subject and what it does or is), \
+no names of people, places, organizations or dates, general enough to fit the same kind of story about others. \
+One to three motifs in all, the main one first; most claims have one or two.
+
+reason: a sentence or two
+existing: the numbers of the motifs that fit
+new: names for shapes none of them covers (often none)"""
+
 MATCH_PROMPT = """A rumor shape: {phrase}
 (from the claim: {claim})
 
@@ -136,12 +158,54 @@ def match(index: dict, phrase: str, claim: str) -> str | None:
     options = '\n'.join(f'{n}. {entries[i]["name"]} (e.g. ' + '; '.join(
         f'"{x["claim"][:110]}"' for x in entries[i]['claims'][-2:]) + ')' for n, i in enumerate(top, 1))
     schema = {"type": "object", "properties": {
-        "reason": {"type": "string", "maxLength": 200},
+        "reason": {"type": "string", "maxLength": 1000},  # cut off mid-reason, the 30B answers no (as with sagas)
         "pick": {"type": "string", "enum": [str(n) for n in range(1, len(top) + 1)] + ['new']}},
         "required": ["reason", "pick"]}
     answer = llm.complete_json(MATCH_PROMPT.format(phrase=phrase, claim=claim, options=options), schema,
-                               max_tokens=160, model=MODEL)
+                               max_tokens=500, model=MODEL)
     return entries[top[int(answer['pick']) - 1]]['id'] if answer and answer['pick'] != 'new' else None
+
+
+def closest(index: dict, claim: str) -> list[dict]:
+    """The existing entries most like a claim, by meaning (its name, phrases and claims together), for naming it."""
+    from app.narratives import embed
+    entries = live(index)
+    if not entries:
+        return []
+    texts = [e['name'] + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(x['claim'][:120] for x in e['claims'][-2:])
+             for e in entries]
+    v = embed([claim] + texts)
+    sims = v[1:] @ v[0]
+    return [entries[int(i)] for i in np.argsort(-sims)[:SHOWN] if sims[i] >= SHOWN_FLOOR]
+
+
+def name_claim(claim: str, shown: list[dict]) -> dict | None:
+    """{'existing': [entries the model filed it under], 'new': [names for shapes none of them covers]}, or None"""
+    if not shown:
+        named = llm.complete_json(NAME_PROMPT.format(claim=claim), NAME_SCHEMA, max_tokens=160, model=MODEL)
+        return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)]}
+    options = '\n'.join(f'{n}. {e["name"]} (e.g. "{e["claims"][-1]["claim"][:110]}")' if e['claims'] else
+                        f'{n}. {e["name"]}' for n, e in enumerate(shown, 1))
+    schema = {"type": "object", "properties": {
+        "reason": {"type": "string", "maxLength": 1000},
+        "existing": {"type": "array", "maxItems": 3, "items": {"type": "string", "enum": [str(n) for n in range(1, len(shown) + 1)]}},
+        "new": {"type": "array", "maxItems": 3, "items": {"type": "string", "maxLength": 60}}},
+        "required": ["reason", "existing", "new"]}
+    answer = llm.complete_json(REUSE_PROMPT.format(claim=claim, options=options), schema, max_tokens=600, model=MODEL)
+    if not answer:
+        return None
+    existing = [shown[int(n) - 1] for n in dict.fromkeys(answer.get('existing', []))][:3]
+    return {'existing': existing, 'new': [m for m in map(clean, answer.get('new', [])) if fits_name(m)]}
+
+
+def fits_name(name: str) -> bool:
+    return bool(name) and len(name.split()) <= MAX_WORDS
+
+
+def same_name(index: dict, phrase: str) -> str | None:
+    """An entry already called this (case and punctuation aside): one name, one motif"""
+    norm = lambda t: re.sub(r'[^a-z0-9 ]', ' ', t.lower()).split()  # noqa: E731
+    return next((e['id'] for e in live(index) if norm(e['name']) == norm(phrase)), None)
 
 
 def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None = None) -> dict:
@@ -159,13 +223,18 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             break  # the next run picks up where this one stopped
         if n and n % 5 == 0:
             save(index)  # as it goes: a run cut short keeps what it filed
-        named = llm.complete_json(NAME_PROMPT.format(claim=c['claim']), NAME_SCHEMA, max_tokens=160, model=MODEL)
+        shown = closest(index, c['claim'])
+        named = name_claim(c['claim'], shown)
         if not named:
             continue
-        filed = []
-        for phrase in dict.fromkeys(clean(m) for m in named.get('motifs', [])
-                                    if clean(m) and len(clean(m).split()) <= MAX_WORDS):
-            eid = match(index, phrase, c['claim'])
+        filed = [e['id'] for e in named['existing']]
+        for e in named['existing']:
+            entry = index['entries'][e['id']]
+            entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
+                                    'side': c.get('side'), 'date': c.get('date') or today})
+            entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
+        for phrase in named['new'][:max(0, 3 - len(filed))]:
+            eid = same_name(index, phrase) or match(index, phrase, c['claim'])
             if eid in filed:
                 continue
             if eid is None:

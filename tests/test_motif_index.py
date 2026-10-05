@@ -15,14 +15,19 @@ def test_files_new_and_matching_claims(monkeypatch, tmp_path):
 
     def complete_json(prompt, schema, max_tokens=0, model=None):
         assert model == mi.MODEL  # the bigger model does the hard calls
-        if 'motifs' in schema['properties']:
-            return {'motifs': [next(v for k, v in names.items() if k in prompt) + '.']}
-        return {'reason': '', 'pick': '1'}  # same as the closest entry, when one is offered
+        claim = prompt.splitlines()[1]  # the claim's own line: the shown motifs' example claims come later
+        name = next(v for k, v in names.items() if k in claim)
+        if 'motifs' in schema['properties']:  # the first claim, with nothing in the index to show
+            return {'motifs': [name + '.']}
+        if 'existing' in schema['properties']:  # named with the closest motifs shown: reuse one that fits
+            shown = [line.split('. ', 1)[1].split(' (e.g.')[0] for line in prompt.splitlines() if line[:1].isdigit()]
+            return {'reason': '', 'existing': [str(shown.index(name) + 1)] if name in shown else [], 'new': [] if name in shown else [name]}
+        return {'reason': '', 'pick': 'new'}
 
     monkeypatch.setattr(llm, 'complete_json', complete_json)
     from app import narratives
     vec = {'the ruler is senile': [1, 0], 'the realignment that keeps not coming': [0, 1]}
-    monkeypatch.setattr(narratives, 'embed', lambda texts: np.array([vec[t.split('.')[0]] for t in texts], float))
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.array([vec.get(t.split('.')[0], [.7, .7]) for t in texts], float))
     index = mi.file_claims([{'claim': c, 'source': 'narrative'} for c in names])
     entries = sorted(mi.live(index), key=lambda e: e['id'])
     assert [(e['id'], e['name'], len(e['claims'])) for e in entries] == [
@@ -80,3 +85,19 @@ def test_which_folklore_claims_are_filed():
     assert not mi.fits({'genre': 'prophecy or prediction', 'politics': False, 'family': 'none'})  # a sports pick
     assert mi.fits({'genre': 'contemporary legend', 'politics': False, 'family': 'contamination, health and medicine'})
     assert not mi.fits({'genre': 'none: a shared topic, not a retold narrative', 'politics': True})
+
+
+
+def test_a_name_already_in_the_index_is_reused_word_for_word(monkeypatch, tmp_path):
+    """'Blame shifting' was coined four times as four entries (Oct 5)"""
+    fresh(monkeypatch, tmp_path)
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, **k:
+                        {'motifs': ['Blame shifting']} if 'motifs' in schema['properties']
+                        else {'reason': '', 'existing': [], 'new': ['Blame-shifting.']} if 'existing' in schema['properties']
+                        else {'reason': '', 'pick': 'new'})  # the model says new; the name says otherwise
+    from app import narratives
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)) / np.sqrt(2))
+    index = mi.file_claims([{'claim': 'Trump blames Iowans', 'source': 'Snopes'},
+                            {'claim': 'Cooper blamed for rape kits', 'source': 'FactCheck.org'}])
+    assert [(e['name'], len(e['claims'])) for e in mi.live(index)] == [('Blame shifting', 2)]
