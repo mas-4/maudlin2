@@ -58,3 +58,16 @@ def test_circulation_counts_people_by_stance(monkeypatch, tmp_path):
     out = circulation.seen({'u1': 'the claim'})
     assert out['u1']['telling'] == 1 and out['u1']['arguing'] == 1 and out['u1']['candidates'] == 3
     assert circulation.load()['claims']['u1']['people'] == 2
+
+
+def test_made_today_needs_a_full_day_report(monkeypatch, tmp_path):
+    import json
+    from datetime import datetime as dt
+    from app import narratives
+    monkeypatch.setattr(narratives, 'FOLDER', str(tmp_path))
+    assert not narratives.made_today()
+    today = dt.now().strftime('%Y-%m-%d')
+    (tmp_path / f'report-{today}-1438.json').write_text(json.dumps({'hours': 3}))
+    assert not narratives.made_today()  # a short test report doesn't count
+    (tmp_path / f'report-{today}-0412.json').write_text(json.dumps({'hours': 24}))
+    assert narratives.made_today()

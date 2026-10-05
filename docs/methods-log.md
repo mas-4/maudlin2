@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-05
+- **Gap: no runs from 3:04 to 7:10 AM Eastern.** The desktop's idle timer suspended the machine during the 3 AM
+  run's GPU transcription (which had grown to its full 10 minutes with the new call-in and podcast feeds); it never
+  resumed, so the 4, 5 and 6 AM runs and the nightly folklore report were lost until a cold boot at 7:10.
+  Headlines live on front pages only during those hours are missing. Fix: each run holds the desktop's sleep lock
+  until it's done, and a missed nightly report is made up by the next run after 4 AM.
+
 ## 2026-10-04
 - **Mood rescore done** (8:22 PM; 20,378 stored headlines plus 1,441 that arrived during the run). Over 15,425 news
   headlines, 79% kept the same mood and 1.1% flipped sign; all leans read grimmer, right-leaning outlets most

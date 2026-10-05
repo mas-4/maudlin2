@@ -22,6 +22,7 @@ Writes a report to data/narratives/ (JSON and Markdown); nothing here is publish
     .venv/bin/python -m app.narratives [--hours 6]
 """
 import argparse
+import glob
 import hashlib
 import json
 import os
@@ -414,6 +415,18 @@ def current_stories(limit: int = 80) -> list[str]:
     with Session() as s:
         return [label for (label,) in s.query(Story.label).filter(Story.label.isnot(None)).order_by(
             Story.last_seen.desc()).limit(limit)]
+
+
+def made_today() -> bool:
+    """Whether today's nightly report (a day's posts) has been written."""
+    for path in glob.glob(os.path.join(FOLDER, f"report-{dt.now().strftime('%Y-%m-%d')}-*.json")):
+        try:
+            with open(path) as f:
+                if json.load(f).get('hours', 0) >= 24:
+                    return True
+        except (OSError, ValueError):
+            continue
+    return False
 
 
 def report(hours: float = 6) -> dict:

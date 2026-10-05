@@ -170,9 +170,10 @@ def main(args: argparse.Namespace):
         # The language model is done for this run: Whisper gets the GPU for up to ten minutes
         from app.transcribe import transcribe_pending
         transcribe_pending(budget=600)
-        # Once a night, the day's narratives (research only, #142): the GPU has nothing else to do at 4 AM
-        if dt.now().hour == NARRATIVE_HOUR:
-            from app import narratives
+        # Once a night, the day's narratives (research only, #142): the GPU has nothing else to do at 4 AM. If that
+        # run was missed (Oct 5: the machine hung in sleep from 3 to 7), the next run after 4 AM makes up for it
+        from app import narratives
+        if dt.now().hour >= NARRATIVE_HOUR and not narratives.made_today():
             from app.analysis import circulation
             narratives.report(hours=24)
             circulation.nightly()  # which fact-checked rumors people are telling or arguing over (#153)

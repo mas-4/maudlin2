@@ -37,8 +37,23 @@ fi
 scripts/backup.sh run || echo "Backup before the run failed; running anyway" >&2
 
 .venv/bin/alembic upgrade head || { echo "Database migration failed; not running" >&2; exit 1; }
-.venv/bin/python main.py --run-selenium
-status=$?
+# Keep the machine awake while the run works. On Oct 5 the desktop's idle timer suspended it at 3:04, in the middle
+# of GPU transcription; it never resumed, and 4 hourly runs were lost until a cold boot at 7:10. The desktop (KDE)
+# is what suspends, and it honors a request from any program of the same user over the session bus, no polkit
+# needed; kde-inhibit always exits 0, so the run's own status goes through a file. Without the bus (no one logged
+# in) it runs as before.
+status_file="$(mktemp)"
+echo 1 > "$status_file"
+bus="/run/user/$(id -u)/bus"
+if [ -S "$bus" ] && command -v kde-inhibit >/dev/null; then
+    DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" kde-inhibit --power \
+        sh -c '.venv/bin/python main.py --run-selenium; echo $? > "$1"' sh "$status_file"
+else
+    .venv/bin/python main.py --run-selenium
+    echo $? > "$status_file"
+fi
+status=$(cat "$status_file")
+rm -f "$status_file"
 
 # Back to sleep if the timer woke the machine and nobody has come back to it: the desktop locks the screen before
 # sleeping, so a session still locked after the run means no one's using it. Otherwise it'd sit awake until the
