@@ -360,8 +360,9 @@ def merge(source: str, target: str):
     index['related'] = [sorted([target if x == source else x for x in p]) for p in index.get('related', [])]
     index['related'] = [p for i, p in enumerate(index['related']) if p[0] != p[1] and p not in index['related'][:i]]
     for e in index['entries'].values():  # its kinds become kinds of the motif it joined
-        if e.get('parent') == source:
-            e['parent'] = target if e['id'] != target else None
+        if source in parents_of(e):
+            e['parents'] = [p for p in dict.fromkeys(target if p == source else p for p in parents_of(e)) if p != e['id']]
+            e.pop('parent', None)
     for k in index['claims']:
         ids = [target if i == source else i for i in _ids(index, k)]
         index['claims'][k] = list(dict.fromkeys(ids))
@@ -513,7 +514,8 @@ def board() -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
     index = load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
-                'done': is_done(e), 'parent': e.get('parent') if e.get('parent') in index['entries'] else None,
+                'done': is_done(e),
+                'parents': [p for p in parents_of(e) if p in index['entries'] and not index['entries'][p].get('merged_into')],
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
                                    if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
@@ -609,29 +611,40 @@ def reject(claim: str, eid: str):
     save(index)
 
 
-# Kinds: a motif can be a kind of another ('Right-wing conspiracy' of 'Conspiracy'): a person's link between motifs,
-# finer than groups, kept in the index as each entry's 'parent'
+# Kinds: a motif can be a kind of others ('Fake news fabrication' of both 'Misinformation spread' and 'Disinformation
+# campaign'): a person's links between motifs, finer than groups, kept as each entry's 'parents'. Several parents, as in
+# a thesaurus, not a tree; never a loop.
+
+def parents_of(entry: dict) -> list[str]:
+    """Its parents (entries saved with a single 'parent' before Oct 5 afternoon read as a list of one)"""
+    return list(entry.get('parents') or ([entry['parent']] if entry.get('parent') else []))
+
 
 @exclusive
-def set_parent(eid: str, parent: str | None):
-    """`eid` is a kind of `parent` (None: no longer a kind of anything). Refuses a loop."""
+def set_parent(eid: str, parent: str, on: bool = True):
+    """`eid` is (on) or isn't (off) a kind of `parent`. Refuses a loop."""
     index = load()
     entries = index['entries']
-    if parent:
+    parents = parents_of(entries[eid])
+    if on:
         if parent not in entries or entries[parent].get('merged_into') or parent == eid:
             raise ValueError(f'no such motif: {parent}')
-        p, seen = parent, set()
-        while p:  # walking up from the new parent must never reach eid
-            if p == eid or p in seen:
+        todo, seen = [parent], set()
+        while todo:  # everything above the new parent must not include eid
+            p = todo.pop()
+            if p == eid:
                 raise ValueError(f'{parent} is already a kind of {eid}')
-            seen.add(p)
-            p = entries.get(p, {}).get('parent')
-        entries[eid]['parent'] = parent
+            if p not in seen:
+                seen.add(p)
+                todo += parents_of(entries.get(p, {}))
+        parents = list(dict.fromkeys(parents + [parent]))
         pair = sorted([eid, parent])  # related, so never suggested as a merge again
         if pair not in index.setdefault('not_same', []):
             index['not_same'].append(pair)
     else:
-        entries[eid].pop('parent', None)
+        parents = [p for p in parents if p != parent]
+    entries[eid]['parents'] = parents
+    entries[eid].pop('parent', None)
     save(index)
 
 
@@ -649,7 +662,7 @@ def shared_pairs(least: int = 2) -> list[dict]:
             together.setdefault((a, b), []).append(k)
     out = []
     for (a, b), keys in together.items():
-        if len(keys) < least or (a, b) in apart or entries[a].get('parent') == b or entries[b].get('parent') == a:
+        if len(keys) < least or (a, b) in apart or b in parents_of(entries[a]) or a in parents_of(entries[b]):
             continue
         text = {key(c['claim']): c['claim'] for c in entries[a]['claims'] + entries[b]['claims']}
         out.append({'a': a, 'b': b, 'shared': [text[k] for k in keys if k in text],

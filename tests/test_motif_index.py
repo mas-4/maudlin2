@@ -161,22 +161,26 @@ def test_more_like_this_ranks_other_claims_and_remembers_not_this(monkeypatch, t
     assert [i['claim'] for i in mi.similar('M001')] == ['c']
 
 
-def test_a_motif_can_be_a_kind_of_another(monkeypatch, tmp_path):
+def test_a_motif_can_be_a_kind_of_several_others(monkeypatch, tmp_path):
+    """Fake news is a kind of misinformation and of disinformation: several parents, never a loop"""
     fresh(monkeypatch, tmp_path)
     claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
-    mi.save({'next': 4, 'claims': {}, 'entries': {
-        'M001': {'id': 'M001', 'name': 'Conspiracy', 'claims': [claim('a')]},
-        'M002': {'id': 'M002', 'name': 'Right-wing conspiracy', 'claims': [claim('b')]},
-        'M003': {'id': 'M003', 'name': 'Plot', 'claims': [claim('c')]}}})
-    mi.set_parent('M002', 'M001')
-    assert {e['id']: e['parent'] for e in mi.board()['entries']} == {'M001': None, 'M002': 'M001', 'M003': None}
-    assert ['M001', 'M002'] in mi.load()['not_same']  # related: not suggested as a merge again
+    mi.save({'next': 5, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Misinformation spread', 'claims': [claim('a')]},
+        'M002': {'id': 'M002', 'name': 'Disinformation campaign', 'claims': [claim('b')]},
+        'M003': {'id': 'M003', 'name': 'Fake news fabrication', 'claims': [claim('c')]},
+        'M004': {'id': 'M004', 'name': 'Old', 'parent': 'M001', 'claims': [claim('d')]}}})  # saved the old way
+    mi.set_parent('M003', 'M001')
+    mi.set_parent('M003', 'M002')
+    parents = {e['id']: e['parents'] for e in mi.board()['entries']}
+    assert parents == {'M001': [], 'M002': [], 'M003': ['M001', 'M002'], 'M004': ['M001']}
+    assert ['M001', 'M003'] in mi.load()['not_same']  # related: not suggested as a merge again
     with pytest.raises(ValueError):
-        mi.set_parent('M001', 'M002')  # no loops
-    mi.merge('M001', 'M003')  # a parent merged away: its kinds follow
-    assert mi.load()['entries']['M002']['parent'] == 'M003'
-    mi.set_parent('M002', None)
-    assert 'parent' not in mi.load()['entries']['M002']
+        mi.set_parent('M002', 'M003')  # no loops
+    mi.merge('M001', 'M004')  # a parent merged away: its kinds follow; a motif is never its own kind
+    assert mi.load()['entries']['M003']['parents'] == ['M004', 'M002']
+    mi.set_parent('M003', 'M002', on=False)
+    assert mi.load()['entries']['M003']['parents'] == ['M004']
 
 
 def test_motifs_filed_together_on_two_claims_are_paired(monkeypatch, tmp_path):

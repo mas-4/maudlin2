@@ -434,7 +434,7 @@ async function act(body) {
 function render() {
   const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
   const count = (g) => data.entries.filter((e) => (g === null ? !e.group : e.group === g)).length;
-  const nEmpty = data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parent === e.id)).length;
+  const nEmpty = data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parents.includes(e.id))).length;
   $('#empty-link').textContent = nEmpty ? `· ${nEmpty} empty motif${nEmpty === 1 ? '' : 's'}` : '';
   const showDone = $('#showdone').checked, left = data.entries.filter((e) => e.done !== 'done').length;
   $('#stats').textContent = `${data.entries.length} motifs · ${data.entries.reduce((n, e) => n + e.claims.length, 0)} filings · ${data.entries.filter((e) => e.claims.length > 1).length} with 2+ claims · ${left} to go`;
@@ -459,8 +459,8 @@ function render() {
     return `<article class="motif${e.done === 'done' ? ' isdone' : ''}${e.claims.length < 2 ? ' one' : ''}" data-id="${e.id}">
       <div class="head">${e.done === 'done' ? '<button class="small donebtn" data-mact="undone" title="Show it again">↺ not done</button>'
           : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? `<span class="newpill" title="Marked done, then new claims came in: they're highlighted, first">${e.claims.filter((c) => c.new).length} new since you looked</span>` : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
-        ${e.parent ? `<div class="kindof">↳ kind of 🧩 ${esc((data.entries.find((x) => x.id === e.parent) || {}).name || e.parent)} <button class="small" data-mact="unparent" title="no longer a kind of it">✗</button></div>` : ''}
-        ${(() => { const kids = data.entries.filter((x) => x.parent === e.id); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
+        ${e.parents.length ? `<div class="kindof">↳ kind of ${e.parents.map((p) => `🧩 ${esc((data.entries.find((x) => x.id === p) || {}).name || p)} <button class="small" data-unparent="${p}" title="no longer a kind of it">✗</button>`).join(' ')}</div>` : ''}
+        ${(() => { const kids = data.entries.filter((x) => x.parents.includes(e.id)); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
         ${e.related.length ? `<div class="kinds">↔ related: ${e.related.map((r) => `${esc((data.entries.find((x) => x.id === r) || {}).name || r)} <button class="small" data-unrelate="${r}" title="not related">✗</button>`).join(' ')}</div>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
@@ -492,10 +492,10 @@ document.addEventListener('click', (ev) => {
     return;
   }
   if (b && b.dataset.unrelate) { act({action: 'unrelate', a: e.id, b: b.dataset.unrelate}); return; }
+  if (b && b.dataset.unparent) { act({action: 'parent', id: e.id, parent: b.dataset.unparent, on: false}); return; }
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
     if (a === 'more') openSimilar(e.id);
-    else if (a === 'unparent') act({action: 'parent', id: e.id, parent: null});
     else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
     else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
     else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
@@ -716,7 +716,7 @@ want. Deleting one changes nothing else.</p>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 let data = {entries: []};
 // A motif with kinds under it can be empty on purpose (a 'Blame' over its kinds)
-const empty = () => data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parent === e.id));
+const empty = () => data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parents.includes(e.id)));
 function render() {
   const list = empty();
   document.getElementById('list').innerHTML = list.map((e) => `<div class="row"><input type="checkbox" data-id="${e.id}">
@@ -888,8 +888,8 @@ def board_action(data: dict):
         mi.unfile(data['claim'], data['id'])
     elif act in ('relate', 'unrelate') and data.get('a') in live and data.get('b') in live:
         mi.relate(data['a'], data['b'], act == 'relate')
-    elif act == 'parent' and data.get('id') in live and (data.get('parent') is None or data.get('parent') in live):
-        mi.set_parent(data['id'], data.get('parent'))
+    elif act == 'parent' and data.get('id') in live and data.get('parent') in live:
+        mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
     elif act == 'reject' and text('claim') and data.get('id') in live:
         mi.reject(data['claim'], data['id'])
     elif act == 'done' and data.get('id') in live:
