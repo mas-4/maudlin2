@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-04
+- **Mood rescore done** (8:22 PM; 20,378 stored headlines plus 1,441 that arrived during the run). Over 15,425 news
+  headlines, 79% kept the same mood and 1.1% flipped sign; all leans read grimmer, right-leaning outlets most
+  (average mood -0.60 to -0.76; left -0.50 to -0.62; center -0.29 to -0.39; RedState -0.78 to -1.06), as expected
+  once a headline's own dismay counts. Spin: 77% the same; right-leaning outlets' average rose (0.65 to 0.72) from
+  counting outrage bait, the others held or dipped. Old scores: data/archive/scores-before-rescore.csv.
 - **Rumors: are they circulating?** Each fact-checked claim is looked for nightly in the last 72 hours of our
   Bluesky and Mastodon sample: posts at least 0.72 alike by meaning are candidates, and the model reads up to 12 one
   at a time, saying whether each is telling the claim, arguing against it (sharing the fact-check counts), only
