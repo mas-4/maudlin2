@@ -27,9 +27,23 @@ def fake_embed(titles):
     return np.array(out)
 
 
+def unit_vectors(texts):
+    v = fake_embed(list(texts)).astype(float)
+    return v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-9), 'potion-base-8M'
+
+
+def test_headline_vectors_fall_back_to_the_static_model(monkeypatch):
+    from app.analysis import clustering
+    monkeypatch.setattr(clustering, 'ollama_embed', lambda texts: (_ for _ in ()).throw(ConnectionError('down')))
+    monkeypatch.setattr(clustering, 'embed', fake_embed)
+    v, model = clustering.headline_vectors(['a b', 'c d'])
+    assert model == 'potion-base-8M' and np.allclose(np.linalg.norm(v, axis=1), 1)
+    assert set(wire.WIRE_MATCH) == set(ph.CURATOR_MATCH) == {clustering.STORY_MODEL, model}  # a threshold for each
+
+
 # #152 wire share
 def test_wire_copy_needs_near_identical_words(monkeypatch):
-    monkeypatch.setattr(wire, 'embed', fake_embed)
+    monkeypatch.setattr(wire, 'headline_vectors', unit_vectors)
     df = pd.DataFrame({'title': ['Senate passes stopgap bill to avert shutdown',  # AP
                                  'Senate passes stopgap bill to avert shutdown',  # verbatim copy
                                  'Senate passes stopgap: what it means for you and your family',  # same lead words, rewrite
@@ -39,14 +53,14 @@ def test_wire_copy_needs_near_identical_words(monkeypatch):
 
 
 def test_wire_copy_without_wires_is_all_false(monkeypatch):
-    monkeypatch.setattr(wire, 'embed', fake_embed)
+    monkeypatch.setattr(wire, 'headline_vectors', unit_vectors)
     df = pd.DataFrame({'title': ['A thing', 'Another'], 'agency': ['CNBC', 'Fox News']})
     assert not wire.wire_copies(df).any()
 
 
 # #151 aggregators as curators
 def test_curators_link_live_aggregator_headlines_to_stories(monkeypatch):
-    monkeypatch.setattr(ph, 'embed', fake_embed)
+    monkeypatch.setattr(ph, 'headline_vectors', unit_vectors)
     page = ph.HeadlinesPage.__new__(ph.HeadlinesPage)
     page.curated = pd.DataFrame({'title': ['Trump holds rally tonight', 'Unrelated aggregator link here'],
                                  'agency': ['Drudge Report', 'Google News']})

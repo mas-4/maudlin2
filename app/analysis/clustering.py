@@ -159,6 +159,20 @@ def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
         con.close()
 
 
+def headline_vectors(texts) -> tuple[np.ndarray, str]:
+    """(unit vectors for `texts`, the model that made them): mxbai through the local Ollama (cached), or the static
+    model if Ollama can't embed. Callers keep a threshold per model, since each has its own similarity scale."""
+    texts = list(texts)
+    try:
+        return ollama_embed(texts).astype(np.float64), STORY_MODEL
+    except Exception as e:  # Ollama down, the model missing, a network refusal in tests
+        import logging
+        logging.getLogger(__name__).warning("Embeddings from %s failed (%s); using potion-base-8M", STORY_MODEL,
+                                            type(e).__name__)
+        v = embed(texts).astype(np.float64)
+        return v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-9), 'potion-base-8M'
+
+
 def story_similarity(texts) -> tuple[np.ndarray, float, str]:
     """(cosine similarity of the headlines, the story threshold for the model that made it, the model's name)."""
     texts = list(texts)

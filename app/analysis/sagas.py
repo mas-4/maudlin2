@@ -30,7 +30,10 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-SAGA_SIMILARITY = 0.58  # story centers this close may be one saga; unrelated stories sit below ~0.56
+# Story centers this close (potion-base-8M) may be one saga; the shared-name rule and the 30B judge decide. Oct 5, on 118
+# story pairs sharing a name: 0.58 let 6 of the 8 running stories through to the judge, 0.54 all 8 (3 more questions);
+# mxbai separated them no better (methods log)
+SAGA_SIMILARITY = 0.54
 NAME_MIN_SHARE = 0.3  # a distinctive word appears in at least this share of one side's headlines...
 NAME_MIN_OTHER = 0.1  # ...and this share of the other's (for saved sagas; the judge decides): 'Fairford' was in 42% of the
                       # bail story and 10% of the bombers-pulled one, which 30% on both sides kept apart (Oct 5)

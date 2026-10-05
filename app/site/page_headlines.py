@@ -11,7 +11,7 @@ import pytz
 import pandas as pd
 from sqlalchemy import func
 
-from app.analysis.clustering import prepare_embedding_cosine, story_similarity, form_clusters, label_clusters, embed, \
+from app.analysis.clustering import prepare_embedding_cosine, story_similarity, headline_vectors, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
 from app.analysis import entities, factchecks, satire, trends_meter
@@ -55,7 +55,9 @@ BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedn
 # Aggregators mostly link to other outlets' stories, so they don't count as outlets covering a story (or as votes in
 # the cloud); a story card says when they're picking it up instead (#151)
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}
-CURATOR_MATCH = 0.7  # an aggregator's headline this close to one of a story's headlines links to that story
+# An aggregator's headline this close to one of a story's headlines links to that story, per model. Oct 5, on 200
+# aggregator headlines judged by the 30B: potion-base-8M at 0.7 made 46 right links of 60, mxbai at 0.8 60 of 75
+CURATOR_MATCH = {'mxbai-embed-large': 0.8, 'potion-base-8M': 0.7}
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing
@@ -710,15 +712,14 @@ class HeadlinesPage:
         if curated is None or curated.empty or members.empty:
             return
         titles = curated['title'].tolist() + members['title'].tolist()
-        vectors = embed(titles)
-        vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+        vectors, model = headline_vectors(titles)
         similarity = vectors[:len(curated)] @ vectors[len(curated):].T
         by_cluster = {c['cluster']: c for c in clusters_list}
         clusters = members['cluster'].tolist()
         for agency, row in zip(curated['agency'], similarity):
             best = int(row.argmax())
             cluster = by_cluster.get(clusters[best])
-            if row[best] >= CURATOR_MATCH and cluster is not None and agency not in cluster['curators']:
+            if row[best] >= CURATOR_MATCH[model] and cluster is not None and agency not in cluster['curators']:
                 cluster['curators'].append(agency)
         for c in clusters_list:
             c['curators'].sort()

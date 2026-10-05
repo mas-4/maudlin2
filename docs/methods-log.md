@@ -5,6 +5,20 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Thresholds rechecked on the bigger embedding model (mxbai-embed-large).** Three measures still matched headlines
+  with the small static model (potion-base-8M) at thresholds set by eye. Each was tested on the day's data:
+  - *Sagas:* 118 pairs of saved stories sharing a name, judged by the 30B ("one running story?"): 8 were. Both
+    models separate them equally well (AUC 0.965 and 0.963), so sagas stay on potion; the gate to the judge drops from
+    0.58 to 0.54, which lets all 8 through instead of 6 (20 questions to the judge instead of 17).
+  - *Wire share:* of a week's 339 outlet headlines sharing 70% of their words with an AP or Reuters headline, all of
+    them copies when read, potion at 0.9 kept 258 (dropping copies such as "White Sox beat Guardians 3-0 in Game 1
+    of ALDS"); mxbai at 0.85 keeps all 339. Now on mxbai at 0.85, after the word rule: 242 copies in the week's news
+    headlines instead of 201.
+  - *Curators:* 200 aggregator headlines (Google News, Drudge, RCP, Political Wire), each with its closest saved
+    story, judged by the 30B ("same event?"): potion at 0.7 made 60 links, 46 right; mxbai at 0.8 makes 75, 60 right.
+    The judge was strict (it called "Rasmussen no-hits Yankees… Rays win ALDS opener" a different event from the
+    Rays' ALDS opener), so both are better than these numbers.
+  If Ollama can't embed, wire share and curators fall back to potion at their old thresholds.
 - **Narratives across days.** A narrative in one day's report (posts by many people telling one thing) is now
   compared with the narratives of the last 14 days: the three closest by meaning (mxbai, at least 0.7) are put to the
   bigger local model (Qwen3 30B-A3B), which says whether it is the same narrative told again (the same claim about the
