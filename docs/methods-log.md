@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Reuters and AP titles lose Google's source tag.** We read both through Google News, which tags each title with
+  the outlet; we removed the tag as a name (" - AP News") but Google has lately tagged by domain as well
+  (" - apnews.com", " - reuters.com"), switching back and forth for the same article: 306 of the 364 Reuters and AP
+  articles stored with more than one title in the last three days differed only by the tag (all but 8 were already
+  ignored as minor rewrites). Both forms are now removed as headlines come in. The tag had made "AP News" a name
+  in AP's stories on the "mentioned:" filters; names are now checked against headlines without it.
 - **Quotes inside one another count once.** Outlets often cut the same quote differently ("Bad Things", "world
   should accept some bad things", "We Should Accept Some Bad Things Happening For The Benefits"); as separate chips
   they filled a story card with one quote and pushed other quotes past the four-chip limit (7 of 28 cards with
