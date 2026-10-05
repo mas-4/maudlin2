@@ -1025,6 +1025,121 @@ def claim_detail(claim: str) -> dict:
     return out
 
 
+DRAG_SNIPPET = r"""<style>
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+.dz-handle { cursor: grab; border-radius: 6px; } .dz-handle:hover { background: #eef9f7; }
+.dz-handle::before { content: '⠿ '; color: #999; }
+body.dragging .dz-target { outline: 1px dashed #999; outline-offset: 1px; }
+.dz-ghost { position: fixed; pointer-events: none; z-index: 1000; display: none; max-width: 28em; background: #fff;
+  border: 2px solid #1f1f2e; border-radius: 10px; padding: 4px 10px; box-shadow: 3px 3px 0 #00c2a8; font-size: .9em; }
+.dz-ghost .dz-say { color: #333; font-size: .9em; margin-top: 3px; font-weight: 600; }
+.dz-zones { position: absolute; z-index: 999; display: flex; flex-direction: column; gap: 2px; background: #fffdf6;
+  border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); padding: 2px; box-sizing: border-box; }
+.dz-name { flex: none; line-height: 20px; font-weight: 700; font-size: .85em; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dz-row { flex: 1; display: flex; gap: 4px; }
+.dz-zone { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 40px;
+  padding: 2px 6px; border: 2px dashed #1f1f2e; border-radius: 8px; background: #eef9f7; font-weight: 700; font-size: .85em; }
+.dz-zone.hot { background: #c8f7c5; border-style: solid; }
+</style>
+<script>
+// Click and drag with drop zones (mouse, pen or touch): dragging something over a target splits the target into the
+// choices that drop allows, each saying what it does; letting go on one does it, anywhere else does nothing (as does
+// Escape). A press without moving is a click; on touch, hold a moment before dragging, so a swipe still scrolls.
+// o: {handle, target: selectors; item(handleEl); label(item); name(targetEl): shown over the zones;
+//     zones(item, targetEl) -> [{label, say, run} or null]}
+function dragZones(o) {
+  let drag = null, over = null, zoneEl = null, hot = null, justDragged = false;
+  addEventListener('click', (e) => { if (justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  const ghost = Object.assign(document.createElement('div'), {className: 'dz-ghost'});
+  document.body.appendChild(ghost);
+  const tag = () => document.querySelectorAll(o.handle).forEach((h) => h.classList.add('dz-handle'));
+  new MutationObserver(tag).observe(document.body, {childList: true, subtree: true}); tag();
+  function clearZones() { if (zoneEl) zoneEl.remove(); zoneEl = null; over = null; hot = null; }
+  function showZones(t) {
+    if (t === over) return;
+    clearZones();
+    if (!t) return;
+    const zs = o.zones(drag.item, t).filter(Boolean);
+    if (!zs.length) return;
+    over = t;
+    const r = t.getBoundingClientRect(), h = Math.max(r.height, 44) + 24;
+    zoneEl = Object.assign(document.createElement('div'), {className: 'dz-zones'});
+    Object.assign(zoneEl.style, {left: r.left + scrollX + 'px', top: r.top + scrollY - (h - r.height) / 2 + 'px', width: r.width + 'px', height: h + 'px'});
+    zoneEl.innerHTML = `<div class="dz-row">${zs.map((z, i) => `<div class="dz-zone" data-z="${i}">${z.label}</div>`).join('')}</div><div class="dz-name"></div>`;
+    zoneEl.lastChild.textContent = o.name ? o.name(t) : '';
+    zoneEl.zs = zs; document.body.appendChild(zoneEl);
+  }
+  function hit(x, y) {
+    const el = document.elementFromPoint(x, y);
+    const z = el && el.closest('.dz-zone');
+    if (z) return {zone: zoneEl.zs[+z.dataset.z], zEl: z, t: over};
+    if (el && zoneEl && zoneEl.contains(el)) return {t: over};
+    const t = el && el.closest(o.target);
+    return {t: t && t !== drag.el ? t : null};
+  }
+  function update() {
+    const h = hit(drag.x, drag.y);
+    if (!h.zone) showZones(h.t);
+    if (hot) hot.classList.remove('hot');
+    hot = h.zEl || null;
+    if (hot) hot.classList.add('hot');
+    ghost.innerHTML = '';
+    ghost.append(o.label(drag.item));
+    if (h.zone) ghost.appendChild(Object.assign(document.createElement('div'), {className: 'dz-say', textContent: h.zone.say}));
+    // Above the pointer, so it never covers the zones under it
+    ghost.style.left = Math.max(8, Math.min(drag.x + 14, innerWidth - ghost.offsetWidth - 8)) + 'px';
+    ghost.style.top = Math.max(4, drag.y - ghost.offsetHeight - 14) + 'px';
+    return h;
+  }
+  function start() {
+    drag.on = true; document.body.classList.add('dragging');
+    document.querySelectorAll(o.target).forEach((t) => t.classList.add('dz-target'));
+    ghost.style.display = 'block'; update(); scroll();
+  }
+  function scroll() {  // near the window's top or bottom edge the page scrolls, so far targets can be reached
+    if (!drag || !drag.on) return;
+    const edge = 70, y = drag.y;
+    const speed = y < edge ? -(edge - y) / 3 : y > innerHeight - edge ? (y - (innerHeight - edge)) / 3 : 0;
+    if (speed) { scrollBy(0, speed); clearZones(); update(); }
+    requestAnimationFrame(scroll);
+  }
+  function end(ev, cancel) {
+    if (!drag) return;
+    clearTimeout(drag.timer);
+    const d = drag, h = d.on && !cancel ? hit(ev.clientX, ev.clientY) : {};
+    drag = null; clearZones();
+    ghost.style.display = 'none'; document.body.classList.remove('dragging');
+    document.querySelectorAll('.dz-target').forEach((t) => t.classList.remove('dz-target'));
+    if (!d.on) return;
+    justDragged = true; setTimeout(() => { justDragged = false; }, 0);  // the click a drag ends with is no click
+    if (h.zone) h.zone.run();
+  }
+  document.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || ev.target.closest('button, input, select, a, dialog')) return;
+    const handle = ev.target.closest(o.handle); if (!handle) return;
+    const item = o.item(handle); if (!item) return;
+    drag = {item, el: handle, x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, on: false, touch: ev.pointerType === 'touch'};
+    if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) start(); }, 350);
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    drag.x = ev.clientX; drag.y = ev.clientY;
+    const moved = Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy);
+    if (!drag.on) {
+      if (drag.touch) { if (moved > 8) { clearTimeout(drag.timer); drag = null; } return; }  // a swipe: let it scroll
+      if (moved < 6) return;
+      start();
+    }
+    ev.preventDefault(); update();
+  });
+  document.addEventListener('touchmove', (ev) => { if (drag && drag.on) ev.preventDefault(); }, {passive: false});
+  document.addEventListener('pointerup', (ev) => end(ev, false));
+  document.addEventListener('pointercancel', (ev) => end(ev, true));
+  addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && drag) end(ev, true); });
+}
+</script>"""
+
+
 SINGLES_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Single motifs</title><style>
 body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }
@@ -1041,7 +1156,8 @@ button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; di
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Single motifs</b> <a href="/entities">Names</a></nav>
 <h1>Motifs holding one claim</h1>
 <p>Each card is a motif with a single claim; under it, the motifs closest to that claim (yellow: a motif already holding
-this very claim). Point at a button to see in words what it will do. <span id="count" class="meta"></span></p>
+this very claim). Point at a button to see in words what it will do, or drag a card by its name (⠿) onto any motif
+on the page and drop it on what you mean. <span id="count" class="meta"></span></p>
 <p class="legend"><b>⤵ merge</b> the two are one motif: this one goes, its claim joins the other ·
 <b>⊂ narrower</b> this one is a kind of the other (both stay, this one under it) ·
 <b>⊃ broader</b> the other is a kind of this one ·
@@ -1049,6 +1165,7 @@ this very claim). Point at a button to see in words what it will do. <span id="c
 <b>✓ stands alone</b> none of these; it leaves this list</p>
 <div id="list"><p class="meta">Finding the closest motifs…</p></div>
 <datalist id="motif-names"></datalist>
+<!--DRAG-->
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 let items = [], motifs = [];
@@ -1118,9 +1235,7 @@ document.addEventListener('change', (ev) => {
   }
   f.closest('.card').querySelector(`.sug[data-k="${k}"]`).scrollIntoView({block: 'nearest'});
 });
-document.addEventListener('click', async (ev) => {
-  const b = ev.target.closest('button[data-do]'); if (!b) return;
-  const s = items[+b.dataset.n], m = b.dataset.k == null ? null : s.suggest[+b.dataset.k], what = b.dataset.do;
+async function apply(s, m, what) {
   let ok;
   if (what === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
   else if (what === 'narrower') ok = await act({action: 'parent', id: s.id, parent: m.id});
@@ -1133,14 +1248,39 @@ document.addEventListener('click', async (ev) => {
   items.forEach((x, i) => {
     if (!ids.has(x.id)) return;
     const c = document.getElementById('s' + i);
+    if (c.classList.contains('done')) return;
     c.classList.add('done');
     c.querySelector('.sugs').remove(); c.querySelector('.row').remove();
     c.querySelector('.say').innerHTML = `<span class="result">✓ ${esc(DONE[what](s, m))}</span> <button class="undo-here" title="undo your last change (Ctrl+Z)">↶ undo</button>`;
   });
+}
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-do]'); if (!b) return;
+  const s = items[+b.dataset.n];
+  apply(s, b.dataset.k == null ? null : s.suggest[+b.dataset.k], b.dataset.do);
+});
+// Drag a card by its name onto a motif (a row under any card, or another card's name): the motif splits into what
+// the drop can do, and dropping on one does it
+const motifAt = (t) => {
+  const n = +t.closest('.card').id.slice(1);
+  return t.matches('.sug') ? items[n].suggest[+t.dataset.k] : items[n];
+};
+dragZones({
+  handle: '.card:not(.done) h3', target: '.card:not(.done) .sug, .card:not(.done) h3',
+  item: (h) => items[+h.closest('.card').id.slice(1)],
+  label: (s) => '🧩 ' + s.name,
+  name: (t) => 'onto 🧩 ' + (motifAt(t) || {}).name,
+  zones: (s, t) => {
+    const m = motifAt(t);
+    if (!m || m.id === s.id) return [];
+    const z = (what, label) => ({label, say: SAY[what](s, m), run: () => apply(s, m, what)});
+    return [z('merge', '⤵ merge into it'), z('narrower', '⊂ under it'), z('broader', '⊃ over it'),
+            m.same_claim ? null : z('also', '＋ claim here too')];
+  },
 });
 document.addEventListener('click', (ev) => { if (ev.target.closest('.undo-here')) document.getElementById('undo-btn').click(); });
 fetch('/motif-singles.json').then((r) => r.json()).then((d) => { items = d.singles; motifs = d.motifs; draw(); });
-</script></body></html>"""
+</script></body></html>""".replace('<!--DRAG-->', DRAG_SNIPPET)
 
 
 def board_action(data: dict):
