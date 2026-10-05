@@ -875,30 +875,74 @@ GLOSS_PROMPT = """A motif in our index of recurring rumor and narrative shapes: 
 Claims people are telling that are filed under it:
 {claims}
 
-Write its scope note: one plain sentence saying what kind of story this motif covers, as the people telling such \
-stories tell it (what they say is going on, not whether it's true): general enough to fit new stories of the same \
-kind about other people, places or years, and specific enough to tell it apart from neighbouring motifs. No names \
-of people, places, organizations or dates. Don't start with "This motif" or "Stories"; start with what happens \
-(for example: "A public figure's looks are taken as proof of bad character.")."""
-GLOSS_SCHEMA = {"type": "object", "properties": {"note": {"type": "string", "maxLength": 240}}, "required": ["note"]}
+common: first, in a sentence or two, what these claims have in common as stories: who does what to whom, as the \
+people telling them tell it. Look past the particular events to the kind of story. The motif's name is the main \
+guide (a person chose many of them): with only one or two claims, take the kind of story from the name, and use the \
+claims only to see how it is told.
+note: then the motif's scope note: one plain sentence saying what kind of story this motif covers, built from what \
+they have in common. Write it the way its tellers tell it, as if it were so; never judge it (no "false", \
+"misleading", "debunked", "claims that" or "alleged"). Use kinds of people and places, not particular ones, unless \
+the motif's own name names them: then it is a named narrative, and the note keeps that name. Start with what \
+happens, not with "This motif", "A motif" or "Stories"."""
+GLOSS_SCHEMA = {"type": "object", "properties": {"common": {"type": "string", "maxLength": 500},
+                                                 "note": {"type": "string", "maxLength": 240}},
+                "required": ["common", "note"]}
 GLOSS_CLAIMS = 8  # claims shown when drafting a note
+GLOSS_MIN = 3  # claims a motif needs before the model drafts its note: with one or two it restated them (Oct 5)
+
+
+VERDICT_WORDS = re.compile(r"\b(false|falsely|misleading|debunked|unfounded|baseless|claims? that|alleged(ly)?|"
+                           r"misinformation|disinformation|conspiracy theor)", re.I)
 
 
 def gloss(entry: dict) -> str | None:
-    """The model's draft of a motif's scope note, from its name and claims"""
+    """The model's draft of a motif's scope note, from its name and claims: the story as its tellers tell it. A draft
+    that judges the story (fact-check summaries pull it toward "falsely attributed") or names people or places is
+    asked for again, twice at most, then left for a person. Motifs whose names are themselves about falsehood (Fake news) may say so: their name is the story."""
     claims = '\n'.join(f'- {c["claim"][:180]}' for c in entry['claims'][-GLOSS_CLAIMS:]) or '(none yet)'
-    answer = llm.complete_json(GLOSS_PROMPT.format(name=entry['name'], claims=claims), GLOSS_SCHEMA, max_tokens=300,
-                               model=MODEL)
-    note = ' '.join((answer or {}).get('note', '').split())
-    return note or None
+    prompt = GLOSS_PROMPT.format(name=entry['name'], claims=claims)
+    about_falsehood = re.search(r'\b(fake|false|lie|lies|hoax|disinformation|misinformation|propaganda)\b', entry['name'], re.I)
+    for attempt in range(3):
+        answer = llm.complete_json(prompt, GLOSS_SCHEMA, max_tokens=600, model=MODEL)
+        note = ' '.join((answer or {}).get('note', '').split())
+        if not note:
+            continue
+        if re.search(r'\b(the user|scope note|motif)\b', note, re.I):
+            continue  # the model talking about the task, not answering it
+        judged = VERDICT_WORDS.search(note) and not about_falsehood
+        own = {w.lower() for w in re.findall(r"[\w'-]+", entry['name'])}  # a named narrative keeps its names
+        named = [w for w in names_in(note) if w.lower() not in own]
+        if not judged and not named:
+            return note
+        prompt += ('\n\nYour last answer: "' + note + '". ' + ('It judged the story: say only what the people telling '
+                   'it say happens. ' if judged else '') + (f'It named {", ".join(named)}: say what they are instead.'
+                                                            if named else ''))
+    return None
+
+
+def names_in(text: str) -> list[str]:
+    """Capitalized words past the first that aren't sentence starts: names, which a scope note shouldn't have"""
+    words = re.findall(r"[A-Za-z][\w'-]*", text)
+    return [w for i, w in enumerate(words[1:], 1) if w[0].isupper() and w not in ('I',)
+            and not re.search(r'[.!?]\s+' + re.escape(w), text)]
+
+
+def needs_gloss(entry: dict) -> bool:
+    """A motif with GLOSS_MIN claims and no note, or a model draft from when it held half as many claims or fewer.
+    A person's note (written or kept) is never redrafted."""
+    n = len(entry['claims'])
+    if n < GLOSS_MIN:
+        return False
+    if not entry.get('note'):
+        return True
+    return entry.get('note_by') == 'model' and n >= 2 * entry.get('note_claims', n)
 
 
 def gloss_missing(budget: float | None = None) -> int:
-    """Draft notes for the motifs with claims and no note (a person's note is never replaced), for at most `budget`
-    seconds; how many were drafted"""
+    """Draft notes for the motifs that need one (needs_gloss), for at most `budget` seconds; how many were drafted"""
     import time
     started, done = time.time(), 0
-    for eid in [e['id'] for e in live(load()) if e['claims'] and not e.get('note')]:
+    for eid in [e['id'] for e in live(load()) if needs_gloss(e)]:
         if budget is not None and time.time() - started > budget:
             break
         entry = load()['entries'][eid]
@@ -908,8 +952,8 @@ def gloss_missing(budget: float | None = None) -> int:
         with locked():
             index = load()
             e = index['entries'].get(eid)
-            if e and not e.get('note'):  # a person may have written one meanwhile
-                e['note'], e['note_by'] = note, 'model'
+            if e and needs_gloss(e):  # a person may have written one meanwhile
+                e['note'], e['note_by'], e['note_claims'] = note, 'model', len(e['claims'])
                 save(index)
                 done += 1
     if done:

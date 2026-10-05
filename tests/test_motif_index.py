@@ -282,18 +282,37 @@ def test_a_scope_note_is_read_with_the_name_when_matching(monkeypatch, tmp_path)
 def test_the_model_drafts_notes_a_person_keeps_or_replaces(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
     mi.save({'next': 4, 'claims': {}, 'entries': {
-        'M001': {'id': 'M001', 'name': 'Punchable face', 'claims': [{'claim': 'his smirk proves he is evil', 'source': 's'}]},
+        'M001': {'id': 'M001', 'name': 'Punchable face', 'claims': [{'claim': 'his smirk proves he is evil', 'source': 's'},
+                                                                    {'claim': 'her sneer shows she lies', 'source': 's'},
+                                                                    {'claim': 'look at his eyes', 'source': 's'}]},
+        'M004': {'id': 'M004', 'name': 'Too small', 'claims': [{'claim': 'c', 'source': 's'}]},
         'M002': {'id': 'M002', 'name': 'Mine', 'note': 'what a person wrote', 'claims': [{'claim': 'b', 'source': 's'}]},
         'M003': {'id': 'M003', 'name': 'Empty', 'claims': []}}})
-    monkeypatch.setattr(mi.llm, 'complete_json', lambda prompt, *a, **k: {'note': " A public figure's looks  are taken as proof of bad character. "}
+    monkeypatch.setattr(mi.llm, 'complete_json', lambda prompt, *a, **k: {'common': 'looks', 'note': " A public figure's looks  are taken as proof of bad character. "}
                         if 'Punchable face' in prompt and 'smirk' in prompt else None)
-    assert mi.gloss_missing() == 1  # a person's note is never replaced; a motif with no claims waits
+    assert mi.gloss_missing() == 1  # a person's note is never replaced; motifs under GLOSS_MIN claims wait
     index = mi.load()
     m1, m2 = index['entries']['M001'], index['entries']['M002']
     assert m1['note'] == "A public figure's looks are taken as proof of bad character." and m1['note_by'] == 'model'
     assert 'proof of bad character' in mi.described(m1)  # matching uses the draft at once
     assert mi.public_note(m1) == '' and mi.public_note(m2) == 'what a person wrote'  # the site, only a person's
+    assert not mi.needs_gloss(m1)  # drafted at 3 claims: redrafted at 6
+    assert mi.needs_gloss({**m1, 'claims': m1['claims'] * 2})
     mi.keep_note('M001')
+    assert not mi.needs_gloss({**mi.load()['entries']['M001'], 'claims': m1['claims'] * 2})  # kept: never redrafted
     assert mi.public_note(mi.load()['entries']['M001']).startswith("A public figure's")
     mi.set_note('M001', 'looks as proof of character')
     assert mi.load()['entries']['M001']['note_by'] == 'person'
+
+
+def test_a_draft_that_judges_or_names_is_asked_for_again(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    answers = iter([{'common': 'x', 'note': 'Politicians are falsely accused of taking bribes.'},
+                    {'common': 'x', 'note': 'Senator Smith takes bribes from donors.'},
+                    {'common': 'x', 'note': 'Politicians take bribes from wealthy donors.'}])
+    monkeypatch.setattr(mi.llm, 'complete_json', lambda *a, **k: next(answers))
+    entry = {'id': 'M1', 'name': 'Political bribes', 'claims': [{'claim': 'a'}]}
+    assert mi.gloss(entry) == 'Politicians take bribes from wealthy donors.'
+    # A named narrative keeps its own names; a note about the task itself is never kept
+    answers = iter([{'common': 'x', 'note': 'The user wants a scope note.'}, {'common': 'x', 'note': 'Texas turns blue.'}])
+    assert mi.gloss({'id': 'M2', 'name': 'Blue Texas', 'claims': [{'claim': 'b'}]}) == 'Texas turns blue.'
