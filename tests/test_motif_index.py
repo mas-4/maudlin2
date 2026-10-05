@@ -240,3 +240,20 @@ def test_a_claim_not_yet_filed_can_be_filed_by_hand(monkeypatch, tmp_path):
     index = mi.load()
     assert index['claims'] == {mi.key('a'): ['M001']} and index['entries']['M001']['claims'][0]['source'] == 'Snopes'
     assert index['entries']['M001']['not_claims'] == []  # filed by hand: a person's earlier 'not this' is overruled
+
+
+def test_single_claim_motifs_get_the_closest_motifs_to_join(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 4, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Miracle cure', 'claims': [claim('radium water cures all')]},
+        'M002': {'id': 'M002', 'name': 'Folk remedy', 'claims': [claim('a'), claim('b')]},
+        'M003': {'id': 'M003', 'name': 'Rigged election', 'claims': [claim('c'), claim('d')]}}})
+    vec = {'radium water cures all': [1, 0]}
+    from app import narratives
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.array(
+        [vec.get(t, [0.9, 0.1] if t.startswith('Folk') else [0, 1]) for t in texts], float))
+    [s] = mi.single_suggestions()
+    assert s['id'] == 'M001' and [m['name'] for m in s['suggest']] == ['Folk remedy', 'Rigged election']
+    mi.stands_alone('M001')
+    assert mi.single_suggestions() == []

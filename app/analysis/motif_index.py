@@ -786,3 +786,41 @@ def file_by_hand(claim: dict, eid: str):
     entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
     index['claims'][k] = list(dict.fromkeys(index['claims'].get(k, []) + [eid]))
     save(index)
+
+
+def single_suggestions(n: int = 5) -> list[dict]:
+    """Every motif holding a single claim that a person hasn't said stands alone, with the motifs closest to its claim
+    (by meaning: their names, phrases and claims) it might join, likeliest first. One embedding call for all."""
+    from app.narratives import embed
+    index = load()
+    entries = live(index)
+    singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone')]
+    if not singles:
+        return []
+    texts = [e['name'] + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(c['claim'][:120] for c in e['claims'][-2:])
+             for e in entries]
+    v = embed([e['claims'][0]['claim'] for e in singles] + texts)
+    claims_v, motifs_v = v[:len(singles)], v[len(singles):]
+    out = []
+    for e, cv in zip(singles, claims_v):
+        k = key(e['claims'][0]['claim'])
+        sims = motifs_v @ cv
+        picks = [(entries[i], float(sims[i])) for i in np.argsort(-sims)
+                 if entries[i]['id'] != e['id'] and k not in entries[i].get('not_claims', [])
+                 and not any(key(c['claim']) == k for c in entries[i]['claims'])][:n]
+        out.append({'id': e['id'], 'name': e['name'], 'claim': e['claims'][0]['claim'],
+                    'source': e['claims'][0].get('source', ''),
+                    'suggest': [{'id': m['id'], 'name': m['name'], 'size': len(m['claims']), 'score': round(s, 3)}
+                                for m, s in picks]})
+    return sorted(out, key=lambda s: -(s['suggest'][0]['score'] if s['suggest'] else 0))
+
+
+@exclusive
+def stands_alone(eid: str, alone: bool = True):
+    """A person says this single-claim motif is right on its own: it leaves the singles list"""
+    index = load()
+    if alone:
+        index['entries'][eid]['stands_alone'] = True
+    else:
+        index['entries'][eid].pop('stands_alone', None)
+    save(index)

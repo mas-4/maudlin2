@@ -403,7 +403,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 </style></head><body>
 <header>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <b>Motif board</b> <a href="/entities">Names</a></nav>
-<h1>🧩 Motif board</h1><span id="stats"></span> <a href="/motif-empty" id="empty-link"></a>
+<h1>🧩 Motif board</h1><span id="stats"></span> <a href="/motif-empty" id="empty-link"></a> · <a href="/motif-singles">single motifs</a>
 <div class="tools">
   <input type="search" id="q" placeholder="search motifs and claims">
   <select id="sort"><option value="size">most claims</option><option value="few">fewest claims</option><option value="new">newest</option><option value="old">oldest</option><option value="az">A–Z</option></select>
@@ -1011,6 +1011,52 @@ def claim_detail(claim: str) -> dict:
     return out
 
 
+SINGLES_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Single motifs</title><style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }
+nav a { margin-right: 1em; } .card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 8px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #00c2a8; }
+.card.done { opacity: .4; box-shadow: none; } .meta { color: #666; font-size: .85em; } h3 { margin: .2em 0; font-size: 1.05em; }
+.claim { margin: .2em 0 .5em; } .sug { display: flex; gap: 6px; align-items: center; padding: 3px 0; border-top: 1px dashed #ddd; flex-wrap: wrap; }
+.sug .nm { flex: 1; min-width: 12em; } button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 2px 10px; cursor: pointer; }
+button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; }
+</style></head><body>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Single motifs</b> <a href="/entities">Names</a></nav>
+<h1>Motifs holding one claim</h1>
+<p>Each holds a single claim. Beside it, the motifs closest to that claim: merge it into one, file the claim there too,
+or say it stands alone (it leaves this list). Likeliest merges first. <span id="count" class="meta"></span></p>
+<div id="list"><p class="meta">Finding the closest motifs…</p></div>
+<script>
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+let items = [];
+async function act(body) {
+  const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return false; }
+  if (window.refreshUndo) refreshUndo();
+  return true;
+}
+function draw() {
+  document.getElementById('count').textContent = `(${items.length} to look at)`;
+  document.getElementById('list').innerHTML = items.map((s, n) => `<div class="card" id="s${n}">
+    <h3>🧩 ${esc(s.name)} <span class="meta">${s.id}</span></h3>
+    <p class="claim">${esc(s.claim)} <span class="meta">${esc(s.source === 'narrative' ? 'online' : s.source)}</span></p>
+    ${s.suggest.map((m, k) => `<div class="sug"><span class="nm">🧩 ${esc(m.name)} <span class="meta">${m.size} claim${m.size === 1 ? '' : 's'} · ${m.score.toFixed(2)}</span></span>
+      <button class="add" data-n="${n}" data-k="${k}" data-do="merge" title="${esc(s.name)} goes; its claim joins ${esc(m.name)}">⤵ merge into</button>
+      <button data-n="${n}" data-k="${k}" data-do="also" title="file the claim under ${esc(m.name)} too; ${esc(s.name)} stays">+ file here too</button></div>`).join('')}
+    <div class="row"><button data-n="${n}" data-do="alone">✓ stands alone</button></div></div>`).join('') || '<p>None left. 🎉</p>';
+}
+document.addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button[data-do]'); if (!b) return;
+  const s = items[+b.dataset.n], m = s.suggest[+b.dataset.k];
+  let ok;
+  if (b.dataset.do === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
+  else if (b.dataset.do === 'also') ok = await act({action: 'also', claim: s.claim, source: s.id, target: m.id});
+  else ok = await act({action: 'stands_alone', id: s.id});
+  if (ok) { const card = document.getElementById('s' + b.dataset.n); card.classList.add('done'); card.querySelectorAll('button').forEach((x) => x.disabled = true); }
+});
+fetch('/motif-singles.json').then((r) => r.json()).then((d) => { items = d; draw(); });
+</script></body></html>"""
+
+
 def board_action(data: dict):
     """One change from the motif board, applied to the index at once (under its lock)."""
     from app.analysis import motif_index as mi
@@ -1034,6 +1080,8 @@ def board_action(data: dict):
         mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
     elif act == 'file' and text('claim') and data.get('id') in live:
         mi.file_by_hand({'claim': data['claim'].strip(), 'source': data.get('source', ''), 'ref': data.get('ref', '')}, data['id'])
+    elif act == 'stands_alone' and data.get('id') in live:
+        mi.stands_alone(data['id'], data.get('alone', True) is not False)
     elif act == 'correct' and text('claim') and text('text'):
         mi.correct_claim(data['claim'], data['text'])
     elif act == 'reject' and text('claim') and data.get('id') in live:
@@ -1194,6 +1242,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/undo.json'):
             found = last_undo()
             return self.send_json({'what': found[1]['what'] if found else None})
+        if self.path.startswith('/motif-singles.json'):
+            from app.analysis import motif_index
+            return self.send_json(motif_index.single_suggestions())
         if self.path.startswith('/claims.json'):
             from urllib.parse import urlparse, parse_qs
             from app.analysis import motif_index
@@ -1214,7 +1265,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/motif-board.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.board())
-        body = (EMPTY_PAGE if self.path.startswith('/motif-empty') else BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
+        body = (SINGLES_PAGE if self.path.startswith('/motif-singles') else EMPTY_PAGE if self.path.startswith('/motif-empty') else BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
                 if self.path.startswith('/motifs') else entities_page() if self.path.startswith('/entities')
                 else page())
         if self.path.split('?')[0] != '/':  # every organizer page gets the undo button (the label check writes the database)
