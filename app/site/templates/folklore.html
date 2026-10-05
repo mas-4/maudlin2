@@ -75,7 +75,11 @@
 
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter narratives">
             <span class="bar-group"><span class="bar-label">only:</span>
-                <button type="button" data-filter="politics">🏛️ politics</button></span>
+                <button type="button" data-filter="politics">🏛️ politics</button>
+                {% if with_motifs %}<button type="button" data-filter="motifs" title="Only stories filed under a motif in our motif index">🧩 has a motif <b>{{ with_motifs }}</b></button>{% endif %}</span>
+            {% if motif_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">motif:</span>
+                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id }}" title="{{ m.id }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             {% if class_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">rumor:</span>
                 {% for k, n in class_counts %}<button type="button" data-rumor="{{ k }}" title="{{ rumor_classes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
@@ -89,7 +93,7 @@
 
         <div class="court-cards narrative-cards">
             {% for c in cards %}
-                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}">
+                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
                     <h4>{{ c.claim|e }}</h4>
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
                     {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
@@ -109,7 +113,7 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
-                    {% if c.story_shape %}{% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}{% endif %}
+                    {% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}
                     {% if c.factchecks %}
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
                             {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
@@ -152,18 +156,23 @@
                 const box = document.querySelector('.narrative-cards');
                 const all = [...box.querySelectorAll('.narrative')];
                 const repack = packColumns(box, all, 360);
-                let politics = false;
-                const pick = {genre: null, rumor: null, scope: null};  // one choice per row, tapped again to clear
+                const only = new Set();  // 🏛️ politics, 🧩 has a motif
+                const pick = {genre: null, rumor: null, scope: null, motif: null};  // one choice per row, tapped again to clear
+                // A card holds several motifs ('|M004|M005|'): it matches a motif it holds; the other rows match exactly
+                const holds = (c, k, v) => k === 'motif' ? c.dataset.motif.includes(`|${v}|`) : c.dataset[k] === v;
                 document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
                     const b = ev.target.closest('button');
                     if (!b) return;
-                    if (b.dataset.filter) politics = b.classList.toggle('active');
+                    if (b.dataset.filter) {
+                        if (b.classList.toggle('active')) only.add(b.dataset.filter); else only.delete(b.dataset.filter);
+                    }
                     else {
                         const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
                         pick[key] = pick[key] === b.dataset[key] ? null : b.dataset[key];
                         document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
                     }
-                    repack(all.filter((c) => (!politics || c.dataset.politics) && Object.entries(pick).every(([k, v]) => !v || c.dataset[k] === v)));
+                    repack(all.filter((c) => (!only.has('politics') || c.dataset.politics) && (!only.has('motifs') || c.dataset.motif)
+                        && Object.entries(pick).every(([k, v]) => !v || holds(c, k, v))));
                 });
             })();
         </script>

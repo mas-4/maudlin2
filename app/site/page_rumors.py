@@ -7,7 +7,7 @@ from collections import Counter
 from app.analysis import circulation, factchecks, motif_index
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app.site.common import TemplateHandler
-from app.site.page_folklore import GENRE_EMOJI, motif_cards
+from app.site.page_folklore import GENRE_EMOJI, motif_cards, motif_counts
 from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
@@ -51,6 +51,7 @@ class RumorsPage:
             'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
             'class_counts': count('rumor_class'), 'scope_counts': count('conspiracy'),
             'family_counts': count('family'), 'source_counts': count('source'),
+            'motif_counts': motif_counts(cards), 'with_motifs': sum(bool(c['motifs']) for c in cards),
             'looked': looked, 'seen_count': sum(1 for c in cards if c['seen'] and c['seen']['people']),
         })
         logger.info("...%d fact-checked rumors", len(cards))

@@ -63,6 +63,9 @@ events? A similar theme or a shared subject isn't enough: the claims should be t
 number, or "new" if none of them is the same shape."""
 
 
+MAX_WORDS = 7  # a longer 'name' is a sentence, usually the claim itself (an LAX kidnapping claim became one, Oct 5)
+
+
 def clean(name: str) -> str:
     """A motif name without stray CJK characters (Qwen sometimes drifts into Chinese mid-phrase) or end punctuation."""
     return re.sub(r'[\u3000-\u9fff\uff00-\uffef]+', '', name).strip().rstrip('.,;:')
@@ -160,7 +163,8 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
         if not named:
             continue
         filed = []
-        for phrase in dict.fromkeys(clean(m) for m in named.get('motifs', []) if clean(m)):
+        for phrase in dict.fromkeys(clean(m) for m in named.get('motifs', [])
+                                    if clean(m) and len(clean(m).split()) <= MAX_WORDS):
             eid = match(index, phrase, c['claim'])
             if eid in filed:
                 continue
@@ -192,9 +196,7 @@ def nightly(budget: float | None = None):
     pulled = withheld()
     for g in report.get('found', []):
         lab = g.get('label') or {}
-        # Retold narratives only: not news reactions or shared topics, nothing withheld by hand
-        if lab.get('retold') and lab.get('narrative') and lab.get('genre') not in NOT_STORIES \
-                and lab['narrative'] not in pulled:
+        if lab.get('retold') and lab.get('narrative') and lab['narrative'] not in pulled and fits(lab):
             claims.append({'claim': lab['narrative'], 'source': 'narrative', 'ref': report.get('made', ''),
                            'side': g.get('shared_side'), 'date': (report.get('made') or '')[:10]})
     labels = factchecks.load_labels()
@@ -204,6 +206,19 @@ def nightly(budget: float | None = None):
             claims.append({'claim': lab['claim'], 'source': item['source'], 'ref': item['url'],
                            'date': item['published'][:10]})
     return file_claims(claims, budget=budget)
+
+
+def fits(label: dict) -> bool:
+    """Whether a folklore group's claim belongs in the index. Political ones do, news included: news is powerful when it
+    confirms a story people already tell (a Russian lab worker's plague death, told as a bioweapon). Other folklore
+    does when it has a subject (contamination scares, legends), but not a shared topic, a sports pick or a game
+    result (a Valkyries semifinal 'prophecy' got 'Valkyries to defeat Aces', Oct 5)."""
+    from app.site.page_folklore import NOT_STORIES
+    if label.get('genre') == 'none: a shared topic, not a retold narrative':
+        return False
+    if label.get('politics'):
+        return True
+    return label.get('genre') not in NOT_STORIES and label.get('family') not in (None, '', 'none')
 
 
 # Curation, from the organizer on the label-check page (scripts/validate.py). A curated name is kept as given; a

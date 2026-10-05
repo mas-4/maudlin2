@@ -76,6 +76,20 @@ def withheld() -> set[str]:
         return set()
 
 
+MOTIF_CHIPS = 12  # motif filters at most
+
+
+def motif_counts(cards: list[dict]) -> list[tuple[dict, int]]:
+    """(motif, how many cards carry it) for the motif filter row: motifs on two or more cards, most first (one on a
+    single card would filter down to that card)."""
+    seen, counts = {}, Counter()
+    for c in cards:
+        for m in c['motifs']:
+            seen[m['id']] = m
+            counts[m['id']] += 1
+    return [(seen[i], n) for i, n in counts.most_common() if n >= 2][:MOTIF_CHIPS]
+
+
 def motif_cards(index: dict, claim: str) -> list[dict]:
     """The motif-index entries a claim is filed under, for its card: id, name and how many claims each holds."""
     return [{'id': e['id'], 'name': e['name'], 'count': len(e['claims'])}
@@ -142,6 +156,7 @@ class FolklorePage:
             'class_counts': Counter(c['rumor_class'] for c in cards if c['rumor_class']).most_common(),
             'scope_counts': Counter(c['conspiracy'] for c in cards if c['conspiracy']).most_common(),
             'chapters_seen': sorted({c['chapter'] for c in cards if c['chapter']}),
+            'motif_counts': motif_counts(cards), 'with_motifs': sum(bool(c['motifs']) for c in cards),
             'preview': Config.debug,
         })
         logger.info("...%d narratives, %d copypasta groups", len(cards), len(copies))

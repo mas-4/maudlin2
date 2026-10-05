@@ -59,3 +59,24 @@ def test_naming_prompt_has_no_example_names_to_copy():
     import re
     quoted = re.findall(r'"([^"{}]+)"', mi.NAME_PROMPT)
     assert all(q in ('a claim that', 'is accused of') for q in quoted), quoted  # even a template got copied ("X is Y")
+
+
+def test_a_sentence_is_not_a_motif_name(monkeypatch, tmp_path):
+    """The model once gave a claim's own sentence as its motif (an LAX kidnapping, Oct 5)"""
+    fresh(monkeypatch, tmp_path)
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    claim = 'A woman was kidnapped at LAX Airport by men in plain clothes'
+    monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, **k: {'motifs': [claim, 'no warrant shown']})
+    from app import narratives
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)))
+    index = mi.file_claims([{'claim': claim, 'source': 'narrative'}])
+    assert [e['name'] for e in mi.live(index)] == ['no warrant shown']
+
+
+def test_which_folklore_claims_are_filed():
+    news = 'news report or shared reaction'
+    assert mi.fits({'genre': news, 'politics': True})  # news that confirms a story people tell
+    assert not mi.fits({'genre': news, 'politics': False, 'family': 'celebrities'})  # a quarterback's bad game
+    assert not mi.fits({'genre': 'prophecy or prediction', 'politics': False, 'family': 'none'})  # a sports pick
+    assert mi.fits({'genre': 'contemporary legend', 'politics': False, 'family': 'contamination, health and medicine'})
+    assert not mi.fits({'genre': 'none: a shared topic, not a retold narrative', 'politics': True})
