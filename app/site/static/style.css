@@ -547,7 +547,7 @@ ol#date-key:first-child {
     border-radius: 4px;
     padding: 0 0.35em;
     margin-left: 0.4em;
-    color: #b8860b;
+    color: #8a5f00;
     text-decoration: none;
 }
 
@@ -572,8 +572,14 @@ ol#date-key:first-child {
     margin: 0.3em 0;
 }
 
+/* Darker than the site's highlight red and gray: on the pastel boxes those were about 3:1, under the 4.5:1 that
+   reads comfortably */
+.trending li > a:not([class]) {
+    color: #b3202a;
+}
+
 .trend-posts {
-    color: #777;
+    color: #3d3d4d;
     font-size: 0.85em;
     margin-left: 0.5em;
 }
@@ -3516,6 +3522,11 @@ h1 {
 }
 
 .rumor-unseen { color: #8a8f98; }
+
+.motif-id {
+    font: 700 0.75em ui-monospace, monospace;
+    color: #8a8f98;
+}
 
 .narrative-claim {
     margin: 0.3em 0;
