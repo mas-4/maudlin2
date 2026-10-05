@@ -72,14 +72,13 @@
                 ev.preventDefault();
                 el.scrollIntoView({behavior: 'smooth', block: 'start'});
             }));
-            // Phones: a 🧭 button with the list folded; it opens on a tap and folds again once a section is picked or
-            // on a tap elsewhere (opened on its own past the cloud, it sat over the cards' left edge). Like on wide
-            // screens, only the section on screen shows its label; the rest are just their emoji
+            // Phones: a 🧭 button from the start with the list folded; the list opens on its own once the reader is
+            // past the cloud, unless they've already opened or closed it themselves. Like on wide screens, only the
+            // section on screen shows its label; the rest are just their emoji, so the rail stays out of the way
             const nav = document.querySelector('.page-toc'), toggle = document.querySelector('.toc-toggle');
             const fold = (open) => { nav.classList.toggle('open', open); toggle.setAttribute('aria-expanded', open); };
-            toggle.addEventListener('click', () => fold(!nav.classList.contains('open')));
-            nav.addEventListener('click', (ev) => { if (ev.target.closest('a')) fold(false); });
-            document.addEventListener('click', (ev) => { if (!ev.target.closest('.page-toc, .toc-toggle')) fold(false); });
+            let chosen = false;
+            toggle.addEventListener('click', () => { chosen = true; fold(!nav.classList.contains('open')); });
             // Light up the last section whose top has passed the upper third of the screen, and only show the rail
             // once the reader is past the cloud (at the top it would just cover the cloud's left edge)
             const cloud = document.querySelector('figure.wordcloud');
@@ -88,6 +87,7 @@
                 ticking = false;
                 const past = cloud.getBoundingClientRect().bottom < innerHeight * 0.4;
                 document.body.classList.toggle('toc-on', past);
+                if (past && !chosen) fold(true);
                 let current = links[0];
                 links.forEach((a) => { const el = target(a); if (el && el.getBoundingClientRect().top < innerHeight / 3) current = a; });
                 links.forEach((a) => a.classList.toggle('here', a === current));
