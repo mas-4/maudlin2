@@ -648,3 +648,13 @@ def test_story_similarity_falls_back_to_the_static_model():
     sim, threshold, model = clustering.story_similarity(['Senate passes bill', 'Senate passes the bill', 'Rain'])
     assert model == 'potion-base-8M' and threshold == clustering.STORY_THRESHOLDS['potion-base-8M']
     assert sim.shape == (3, 3) and sim[0, 1] > sim[0, 2]
+
+
+def test_entity_names_must_be_in_the_headlines_and_the_us_is_left_out(monkeypatch, tmp_path):
+    from app.analysis import entities, llm
+    monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'names': ['the Houthis', 'United States', 'Iraq', 'U.S']})
+    named = entities.of_stories({'s1': ['Houthi rebels attack Saudi oil site'], 's2': ['Houthis fire missiles']})
+    assert named == {'s1': ['Houthis'], 's2': ['Houthis']}  # Iraq isn't in the headlines; the US is everywhere
+    assert entities.groups(named) == [('Houthis', ['s1', 's2'])]

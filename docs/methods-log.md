@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Stories by who and what they name.** The local model names the people, countries, places, organizations and
+  groups each current story is about (up to six, by their common short names, remembered per story). A name is kept
+  only if the story's headlines actually contain it (asked about an OPEC+ story, the model added Russia, Iran and
+  Iraq), and the United States is left out (nearly every story is about it). Names in two or more current stories
+  become "about:" filters over the story cards. Not sagas: these are unrelated stories that name the same subject.
 - **Our own motif index replaces Thompson's chapters.** Thompson's Motif-Index is built from folktales and fits modern
   political rumor poorly, so the site no longer shows it. Instead we build our own: each folklore narrative and each
   fact-checked claim gets one to three motif names from the model (reusable framings, no names or dates, two-sided

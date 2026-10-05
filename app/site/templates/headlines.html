@@ -785,6 +785,10 @@
         {% if show_coverage %}<button data-filter="shows" class="toggle" title="Only stories the news podcasts, newsletters and streams are talking about">🎙️ in podcasts</button>{% endif %}
         {% if clusters|selectattr('curators')|list %}<button data-filter="picked" class="toggle" title="Only stories an aggregator (Google News, Drudge Report, RealClearPolitics, Political Wire) is linking to now">📌 aggregated</button>{% endif %}
         </span>
+        {% if entity_chips %}<span class="bar-divider" aria-hidden="true"></span>
+        <span class="bar-group entity-group"><span class="bar-label">about:</span>
+        {% for name, n in entity_chips %}<button data-entity="{{ name|e }}" title="The {{ n }} current stories that name {{ name|e }}">{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
+        </span>{% endif %}
     </div>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
@@ -796,6 +800,7 @@
                  {% if satire_of is defined and satire_of.get(cluster['cluster']) %}data-satire="1"{% endif %}
                  {% if factchecks_of is defined and factchecks_of.get(cluster['cluster']) %}data-checked="1"{% endif %}
                  {% if cluster['curators'] %}data-picked="1"{% endif %}
+                 {% if entities_of is defined and entities_of.get(cluster['cluster']) %}data-entities="|{{ entities_of[cluster['cluster']]|join('|')|lower|e }}|"{% endif %}
                  style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
                 {% if cluster['saga'] %}
                     <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
@@ -929,10 +934,14 @@
             const all = cards;
             let sort = SORTS.newest;
             const only = new Set();
+            let entity = null;  // one named subject at a time, tapped again to clear
             document.querySelector('.story-sort').addEventListener('click', (ev) => {
                 const button = ev.target.closest('button');
                 if (!button) return;
-                if (button.dataset.filter) {
+                if (button.dataset.entity !== undefined) {
+                    entity = entity === button.dataset.entity ? null : button.dataset.entity;
+                    document.querySelectorAll('.story-sort button[data-entity]').forEach((b) => b.classList.toggle('active', b.dataset.entity === entity));
+                } else if (button.dataset.filter) {
                     if (button.classList.toggle('active')) only.add(button.dataset.filter);
                     else only.delete(button.dataset.filter);
                 } else {
@@ -942,7 +951,10 @@
                 // Cards glide to their new places (FLIP: note where each was, re-lay them out, then slide each from
                 // its old spot to its new one); cards coming back fade in. Skipped for readers who ask for less motion
                 const before = new Map(all.filter((c) => !c.hidden).map((c) => [c, c.getBoundingClientRect()]));
-                all.forEach((card) => { card.hidden = [...only].some((f) => !card.dataset[f]); });
+                all.forEach((card) => {
+                    card.hidden = [...only].some((f) => !card.dataset[f])
+                        || (entity && !(card.dataset.entities || '').includes(`|${entity.toLowerCase()}|`));
+                });
                 cards = all.filter((card) => !card.hidden).sort(sort);
                 layout(true);
                 if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {

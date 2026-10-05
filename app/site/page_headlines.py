@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -13,7 +14,7 @@ from sqlalchemy import func
 from app.analysis.clustering import prepare_embedding_cosine, story_similarity, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
-from app.analysis import factchecks, satire, trends_meter
+from app.analysis import entities, factchecks, satire, trends_meter
 from app.analysis.quotes import story_quotes
 from app.analysis.wording import side_phrases
 from app.investigations import recent as recent_investigations
@@ -490,6 +491,7 @@ class HeadlinesPage:
         self.show_coverage(clusters_list)
         self.satire_coverage(clusters_list)
         self.factcheck_coverage(clusters_list)
+        self.entity_groups(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -598,6 +600,29 @@ class HeadlinesPage:
         self.context['satire_of'] = {
             cluster: [{**i, 'color': self.SHOW_GROUP.get(i['group'], '#b8b8c8')} for i in items[:4]]
             for cluster, items in found.items()}
+
+    ENTITY_CHIPS = 24  # the most shared names shown as filters
+
+    def entity_groups(self, clusters_list):
+        """The people, countries and groups named by two or more current stories, as filters over the story cards."""
+        self.context['entity_chips'], self.context['entities_of'] = [], {}
+        if not clusters_list:
+            return
+        story_of = getattr(self, 'story_of', {})
+        key = {int(c['cluster']): f"s{story_of[int(c['cluster'])]}" if int(c['cluster']) in story_of
+               else 'c' + hashlib.sha1(self.context['titles'][c['cluster']].encode()).hexdigest()[:12]
+               for c in clusters_list}
+        try:
+            named = entities.of_stories({key[int(c['cluster'])]: [a['title'] for a in c['data']] for c in clusters_list})
+        except Exception as e:  # noqa: extra; never let it stop the page
+            logger.warning("Entities: %s", e)
+            return
+        cluster_of = {k: cl for cl, k in key.items()}
+        chips = entities.groups(named)[:self.ENTITY_CHIPS]
+        self.context['entity_chips'] = [(name, len(ks)) for name, ks in chips]
+        shown = {name.lower() for name, _ in chips}
+        self.context['entities_of'] = {cluster_of[k]: [n for n in names if n.lower() in shown]
+                                       for k, names in named.items()}
 
     def factcheck_coverage(self, clusters_list):
         """Fact-checks of the current stories (app/analysis/factchecks.py), for a 🔎 row on each story card."""
