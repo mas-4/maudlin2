@@ -34,3 +34,15 @@ def test_ties_are_mixed_and_cards_are_capped():
     rows = [row('A', -1, "'x y'"), row('B', 1, "'x y'")] + [row(f'O{i}', 0, f"'phrase {i}'") for i in range(6)]
     out = q.story_quotes(rows)
     assert out[0]['lead'] == 'mixed' and len(out) == q.MAX_ON_CARD
+
+
+def test_quotes_inside_one_another_are_one_chip():
+    rows = [row('A', -1, "Altman: 'Bad Things' ahead"), row('B', 1, "'the world should accept some bad things happening'"),
+            row('C', 0, "'world should accept some bad things'"), row('D', 1, "'Super Intelligence Force'"),
+            row('E', -1, "'Super Intelligence Force' unveiled"), row('F', 0, "a 'Super Intelligence' push"),
+            row('G', 0, "'SpaceXSI' and 'SI'")]
+    out = {o['phrase']: o for o in q.story_quotes(rows)}
+    whole = out['the world should accept some bad things happening']  # a tie: the longer wording shows
+    assert whole['count'] == 3 and len(whole['variants']) == 2
+    assert out['Super Intelligence Force']['count'] == 3 and out['Super Intelligence Force']['variants'] == ['Super Intelligence']
+    assert 'SI' in out and 'SpaceXSI' in out  # whole words only

@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Quotes inside one another count once.** Outlets often cut the same quote differently ("Bad Things", "world
+  should accept some bad things", "We Should Accept Some Bad Things Happening For The Benefits"); as separate chips
+  they filled a story card with one quote and pushed other quotes past the four-chip limit (7 of 28 cards with
+  quotes this morning). A quoted phrase that sits inside another, whole words, now joins it: one chip counting every
+  outlet that used any of the wordings, shown as the wording most of them used (the longer on a tie), the others in
+  its tooltip.
 - **Stories by who and what they name.** The local model names the people, countries, places, organizations and
   groups each current story is about (up to six, by their common short names, remembered per story). A name is kept
   only if the story's headlines actually contain it (asked about an OPEC+ story, the model added Russia, Iran and

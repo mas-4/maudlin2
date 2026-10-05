@@ -845,7 +845,7 @@
                 <div class="story-extras">
                 {% if cluster['quotes'] %}
                     <p class="story-quotes"><span class="story-quotes-label" title="Phrases the outlets on this story put in quotation marks">💬 quoted</span>
-                        {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %})">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
+                        {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %}){% if q.variants %}; also quoted as “{{ q.variants|join('”, “') }}”{% endif %}">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
                     </p>
                 {% endif %}
                 {% if cluster['wording'] %}

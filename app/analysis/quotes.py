@@ -24,9 +24,31 @@ def side(row: dict) -> str:
     return 'left' if row['bias'] < 0 else 'right' if row['bias'] > 0 else 'center'
 
 
+def nested(phrases: list[str]) -> list[list[str]]:
+    """Group quote keys where one sits inside another, whole words ('bad things' in 'world should accept some bad
+    things'): one quote cut differently by different outlets, which as separate chips stacked a card with the same
+    words."""
+    parent = {k: k for k in phrases}
+
+    def root(k):
+        while parent[k] != k:
+            k = parent[k]
+        return k
+    for a in phrases:
+        for b in phrases:
+            if a != b and f' {a} ' in f' {b} ':
+                parent[root(a)] = root(b)
+    groups = defaultdict(list)
+    for k in phrases:
+        groups[root(k)].append(k)
+    return list(groups.values())
+
+
 def story_quotes(rows: list[dict]) -> list[dict]:
     """The phrases a story's outlets quoted (one headline per outlet), most-quoted first: how each is spelled most
-    often, which outlets quoted it, and from which side."""
+    often, which outlets quoted it, and from which side. Quotes inside one another count as one, shown as the wording
+    most outlets used (the longer on a tie: 'concerted' alone says less than
+    'concerted effort to intimidate the court'), the others kept as variants."""
     found = defaultdict(lambda: {'spellings': Counter(), 'outlets': {}})
     for row in rows:
         for phrase in quoted(row['title']):
@@ -36,13 +58,18 @@ def story_quotes(rows: list[dict]) -> list[dict]:
             found[k]['spellings'][phrase] += 1
             found[k]['outlets'][row['agency']] = side(row)
     out = []
-    for entry in found.values():
-        sides = Counter(entry['outlets'].values())
+    for group in nested(list(found)):
+        group.sort(key=lambda k: (-len(found[k]['outlets']), -len(k)))
+        outlets = {}
+        for k in group:
+            outlets.update(found[k]['outlets'])
+        spell = [found[k]['spellings'].most_common(1)[0][0] for k in group]
+        sides = Counter(outlets.values())
         rated = {s: sides.get(s, 0) for s in ('left', 'center', 'right')}
         lead = max(rated, key=rated.get) if any(rated.values()) else 'unrated'
         if list(rated.values()).count(rated.get(lead, 0)) > 1 and rated.get(lead):
             lead = 'mixed'  # a tie between sides
-        out.append({'phrase': entry['spellings'].most_common(1)[0][0], 'outlets': sorted(entry['outlets']),
-                    'count': len(entry['outlets']), **rated, 'unrated': sides.get('unrated', 0), 'lead': lead})
+        out.append({'phrase': spell[0], 'variants': spell[1:], 'outlets': sorted(outlets), 'count': len(outlets),
+                    **rated, 'unrated': sides.get('unrated', 0), 'lead': lead})
     out.sort(key=lambda q: (-q['count'], q['phrase'].lower()))
     return out[:MAX_ON_CARD]
