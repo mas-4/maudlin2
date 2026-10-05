@@ -121,3 +121,12 @@ def test_a_no_on_the_motif_check_takes_the_claim_out_for_good(monkeypatch, tmp_p
     from app import narratives
     monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)) / np.sqrt(2))
     assert mi.closest(index, 'a') == [] and mi.match(index, 'blame shifting', 'a') is None
+
+
+def test_moving_a_claim_to_a_new_motif_doesnt_wait_on_itself(monkeypatch, tmp_path):
+    """move() makes the new entry while holding the index lock; it mustn't ask for the lock again"""
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']},
+             'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
+    mi.move('a', 'M001', 'new')
+    assert mi.load()['claims'][mi.key('a')] == ['M002']

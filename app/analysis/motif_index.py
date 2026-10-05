@@ -13,6 +13,9 @@ Refined by hand on the label-check page (rename, merge), where the entries' name
 A claim can carry up to three motifs (a story is often several shapes at once: who's blamed, what's feared, what's
 hoped), each filed on its own. Stored in data/motif_index.json:
 {'next': 3, 'entries': {'M001': {...}}, 'claims': {claim key: [entry ids]}} (an empty list: filed, no motif kept)."""
+import contextlib
+import fcntl
+import functools
 import hashlib
 import json
 import os
@@ -108,6 +111,23 @@ def load() -> dict:
 def save(index: dict):
     with open(INDEX, 'w') as f:
         json.dump(index, f, indent=1)
+
+
+@contextlib.contextmanager
+def locked():
+    """One writer at a time: the hourly filing and the organizer and motif check pages each read, change and save the
+    whole index, so without this an edit made while a run was filing was lost when the run saved."""
+    with open(INDEX + '.lock', 'w') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
+
+
+def exclusive(fn):
+    @functools.wraps(fn)
+    def run(*args, **kwargs):
+        with locked():
+            return fn(*args, **kwargs)
+    return run
 
 
 def _ids(index: dict, claim_key: str) -> list[str]:
@@ -221,35 +241,39 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     for n, c in enumerate(todo):
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
-        if n and n % 5 == 0:
-            save(index)  # as it goes: a run cut short keeps what it filed
-        shown = closest(index, c['claim'])
-        named = name_claim(c['claim'], shown)
-        if not named:
-            continue
-        filed = [e['id'] for e in named['existing']]
-        for e in named['existing']:
-            entry = index['entries'][e['id']]
-            entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
-                                    'side': c.get('side'), 'date': c.get('date') or today})
-            entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
-        for phrase in named['new'][:max(0, 3 - len(filed))]:
-            eid = same_name(index, phrase) or match(index, phrase, c['claim'])
-            if eid in filed:
+        # One claim at a time on a fresh read of the index, saved as it goes: a run cut short keeps what it filed,
+        # and an edit made on the organizer pages meanwhile isn't lost
+        with locked():
+            index = load()
+            if key(c['claim']) in index['claims']:
                 continue
-            if eid is None:
-                eid = f"M{index['next']:03d}"
-                index['next'] += 1
-                index['entries'][eid] = {'id': eid, 'name': phrase, 'curated': False, 'first_seen': today,
-                                         'claims': [], 'phrases': []}
-            entry = index['entries'][eid]
-            entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
-                                    'side': c.get('side'), 'date': c.get('date') or today})
-            entry['phrases'] = (entry.get('phrases', []) + [phrase])[-20:]
-            entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
-            filed.append(eid)
-        index['claims'][key(c['claim'])] = filed
-    save(index)
+            shown = closest(index, c['claim'])
+            named = name_claim(c['claim'], shown)
+            if not named:
+                continue
+            filed = [e['id'] for e in named['existing']]
+            for e in named['existing']:
+                entry = index['entries'][e['id']]
+                entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
+                                        'side': c.get('side'), 'date': c.get('date') or today})
+                entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
+            for phrase in named['new'][:max(0, 3 - len(filed))]:
+                eid = same_name(index, phrase) or match(index, phrase, c['claim'])
+                if eid in filed:
+                    continue
+                if eid is None:
+                    eid = f"M{index['next']:03d}"
+                    index['next'] += 1
+                    index['entries'][eid] = {'id': eid, 'name': phrase, 'curated': False, 'first_seen': today,
+                                             'claims': [], 'phrases': []}
+                entry = index['entries'][eid]
+                entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
+                                        'side': c.get('side'), 'date': c.get('date') or today})
+                entry['phrases'] = (entry.get('phrases', []) + [phrase])[-20:]
+                entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
+                filed.append(eid)
+            index['claims'][key(c['claim'])] = filed
+            save(index)
     logger.info("Motif index: filed %d claims; %d motifs", len(todo), len(live(index)))
     return index
 
@@ -297,13 +321,14 @@ SUGGEST = 0.72  # entry names at least this alike are suggested as merges
 SUGGESTED = 15
 
 
+@exclusive
 def rename(eid: str, name: str):
     index = load()
     index['entries'][eid].update(name=clean(name), curated=True)
     save(index)
 
 
-def add(name: str) -> str:
+def _add(name: str) -> str:
     index = load()
     eid = f"M{index['next']:03d}"
     index['next'] += 1
@@ -313,6 +338,12 @@ def add(name: str) -> str:
     return eid
 
 
+@exclusive
+def add(name: str) -> str:
+    return _add(name)
+
+
+@exclusive
 def merge(source: str, target: str):
     """Fold `source` into `target`: its claims and phrases move over (a claim in both counts once), and its number
     points to `target`."""
@@ -332,6 +363,7 @@ def merge(source: str, target: str):
     save(index)
 
 
+@exclusive
 def delete(eid: str):
     """Drop an entry: its claims keep their other motifs, and aren't filed again."""
     index = load()
@@ -341,10 +373,11 @@ def delete(eid: str):
     save(index)
 
 
+@exclusive
 def move(claim: str, source: str, target: str):
     """Move one claim out of `source` into another entry (or a new one, target 'new')."""
     if target == 'new':
-        target = add(claim[:80])
+        target = _add(claim[:80])  # already holding the lock
     index = load()
     k = key(claim)
     entry = index['entries'][source]
@@ -356,6 +389,7 @@ def move(claim: str, source: str, target: str):
     save(index)
 
 
+@exclusive
 def not_same(a: str, b: str):
     """Remember that two entries aren't the same motif, so they're not suggested again."""
     index = load()
@@ -394,6 +428,7 @@ def to_check(limit: int | None = None) -> list[dict]:
     return out[:limit] if limit else out
 
 
+@exclusive
 def check(claim: str, eid: str, answer: str):
     """A person's answer to 'is this claim an instance of this motif?', applied at once. Yes or not sure is noted on
     the filing. No takes the claim out of the motif and keeps it out; a motif left with no claims goes, and a claim
