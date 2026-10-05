@@ -486,7 +486,7 @@ function drawPicker(q) {
   // A person curating isn't held to the model's three motifs a claim: adding is always on offer
   const fromName = esc((data.entries.find((e) => e.id === from) || {}).name || 'this motif');
   $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
-    <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
+    <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take this motif off this claim">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
     <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
     <div class="pick">${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
       <button class="small add" data-also="${e.id}" title="file the claim under this motif too, keeping the others">+ add</button>
@@ -510,8 +510,11 @@ $('#picker').addEventListener('click', (ev) => {
     if (!holders.some((e) => e.id === pick.from)) pick.from = holders[0].id;
     drawPicker(q);
   };
+  const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim)).length;
   if (b.dataset.move) done({action: 'move', claim, source: from, target: b.dataset.move});
   else if (b.dataset.also) done({action: 'also', claim, source: from, target: b.dataset.also});
+  else if (b.dataset.out && (mine > 1 || confirm('That\'s its last motif: take it off, and it\'s filed again next run?')))
+    done({action: 'unfile', claim, id: b.dataset.out});
   else if (b.dataset.del) {
     const e = data.entries.find((x) => x.id === b.dataset.del);
     if (confirm(`Delete the motif “${e.name}” (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})? Its claims keep their other motifs and aren't filed under it again.`))
