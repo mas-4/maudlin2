@@ -98,3 +98,31 @@ def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
             path.write_text(js)
             result = subprocess.run(['node', '--check', str(path)], capture_output=True, text=True)
             assert result.returncode == 0, f'{name}: {result.stderr[:300]}'
+
+
+def test_board_changes_are_logged_with_what_the_model_had_proposed(monkeypatch, tmp_path):
+    """Each correction kept as a pair, the model's proposal and the person's choice, for training later"""
+    import json
+    import threading
+    import urllib.request
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    monkeypatch.setattr(validate, 'FOLDER', str(tmp_path))
+    monkeypatch.setattr(validate, 'CURATION_LOG', str(tmp_path / 'log.jsonl'))
+    mi.save({'next': 3, 'claims': {mi.key('a'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Smug smirk', 'claims': [{'claim': 'a', 'source': 's'}]},
+        'M002': {'id': 'M002', 'name': 'Blame shifting', 'curated': True, 'claims': []}}})
+    server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        body = json.dumps({'action': 'also', 'claim': 'a', 'source': 'M001', 'target': 'M002'}).encode()
+        req = urllib.request.Request(f'http://127.0.0.1:{server.server_port}/motif-board', body,
+                                     {'Content-Type': 'application/json'})
+        urllib.request.urlopen(req).read()
+    finally:
+        server.shutdown()
+    [entry] = [json.loads(line) for line in (tmp_path / 'log.jsonl').read_text().splitlines()]
+    assert entry['page'] == 'motif board' and entry['action']['action'] == 'also'
+    assert entry['before']['source']['name'] == 'Smug smirk' and entry['before']['source']['by'] == 'model'
+    assert entry['before']['target']['by'] == 'person'
+    assert [m['name'] for m in entry['before']['claim_motifs']] == ['Smug smirk']

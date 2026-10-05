@@ -688,6 +688,33 @@ fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(
 </script></body></html>"""
 
 
+CURATION_LOG = os.path.join(FOLDER, 'curation_log.jsonl')  # every correction, with what the model had proposed
+
+
+def motif_context(data: dict) -> dict:
+    """What the model had proposed before a person's change: each motif the action names (its name, whether the model
+    or a person made it, a few of its claims) and, for a claim, every motif it was filed under."""
+    from app.analysis import motif_index as mi
+    index = mi.load()
+    entries = index['entries']
+
+    def motif(eid):
+        e = entries.get(eid)
+        return e and {'id': eid, 'name': e['name'], 'by': 'person' if e.get('curated') else 'model',
+                      'claims': [c['claim'] for c in e['claims'][:8]], 'size': len(e['claims'])}
+    out = {k: motif(data[k]) for k in ('id', 'source', 'target', 'a', 'b') if isinstance(data.get(k), str) and data[k] in entries}
+    claim = data.get('claim')
+    if isinstance(claim, str) and claim:
+        out['claim_motifs'] = [motif(i) | {'claims': None} for i in mi._ids(index, mi.key(claim)) if i in entries]
+    return out
+
+
+def log_curation(page: str, data: dict, before: dict):
+    os.makedirs(FOLDER, exist_ok=True)
+    with open(CURATION_LOG, 'a') as f:
+        f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'page': page, 'action': data, 'before': before}) + '\n')
+
+
 def board_action(data: dict):
     """One change from the motif board, applied to the index at once (under its lock)."""
     from app.analysis import motif_index as mi
@@ -879,14 +906,25 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/motif-board':
             from app.analysis import motif_index
             try:
+                before = motif_context(data)
                 board_action(data)
+                log_curation('motif board', data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
             return self.send_json(motif_index.board())
         if self.path in ('/motif-index', '/entities'):
             try:
-                (organizer_action if self.path == '/motif-index' else entities_action)(data)
+                if self.path == '/motif-index':
+                    before = motif_context(data)
+                    organizer_action(data)
+                    log_curation('motif organizer', data, before)
+                else:
+                    from app.analysis import entities
+                    before = {'aliases': {k: v for k, v in entities.load_aliases()['aliases'].items()
+                                          if any(isinstance(x, str) and x.lower() in (k, v.lower()) for x in data.values())}}
+                    entities_action(data)
+                    log_curation('names', data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
@@ -896,7 +934,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/motif-verdict':
             from app.analysis import motif_index
             try:
+                before = motif_context(data)
                 motif_index.check(data.get('claim', ''), data.get('id', ''), data.get('answer', ''))
+                log_curation('motif check', data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
