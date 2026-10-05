@@ -250,31 +250,34 @@ def organizer_page() -> str:
         pairs, note = [], f'(suggestions unavailable: {esc(str(e))})'
     else:
         note = ''
-    suggest = ''.join(f"""
+    def side(me, other, claims):
+        """One motif of a pair, with what this motif can do about the other, worded from its side"""
+        m, o = by_id[me], by_id[other]
+        return f"""<div class="side"><b>🧩 {esc(m['name'])}</b> <span class="said">{me} · {len(m['claims'])} claim{'' if len(m['claims']) == 1 else 's'}</span>
+      <button class="small" data-act="rename_prompt" data-id="{me}" data-name="{esc(m['name'])}" title="rename">✎</button>
+      <ul>{claims}</ul>
+      <div class="side-acts"><span class="said">This one:</span>
+        <button data-act="merge" data-source="{me}" data-target="{other}" title="{esc(m['name'])} goes; its claims join {esc(o['name'])}">⤵ merge into “{esc(o['name'])}”</button>
+        <button data-act="kind_of" data-child="{me}" data-parent="{other}">⊂ is a kind of “{esc(o['name'])}”</button></div></div>"""
+
+    def pair_card(a, b, header, claims_a, claims_b, shared=''):
+        return f"""
 <section class="card pair">
-  <p class="outlet">similar names ({sim:.2f})</p>
-  <div class="two"><div><b>{a} 🧩 {esc(by_id[a]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{a}" data-name="{esc(by_id[a]['name'])}" title="rename">✎</button><ul>{claims_of(by_id[a])}</ul></div>
-    <div><b>{b} 🧩 {esc(by_id[b]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{b}" data-name="{esc(by_id[b]['name'])}" title="rename">✎</button><ul>{claims_of(by_id[b])}</ul></div></div>
-  <div class="row"><button data-act="merge" data-source="{b}" data-target="{a}">⤵ merge into {a}</button>
-    <button data-act="merge" data-source="{a}" data-target="{b}">⤵ merge into {b}</button>
-    <button data-act="kind_of" data-child="{b}" data-parent="{a}" title="{b} is a narrower kind of {a}">⊂ {b} is a kind of {a}</button>
-    <button data-act="kind_of" data-child="{a}" data-parent="{b}" title="{a} is a narrower kind of {b}">⊂ {a} is a kind of {b}</button>
+  <p class="outlet">{header}</p>
+  {shared}
+  <div class="two">{side(a, b, claims_a)}
+    {side(b, a, claims_b)}</div>
+  <div class="row both"><span class="said">The two:</span>
+    <button data-act="related" data-a="{a}" data-b="{b}" title="near each other, but different stories">↔ related</button>
     <button data-act="not_same" data-a="{a}" data-b="{b}">✗ not the same</button></div>
-</section>""" for a, b, sim in pairs if a in by_id and b in by_id)
-    shared = ''.join(f"""
-<section class="card pair">
-  <p class="outlet">filed together on {len(p['shared'])} claim{'' if len(p['shared']) == 1 else 's'}</p>
-  <div class="two"><div><b>{p['a']} 🧩 {esc(by_id[p['a']]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{p['a']}" data-name="{esc(by_id[p['a']]['name'])}" title="rename">✎</button></div>
-    <div><b>{p['b']} 🧩 {esc(by_id[p['b']]['name'])}</b> <button class="small" data-act="rename_prompt" data-id="{p['b']}" data-name="{esc(by_id[p['b']]['name'])}" title="rename">✎</button></div></div>
-  <p class="said">Both:</p><ul>{''.join(f'<li>{esc(c[:160])}</li>' for c in p['shared'])}</ul>
-  <div class="two"><div><p class="said">Only {p['a']}:</p><ul>{''.join(f'<li>{esc(c[:140])}</li>' for c in p['only_a']) or '<li class="said">none</li>'}</ul></div>
-    <div><p class="said">Only {p['b']}:</p><ul>{''.join(f'<li>{esc(c[:140])}</li>' for c in p['only_b']) or '<li class="said">none</li>'}</ul></div></div>
-  <div class="row"><button data-act="merge" data-source="{p['b']}" data-target="{p['a']}">⤵ merge into {p['a']}</button>
-    <button data-act="merge" data-source="{p['a']}" data-target="{p['b']}">⤵ merge into {p['b']}</button>
-    <button data-act="kind_of" data-child="{p['b']}" data-parent="{p['a']}">⊂ {p['b']} is a kind of {p['a']}</button>
-    <button data-act="kind_of" data-child="{p['a']}" data-parent="{p['b']}">⊂ {p['a']} is a kind of {p['b']}</button>
-    <button data-act="not_same" data-a="{p['a']}" data-b="{p['b']}">✗ not the same</button></div>
-</section>""" for p in motif_index.shared_pairs() if p['a'] in by_id and p['b'] in by_id)
+</section>"""
+    suggest = ''.join(pair_card(a, b, f'similar names ({sim:.2f})', claims_of(by_id[a]), claims_of(by_id[b]))
+                      for a, b, sim in pairs if a in by_id and b in by_id)
+    li = lambda texts, n: ''.join(f'<li>{esc(c[:n])}</li>' for c in texts) or '<li class="said">no others</li>'  # noqa: E731
+    shared = ''.join(pair_card(p['a'], p['b'], f"filed together on {len(p['shared'])} claim{'' if len(p['shared']) == 1 else 's'}",
+                               li(p['only_a'], 140), li(p['only_b'], 140),
+                               f'<p class="said">Both hold:</p><ul class="bothclaims">{li(p["shared"], 160)}</ul>')
+                     for p in motif_index.shared_pairs() if p['a'] in by_id and p['b'] in by_id)
     cards = ''.join(f"""
 <section class="card entry" id="{e['id']}" data-text="{esc((e['name'] + ' ' + ' '.join(c['claim'] for c in e['claims'])).lower())}">
   <p class="outlet">{e['id']} · {len(e['claims'])} claim{'' if len(e['claims']) == 1 else 's'} · first seen {e.get('first_seen', '')}{' · ✎ curated' if e.get('curated') else ''}</p>
@@ -288,6 +291,8 @@ def organizer_page() -> str:
 body {{ font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }}
 .card {{ border: 2px solid #1f1f2e; border-radius: 12px; padding: 10px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #ffc400; }}
 .pair {{ box-shadow: 4px 4px 0 #ff4fa3; }} .two {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
+.side {{ border: 1.5px dashed #ccc; border-radius: 10px; padding: 6px 10px; }} .side-acts {{ display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 6px; }}
+.both {{ border-top: 1px dashed #ccc; padding-top: 6px; }} .bothclaims {{ background: #f4f1e6; border-radius: 8px; padding: 6px 6px 6px 24px; }}
 .outlet, .said {{ font-size: .85em; color: #555; }} ul {{ margin: .4em 0; padding-left: 1.2em; }} li {{ margin: .2em 0; }}
 .row {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; }} input {{ font: inherit; padding: 3px 6px; }}
 button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }}
@@ -296,10 +301,9 @@ button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1e
 </style></head><body>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <b>Motif organizer</b> <a href="/motif-board">Motif board</a> <a href="/entities">Names</a></nav>
 <h1>Motif organizer</h1>
-<p>Our own motif index: {len(entries)} motifs from {sum(len(e['claims']) for e in entries)} claims. A claim can carry up to three motifs. Merge
-duplicates, rename to a reusable framing ("X is / isn't Y"), delete what isn't a motif, or move a claim that landed in
-the wrong place. Renamed motifs keep your name; deleted motifs' claims aren't filed again. Changes go live with the
-next site build.</p>
+<p>Our own motif index: {len(entries)} motifs from {sum(len(e['claims']) for e in entries)} claims. Merge motifs that are one,
+mark one a kind of another, or two as related (near each other, different stories); rename, delete what isn't a motif,
+or move a claim that landed in the wrong place. Changes are saved at once and go live with the next site build.</p>
 <h2>Filed together</h2>
 <p class="said">Motifs the model filed on two or more of the same claims: judge them by what they hold, not their names.</p>
 {shared or '<p>None right now.</p>'}
@@ -325,6 +329,7 @@ document.addEventListener('click', (ev) => {{
   else if (d.act === 'merge') post({{action: 'merge', source: d.source, target: d.target}});
   else if (d.act === 'not_same') post({{action: 'not_same', a: d.a, b: d.b}});
   else if (d.act === 'kind_of') post({{action: 'kind_of', child: d.child, parent: d.parent}});
+  else if (d.act === 'related') post({{action: 'related', a: d.a, b: d.b}});
   else if (d.act === 'merge_into') {{ const t = prompt('Merge ' + d.source + ' into which motif? (its number, e.g. M012)'); if (t) post({{action: 'merge', source: d.source, target: t.trim().toUpperCase()}}); }}
   else if (d.act === 'delete') {{ if (confirm('Delete ' + d.id + '? Its claims will not be filed under it again.')) post({{action: 'delete', id: d.id}}); }}
   else if (d.act === 'move') {{ const t = prompt('Move this claim to which motif? (its number, or "new")'); if (t) post({{action: 'move', claim: d.claim, source: d.source, target: t.trim() === 'new' ? 'new' : t.trim().toUpperCase()}}); }}
@@ -406,7 +411,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 </header>
 <main>
 <aside>
-  <p class="meta" style="font-size:.8em;color:#555;margin:0 0 6px">Drag a claim onto a motif to add it there, a motif onto another to merge them or make it a kind of the other, or onto a group to file it. Click a claim for all its motifs. Tap a group to show only its motifs.</p>
+  <p class="meta" style="font-size:.8em;color:#555;margin:0 0 6px">Drag a claim onto a motif to add it there, a motif onto another to merge them, make it a kind of the other or mark them related, or onto a group to file it. Click a claim for all its motifs. Tap a group to show only its motifs.</p>
   <div id="groups"></div>
 </aside>
 <section class="grid" id="grid"></section>
@@ -455,6 +460,7 @@ function render() {
           : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? `<span class="newpill" title="Marked done, then new claims came in: they're highlighted, first">${e.claims.filter((c) => c.new).length} new since you looked</span>` : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
         ${e.parent ? `<div class="kindof">↳ kind of 🧩 ${esc((data.entries.find((x) => x.id === e.parent) || {}).name || e.parent)} <button class="small" data-mact="unparent" title="no longer a kind of it">✗</button></div>` : ''}
         ${(() => { const kids = data.entries.filter((x) => x.parent === e.id); return kids.length ? `<div class="kinds">kinds: ${kids.map((k) => esc(k.name)).join(', ')}</div>` : ''; })()}
+        ${e.related.length ? `<div class="kinds">↔ related: ${e.related.map((r) => `${esc((data.entries.find((x) => x.id === r) || {}).name || r)} <button class="small" data-unrelate="${r}" title="not related">✗</button>`).join(' ')}</div>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
         <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
@@ -484,6 +490,7 @@ document.addEventListener('click', (ev) => {
     if (b.dataset.cact === 'out' && confirm('Take this claim out of “' + e.name + '” for good?')) act({action: 'unfile', claim: li.dataset.claim, id: e.id});
     return;
   }
+  if (b && b.dataset.unrelate) { act({action: 'unrelate', a: e.id, b: b.dataset.unrelate}); return; }
   if (b && b.dataset.mact) {
     const a = b.dataset.mact;
     if (a === 'more') openSimilar(e.id);
@@ -663,6 +670,7 @@ $('#similar').addEventListener('click', async (ev) => {
 function chooseMotifDrop(item, target) {
   $('#choose-body').innerHTML = `<h2>🧩 ${esc(item.name)} → 🧩 ${esc(target.name)}</h2>
     <p><button class="add" data-c="kind">⊂ “${esc(item.name)}” is a kind of “${esc(target.name)}”</button></p>
+    <p><button data-c="related">↔ related: near each other, but different stories</button></p>
     <p><button data-c="merge">⤵ merge them: “${esc(item.name)}” joins “${esc(target.name)}” (its name goes)</button></p>
     <p><button data-c="cancel">cancel</button></p>`;
   $('#choose').onclick = (ev) => {
@@ -670,6 +678,7 @@ function chooseMotifDrop(item, target) {
     $('#choose').close();
     if (b && b.dataset.c === 'kind') act({action: 'parent', id: item.id, parent: target.id});
     else if (b && b.dataset.c === 'merge') act({action: 'merge', source: item.id, target: target.id});
+    else if (b && b.dataset.c === 'related') act({action: 'relate', a: item.id, b: target.id});
   };
   $('#choose').showModal();
 }
@@ -774,6 +783,8 @@ def board_action(data: dict):
         mi.move(data['claim'], data['source'], mi.add(data['name']))
     elif act == 'unfile' and text('claim') and data.get('id') in live:
         mi.unfile(data['claim'], data['id'])
+    elif act in ('relate', 'unrelate') and data.get('a') in live and data.get('b') in live:
+        mi.relate(data['a'], data['b'], act == 'relate')
     elif act == 'parent' and data.get('id') in live and (data.get('parent') is None or data.get('parent') in live):
         mi.set_parent(data['id'], data.get('parent'))
     elif act == 'reject' and text('claim') and data.get('id') in live:
@@ -900,6 +911,8 @@ def organizer_action(data: dict):
         motif_index.rename(data['id'], data['name'])
     elif act == 'merge' and known(data.get('source')) and known(data.get('target')):
         motif_index.merge(data['source'], data['target'])
+    elif act == 'related' and known(data.get('a')) and known(data.get('b')):
+        motif_index.relate(data['a'], data['b'])
     elif act == 'kind_of' and known(data.get('child')) and known(data.get('parent')):
         motif_index.set_parent(data['child'], data['parent'])
     elif act == 'not_same' and known(data.get('a')) and known(data.get('b')):

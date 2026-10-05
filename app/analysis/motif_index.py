@@ -357,6 +357,8 @@ def merge(source: str, target: str):
     dst['first_seen'] = min(filter(None, [dst.get('first_seen'), src.get('first_seen')]), default=None)
     dst['last_seen'] = max(filter(None, [dst.get('last_seen'), src.get('last_seen')]), default=None)
     src.update(claims=[], merged_into=target)
+    index['related'] = [sorted([target if x == source else x for x in p]) for p in index.get('related', [])]
+    index['related'] = [p for i, p in enumerate(index['related']) if p[0] != p[1] and p not in index['related'][:i]]
     for e in index['entries'].values():  # its kinds become kinds of the motif it joined
         if e.get('parent') == source:
             e['parent'] = target if e['id'] != target else None
@@ -512,6 +514,8 @@ def board() -> dict:
     index = load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
                 'done': is_done(e), 'parent': e.get('parent') if e.get('parent') in index['entries'] else None,
+                'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
+                                   if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
@@ -652,3 +656,24 @@ def shared_pairs(least: int = 2) -> list[dict]:
                     'only_a': [c['claim'] for c in entries[a]['claims'] if key(c['claim']) not in keys],
                     'only_b': [c['claim'] for c in entries[b]['claims'] if key(c['claim']) not in keys]})
     return sorted(out, key=lambda p: (-len(p['shared']), p['a']))
+
+
+# Related: two motifs that belong near each other without being one, or one a kind of the other ('Rape accusation
+# against men' and 'Campus sexual assault controversy' meet on some events and are different stories). Both ways.
+
+@exclusive
+def relate(a: str, b: str, related: bool = True):
+    index = load()
+    entries = index['entries']
+    if a == b or a not in entries or b not in entries:
+        raise ValueError(f'no such pair: {a} {b}')
+    pair = sorted([a, b])
+    links = index.setdefault('related', [])
+    if related:
+        if pair not in links:
+            links.append(pair)
+        if pair not in index.setdefault('not_same', []):  # related, so never suggested as one motif
+            index['not_same'].append(pair)
+    else:
+        index['related'] = [p for p in links if p != pair]
+    save(index)

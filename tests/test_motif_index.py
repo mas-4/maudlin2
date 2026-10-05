@@ -191,3 +191,21 @@ def test_motifs_filed_together_on_two_claims_are_paired(monkeypatch, tmp_path):
     assert (p['a'], p['b'], sorted(p['shared']), p['only_a'], p['only_b']) == ('M001', 'M002', ['a', 'b'], ['c'], ['d'])
     mi.set_parent('M002', 'M001')
     assert mi.shared_pairs() == []  # linked as kinds: not a candidate any more
+
+
+def test_two_motifs_can_be_related_without_being_one(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 4, 'claims': {mi.key('a'): ['M001', 'M002'], mi.key('b'): ['M001', 'M002']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Rape accusation against men', 'claims': [claim('a'), claim('b')]},
+        'M002': {'id': 'M002', 'name': 'Campus sexual assault controversy', 'claims': [claim('a'), claim('b')]},
+        'M003': {'id': 'M003', 'name': 'x', 'claims': [claim('c')]}}})
+    assert len(mi.shared_pairs()) == 1
+    mi.relate('M002', 'M001')
+    related = {e['id']: e['related'] for e in mi.board()['entries']}
+    assert related == {'M001': ['M002'], 'M002': ['M001'], 'M003': []}  # both ways
+    assert mi.shared_pairs() == []  # not suggested as one motif any more
+    mi.merge('M002', 'M003')  # a link follows a merged motif
+    assert {e['id']: e['related'] for e in mi.board()['entries']} == {'M001': ['M003'], 'M003': ['M001']}
+    mi.relate('M001', 'M003', False)
+    assert all(not e['related'] for e in mi.board()['entries'])
