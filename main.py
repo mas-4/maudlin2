@@ -180,6 +180,8 @@ def main(args: argparse.Namespace):
             from app.analysis import circulation
             narratives.report(hours=24)
             circulation.nightly()  # which fact-checked rumors people are telling or arguing over (#153)
+            from app.analysis import motif_index
+            motif_index.nightly()  # file the day's claims in our own motif index (#145)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 

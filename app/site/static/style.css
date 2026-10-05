@@ -3051,6 +3051,13 @@ h1 {
     content: ' ▴';
 }
 
+.nav-menu-note {
+    margin: 0.2em 0.6em 0.4em;
+    font-size: 0.8em;
+    color: #555;
+    max-width: 22em;
+}
+
 .nav-menu-list {
     position: absolute;
     top: calc(100% + 8px);

@@ -22,6 +22,7 @@ DEFAULT_MODELS = {
     'anthropic': 'claude-haiku-4-5',
 }
 TIMEOUT = 120
+BIG_TIMEOUT = 600  # a bigger model, partly on the CPU, loading and answering
 
 _backend: Optional[str] = None
 _resolved = False
@@ -66,12 +67,13 @@ def model() -> str:
     return os.environ.get('MAUDLIN_LLM_MODEL') or DEFAULT_MODELS.get(_backend or '', '')
 
 
-def complete_json(prompt: str, schema: dict, max_tokens: int = 1024) -> Optional[dict]:
-    """Ask the llm for JSON matching `schema`. Returns None if there's no backend or the call fails."""
+def complete_json(prompt: str, schema: dict, max_tokens: int = 1024, model: Optional[str] = None) -> Optional[dict]:
+    """Ask the llm for JSON matching `schema`. Returns None if there's no backend or the call fails. `model` picks
+    a different local model for this call (Ollama only), e.g. a bigger one for a small, hard job."""
     which = backend()
     try:
         if which == 'ollama':
-            return _ollama(prompt, schema, max_tokens)
+            return _ollama(prompt, schema, max_tokens, model)
         if which == 'anthropic':
             return _anthropic(prompt, schema, max_tokens)
     except Exception as e:  # noqa: an llm hiccup should never take down a scrape or build
@@ -79,9 +81,9 @@ def complete_json(prompt: str, schema: dict, max_tokens: int = 1024) -> Optional
     return None
 
 
-def _ollama(prompt: str, schema: dict, max_tokens: int) -> Optional[dict]:
-    response = rq.post(f'{OLLAMA_URL}/api/chat', timeout=TIMEOUT, json={
-        'model': model(),
+def _ollama(prompt: str, schema: dict, max_tokens: int, name: Optional[str] = None) -> Optional[dict]:
+    response = rq.post(f'{OLLAMA_URL}/api/chat', timeout=TIMEOUT if not name else BIG_TIMEOUT, json={
+        'model': name or model(),
         'messages': [{'role': 'user', 'content': prompt}],
         'format': schema,  # ollama constrains decoding to the schema
         'think': False,  # these are quick classification and labeling jobs

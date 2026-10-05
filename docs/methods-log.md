@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Our own motif index replaces Thompson's chapters.** Thompson's Motif-Index is built from folktales and fits modern
+  political rumor poorly, so the site no longer shows it. Instead we build our own: each folklore narrative and each
+  fact-checked claim gets one to three motif names from the model (reusable framings, no names or dates, two-sided
+  when contested), and each is filed under the closest existing entry the model judges the same shape (candidates at
+  0.7+ similarity, forced choice with "new"), or starts a new entry (M001, M002…). The naming and matching go to the
+  bigger local model (qwen3:30b-a3b); a person merges, renames and deletes entries in an organizer on the label-check
+  page, which suggests merges by name similarity. First fills, with the 8B and one motif per claim: at 0.6 vague
+  early entries snowballed (one took 16 unrelated claims); at 0.76 almost nothing merged (111 motifs from 115
+  claims), and the 8B still made absurd matches (a tax-vote claim filed with a harassment story). Folklore,
+  Rumors and the Motif index now share their own "folklore" menu.
 - **Gap: no runs from 3:04 to 7:10 AM Eastern.** The desktop's idle timer suspended the machine during the 3 AM
   run's GPU transcription (which had grown to its full 10 minutes with the new call-in and podcast feeds); it never
   resumed, so the 4, 5 and 6 AM runs and the nightly folklore report were lost until a cold boot at 7:10.

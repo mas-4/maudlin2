@@ -25,8 +25,8 @@
                 group is measured by how many different people posted it and how varied their wording is. Feeds,
                 bots and accounts posting many times an hour are left out.</p>
             <p class="poll-note">For each big group, our local language model reads a few versions and says what they
-                share, whether it's retold or just a shared topic, its genre, its chapter of Thompson's Motif-Index (the
-                folklorist's catalog of story elements), and who it casts as villain, victim and hero. When the posts share
+                share, whether it's retold or just a shared topic, its genre, the recurring motif it's an instance of (in
+                <a href="motifs.html">our own motif index</a>), and who it casts as villain, victim and hero. When the posts share
                 articles from outlets we follow, those articles are shown (an exact link to the story); otherwise a
                 link to the day's news appears only when the model, choosing among the closest stories with "none" on
                 offer, picks one. When a fact-checker (PolitiFact, Snopes, FactCheck.org, Lead Stories, Full Fact, NewsGuard,
@@ -42,16 +42,14 @@
             <ul class="label-notes">{% for g, note in genre_notes.items() %}
                 <li>{{ genre_emoji.get(g, '') }} <b>{{ g }}</b>: {{ note }}</li>{% endfor %}
             </ul>
-            <h3>📚 Motif-Index</h3>
-            <p class="poll-note">Stith Thompson's <i>Motif-Index of Folk-Literature</i> (1932–36, revised 1955–58) is
-                the folklorists' standard catalog of the recurring elements in folktales, myths and legends from
-                around the world, sorted into lettered chapters, A to Z. The model picks the chapter a narrative fits
-                best. It's a rough way to see which old story shapes today's narratives reuse. Only chapters are
-                shown: matching a narrative to one of the index's 46,000 specific motifs is still being tested, by
-                hand, and isn't reliable enough to publish. Chapters on this page:</p>
-            <ul class="label-notes">{% for ch in chapters_seen %}
-                <li><b>{{ ch[0] }} · {{ ch[2:]|e }}</b>: {{ chapter_notes.get(ch[0], '') }}</li>{% endfor %}
-            </ul>
+            <h3>🧩 Motif</h3>
+            <p class="poll-note">The recurring shape a story is an instance of, from <a href="motifs.html">our own
+                motif index</a>: a list we build as we go, the way Stith Thompson built his <i>Motif-Index of
+                Folk-Literature</i> from the folktales he read, but from today's political talk. Thompson's index
+                (built from folktales, myths and legends) fits modern political rumor poorly, so we don't use it.
+                Each motif is named as a reusable framing, without names or dates, so the same story told about
+                other people or another year lands in the same entry; the model files each claim, and a person
+                refines the entries by hand.</p>
             <h3>Rumor, conspiracy and subject</h3>
             <p class="poll-note">Three short label sets from the study of rumor, read by the model from each story as
                 its tellers tell it, never as a judgment of whether it's true:</p>
@@ -111,7 +109,7 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
-                    {% if c.chapter and c.story_shape %}<p class="narrative-motif" title="Motif-Index chapter {{ c.chapter|e }}: {{ chapter_notes.get(c.chapter[0], '')|e }}"><a href="#labels" class="open-labels">📚 Motif-Index</a> {{ c.chapter[0] }} · {{ c.chapter[2:]|e }}{% if c.motif and preview %} · <span title="Preview only: the model's own words for the motif, not an entry from the index">the model's motif: <i>{{ c.motif|e }}</i></span>{% endif %}</p>{% endif %}
+                    {% if c.story_shape %}{% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}{% endif %}
                     {% if c.factchecks %}
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
                             {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
@@ -148,7 +146,7 @@
         <script>
             // The motif line's link opens the label guide it points to
             document.addEventListener('click', (ev) => {
-                if (ev.target.closest('.open-labels')) document.getElementById('labels').open = true;
+                if (ev.target.closest('.open-labels')) document.getElementById('labels').open = true;  // (kept for old links)
             });
             (function () {
                 const box = document.querySelector('.narrative-cards');

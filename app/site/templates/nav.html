@@ -4,13 +4,16 @@
     <div class="nav-links" id="nav-links">
         <a href="headlines.html">every headline</a>
         <a href="agencies.html">outlets</a>
-        {# Trackers: a menu of the pages of running measures, opened on hover or tap #}
+        {# Menus of related pages, opened on hover or tap: the running measures, and the folklore pages #}
+        {% for label, items, note in (('trackers', trackers, ''), ('folklore', folklore, 'Work in progress: rumors and narratives read for their shapes, not their truth.')) %}
         <details class="nav-menu">
-            <summary>trackers</summary>
+            <summary>{{ label }}</summary>
             <div class="nav-menu-list">
-                {% for t in trackers %}<a href="{{ t.href }}"><span class="nav-menu-emoji" aria-hidden="true">{{ t.emoji }}</span><span><b>{{ t.name }}</b><small>{{ t.about }}</small></span></a>{% endfor %}
+                {% if note %}<p class="nav-menu-note">🚧 {{ note }}</p>{% endif %}
+                {% for t in items %}<a href="{{ t.href }}"><span class="nav-menu-emoji" aria-hidden="true">{{ t.emoji }}</span><span><b>{{ t.name }}</b><small>{{ t.about }}</small></span></a>{% endfor %}
             </div>
         </details>
+        {% endfor %}
         <a href="glossary.html">how it works</a>
     </div>
     <span class="updated" data-built="{{ built_at }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
@@ -36,21 +39,24 @@
             });
             // The trackers menu: lit when the page is one of its own; opens on hover where there's a mouse, closes
             // on a click elsewhere or Escape
-            const menu = nav.querySelector('.nav-menu');
-            if (menu) {
+            nav.querySelectorAll('.nav-menu').forEach((menu) => {
                 if (menu.querySelector('a[aria-current]')) menu.classList.add('current');
                 if (matchMedia('(hover: hover)').matches) {
                     // Closing waits a moment, so a mouse on its way down to the list (or wobbling past its edge) doesn't
                     // shut it
                     let closing = null;
-                    menu.addEventListener('mouseenter', () => { clearTimeout(closing); menu.open = true; });
+                    menu.addEventListener('mouseenter', () => {
+                        clearTimeout(closing);
+                        nav.querySelectorAll('.nav-menu').forEach((other) => { if (other !== menu) other.open = false; });
+                        menu.open = true;
+                    });
                     menu.addEventListener('mouseleave', () => { closing = setTimeout(() => { menu.open = false; }, 350); });
                     // Hovering already opened it, so a click keeps it open rather than toggling it shut
                     menu.querySelector('summary').addEventListener('click', (ev) => { ev.preventDefault(); menu.open = true; });
                 }
                 document.addEventListener('click', (ev) => { if (!menu.contains(ev.target)) menu.open = false; });
                 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') menu.open = false; });
-            }
+            });
 
             // Back to the top: a button that shows up once the reader is a couple of screens down
             const top = document.createElement('button');

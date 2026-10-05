@@ -109,8 +109,8 @@ def stamp_build():
     j2env.globals['build_version'] = now.strftime('%Y%m%d%H%M')
     j2env.globals['built_at_text'] = now.astimezone(Constants.TimeConstants.timezone).strftime(
         '%#I:%M %p ET' if os.name == 'nt' else '%-I:%M %p ET')
-    from app.site.page_trackers import TRACKERS
-    j2env.globals['nav'] = j2env.get_template('nav.html').render(trackers=TRACKERS)
+    from app.site.page_trackers import FOLKLORE, TRACKERS
+    j2env.globals['nav'] = j2env.get_template('nav.html').render(trackers=TRACKERS, folklore=FOLKLORE)
 
 
 stamp_build()

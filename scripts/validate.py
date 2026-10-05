@@ -119,7 +119,7 @@ button.chosen {{ background: var(--no); color: #fff; }} button.ok.chosen {{ back
 .save {{ margin-top: .4em; font-weight: 700; }} .save:disabled {{ opacity: .4; cursor: default; }}
 footer {{ font-size: .9em; color: #444; margin: 1.5em 0; }}
 </style></head><body>
-<nav><b>Label check</b> <a href="/motifs">Motif check</a></nav>
+<nav><b>Label check</b> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a></nav>
 <h1>Label check</h1>
 <p>Is the model right? Tap ✓ for a label that's right, or the value it should be (dashed: the model's pick; tapping
 that counts as ✓). Feelings: tap every one the headline is likely to stir. Save each card; reload for more.</p>
@@ -227,7 +227,7 @@ h2 {{ font-size: 1.1em; margin: .3em 0 .5em; }} .said {{ font-size: .85em; color
 .row {{ display: flex; gap: 8px; }} button {{ font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 4px 12px; cursor: pointer; }}
 nav a {{ margin-right: 1em; }}
 </style></head><body>
-<nav><a href="/">Label check</a> <b>Motif check</b></nav>
+<nav><a href="/">Label check</a> <b>Motif check</b> <a href="/motif-index">Motif organizer</a></nav>
 <h1>Motif check</h1>
 <p>Each card is a claim and one entry from Thompson's Motif-Index. Is the claim, as the people telling it tell it, a modern
 version of that motif: the same situation or trick, with today's people and things in place of the old ones? Judge
@@ -243,9 +243,116 @@ document.querySelectorAll('.card').forEach((card) => card.querySelectorAll('butt
 </script></body></html>"""
 
 
+def organizer_page() -> str:
+    """The motif organizer: suggested merges first, then every entry to rename, merge, delete, or move claims out of."""
+    from app.analysis import motif_index
+    index = motif_index.load()
+    entries = sorted(motif_index.live(index), key=lambda e: (-len(e['claims']), e['id']))
+    by_id = {e['id']: e for e in entries}
+    esc = html.escape
+
+    def claims_of(e, n=3):
+        return ''.join(f'<li>{esc(c["claim"][:140])} <span class="said">{esc(c["source"] if c["source"] != "narrative" else "people online")}</span></li>'
+                       for c in e['claims'][:n])
+    try:
+        pairs = motif_index.suggestions()
+    except Exception as e:  # noqa: Ollama down: no suggestions, the rest still works
+        pairs, note = [], f'(suggestions unavailable: {esc(str(e))})'
+    else:
+        note = ''
+    suggest = ''.join(f"""
+<section class="card pair">
+  <p class="outlet">similar names ({sim:.2f})</p>
+  <div class="two"><div><b>{a} 🧩 {esc(by_id[a]['name'])}</b><ul>{claims_of(by_id[a])}</ul></div>
+    <div><b>{b} 🧩 {esc(by_id[b]['name'])}</b><ul>{claims_of(by_id[b])}</ul></div></div>
+  <div class="row"><button data-act="merge" data-source="{b}" data-target="{a}">⤵ merge into {a}</button>
+    <button data-act="merge" data-source="{a}" data-target="{b}">⤵ merge into {b}</button>
+    <button data-act="not_same" data-a="{a}" data-b="{b}">✗ not the same</button></div>
+</section>""" for a, b, sim in pairs if a in by_id and b in by_id)
+    cards = ''.join(f"""
+<section class="card entry" id="{e['id']}" data-text="{esc((e['name'] + ' ' + ' '.join(c['claim'] for c in e['claims'])).lower())}">
+  <p class="outlet">{e['id']} · {len(e['claims'])} claim{'' if len(e['claims']) == 1 else 's'} · first seen {e.get('first_seen', '')}{' · ✎ curated' if e.get('curated') else ''}</p>
+  <div class="row"><input class="name" value="{esc(e['name'])}" size="60"><button data-act="rename" data-id="{e['id']}">rename</button></div>
+  <ul>{''.join(f'<li>{esc(c["claim"][:160])} <span class="said">{esc(c["source"] if c["source"] != "narrative" else "people online")}</span> <button class="small" data-act="move" data-source="{e['id']}" data-claim="{esc(c["claim"])}">move to…</button></li>' for c in e['claims'])}</ul>
+  <div class="row"><button data-act="merge_into" data-source="{e['id']}">⤵ merge into…</button>
+    <button data-act="delete" data-id="{e['id']}">🗑 delete</button></div>
+</section>""" for e in entries)
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motif organizer</title><style>
+body {{ font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }}
+.card {{ border: 2px solid #1f1f2e; border-radius: 12px; padding: 10px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #ffc400; }}
+.pair {{ box-shadow: 4px 4px 0 #ff4fa3; }} .two {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
+.outlet, .said {{ font-size: .85em; color: #555; }} ul {{ margin: .4em 0; padding-left: 1.2em; }} li {{ margin: .2em 0; }}
+.row {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; }} input {{ font: inherit; padding: 3px 6px; }}
+button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }}
+button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1em; }} h2 {{ margin-top: 1.4em; }}
+@media (max-width: 640px) {{ .two {{ grid-template-columns: 1fr; }} }}
+</style></head><body>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <b>Motif organizer</b></nav>
+<h1>Motif organizer</h1>
+<p>Our own motif index: {len(entries)} motifs from {sum(len(e['claims']) for e in entries)} claims. A claim can carry up to three motifs. Merge
+duplicates, rename to a reusable framing ("X is / isn't Y"), delete what isn't a motif, or move a claim that landed in
+the wrong place. Renamed motifs keep your name; deleted motifs' claims aren't filed again. Changes go live with the
+next site build.</p>
+<h2>Suggested merges {note}</h2>
+{suggest or '<p>No suggestions right now.</p>'}
+<h2>Add a motif</h2>
+<div class="row"><input id="new-name" size="60" placeholder="a reusable framing, e.g. the ruler is / isn't fit to lead"><button data-act="add">+ add</button></div>
+<h2>All motifs</h2>
+<p><input type="search" id="search" placeholder="search motifs and claims" size="40"></p>
+{cards}
+<script>
+const post = async (body) => {{
+  const r = await fetch('/motif-index', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(body)}});
+  if (!r.ok) {{ alert('Failed: ' + await r.text()); return; }}
+  const y = scrollY; location.reload(); setTimeout(() => scrollTo(0, y), 50);
+}};
+document.addEventListener('click', (ev) => {{
+  const b = ev.target.closest('button[data-act]');
+  if (!b) return;
+  const d = b.dataset;
+  if (d.act === 'rename') post({{action: 'rename', id: d.id, name: b.previousElementSibling.value}});
+  else if (d.act === 'merge') post({{action: 'merge', source: d.source, target: d.target}});
+  else if (d.act === 'not_same') post({{action: 'not_same', a: d.a, b: d.b}});
+  else if (d.act === 'merge_into') {{ const t = prompt('Merge ' + d.source + ' into which motif? (its number, e.g. M012)'); if (t) post({{action: 'merge', source: d.source, target: t.trim().toUpperCase()}}); }}
+  else if (d.act === 'delete') {{ if (confirm('Delete ' + d.id + '? Its claims won\'t be filed again.')) post({{action: 'delete', id: d.id}}); }}
+  else if (d.act === 'move') {{ const t = prompt('Move this claim to which motif? (its number, or "new")'); if (t) post({{action: 'move', claim: d.claim, source: d.source, target: t.trim() === 'new' ? 'new' : t.trim().toUpperCase()}}); }}
+  else if (d.act === 'add') {{ const n = document.getElementById('new-name').value.trim(); if (n) post({{action: 'add', name: n}}); }}
+}});
+document.getElementById('search').addEventListener('input', (ev) => {{
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('.entry').forEach((c) => {{ c.hidden = q && !c.dataset.text.includes(q); }});
+}});
+</script></body></html>"""
+
+
+def organizer_action(data: dict):
+    """Apply one organizer action; raises on anything unknown or missing."""
+    from app.analysis import motif_index
+    index = motif_index.load()
+    known = lambda eid: eid in index['entries'] and not index['entries'][eid].get('merged_into')
+    act = data.get('action')
+    if act == 'rename' and known(data.get('id')) and data.get('name', '').strip():
+        motif_index.rename(data['id'], data['name'])
+    elif act == 'merge' and known(data.get('source')) and known(data.get('target')):
+        motif_index.merge(data['source'], data['target'])
+    elif act == 'not_same' and known(data.get('a')) and known(data.get('b')):
+        motif_index.not_same(data['a'], data['b'])
+    elif act == 'delete' and known(data.get('id')):
+        motif_index.delete(data['id'])
+    elif act == 'move' and data.get('claim') and known(data.get('source')) \
+            and (data.get('target') == 'new' or known(data.get('target'))):
+        motif_index.move(data['claim'], data['source'], data['target'])
+    elif act == 'add' and data.get('name', '').strip():
+        motif_index.add(data['name'])
+    else:
+        raise ValueError(f'unknown action or motif: {data}')
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        body = (motif_page() if self.path.startswith('/motifs') else page()).encode()
+        body = (organizer_page() if self.path.startswith('/motif-index') else motif_page()
+                if self.path.startswith('/motifs') else page()).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
@@ -254,6 +361,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+        if self.path == '/motif-index':
+            try:
+                organizer_action(data)
+            except (ValueError, KeyError) as e:
+                self.send_error(400, str(e)[:200])
+                return
+            self.send_response(204)
+            self.end_headers()
+            return
         if self.path == '/motif-verdict':
             if data.get('answer') not in ('yes', 'no', 'unsure') or not data.get('code'):
                 self.send_error(400)

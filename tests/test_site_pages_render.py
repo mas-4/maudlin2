@@ -22,15 +22,15 @@ from app.models import engine
 from app.site import page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
 from app.site.page_court import CourtPage
-from app.site.page_trackers import TRACKERS
+from app.site.page_trackers import FOLKLORE, TRACKERS
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'folklore.html', 'rumors.html', 'beyond.html', 'emotions.html',
-             'archive.html', 'feed.xml', 'glossary.html']
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
+             'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
@@ -372,10 +372,11 @@ def test_court_page(site):
     assert [a['href'] for a in court.select('.page-toc a')] == ['#court-cases', '#court-singles', '#court-term']
 
 
-def test_nav_trackers_menu(site):
-    menu = site['soup']['edits.html'].select_one('nav .nav-menu')
-    assert menu.select_one('summary').get_text(strip=True) == 'trackers'
-    assert [a['href'] for a in menu.select('.nav-menu-list a')] == [t['href'] for t in TRACKERS]
+def test_nav_trackers_and_folklore_menus(site):
+    menus = site['soup']['edits.html'].select('nav .nav-menu')
+    assert [m.select_one('summary').get_text(strip=True) for m in menus] == ['trackers', 'folklore']
+    assert [a['href'] for a in menus[0].select('.nav-menu-list a')] == [t['href'] for t in TRACKERS]
+    assert [a['href'] for a in menus[1].select('.nav-menu-list a')] == [t['href'] for t in FOLKLORE]
 
 
 def test_edits_page_is_searchable_and_sortable(site):
@@ -416,6 +417,9 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
          'label': {'retold': True, 'narrative': 'Only six people say this'}},
         {'authors': 9, 'posts': 9, 'variety': 0.0, 'kind': 'copypasta', 'examples': ['Pasted <words>']}]}
     monkeypatch.setattr(pn, 'latest_report', lambda: report)
+    monkeypatch.setattr(pn.motif_index, 'load', lambda: {'next': 8, 'claims': {
+        pn.motif_index.key('They are <keeping> him alive'): ['M007']}, 'entries': {'M007': {
+            'id': 'M007', 'name': 'the ruler kept alive in secret', 'claims': [{}, {}, {}]}}})
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     for debug, shows_posts in ((False, False), (True, True)):
         monkeypatch.setattr(Config, 'debug', debug)
@@ -428,8 +432,9 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         # Not a bare "left"/"right" (reads as "correct"); the model's guess only in previews
         assert ('🏛️ left-wing (model' in html) is shows_posts
         assert 'Only six people' not in html and '1 more told by fewer' in html
-        assert ('the kept king' in html) is shows_posts  # the model's own motif phrase: previews only
-        assert 'Motif-Index</a> D · Magic' in html and 'transformations, enchantments' in html
+        assert 'the kept king' not in html  # the labeler's own motif phrase isn't shown; the index entry is
+        assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
+        assert '🧩 the ruler kept alive in secret</a> <span class="motif-id">M007</span> · seen 3 times' in html
         assert '🦹 villain</b> doctors' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts
 

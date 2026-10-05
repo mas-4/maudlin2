@@ -12,6 +12,7 @@ import os
 from collections import Counter
 
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
+from app.analysis import motif_index
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
 
@@ -75,6 +76,12 @@ def withheld() -> set[str]:
         return set()
 
 
+def motif_cards(index: dict, claim: str) -> list[dict]:
+    """The motif-index entries a claim is filed under, for its card: id, name and how many claims each holds."""
+    return [{'id': e['id'], 'name': e['name'], 'count': len(e['claims'])}
+            for e in (motif_index.entries_of(index, claim) if claim else [])]
+
+
 def latest_report() -> dict | None:
     reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')))
     if not reports:
@@ -92,6 +99,7 @@ class FolklorePage:
         report = latest_report()
         cards, copies, fewer = [], [], 0
         pulled = withheld()
+        index = motif_index.load()
         floor = max(MIN_PEOPLE, round(report['authors'] / PEOPLE_SHARE)) if report else MIN_PEOPLE
         if report:
             for g in report['found']:
@@ -120,6 +128,7 @@ class FolklorePage:
                         'family': label.get('family') if label.get('family') != 'none' else None,
                         'story': g.get('story'), 'articles': g.get('articles') or [],
                         'factchecks': g.get('factchecks') or [],
+                        'motifs': motif_cards(index, label.get('narrative') or ''),
                         'examples': g['examples'][:4] if Config.debug else [],
                     })
                 elif g['kind'] == 'copypasta':
