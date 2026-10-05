@@ -63,6 +63,7 @@ class Config:
         os.makedirs(data)
     dayreport_file = os.path.join(data, 'day-report.json')
     assets = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'static')
+    styles = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'styles')  # partials joined into style.css
     build = os.path.join(Constants.Paths.ROOT, '_build')
     if not os.path.exists(build):
         os.makedirs(build)

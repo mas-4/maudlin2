@@ -1,0 +1,28 @@
+/* Outlet background on the outlets page: Wikidata facts and the Wikipedia opening */
+
+/* Outlet background on the outlets page: Wikidata facts and the quoted Wikipedia opening (app/site/wiki.py) */
+.outlet-about {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em 0.9em;
+    margin: 0.5em 0 0.2em;
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #1f1f2e;
+}
+
+.outlet-wiki {
+    margin: 0.4em 0 0.6em;
+    padding: 0.4em 0.7em;
+    border-left: 4px solid var(--pop, #ffc400);
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.85em;
+    line-height: 1.4;
+    color: #444;
+}
+
+.outlet-wiki a {
+    white-space: nowrap;
+    font-style: italic;
+}

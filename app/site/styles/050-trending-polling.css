@@ -1,0 +1,110 @@
+/* The trending row (our list and the outside trend boxes); poll notes and the races table */
+
+.trending-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1em;
+    margin: 1em 20px;
+}
+
+.trending-row {
+    align-items: start;
+}
+
+/* Long shared-link titles (Mastodon) are clamped so one box doesn't tower over the rest; hover shows the full title */
+.trending li > a:first-child {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.trending-row .trending {
+    margin: 0;
+    max-width: none;
+    min-width: 0;
+}
+
+/* Our own list spans the row; the four outside sources share the row beneath it */
+.trending-row .trending-news {
+    grid-column: 1 / -1;
+}
+
+.trending-news ol {
+    columns: 2;
+    column-gap: 3em;
+}
+
+.trending-news li {
+    break-inside: avoid;
+}
+
+@media (max-width: 1100px) {
+    .trending-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+    .trending-row { grid-template-columns: minmax(0, 1fr); margin: 1em 0; }
+    .trending-news ol { columns: 1; }
+}
+
+.trend-both {
+    font-size: 0.75em;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    padding: 0 0.35em;
+    margin-left: 0.4em;
+    color: #8a5f00;
+    text-decoration: none;
+}
+
+.trending {
+    margin: 1em auto;
+    max-width: 32em;
+    padding: 0.5em 1.5em;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.trending h3 {
+    margin: 0.5em 0;
+}
+
+.trending ol {
+    margin: 0;
+    padding-left: 1.5em;
+}
+
+.trending li {
+    margin: 0.3em 0;
+}
+
+/* Darker than the site's highlight red and gray: on the pastel boxes those were about 3:1, under the 4.5:1 that
+   reads comfortably */
+.trending li > a:not([class]) {
+    color: #b3202a;
+}
+
+.trend-posts {
+    color: #3d3d4d;
+    font-size: 0.85em;
+    margin-left: 0.5em;
+}
+
+.poll-note {
+    color: #777;
+    font-size: 0.9em;
+    max-width: 50em;
+    margin: 0.5em auto 1.5em;
+}
+
+table.races {
+    margin: 1em auto;
+    border-collapse: collapse;
+}
+
+table.races th, table.races td {
+    padding: 0.35em 0.9em;
+    border-bottom: 1px solid #ccc;
+    text-align: left;
+}

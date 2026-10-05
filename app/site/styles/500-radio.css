@@ -1,0 +1,54 @@
+/* On the radio (radio.html): newscasts beside the front pages */
+
+/* On the radio (radio.html): each hour's newscasts beside the front pages' biggest stories */
+.radio-stats {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    padding: 0.4em 1em;
+    margin: 1em 0;
+}
+
+.radio-stats p {
+    margin: 0.3em 0;
+}
+
+.radio-hour {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 1.4em 0 0.5em;
+}
+
+.radio-hour-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(18em, 1fr));
+    gap: 1.2em;
+}
+
+.radio-items {
+    padding-left: 1.5em;
+    margin: 0;
+}
+
+.radio-items li {
+    margin: 0.3em 0;
+}
+
+.radio-rank {
+    display: inline-block;
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0 0.5em;
+    background: #fff3c4;
+    white-space: nowrap;
+}
+
+.radio-rank.radio-off {
+    background: #eee;
+    color: #555;
+    border-style: dashed;
+}
+
+.radio-rank.radio-outlets {
+    background: white;
+}

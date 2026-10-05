@@ -1,0 +1,38 @@
+/* How chips wrap: outlet and show chips whole, quotes and phrases like text */
+
+/* Outlet and show chips never break inside ("Google / News"); the row wraps between them instead. Quotes and
+   phrases can be long, so they wrap, but never wider than their card (a long one on one line widened the whole
+   page on phones) */
+.edit-chip, .storylink, .show-chip {
+    white-space: nowrap;
+}
+
+/* Quotes and one-sided phrases run like text, chip by chip, so a long one carries on to the next line where it ends
+   up instead of each taking a line of its own */
+.story-quotes, .story-wording {
+    display: block !important;
+    line-height: 2.1;
+}
+
+/* One box per chip: too long for the line, it moves down whole and wraps inside, never wider than the card (broken
+   across lines like text, each piece got its own border and one quote read as two) */
+.quote-chip, .wording-chip {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+    margin: 0 4px 4px 0;
+    line-height: 1.35;
+}
+
+.story-curators a.edit-chip {
+    text-decoration: none;
+}
+
+/* A story card's coverage lines (headline count, first seen, still showing) read as notes, not body text */
+.story-outlets > p, .story-outlets .broken p, .story-outlets .story-status {
+    font-size: 0.85em;
+    color: #555;
+    margin: 0.25em 0;
+}

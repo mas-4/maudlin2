@@ -1,0 +1,212 @@
+/* The day's headline table (gridjs) and its measure badges */
+
+/* The day's headline table: an inked box, dark header, lean-colored outlet chips, mood pills */
+.headline-table {
+    margin: 0 0 2em;
+}
+
+.table-intro {
+    text-align: center;
+    max-width: 48em;
+    margin: 0 auto 0.8em;
+}
+
+.table-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.4em;
+    margin-bottom: 0.8em;
+    font-size: 0.9em;
+}
+
+.table-filters span {
+    margin-left: 0.6em;
+    color: #777;
+}
+
+.table-filters button {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.3em 1em;
+    cursor: pointer;
+}
+
+.table-filters button.active {
+    background: #00c2a8;
+}
+
+.headline-table .gridjs-wrapper {
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #3a86ff;
+}
+
+.headline-table th.gridjs-th {
+    background: #1f1f2e;
+    color: white;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    border-color: #1f1f2e;
+}
+
+.headline-table th.gridjs-th .gridjs-sort {
+    filter: invert(1);
+}
+
+/* gridjs lightens a header when it's sorted or focused; keep it dark so the white label stays readable */
+.headline-table th.gridjs-th-sort:hover, .headline-table th.gridjs-th-sort:focus,
+.headline-table th.gridjs-th.gridjs-th-sort {
+    background: #1f1f2e;
+    color: white;
+}
+
+.headline-table td.gridjs-td {
+    padding: 8px 12px;
+}
+
+.headline-table tr:hover td.gridjs-td {
+    background: #fff8d6;
+}
+
+.headline-table td a {
+    color: #1f1f2e;
+}
+
+
+.table-story {
+    text-decoration: none;
+}
+
+.table-topic {
+    white-space: nowrap;
+    font-size: 0.85em;
+}
+
+.table-mood {
+    white-space: nowrap;
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #1f1f2e;
+    padding: 0.1em 0.6em;
+    border-radius: 999px;
+}
+
+.headline-table .gridjs-search-input {
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    width: min(24em, 100%);
+}
+
+.headline-table .edit-chip {
+    display: inline-block;
+    white-space: normal;
+}
+
+.table-note {
+    color: #444;
+    font-size: 1em;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.metric-emoji {
+    font-size: 1.5em;
+    vertical-align: middle;
+}
+
+.metric-emoji.metric-minor {
+    font-size: 1.15em;
+}
+
+.headline-table .table-story-badge {
+    white-space: normal;
+    border-radius: 14px;
+    font-size: 0.9em;
+}
+
+
+.headline-table td.gridjs-td:first-child {
+    vertical-align: top;
+}
+
+/* Phones: each headline becomes a small card, outlet chip and measure badge on one line, the headline beneath at
+   full width (three table columns leave the headline a sliver and clip the badges) */
+@media (max-width: 700px) {
+    .headline-table .gridjs-table {
+        table-layout: auto !important;
+        width: 100% !important;
+    }
+    .headline-table thead {
+        display: none;
+    }
+    .headline-table tr.gridjs-tr {
+        background: #ffffff;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 4px 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid #e4e1d8;
+    }
+    .headline-table td.gridjs-td {
+        display: block;
+        width: auto !important;
+        padding: 0;
+        border: none;
+        font-size: 0.95em;
+    }
+    .headline-table td.gridjs-td:nth-child(2) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+    .headline-table td.gridjs-td:nth-child(3) {
+        justify-self: end;
+    }
+    .headline-table .edit-chip {
+        font-size: 0.85em;
+        white-space: nowrap;
+    }
+    .headline-table .badge {
+        font-size: 0.85em;
+    }
+}
+
+/* Measure badges in the headline table */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0.2em 0.8em 0.2em 0.35em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: var(--tint, #f2f2f2);
+    color: #1f1f2e;
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+/* Emoji sit on a dark disc: pale ones (clock faces, storm clouds) wash out on a light tint */
+.badge-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55em;
+    height: 1.55em;
+    padding: 0 0.12em;
+    margin-left: -0.15em;
+    border-radius: 999px;
+    background: #1f1f2e;
+    font-size: 1.15em;
+    line-height: 1;
+}
+
+.metric-minor {
+    font-size: 1.3em;
+    vertical-align: middle;
+}

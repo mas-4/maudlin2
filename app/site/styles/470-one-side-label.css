@@ -1,0 +1,9 @@
+/* Story cards: the 'Only one side says' label on its own line */
+
+/* 'Only one side says': the label on its own line and its chips under it, so a chip that wraps still reads as the
+   label's (wrapped to the card's left edge, it looked detached from it) */
+.story-wording .story-quotes-label {
+    display: block;
+    margin-bottom: 0.15em;
+    line-height: 1.4;
+}

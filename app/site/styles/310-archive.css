@@ -1,0 +1,35 @@
+/* Archived editions and the list of days */
+
+/* Archived editions and the list of days */
+.archive-ribbon {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    text-align: center;
+    padding: 0.4em 1em;
+    background: #ffc400;
+    border-bottom: 3px solid #1f1f2e;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.archive-days {
+    list-style: none;
+    padding: 0;
+    max-width: 48em;
+    margin: 0 auto;
+}
+
+.archive-days li {
+    margin: 0.5em 0;
+    padding: 0.5em 0.8em;
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+}
+
+.archive-days a {
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin-right: 0.5em;
+}

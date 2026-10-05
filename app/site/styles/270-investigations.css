@@ -1,0 +1,72 @@
+/* Investigations and shows boxes; the more-link */
+
+/* Investigations box */
+.trending-row .investigations {
+    --pop: #00c2a8;
+}
+
+.trending-row .shows {
+    --pop: #ff4fa3;
+}
+
+.investigation-list {
+    list-style: none;
+    padding-left: 0;
+    columns: 2;
+    column-gap: 2em;
+}
+
+.investigation-list li {
+    break-inside: avoid;
+    margin: 0 0 0.6em;
+}
+
+.investigation-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 0.15em;
+}
+
+/* Each outfit as a little sticker in its own color, canted, like the chips elsewhere */
+.investigation-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    font: 700 0.82em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, var(--chip, #ffc400) 55%, white);
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 0.05em 0.6em 0.05em 0.4em;
+    text-decoration: none;
+    transform: rotate(-2deg);
+    transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.investigation-list li:nth-child(even) .investigation-source {
+    transform: rotate(1.5deg);
+}
+
+.investigation-source:hover {
+    transform: translate(-1px, -2px) rotate(-3deg);
+    box-shadow: 3px 4px 0 #1f1f2e;
+}
+
+.investigation-title {
+    display: block;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+@media (max-width: 700px) {
+    .investigation-list { columns: 1; }
+}
+
+/* The link from the front page to the headline table's own page */
+.more-link {
+    text-align: center;
+    margin: 2rem 0 1rem;
+    font-size: 1.1rem;
+}

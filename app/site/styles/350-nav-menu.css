@@ -1,0 +1,137 @@
+/* The nav's trackers menu */
+
+/* The nav's trackers menu: a summary styled like the other nav links, opening a card of the tracker pages */
+.nav-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-links .nav-menu > summary {
+    list-style: none;
+    cursor: pointer;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: #1f1f2e;
+    padding: 0.3em 1em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #ff4fa3;
+    transition: transform 0.15s, background-color 0.15s;
+}
+
+.nav-links .nav-menu > summary:hover, .nav-links .nav-menu[open] > summary, .nav-links .nav-menu.current > summary {
+    background: #ff4fa3;
+}
+
+.nav-links .nav-menu > summary:hover {
+    transform: translate(-1px, -1px) rotate(-2deg);
+}
+
+/* The menu's own links are rows, not the nav's pills */
+.nav-links .nav-menu-list a {
+    font-size: 1em;
+    padding: 0.45em 0.6em;
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    box-shadow: none;
+    text-align: left;
+    transform: none;
+}
+
+.nav-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.nav-menu > summary::after {
+    content: ' ▾';
+    font-size: 0.8em;
+}
+
+.nav-menu[open] > summary::after {
+    content: ' ▴';
+}
+
+.nav-menu-note {
+    margin: 0.2em 0.6em 0.4em;
+    font-size: 0.8em;
+    color: #555;
+    max-width: 22em;
+}
+
+.nav-menu-list {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: max-content;
+    max-width: min(340px, 90vw);
+    padding: 6px;
+    background: #ffffff;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #ffc400;
+}
+
+/* An invisible bridge over the gap between the summary and the list, so the pointer never leaves the menu on its way
+   down */
+.nav-menu-list::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    right: -3px;
+    top: -14px;
+    height: 14px;
+}
+
+.nav-menu-list a {
+    display: flex;
+    gap: 0.6em;
+    align-items: flex-start;
+    padding: 0.45em 0.6em;
+    border-radius: 9px;
+    color: #1f1f2e;
+    text-decoration: none;
+    white-space: normal;
+}
+
+.nav-links .nav-menu-list a:hover, .nav-links .nav-menu-list a:focus-visible,
+.nav-links .nav-menu-list a[aria-current] {
+    background: #fff4c2;
+    transform: none;
+}
+
+.nav-menu-list b {
+    display: block;
+}
+
+.nav-menu-list small {
+    display: block;
+    color: #555;
+    font-size: 0.8em;
+    line-height: 1.3;
+}
+
+.nav-menu-emoji {
+    font-size: 1.4em;
+    line-height: 1.2;
+}
+
+@media (max-width: 760px) {
+    .nav-links .nav-menu > summary {
+        text-align: center;
+        font-size: 1.15em;
+    }
+
+    .nav-menu-list {
+        position: static;
+        box-shadow: none;
+        border-width: 2px;
+        margin-top: 6px;
+    }
+}

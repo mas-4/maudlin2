@@ -50,10 +50,24 @@ def calculate_xkeyscore(df):
     return df
 
 
+def stylesheet() -> str:
+    """The site's one stylesheet: the partials in app/site/styles joined in file-name order, which is cascade order
+    (a later file's rules win over an earlier one's at equal specificity)."""
+    parts = sorted(f for f in os.listdir(Config.styles) if f.endswith('.css'))
+    texts = []
+    for name in parts:
+        with open(os.path.join(Config.styles, name), encoding='utf-8') as f:
+            texts.append(f.read().rstrip('\n') + '\n')
+    return '\n'.join(texts)
+
+
 def copy_assets():
     for file in os.listdir(Config.assets):
         logger.debug(f"Copying %s", file)
         shutil.copy(os.path.join(Config.assets, file), Config.build)
+    # Written after the copy, so it always replaces any style.css in the static folder
+    with open(os.path.join(Config.build, 'style.css'), 'w', encoding='utf-8') as f:
+        f.write(stylesheet())
 
 
 def clear_build():

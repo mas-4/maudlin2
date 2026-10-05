@@ -1,0 +1,45 @@
+/* Headline changes page: how-it-works box, collapsed and sortable tables */
+
+/* Headline changes page */
+.how-it-works {
+    max-width: 48em;
+    margin: 0 auto 1em;
+}
+
+.how-it-works summary {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    cursor: pointer;
+    text-align: center;
+}
+
+table.collapsed tbody tr:nth-child(n + 16) {
+    display: none;
+}
+
+table.sortable thead th {
+    cursor: pointer;
+}
+
+.show-all-wrap {
+    text-align: center;
+}
+
+@media (max-width: 700px) {
+    .edit-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3em;
+        font-size: 0.85em;
+    }
+    .edit {
+        padding: 0.6em 0.7em;
+    }
+    table.races {
+        font-size: 0.85em;
+    }
+}
+
+table.races .edit-chip, table.emotion-matrix .edit-chip {
+    display: inline-block;
+    line-height: 1.25;
+}

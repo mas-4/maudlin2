@@ -1,0 +1,39 @@
+/* Base: the root color scheme, page background, box sizing and body text */
+
+/* Hacked together based on:
+ * https://jgthms.com/web-design-in-4-minutes/
+ */
+
+:root {
+    --color-hi: #f56a6a;
+    /* The site is designed light-only; say so, or dark-themed browsers paint their own dark background behind it */
+    color-scheme: light;
+}
+
+html {
+    background: #ffffff;
+}
+
+/* Transparent so the ambient geometry (body::before, at the end of this file) shows between things: with the root
+   painting white, a white body would cover anything layered beneath it */
+body {
+    background: transparent;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+img {
+    display: block;
+    margin: 0 auto;
+}
+
+body {
+    color: #555;
+    margin: 0 auto;
+    max-width: 90em;
+    font-family: "Helvetica", "Arial", sans-serif;
+    line-height: 1.5;
+    padding: 2em 1em;
+}

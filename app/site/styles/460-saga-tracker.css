@@ -1,0 +1,80 @@
+/* The saga tracker (sagas.html): saga cards, lean bars, timelines */
+
+/* The saga tracker (sagas.html): saga cards with a lean bar and each part's time on the front pages as a timeline */
+.saga-track-cards {
+    margin: 1em 0;
+}
+
+.saga-track {
+    margin-bottom: 1.2em;
+}
+
+.saga-live {
+    color: #1f1f2e;
+    background: #c8f7c5;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0 0.5em;
+}
+
+.saga-lean {
+    display: flex;
+    height: 1.3em;
+    margin: 0.2em 0 0.7em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    overflow: hidden;
+    font: 700 0.75em/1.3em 'Comic Neue', 'Comic Sans MS', cursive;
+    text-align: center;
+}
+
+.saga-lean span {
+    min-width: 1.4em;
+}
+
+.saga-lean-left { background: #8fb0fa; }
+.saga-lean-center { background: #e4e4ea; }
+.saga-lean-right { background: #f59aa6; }
+
+.saga-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.saga-timeline li {
+    margin: 0 0 0.7em;
+}
+
+.saga-part-title {
+    margin: 0;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.saga-bar-track {
+    position: relative;
+    height: 0.6em;
+    margin: 0.25em 0;
+    background: rgba(31, 31, 46, 0.08);
+    border-radius: 999px;
+}
+
+.saga-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--saga);
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+}
+
+.saga-now .saga-bar {
+    box-shadow: 0 0 0 2px #c8f7c5;
+}
+
+.saga-part-facts {
+    margin: 0;
+    font-size: 0.82em;
+    color: #555;
+}

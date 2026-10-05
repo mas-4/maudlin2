@@ -1,0 +1,70 @@
+/* The back-to-the-top button */
+
+/* Back to the top */
+.to-top {
+    position: fixed;
+    right: 14px;
+    bottom: 16px;
+    z-index: 22;
+    width: 46px;
+    height: 46px;
+    font-size: 1.3em;
+    line-height: 1;
+    background: #ffffff;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+    box-shadow: 3px 3px 0 #00c2a8;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.15s;
+}
+
+.to-top.shown {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.to-top:hover {
+    transform: translateY(-2px);
+}
+
+@media (max-width: 700px) {
+    /* Phones: the section rail's buttons shrink to small emoji bubbles, so they cover less of the cards */
+    .page-toc {
+        gap: 5px;
+    }
+
+    .page-toc a {
+        font-size: 0.8em;
+        padding: 0.2em 0.35em;
+        box-shadow: 2px 2px 0 #1f1f2e;
+        background: rgba(255, 248, 214, 0.92);
+    }
+
+    /* Story cards: smaller outlet chips and stats */
+    .story-outlets .storylink {
+        font-size: 0.8em;
+        padding: 3px 9px;
+        margin: 3px;
+    }
+
+    .story-extras .quote-chip, .story-extras .story-curators .edit-chip {
+        font-size: 0.9em;
+    }
+
+    /* Outlets page lineup: smaller chips, names beside their icons */
+    .lineup-chip {
+        font-size: 0.8em;
+        padding: 3px 8px 3px 4px;
+    }
+
+    .lineup-chip .chip-name {
+        text-align: left;
+    }
+
+    .lineup-chip .outlet-icon {
+        width: 1.4em;
+        height: 1.4em;
+    }
+}

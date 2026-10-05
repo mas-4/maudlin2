@@ -1,0 +1,164 @@
+/* The cloud edge to edge, its key, the floating word panel, story status and chip sorts */
+
+/* The cloud spreads across the full page width */
+/* The cloud spills edge to edge of the window; everything else keeps its margins. 100vw counts the scrollbar, so the
+   page clips the sliver that would otherwise scroll sideways. */
+/* --page-width is the window's width without its scrollbar, set by the page's script (100vw counts the scrollbar,
+   which pushed the cloud past both edges) */
+figure.wordcloud {
+    max-width: none;
+    width: var(--page-width, 100vw);
+    margin-left: calc(50% - var(--page-width, 100vw) / 2);
+    margin-right: 0;
+}
+
+/* On html only: on body it would clip the cloud at the body's edge, which on wide windows is well inside the window */
+html {
+    overflow-x: clip;
+}
+
+/* Phones also let you pan sideways to anything past the edge unless body clips too; there body is the full width, so
+   clipping it doesn't cut the cloud */
+@media (max-width: 700px) {
+    body {
+        overflow-x: clip;
+    }
+}
+
+figure.wordcloud figcaption {
+    padding: 0 16px;
+}
+
+/* The cloud's key, kept to a glance: two short stacked notes (the size cue in big type, what the colors compare)
+   and a pointing hand that bobs toward the cloud so it's clear the words open */
+figure.wordcloud figcaption.cloud-key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em 2em;
+    margin: 0.6em 0 1.4em;
+    color: #1f1f2e;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-size: 1.05em;
+    text-shadow: 0 0 4px #ffffff, 0 0 8px #ffffff, 0 0 12px #ffffff;
+}
+
+.key-part {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+
+.key-big {
+    font-size: 2.2em;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.spicy-tip {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+.key-paper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-size: 0.9em;
+}
+
+.key-paper-swatch {
+    display: inline-block;
+    width: 4.5em;
+    height: 0.9em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgb(255, 255, 255), rgb(255, 220, 120), rgb(255, 160, 128));  /* as paperColor */
+}
+
+.key-click {
+    flex-direction: row;
+    gap: 0.3em;
+    font-weight: 700;
+    font-size: 1.15em;
+}
+
+.key-point {
+    display: inline-block;
+    font-size: 2em;
+    line-height: 1;
+    vertical-align: -0.15em;
+    text-shadow: none;
+    filter: drop-shadow(2px 2px 0 #ffc400);
+    animation: key-point 1.4s ease-in-out infinite;
+}
+
+@keyframes key-point {
+    50% { transform: translateY(-0.2em); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .key-point { animation: none; }
+}
+
+.balanced-text {
+    background: linear-gradient(90deg, #1a5cff 42%, #e0102e 58%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
+}
+
+/* The word panel floats over the cloud rather than pushing the page down */
+.cloud-detail {
+    position: absolute;
+    z-index: 5;
+    top: 4.5em;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(640px, 94%);
+    max-height: 80%;
+    overflow-y: auto;
+    margin: 0;
+    background: #ffffff;
+    border: 2px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 6px 6px 0 rgba(31, 31, 46, 0.85);
+}
+
+.story-status {
+    font-size: 0.85em;
+    color: #666;
+    margin: 0.2em 0;
+}
+
+.chip-sort {
+    font-size: 0.75em;
+    color: #777;
+    margin: 0.4em 0 0.2em;
+}
+
+.chip-sort button {
+    font: inherit;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0.2em 0.75em;
+    margin: 0.1em 0.15em;
+    cursor: pointer;
+    color: #555;
+}
+
+.chip-sort button.active {
+    background: #1f1f2e;
+    border-color: #1f1f2e;
+    color: white;
+}
+
+.storylink.chip-gone {
+    border: 2px dashed rgba(31, 31, 46, 0.6);
+    box-shadow: none;
+}

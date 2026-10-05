@@ -1,0 +1,103 @@
+/* Ambient Memphis geometry, paper backing for text on the page, the more-link button, heading glow, word pop-in */
+
+/* Ambient 90s geometry (Memphis style), drawn by memphis() in index.js: bold outlined shapes framing the window's
+   edges and terrazzo flecks, each drifting and turning at its own pace. Fixed to the window, and still for readers
+   who ask for reduced motion */
+#memphis {
+    position: fixed;
+    /* As tall as the window with the phone's toolbar hidden (100lvh), so the shapes (placed in % of this height)
+       don't jump each time the toolbar slides in and out; 100vh for older browsers */
+    inset: 0 0 auto 0;
+    height: 100vh;
+    height: 100lvh;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+#memphis svg {
+    position: absolute;
+    opacity: 0.75;
+    overflow: visible;
+    animation: memphis-turn var(--dur) linear infinite var(--dir), memphis-bob calc(var(--dur) / 3) ease-in-out infinite alternate;
+}
+
+@keyframes memphis-turn {
+    from { rotate: var(--tilt); }
+    to { rotate: calc(var(--tilt) + 360deg); }
+}
+
+@keyframes memphis-bob {
+    from { translate: 0 0; }
+    to { translate: var(--dx) var(--dy); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #memphis svg {
+        animation: none;
+        rotate: var(--tilt);
+    }
+}
+
+/* Text that sits straight on the page gets a paper backing so the 90s shapes behind it don't fight it */
+.table-intro, .table-filters > span {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+}
+
+.table-intro {
+    padding: 0.5em 0.9em;
+}
+
+.table-filters > span {
+    padding: 0.1em 0.5em;
+}
+
+/* The way through to every headline: a chunky ink-outlined button, like the cards above it, that hops when pointed at */
+.more-link a {
+    display: inline-block;
+    padding: 0.55em 1.3em;
+    background: white;
+    color: #1f1f2e;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    text-decoration: none;
+    border: 3px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 5px 5px 0 #ffc400;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.more-link a:hover, .more-link a:focus-visible {
+    transform: translate(-2px, -2px) rotate(-1.5deg);
+    box-shadow: 7px 7px 0 #ffc400;
+}
+
+.more-link a:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 #ffc400;
+}
+
+/* Headings keep their place on the page; a white glow lifts them off the shapes instead of a box */
+h1 {
+    text-shadow: 0 0 6px #ffffff, 0 0 12px #ffffff, 0 0 18px #ffffff;
+}
+
+.headline-table td.gridjs-td {
+    background-color: #ffffff;
+}
+
+/* The cloud fills in fast: words burst out from the middle, biggest first (--pop-delay set per word in render()) */
+.cloud-word.pop-in {
+    animation: word-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: var(--pop-delay, 0s);
+}
+
+@keyframes word-pop {
+    from { opacity: 0; scale: 0.2; }
+    to { opacity: 1; scale: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cloud-word.pop-in { animation: none; }
+}

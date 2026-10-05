@@ -1,0 +1,64 @@
+/* Emotion tiles as sticker cards tinted by feeling */
+
+/* Emotion tiles: two rows of four, biggest share first; sticker cards tinted by feeling */
+.emotion-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.2em;
+    max-width: 52em;
+}
+
+/* Phones: tiles stay four across, just smaller */
+@media (max-width: 600px) {
+    .emotion-tiles { gap: 0.5em; }
+    .emotion-tile { padding: 0.4em 0.1em 0.35em; border-width: 2px; box-shadow: 3px 3px 0 #1f1f2e; }
+    .emotion-tile-emoji { font-size: 1.3em; }
+    .emotion-tile-share { font-size: 1.05em; }
+    .emotion-tile-label { font-size: 0.75em; }
+}
+
+.emotion-tile {
+    border: 3px solid #1f1f2e;
+    border-radius: 16px;
+    box-shadow: 5px 5px 0 #1f1f2e;
+    background: var(--tint, #f2f2f2);
+    padding: 0.8em 0.4em 0.7em;
+    transition: transform 0.15s;
+}
+
+.emotion-tile:nth-child(odd) { transform: rotate(-1.5deg); }
+.emotion-tile:nth-child(even) { transform: rotate(1.5deg); }
+.emotion-tile:hover { transform: rotate(0) scale(1.05); }
+
+.tile-anger { --tint: #ffc2c2; }
+.tile-fear { --tint: #e0d4ff; }
+.tile-sadness { --tint: #c9e2ff; }
+.tile-disgust { --tint: #d6f5c4; }
+.tile-surprise { --tint: #fff1b3; }
+.tile-joy { --tint: #ffe066; }
+.tile-hope { --tint: #c8f7e6; }
+.tile-neutral { --tint: #f4f4f4; }
+
+/* Emoji on a dark disc, like the table badges, so pale ones (🥛) read */
+.emotion-tile-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7em;
+    height: 1.7em;
+    border-radius: 50%;
+    background: #1f1f2e;
+    font-size: 2.2em;
+    line-height: 1;
+}
+
+.emotion-tile-share {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 1.8em;
+    color: #1f1f2e;
+    margin-top: 0.15em;
+}
+
+.emotion-tile-label {
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}

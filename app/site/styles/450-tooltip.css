@@ -1,0 +1,35 @@
+/* Our own hover box (tooltips) */
+
+/* Our own hover box (index.js), in place of the browser's tooltips: an ink-outlined card with an offset shadow like the
+   chips, tinted by lean where an element asks */
+.tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;  /* above the popped-up story card (50) and chips with their own layer */
+    max-width: min(22em, calc(100vw - 16px));
+    padding: 6px 11px;
+    background: #fffdf3;
+    color: #1f1f2e;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+    font: 14px/1.4 Helvetica, Arial, sans-serif;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+.tooltip.shown {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tooltip {
+        transition: none;
+    }
+}

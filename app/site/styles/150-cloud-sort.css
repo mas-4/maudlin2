@@ -1,0 +1,87 @@
+/* The sorted cloud: glide, arrow, paper cutouts, end labels; matrix emoji */
+
+/* Words glide between the splay and the sorted layouts */
+.cloud-word {
+    transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s;
+}
+
+.cloud-sort {
+    margin: 0.3em 0 0.4em;
+}
+
+/* The arrow behind a sorted cloud, showing which way it falls off */
+.cloud-arrow {
+    pointer-events: none;
+}
+
+#cloud {
+    position: relative;
+}
+
+/* The paper cutouts behind each cloud word (paperCutout in headlines.html) */
+.cloud-paper {
+    stroke: #1f1f2e;
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+}
+
+.cloud-paper-shadow {
+    fill: #1f1f2e;
+    opacity: 0.85;
+}
+
+/* Sticker labels at the two ends of a sorted cloud */
+.cloud-end {
+    position: absolute;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    font: 700 1.5em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: white;
+    border: 4px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.1em 0.7em;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.cloud-end-start {
+    left: var(--gutter, 16px);
+    transform: rotate(-3deg);
+}
+
+.cloud-end-finish {
+    right: var(--gutter, 16px);
+    bottom: 10px;
+    transform: rotate(-3deg);
+}
+
+.matrix-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6em;
+    height: 1.6em;
+    border-radius: 50%;
+    background: #1f1f2e;
+    font-size: 1.5em;
+    line-height: 1;
+    margin-bottom: 0.1em;
+}
+
+table.emotion-matrix th span:not(.matrix-emoji) {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 0.75em;
+}
+
+.cloud-end-emoji {
+    font-size: 1.8em;
+    line-height: 1;
+}
+
+@media (max-width: 700px) {
+    .cloud-end { font-size: 1.1em; }
+}

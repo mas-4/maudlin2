@@ -20,7 +20,7 @@ from sqlalchemy import event
 
 from app.analysis import abtests, clustering, llm, sagas, scotus
 from app.models import engine
-from app.site import page_agencies, page_headlines as ph
+from app.site import common, page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
 from app.site.page_court import CourtPage
 from app.site.page_trackers import FOLKLORE, TRACKERS
@@ -207,6 +207,35 @@ def test_assets_carry_the_build_version(site, name):
     for url in css + js:
         assert re.search(r'\?v=\d{12}$', url), url
     assert css[0].split('?v=')[1] == js[0].split('?v=')[1]
+
+
+@pytest.fixture(scope='module')
+def built_css(site):
+    """The built site's style.css, as copy_assets writes it beside the pages."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(Config, 'build', str(site['build']))
+        common.copy_assets()
+    with open(site['build'] / 'style.css', encoding='utf-8') as f:
+        return f.read()
+
+
+def test_built_stylesheet_is_the_joined_partials(built_css):
+    assert built_css == common.stylesheet()
+    partials = sorted(f for f in os.listdir(Config.styles) if f.endswith('.css'))
+    with open(os.path.join(Config.styles, partials[0]), encoding='utf-8') as f:
+        assert built_css.startswith(f.read())
+
+
+@pytest.mark.parametrize('name, selector', [
+    ('index.html', '.navbar'), ('index.html', '.story'), ('headlines.html', '.headline-table'),
+    ('agencies.html', '.outlet-card'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
+    ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
+    ('radio.html', '.radio-stats')])
+def test_built_stylesheet_styles_each_page(site, built_css, name, selector):
+    """A selector each page uses has a rule in the built stylesheet (the page's partial made it in)."""
+    assert site['soup'][name].select_one(selector) is not None, f'{name} no longer uses {selector}'
+    body = re.sub(r'/\*.*?\*/', '', built_css, flags=re.S)
+    assert re.search(re.escape(selector) + r'(?![\w-])[^{};]*\{', body), f'no rule for {selector}'
 
 
 @pytest.mark.parametrize('name', PAGES)

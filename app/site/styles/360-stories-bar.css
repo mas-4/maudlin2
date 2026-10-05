@@ -1,0 +1,89 @@
+/* The current stories bar (sorts and filters); the spice meter */
+
+/* The current stories bar: sorts (pick one, filled when chosen) and filters ("only:", each on or off, a checkbox look:
+   dashed until ticked) read as two different kinds of button */
+.story-sort .bar-divider {
+    padding: 0;
+    display: inline-block;
+    width: 2px;
+    height: 1.6em;
+    margin: 0 0.4em;
+    background: #1f1f2e;
+    vertical-align: middle;
+    border-radius: 1px;
+}
+
+/* Labels sit straight on the page, so they get the paper backing too (gray on a dotted shape was unreadable) */
+.story-sort .bar-label {
+    font-weight: 700;
+    margin-left: 0;
+    padding: 0.1em 0.45em;
+    color: #444;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 8px;
+}
+
+.story-sort button[data-filter] {
+    border-style: dashed;
+}
+
+.story-sort button[data-filter]::before {
+    content: '☐ ';
+}
+
+.story-sort button[data-filter].active {
+    border-style: solid;
+}
+
+.story-sort button[data-filter].active::before {
+    content: '☑ ';
+}
+
+/* Spice meter on the court cards: plain bread to hot pepper */
+.spice-track {
+    background: linear-gradient(90deg, #f4efe6, #ffd666 50%, #ff7a59);
+}
+
+/* The stories bar's two groups (sort, only) each keep together; on phones each takes a row of its own, with smaller
+   buttons, and the divider goes */
+.story-sort .bar-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    background: none;
+}
+
+.story-sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+@media (max-width: 700px) {
+    .story-sort .bar-divider {
+        display: none;
+    }
+
+    .story-sort .bar-group {
+        width: 100%;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .story-sort .bar-group button {
+        font-size: 0.85em;
+        padding: 0.25em 0.65em;
+    }
+
+    .story-sort .bar-label {
+        width: 100%;
+        text-align: center;
+        font-size: 0.85em;
+        background: none;
+        padding: 0;
+    }
+}

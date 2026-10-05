@@ -1,0 +1,135 @@
+/* The news-day verdict sticker on the word cloud; centered page headings */
+
+figure.wordcloud {
+    position: relative;
+}
+
+/* The news-day verdict, slapped on the corner of the word cloud like a sticker */
+.newsday-sticker {
+    position: absolute;
+    top: -0.6em;
+    left: 0;
+    z-index: 2;
+    max-width: 30em;
+    display: flex;
+    align-items: stretch;
+    gap: 0.4em;
+    padding: 0.45em 0.9em 0.55em;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #1f1f2e;
+    transform: rotate(-5deg);
+    color: #1f1f2e;
+    text-decoration: none;
+}
+
+.newsday-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15em;
+    min-width: 0;
+}
+
+.newsday-label {
+    font-family: 'Bungee', 'Comic Neue', cursive;
+    font-size: 1.35em;
+    line-height: 1.1;
+}
+
+/* Twin pillars: a big emoji on each side, as tall as the whole sticker, tilted outward */
+.newsday-end {
+    flex: none;
+    display: flex;
+    align-items: center;
+    font-size: 4.2em;
+    line-height: 1;
+    transform: rotate(-8deg);
+}
+
+.newsday-end:last-child {
+    transform: rotate(8deg);
+}
+
+@media (max-width: 700px) {
+    .newsday-end {
+        font-size: 3em;
+    }
+}
+
+.newsday-why {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 0.85em;
+    line-height: 1.2;
+}
+
+.newsday-sticker.big {
+    /* dark card so the red siren reads; the red is kept for the edge */
+    background: #1d2147;
+    color: white;
+    border-color: #ff3b3b;
+    box-shadow: 4px 4px 0 #ff3b3b;
+    animation: wobble 1.6s ease-in-out infinite;
+}
+
+.newsday-sticker.normal {
+    background: #ffd23f;
+}
+
+.newsday-sticker.slow {
+    background: #5ce1c6;
+    /* not the old .slow fade: a lethargic slump, sagging down and spreading out, then slowly hauling back up */
+    color: #1f1f2e;
+    padding: 0.45em 0.9em 0.55em;
+    opacity: 1;
+    transform-origin: 50% 100%;
+    animation: slump 6s ease-in-out infinite;
+}
+
+@keyframes slump {
+    0%, 100% { transform: rotate(-5deg) scale(1, 1); }
+    35% { transform: rotate(-6.5deg) scale(1.05, 0.9); }
+    55% { transform: rotate(-6.5deg) scale(1.06, 0.88); }
+    80% { transform: rotate(-5deg) scale(0.99, 1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .newsday-sticker.slow, .newsday-sticker.big { animation: none; }
+}
+
+@keyframes wobble {
+    0%, 100% { transform: rotate(-5deg) scale(1); }
+    50% { transform: rotate(-3deg) scale(1.06); }
+}
+
+@media (max-width: 700px) {
+    .newsday-sticker {
+        position: relative;
+        top: 0;
+        margin: 0 auto 0.6em;
+    }
+}
+
+/* Page-level headings sit over centered content, so they're centered too; headings inside cards (story cards,
+   trending boxes, the word panel) stay aligned with their own text */
+main > h1, main > h2, main > h3 {
+    text-align: center;
+}
+
+/* The sticker sits inside the cloud's top-left corner; the page script clears the words under it */
+.newsday-sticker {
+    position: absolute;
+    top: 0.4em;
+    left: var(--gutter, 16px);
+    width: fit-content;
+}
+
+@media (max-width: 700px) {
+    .newsday-sticker {
+        position: relative;
+        top: 0;
+        left: 0;
+        margin: 0 auto 0.6em;
+    }
+}

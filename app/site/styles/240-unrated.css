@@ -1,0 +1,29 @@
+/* Unrated outlets, off the axis (outlets page) */
+
+/* Unrated outlets, off the axis */
+.unrated-strip {
+    margin: 1.2em 0 0;
+    padding: 0.7em 0.9em;
+    border: 3px dashed #1f1f2e;
+    border-radius: 14px;
+}
+
+.unrated-head {
+    font: 1em 'Bungee', 'Comic Neue', sans-serif;
+    margin-bottom: 0.5em;
+}
+
+.unrated-head span {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.unrated-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+}
+
+.unrated-chips .lineup-chip .chip-name {
+    text-align: left;
+}

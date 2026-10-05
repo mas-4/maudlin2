@@ -1,0 +1,198 @@
+/* Metrics, the story grid, lean and mood meters, story cards and outlet chips */
+
+/* Metrics */
+
+#metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Adjust the space between cards */
+    padding: 20px; /* Padding around the container */
+    justify-content: center; /* Center the cards */
+}
+
+.metric {
+    display: flex; /* Enable Flexbox */
+    flex-direction: column; /* Stack children vertically */
+    justify-content: space-between; /* Distribute space around items */
+    align-items: center; /* Center align items horizontally */
+    background-color: #f0f0f0; /* Light grey background */
+    border: 1px solid #ddd; /* Light grey border */
+    border-radius: 8px; /* Rounded corners */
+    padding: 15px; /* Padding inside each card */
+    width: 200px; /* Fixed width, but you can make it responsive */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    height: 150px; /* Set a fixed height to ensure enough space for vertical centering */
+    flex-basis: 25%; /* idk but it works to limit 3 per row */
+}
+
+.metric-name, .metric-value {
+    text-align: center; /* Center text horizontally */
+}
+
+.metric-name {
+    font-size: 1.2em; /* Larger font size for the name */
+    font-weight: bold; /* Make the name stand out */
+}
+
+/* If you want the .value div specifically centered both ways, you can apply flex styles directly to it, assuming it doesn't have flex children itself */
+.metric-value {
+    flex-grow: 1; /* Allow the value div to fill available space */
+    display: flex; /* Enable Flexbox */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+}
+
+
+.stories {
+    margin: 20px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .stories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+    .stories { grid-template-columns: minmax(0, 1fr); margin: 16px 0; }
+}
+
+.meters {
+    margin: 0.6em 0 0.8em;
+}
+
+/* Label on its own line above, so the bar gets the card's full width */
+.meter {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas: "label" "bar";
+    align-items: center;
+    column-gap: 0.6em;
+    row-gap: 0.1em;
+    font-size: 1.1em;
+    color: #1f1f2e;
+    margin: 0.5em 0;
+}
+
+.meter-label {
+    grid-area: label;
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+/* Bar with an emoji at each end saying what the ends mean */
+.meter-bar {
+    grid-area: bar;
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    min-width: 0;
+}
+
+.meter-end {
+    font-size: 1.7em;
+    line-height: 1;
+}
+
+.meter-end-word {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 0.8em;
+    color: #555;
+    white-space: nowrap;
+}
+
+.meter-track {
+    position: relative;
+    flex: 1;
+    height: 18px;
+    border: 2.5px solid #1f1f2e;
+    border-radius: 999px;
+}
+
+/* Same blue-gray-red as the bias colors used across the site */
+.lean-track {
+    background: linear-gradient(to right, #3b4cc0, #eeeeee 50%, #b40426);
+}
+
+/* Purple (grim) to gold (upbeat), like the headline table's mood badges */
+.mood-track {
+    background: linear-gradient(to right, #7a5cff, #f4efe6 50%, #ffc400);
+}
+
+.meter-dot {
+    position: absolute;
+    top: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border-radius: 50%;
+    background: #1f1f2e;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #1f1f2e;
+}
+
+/* The mood marker is the weather itself */
+.meter-dot.meter-emoji {
+    width: 2em;
+    height: 2em;
+    margin: -1em 0 0 -1em;
+    box-shadow: 0 0 0 2.5px #1f1f2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: none;
+    font-size: 1.15em;
+    line-height: 1;
+}
+
+.meter-value {
+    grid-area: value;
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.meter-feeling {
+    font-size: 1.5em;
+    vertical-align: middle;
+}
+
+.story {
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    min-width: 0;
+}
+
+.storylink {
+    display: inline-block;
+    padding: 6px 14px;
+    margin: 5px;
+    text-decoration: none;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    transition: transform 0.12s, box-shadow 0.12s;
+    color: black;
+}
+
+/* Outlet chips hop and tilt when pointed at, alternating directions */
+.storylink:hover {
+    transform: translate(-1px, -3px) rotate(-4deg);
+    box-shadow: 3px 5px 0 #1f1f2e;
+}
+
+.storylink:nth-child(even):hover {
+    transform: translate(-1px, -3px) rotate(4deg);
+}

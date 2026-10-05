@@ -1,0 +1,180 @@
+/* Supreme Court page: case cards, framing, headlines, the uncovered docket */
+
+/* Supreme Court page: cards like the front page's story cards, a card per case in the news and per topic of the
+   other Court news, then the docket's uncovered cases */
+.court-cards {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    margin: 0.6em 0 1.6em;
+}
+
+.court-cards > .court-story {
+    flex: 1 1 380px;  /* before the script packs them, and without it: a plain wrapping row */
+}
+
+.court-cards:not(:has(.court-column)) {
+    flex-wrap: wrap;
+}
+
+.court-column {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.court-story {
+    padding: 0.8em 1em 0.9em;
+    min-width: 0;
+}
+
+.court-cards .court-story:nth-child(5n + 1) { --pop: #3a86ff; }
+.court-cards .court-story:nth-child(5n + 2) { --pop: #ffc400; }
+.court-cards .court-story:nth-child(5n + 3) { --pop: #00c2a8; }
+.court-cards .court-story:nth-child(5n + 4) { --pop: #ff4fa3; }
+.court-cards .court-story:nth-child(5n + 5) { --pop: #ff6b1a; }
+
+.court-story h4 {
+    margin: 0.1em 0 0.2em;
+    font-size: 1.25em;
+}
+
+.court-topic h4::first-letter {
+    text-transform: uppercase;
+}
+
+.court-meta, .court-when {
+    font-size: 0.85em;
+    color: #555;
+}
+
+.court-meta {
+    margin: 0 0 0.3em;
+}
+
+.court-stages {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.2em 0 0.4em;
+}
+
+/* How each side frames it: the left- and right-leaning outlets' most loaded headlines, side by side */
+.court-framing {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0.5em 0;
+}
+
+.court-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0.45em 0.6em;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    color: #1f1f2e;
+    text-decoration: none;
+    font-size: 0.88em;
+    line-height: 1.3;
+}
+
+.court-frame-left {
+    background: #e3ebff;
+    box-shadow: 3px 3px 0 #1a5cff;
+}
+
+.court-frame-right {
+    background: #ffe3e7;
+    box-shadow: 3px 3px 0 #e0102e;
+}
+
+.court-frame-side {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.court-frame-title {
+    font-style: italic;
+}
+
+.court-frame .edit-chip {
+    align-self: flex-start;
+    font-size: 0.8em;
+    padding: 1px 8px;
+}
+
+.court-more summary {
+    cursor: pointer;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin-top: 0.3em;
+}
+
+.court-headlines {
+    list-style: none;
+    padding-left: 0;
+    margin: 0.5em 0 0;
+    font-size: 0.92em;
+}
+
+.court-headlines li {
+    margin: 0 0 0.45em;
+    line-height: 1.35;
+}
+
+.court-stage {
+    display: inline-block;
+    width: 1.4em;
+}
+
+.court-headlines .edit-chip {
+    font-size: 0.8em;
+    padding: 1px 8px;
+}
+
+/* The docket's cases nobody is covering: quiet paper slips */
+.court-uncovered {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 10px;
+    margin: 0.6em 0 2em;
+}
+
+.court-quiet {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5em 0.7em;
+    background: #ffffff;
+    border: 2px dashed #8a8f98;
+    border-radius: 10px;
+    color: #1f1f2e;
+    text-decoration: none;
+}
+
+.court-quiet:hover, .court-quiet.covered {
+    border-style: solid;
+}
+
+.court-quiet.covered {
+    border-color: #1f1f2e;
+    box-shadow: 3px 3px 0 #ffc400;
+}
+
+/* A case's plain gloss, as a tag */
+.court-gloss-tag {
+    align-self: flex-start;
+    padding: 1px 9px;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    background: #fff4c2;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+}
+
+.court-quiet-name {
+    font-size: 0.9em;
+}
+
+@media (max-width: 600px) {
+    .court-framing { grid-template-columns: 1fr; }
+}

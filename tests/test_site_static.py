@@ -1,5 +1,5 @@
-"""Static asset and template sanity checks, without a browser: the stylesheet's structure and the rules the pages
-depend on, the page script's syntax, and every template parsing and resolving its extends/includes."""
+"""Static asset and template sanity checks, without a browser: the stylesheet's partials and structure and the rules
+the pages depend on, the page script's syntax, and every template parsing and resolving its extends/includes."""
 import os
 import re
 import shutil
@@ -8,11 +8,13 @@ import subprocess
 import pytest
 from jinja2 import nodes
 
-from app.site.common import j2env
+from app.site.common import j2env, stylesheet
 from app.utils.constants import Constants
 
 SITE = os.path.join(Constants.Paths.ROOT, 'app', 'site')
 STATIC = os.path.join(SITE, 'static')
+STYLES = os.path.join(SITE, 'styles')
+PARTIALS = sorted(f for f in os.listdir(STYLES) if f.endswith('.css'))
 TEMPLATES = os.path.join(SITE, 'templates')
 TEMPLATE_NAMES = sorted(f for f in os.listdir(TEMPLATES) if os.path.isfile(os.path.join(TEMPLATES, f)))
 
@@ -29,7 +31,7 @@ def strip_css_comments_and_strings(css: str) -> str:
 
 @pytest.fixture(scope='module')
 def css():
-    return read(STATIC, 'style.css')
+    return stylesheet()
 
 
 @pytest.fixture(scope='module')
@@ -38,6 +40,41 @@ def js():
 
 
 # <editor-fold desc="style.css">
+def test_stylesheet_is_the_partials_joined_in_order(css):
+    """style.css is built, not kept: the partials in file-name order (cascade order), each whole and in turn."""
+    assert len(PARTIALS) > 10
+    at = 0
+    for name in PARTIALS:
+        part = read(STYLES, name).rstrip('\n')
+        found = css.find(part, at)
+        assert found >= at, f'{name} missing or out of order'
+        at = found + len(part)
+    assert css.rstrip('\n').endswith(read(STYLES, PARTIALS[-1]).rstrip('\n'))
+    assert not os.path.exists(os.path.join(STATIC, 'style.css')), 'a kept style.css would go stale; edit app/site/styles'
+
+
+@pytest.mark.parametrize('name', PARTIALS)
+def test_style_partial_is_numbered_and_described(name):
+    """Partials are numbered so sorted order is cascade order, and open with a one-line comment on what they style."""
+    assert re.fullmatch(r'\d{3}-[a-z0-9-]+\.css', name), name
+    first = read(STYLES, name).split('\n', 1)[0]
+    assert re.fullmatch(r'/\* .+ \*/', first), f'{name}: {first}'
+
+
+def test_style_partial_numbers_are_unique():
+    numbers = [name.split('-', 1)[0] for name in PARTIALS]
+    assert len(set(numbers)) == len(numbers)
+
+
+@pytest.mark.parametrize('name', PARTIALS)
+def test_style_partial_stands_alone(name):
+    """No block or comment opens in one partial and closes in the next."""
+    text = read(STYLES, name)
+    assert text.count('/*') == text.count('*/'), name
+    body = strip_css_comments_and_strings(text)
+    assert body.count('{') == body.count('}'), name
+
+
 def test_css_braces_balance(css):
     depth = 0
     for i, ch in enumerate(strip_css_comments_and_strings(css)):
@@ -138,6 +175,8 @@ def test_template_local_assets_exist(name):
     """Every local script, stylesheet and icon a template links to is a file we ship (pages are generated)."""
     for ref in re.findall(r'(?:src|href)="(\.?/?[\w.-]+\.(?:js|css|ico|png))(?:\?[^"]*)?"', read(TEMPLATES, name)):
         if '{' in ref:
+            continue
+        if ref.removeprefix('./') == 'style.css':  # built from app/site/styles by copy_assets
             continue
         assert os.path.exists(os.path.join(STATIC, ref.removeprefix('./'))), f'{name}: {ref}'
 

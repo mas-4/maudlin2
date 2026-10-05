@@ -1,0 +1,104 @@
+/* Folklore and Rumors cards in labeled sections; classification sources, motif notes, focus group episodes */
+
+/* Folklore and Rumors cards in labeled sections, divided, so the motifs, fact-checks, cast and links each read as
+   their own part of the card */
+.card-section {
+    border-top: 1.5px dashed rgba(31, 31, 46, 0.25);
+    margin-top: 0.6em;
+    padding-top: 0.45em;
+}
+
+.section-label {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #555;
+    margin: 0 0 0.35em;
+}
+
+.motif-chip {
+    display: inline-block;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    text-decoration: none;
+    background: #fff3c4;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 0.15em 0.7em;
+    margin: 0 0.35em 0.4em 0;
+}
+
+.motif-chip:hover {
+    background: #ffe28a;
+}
+
+.motif-seen {
+    font-size: 0.8em;
+    color: #555;
+}
+
+.card-section .story-checks, .shared-links {
+    margin: 0;
+    padding-left: 1.1em;
+}
+
+.shared-links li {
+    margin: 0.25em 0;
+}
+
+.card-section .narrative-roles {
+    margin: 0;
+}
+
+.card-section .narrative-link {
+    margin: 0;
+}
+
+/* Where a classification comes from (Knapp's rumor types, Barkun's conspiracy types, our subject list) */
+.chip-src {
+    font: 700 0.72em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #6b6b7b;
+    border-left: 1px solid rgba(31, 31, 46, 0.3);
+    padding-left: 0.35em;
+    margin-left: 0.15em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.shape-family .chip-src {
+    border-left: none;
+    padding-left: 0;
+    margin: 0 0.25em 0 0;
+}
+
+/* A motif's scope note: one plain line on what it covers, under its name in the BND Motif Index */
+.motif-note {
+    font-style: italic;
+    color: #444;
+    margin: 0 0 0.4em;
+}
+
+/* Folklore: what voters say in The Focus Group, an episode at a time */
+.focus-episode {
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #1f1f2e;
+    border-radius: 12px;
+    padding: 0.5em 0.9em;
+    margin: 0.6em 0;
+}
+
+.focus-episode summary {
+    cursor: pointer;
+}
+
+.focus-claims li {
+    margin: 0.35em 0;
+}
+
+.motif-chip.small {
+    font-size: 0.8em;
+    padding: 0.05em 0.5em;
+    margin: 0 0 0 0.3em;
+    box-shadow: 1px 1px 0 #1f1f2e;
+}

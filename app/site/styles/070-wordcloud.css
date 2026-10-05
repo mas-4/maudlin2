@@ -1,0 +1,94 @@
+/* The word cloud: figure, words, lean colors, the word's detail panel */
+
+figure.wordcloud {
+    margin: 1em auto;
+    max-width: 900px;
+}
+
+figure.wordcloud noscript img {
+    width: 100%;
+    height: auto;
+}
+
+figure.wordcloud figcaption {
+    font-size: 0.85em;
+    color: #666;
+    text-align: center;
+}
+
+.lean-left {
+    color: #2a5bd7;
+    font-weight: bold;
+}
+
+.lean-right {
+    color: #c0392b;
+    font-weight: bold;
+}
+
+figure.wordcloud {
+    max-width: 1200px;
+}
+
+.cloud-word {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    cursor: default;
+    transition: opacity 0.15s;
+}
+
+/* Pointing at a word lifts its paper cutout to the top of the pile (surface() in headlines.html); nothing fades:
+   the cutouts are opaque paper */
+
+.cloud-word {
+    cursor: pointer;
+    outline: none;
+}
+
+.cloud-word text {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+.cloud-word:focus text:first-child {
+    text-decoration: underline;
+}
+
+.cloud-emoji {
+    /* emoji are color images, so a shadow is the only outline; keeps the white skull visible on white */
+    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+}
+
+.cloud-detail {
+    max-width: 900px;
+    margin: 0 auto 1.5em;
+    padding: 0.6em 1.2em;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    position: relative;
+}
+
+.cloud-detail h3 {
+    margin: 0.3em 0;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-size: 1.6em;
+}
+
+.cloud-samples {
+    list-style: none;
+    padding: 0;
+}
+
+.cloud-samples li {
+    margin: 0.45em 0;
+}
+
+.cloud-close {
+    position: absolute;
+    top: 0.4em;
+    right: 0.6em;
+    border: none;
+    background: none;
+    font-size: 1.4em;
+    cursor: pointer;
+}

@@ -1,0 +1,147 @@
+/* Story cards: shows, earlier saga parts, rewrite notes, blindspot meter, curators, trend arrows, quotes */
+
+/* Story cards: the news-of-the-day shows that covered the story (show_coverage in page_headlines.py) */
+.story-shows {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 0.4em;
+}
+
+.story-shows-label {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.show-chip {
+    font-size: 0.75em;
+}
+
+/* Saga parts that have left the front pages: still listed, quieter, no card to jump to */
+.saga-earlier {
+    opacity: 0.7;
+}
+
+.saga-past {
+    font-style: italic;
+}
+
+/* What a headline rewrite changed, in the model's words (edits page) */
+.edit-change {
+    font-style: italic;
+    color: #444;
+    margin-left: 0.3em;
+}
+
+/* Blindspot meter: who covers the story, left (blue) to right (red), with a tick where an average story splits */
+.bs-meter {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    margin: 0.25em 0 0.1em;
+}
+
+.bs-end {
+    font-size: 1.15em;
+    line-height: 1;
+}
+
+.bs-track {
+    position: relative;
+    flex: 1;
+    display: flex;
+    height: 14px;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 2px 2px 0 #1f1f2e;
+}
+
+.bs-seg + .bs-seg {
+    border-left: 2px solid #1f1f2e;
+}
+
+.bs-left {
+    background: #1a5cff;
+}
+
+.bs-center {
+    background: #c8c8d0;
+}
+
+.bs-right {
+    background: #e0102e;
+}
+
+.bs-tick {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 0;
+    border-left: 3px dashed #ffc400;
+    transform: translateX(-1.5px);
+}
+
+/* A blindspot on its story card: label and the lean meter */
+.card-blindspot {
+    margin: 0.2em 0 0.6em;
+}
+
+.card-blindspot-label {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story[hidden] {
+    display: none;
+}
+
+/* Aggregators linking a story (story cards) */
+.story-curators {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0.2em 0 0.4em;
+}
+
+.story-curators .edit-chip {
+    font-size: 0.95em;
+    padding: 1px 8px;
+}
+
+/* Trend arrows beside a story card's meter labels (how far lean or mood moved over the last hours) */
+.trend-arrows {
+    font-size: 0.85em;
+    letter-spacing: -0.1em;
+    color: #ff4fa3;
+}
+
+/* Quoted phrases on a story card, colored by the side that quotes them (#149) */
+.story-quotes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 6px;
+    margin: 0.3em 0 0.4em;
+}
+
+.story-quotes-label {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.quote-chip {
+    font: italic 700 0.82em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 1px 8px;
+    border: 2px solid #1f1f2e;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1f1f2e;
+}
+
+.quote-left { background: #cfe0ff; }
+.quote-right { background: #ffd0d6; }
+.quote-center { background: #e4e4ea; }
+.quote-mixed { background: linear-gradient(90deg, #cfe0ff, #ffd0d6); }
+.quote-unrated { border-style: dashed; }

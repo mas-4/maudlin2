@@ -1,0 +1,91 @@
+/* Story cards: packed columns, ink outlines and pop shadows, titles; the trend boxes' "more" button */
+
+/* Story cards packed into columns (by a script on the page), each card going to the shortest column, so short cards
+   don't leave a hole beside a long one */
+.stories.masonry {
+    display: flex;
+    align-items: flex-start;
+}
+
+.story-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Cards and trending boxes: thick ink outlines and loud offset shadows, a different color down the page */
+.story, .trending {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--pop, #ff4fa3);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.story:hover, .trending:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 var(--pop, #ff4fa3);
+}
+
+.story:nth-of-type(5n + 1), .trending:nth-of-type(5n + 1) { --pop: #ff4fa3; }
+.story:nth-of-type(5n + 2), .trending:nth-of-type(5n + 2) { --pop: #ffc400; }
+.story:nth-of-type(5n + 3), .trending:nth-of-type(5n + 3) { --pop: #00c2a8; }
+.story:nth-of-type(5n + 4), .trending:nth-of-type(5n + 4) { --pop: #3a86ff; }
+.story:nth-of-type(5n + 5), .trending:nth-of-type(5n + 5) { --pop: #ff6b1a; }
+
+.story h4, .trending h3 {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+/* Story titles: bigger, inky, with one wavy rule under the whole title in the card's pop color (a text underline
+   would squiggle under every wrapped line and break around descenders) */
+.story h4 {
+    font-size: 1.4em;
+    line-height: 1.2;
+    color: #1f1f2e;
+    margin: 0.3em 0 0.5em;
+}
+
+.story h4::after {
+    content: '';
+    display: block;
+    height: 7px;
+    margin-top: 0.3em;
+    background: var(--pop, #ff4fa3);
+    --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='7'%3E%3Cpath d='M0 3.5 Q4 0 8 3.5 T16 3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+    -webkit-mask: var(--wave) repeat-x left center / 16px 7px;
+    mask: var(--wave) repeat-x left center / 16px 7px;
+}
+
+.chip-metric {
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-left: 0.35em;
+    padding: 0 0.35em;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.sort-legend {
+    display: block;
+    margin-top: 0.2em;
+    font-style: italic;
+}
+
+/* The outside trend boxes show their top six; a button opens the rest, so one long list doesn't stretch the row */
+.trending:not(.open) .trend-extra {
+    display: none;
+}
+
+.trend-more {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.2em 0 0.8em;
+    padding: 0.35em 1em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: var(--pop, #ffc400);
+    cursor: pointer;
+}

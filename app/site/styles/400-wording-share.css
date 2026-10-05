@@ -1,0 +1,66 @@
+/* Story cards: phrases only one side used; the share link */
+
+/* Story cards: phrases only one side used, tinted by side */
+.story-wording {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 6px;
+    margin: 0.3em 0 0.4em;
+}
+
+.wording-chip {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 1px 9px;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+}
+
+.wording-left {
+    background: #e3ebff;
+    box-shadow: 2px 2px 0 #1a5cff;
+}
+
+.wording-right {
+    background: #ffe3e7;
+    box-shadow: 2px 2px 0 #e0102e;
+}
+
+/* Share: a small link button in a card's top right corner */
+.story, .court-story, .outlet-card {
+    position: relative;
+}
+
+.share-link {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    z-index: 3;
+    padding: 2px 7px;
+    font-size: 0.85em;
+    line-height: 1.2;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+}
+
+.story:hover .share-link, .court-story:hover .share-link, .outlet-card:hover .share-link, .share-link:focus-visible,
+.share-link.copied {
+    opacity: 1;
+}
+
+.share-link.copied {
+    background: #00c2a8;
+    color: #ffffff;
+}
+
+.story h4, .court-story h4 {
+    padding-right: 2.2em;  /* room for the share button */
+}
+
+.story [id], .story[data-share] {
+    scroll-margin-top: 1em;
+}

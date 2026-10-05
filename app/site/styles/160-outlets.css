@@ -1,0 +1,158 @@
+/* Outlets page: the lineup by lean, outlet cards, outlet icons */
+
+/* Outlets page: the lineup by lean, then a card per outlet */
+.lineup {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.5em;
+    align-items: start;
+}
+
+.lineup-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+    align-items: stretch;
+}
+
+.lineup-head {
+    font: 1em 'Bungee', 'Comic Neue', sans-serif;
+    text-align: center;
+    padding: 0.4em 0.2em;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+    margin-bottom: 0.3em;
+}
+
+/* Icon at the left edge, name to the right */
+.lineup-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    text-decoration: none;
+    font-size: 1em;
+    padding: 5px 10px 5px 6px;
+    transition: transform 0.12s, box-shadow 0.12s;
+}
+
+/* Pointing at an outlet lifts its chip off the page, like a card popping up: up and left, a deeper shadow and a
+   sunny ring */
+.lineup-chip:hover, .lineup-chip:focus-visible {
+    transform: translate(-2px, -3px) rotate(-1.5deg);
+    box-shadow: 5px 6px 0 #1f1f2e, 0 0 0 3px #ffc400;
+    outline: none;
+    position: relative;
+    z-index: 2;
+}
+
+.lineup-chip:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #1f1f2e;
+}
+
+.lineup-chip .outlet-icon {
+    width: 1.7em;
+    height: 1.7em;
+    margin: 0;
+    flex: none;
+}
+
+.lineup-chip .outlet-mono {
+    line-height: 2.1em;
+}
+
+.lineup-chip .chip-name {
+    flex: 1;
+    text-align: right;
+    line-height: 1.15;
+}
+
+@media (max-width: 900px) {
+    .lineup { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 500px) {
+    .lineup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.outlet-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19em, 1fr));
+    gap: 1.2em;
+    margin-bottom: 1.5em;
+}
+
+.outlet-card {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--pop);
+    padding: 0.8em 0.9em;
+    scroll-margin-top: 1em;
+}
+
+.outlet-card:target {
+    outline: 4px dashed #ffc400;
+    outline-offset: 4px;
+}
+
+.outlet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.outlet-name {
+    font-size: 1.15em;
+    /* one line: a wrapped pill turns into a lumpy box. Long names step down a size, and only past that are cut */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.outlet-name.long-name {
+    font-size: 0.95em;
+}
+
+.outlet-flag {
+    font-size: 1.8em;
+    line-height: 1;
+}
+
+.outlet-facts, .outlet-count {
+    font-size: 0.85em;
+    color: #555;
+    margin: 0.4em 0;
+}
+
+.outlet-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+}
+
+/* Outlet icons at the front of outlet chips: favicon on a white disc, or the outlet's initial */
+.outlet-icon {
+    display: inline-block;
+    width: 1.3em;
+    height: 1.3em;
+    margin: -0.15em 0.35em -0.15em -0.25em;
+    vertical-align: middle;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 0 1.5px #1f1f2e;
+    object-fit: contain;
+    padding: 1px;
+    box-sizing: border-box;
+}
+
+.outlet-mono {
+    text-align: center;
+    font: 700 0.8em/1.6em 'Bungee', 'Comic Neue', sans-serif;
+    width: 1.6em;
+    height: 1.6em;
+    color: #1f1f2e;
+    padding: 0;
+}

@@ -1,0 +1,32 @@
+/* Story cards: the coverage beyond the outlets (quotes, shows, curators) */
+
+/* Story cards: what the coverage says beyond the outlets (the phrases quoted, the shows talking about it, the
+   aggregators picking it up) sits above the outlet chips and reads bigger; the outlet chips shrink a little */
+.story-extras {
+    margin: 0.5em 0 0.2em;
+}
+
+.story-extras .story-quotes-label, .story-extras .story-shows-label, .story-extras .story-curators {
+    font-size: 0.95em;
+    color: #1f1f2e;
+}
+
+.story-extras .quote-chip {
+    font-size: 0.98em;
+    padding: 2px 10px;
+}
+
+.story-extras .show-chip {
+    font-size: 0.9em;
+}
+
+.story-extras .story-curators .edit-chip {
+    font-size: 1em;
+    padding: 2px 10px;
+}
+
+.story-outlets .storylink {
+    padding: 4px 11px;
+    margin: 4px;
+    font-size: 0.9em;
+}

@@ -1,0 +1,32 @@
+/* Emotion tables scrolling sideways in their own box on narrow screens */
+
+/* Emotion tables scroll sideways in their own box on narrow screens, with the first column pinned */
+.matrix-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0 auto 2em;
+}
+
+.matrix-wrap table.emotion-matrix {
+    margin-bottom: 0.5em;
+}
+
+@media (max-width: 700px) {
+    table.emotion-matrix { font-size: 0.75em; }
+    table.emotion-matrix th, table.emotion-matrix td { padding: 0.25em 0.3em; }
+    .matrix-emoji { font-size: 1.05em; }
+    table.emotion-matrix td:first-child, table.emotion-matrix th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: white;
+    }
+    /* Outlet names on one line: a wider first column instead of chips wrapping word by word (the table scrolls
+       sideways; the outlet column stays put) */
+    table.emotion-matrix td:first-child {
+        min-width: 9.5em;
+    }
+    table.emotion-matrix .edit-chip {
+        white-space: nowrap;
+    }
+}

@@ -165,3 +165,5 @@ data
 .*creds
 .netlify
 _build
+# Claude Code agent worktrees
+.claude/worktrees/

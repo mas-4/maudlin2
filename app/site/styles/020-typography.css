@@ -1,0 +1,79 @@
+/* Front-page section dividers; headings, code, links and quotes */
+
+/* Section breaks on the front page: a loud label on a thick rule */
+.section-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin: 1.6em 0 1em;
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 1.4em;
+    text-transform: uppercase;
+    color: #1f1f2e;
+}
+
+.section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 3px solid #1f1f2e;
+}
+
+.section-divider span {
+    padding: 0.1em 0.7em;
+    background: #00c2a8;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #ff4fa3;
+    transform: rotate(-1.5deg);
+}
+
+
+h1 {
+    font-size: 2.5em
+}
+
+h2 {
+    font-size: 2em;
+}
+
+h3 {
+    font-size: 1.5em
+}
+
+h2, h3 {
+    margin-top: 1.5em;
+}
+
+h1, h2, strong {
+    color: #333;
+}
+
+code, pre {
+    background: #eee;
+}
+
+code {
+    padding: 2px 4px;
+    vertical-align: text-bottom;
+}
+
+pre {
+    border-left: 2px solid #bbb;
+    padding: 1em;
+}
+
+a {
+    color: var(--color-hi);
+}
+
+blockquote, q {
+    border-left: solid 4px #bbb;
+    font-style: italic;
+    margin: 0 0 2em 0;
+    padding: 0.5em 0 0.5em 2em;
+}
+
+blockquote::before, blockquote::after, q::before, q::after {
+    content: '';
+    content: none;
+}

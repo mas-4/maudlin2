@@ -1,0 +1,77 @@
+/* Cloud wiggle, news-day count, unrated lineup chips, the cloud's reserved space, good-news and feeling pills */
+
+/* A living cloud: words sway. Pointing at one turns the cursor into the key's cartoon hand (the 👆 emoji with
+   the same yellow hard shadow), fingertip as the hot spot; the plain pointer where SVG cursors aren't drawn */
+.cloud-word {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cfilter id='s'%3E%3CfeDropShadow dx='2' dy='2' stdDeviation='0' flood-color='%23ffc400'/%3E%3C/filter%3E%3Ctext x='3' y='36' font-size='34' filter='url%28%23s%29'%3E%F0%9F%91%86%3C/text%3E%3C/svg%3E") 17 4, pointer;
+}
+
+.cloud-wiggle {
+    animation: cloud-wiggle 6s ease-in-out infinite alternate;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+@keyframes cloud-wiggle {
+    from { transform: rotate(-2deg) translateY(-1.5px); }
+    to { transform: rotate(2deg) translateY(1.5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cloud-wiggle { animation: none; }
+}
+
+.newsday-count {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin-top: 0.2em;
+    opacity: 0.85;
+}
+
+.lineup-unrated {
+    border-style: dashed;
+}
+
+/* The cloud's space is reserved at its final shape before it draws (the same aspects as drawCloud), so the page doesn't
+   jump when it appears */
+#cloud {
+    aspect-ratio: 5 / 3;
+}
+
+@media (max-width: 1000px) {
+    #cloud { aspect-ratio: 5 / 4; }
+}
+
+@media (max-width: 600px) {
+    #cloud { aspect-ratio: 20 / 27; }
+}
+
+/* Good news, for a breather */
+
+
+
+
+.fast-break {
+    display: inline-block;  /* one box: the emoji stays with its words */
+    white-space: nowrap;
+    /* Full size: it sits in the card's small gray status line, where 0.75em came out about two thirds of the text */
+    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: #ffd6c2;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.05em 0.6em;
+    margin: 0.15em 0 0 0.3em;
+}
+
+/* A story's strongest feeling, above its meters */
+.story-feeling {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    padding: 0.15em 0.8em 0.15em 0.3em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: #f4f4f8;
+    margin-bottom: 0.2em;
+}

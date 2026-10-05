@@ -1,0 +1,108 @@
+/* The nav bar: brand sticker, pill links, the menu button at phone width */
+
+/* Nav: a sticker-style brand, pill links with pop-color shadows, a menu button at phone width */
+.navbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em 1em;
+    padding: 6px 0 16px;
+    border-bottom: 3px solid #1f1f2e;
+}
+
+.nav-brand {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 1.25em;
+    color: #1f1f2e;
+    text-decoration: none;
+    padding: 0.15em 0.6em;
+    background: #ffc400;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #ff4fa3;
+    transform: rotate(-2deg);
+    transition: transform 0.15s;
+}
+
+.nav-brand:hover {
+    transform: rotate(1deg) scale(1.04);
+}
+
+.nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.nav-links a {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: #1f1f2e;
+    text-decoration: none;
+    padding: 0.3em 1em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 var(--pop);
+    transition: transform 0.15s, background-color 0.15s;
+}
+
+.nav-links a:nth-child(5n + 1) { --pop: #00c2a8; }
+.nav-links a:nth-child(5n + 2) { --pop: #3a86ff; }
+.nav-links a:nth-child(5n + 3) { --pop: #ff6b1a; }
+.nav-links a:nth-child(5n + 4) { --pop: #ff4fa3; }
+.nav-links a:nth-child(5n + 5) { --pop: #ffc400; }
+
+.nav-links a:hover {
+    background: var(--pop);
+    transform: translate(-1px, -1px) rotate(-2deg);
+}
+
+.nav-links a[aria-current="page"] {
+    background: var(--pop);
+}
+
+.nav-toggle {
+    display: none;
+    font-size: 1.3em;
+    line-height: 1;
+    width: 2.2em;
+    height: 2.2em;
+    color: #1f1f2e;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #3a86ff;
+    cursor: pointer;
+}
+
+@media (max-width: 760px) {
+    .nav-toggle {
+        display: block;
+        margin-left: auto;
+    }
+
+    .nav-links {
+        display: none;
+        order: 3;
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .navbar.open .nav-links {
+        display: flex;
+    }
+
+    .nav-links a {
+        text-align: center;
+        font-size: 1.15em;
+        padding: 0.4em 0.8em;
+    }
+
+    .navbar .updated {
+        order: 2;
+        width: 100%;
+        margin-left: 0;
+    }
+}

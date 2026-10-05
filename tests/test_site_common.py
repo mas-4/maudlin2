@@ -220,16 +220,20 @@ def test_clear_build_removes_files_and_folders(monkeypatch, tmp_path):
 
 
 def test_copy_assets(monkeypatch, tmp_path):
-    assets, build = tmp_path / 'assets', tmp_path / 'build'
-    assets.mkdir()
-    build.mkdir()
-    (assets / 'style.css').write_text('body {}')
+    assets, build, styles = tmp_path / 'assets', tmp_path / 'build', tmp_path / 'styles'
+    for d in (assets, build, styles):
+        d.mkdir()
+    (assets / 'style.css').write_text('stale {}')  # a leftover in the static folder never wins over the partials
     (assets / 'index.js').write_text('1;')
+    (styles / '010-nav.css').write_text('/* Nav */\n.nav {}\n')
+    (styles / '000-base.css').write_text('/* Base */\nbody {}')
+    (styles / 'notes.txt').write_text('not css')
     monkeypatch.setattr(Config, 'assets', str(assets))
     monkeypatch.setattr(Config, 'build', str(build))
+    monkeypatch.setattr(Config, 'styles', str(styles))
     common.copy_assets()
     assert sorted(os.listdir(build)) == ['index.js', 'style.css']
-    assert (build / 'style.css').read_text() == 'body {}'
+    assert (build / 'style.css').read_text() == '/* Base */\nbody {}\n\n/* Nav */\n.nav {}\n'
 
 
 def test_stamp_build_sets_version_and_rerenders_nav(monkeypatch):
