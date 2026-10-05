@@ -1020,7 +1020,7 @@ def entities_page() -> str:
 </section>""" for a, b in pairs[:40])
     rows = sorted(subjects.items(), key=lambda kv: (-kv[1]['stories'], kv[0].lower()))
     cards = ''.join(f"""
-<section class="card entry" data-text="{esc((name + ' ' + ' '.join(e['names'])).lower())}">
+<section class="card entry" data-text="{esc((name + ' ' + ' '.join(e['names'])).lower())}" data-name="{esc(name.lower())}" data-stories="{e['stories']}" data-aliases="{len(e['names'])}">
   <p class="outlet">{e['stories']} stor{'y' if e['stories'] == 1 else 'ies'}</p>
   <div class="row"><input class="name" value="{esc(name)}" size="40"><button data-act="rename" data-source="{esc(name)}">rename</button>
     <button data-act="merge_into" data-source="{esc(name)}">⤵ another name for…</button></div>
@@ -1045,8 +1045,10 @@ a subject, or keep two apart. Changes go live with the next site build.</p>
 <h2>Suggested merges</h2>
 {suggest or '<p>No suggestions right now.</p>'}
 <h2>Every subject</h2>
-<p><input type="search" id="search" placeholder="search names" size="40"></p>
-{cards}
+<p><input type="search" id="search" placeholder="search names" size="40">
+<select id="sort"><option value="most">most stories</option><option value="fewest">fewest stories</option><option value="az">A–Z</option><option value="za">Z–A</option><option value="aliases">most other names</option></select></p>
+<div id="subjects">
+{cards}</div>
 <script>
 const post = async (body) => {{
   const r = await fetch('/entities', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(body)}});
@@ -1066,6 +1068,16 @@ document.addEventListener('click', (ev) => {{
 document.getElementById('search').addEventListener('input', (ev) => {{
   const q = ev.target.value.trim().toLowerCase();
   document.querySelectorAll('.entry').forEach((c) => {{ c.hidden = q && !c.dataset.text.includes(q); }});
+}});
+const sorts = {{
+  most: (a, b) => b.dataset.stories - a.dataset.stories || a.dataset.name.localeCompare(b.dataset.name),
+  fewest: (a, b) => a.dataset.stories - b.dataset.stories || a.dataset.name.localeCompare(b.dataset.name),
+  az: (a, b) => a.dataset.name.localeCompare(b.dataset.name), za: (a, b) => b.dataset.name.localeCompare(a.dataset.name),
+  aliases: (a, b) => b.dataset.aliases - a.dataset.aliases || b.dataset.stories - a.dataset.stories,
+}};
+const box = document.getElementById('subjects');
+document.getElementById('sort').addEventListener('change', (ev) => {{
+  [...box.querySelectorAll('.entry')].sort(sorts[ev.target.value]).forEach((c) => box.appendChild(c));
 }});
 </script></body></html>"""
 
