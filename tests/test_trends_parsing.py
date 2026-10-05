@@ -228,3 +228,24 @@ def test_mastodon(fake_get):
 def test_sources_registry():
     assert set(trends.SOURCES) == {'bluesky', 'google', 'wikipedia', 'mastodon'}
     assert all(callable(f) for f in trends.SOURCES.values())
+
+
+def test_wikipedia_falls_back_a_day_while_yesterday_is_not_published(monkeypatch):
+    import requests as rq
+    from app import trends
+    asked = []
+
+    class Missing:
+        status_code = 404
+
+    def get(url, **params):
+        asked.append(url)
+        if '/pageviews/top/' in url and len(asked) == 1:
+            raise rq.HTTPError(response=Missing())
+        if '/pageviews/top/' in url:
+            return type('R', (), {'json': lambda self: {'items': [{'articles': []}]}})()
+        raise AssertionError(url)
+
+    monkeypatch.setattr(trends, '_get', get)
+    assert trends.wikipedia() == []
+    assert len(asked) == 2 and asked[0] != asked[1]  # the day before, after a 404

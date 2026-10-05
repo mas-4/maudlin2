@@ -75,10 +75,17 @@ WIKIPEDIA_SKIP = re.compile(r'^(Main_Page|Special:|Wikipedia:|Portal:|File:|Help
 
 
 def wikipedia() -> list[dict]:
-    # Daily totals are published after the day ends, so this is yesterday's reading
-    day = (dt.now(pytz.UTC) - td(days=1)).strftime('%Y/%m/%d')
-    articles = _get(f'https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{day}'
-                    ).json()['items'][0]['articles']
+    # Daily totals are published a few hours after the UTC day ends, so this is yesterday's reading, or the day
+    # before's while yesterday's isn't out yet (from 8 PM Eastern until a little after midnight)
+    for back in (1, 2):
+        day = (dt.now(pytz.UTC) - td(days=back)).strftime('%Y/%m/%d')
+        try:
+            articles = _get(f'https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{day}'
+                            ).json()['items'][0]['articles']
+            break
+        except rq.HTTPError as e:
+            if back == 2 or e.response is None or e.response.status_code != 404:
+                raise
     trends = []
     for article in articles:
         if WIKIPEDIA_SKIP.match(article['article']):
