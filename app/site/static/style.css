@@ -3805,3 +3805,58 @@ h1 {
     margin-bottom: 0.15em;
     line-height: 1.4;
 }
+
+/* Folklore and Rumors cards in labeled sections, divided, so the motifs, fact-checks, cast and links each read as
+   their own part of the card */
+.card-section {
+    border-top: 1.5px dashed rgba(31, 31, 46, 0.25);
+    margin-top: 0.6em;
+    padding-top: 0.45em;
+}
+
+.section-label {
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #555;
+    margin: 0 0 0.35em;
+}
+
+.motif-chip {
+    display: inline-block;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    text-decoration: none;
+    background: #fff3c4;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 0.15em 0.7em;
+    margin: 0 0.35em 0.4em 0;
+}
+
+.motif-chip:hover {
+    background: #ffe28a;
+}
+
+.motif-seen {
+    font-size: 0.8em;
+    color: #555;
+}
+
+.card-section .story-checks, .shared-links {
+    margin: 0;
+    padding-left: 1.1em;
+}
+
+.shared-links li {
+    margin: 0.25em 0;
+}
+
+.card-section .narrative-roles {
+    margin: 0;
+}
+
+.card-section .narrative-link {
+    margin: 0;
+}

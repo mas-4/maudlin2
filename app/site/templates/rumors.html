@@ -43,7 +43,11 @@
                     <h4><a href="{{ c.url|e }}">{{ c.title|e }}</a></h4>
                     <p class="narrative-claim" title="The claim checked, in the model's words">“{{ c.claim|e }}”</p>
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}</p>
-                    {% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}
+                    {% if c.motifs %}
+                        <div class="card-section"><p class="section-label" title="Recurring shapes this rumor is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 Motifs</p>
+                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+                        </div>
+                    {% endif %}
                     {% if c.seen is not none %}
                         {% if c.seen.people %}
                             <p class="rumor-seen" title="People in our Bluesky and Mastodon sample (last {{ looked.hours|int }} hours) whose posts take up this claim, out of the {{ c.seen.checked }} closest posts the model read">💬 in our social sample: {% if c.seen.telling %}<b>{{ c.seen.telling }}</b> telling it{% endif %}{% if c.seen.telling and c.seen.arguing %}, {% endif %}{% if c.seen.arguing %}<b>{{ c.seen.arguing }}</b> arguing against it{% endif %}</p>

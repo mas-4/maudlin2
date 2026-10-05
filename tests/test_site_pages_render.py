@@ -441,7 +441,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         monkeypatch.setattr(Config, 'debug', debug)
         pn.FolklorePage().generate()
         html = (tmp_path / 'folklore.html').read_text()
-        assert 'They are &lt;keeping&gt; him alive' in html and 'Same issue as: Trump health' in html
+        assert 'They are &lt;keeping&gt; him alive' in html and '🔗 Same issue as' in html and 'Trump health' in html
         assert 'These are rumors, not facts.' in html
         assert '😨 dread rumor' in html and 'data-rumor="dread"' in html
         assert ('🕵️ event conspiracy' in html) is shows_posts  # held to previews until it's reliable
@@ -450,7 +450,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         assert 'Only six people' not in html and '1 more told by fewer' in html
         assert 'the kept king' not in html  # the labeler's own motif phrase isn't shown; the index entry is
         assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
-        assert '🧩 the ruler kept alive in secret</a> <span class="motif-id">M007</span> · seen 3 times' in html
+        assert 'href="motifs.html#M007"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
         assert '🦹 villain</b> doctors' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts
 

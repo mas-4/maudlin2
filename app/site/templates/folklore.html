@@ -114,25 +114,34 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
-                    {% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}
+                    {% if c.motifs %}
+                        <div class="card-section"><p class="section-label" title="Recurring shapes this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 Motifs</p>
+                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+                        </div>
+                    {% endif %}
                     {% if c.factchecks %}
+                        <div class="card-section"><p class="section-label">🔎 Fact-checked</p>
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
-                            {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
-                        </ul>
+                            {% for p in c.factchecks %}<li><a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
+                        </ul></div>
                     {% endif %}
                     {% if c.story_shape and (c.villain or c.victim or c.hero) %}
+                        <div class="card-section"><p class="section-label">🎭 The story's cast</p>
                         <p class="narrative-roles" title="Who the story casts in each part, in the model's words">
-                            <span class="roles-lead">the story's cast:</span>
                             {% if c.villain %}<span class="role role-villain"><b class="role-name">🦹 villain</b> {{ c.villain|e }}</span>{% endif %}
                             {% if c.victim %}<span class="role role-victim"><b class="role-name">🫂 victim</b> {{ c.victim|e }}</span>{% endif %}
                             {% if c.hero %}<span class="role role-hero"><b class="role-name">🦸 hero</b> {{ c.hero|e }}</span>{% endif %}
-                        </p>
+                        </p></div>
                     {% endif %}
-                    {% for a in c.articles %}
-                        <p class="narrative-link">📎 Sharing{% if a.shares > 1 %} ({{ a.shares }}×){% endif %}: <a href="{{ a.url|e }}">{{ a.title|e }}</a> <span class="court-when">{{ a.outlet|e }}{% if a.story %} · in the story “{{ a.story|e }}”{% endif %}</span></p>
-                    {% endfor %}
+                    {% if c.articles %}
+                        <div class="card-section"><p class="section-label">📎 What they're sharing</p>
+                        <ul class="shared-links">
+                            {% for a in c.articles %}<li><a href="{{ a.url|e }}">{{ a.title|e }}</a> <span class="court-when">{{ a.outlet|e }}{% if a.shares > 1 %} · shared {{ a.shares }}×{% endif %}{% if a.story %} · in the story “{{ a.story|e }}”{% endif %}</span></li>{% endfor %}
+                        </ul></div>
+                    {% endif %}
                     {% if c.story %}
-                        <p class="narrative-link">{% if c.story.relation == 'same event' %}📰 In the news: {% else %}🔗 Same issue as: {% endif %}{{ c.story.label|e }}</p>
+                        <div class="card-section"><p class="section-label">{% if c.story.relation == 'same event' %}📰 In the news{% else %}🔗 Same issue as{% endif %}</p>
+                        <p class="narrative-link">{{ c.story.label|e }}</p></div>
                     {% endif %}
                     {% if preview and c.examples %}
                         <details class="court-more"><summary>versions (preview only)</summary>
