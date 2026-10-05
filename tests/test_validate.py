@@ -68,6 +68,8 @@ def test_the_motif_board_regroups_moves_merges_and_unfiles(monkeypatch, tmp_path
     assert board['groups'] == [{'id': 'G01', 'name': 'the enemy within'}]
     assert [(e['id'], e['name'], e['group'], [c['claim'] for c in e['claims']]) for e in board['entries']] == [
         ('M001', 'blame shifting', 'G01', ['b']), ('M004', 'the crowd as threat', None, ['a'])]
+    validate.board_action({'action': 'also', 'claim': 'a', 'source': 'M004', 'target': 'M001'})  # kept in M004 too
+    assert [len(e['claims']) for e in mi.board()['entries']] == [2, 1] and mi.load()['claims'][mi.key('a')] == ['M004', 'M001']
     validate.board_action({'action': 'group_delete', 'group': 'G01'})
     assert mi.board()['entries'][0]['group'] is None
     with pytest.raises(ValueError):

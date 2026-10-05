@@ -348,6 +348,16 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .motif li .txt { flex: 1; } .motif li .src { color: #777; font-size: .85em; white-space: nowrap; }
 .motif li .ok { color: #00a37a; } .motif .acts { padding: 0 10px 8px; display: flex; gap: 5px; flex-wrap: wrap; }
 .more { color: #555; cursor: pointer; font-size: .8em; padding: 0 10px 6px; }
+.motif li .txt { cursor: pointer; } .motif li .txt:hover { text-decoration: underline dotted; }
+dialog { border: 2px solid #1f1f2e; border-radius: 14px; box-shadow: 6px 6px 0 #ffc400; width: min(640px, 94vw); max-height: 86vh;
+  padding: 12px 16px; background: #fffdf6; color: #1f1f2e; } dialog::backdrop { background: rgba(31, 31, 46, .35); }
+dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: absolute; right: 10px; top: 8px; }
+.now { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; } .now span { background: #e6f7f2; border: 1.5px solid #1f1f2e;
+  border-radius: 999px; padding: 1px 8px; font-size: .85em; }
+.pick { max-height: 46vh; overflow: auto; border-top: 1px dashed #ccc; margin-top: 6px; }
+.pick div { display: flex; gap: 6px; align-items: center; padding: 4px 2px; border-bottom: 1px dashed #eee; }
+.pick div .nm { flex: 1; } .pick div .ct { color: #777; font-size: .8em; }
+.newrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .newrow input { flex: 1; min-width: 12em; padding: 3px 8px; }
 @media (max-width: 700px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
 </style></head><body>
 <header>
@@ -368,6 +378,7 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 </aside>
 <section class="grid" id="grid"></section>
 </main>
+<dialog id="picker"><button class="small x" data-close="1">✕</button><div id="picker-body"></div></dialog>
 <script>
 let data = {groups: [], entries: []}, filter = 'all', held = null;
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -438,6 +449,7 @@ document.addEventListener('click', (ev) => {
   const e = data.entries.find((x) => x.id === m.dataset.id);
   if (ev.target.closest('[data-more]')) { expanded.has(e.id) ? expanded.delete(e.id) : expanded.add(e.id); render(); return; }
   const li = ev.target.closest('li');
+  if (li && ev.target.closest('.txt') && !held) { openPicker(li.dataset.claim, e.id); return; }
   if (b && li) {
     if (b.dataset.cact === 'hold') hold({type: 'claim', claim: li.dataset.claim, from: e.id});
     else if (b.dataset.cact === 'out' && confirm('Take this claim out of “' + e.name + '” for good?')) act({action: 'unfile', claim: li.dataset.claim, id: e.id});
@@ -453,6 +465,39 @@ document.addEventListener('click', (ev) => {
   }
   if (held) putOnMotif(e);
 });
+// Click a claim: its motifs now, and every other motif to move it to or file it under as well
+let pick = null;
+function openPicker(claim, from) { pick = {claim, from}; $('#picker').showModal(); drawPicker(''); }
+function drawPicker(q) {
+  const {claim, from} = pick, lower = q.trim().toLowerCase();
+  const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim));
+  let others = data.entries.filter((e) => !mine.includes(e) && (!lower || e.name.toLowerCase().includes(lower)
+    || e.claims.some((c) => c.claim.toLowerCase().includes(lower))));
+  others.sort((a, b) => (lower ? (b.name.toLowerCase().includes(lower) - a.name.toLowerCase().includes(lower)) : 0) || b.claims.length - a.claims.length);
+  const room = mine.length < 3;
+  $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
+    <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take it out of this motif for good">✗</button></span>`).join('')}</div>
+    <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
+    <div class="pick">${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
+      <button class="small" data-move="${e.id}">move here</button>${room ? `<button class="small" data-also="${e.id}">+ also here</button>` : ''}</div>`).join('') || '<p>No motif matches.</p>'}</div>
+    <div class="newrow"><input id="pick-new" placeholder="or a new motif's name"><button class="small" data-movenew="1">move to new</button>${room ? '<button class="small" data-alsonew="1">+ also as new</button>' : ''}</div>
+    ${room ? '' : '<p class="meta" style="font-size:.8em;color:#555">A claim carries three motifs at most: take it out of one to add another.</p>'}`;
+  const input = $('#pick-q'); input.focus(); input.setSelectionRange(q.length, q.length);
+  input.addEventListener('input', () => drawPicker(input.value));
+}
+$('#picker').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button'), {claim, from} = pick || {};
+  if (ev.target === $('#picker') || (b && b.dataset.close)) { $('#picker').close(); return; }
+  if (!b) return;
+  const name = ($('#pick-new') || {}).value || '';
+  const done = (body) => { $('#picker').close(); act(body); };
+  if (b.dataset.move) done({action: 'move', claim, source: from, target: b.dataset.move});
+  else if (b.dataset.also) done({action: 'also', claim, source: from, target: b.dataset.also});
+  else if (b.dataset.out && confirm('Take it out of this motif for good?')) done({action: 'unfile', claim, id: b.dataset.out});
+  else if (b.dataset.movenew && name.trim()) done({action: 'move_new', claim, source: from, name});
+  else if (b.dataset.alsonew && name.trim()) done({action: 'also_new', claim, source: from, name});
+});
+
 // Drag and drop on a computer: the same moves as picking up and tapping
 document.addEventListener('dragstart', (ev) => {
   const li = ev.target.closest && ev.target.closest('li[data-claim]'), m = ev.target.closest && ev.target.closest('.motif');
@@ -485,6 +530,10 @@ def board_action(data: dict):
     act = data.get('action')
     if act == 'move' and text('claim') and data.get('source') in live and data.get('target') in live:
         mi.move(data['claim'], data['source'], data['target'])
+    elif act == 'also' and text('claim') and data.get('source') in live and data.get('target') in live:
+        mi.also_file(data['claim'], data['source'], data['target'])
+    elif act == 'also_new' and text('claim') and data.get('source') in live and text('name'):
+        mi.also_file(data['claim'], data['source'], mi.add(data['name']))
     elif act == 'move_new' and text('claim') and data.get('source') in live and text('name'):
         mi.move(data['claim'], data['source'], mi.add(data['name']))
     elif act == 'unfile' and text('claim') and data.get('id') in live:

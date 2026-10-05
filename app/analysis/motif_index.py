@@ -513,3 +513,19 @@ def board() -> dict:
                             'checked': c.get('checked')} for c in e['claims']]}
                for e in live(index)]
     return {'groups': list(index.get('groups', {}).values()), 'entries': entries}
+
+
+@exclusive
+def also_file(claim: str, source: str, target: str):
+    """File a claim under another motif as well, keeping it where it is (a person's choice on the motif board)"""
+    index = load()
+    k = key(claim)
+    found = next((c for c in index['entries'][source]['claims'] if key(c['claim']) == k), None)
+    entry = index['entries'][target]
+    if found is None or entry.get('merged_into'):
+        raise ValueError(f'no such claim in {source}, or {target} is gone')
+    if not any(key(c['claim']) == k for c in entry['claims']):
+        entry['claims'].append({kk: v for kk, v in found.items() if kk != 'checked'})
+    entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
+    index['claims'][k] = list(dict.fromkeys(_ids(index, k) + [target]))
+    save(index)
