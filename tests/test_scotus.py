@@ -205,3 +205,14 @@ def test_story_glosses_cache_and_cap(monkeypatch, tmp_path):
 def test_paywall_badge_is_stripped():
     assert sc.PAYWALL.sub('', "This Content is Available for Slate Plus members only true Pike's Execution") == \
         "Pike's Execution"
+
+
+def test_companion_cases_with_one_question_are_one_case():
+    from app.analysis.scotus import companions
+    q = 'Whether the Second and Fourteenth Amendments guarantee the right to possess AR-15 platform rifles.'
+    cases = [{'docket': '25-238', 'name': 'Viramontes v. Cook County', 'question': q},
+             {'docket': '25-100', 'name': 'Other v. Case', 'question': 'Something else?'},
+             {'docket': '25-566', 'name': 'Grant v. Higgins', 'question': q.upper() + ' '},
+             {'docket': '25-1', 'name': 'No v. Question', 'question': ''}, {'docket': '25-2', 'name': 'Also v. None'}]
+    assert [[c['docket'] for c in g] for g in companions(cases)] == [['25-238', '25-566'], ['25-100'], ['25-1'],
+                                                                      ['25-2']]

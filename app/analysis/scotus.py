@@ -538,6 +538,32 @@ def side(row: dict) -> str:
     return 'left' if row['bias'] < 0 else 'right' if row['bias'] > 0 else 'center'
 
 
+def companions(cases: list[dict]) -> list[list[dict]]:
+    """The term's cases with companion cases together: two or more dockets the Court granted on the same question
+    presented (Oct 5: Viramontes v. Cook County and Grant v. Higgins, both asking whether the Second Amendment
+    protects AR-15s, set for argument the same day). Shown as one case, so their headlines aren't counted twice."""
+    groups, by_question = [], {}
+    for case in cases:
+        question = re.sub(r'\W+', ' ', (case.get('question') or '').lower()).strip()
+        if question and question in by_question:
+            by_question[question].append(case)
+        else:
+            group = [case]
+            groups.append(group)
+            if question:
+                by_question[question] = group
+    return groups
+
+
+def court_sort(text: str):
+    """A docket date ('12/2/26') as something that sorts."""
+    try:
+        m, d, y = (int(x) for x in text.split('/'))
+        return (y, m, d)
+    except (ValueError, AttributeError):
+        return (99, 99, 99)
+
+
 def coverage(now: dt = None) -> dict:
     """The last WINDOW_DAYS of US Supreme Court headlines, by the term's cases they're about (the rest together),
     with how many outlets covered each case, from which side and at which stage."""
@@ -586,7 +612,18 @@ def coverage(now: dt = None) -> dict:
             one_each.setdefault(r['agency'], r)
         return {'outlets': len(one_each), 'sides': dict(Counter(r['side'] for r in one_each.values())),
                 'stages': dict(Counter(r['stage'] for r in rows)), 'headlines': rows}
-    term_cases = [{**case, **summary(by_case[case['docket']])} for case in cases]
+    term_cases = []
+    for group in companions(cases):
+        rows = list({id(r): r for d in group for r in by_case[d['docket']]}.values())  # a headline once
+        first = group[0]
+        # Of the companions' glosses, the one naming no party (a gloss like "Cook County bans AR-15s" speaks for one)
+        parties = {w for d in group for w in re.findall(r'[A-Z][a-z]+', d['name']) if w not in ('Inc',)}
+        gloss = min((d.get('gloss') for d in group if d.get('gloss')), default=first.get('gloss'),
+                    key=lambda g: sum(w in parties for w in re.findall(r'[A-Z][a-z]+', g)))
+        term_cases.append({**first, **summary(rows), 'dockets': [d['docket'] for d in group], 'gloss': gloss,
+                           'name': ' and '.join(d['name'] for d in group),
+                           'argued': min((d['argued'] for d in group if d.get('argued')), default=first.get('argued'),
+                                         key=lambda a: court_sort(a))})
     covered = sorted([c for c in term_cases if c['headlines']], key=lambda c: (-c['outlets'], c['name']))
     topics = Counter(t for r in other for t in r['topics']).most_common()
     return {'term': docket().get('term'), 'source': docket().get('source'), 'covered': covered,

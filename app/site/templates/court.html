@@ -128,7 +128,7 @@
             {% for c in cards %}
                 <div class="story court-story" id="case-{{ c.docket }}">
                     <h4>{{ (c.gloss or c.name)|e }}</h4>
-                    <p class="court-meta"><a href="{{ c.docket_url }}">{{ c.name|e }}</a> · No. {{ c.docket }}
+                    <p class="court-meta"><a href="{{ c.docket_url }}">{{ c.name|e }}</a> · No. {{ (c.dockets or [c.docket])|join(', ') }}{% if c.dockets and c.dockets|length > 1 %} · companion cases: one question, argued together{% endif %}
                         {% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}</p>
                     <p class="court-stages">📰 <b>{{ c.outlets }}</b> outlet{{ 's' if c.outlets != 1 }}
                         {% for stage, n in c.stage_list %} · <span title="{{ stage }}">{{ stage_emoji[stage] }} {{ stage }} {{ n }}</span>{% endfor %}</p>
@@ -196,7 +196,7 @@
             <a class="court-quiet{% if c.outlets %} covered{% endif %}" data-outlets="{{ c.outlets }}" data-date="{{ loop.index0 }}" href="{% if c.outlets >= min_card %}#case-{{ c.docket }}{% else %}{{ c.docket_url }}{% endif %}" title="{{ c.name|e }}, No. {{ c.docket }}{% if c.question %}: {{ c.question[:300]|e }}{% endif %}">
                 {% if c.gloss %}<span class="court-gloss-tag">{{ c.gloss|e }}</span>{% endif %}
                 <span class="court-quiet-name">{{ c.name|e }}</span>
-                <span class="court-when">No. {{ c.docket }}{% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}
+                <span class="court-when">No. {{ (c.dockets or [c.docket])|join(', ') }}{% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}
                     · {% if c.outlets %}📰 {{ c.outlets }} outlet{{ 's' if c.outlets != 1 }}{% else %}no coverage{% endif %}</span>
             </a>
         {% endfor %}
