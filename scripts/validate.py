@@ -341,6 +341,8 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .motif.one { box-shadow: 3px 3px 0 #ddd; } .motif.held { opacity: .5; }
 .motif .head { padding: 7px 10px 4px; cursor: grab; border-bottom: 1px dashed #ccc; }
 .motif .name { font-weight: 700; } .motif .meta { font-size: .78em; color: #666; }
+.donebtn { float: right; margin-left: 6px; background: #c8f7c5; } .motif.isdone { opacity: .55; }
+.newpill { font-size: .75em; background: #ff4fa3; color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 .motif .gpill { font-size: .75em; background: #ffe9a8; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 .motif ul { list-style: none; margin: 0; padding: 4px 6px 6px; }
 .motif li { font-size: .85em; padding: 3px 4px; border-radius: 6px; cursor: grab; display: flex; gap: 4px; align-items: baseline; }
@@ -367,6 +369,8 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
   <input type="search" id="q" placeholder="search motifs and claims">
   <select id="sort"><option value="size">most claims</option><option value="new">newest</option><option value="az">A–Z</option></select>
   <label><input type="checkbox" id="multi"> only motifs with 2+ claims</label>
+  <label><input type="checkbox" id="showdone"> show done</label>
+  <button id="reset-done" title="Bring back every motif marked done">↺ reset done</button>
   <button id="add-motif">+ motif</button>
 </div>
 <div class="held-bar" id="held"></div>
@@ -407,7 +411,8 @@ function putOnGroup(gid) {
 function render() {
   const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
   const count = (g) => data.entries.filter((e) => (g === null ? !e.group : e.group === g)).length;
-  $('#stats').textContent = `${data.entries.length} motifs · ${data.entries.reduce((n, e) => n + e.claims.length, 0)} filings · ${data.entries.filter((e) => e.claims.length > 1).length} with 2+ claims`;
+  const showDone = $('#showdone').checked, left = data.entries.filter((e) => e.done !== 'done').length;
+  $('#stats').textContent = `${data.entries.length} motifs · ${data.entries.reduce((n, e) => n + e.claims.length, 0)} filings · ${data.entries.filter((e) => e.claims.length > 1).length} with 2+ claims · ${left} to go`;
   const gs = [{id: 'all', name: 'All motifs', n: data.entries.length}, {id: 'none', name: 'Ungrouped', n: count(null)}]
     .concat(data.groups.map((g) => ({...g, n: count(g.id)})));
   $('#groups').innerHTML = gs.map((g) => `<div class="group${filter === g.id ? ' on' : ''}" data-g="${g.id}"><span class="n">${g.n}</span>${esc(g.name)}`
@@ -415,14 +420,16 @@ function render() {
     + `<div class="group new" data-g="+">+ new group</div><div class="group new" data-g="newmotif">+ new motif from the held claim</div>`;
   let list = data.entries.filter((e) => filter === 'all' || (filter === 'none' ? !e.group : e.group === filter))
     .filter((e) => !multi || e.claims.length > 1)
+    .filter((e) => showDone || e.done !== 'done')
     .filter((e) => !q || (e.name + ' ' + e.claims.map((c) => c.claim).join(' ')).toLowerCase().includes(q));
   list.sort(sort === 'az' ? (a, b) => a.name.localeCompare(b.name) : sort === 'new' ? (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id)
     : (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id));
   const gname = Object.fromEntries(data.groups.map((g) => [g.id, g.name]));
   $('#grid').innerHTML = list.map((e) => {
     const shown = expanded.has(e.id) ? e.claims : e.claims.slice(0, 6);
-    return `<article class="motif${e.claims.length < 2 ? ' one' : ''}${held && held.type === 'motif' && held.id === e.id ? ' held' : ''}" data-id="${e.id}" draggable="true">
-      <div class="head"><span class="name">${esc(e.name)}</span>${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
+    return `<article class="motif${e.done === 'done' ? ' isdone' : ''}${e.claims.length < 2 ? ' one' : ''}${held && held.type === 'motif' && held.id === e.id ? ' held' : ''}" data-id="${e.id}" draggable="true">
+      <div class="head">${e.done === 'done' ? '<button class="small donebtn" data-mact="undone" title="Show it again">↺ not done</button>'
+          : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? '<span class="newpill" title="Marked done, then a new claim came in">new since you looked</span>' : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li draggable="true" data-claim="${esc(c.claim)}" class="${held && held.type === 'claim' && held.claim === c.claim && held.from === e.id ? 'held' : ''}">
         <span class="txt">${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
@@ -460,6 +467,7 @@ document.addEventListener('click', (ev) => {
     if (a === 'hold') hold({type: 'motif', id: e.id, name: e.name});
     else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
     else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
+    else if (a === 'done' || a === 'undone') act({action: 'done', id: e.id, done: a === 'done'});
     else if (a === 'delete' && confirm(`Delete “${e.name}”? Its ${e.claims.length} claims keep their other motifs and aren't filed here again.`)) act({action: 'delete', id: e.id});
     return;
   }
@@ -525,8 +533,9 @@ document.addEventListener('drop', (ev) => {
   else if (g && held && held.type === 'motif') g.dataset.g.startsWith('G') ? putOnGroup(g.dataset.g) : g.dataset.g === 'none' ? act({action: 'group_assign', id: held.id, group: null}) : drop();
   else drop();
 });
+$('#reset-done').addEventListener('click', () => { if (confirm('Bring back every motif marked done?')) act({action: 'reset_done'}); });
 $('#add-motif').addEventListener('click', () => { const n = prompt('Name the new motif (claims can be moved into it)'); if (n) act({action: 'add', name: n}); });
-['#q', '#sort', '#multi'].forEach((s) => $(s).addEventListener('input', render));
+['#q', '#sort', '#multi', '#showdone'].forEach((s) => $(s).addEventListener('input', render));
 fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
 </script></body></html>"""
 
@@ -548,6 +557,10 @@ def board_action(data: dict):
         mi.move(data['claim'], data['source'], mi.add(data['name']))
     elif act == 'unfile' and text('claim') and data.get('id') in live:
         mi.unfile(data['claim'], data['id'])
+    elif act == 'done' and data.get('id') in live:
+        mi.mark_done(data['id'], bool(data.get('done', True)))
+    elif act == 'reset_done':
+        mi.reset_done()
     elif act == 'group_add' and text('name'):
         mi.group_add(data['name'])
     elif act == 'group_rename' and data.get('group') in index.get('groups', {}) and text('name'):

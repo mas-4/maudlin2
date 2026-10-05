@@ -508,6 +508,7 @@ def board() -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
     index = load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
+                'done': is_done(e),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
                             'checked': c.get('checked')} for c in e['claims']]}
@@ -529,3 +530,32 @@ def also_file(claim: str, source: str, target: str):
     entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
     index['claims'][k] = list(dict.fromkeys(_ids(index, k) + [target]))
     save(index)
+
+
+# Done marks from the motif board: a person working through the index hides each motif once they've looked it over.
+# A motif is done while every claim it holds was there when it was marked; a new claim brings it back.
+
+@exclusive
+def mark_done(eid: str, done: bool = True):
+    index = load()
+    entry = index['entries'][eid]
+    if done:
+        entry['done'] = sorted(key(c['claim']) for c in entry['claims'])
+    else:
+        entry.pop('done', None)
+    save(index)
+
+
+@exclusive
+def reset_done():
+    index = load()
+    for entry in index['entries'].values():
+        entry.pop('done', None)
+    save(index)
+
+
+def is_done(entry: dict) -> str | None:
+    """'done', 'new' (marked done, then a claim came in), or None"""
+    if 'done' not in entry:
+        return None
+    return 'done' if {key(c['claim']) for c in entry['claims']} <= set(entry['done']) else 'new'

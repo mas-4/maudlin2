@@ -130,3 +130,17 @@ def test_moving_a_claim_to_a_new_motif_doesnt_wait_on_itself(monkeypatch, tmp_pa
              'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
     mi.move('a', 'M001', 'new')
     assert mi.load()['claims'][mi.key('a')] == ['M002']
+
+
+def test_done_marks_hide_a_motif_until_a_new_claim_comes_in(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']},
+             'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
+    mi.mark_done('M001')
+    assert mi.board()['entries'][0]['done'] == 'done'
+    index = mi.load()
+    index['entries']['M001']['claims'].append({'claim': 'b', 'source': 's'})
+    mi.save(index)
+    assert mi.board()['entries'][0]['done'] == 'new'  # back, flagged
+    mi.reset_done()
+    assert mi.board()['entries'][0]['done'] is None
