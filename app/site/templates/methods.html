@@ -1,0 +1,14 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>📓 Methods log</h2>
+    <p class="poll-note">Every change to how bignews.day collects or measures things, dated, newest first, including
+        what we tried that didn't work and the mistakes we caught. A chart or a number that crosses one of these dates
+        should be read with the change in mind. How each measure works today is on <a href="glossary.html">How it
+        works</a>; this is how it got that way. Scores in our data carry the model and rubric that made them from
+        Oct 3, 2026 on.</p>
+    {% if days %}<p class="methods-days">Jump to: {% for d in days %}<a href="#{{ d }}">{{ d }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    <article class="methods-log">
+        {{ log }}
+    </article>
+{% endblock %}

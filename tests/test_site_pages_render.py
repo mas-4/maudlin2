@@ -522,3 +522,16 @@ def test_beyond_page_tags_pieces_and_lists_every_source(monkeypatch, tmp_path):
 
 def test_front_page_has_no_link_list_blocks(front):
     assert front.select_one('#investigations') is None and front.select_one('#shows') is None
+
+
+def test_methods_page_publishes_the_log(monkeypatch, tmp_path):
+    from app.site import page_methods as pm
+    log = tmp_path / 'log.md'
+    log.write_text('# Methods log\n\nIntro paragraph.\n\n## 2026-10-05\n- **A change.** It <b>matters</b>.\n\n'
+                   '## 2026-10-04\n- Another.\n')
+    monkeypatch.setattr(pm, 'LOG', str(log))
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    pm.MethodsPage().generate()
+    html = (tmp_path / 'methods.html').read_text()
+    assert '<h2 id="2026-10-05">2026-10-05</h2>' in html and '<strong>A change.</strong>' in html
+    assert 'href="#2026-10-04"' in html and 'Intro paragraph' not in html
