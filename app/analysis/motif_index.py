@@ -510,8 +510,10 @@ def board() -> dict:
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
                 'done': is_done(e),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
+                # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
-                            'checked': c.get('checked')} for c in e['claims']]}
+                            'checked': c.get('checked'), 'new': 'done' in e and key(c['claim']) not in e['done']}
+                           for c in e['claims']]}
                for e in live(index)]
     return {'groups': list(index.get('groups', {}).values()), 'entries': entries}
 

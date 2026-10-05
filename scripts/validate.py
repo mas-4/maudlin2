@@ -346,7 +346,8 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 .motif .gpill { font-size: .75em; background: #ffe9a8; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 .motif ul { list-style: none; margin: 0; padding: 4px 6px 6px; }
 .motif li { font-size: .85em; padding: 3px 4px; border-radius: 6px; cursor: grab; display: flex; gap: 4px; align-items: baseline; }
-.motif li:hover { background: #f4f1e6; } .motif li.held { background: #ffc400; }
+.motif li:hover { background: #f4f1e6; }
+.motif li.newclaim { background: #ffe0ef; border-left: 4px solid #ff4fa3; } .motif li .newtag { color: #c2185b; font-weight: 700; font-size: .8em; } .motif li.held { background: #ffc400; }
 .motif li .txt { flex: 1; } .motif li .src { color: #777; font-size: .85em; white-space: nowrap; }
 .motif li .ok { color: #00a37a; } .motif .acts { padding: 0 10px 8px; display: flex; gap: 5px; flex-wrap: wrap; }
 .more { color: #555; cursor: pointer; font-size: .8em; padding: 0 10px 6px; }
@@ -427,13 +428,15 @@ function render() {
     : (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id));
   const gname = Object.fromEntries(data.groups.map((g) => [g.id, g.name]));
   $('#grid').innerHTML = list.map((e) => {
-    const shown = expanded.has(e.id) ? e.claims : e.claims.slice(0, 6);
+    // New claims (since the motif was marked done) first, so they're never hidden behind 'show all'
+    const ordered = [...e.claims.filter((c) => c.new), ...e.claims.filter((c) => !c.new)];
+    const shown = expanded.has(e.id) ? ordered : ordered.slice(0, Math.max(6, e.claims.filter((c) => c.new).length));
     return `<article class="motif${e.done === 'done' ? ' isdone' : ''}${e.claims.length < 2 ? ' one' : ''}${held && held.type === 'motif' && held.id === e.id ? ' held' : ''}" data-id="${e.id}" draggable="true">
       <div class="head">${e.done === 'done' ? '<button class="small donebtn" data-mact="undone" title="Show it again">↺ not done</button>'
-          : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? '<span class="newpill" title="Marked done, then a new claim came in">new since you looked</span>' : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
+          : '<button class="small donebtn" data-mact="done" title="Hide it: you\'re done with it">✓ done</button>'}<span class="name">${esc(e.name)}</span>${e.done === 'new' ? `<span class="newpill" title="Marked done, then new claims came in: they're highlighted, first">${e.claims.filter((c) => c.new).length} new since you looked</span>` : ''}${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
-      <ul>${shown.map((c) => `<li draggable="true" data-claim="${esc(c.claim)}" class="${held && held.type === 'claim' && held.claim === c.claim && held.from === e.id ? 'held' : ''}">
-        <span class="txt">${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
+      <ul>${shown.map((c) => `<li draggable="true" data-claim="${esc(c.claim)}" class="${held && held.type === 'claim' && held.claim === c.claim && held.from === e.id ? 'held' : ''}${c.new ? ' newclaim' : ''}">
+        <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
         <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
         <button class="small" data-cact="hold" title="pick up, then tap a motif">✋</button><button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
