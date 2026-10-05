@@ -139,7 +139,7 @@ def match(index: dict, phrase: str, claim: str) -> str | None:
     return entries[top[int(answer['pick']) - 1]]['id'] if answer and answer['pick'] != 'new' else None
 
 
-def file_claims(claims: list[dict], limit: int = MAX_NEW) -> dict:
+def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None = None) -> dict:
     """File each claim ({'claim', 'source': 'narrative' or a fact-checker's name, 'ref', 'side'}) under a motif,
     creating entries as needed. Claims already filed are left where they are. Returns the index."""
     index = load()
@@ -147,7 +147,13 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW) -> dict:
     if not todo or llm.backend() is None:
         return index
     today = dt.now().strftime('%Y-%m-%d')
-    for c in todo:
+    import time
+    started = time.time()
+    for n, c in enumerate(todo):
+        if budget is not None and time.time() - started > budget:
+            break  # the next run picks up where this one stopped
+        if n and n % 5 == 0:
+            save(index)  # as it goes: a run cut short keeps what it filed
         named = llm.complete_json(NAME_PROMPT.format(claim=c['claim']), NAME_SCHEMA, max_tokens=160, model=MODEL)
         if not named:
             continue
@@ -173,8 +179,9 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW) -> dict:
     return index
 
 
-def nightly():
-    """File the latest report's narratives and the last 30 days' fact-checked claims."""
+def nightly(budget: float | None = None):
+    """File the latest report's narratives and the last 30 days' fact-checked claims not filed yet, for at most
+    `budget` seconds."""
     from app.analysis import factchecks
     from app.site.page_folklore import latest_report
     claims = []
@@ -194,7 +201,7 @@ def nightly():
         if lab.get('claim') and lab.get('genre') not in NOT_STORIES:  # a roundup or explainer checks no rumor
             claims.append({'claim': lab['claim'], 'source': item['source'], 'ref': item['url'],
                            'date': item['published'][:10]})
-    return file_claims(claims)
+    return file_claims(claims, budget=budget)
 
 
 # Curation, from the organizer on the label-check page (scripts/validate.py). A curated name is kept as given; a

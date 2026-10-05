@@ -22,6 +22,7 @@ import threading
 
 logger = get_logger(__name__)
 NARRATIVE_HOUR = 4  # the run that writes the day's narrative report
+MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
 QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
 
@@ -180,8 +181,10 @@ def main(args: argparse.Namespace):
             from app.analysis import circulation
             narratives.report(hours=24)
             circulation.nightly()  # which fact-checked rumors people are telling or arguing over (#153)
-            from app.analysis import motif_index
-            motif_index.nightly()  # file the day's claims in our own motif index (#145)
+        # New claims into our own motif index (#145), a few minutes a run with the bigger model, so a night with a
+        # long report can't push a run past its time limit; what's left waits for the next run
+        from app.analysis import motif_index
+        motif_index.nightly(budget=MOTIF_BUDGET)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 
