@@ -52,3 +52,10 @@ def test_curation_merge_rename_move_delete(monkeypatch, tmp_path):
     assert [e['id'] for e in mi.entries_of(index, 'c')] == ['M001']  # its other motif stays
     mi.not_same('M001', 'M002')
     assert ['M001', 'M002'] in mi.load()['not_same']
+
+
+def test_naming_prompt_has_no_example_names_to_copy():
+    # The model copied prompt examples before ("the false flag", "the hidden ruler"); quoted examples invite it
+    import re
+    quoted = re.findall(r'"([^"{}]+)"', mi.NAME_PROMPT)
+    assert all(q in ('a claim that', 'is accused of', "X is / isn't Y") for q in quoted), quoted

@@ -40,15 +40,17 @@ MAX_NEW = 200  # claims filed a run, at most
 NAME_PROMPT = """A claim people are telling or arguing over:
 {claim}
 
-Name the recurring rumor or narrative shapes it is an instance of: one to three, each a reusable framing in under \
-ten words, a shape that would fit the same kind of story told about other people, places or years. A story often \
+Name the recurring rumor or narrative shapes it is an instance of: one to three, each a short reusable framing of \
+three to seven words, terse like a folklorist's label or a proverb (a subject and what it does or is), without \
+hedges such as "a claim that" or "is accused of": a shape that would fit the same kind of story told about \
+other people, places or years. A story often \
 carries more than one shape (who is blamed, what is feared, what is hoped); give each separately, the main one \
 first, and don't pad: most claims have one or two. No names of people, places, organizations or dates. A contested \
 framing can be two-sided ("X is / isn't Y"). Judge the shapes as the tellers tell the story, not whether it's true. \
 Check each name: would it still fit if the people and the event were different? If it only describes this one \
 event, make it more general; if it would fit almost any story, make it more specific."""
 NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 1, "maxItems": 3,
-                                                          "items": {"type": "string", "maxLength": 80}}},
+                                                          "items": {"type": "string", "maxLength": 60}}},
                "required": ["motifs"]}
 MATCH_PROMPT = """A rumor shape: {phrase}
 (from the claim: {claim})
