@@ -27,7 +27,7 @@ from app.models import Session, Headline
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
-from app.site.wordcloudgen import cloud_words
+from app.site.wordcloudgen import cloud_words, mark_new
 from app.site.graphing import bias_colors, bias_ink
 from app.utils import Config, Country, get_logger
 from app.registry import Scrapers
@@ -279,7 +279,7 @@ class HeadlinesPage:
                                                          'vader_compound', 'event_score', 'loaded_score',
                                                          'emotion_ranks']].copy()
         cloud['sentiment'] = headline_sentiment(cloud)
-        self.context['cloud_words'] = cloud_words(cloud)
+        self.context['cloud_words'] = mark_new(cloud_words(cloud), save=not Config.debug)  # ✨ words new to the cloud
         self.context['bias_colors'] = bias_colors
         self.context['bias_ink'] = bias_ink
         df = self.filter_score_sort(self.dh.main_headline_df.copy())

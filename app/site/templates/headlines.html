@@ -432,6 +432,16 @@
                         wiggle.appendChild(e);
                     });
                 }
+                if (d.new) {
+                    // ✨ at the word's top right: not in the cloud during the day before
+                    const n = document.createElementNS(ns, 'text');
+                    n.textContent = '✨';
+                    n.setAttribute('class', 'cloud-new');
+                    n.setAttribute('font-size', Math.max(10, d.px * 0.42));
+                    n.setAttribute('x', t.getComputedTextLength() / 2 - d.px * 0.1);
+                    n.setAttribute('y', -d.px * 0.55);
+                    wiggle.appendChild(n);
+                }
                 paperCutout(wiggle, d.px, d.spice);
                 // Bring the word and its paper to the top of the pile while it's pointed at or focused (SVG stacks by
                 // document order, so it moves to the end)

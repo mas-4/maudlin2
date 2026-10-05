@@ -103,6 +103,8 @@ def site(data_handler, tmp_path_factory):
     event.listen(engine, 'before_cursor_execute', no_writes)
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(Config, 'build', str(build))
+        from app.site import wordcloudgen
+        mp.setattr(wordcloudgen, 'CLOUD_HISTORY', str(build / 'cloud_history.json'))  # never the real history
         mp.setattr(socket.socket, 'connect', refuse_connection)
         mp.setattr(llm, 'backend', lambda: None)
         mp.setattr(ph, 'sync_stories', lambda df: {})

@@ -1,5 +1,7 @@
+import json
 import os
 import string
+from datetime import datetime, timedelta
 from functools import partial
 from typing import Callable, Optional
 
@@ -10,6 +12,7 @@ from wordcloud import WordCloud
 from app.analysis import textnorm
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.pipelines import Pipelines, STOPWORDS, prepare
+from app.utils import Config
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -250,3 +253,33 @@ def generate_wordcloud(df: pd.DataFrame, path: str, pipeline: Optional[list[Call
     wc.generate_from_frequencies(terms['outlets'].to_dict())
     wc.to_file(path)
     logger.debug("Saved wordcloud to %s", path)
+
+
+# Words new to the cloud: each production run keeps the cloud's words (CLOUD_HISTORY, two days of runs); a word is
+# new when no cloud in the NEW_WINDOW before had it. Until the history covers MIN_HISTORY, nothing is called new (the
+# first run would call every word new). Preview builds read the history but never add to it.
+CLOUD_HISTORY = os.path.join(Config.data, 'cloud_history.json')
+NEW_WINDOW = timedelta(hours=24)
+MIN_HISTORY = timedelta(hours=6)
+KEEP_HISTORY = timedelta(hours=48)
+
+
+def mark_new(words: list[dict], now: datetime | None = None, save: bool = True) -> list[dict]:
+    now = now or datetime.utcnow()
+    try:
+        with open(CLOUD_HISTORY) as f:
+            history = [h for h in json.load(f) if now - datetime.fromisoformat(h['at']) <= KEEP_HISTORY]
+    except (OSError, ValueError):
+        history = []
+    recent = [h for h in history if now - datetime.fromisoformat(h['at']) <= NEW_WINDOW]
+    covered = recent and now - min(datetime.fromisoformat(h['at']) for h in recent) >= MIN_HISTORY
+    seen = {w for h in recent for w in h['words']}
+    for w in words:
+        w['new'] = bool(covered and w['text'] not in seen)
+        if w['new']:
+            w['tip'] += ' · ✨ new to the cloud'
+    if save:
+        history.append({'at': now.isoformat(timespec='seconds'), 'words': [w['text'] for w in words]})
+        with open(CLOUD_HISTORY, 'w') as f:
+            json.dump(history, f)
+    return words
