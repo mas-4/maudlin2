@@ -190,3 +190,58 @@ def unmerge(name: str):
     book = load_aliases()
     book['aliases'][name.lower()] = name
     save_aliases(book)
+
+
+def saved_story_headlines() -> dict:
+    """Every saved story's headlines, keyed as of_stories keys them ('s' + its id)"""
+    from app.models import Session, Story, StoryHeadline, Headline
+    with Session() as s:
+        rows = s.query(Story.id, Headline.title).join(StoryHeadline, StoryHeadline.story_id == Story.id).join(
+            Headline, Headline.id == StoryHeadline.headline_id).all()
+    out = {}
+    for sid, title in rows:
+        out.setdefault(f's{sid}', []).append(title)
+    return out
+
+
+def history(least: int = 2) -> list[dict]:
+    """Each name over time, for the names page: every saved story that names it (by its canonical name) with when it
+    was on the front pages and how many outlets had it, and the outlets on all of them by lean. Names in at least
+    `least` stories, most stories first. Uses the names already found (of_stories), asking the model nothing."""
+    from app.models import Session, Story, StoryHeadline, Headline, Article, Agency
+    try:
+        with open(CACHE) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        return []
+    aliases = load_aliases()['aliases']
+    with Session() as s:
+        stories = {f's{sid}': {'id': sid, 'label': label, 'first': first, 'last': last}
+                   for sid, label, first, last in s.query(Story.id, Story.label, Story.first_seen, Story.last_seen)}
+        rows = s.query(StoryHeadline.story_id, Agency.name, Agency._bias, Agency.lean_rated).join(
+            Headline, Headline.id == StoryHeadline.headline_id).join(Article, Article.id == Headline.article_id).join(
+            Agency, Agency.id == Article.agency_id).all()
+    outlets = {}
+    for sid, agency, bias, rated in rows:
+        side = ('left' if bias < 0 else 'right' if bias > 0 else 'center') if rated else 'unrated'
+        outlets.setdefault(f's{sid}', {})[agency] = side
+    names = {}
+    for k, found in cache.items():
+        if k not in stories:
+            continue  # a cluster key, never saved as a story
+        for n in dict.fromkeys(canonical(x, aliases) for x in found):
+            if n.lower() in EVERYWHERE:
+                continue
+            entry = names.setdefault(n.lower(), {'name': n, 'stories': [], 'outlets': {}})
+            st = stories[k]
+            entry['stories'].append({**st, 'outlets': len(outlets.get(k, {}))})
+            entry['outlets'].update(outlets.get(k, {}))
+    out = []
+    for e in names.values():
+        if len(e['stories']) < least:
+            continue
+        e['stories'].sort(key=lambda st: st['first'])
+        sides = {side: sum(1 for v in e['outlets'].values() if v == side) for side in ('left', 'center', 'right', 'unrated')}
+        out.append({'name': e['name'], 'stories': e['stories'], 'first': e['stories'][0]['first'],
+                    'last': max(st['last'] for st in e['stories']), 'outlets': len(e['outlets']), **sides})
+    return sorted(out, key=lambda e: (-len(e['stories']), e['name']))

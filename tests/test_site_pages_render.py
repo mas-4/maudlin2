@@ -28,11 +28,12 @@ from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
 from app.site.page_sagas import SagasPage
+from app.site.page_names import NamesPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
-         'sagas.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
+         'sagas.html', 'names.html']
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
              'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -114,6 +115,11 @@ def site(data_handler, tmp_path_factory):
         # A/B tests: a canned one, so the section renders before the database has the table (prod migrates it)
         mp.setattr(abtests, 'tests', lambda: [AB_TEST])
         mp.setattr(sagas, 'history', lambda: [dict(SAGA, parts=[dict(p) for p in SAGA['parts']])])
+        from app.analysis import entities
+        mp.setattr(entities, 'history', lambda: [{'name': 'Donald <Trump>', 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 5, 13),
+            'outlets': 66, 'left': 30, 'center': 10, 'right': 20, 'unrated': 6, 'stories': [
+                {'id': 26, 'label': 'Trump <rallies>', 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 4, 1), 'outlets': 20},
+                {'id': 70, 'label': 'Trump defends tariffs', 'first': dt(2026, 10, 4, 22), 'last': dt(2026, 10, 5, 13), 'outlets': 40}]}])
         # The Supreme Court page: canned coverage (the real one asks the language model and reads the docket file)
         mp.setattr(scotus, 'coverage', lambda: COURT)
         mp.setattr(scotus, 'refresh_docket', lambda: None)
@@ -135,7 +141,7 @@ def site(data_handler, tmp_path_factory):
         headlines = ph.HeadlinesPage(dh)
         try:
             headlines.generate()
-            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage):
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage, NamesPage):
                 page(data_handler).generate()
         finally:
             event.remove(engine, 'before_cursor_execute', no_writes)
@@ -573,3 +579,11 @@ def test_saga_tracker_lays_out_parts_on_a_timeline(site):
     assert first.select_one('.saga-bar')['style'].startswith('left: 0.0%')
     assert 'first on AP, BBC' in first.get_text() and 'first on 4 outlets at once' in second.get_text()
     assert [s.get_text() for s in card.select('.saga-lean span')] == ['17', '12', '10']
+
+
+def test_names_page_tracks_each_name_day_by_day(site):
+    card = site['soup']['names.html'].select_one('.name-card')
+    assert card.select_one('h3').get_text() == '🗣️ Donald <Trump>' and card['data-now'] == '1'
+    assert [li.select_one('.saga-part-title').get_text() for li in card.select('.saga-timeline li')] == \
+        ['Trump defends tariffs', 'Trump <rallies>']  # newest first, escaped
+    assert len(card.select('.name-day')) == 3  # Oct 3, 4 and 5

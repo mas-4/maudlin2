@@ -1031,7 +1031,7 @@ body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; 
 nav a { margin-right: 1em; } .card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 8px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #00c2a8; }
 .card.done { opacity: .4; box-shadow: none; } .meta { color: #666; font-size: .85em; } h3 { margin: .2em 0; font-size: 1.05em; }
 .claim { margin: .2em 0 .5em; } .sug { display: flex; gap: 6px; align-items: center; padding: 3px 0; border-top: 1px dashed #ddd; flex-wrap: wrap; }
-.sug .nm { flex: 1; min-width: 12em; } button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 2px 10px; cursor: pointer; }
+.sug .nm { flex: 1; min-width: 12em; } .sug.same { background: #fff3c4; border-radius: 6px; } button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 2px 10px; cursor: pointer; }
 button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; }
 </style></head><body>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Single motifs</b> <a href="/entities">Names</a></nav>
@@ -1053,9 +1053,9 @@ function draw() {
   document.getElementById('list').innerHTML = items.map((s, n) => `<div class="card" id="s${n}">
     <h3>🧩 ${esc(s.name)} <span class="meta">${s.id}</span></h3>
     <p class="claim">${esc(s.claim)} <span class="meta">${esc(s.source === 'narrative' ? 'online' : s.source)}</span></p>
-    ${s.suggest.map((m, k) => `<div class="sug"><span class="nm">🧩 ${esc(m.name)} <span class="meta">${m.size} claim${m.size === 1 ? '' : 's'} · ${m.score.toFixed(2)}</span></span>
+    ${s.suggest.map((m, k) => `<div class="sug${m.same_claim ? ' same' : ''}"><span class="nm">🧩 ${esc(m.name)} <span class="meta">${m.same_claim ? '<b>same claim</b>' : `${m.size} claim${m.size === 1 ? '' : 's'} · ${m.score.toFixed(2)}`}</span></span>
       <button class="add" data-n="${n}" data-k="${k}" data-do="merge" title="${esc(s.name)} goes; its claim joins ${esc(m.name)}">⤵ merge into</button>
-      <button data-n="${n}" data-k="${k}" data-do="also" title="file the claim under ${esc(m.name)} too; ${esc(s.name)} stays">+ file here too</button></div>`).join('')}
+      ${m.same_claim ? '' : `<button data-n="${n}" data-k="${k}" data-do="also" title="file the claim under ${esc(m.name)} too; ${esc(s.name)} stays">+ file here too</button>`}</div>`).join('')}
     <div class="row"><button data-n="${n}" data-do="alone">✓ stands alone</button></div></div>`).join('') || '<p>None left. 🎉</p>';
 }
 document.addEventListener('click', async (ev) => {
@@ -1065,7 +1065,11 @@ document.addEventListener('click', async (ev) => {
   if (b.dataset.do === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
   else if (b.dataset.do === 'also') ok = await act({action: 'also', claim: s.claim, source: s.id, target: m.id});
   else ok = await act({action: 'stands_alone', id: s.id});
-  if (ok) { const card = document.getElementById('s' + b.dataset.n); card.classList.add('done'); card.querySelectorAll('button').forEach((x) => x.disabled = true); }
+  if (ok) {
+    // This card, and after a merge the target's own card (no longer holding one claim), are done
+    const ids = new Set([s.id].concat(b.dataset.do === 'merge' ? [m.id] : []));
+    items.forEach((x, i) => { if (ids.has(x.id)) { const card = document.getElementById('s' + i); card.classList.add('done'); card.querySelectorAll('button').forEach((y) => y.disabled = true); } });
+  }
 });
 fetch('/motif-singles.json').then((r) => r.json()).then((d) => { items = d; draw(); });
 </script></body></html>"""

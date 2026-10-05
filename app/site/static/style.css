@@ -3908,3 +3908,36 @@ h1 {
     margin: 0 0 0 0.3em;
     box-shadow: 1px 1px 0 #1f1f2e;
 }
+
+/* Who's in the news: a small bar per day, how many stories named the subject on the front pages that day */
+.name-days {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 3.4em;
+    margin: 0.3em 0 0.5em;
+}
+
+.name-day {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    height: 100%;
+    max-width: 2.6em;
+}
+
+.name-bar {
+    display: block;
+    width: 100%;
+    min-height: 2px;
+    background: var(--saga);
+    border: 1.5px solid #1f1f2e;
+    border-radius: 4px 4px 0 0;
+}
+
+.name-day-label {
+    font-size: 0.65em;
+    color: #666;
+}

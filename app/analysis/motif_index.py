@@ -817,12 +817,16 @@ def single_suggestions(n: int = 5) -> list[dict]:
     for e, cv in zip(singles, claims_v):
         k = key(e['claims'][0]['claim'])
         sims = motifs_v @ cv
+        # Motifs already holding this very claim first: two names for one claim are the likeliest merge of all
+        siblings = [m for m in entries if m['id'] != e['id'] and any(key(c['claim']) == k for c in m['claims'])]
         picks = [(entries[i], float(sims[i])) for i in np.argsort(-sims)
                  if entries[i]['id'] != e['id'] and k not in entries[i].get('not_claims', [])
                  and not any(key(c['claim']) == k for c in entries[i]['claims'])][:n]
         out.append({'id': e['id'], 'name': e['name'], 'claim': e['claims'][0]['claim'],
                     'source': e['claims'][0].get('source', ''),
-                    'suggest': [{'id': m['id'], 'name': m['name'], 'size': len(m['claims']), 'score': round(s, 3)}
+                    'suggest': [{'id': m['id'], 'name': m['name'], 'size': len(m['claims']), 'score': 1.0, 'same_claim': True}
+                                for m in siblings] +
+                               [{'id': m['id'], 'name': m['name'], 'size': len(m['claims']), 'score': round(s, 3)}
                                 for m, s in picks]})
     return sorted(out, key=lambda s: -(s['suggest'][0]['score'] if s['suggest'] else 0))
 

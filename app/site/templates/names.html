@@ -1,0 +1,64 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>🗣️ Who's in the news</h2>
+    <p class="table-intro">The people, countries, places, organizations and groups our stories name, over time: every
+        story that named them since our records began (Oct 2, 2026), how many of those stories were on the front pages
+        each day, and the outlets that covered them by lean. A local language model reads each story's headlines for the
+        names, kept only if the headlines contain them; different names for one subject (Trump, Donald Trump) are merged
+        by hand. A name in two or more stories is listed.</p>
+    {% if names %}
+        <div class="table-filters story-sort saga-tools" role="group" aria-label="Search and filter names">
+            <span class="bar-group"><input type="search" class="edit-search" id="name-search" placeholder="🔎 search names and stories" aria-label="Search names"></span>
+            <span class="bar-group"><span class="bar-label">only:</span>
+            <button data-filter="now" class="toggle" title="Only names in a story on the front pages now">📰 in the news now</button></span>
+        </div>
+        <div class="saga-track-cards name-cards">
+            {% for n in names %}
+                <div class="saga-card saga-track name-card" style="--saga: #7a5cff" data-text="{{ n.text|e }}"{% if n.now %} data-now="1"{% endif %}>
+                    <h3>🗣️ {{ n.name|e }}</h3>
+                    <p class="saga-facts">{% if n.now %}<span class="saga-live">📰 in the news now</span> · {% endif %}{{ n.stories|length }} stories · {{ n.outlets }} outlets · since {{ n.since }} ET</p>
+                    <div class="name-days" title="Stories naming {{ n.name|e }} on the front pages each day">
+                        {% for c in n.per_day %}<span class="name-day" title="{{ days[loop.index0] }}: {{ c }} {{ 'story' if c == 1 else 'stories' }}"><span class="name-bar" style="height: {{ (100 * c / n.peak)|round|int }}%"></span><span class="name-day-label">{{ days[loop.index0].split(' ')[1] }}</span></span>{% endfor %}
+                    </div>
+                    <div class="saga-lean" title="Outlets on any of these stories: {{ n.left }} left, {{ n.center }} center, {{ n.right }} right{% if n.unrated %}, {{ n.unrated }} unrated{% endif %}">
+                        {% for side in ('left', 'center', 'right') %}{% if n.shares[side] %}<span class="saga-lean-{{ side }}" style="width: {{ n.shares[side] }}%">{{ n[side] }}</span>{% endif %}{% endfor %}
+                    </div>
+                    <ol class="saga-timeline">
+                        {% for st in n.stories|reverse %}
+                            <li{% if st.now %} class="saga-now"{% endif %}>
+                                <p class="saga-part-title">{% if st.now %}<a href="index.html#s-{{ st.id }}" title="This story on the front page">{{ st.label|e }}</a>{% else %}{{ st.label|e }}{% endif %}</p>
+                                <p class="saga-part-facts">{{ st.when }} ET to {{ st.until }}{% if st.until != 'now' %} ET{% endif %} · {{ st.outlets }} outlet{{ '' if st.outlets == 1 else 's' }}</p>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            {% endfor %}
+        </div>
+        <p class="edit-count saga-count" aria-live="polite"></p>
+        <script>
+            (function () {
+                const box = document.querySelector('.name-cards');
+                const all = [...box.querySelectorAll('.name-card')];
+                const repack = packColumns(box, all, 360);
+                const count = document.querySelector('.saga-count');
+                let words = [], now = false;
+                function apply() {
+                    const shown = all.filter((c) => (!now || c.dataset.now) && words.every((w) => c.dataset.text.includes(w)));
+                    repack(shown);
+                    count.textContent = shown.length === all.length ? '' : shown.length ? `${shown.length} of ${all.length} names` : 'No name matches';
+                }
+                document.getElementById('name-search').addEventListener('input', (ev) => {
+                    words = ev.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+                    apply();
+                });
+                document.querySelector('.saga-tools [data-filter="now"]').addEventListener('click', (ev) => {
+                    now = ev.currentTarget.classList.toggle('active');
+                    apply();
+                });
+            })();
+        </script>
+    {% else %}
+        <p class="poll-note">No names yet.</p>
+    {% endif %}
+{% endblock %}

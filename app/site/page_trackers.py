@@ -5,6 +5,8 @@ TRACKERS = [
      'about': 'Headlines outlets rewrote after publishing, and the wordings they A/B test.'},
     {'href': 'sagas.html', 'emoji': '🧵', 'name': 'Sagas',
      'about': 'Running stories told in parts, kept after they leave the front pages, with each part on a timeline.'},
+    {'href': 'names.html', 'emoji': '🗣️', 'name': "Who's in the news",
+     'about': 'The people, places and groups our stories name, day by day, and who covered them.'},
     {'href': 'court.html', 'emoji': '⚖️', 'name': 'The Supreme Court',
      'about': "This term's cases: who's covering which, from which side, at which stage."},
     {'href': 'beyond.html', 'emoji': '🎙️', 'name': 'Beyond the front pages',
