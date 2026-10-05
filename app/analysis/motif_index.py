@@ -357,6 +357,9 @@ def merge(source: str, target: str):
     dst['first_seen'] = min(filter(None, [dst.get('first_seen'), src.get('first_seen')]), default=None)
     dst['last_seen'] = max(filter(None, [dst.get('last_seen'), src.get('last_seen')]), default=None)
     src.update(claims=[], merged_into=target)
+    for e in index['entries'].values():  # its kinds become kinds of the motif it joined
+        if e.get('parent') == source:
+            e['parent'] = target if e['id'] != target else None
     for k in index['claims']:
         ids = [target if i == source else i for i in _ids(index, k)]
         index['claims'][k] = list(dict.fromkeys(ids))
@@ -508,7 +511,7 @@ def board() -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
     index = load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
-                'done': is_done(e),
+                'done': is_done(e), 'parent': e.get('parent') if e.get('parent') in index['entries'] else None,
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
@@ -599,4 +602,30 @@ def reject(claim: str, eid: str):
     k = key(claim)
     if k not in entry.setdefault('not_claims', []):
         entry['not_claims'].append(k)
+    save(index)
+
+
+# Kinds: a motif can be a kind of another ('Right-wing conspiracy' of 'Conspiracy'): a person's link between motifs,
+# finer than groups, kept in the index as each entry's 'parent'
+
+@exclusive
+def set_parent(eid: str, parent: str | None):
+    """`eid` is a kind of `parent` (None: no longer a kind of anything). Refuses a loop."""
+    index = load()
+    entries = index['entries']
+    if parent:
+        if parent not in entries or entries[parent].get('merged_into') or parent == eid:
+            raise ValueError(f'no such motif: {parent}')
+        p, seen = parent, set()
+        while p:  # walking up from the new parent must never reach eid
+            if p == eid or p in seen:
+                raise ValueError(f'{parent} is already a kind of {eid}')
+            seen.add(p)
+            p = entries.get(p, {}).get('parent')
+        entries[eid]['parent'] = parent
+        pair = sorted([eid, parent])  # related, so never suggested as a merge again
+        if pair not in index.setdefault('not_same', []):
+            index['not_same'].append(pair)
+    else:
+        entries[eid].pop('parent', None)
     save(index)

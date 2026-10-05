@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from app.analysis import llm, motif_index as mi
 
@@ -158,3 +159,21 @@ def test_more_like_this_ranks_other_claims_and_remembers_not_this(monkeypatch, t
     assert [i['claim'] for i in mi.similar('M001')] == ['b', 'c']  # closest first, its own claim left out
     mi.reject('b', 'M001')
     assert [i['claim'] for i in mi.similar('M001')] == ['c']
+
+
+def test_a_motif_can_be_a_kind_of_another(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 4, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Conspiracy', 'claims': [claim('a')]},
+        'M002': {'id': 'M002', 'name': 'Right-wing conspiracy', 'claims': [claim('b')]},
+        'M003': {'id': 'M003', 'name': 'Plot', 'claims': [claim('c')]}}})
+    mi.set_parent('M002', 'M001')
+    assert {e['id']: e['parent'] for e in mi.board()['entries']} == {'M001': None, 'M002': 'M001', 'M003': None}
+    assert ['M001', 'M002'] in mi.load()['not_same']  # related: not suggested as a merge again
+    with pytest.raises(ValueError):
+        mi.set_parent('M001', 'M002')  # no loops
+    mi.merge('M001', 'M003')  # a parent merged away: its kinds follow
+    assert mi.load()['entries']['M002']['parent'] == 'M003'
+    mi.set_parent('M002', None)
+    assert 'parent' not in mi.load()['entries']['M002']
