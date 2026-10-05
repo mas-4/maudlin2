@@ -141,7 +141,7 @@ button.chosen {{ background: var(--no); color: #fff; }} button.ok.chosen {{ back
 .save {{ margin-top: .4em; font-weight: 700; }} .save:disabled {{ opacity: .4; cursor: default; }}
 footer {{ font-size: .9em; color: #444; margin: 1.5em 0; }}
 </style></head><body>
-<nav><b>Label check</b> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/entities">Names</a></nav>
+<nav><b>Label check</b> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <a href="/entities">Names</a></nav>
 <h1>Label check</h1>
 <p>Is the model right? Tap ✓ for a label that's right, or the value it should be (dashed: the model's pick; tapping
 that counts as ✓). Feelings: tap every one the headline is likely to stir. Save each card; reload for more.</p>
@@ -215,7 +215,7 @@ h2 {{ font-size: 1.1em; margin: .3em 0 .5em; }} .said {{ font-size: .85em; color
 .row {{ display: flex; flex-wrap: wrap; gap: 8px; }} button {{ font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 4px 12px; cursor: pointer; }}
 nav a {{ margin-right: 1em; }}
 </style></head><body>
-<nav><a href="/">Label check</a> <b>Motif check</b> <a href="/motif-index">Motif organizer</a> <a href="/entities">Names</a></nav>
+<nav><a href="/">Label check</a> <b>Motif check</b> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <a href="/entities">Names</a></nav>
 <h1>Motif check</h1>
 <p>Each card is a claim and a motif our index filed it under. Is the claim, as the people telling it tell it, an
 instance of that motif: the same kind of story, whoever it's told about? Judge the story's shape, not whether it's
@@ -278,7 +278,7 @@ button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-r
 button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1em; }} h2 {{ margin-top: 1.4em; }}
 @media (max-width: 640px) {{ .two {{ grid-template-columns: 1fr; }} }}
 </style></head><body>
-<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <b>Motif organizer</b> <a href="/entities">Names</a></nav>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <b>Motif organizer</b> <a href="/motif-board">Motif board</a> <a href="/entities">Names</a></nav>
 <h1>Motif organizer</h1>
 <p>Our own motif index: {len(entries)} motifs from {sum(len(e['claims']) for e in entries)} claims. A claim can carry up to three motifs. Merge
 duplicates, rename to a reusable framing ("X is / isn't Y"), delete what isn't a motif, or move a claim that landed in
@@ -314,6 +314,193 @@ document.getElementById('search').addEventListener('input', (ev) => {{
   document.querySelectorAll('.entry').forEach((c) => {{ c.hidden = q && !c.dataset.text.includes(q); }});
 }});
 </script></body></html>"""
+
+
+BOARD_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motif board</title><style>
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0; }
+header { position: sticky; top: 0; z-index: 5; background: #fffdf6; border-bottom: 2px solid #1f1f2e; padding: 8px 14px; }
+nav a { margin-right: 1em; } h1 { font-size: 1.2em; margin: .3em 0; display: inline-block; margin-right: 1em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+input, select, button { font: inherit; font-size: .9em; }
+input[type=search] { padding: 4px 10px; border: 2px solid #1f1f2e; border-radius: 999px; min-width: 16em; }
+button { border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+button.small { font-size: .75em; padding: 0 6px; }
+.held-bar { display: none; background: #ffc400; border: 2px solid #1f1f2e; border-radius: 10px; padding: 5px 10px; margin-top: 6px; }
+body.holding .held-bar { display: block; }
+main { display: grid; grid-template-columns: 230px 1fr; gap: 14px; padding: 14px; align-items: start; }
+aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow: auto; }
+.group { border: 2px solid #1f1f2e; border-radius: 10px; background: #fff; padding: 6px 10px; margin-bottom: 8px; cursor: pointer; }
+.group.on { background: #ffe9a8; } .group .n { color: #555; font-size: .85em; float: right; }
+.group.target, .motif.target { outline: 3px dashed #ff4fa3; outline-offset: 2px; }
+.group.new { border-style: dashed; color: #555; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; align-items: start; }
+.motif { border: 2px solid #1f1f2e; border-radius: 12px; background: #fff; margin: 0;
+  box-shadow: 4px 4px 0 #00c2a8; }
+.motif.one { box-shadow: 3px 3px 0 #ddd; } .motif.held { opacity: .5; }
+.motif .head { padding: 7px 10px 4px; cursor: grab; border-bottom: 1px dashed #ccc; }
+.motif .name { font-weight: 700; } .motif .meta { font-size: .78em; color: #666; }
+.motif .gpill { font-size: .75em; background: #ffe9a8; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+.motif ul { list-style: none; margin: 0; padding: 4px 6px 6px; }
+.motif li { font-size: .85em; padding: 3px 4px; border-radius: 6px; cursor: grab; display: flex; gap: 4px; align-items: baseline; }
+.motif li:hover { background: #f4f1e6; } .motif li.held { background: #ffc400; }
+.motif li .txt { flex: 1; } .motif li .src { color: #777; font-size: .85em; white-space: nowrap; }
+.motif li .ok { color: #00a37a; } .motif .acts { padding: 0 10px 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+.more { color: #555; cursor: pointer; font-size: .8em; padding: 0 10px 6px; }
+@media (max-width: 700px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
+</style></head><body>
+<header>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <b>Motif board</b> <a href="/entities">Names</a></nav>
+<h1>🧩 Motif board</h1><span id="stats"></span>
+<div class="tools">
+  <input type="search" id="q" placeholder="search motifs and claims">
+  <select id="sort"><option value="size">most claims</option><option value="new">newest</option><option value="az">A–Z</option></select>
+  <label><input type="checkbox" id="multi"> only motifs with 2+ claims</label>
+  <button id="add-motif">+ motif</button>
+</div>
+<div class="held-bar" id="held"></div>
+</header>
+<main>
+<aside>
+  <p class="meta" style="font-size:.8em;color:#555;margin:0 0 6px">Groups: your own chapters. Drop a motif on one to file it; tap one to show only its motifs.</p>
+  <div id="groups"></div>
+</aside>
+<section class="grid" id="grid"></section>
+</main>
+<script>
+let data = {groups: [], entries: []}, filter = 'all', held = null;
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const $ = (s) => document.querySelector(s);
+const expanded = new Set();
+async function act(body) {
+  const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return; }
+  data = await r.json(); drop(); render();
+}
+function hold(h) { held = h; document.body.classList.toggle('holding', !!h); render();
+  $('#held').innerHTML = h ? (h.type === 'claim' ? `Holding the claim “${esc(h.claim.slice(0, 90))}”: tap a motif to move it there, or “new motif from it” in the side bar.`
+    : `Holding 🧩 ${esc(h.name)}: tap another motif to merge it into that one, or a group to file it there.`) + ' <button class="small" onclick="drop()">cancel</button>' : ''; }
+function drop() { held = null; document.body.classList.remove('holding'); $('#held').innerHTML = ''; }
+addEventListener('keydown', (e) => { if (e.key === 'Escape') { drop(); render(); } });
+function putOnMotif(target) {
+  if (!held) return;
+  if (held.type === 'claim' && held.from !== target.id) act({action: 'move', claim: held.claim, source: held.from, target: target.id});
+  else if (held.type === 'motif' && held.id !== target.id && confirm(`Merge “${held.name}” into “${target.name}”? It keeps the name “${target.name}”.`))
+    act({action: 'merge', source: held.id, target: target.id});
+  else { drop(); render(); }
+}
+function putOnGroup(gid) {
+  if (held && held.type === 'motif') act({action: 'group_assign', id: held.id, group: gid});
+}
+function render() {
+  const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
+  const count = (g) => data.entries.filter((e) => (g === null ? !e.group : e.group === g)).length;
+  $('#stats').textContent = `${data.entries.length} motifs · ${data.entries.reduce((n, e) => n + e.claims.length, 0)} filings · ${data.entries.filter((e) => e.claims.length > 1).length} with 2+ claims`;
+  const gs = [{id: 'all', name: 'All motifs', n: data.entries.length}, {id: 'none', name: 'Ungrouped', n: count(null)}]
+    .concat(data.groups.map((g) => ({...g, n: count(g.id)})));
+  $('#groups').innerHTML = gs.map((g) => `<div class="group${filter === g.id ? ' on' : ''}" data-g="${g.id}"><span class="n">${g.n}</span>${esc(g.name)}`
+    + (g.id.startsWith('G') ? ` <button class="small" data-gact="rename">✎</button> <button class="small" data-gact="delete">🗑</button>` : '') + '</div>').join('')
+    + `<div class="group new" data-g="+">+ new group</div><div class="group new" data-g="newmotif">+ new motif from the held claim</div>`;
+  let list = data.entries.filter((e) => filter === 'all' || (filter === 'none' ? !e.group : e.group === filter))
+    .filter((e) => !multi || e.claims.length > 1)
+    .filter((e) => !q || (e.name + ' ' + e.claims.map((c) => c.claim).join(' ')).toLowerCase().includes(q));
+  list.sort(sort === 'az' ? (a, b) => a.name.localeCompare(b.name) : sort === 'new' ? (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id)
+    : (a, b) => b.claims.length - a.claims.length || a.id.localeCompare(b.id));
+  const gname = Object.fromEntries(data.groups.map((g) => [g.id, g.name]));
+  $('#grid').innerHTML = list.map((e) => {
+    const shown = expanded.has(e.id) ? e.claims : e.claims.slice(0, 6);
+    return `<article class="motif${e.claims.length < 2 ? ' one' : ''}${held && held.type === 'motif' && held.id === e.id ? ' held' : ''}" data-id="${e.id}" draggable="true">
+      <div class="head"><span class="name">${esc(e.name)}</span>${e.group ? `<span class="gpill">${esc(gname[e.group] || e.group)}</span>` : ''}
+        <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
+      <ul>${shown.map((c) => `<li draggable="true" data-claim="${esc(c.claim)}" class="${held && held.type === 'claim' && held.claim === c.claim && held.from === e.id ? 'held' : ''}">
+        <span class="txt">${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
+        <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
+        <button class="small" data-cact="hold" title="pick up, then tap a motif">✋</button><button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
+      ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
+      <div class="acts"><button class="small" data-mact="hold">✋ pick up</button><button class="small" data-mact="rename">✎ rename</button>
+        ${e.group ? '<button class="small" data-mact="ungroup">ungroup</button>' : ''}<button class="small" data-mact="delete">🗑</button></div></article>`;
+  }).join('') || '<p>No motifs here.</p>';
+}
+document.addEventListener('click', (ev) => {
+  const g = ev.target.closest('.group'), m = ev.target.closest('.motif'), b = ev.target.closest('button');
+  if (g) {
+    const gid = g.dataset.g, gact = b && b.dataset.gact;
+    if (gact === 'rename') { const n = prompt('Rename the group', (data.groups.find((x) => x.id === gid) || {}).name); if (n) act({action: 'group_rename', group: gid, name: n}); return; }
+    if (gact === 'delete') { if (confirm('Delete this group? Its motifs stay, ungrouped.')) act({action: 'group_delete', group: gid}); return; }
+    if (gid === '+') { const n = prompt('Name the new group (a chapter, e.g. "the enemy within")'); if (n) act({action: 'group_add', name: n}); return; }
+    if (gid === 'newmotif') { if (held && held.type === 'claim') { const n = prompt('Name the new motif'); if (n) act({action: 'move_new', claim: held.claim, source: held.from, name: n}); } return; }
+    if (held && held.type === 'motif' && gid.startsWith('G')) { putOnGroup(gid); return; }
+    if (held && held.type === 'motif' && gid === 'none') { act({action: 'group_assign', id: held.id, group: null}); return; }
+    filter = gid; render(); return;
+  }
+  if (!m) return;
+  const e = data.entries.find((x) => x.id === m.dataset.id);
+  if (ev.target.closest('[data-more]')) { expanded.has(e.id) ? expanded.delete(e.id) : expanded.add(e.id); render(); return; }
+  const li = ev.target.closest('li');
+  if (b && li) {
+    if (b.dataset.cact === 'hold') hold({type: 'claim', claim: li.dataset.claim, from: e.id});
+    else if (b.dataset.cact === 'out' && confirm('Take this claim out of “' + e.name + '” for good?')) act({action: 'unfile', claim: li.dataset.claim, id: e.id});
+    return;
+  }
+  if (b && b.dataset.mact) {
+    const a = b.dataset.mact;
+    if (a === 'hold') hold({type: 'motif', id: e.id, name: e.name});
+    else if (a === 'rename') { const n = prompt('Rename the motif', e.name); if (n) act({action: 'rename', id: e.id, name: n}); }
+    else if (a === 'ungroup') act({action: 'group_assign', id: e.id, group: null});
+    else if (a === 'delete' && confirm(`Delete “${e.name}”? Its ${e.claims.length} claims keep their other motifs and aren't filed here again.`)) act({action: 'delete', id: e.id});
+    return;
+  }
+  if (held) putOnMotif(e);
+});
+// Drag and drop on a computer: the same moves as picking up and tapping
+document.addEventListener('dragstart', (ev) => {
+  const li = ev.target.closest && ev.target.closest('li[data-claim]'), m = ev.target.closest && ev.target.closest('.motif');
+  if (li) held = {type: 'claim', claim: li.dataset.claim, from: m.dataset.id};
+  else if (m) held = {type: 'motif', id: m.dataset.id, name: data.entries.find((x) => x.id === m.dataset.id).name};
+  ev.dataTransfer.setData('text/plain', 'motif-board'); ev.stopPropagation();
+});
+document.addEventListener('dragover', (ev) => { const t = ev.target.closest('.motif, .group'); if (t && held) { ev.preventDefault(); document.querySelectorAll('.target').forEach((x) => x.classList.remove('target')); t.classList.add('target'); } });
+document.addEventListener('dragend', () => document.querySelectorAll('.target').forEach((x) => x.classList.remove('target')));
+document.addEventListener('drop', (ev) => {
+  ev.preventDefault();
+  const m = ev.target.closest('.motif'), g = ev.target.closest('.group');
+  if (m) putOnMotif(data.entries.find((x) => x.id === m.dataset.id));
+  else if (g && g.dataset.g === 'newmotif' && held && held.type === 'claim') { const n = prompt('Name the new motif'); if (n) act({action: 'move_new', claim: held.claim, source: held.from, name: n}); else drop(); }
+  else if (g && held && held.type === 'motif') g.dataset.g.startsWith('G') ? putOnGroup(g.dataset.g) : g.dataset.g === 'none' ? act({action: 'group_assign', id: held.id, group: null}) : drop();
+  else drop();
+});
+$('#add-motif').addEventListener('click', () => { const n = prompt('Name the new motif (claims can be moved into it)'); if (n) act({action: 'add', name: n}); });
+['#q', '#sort', '#multi'].forEach((s) => $(s).addEventListener('input', render));
+fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
+</script></body></html>"""
+
+
+def board_action(data: dict):
+    """One change from the motif board, applied to the index at once (under its lock)."""
+    from app.analysis import motif_index as mi
+    index = mi.load()
+    live = {e['id'] for e in mi.live(index)}
+    text = lambda k: isinstance(data.get(k), str) and data[k].strip()  # noqa: E731
+    act = data.get('action')
+    if act == 'move' and text('claim') and data.get('source') in live and data.get('target') in live:
+        mi.move(data['claim'], data['source'], data['target'])
+    elif act == 'move_new' and text('claim') and data.get('source') in live and text('name'):
+        mi.move(data['claim'], data['source'], mi.add(data['name']))
+    elif act == 'unfile' and text('claim') and data.get('id') in live:
+        mi.unfile(data['claim'], data['id'])
+    elif act == 'group_add' and text('name'):
+        mi.group_add(data['name'])
+    elif act == 'group_rename' and data.get('group') in index.get('groups', {}) and text('name'):
+        mi.group_rename(data['group'], data['name'])
+    elif act == 'group_delete' and data.get('group') in index.get('groups', {}):
+        mi.group_delete(data['group'])
+    elif act == 'group_assign' and data.get('id') in live:
+        mi.group_assign(data['id'], data.get('group') or None)
+    elif act in ('rename', 'merge', 'delete', 'add'):
+        organizer_action(data)
+    else:
+        raise ValueError(f'unknown action: {data}')
 
 
 def entities_page() -> str:
@@ -362,7 +549,7 @@ button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-r
 button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1em; }} h2 {{ margin-top: 1.4em; }}
 @media (max-width: 640px) {{ .two {{ grid-template-columns: 1fr; }} }}
 </style></head><body>
-<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <b>Names</b></nav>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Names</b></nav>
 <h1>Names</h1>
 <p>The people, places and groups the local model names in each story, for the “mentioned:” filters on the front page:
 {len(subjects)} subjects under {len(counts)} names. Give each subject one name: merge names for the same subject, rename
@@ -435,7 +622,10 @@ def organizer_action(data: dict):
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        body = (organizer_page() if self.path.startswith('/motif-index') else motif_page()
+        if self.path.startswith('/motif-board.json'):
+            from app.analysis import motif_index
+            return self.send_json(motif_index.board())
+        body = (BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
                 if self.path.startswith('/motifs') else entities_page() if self.path.startswith('/entities')
                 else page()).encode()
         self.send_response(200)
@@ -444,8 +634,24 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_json(self, value):
+        body = json.dumps(value).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+        if self.path == '/motif-board':
+            from app.analysis import motif_index
+            try:
+                board_action(data)
+            except (ValueError, KeyError) as e:
+                self.send_error(400, str(e)[:200])
+                return
+            return self.send_json(motif_index.board())
         if self.path in ('/motif-index', '/entities'):
             try:
                 (organizer_action if self.path == '/motif-index' else entities_action)(data)

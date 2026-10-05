@@ -383,9 +383,12 @@ def move(claim: str, source: str, target: str):
     entry = index['entries'][source]
     moved = [c for c in entry['claims'] if key(c['claim']) == k]
     entry['claims'] = [c for c in entry['claims'] if key(c['claim']) != k]
+    entry.setdefault('not_claims', []).append(k)  # moved out by hand: it isn't this motif
     if not any(key(c['claim']) == k for c in index['entries'][target]['claims']):
         index['entries'][target]['claims'] += moved
     index['claims'][k] = list(dict.fromkeys([target if i == source else i for i in _ids(index, k)] + [target]))
+    if not entry['claims'] and not entry.get('curated'):  # emptied: a motif the model made goes; one a person made stays
+        del index['entries'][source]
     save(index)
 
 
@@ -450,3 +453,63 @@ def check(claim: str, eid: str, answer: str):
         if not entry['claims']:
             del index['entries'][eid]
     save(index)
+
+
+# Groups: a person's own chapters over the motifs (as Thompson grouped his into chapters), made on the motif board.
+# Kept in the index: 'groups' (id -> name) and each entry's 'group'.
+
+@exclusive
+def group_add(name: str) -> str:
+    index = load()
+    groups = index.setdefault('groups', {})
+    gid = f"G{max([int(g[1:]) for g in groups] + [0]) + 1:02d}"
+    groups[gid] = {'id': gid, 'name': clean(name) or gid}
+    save(index)
+    return gid
+
+
+@exclusive
+def group_rename(gid: str, name: str):
+    index = load()
+    index['groups'][gid]['name'] = clean(name) or gid
+    save(index)
+
+
+@exclusive
+def group_delete(gid: str):
+    """The group goes; its motifs stay, ungrouped"""
+    index = load()
+    index.get('groups', {}).pop(gid, None)
+    for e in index['entries'].values():
+        if e.get('group') == gid:
+            e.pop('group')
+    save(index)
+
+
+@exclusive
+def group_assign(eid: str, gid: str | None):
+    index = load()
+    if gid and gid not in index.get('groups', {}):
+        raise ValueError(f'no such group: {gid}')
+    if gid:
+        index['entries'][eid]['group'] = gid
+    else:
+        index['entries'][eid].pop('group', None)
+    save(index)
+
+
+@exclusive
+def unfile(claim: str, eid: str):
+    """Take a claim out of a motif for good (as a no on the motif check)"""
+    check.__wrapped__(claim, eid, 'no')
+
+
+def board() -> dict:
+    """Everything the motif board shows: groups, and every live motif with its claims"""
+    index = load()
+    entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
+                'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
+                'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
+                            'checked': c.get('checked')} for c in e['claims']]}
+               for e in live(index)]
+    return {'groups': list(index.get('groups', {}).values()), 'entries': entries}
