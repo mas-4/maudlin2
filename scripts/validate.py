@@ -354,8 +354,7 @@ aside { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow:
 dialog { border: 2px solid #1f1f2e; border-radius: 14px; box-shadow: 6px 6px 0 #ffc400; width: min(640px, 94vw); max-height: 86vh;
   padding: 12px 16px; background: #fffdf6; color: #1f1f2e; } dialog::backdrop { background: rgba(31, 31, 46, .35); }
 dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: absolute; right: 10px; top: 8px; }
-.now { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; } .now a.delname { color: inherit; text-decoration: none; }
-.now a.delname:hover { text-decoration: line-through; color: #c0392b; } .now span { background: #e6f7f2; border: 1.5px solid #1f1f2e;
+.now { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; } .now span { background: #e6f7f2; border: 1.5px solid #1f1f2e;
   border-radius: 999px; padding: 1px 8px; font-size: .85em; }
 .pick { max-height: 46vh; overflow: auto; border-top: 1px dashed #ccc; margin-top: 6px; }
 .pick div { display: flex; gap: 6px; align-items: center; padding: 4px 2px; border-bottom: 1px dashed #eee; }
@@ -487,7 +486,7 @@ function drawPicker(q) {
   // A person curating isn't held to the model's three motifs a claim: adding is always on offer
   const fromName = esc((data.entries.find((e) => e.id === from) || {}).name || 'this motif');
   $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
-    <div class="now">Filed under: ${mine.map((e) => `<span><a href="#" class="delname" data-del="${e.id}" title="delete this whole motif">🧩 ${esc(e.name)}</a> <button class="small" data-out="${e.id}" title="take this claim out of this motif for good">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
+    <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
     <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
     <div class="pick">${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
       <button class="small add" data-also="${e.id}" title="file the claim under this motif too, keeping the others">+ add</button>
@@ -498,8 +497,7 @@ function drawPicker(q) {
   input.addEventListener('input', () => drawPicker(input.value));
 }
 $('#picker').addEventListener('click', (ev) => {
-  const b = ev.target.closest('button, a.delname'), {claim, from} = pick || {};
-  if (b && b.tagName === 'A') ev.preventDefault();
+  const b = ev.target.closest('button'), {claim, from} = pick || {};
   if (ev.target === $('#picker') || (b && b.dataset.close)) { $('#picker').close(); return; }
   if (!b) return;
   const name = ($('#pick-new') || {}).value || '';
@@ -512,7 +510,6 @@ $('#picker').addEventListener('click', (ev) => {
     if (!holders.some((e) => e.id === pick.from)) pick.from = holders[0].id;
     drawPicker(q);
   };
-  const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim)).length;
   if (b.dataset.move) done({action: 'move', claim, source: from, target: b.dataset.move});
   else if (b.dataset.also) done({action: 'also', claim, source: from, target: b.dataset.also});
   else if (b.dataset.del) {
@@ -520,8 +517,6 @@ $('#picker').addEventListener('click', (ev) => {
     if (confirm(`Delete the motif “${e.name}” (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})? Its claims keep their other motifs and aren't filed under it again.`))
       done({action: 'delete', id: e.id});
   }
-  else if (b.dataset.out && (mine > 1 || confirm('That\'s its last motif: take it out, and it\'s filed again next run?')))
-    done({action: 'unfile', claim, id: b.dataset.out});
   else if (b.dataset.movenew && name.trim()) done({action: 'move_new', claim, source: from, name});
   else if (b.dataset.alsonew && name.trim()) done({action: 'also_new', claim, source: from, name});
 });
