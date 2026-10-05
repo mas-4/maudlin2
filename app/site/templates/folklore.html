@@ -13,6 +13,7 @@
     <p class="wip-banner">🚧 <b>Work in progress.</b> An experiment in finding the stories people retell in their own
         words: rumors, legends, beliefs, jokes and sayings, not the news itself. Read from a sample of public Bluesky and
         Mastodon posts; the labels are a small local language model's best guess and are often wrong.</p>
+    {% include "motif_note.html" %}
     {% if report %}
         <p class="poll-note">From {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
             in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }}: {{ cards|length }} narratives told by
@@ -113,7 +114,7 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
-                    {% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}
+                    {% for m in c.motifs %}<p class="narrative-motif" title="A recurring shape this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand"><a href="motifs.html#{{ m.id }}">🧩 {{ m.name|e }}</a> <span class="motif-id">{{ m.id }}</span>{% if m.count > 1 %} · seen {{ m.count }} times{% endif %}</p>{% endfor %}
                     {% if c.factchecks %}
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
                             {% for p in c.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
