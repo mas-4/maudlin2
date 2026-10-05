@@ -575,7 +575,7 @@
             transition: opacity 0.3s;
             border: 1px solid black;
             border-radius: 3px;
-            max-width: 22em;
+            max-width: min(22em, calc(100vw - 16px));
             white-space: normal;
             line-height: 1.35;
         }
@@ -695,6 +695,9 @@
                 tooltip.textContent = text;
                 tooltip.style.backgroundColor = color;
                 tooltip.style.opacity = '1';
+                // Measure at the left edge: measured where it last was (say, near the right edge) it shrinks to the
+                // room left there, and then, moved, lays out wider than measured and sticks out past the window
+                tooltip.style.left = '0px';
 
                 const rect = target.getBoundingClientRect();
                 const tooltipRect = tooltip.getBoundingClientRect();
@@ -713,7 +716,22 @@
 
             function hideTooltip() {
                 tooltip.style.opacity = '0';
+                // Parked in the corner, so a hidden tooltip never widens the page (phones let you pan to it)
+                tooltip.style.left = '0px';
+                tooltip.style.top = '0px';
             }
+            // On touch screens a tap fires the hover and nothing ever fires its end: close it on the next scroll or
+            // tap elsewhere, putting the title back on whatever had it
+            const closeTouch = () => {
+                const target = document.querySelector('[data-title]');
+                if (target) {
+                    target.setAttribute('title', target.getAttribute('data-title'));
+                    target.removeAttribute('data-title');
+                }
+                hideTooltip();
+            };
+            addEventListener('scroll', () => { if (matchMedia('(hover: none)').matches) closeTouch(); }, {passive: true});
+            document.addEventListener('touchstart', (e) => { if (!e.target.closest('[data-title]')) closeTouch(); }, {passive: true});
 
             window.addEventListener('scroll', updateTooltipPosition);
             window.addEventListener('resize', updateTooltipPosition);

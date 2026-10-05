@@ -1081,6 +1081,14 @@ html {
     overflow-x: clip;
 }
 
+/* Phones also let you pan sideways to anything past the edge unless body clips too; there body is the full width, so
+   clipping it doesn't cut the cloud */
+@media (max-width: 700px) {
+    body {
+        overflow-x: clip;
+    }
+}
+
 figure.wordcloud figcaption {
     padding: 0 16px;
 }
@@ -1988,6 +1996,7 @@ table.emotion-matrix th span:not(.matrix-emoji) {
 
 
 .fast-break {
+    white-space: nowrap;
     font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #1f1f2e;
     background: #ffd6c2;
@@ -2399,7 +2408,11 @@ table.races .edit-chip, table.emotion-matrix .edit-chip {
    who ask for reduced motion */
 #memphis {
     position: fixed;
-    inset: 0;
+    /* As tall as the window with the phone's toolbar hidden (100lvh), so the shapes (placed in % of this height)
+       don't jump each time the toolbar slides in and out; 100vh for older browsers */
+    inset: 0 0 auto 0;
+    height: 100vh;
+    height: 100lvh;
     z-index: -1;
     overflow: hidden;
     pointer-events: none;

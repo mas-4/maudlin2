@@ -113,7 +113,10 @@ def between_runs():
     and while it runs."""
     import subprocess
     while True:
-        running = subprocess.run(['systemctl', 'is-active', '--quiet', 'maudlin-scrape.service']).returncode == 0
+        # A one-shot job is "activating" while it runs, never "active" (so is-active can't tell): anything but inactive
+        state = subprocess.run(['systemctl', 'show', '-p', 'ActiveState', '--value', 'maudlin-scrape.service'],
+                               capture_output=True, text=True).stdout.strip()
+        running = state not in ('inactive', 'failed', '')
         if not running and QUIET_MINUTES <= dt.now().minute < 58:  # a chunk started at :58 ends before :00
             return
         time.sleep(60)
