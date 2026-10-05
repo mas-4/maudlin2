@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Narratives across days.** A narrative in one day's report (posts by many people telling one thing) is now
+  compared with the narratives of the last 14 days: the three closest by meaning (mxbai, at least 0.7) are put to the
+  bigger local model (Qwen3 30B-A3B), which says whether it is the same narrative told again (the same claim about the
+  same people or event) or a different one. Linked days make a thread; Folklore cards show the earlier days a
+  narrative was told and by how many people. The first two days (Oct 4, a six-hour report, and Oct 5) gave 3 threads
+  out of 7 questions: the Nantucket air-ambulance search, Saquon Barkley's injury and a disputed Bills call.
 - **On the radio (#159).** The hourly newscasts of NPR (NPR News Now) and ABC News (ABC News Update), which we
   already transcribe, are now split into their stories in the order they aired. The bigger local model (Qwen3 30B-A3B)
   reads each transcript with the list of the 40 stories most outlets had on their front pages at the nearest run,

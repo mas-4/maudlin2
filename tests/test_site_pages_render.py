@@ -451,7 +451,11 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         {'authors': 6, 'posts': 6, 'variety': 0.8, 'kind': 'told', 'examples': ['few'],
          'label': {'retold': True, 'narrative': 'Only six people say this'}},
         {'authors': 9, 'posts': 9, 'variety': 0.0, 'kind': 'copypasta', 'examples': ['Pasted <words>']}]}
+    report['file'] = 'report-2026-10-05-0400.json'
     monkeypatch.setattr(pn, 'latest_report', lambda: report)
+    monkeypatch.setattr(pn.narrative_threads, 'load', lambda: {'threads': {'N0001': {'id': 'N0001', 'days': [
+        {'date': '2026-10-04', 'report': 'report-2026-10-04-0400.json', 'people': 7, 'claim': 'Doctors <keep> him alive'},
+        {'date': '2026-10-05', 'report': report['file'], 'people': 12, 'claim': 'They are <keeping> him alive'}]}}})
     monkeypatch.setattr(pn.motif_index, 'load', lambda: {'next': 8, 'claims': {
         pn.motif_index.key('They are <keeping> him alive'): ['M007']}, 'entries': {'M007': {
             'id': 'M007', 'name': 'the ruler kept alive in secret', 'claims': [{}, {}, {}]}}})
@@ -478,6 +482,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
         assert 'href="motifs.html#M007"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
         assert '🦹 villain</b> doctors' in html
+        assert '🧵 Told on 2 days' in html and '<b>Oct 4</b>, by 7 people: Doctors &lt;keep&gt; him alive' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts
 
 

@@ -94,7 +94,7 @@
 
         <div class="court-cards narrative-cards">
             {% for c in cards %}
-                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
+                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}" data-days="{{ c.told_before|length + 1 }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
                     <h4>{{ c.claim|e }}</h4>
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
                     {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
@@ -114,6 +114,12 @@
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
+                    {% if c.told_before %}
+                        <div class="card-section"><p class="section-label" title="The same narrative found again on other days: a language model compared each day's narratives with the days before">🧵 Told on {{ c.told_before|length + 1 }} days</p>
+                            <ul class="told-before">
+                                {% for d in c.told_before %}<li><b>{{ d.day }}</b>, by {{ d.people }} people: {{ d.claim|e }}</li>{% endfor %}
+                            </ul></div>
+                    {% endif %}
                     {% if c.motifs %}
                         <div class="card-section"><p class="section-label" title="Recurring shapes this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
                             {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}

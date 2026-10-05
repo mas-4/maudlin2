@@ -10,9 +10,10 @@ import glob
 import json
 import os
 from collections import Counter
+from datetime import date
 
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
-from app.analysis import motif_index
+from app.analysis import motif_index, narrative_threads
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
 
@@ -97,12 +98,22 @@ def motif_cards(index: dict, claim: str) -> list[dict]:
             for e in (motif_index.entries_of(index, claim) if claim else [])]
 
 
+def told_before(threads: dict, report: str, claim: str, index: dict) -> list[dict]:
+    """The earlier days the same narrative was told (app/analysis/narrative_threads.py), newest first, in our words"""
+    thread = narrative_threads.thread_of(threads, report, claim)
+    if not thread:
+        return []
+    return [{'day': date.fromisoformat(d['date']).strftime('%b %-d'), 'people': d['people'],
+             'claim': motif_index.corrected(d['claim'], index)}
+            for d in reversed(thread['days']) if d['report'] != report]
+
+
 def latest_report() -> dict | None:
     reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')))
     if not reports:
         return None
     with open(reports[-1]) as f:
-        return json.load(f)
+        return dict(json.load(f), file=os.path.basename(reports[-1]))
 
 
 class FolklorePage:
@@ -115,6 +126,7 @@ class FolklorePage:
         cards, copies, fewer = [], [], 0
         pulled = withheld()
         index = motif_index.load()
+        threads = narrative_threads.load()
         floor = max(MIN_PEOPLE, round(report['authors'] / PEOPLE_SHARE)) if report else MIN_PEOPLE
         if report:
             for g in report['found']:
@@ -145,6 +157,7 @@ class FolklorePage:
                         'factchecks': g.get('factchecks') or [],
                         'motifs': motif_cards(index, motif_index.corrected(label.get('narrative') or '', index)),
                         'examples': g['examples'][:4] if Config.debug else [],
+                        'told_before': told_before(threads, report.get('file', ''), label.get('narrative') or '', index),
                     })
                 elif g['kind'] == 'copypasta':
                     copies.append({'people': g['authors'], 'posts': g['posts'],

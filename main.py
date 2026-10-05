@@ -182,6 +182,8 @@ def main(args: argparse.Namespace):
         if dt.now().hour >= NARRATIVE_HOUR and not narratives.made_today():
             from app.analysis import circulation
             narratives.report(hours=24)
+            from app.analysis import narrative_threads
+            narrative_threads.link_days()  # the same narratives told on earlier days
             circulation.nightly()  # which fact-checked rumors people are telling or arguing over (#153)
         # New claims into our own motif index (#145), a few minutes a run with the bigger model, so a night with a
         # long report can't push a run past its time limit; what's left waits for the next run
