@@ -121,6 +121,7 @@ MAX_TOKENS = 96
 # Changes whenever the prompt or schema does, so every score can be traced to the exact rubric that made it
 RUBRIC_ID = hashlib.sha1((PROMPT + json.dumps(SCHEMA, sort_keys=True)).encode()).hexdigest()[:8]
 FALLBACK_JUDGE = 'fallback classifier'
+HAND_JUDGE = 'hand'  # labels a person set on the label-check page: no rescore replaces them
 EMPTY = {'news_score': None, 'event_score': None, 'loaded_score': None, 'emotion': None, 'emotion_ranks': None,
          'scored_by': None, 'scored_at': None, 'affected': None}
 PARALLEL_REQUESTS = 4
@@ -294,7 +295,8 @@ def rescore_all(only_missing: bool = False, outdated: bool = False, wait=None):
     the hourly run needs the gpu)."""
     from app.models import Session, Headline, Article, Agency
     with Session() as s:
-        query = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency)
+        query = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency) \
+            .filter(Headline.scored_by.is_(None) | (Headline.scored_by != HAND_JUDGE))
         if only_missing:
             query = query.filter(Headline.event_score.is_(None) | Headline.emotion_ranks.is_(None))
         if outdated:

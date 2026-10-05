@@ -101,3 +101,23 @@ def test_a_name_already_in_the_index_is_reused_word_for_word(monkeypatch, tmp_pa
     index = mi.file_claims([{'claim': 'Trump blames Iowans', 'source': 'Snopes'},
                             {'claim': 'Cooper blamed for rape kits', 'source': 'FactCheck.org'}])
     assert [(e['name'], len(e['claims'])) for e in mi.live(index)] == [('Blame shifting', 2)]
+
+
+def test_a_no_on_the_motif_check_takes_the_claim_out_for_good(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    index = {'next': 3, 'claims': {mi.key('a'): ['M001', 'M002'], mi.key('b'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'blame shifting', 'claims': [{'claim': 'a', 'source': 'x'}, {'claim': 'b', 'source': 'x'}]},
+        'M002': {'id': 'M002', 'name': 'hope for unity', 'claims': [{'claim': 'a', 'source': 'x'}]}}}
+    mi.save(index)
+    assert [q['id'] for q in mi.to_check()] == ['M001', 'M001', 'M002']  # the most-used motif first
+    mi.check('b', 'M001', 'yes')
+    mi.check('a', 'M002', 'no')  # its only claim: the motif goes
+    index = mi.load()
+    assert 'M002' not in index['entries'] and index['claims'][mi.key('a')] == ['M001']
+    mi.check('a', 'M001', 'no')  # its last motif: filed again next run, but never under M001
+    index = mi.load()
+    assert mi.key('a') not in index['claims'] and mi.key('a') in index['entries']['M001']['not_claims']
+    assert [q['claim'] for q in mi.to_check()] == []  # b checked, a out
+    from app import narratives
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)) / np.sqrt(2))
+    assert mi.closest(index, 'a') == [] and mi.match(index, 'blame shifting', 'a') is None

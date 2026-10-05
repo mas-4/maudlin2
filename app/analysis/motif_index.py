@@ -145,7 +145,7 @@ def match(index: dict, phrase: str, claim: str) -> str | None:
     """The existing entry this shape is the same motif as, or None: the closest few by meaning, then the model's
     forced choice with "new" on offer."""
     from app.narratives import embed
-    entries = live(index)
+    entries = [e for e in live(index) if key(claim) not in e.get('not_claims', [])]  # a person said it isn't
     if not entries:
         return None
     # Each entry by its name and its claims' phrases together, so a curated name still matches its kind
@@ -169,7 +169,7 @@ def match(index: dict, phrase: str, claim: str) -> str | None:
 def closest(index: dict, claim: str) -> list[dict]:
     """The existing entries most like a claim, by meaning (its name, phrases and claims together), for naming it."""
     from app.narratives import embed
-    entries = live(index)
+    entries = [e for e in live(index) if key(claim) not in e.get('not_claims', [])]  # a person said it isn't
     if not entries:
         return []
     texts = [e['name'] + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(x['claim'][:120] for x in e['claims'][-2:])
@@ -380,3 +380,38 @@ def suggestions(limit: int = SUGGESTED) -> list[tuple[str, str, float]]:
             if sims[i, j] >= SUGGEST and (a, b) not in dismissed:
                 pairs.append((a, b, float(sims[i, j])))
     return sorted(pairs, key=lambda p: -p[2])[:limit]
+
+
+def to_check(limit: int | None = None) -> list[dict]:
+    """(claim, motif) filings nobody has checked yet, for the motif check page: the most-used motifs first (a wrong
+    filing there spreads), then the rest."""
+    out = []
+    for e in sorted(live(load()), key=lambda e: (-len(e['claims']), e['id'])):
+        for c in e['claims']:
+            if not c.get('checked'):
+                out.append({'id': e['id'], 'name': e['name'], 'size': len(e['claims']), 'claim': c['claim'],
+                            'source': c.get('source', ''), 'others': [x['claim'] for x in e['claims'] if x is not c][:2]})
+    return out[:limit] if limit else out
+
+
+def check(claim: str, eid: str, answer: str):
+    """A person's answer to 'is this claim an instance of this motif?', applied at once. Yes or not sure is noted on
+    the filing. No takes the claim out of the motif and keeps it out; a motif left with no claims goes, and a claim
+    left with no motif is filed again next run, among the others."""
+    index = load()
+    entry = index['entries'].get(eid)
+    found = next((c for c in (entry or {}).get('claims', []) if c['claim'] == claim), None)
+    if found is None or answer not in ('yes', 'no', 'unsure'):
+        raise ValueError(f'no such filing or answer: {eid} {answer}')
+    if answer != 'no':
+        found['checked'] = answer
+    else:
+        k = key(claim)
+        entry['claims'].remove(found)
+        entry.setdefault('not_claims', []).append(k)
+        index['claims'][k] = [i for i in _ids(index, k) if i != eid]
+        if not index['claims'][k]:
+            del index['claims'][k]
+        if not entry['claims']:
+            del index['entries'][eid]
+    save(index)
