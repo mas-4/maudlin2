@@ -10,6 +10,9 @@ RE_NONBREAKING_SPACE = re.compile(r"[^\S\n\v]+")
 RE_BRACKETS_CURLY = re.compile(r"\{[^{}]*?\}")
 RE_BRACKETS_ROUND = re.compile(r"\([^()]*?\)")
 RE_BRACKETS_SQUARE = re.compile(r"\[[^\[\]]*?\]")
+# The source tag Google News puts after a title, as a site name or a domain: "... - AP News", "... - reuters.com"
+RE_SOURCE_SUFFIX = re.compile(r"\s+[-–|]\s+(?:(?:[a-z0-9-]+\.)+(?:com|org|net|co\.uk|news)|AP News|Reuters)\s*$",
+                              flags=re.IGNORECASE)
 
 QUOTE_TRANSLATION_TABLE = str.maketrans({
     ord(c): "'" for c in "‘’‚‛‹›❛❜`´"
@@ -21,6 +24,11 @@ PUNCT_TRANSLATION_TABLE = dict.fromkeys(
     (i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith("P")),
     " ",
 )
+
+
+def source_suffix(title: str) -> str:
+    """A headline without the source tag a feed appended to it ("... - apnews.com")."""
+    return RE_SOURCE_SUFFIX.sub('', title)
 
 
 def hyphenated_words(text: str) -> str:

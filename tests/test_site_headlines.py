@@ -658,3 +658,16 @@ def test_entity_names_must_be_in_the_headlines_and_the_us_is_left_out(monkeypatc
     named = entities.of_stories({'s1': ['Houthi rebels attack Saudi oil site'], 's2': ['Houthis fire missiles']})
     assert named == {'s1': ['Houthis'], 's2': ['Houthis']}  # Iraq isn't in the headlines; the US is everywhere
     assert entities.groups(named) == [('Houthis', ['s1', 's2'])]
+
+
+def test_a_feeds_source_tag_isnt_a_name(monkeypatch, tmp_path):
+    """'... - AP News' (Google's tag on AP's titles) made 'AP News' a name in AP's stories; cached ones drop out too."""
+    import json
+    from app.analysis import entities, llm
+    monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
+    (tmp_path / 'e.json').write_text(json.dumps({'s1': ['Christa Pike', 'AP News']}))
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'names': ['Tennessee', 'AP News', 'Reuters']})
+    named = entities.of_stories({'s1': ["Pike's lawyer speaks - AP News"],
+                                 's2': ['Tennessee prisons chief resigns - apnews.com', 'Execution news - reuters.com']})
+    assert named == {'s1': ['Christa Pike'], 's2': ['Tennessee']}

@@ -11,6 +11,7 @@ import os
 import re
 
 from app.analysis import llm
+from app.analysis.textnorm import source_suffix
 from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
@@ -34,7 +35,7 @@ SCHEMA = {"type": "object", "properties": {"names": {"type": "array", "maxItems"
 
 # On a US-centric front page nearly every story is about the United States: not a group worth a filter
 EVERYWHERE = {'united states', 'u.s', 'u.s.', 'us', 'usa', 'america', 'united states of america'}
-FILLER = {'the', 'of', 'and', 'for', 'new', 'national', 'department', 'party', 'state', 'states', 'united'}
+FILLER = {'the', 'of', 'and', 'for', 'new', 'national', 'department', 'party', 'state', 'states', 'united', 'news'}
 
 
 def named_in(name: str, text: str) -> bool:
@@ -60,19 +61,22 @@ def of_stories(stories: dict, limit: int = MAX_NEW) -> dict:
     out, asked = {}, 0
     for k, headlines in stories.items():
         k = str(k)
+        # Without the feed's source tag: '... - AP News' made 'AP News' a name in AP's stories
+        every = list(dict.fromkeys(source_suffix(h.strip()) for h in headlines if h and h.strip()))
+        shown = every[:5]
+        text = ' '.join(shown).lower()
         if k not in cache:
             if asked >= limit or llm.backend() is None:
                 continue
             asked += 1
-            shown = list(dict.fromkeys(h.strip() for h in headlines if h and h.strip()))[:5]
             answer = llm.complete_json(PROMPT.format(headlines='\n'.join(f'- {h}' for h in shown)), SCHEMA,
                                        max_tokens=120)
             if not answer:
                 continue
-            text = ' '.join(shown).lower()
             cache[k] = list(dict.fromkeys(n for n in (tidy(x) for x in answer['names'])
                                           if len(n) > 1 and n.lower() not in EVERYWHERE and named_in(n, text)))[:MAX]
-        out[k] = cache[k]
+        # Rechecked against all its headlines, so names cached before a fix drop out
+        out[k] = [n for n in cache[k] if named_in(n, ' '.join(every).lower())]
     if asked:
         with open(CACHE, 'w') as f:
             json.dump(cache, f)

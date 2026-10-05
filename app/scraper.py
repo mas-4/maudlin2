@@ -298,7 +298,9 @@ class GoogleNewsScraper(FeedScraper):
 
     def setup(self, soup: Soup):
         super().setup(soup)
-        self.downstream = [(href, title.removesuffix(self.suffix)) for href, title in self.downstream]
+        # Google tags each title with the outlet, as its name or (more and more, since about Oct 3) its domain
+        self.downstream = [(href, title.removesuffix(self.suffix).removesuffix(f' - {self.site}'))
+                           for href, title in self.downstream]
 
 
 class SeleniumResourceManager:

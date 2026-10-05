@@ -103,10 +103,12 @@ def test_google_news_strips_suffix():
     <item><title>Storm hits coast - AP News</title><link>https://news.google.com/rss/articles/1</link></item>
     <item><title>No suffix here</title><link>https://news.google.com/rss/articles/2</link></item>
     <item><title>Mentions - AP News mid-title - AP News</title><link>https://news.google.com/rss/articles/3</link></item>
+    <item><title>Google tags by domain now too - apnews.com</title><link>https://news.google.com/rss/articles/4</link></item>
     </channel></rss>"""
     scraper = bare(AP)
     scraper.setup(Soup(feed, 'xml'))
-    assert [t for _, t in scraper.downstream] == ['Storm hits coast', 'No suffix here', 'Mentions - AP News mid-title']
+    assert [t for _, t in scraper.downstream] == ['Storm hits coast', 'No suffix here', 'Mentions - AP News mid-title',
+                                                 'Google tags by domain now too']
 
 
 def test_google_news_scraper_is_a_feed_scraper():
