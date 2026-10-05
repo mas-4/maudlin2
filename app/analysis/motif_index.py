@@ -45,8 +45,8 @@ three to seven words, terse like a folklorist's label or a proverb (a subject an
 hedges such as "a claim that" or "is accused of": a shape that would fit the same kind of story told about \
 other people, places or years. A story often \
 carries more than one shape (who is blamed, what is feared, what is hoped); give each separately, the main one \
-first, and don't pad: most claims have one or two. No names of people, places, organizations or dates. A contested \
-framing can be two-sided ("X is / isn't Y"). Judge the shapes as the tellers tell the story, not whether it's true. \
+first, and don't pad: most claims have one or two. No names of people, places, organizations or dates. A framing \
+people contest can name both sides of the dispute in one label. Judge the shapes as the tellers tell the story, not whether it's true. \
 Check each name: would it still fit if the people and the event were different? If it only describes this one \
 event, make it more general; if it would fit almost any story, make it more specific."""
 NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 1, "maxItems": 3,
