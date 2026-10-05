@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Rumors stated the way their tellers state them.** The one-line summary of a fact-checked claim sometimes
+  stated the fact-checker's correction instead of the rumor ("the video shows Muslim women queuing for a clothing sale,
+  not free childcare"); 10 of the 80 in the motif index read that way, so motifs filed from them described the
+  debunking, not the story. The summarizer is now told to state what the rumor's spreaders say is true, never the
+  correction, and those claims were rewritten ("a video shows Muslim women queuing for free childcare"). Motif names
+  follow the same rule: the story as told ("Caught on camera"), not the verdict ("Historical footage
+  misattribution"); analysts' words like "narrative" and "controversy" were dropped from names.
 - **Hand labels.** A headline checked by hand on our label-check page now carries the person's mood, loaded-wording
   and feelings labels in every measure (the model's where the person agreed), marked as hand labels so no rescore
   replaces them. Only a few dozen headlines, chosen evenly across the model's labels; they also measure the model: of

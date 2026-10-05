@@ -65,8 +65,9 @@ LABEL_PROMPT = """{source}, a fact-checker, published this:
 
 Read it as a folklorist would. Answer in the fields below.
 
-claim: the claim or rumor it checks, in one plain sentence as people state it ("the moon landing was \
-staged"), or "" if it checks no single claim
+claim: the claim or rumor it checks, in one plain sentence the way the people spreading it state it: what \
+they say is true ("the moon landing was staged"), never the fact-checker's correction or verdict ("the moon landing \
+photos are genuine"); or "" if it checks no single claim
 genre: what kind of story the claim is, one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index the claim fits best, one of {chapters}
 motif: the specific motif in a few words of your own, describing this claim, or ""
