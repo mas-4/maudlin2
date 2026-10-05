@@ -152,6 +152,23 @@
             {% endfor %}
         </div>
 
+        {% if voters %}
+            <h3 id="focus-group">🎙️ What voters say in focus groups</h3>
+            <p class="poll-note">From <a href="https://www.thebulwark.com/s/focus-group">The Focus Group</a>, The Bulwark's
+                podcast that plays recorded focus groups of voters: the stories and beliefs the voters tell, in our words
+                (a local language model's reading of the episode, voters only, not the hosts), with the motifs each is filed
+                under in the BND Motif Index. A motif here that also turns up above is heard both online and in the room.</p>
+            {% for ep in voters %}
+                <details class="focus-episode"{% if loop.first %} open{% endif %}>
+                    <summary><b>{{ ep.title|e }}</b> <span class="court-when">{{ ep.date }} · {{ ep.claims|length }} claims</span></summary>
+                    <ul class="focus-claims">
+                        {% for c in ep.claims %}<li>{{ c.claim|e }}{% if c.side %} <span class="court-when">({{ c.side|e }})</span>{% endif %}
+                            {% for m in c.motifs %}<a class="motif-chip small" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
+                    </ul>
+                    <p class="court-when"><a href="{{ ep.url|e }}">Listen to the episode</a></p>
+                </details>
+            {% endfor %}
+        {% endif %}
         {% if copies %}
             <h3>Copypasta</h3>
             <p class="poll-note">The same words posted by many accounts: {% for c in copies %}{{ c.people }} accounts{% if not loop.last %}, {% endif %}{% endfor %}.</p>

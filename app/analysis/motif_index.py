@@ -305,6 +305,8 @@ def nightly(budget: float | None = None):
         if lab.get('claim') and lab.get('genre') not in NOT_STORIES:  # a roundup or explainer checks no rumor
             claims.append({'claim': corrected(lab['claim'], index), 'source': item['source'], 'ref': item['url'],
                            'date': item['published'][:10]})
+    from app.analysis import focus_group  # what voters say in focus groups: a source of its own
+    claims += [{**c, 'claim': corrected(c['claim'], index)} for c in focus_group.claims()]
     return file_claims(claims, budget=budget)
 
 
@@ -775,6 +777,10 @@ def searchable_claims() -> list[dict]:
         if lab.get('claim'):
             text = corrected(lab['claim'], index)
             out.setdefault(key(text), {'claim': text, 'source': it['source'], 'ref': it['url'], 'motifs': []})
+    from app.analysis import focus_group
+    for c in focus_group.claims():
+        text = corrected(c['claim'], index)
+        out.setdefault(key(text), {'claim': text, 'source': c['source'], 'ref': c['ref'], 'motifs': []})
     return list(out.values())
 
 

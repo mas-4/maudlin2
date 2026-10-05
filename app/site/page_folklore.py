@@ -76,6 +76,7 @@ def withheld() -> set[str]:
         return set()
 
 
+FOCUS_EPISODES = 4  # Focus Group episodes shown, the latest
 MOTIF_CHIPS = 12  # motif filters at most
 
 
@@ -148,8 +149,18 @@ class FolklorePage:
                 elif g['kind'] == 'copypasta':
                     copies.append({'people': g['authors'], 'posts': g['posts'],
                                    'example': g['examples'][0] if Config.debug else None})
+        # What voters say in The Focus Group's episodes, the latest few, in our words (never their quotes), with the
+        # motifs each claim is filed under: a source of its own beside the posts
+        from app.analysis import focus_group
+        voters = []
+        for url, ep in sorted(focus_group.load().items(), key=lambda kv: kv[1].get('date', ''), reverse=True)[:FOCUS_EPISODES]:
+            said = [{'claim': motif_index.corrected(c['claim'], index), 'side': c.get('side') or ''} for c in ep.get('claims', [])]
+            for c in said:
+                c['motifs'] = motif_cards(index, c['claim'])
+            if said:
+                voters.append({'title': ep['title'], 'date': ep['date'], 'url': url, 'claims': said})
         self.template.write({
-            'title': 'Folklore', 'report': report, 'cards': cards, 'copies': copies,
+            'title': 'Folklore', 'report': report, 'cards': cards, 'copies': copies, 'voters': voters,
             'floor': floor, 'fewer': fewer, 'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
             'genre_notes': GENRE_NOTES, 'chapter_notes': CHAPTER_NOTES,
             'rumor_classes': RUMOR_CLASSES, 'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,

@@ -22,6 +22,7 @@ import threading
 
 logger = get_logger(__name__)
 NARRATIVE_HOUR = 4  # the run that writes the day's narrative report
+FOCUS_BUDGET = 180  # seconds a run spends reading new Focus Group episodes (one a week, about a minute and a half)
 MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
 QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
@@ -183,6 +184,9 @@ def main(args: argparse.Namespace):
             circulation.nightly()  # which fact-checked rumors people are telling or arguing over (#153)
         # New claims into our own motif index (#145), a few minutes a run with the bigger model, so a night with a
         # long report can't push a run past its time limit; what's left waits for the next run
+        # What voters say in The Focus Group's episodes (#164), read once per episode with the bigger model
+        from app.analysis import focus_group
+        focus_group.extract(budget=FOCUS_BUDGET)
         from app.analysis import motif_index
         motif_index.nightly(budget=MOTIF_BUDGET)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))

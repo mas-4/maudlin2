@@ -3884,3 +3884,27 @@ h1 {
     color: #444;
     margin: 0 0 0.4em;
 }
+
+/* Folklore: what voters say in The Focus Group, an episode at a time */
+.focus-episode {
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #1f1f2e;
+    border-radius: 12px;
+    padding: 0.5em 0.9em;
+    margin: 0.6em 0;
+}
+
+.focus-episode summary {
+    cursor: pointer;
+}
+
+.focus-claims li {
+    margin: 0.35em 0;
+}
+
+.motif-chip.small {
+    font-size: 0.8em;
+    padding: 0.05em 0.5em;
+    margin: 0 0 0 0.3em;
+    box-shadow: 1px 1px 0 #1f1f2e;
+}

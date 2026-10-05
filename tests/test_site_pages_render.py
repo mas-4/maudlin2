@@ -6,6 +6,7 @@ Kept offline and read-only: no language model (llm.backend is None), the embedde
 are stubbed, and a guard fails the run on any INSERT/UPDATE/DELETE. Pages go to a scratch build folder."""
 import copy
 import glob
+import json
 import os
 import re
 import socket
@@ -439,12 +440,19 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         pn.motif_index.key('They are <keeping> him alive'): ['M007']}, 'entries': {'M007': {
             'id': 'M007', 'name': 'the ruler kept alive in secret', 'claims': [{}, {}, {}]}}})
     monkeypatch.setattr(Config, 'build', str(tmp_path))
+    from app.analysis import focus_group
+    (tmp_path / 'fg.json').write_text(json.dumps({'https://ep/1': {'title': 'Ep61: Trump voters', 'date': '2026-10-03',
+        'read': 1, 'claims': [{'claim': 'ChatGPT reports what you say to the government', 'side': 'Trump voter',
+                               'quote': 'SECRET QUOTE probably recording everything', 'at': 60}]}}))
+    monkeypatch.setattr(focus_group, 'STORE', str(tmp_path / 'fg.json'))
     for debug, shows_posts in ((False, False), (True, True)):
         monkeypatch.setattr(Config, 'debug', debug)
         pn.FolklorePage().generate()
         html = (tmp_path / 'folklore.html').read_text()
         assert 'They are &lt;keeping&gt; him alive' in html and '🔗 Same issue as' in html and 'Trump health' in html
         assert 'These are rumors, not facts.' in html
+        # What voters say in focus groups: the claim in our words, never the quote
+        assert 'ChatGPT reports what you say to the government' in html and 'SECRET QUOTE' not in html
         assert '😨 dread rumor' in html and 'data-rumor="dread"' in html
         assert ('🕵️ event conspiracy' in html) is shows_posts  # held to previews until it's reliable
         # Not a bare "left"/"right" (reads as "correct"); the model's guess only in previews

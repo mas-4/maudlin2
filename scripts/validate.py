@@ -535,6 +535,10 @@ async function loadDetail(claim) {
     detailHtml = `<p><b>${esc(d.title || 'Fact-check')}</b> <span class="meta">${esc(d.source)} · ${esc(d.published || '')}</span>
       ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">read it ↗</a>` : ''}</p>
       ${d.summary ? `<p class="meta">${esc(d.summary)}</p>` : ''}`;
+  } else if (d.kind === 'focus-group') {
+    detailHtml = `<p><b>🎙️ ${esc(d.title || 'The Focus Group')}</b> <span class="meta">${esc(d.published || '')}${d.at != null ? ' · at ' + Math.floor(d.at / 60) + ' min' : ''}</span>
+      ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">episode ↗</a>` : ''}</p>
+      ${d.quote ? `<p>“${esc(d.quote)}” <span class="meta">${esc(d.side || 'a voter')}</span></p>` : ''}`;
   } else if (d.kind === 'folklore') {
     detailHtml = `<p class="meta">Told by ${d.people} people in ${d.posts} posts (report of ${esc(d.made || '')}). Some of them:</p>
       <ul class="examples">${(d.examples || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
@@ -991,6 +995,13 @@ def claim_detail(claim: str) -> dict:
     words = mi.originals(claim, index)
     filed = next((c for e in mi.live(index) for c in e['claims'] if c['claim'] == claim), {})
     out = {'claim': claim, 'source': filed.get('source', ''), 'model_words': sorted(words - {claim})}
+    if filed.get('source') == 'Focus Group':
+        from app.analysis import focus_group
+        ep = focus_group.load().get(filed.get('ref', ''), {})
+        said = next((c for c in ep.get('claims', []) if c['claim'] in words), {})
+        out.update(kind='focus-group', title=ep.get('title'), url=filed.get('ref'), published=ep.get('date', ''),
+                   quote=said.get('quote'), side=said.get('side'), at=said.get('at'))
+        return out
     if filed.get('source') and filed['source'] != 'narrative':
         url = filed.get('ref', '')
         item = next((i for i in factchecks._items(90) if i.get('url') == url), {})
