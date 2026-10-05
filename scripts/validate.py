@@ -294,7 +294,8 @@ body {{ font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e;
 .pair {{ box-shadow: 4px 4px 0 #ff4fa3; }} .two {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
 .side {{ border: 1.5px dashed #ccc; border-radius: 10px; padding: 6px 10px; }} .side-acts {{ display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 6px; }}
 .both {{ border-top: 1px dashed #ccc; padding-top: 6px; }} .bothclaims {{ background: #f4f1e6; border-radius: 8px; padding: 6px 6px 6px 24px; }}
-.outlet, .said {{ font-size: .85em; color: #555; }} ul {{ margin: .4em 0; padding-left: 1.2em; }} li {{ margin: .2em 0; }}
+.outlet, .said {{ font-size: .85em; color: #555; }} .grip {{ font-weight: 600; }}
+.alias {{ border: 1px dashed #aaa; border-radius: 6px; padding: 0 4px; cursor: grab; }} ul {{ margin: .4em 0; padding-left: 1.2em; }} li {{ margin: .2em 0; }}
 .row {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; }} input {{ font: inherit; padding: 3px 6px; }}
 button {{ font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }}
 button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1em; }} h2 {{ margin-top: 1.4em; }}
@@ -1298,10 +1299,10 @@ def entities_page() -> str:
     rows = sorted(subjects.items(), key=lambda kv: (-kv[1]['stories'], kv[0].lower()))
     cards = ''.join(f"""
 <section class="card entry" data-text="{esc((name + ' ' + ' '.join(e['names'])).lower())}" data-name="{esc(name.lower())}" data-stories="{e['stories']}" data-aliases="{len(e['names'])}">
-  <p class="outlet">{e['stories']} stor{'y' if e['stories'] == 1 else 'ies'}</p>
+  <p class="outlet grip" data-name="{esc(name)}" title="drag onto another subject">{esc(name)} · {e['stories']} stor{'y' if e['stories'] == 1 else 'ies'}</p>
   <div class="row"><input class="name" value="{esc(name)}" size="40"><button data-act="rename" data-source="{esc(name)}">rename</button>
     <button data-act="merge_into" data-source="{esc(name)}">⤵ another name for…</button></div>
-  {'<p class="said">also named: ' + ' '.join(f'{esc(n)} <button class="small" data-act="unmerge" data-name="{esc(n)}">✗ not this</button>' for n in sorted(e['names'])) + '</p>' if e['names'] else ''}
+  {'<p class="said">also named: ' + ' '.join(f'<span class="alias" data-name="{esc(n)}" title="drag onto another subject to move just this name">{esc(n)}</span> <button class="small" data-act="unmerge" data-name="{esc(n)}">✗ not this</button>' for n in sorted(e['names'])) + '</p>' if e['names'] else ''}
 </section>""" for name, e in rows)
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Names</title><style>
@@ -1318,7 +1319,8 @@ button.small {{ font-size: .75em; padding: 1px 7px; }} nav a {{ margin-right: 1e
 <h1>Names</h1>
 <p>The people, places and groups the local model names in each story, for the “mentioned:” filters on the front page:
 {len(subjects)} subjects under {len(counts)} names. Give each subject one name: merge names for the same subject, rename
-a subject, or keep two apart. Changes go live with the next site build.</p>
+a subject, or keep two apart. Or drag: a subject by its name line (⠿) onto another subject, or one of its other names
+onto the subject it belongs to. Changes go live with the next site build.</p>
 <h2>Suggested merges</h2>
 {suggest or '<p>No suggestions right now.</p>'}
 <h2>Every subject</h2>
@@ -1326,6 +1328,7 @@ a subject, or keep two apart. Changes go live with the next site build.</p>
 <select id="sort"><option value="most">most stories</option><option value="fewest">fewest stories</option><option value="az">A–Z</option><option value="za">Z–A</option><option value="aliases">most other names</option></select></p>
 <div id="subjects">
 {cards}</div>
+{DRAG_SNIPPET}
 <script>
 const post = async (body) => {{
   const r = await fetch('/entities', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(body)}});
@@ -1352,6 +1355,26 @@ const sorts = {{
   az: (a, b) => a.dataset.name.localeCompare(b.dataset.name), za: (a, b) => b.dataset.name.localeCompare(a.dataset.name),
   aliases: (a, b) => b.dataset.aliases - a.dataset.aliases || b.dataset.stories - a.dataset.stories,
 }};
+// Drag a subject (its name line) onto another: one is another name for the other, either way; drag one of a
+// subject's other names onto the subject it belongs to
+dragZones({{
+  handle: '.entry .grip, .entry .alias', target: '.entry',
+  item: (h) => ({{name: h.dataset.name, alias: h.classList.contains('alias'), of: h.closest('.entry').querySelector('.grip').dataset.name}}),
+  label: (i) => '🗣️ ' + i.name,
+  name: (t) => 'onto 🗣️ ' + t.querySelector('.grip').dataset.name,
+  zones: (i, t) => {{
+    const other = t.querySelector('.grip').dataset.name, q = (x) => '\u201c' + x + '\u201d';
+    if (other === i.of) return [];
+    if (i.alias) return [{{label: '⇢ a name for this one', say: `${{q(i.name)}} now names ${{q(other)}} (no longer ${{q(i.of)}}).`,
+                           run: () => post({{action: 'merge', source: i.name, target: other}})}}];
+    return [{{label: '⤵ another name for it', say: `${{q(i.name)}} is another name for ${{q(other)}}: its stories and names go under ${{q(other)}}.`,
+              run: () => post({{action: 'merge', source: i.name, target: other}})}},
+            {{label: '⤴ it is another name for this', say: `${{q(other)}} is another name for ${{q(i.name)}}: its stories and names go under ${{q(i.name)}}.`,
+              run: () => post({{action: 'merge', source: other, target: i.name}})}},
+            {{label: '✗ different subjects', say: `${{q(i.name)}} and ${{q(other)}} are kept apart (never suggested as one).`,
+              run: () => post({{action: 'not_same', a: i.name, b: other}})}}];
+  }},
+}});
 const box = document.getElementById('subjects');
 document.getElementById('sort').addEventListener('change', (ev) => {{
   [...box.querySelectorAll('.entry')].sort(sorts[ev.target.value]).forEach((c) => box.appendChild(c));
