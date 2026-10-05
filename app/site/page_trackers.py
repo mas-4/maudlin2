@@ -7,6 +7,8 @@ TRACKERS = [
      'about': 'Running stories told in parts, kept after they leave the front pages, with each part on a timeline.'},
     {'href': 'names.html', 'emoji': '🗣️', 'name': "Who's in the news",
      'about': 'The people, places and groups our stories name, day by day, and who covered them.'},
+    {'href': 'radio.html', 'emoji': '📻', 'name': 'On the radio',
+     'about': "NPR's and ABC's hourly newscasts, story by story, beside what the front pages led with."},
     {'href': 'court.html', 'emoji': '⚖️', 'name': 'The Supreme Court',
      'about': "This term's cases: who's covering which, from which side, at which stage."},
     {'href': 'beyond.html', 'emoji': '🎙️', 'name': 'Beyond the front pages',

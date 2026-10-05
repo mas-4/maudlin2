@@ -5,6 +5,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **On the radio (#159).** The hourly newscasts of NPR (NPR News Now) and ABC News (ABC News Update), which we
+  already transcribe, are now split into their stories in the order they aired. The bigger local model (Qwen3 30B-A3B)
+  reads each transcript with the list of the 40 stories most outlets had on their front pages at the nearest run,
+  writes a short headline for each newscast story, and says which front-page story it is, if any (the same event, not
+  the same topic). Splitting at reporters' sign-offs alone missed anchor-read items. ABC's ad wrapper (a promo before
+  the anchor's "ABC News, I'm ...", a sponsor read after "This is ABC News") is cut off by that pattern first: the
+  model's own ad calls were unsteady. A story is kept only if its first words occur in the transcript after the
+  previous story's (once the model copied the front-page list as a newscast, reusing one real opening for all of
+  them), and a story told twice is kept where it first aired. The page sets each hour's
+  newscasts beside the front pages' biggest stories and counts how often a newscast led with their biggest one.
+  Newscasts from before Oct 4, 13:05 UTC have no front-page snapshot to compare with and are left out.
 - **Rumors stated the way their tellers state them.** The one-line summary of a fact-checked claim sometimes
   stated the fact-checker's correction instead of the rumor ("the video shows Muslim women queuing for a clothing sale,
   not free childcare"); 10 of the 80 in the motif index read that way, so motifs filed from them described the

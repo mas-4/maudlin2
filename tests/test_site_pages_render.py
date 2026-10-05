@@ -29,11 +29,12 @@ from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
 from app.site.page_sagas import SagasPage
 from app.site.page_names import NamesPage
+from app.site.page_radio import RadioPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
-         'sagas.html', 'names.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
+         'sagas.html', 'names.html', 'radio.html']
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'radio.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
              'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -92,6 +93,13 @@ def refuse_connection(*args, **kwargs):
     raise RuntimeError('network access in a test')
 
 
+RADIO_CAST = {'source': 'nprnewsnow', 'show': 'NPR News Now', 'title': '2pm ET', 'published': '2026-10-05T18:09',
+              'items': [{'title': 'Co-pilot <meant> to crash plane', 'story': 70, 'story_label': 'Dubai flight attack',
+                         'front_rank': 2, 'outlets': 30},
+                        {'title': 'Cornell building vandalized'}],
+              'front_top': [{'id': 26, 'label': 'Trump <rallies>', 'outlets': 40}, {'id': 70, 'label': 'Dubai flight attack', 'outlets': 30}]}
+
+
 @pytest.fixture(scope='module')
 def site(data_handler, tmp_path_factory):
     build = tmp_path_factory.mktemp('site-build')
@@ -120,6 +128,8 @@ def site(data_handler, tmp_path_factory):
             'outlets': 66, 'left': 30, 'center': 10, 'right': 20, 'unrated': 6, 'stories': [
                 {'id': 26, 'label': 'Trump <rallies>', 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 4, 1), 'outlets': 20},
                 {'id': 70, 'label': 'Trump defends tariffs', 'first': dt(2026, 10, 4, 22), 'last': dt(2026, 10, 5, 13), 'outlets': 40}]}])
+        from app.analysis import running_order
+        mp.setattr(running_order, 'load', lambda: {'npr/1': RADIO_CAST})
         # The Supreme Court page: canned coverage (the real one asks the language model and reads the docket file)
         mp.setattr(scotus, 'coverage', lambda: COURT)
         mp.setattr(scotus, 'refresh_docket', lambda: None)
@@ -141,7 +151,7 @@ def site(data_handler, tmp_path_factory):
         headlines = ph.HeadlinesPage(dh)
         try:
             headlines.generate()
-            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage, NamesPage):
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage, NamesPage, RadioPage):
                 page(data_handler).generate()
         finally:
             event.remove(engine, 'before_cursor_execute', no_writes)
@@ -587,3 +597,15 @@ def test_names_page_tracks_each_name_day_by_day(site):
     assert [li.select_one('.saga-part-title').get_text() for li in card.select('.saga-timeline li')] == \
         ['Trump defends tariffs', 'Trump <rallies>']  # newest first, escaped
     assert len(card.select('.name-day')) == 3  # Oct 3, 4 and 5
+
+
+def test_radio_page_sets_each_newscast_beside_the_front_pages(site):
+    page = site['soup']['radio.html']
+    assert page.select_one('.radio-hour').get_text() == 'Mon Oct 5, 2 PM ET'
+    npr, front = page.select('.radio-card')
+    first, second = npr.select('.radio-items li')
+    assert first.get_text().startswith('Co-pilot <meant> to crash plane')  # escaped
+    assert first.select_one('.radio-rank').get_text() == '#2'
+    assert second.select_one('.radio-off')
+    assert [li.get_text().split()[0] for li in front.select('.radio-items li')] == ['Trump', 'Dubai']
+    assert 'of 1 newscasts, 0 led with' in page.select_one('.radio-stats').get_text()
