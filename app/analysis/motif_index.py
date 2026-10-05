@@ -806,8 +806,12 @@ def single_suggestions(n: int = 5) -> list[dict]:
     from app.narratives import embed
     index = load()
     entries = live(index)
-    # A single put under a broader motif (a kind of it) has been placed, like one that stands alone
-    singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone') and not e.get('parents')]
+    # A single put in the hierarchy (a kind of another motif, or one with kinds of its own) has been placed, like one
+    # that stands alone
+    has_kinds = {p for e in entries for p in parents_of(e)}
+    singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone') and not parents_of(e)
+               and e['id'] not in has_kinds]
+    settled = {frozenset(p) for p in index.get('not_same', [])}  # kept apart, related or kinds: decided already
     if not singles:
         return []
     texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(c['claim'][:120] for c in e['claims'][-2:])
@@ -819,9 +823,10 @@ def single_suggestions(n: int = 5) -> list[dict]:
         k = key(e['claims'][0]['claim'])
         sims = motifs_v @ cv
         # Motifs already holding this very claim first: two names for one claim are the likeliest merge of all
-        siblings = [m for m in entries if m['id'] != e['id'] and any(key(c['claim']) == k for c in m['claims'])]
+        open_ = lambda m: m['id'] != e['id'] and frozenset([e['id'], m['id']]) not in settled  # noqa: E731
+        siblings = [m for m in entries if open_(m) and any(key(c['claim']) == k for c in m['claims'])]
         picks = [(entries[i], float(sims[i])) for i in np.argsort(-sims)
-                 if entries[i]['id'] != e['id'] and k not in entries[i].get('not_claims', [])
+                 if open_(entries[i]) and k not in entries[i].get('not_claims', [])
                  and not any(key(c['claim']) == k for c in entries[i]['claims'])][:n]
         out.append({'id': e['id'], 'name': e['name'], 'claim': e['claims'][0]['claim'],
                     'source': e['claims'][0].get('source', ''),

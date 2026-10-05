@@ -258,7 +258,11 @@ def test_single_claim_motifs_get_the_closest_motifs_to_join(monkeypatch, tmp_pat
     mi.set_parent('M001', 'M002')  # put under a broader motif: placed, off the list
     assert mi.single_suggestions() == []
     mi.set_parent('M001', 'M002', False)
-    assert len(mi.single_suggestions()) == 1
+    mi.set_parent('M002', 'M001')  # or with a kind of its own
+    assert mi.single_suggestions() == []
+    mi.set_parent('M002', 'M001', False)  # a pair settled once (kinds, related, kept apart) isn't suggested again
+    [s] = mi.single_suggestions()
+    assert [m['name'] for m in s['suggest']] == ['Rigged election']
     mi.stands_alone('M001')
     assert mi.single_suggestions() == []
 

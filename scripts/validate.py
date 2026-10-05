@@ -1029,51 +1029,117 @@ SINGLES_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><m
 <title>Single motifs</title><style>
 body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }
 nav a { margin-right: 1em; } .card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 8px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #00c2a8; }
-.card.done { opacity: .4; box-shadow: none; } .meta { color: #666; font-size: .85em; } h3 { margin: .2em 0; font-size: 1.05em; }
-.claim { margin: .2em 0 .5em; } .sug { display: flex; gap: 6px; align-items: center; padding: 3px 0; border-top: 1px dashed #ddd; flex-wrap: wrap; }
-.sug .nm { flex: 1; min-width: 12em; } .sug.same { background: #fff3c4; border-radius: 6px; } button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 2px 10px; cursor: pointer; }
-button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; }
+.card.done { box-shadow: none; background: #f4f4f4; } .meta { color: #666; font-size: .85em; } h3 { margin: .2em 0; font-size: 1.05em; }
+.claim { margin: .2em 0 .5em; } .sug { display: flex; gap: 6px; align-items: center; padding: 3px 4px; border-top: 1px dashed #ddd; flex-wrap: wrap; }
+.sug .nm { flex: 1; min-width: 12em; } .sug.same { background: #fff3c4; border-radius: 6px; } .sug.hot { outline: 2px solid #00c2a8; border-radius: 6px; }
+button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 2px 10px; cursor: pointer; }
+button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.say { min-height: 1.4em; margin: 6px 0 2px; padding: 4px 8px; border-radius: 6px; background: #eef9f7; font-size: .9em; }
+.say:empty { background: none; } .result { font-weight: 600; } .find { flex: 1; min-width: 14em; font: inherit; padding: 2px 8px; border: 1.5px solid #1f1f2e; border-radius: 8px; }
+.legend { font-size: .9em; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 6px 10px; } .legend b { white-space: nowrap; }
 </style></head><body>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Single motifs</b> <a href="/entities">Names</a></nav>
 <h1>Motifs holding one claim</h1>
-<p>Each holds a single claim. Beside it, the motifs closest to that claim: merge it into one, make it a kind of one
-(a narrower motif under a broader one; both stay), file the claim there too, or say it stands alone (it leaves this list). Likeliest merges first. <span id="count" class="meta"></span></p>
+<p>Each card is a motif with a single claim; under it, the motifs closest to that claim (yellow: a motif already holding
+this very claim). Point at a button to see in words what it will do. <span id="count" class="meta"></span></p>
+<p class="legend"><b>⤵ merge</b> the two are one motif: this one goes, its claim joins the other ·
+<b>⊂ narrower</b> this one is a kind of the other (both stay, this one under it) ·
+<b>⊃ broader</b> the other is a kind of this one ·
+<b>＋ file here too</b> the claim also belongs under the other; this one stays as it is ·
+<b>✓ stands alone</b> none of these; it leaves this list</p>
 <div id="list"><p class="meta">Finding the closest motifs…</p></div>
+<datalist id="motif-names"></datalist>
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-let items = [];
+let items = [], motifs = [];
+const q = (t) => '“' + t + '”';
+const SAY = {
+  merge: (s, m) => `${q(s.name)} goes; its claim joins ${q(m.name)}.`,
+  narrower: (s, m) => `${q(s.name)} becomes a kind of ${q(m.name)}: both stay, ${q(s.name)} under it.`,
+  broader: (s, m) => `${q(m.name)} becomes a kind of ${q(s.name)}: both stay, ${q(m.name)} under it.`,
+  also: (s, m) => `The claim is filed under ${q(m.name)} too; ${q(s.name)} stays as it is.`,
+  alone: (s) => `${q(s.name)} fits none of these; it stays as it is and leaves this list.`,
+};
+const DONE = {
+  merge: (s, m) => `Merged: ${q(s.name)} is now part of ${q(m.name)}.`,
+  narrower: (s, m) => `${q(s.name)} is now a kind of ${q(m.name)}.`,
+  broader: (s, m) => `${q(m.name)} is now a kind of ${q(s.name)}.`,
+  also: (s, m) => `The claim is now under ${q(m.name)} too.`,
+  alone: (s) => `${q(s.name)} stands alone.`,
+};
 async function act(body) {
   const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   if (!r.ok) { alert('Failed: ' + await r.text()); return false; }
   if (window.refreshUndo) refreshUndo();
   return true;
 }
-function draw() {
-  document.getElementById('count').textContent = `(${items.length} to look at)`;
-  document.getElementById('list').innerHTML = items.map((s, n) => `<div class="card" id="s${n}">
+function row(n, k, m) {
+  return `<div class="sug${m.same_claim ? ' same' : ''}" data-k="${k}"><span class="nm">🧩 ${esc(m.name)} <span class="meta">${m.same_claim ? '<b>same claim</b>' : m.score == null ? `${m.size} claim${m.size === 1 ? '' : 's'} · from your search` : `${m.size} claim${m.size === 1 ? '' : 's'} · ${m.score.toFixed(2)}`}</span></span>
+    <button class="add" data-n="${n}" data-k="${k}" data-do="merge">⤵ merge</button>
+    <button data-n="${n}" data-k="${k}" data-do="narrower">⊂ narrower</button>
+    <button data-n="${n}" data-k="${k}" data-do="broader">⊃ broader</button>
+    ${m.same_claim ? '' : `<button data-n="${n}" data-k="${k}" data-do="also">＋ file here too</button>`}</div>`;
+}
+function card(s, n) {
+  return `<div class="card" id="s${n}">
     <h3>🧩 ${esc(s.name)} <span class="meta">${s.id}</span></h3>
     <p class="claim">${esc(s.claim)} <span class="meta">${esc(s.source === 'narrative' ? 'online' : s.source)}</span></p>
-    ${s.suggest.map((m, k) => `<div class="sug${m.same_claim ? ' same' : ''}"><span class="nm">🧩 ${esc(m.name)} <span class="meta">${m.same_claim ? '<b>same claim</b>' : `${m.size} claim${m.size === 1 ? '' : 's'} · ${m.score.toFixed(2)}`}</span></span>
-      <button class="add" data-n="${n}" data-k="${k}" data-do="merge" title="${esc(s.name)} goes; its claim joins ${esc(m.name)}">⤵ merge into</button>
-      <button data-n="${n}" data-k="${k}" data-do="kind" title="${esc(s.name)} is a kind of ${esc(m.name)}: both stay, ${esc(s.name)} under it">⊂ kind of</button>
-      ${m.same_claim ? '' : `<button data-n="${n}" data-k="${k}" data-do="also" title="file the claim under ${esc(m.name)} too; ${esc(s.name)} stays">+ file here too</button>`}</div>`).join('')}
-    <div class="row"><button data-n="${n}" data-do="alone">✓ stands alone</button></div></div>`).join('') || '<p>None left. 🎉</p>';
+    <div class="sugs">${s.suggest.map((m, k) => row(n, k, m)).join('')}</div>
+    <div class="say" aria-live="polite"></div>
+    <div class="row"><input class="find" list="motif-names" data-n="${n}" placeholder="🔎 another motif: type its name, pick it, and it joins the list">
+      <button data-n="${n}" data-do="alone">✓ stands alone</button></div></div>`;
 }
+function draw() {
+  document.getElementById('count').textContent = `(${items.length} to look at)`;
+  document.getElementById('list').innerHTML = items.map(card).join('') || '<p>None left. 🎉</p>';
+  document.getElementById('motif-names').innerHTML = motifs.map((m) => `<option value="${esc(m.name)}">${m.size} claim${m.size === 1 ? '' : 's'}</option>`).join('');
+}
+function explain(b, on) {
+  if (!b || !b.dataset.do) return;
+  const c = b.closest('.card'), s = items[+b.dataset.n], m = b.dataset.k == null ? null : s.suggest[+b.dataset.k];
+  c.querySelectorAll('.sug.hot').forEach((x) => x.classList.remove('hot'));
+  if (on && m) b.closest('.sug').classList.add('hot');
+  c.querySelector('.say').textContent = on ? SAY[b.dataset.do](s, m) : '';
+}
+document.addEventListener('mouseover', (ev) => { const b = ev.target.closest('button[data-do]'); if (b) explain(b, true); });
+document.addEventListener('mouseout', (ev) => { const b = ev.target.closest('button[data-do]'); if (b && !b.contains(ev.relatedTarget)) explain(b, false); });
+document.addEventListener('focusin', (ev) => explain(ev.target.closest('button[data-do]'), true));
+document.addEventListener('change', (ev) => {
+  const f = ev.target.closest('.find'); if (!f) return;
+  const n = +f.dataset.n, s = items[n], m = motifs.find((x) => x.name === f.value.trim());
+  if (!m) return;
+  f.value = '';
+  if (m.id === s.id) return;
+  let k = s.suggest.findIndex((x) => x.id === m.id);
+  if (k < 0) {
+    s.suggest.push({id: m.id, name: m.name, size: m.size, score: null});
+    k = s.suggest.length - 1;
+    f.closest('.card').querySelector('.sugs').insertAdjacentHTML('beforeend', row(n, k, s.suggest[k]));
+  }
+  f.closest('.card').querySelector(`.sug[data-k="${k}"]`).scrollIntoView({block: 'nearest'});
+});
 document.addEventListener('click', async (ev) => {
   const b = ev.target.closest('button[data-do]'); if (!b) return;
-  const s = items[+b.dataset.n], m = s.suggest[+b.dataset.k];
+  const s = items[+b.dataset.n], m = b.dataset.k == null ? null : s.suggest[+b.dataset.k], what = b.dataset.do;
   let ok;
-  if (b.dataset.do === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
-  else if (b.dataset.do === 'also') ok = await act({action: 'also', claim: s.claim, source: s.id, target: m.id});
-  else if (b.dataset.do === 'kind') ok = await act({action: 'parent', id: s.id, parent: m.id});
+  if (what === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
+  else if (what === 'narrower') ok = await act({action: 'parent', id: s.id, parent: m.id});
+  else if (what === 'broader') ok = await act({action: 'parent', id: m.id, parent: s.id});
+  else if (what === 'also') ok = await act({action: 'also', claim: s.claim, source: s.id, target: m.id});
   else ok = await act({action: 'stands_alone', id: s.id});
-  if (ok) {
-    // This card, and after a merge the target's own card (no longer holding one claim), are done
-    const ids = new Set([s.id].concat(b.dataset.do === 'merge' ? [m.id] : []));
-    items.forEach((x, i) => { if (ids.has(x.id)) { const card = document.getElementById('s' + i); card.classList.add('done'); card.querySelectorAll('button').forEach((y) => y.disabled = true); } });
-  }
+  if (!ok) return;
+  // This card is done; so is the other motif's own card when it was a single too (merged away, or now in a hierarchy)
+  const ids = new Set([s.id].concat(m && what !== 'also' ? [m.id] : []));
+  items.forEach((x, i) => {
+    if (!ids.has(x.id)) return;
+    const c = document.getElementById('s' + i);
+    c.classList.add('done');
+    c.querySelector('.sugs').remove(); c.querySelector('.row').remove();
+    c.querySelector('.say').innerHTML = `<span class="result">✓ ${esc(DONE[what](s, m))}</span> <button class="undo-here" title="undo your last change (Ctrl+Z)">↶ undo</button>`;
+  });
 });
-fetch('/motif-singles.json').then((r) => r.json()).then((d) => { items = d; draw(); });
+document.addEventListener('click', (ev) => { if (ev.target.closest('.undo-here')) document.getElementById('undo-btn').click(); });
+fetch('/motif-singles.json').then((r) => r.json()).then((d) => { items = d.singles; motifs = d.motifs; draw(); });
 </script></body></html>"""
 
 
@@ -1266,7 +1332,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({'what': found[1]['what'] if found else None})
         if self.path.startswith('/motif-singles.json'):
             from app.analysis import motif_index
-            return self.send_json(motif_index.single_suggestions())
+            index = motif_index.load()
+            return self.send_json({'singles': motif_index.single_suggestions(),
+                                   'motifs': sorted(({'id': e['id'], 'name': e['name'], 'size': len(e['claims'])}
+                                                     for e in motif_index.live(index)), key=lambda m: m['name'].lower())})
         if self.path.startswith('/claims.json'):
             from urllib.parse import urlparse, parse_qs
             from app.analysis import motif_index
