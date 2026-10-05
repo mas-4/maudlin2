@@ -99,9 +99,9 @@
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
                     {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
                         <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
-                            {% if c.rumor_class %}<span class="shape-chip">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor</span>{% endif %}
-                            {% if c.conspiracy and preview %}<span class="shape-chip">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy</span>{% endif %}
-                            {% if c.family %}<span class="shape-family">{{ c.family|e }}</span>{% endif %}
+                            {% if c.rumor_class %}<span class="shape-chip" title="Rumor type, from Robert Knapp, “A Psychology of Rumor” (1944): wish, dread or wedge">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor <span class="chip-src">Knapp</span></span>{% endif %}
+                            {% if c.conspiracy and preview %}<span class="shape-chip" title="Conspiracy type, from Michael Barkun, “A Culture of Conspiracy” (2003): event, systemic or superconspiracy">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy <span class="chip-src">Barkun</span></span>{% endif %}
+                            {% if c.family %}<span class="shape-family" title="Subject: our own list, after the chapters of urban-legend collections"><span class="chip-src">subject</span> {{ c.family|e }}</span>{% endif %}
                         </p>
                     {% endif %}
                     <div class="meters">
@@ -115,7 +115,7 @@
                         </div>
                     </div>
                     {% if c.motifs %}
-                        <div class="card-section"><p class="section-label" title="Recurring shapes this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 Motifs</p>
+                        <div class="card-section"><p class="section-label" title="Recurring shapes this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
                             {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
                         </div>
                     {% endif %}

@@ -44,7 +44,7 @@
                     <p class="narrative-claim" title="The claim checked, in the model's words">“{{ c.claim|e }}”</p>
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}</p>
                     {% if c.motifs %}
-                        <div class="card-section"><p class="section-label" title="Recurring shapes this rumor is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 Motifs</p>
+                        <div class="card-section"><p class="section-label" title="Recurring shapes this rumor is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
                             {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
                         </div>
                     {% endif %}
@@ -57,9 +57,9 @@
                     {% endif %}
                     {% if c.rumor_class or c.conspiracy or c.family %}
                         <p class="rumor-shape">
-                            {% if c.rumor_class %}<span class="shape-chip">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor</span>{% endif %}
-                            {% if c.conspiracy and preview %}<span class="shape-chip">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy</span>{% endif %}
-                            {% if c.family %}<span class="shape-family">{{ c.family|e }}</span>{% endif %}
+                            {% if c.rumor_class %}<span class="shape-chip" title="Rumor type, from Robert Knapp, “A Psychology of Rumor” (1944): wish, dread or wedge">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor <span class="chip-src">Knapp</span></span>{% endif %}
+                            {% if c.conspiracy and preview %}<span class="shape-chip" title="Conspiracy type, from Michael Barkun, “A Culture of Conspiracy” (2003): event, systemic or superconspiracy">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy <span class="chip-src">Barkun</span></span>{% endif %}
+                            {% if c.family %}<span class="shape-family" title="Subject: our own list, after the chapters of urban-legend collections"><span class="chip-src">subject</span> {{ c.family|e }}</span>{% endif %}
                         </p>
                     {% endif %}
                 </div>

@@ -3860,3 +3860,20 @@ h1 {
 .card-section .narrative-link {
     margin: 0;
 }
+
+/* Where a classification comes from (Knapp's rumor types, Barkun's conspiracy types, our subject list) */
+.chip-src {
+    font: 700 0.72em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #6b6b7b;
+    border-left: 1px solid rgba(31, 31, 46, 0.3);
+    padding-left: 0.35em;
+    margin-left: 0.15em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.shape-family .chip-src {
+    border-left: none;
+    padding-left: 0;
+    margin: 0 0.25em 0 0;
+}
