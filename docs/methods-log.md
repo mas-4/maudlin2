@@ -5,6 +5,18 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Sagas: a looser name rule and a bigger judge.** Two stories could become parts of one saga only if a name rare on
+  the day was in 30% of both stories' headlines; the RAF Fairford bail story and the bombers-pulled-from-Fairford
+  story (0.67 alike) never qualified, since "Fairford" was in 42% of one and 10% of the other. Now 30% of one and
+  10% of the other is enough to ask the judge (6 more pairs over the week's 91 stories). The judge moves from the 8B,
+  which called the Fairford pair "related cases but different outcomes", to the 30B. Two fixes were needed before
+  it could be trusted. Cut off mid-reason, or answering a bare true/false, it said no after reasoning its way to "the
+  same developing story" (Cornell); it now finishes its reason and answers in words. And the second wording asked
+  about a story "followed over time", which two groups on the same development aren't (it called FlyDubai
+  "redundant"); it now counts the same development and later developments alike. On 14 hand-labeled pairs, 13 agree; the
+  14th (an Energy Department arrest and the Yemen campaign, which the 8B had joined) it keeps apart, which we think is
+  right. Sagas already saved don't come apart. First new sagas: the Fairford plot, and Alito's remarks (retirement,
+  intimidation of the Court).
 - **Reuters and AP titles lose Google's source tag.** We read both through Google News, which tags each title with
   the outlet; we removed the tag as a name (" - AP News") but Google has lately tagged by domain as well
   (" - apnews.com", " - reuters.com"), switching back and forth for the same article: 306 of the 364 Reuters and AP
