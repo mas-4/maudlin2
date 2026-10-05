@@ -26,6 +26,7 @@ from app.analysis import llm
 from app.analysis.clustering import embed
 from app.models import Session, SqlLock, Saga, Story, StoryHeadline, Headline, Article, Agency
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -110,11 +111,7 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
     again next run."""
     a, b = sorted([_sample(titles_a), _sample(titles_b)])
     key = hashlib.sha1(json.dumps([a, b]).encode()).hexdigest()
-    try:
-        with open(JUDGMENTS) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(JUDGMENTS, {})
     entry = cache.get(key)
     if entry is None or not (entry.get('hand') or entry.get('judge') == JUDGE_VERSION):
         listed = {'a': '\n'.join(f'- {t}' for t in a), 'b': '\n'.join(f'- {t}' for t in b)}
@@ -129,8 +126,7 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
         entry = {**first, 'a': a, 'b': b, 'model': JUDGE_MODEL, 'judge': JUDGE_VERSION, 'second': second,
                  'same_story': bool(first['same_story'] and second and second['same_story'])}
         cache[key] = entry
-        with open(JUDGMENTS, 'w') as f:
-            json.dump(cache, f)
+        write_json(JUDGMENTS, cache)
         logger.info("Saga check: %s | %s -> %s (%s)", a[0], b[0], entry['same_story'],
                     (second or first).get('reason', ''))
     return bool(entry['same_story'])

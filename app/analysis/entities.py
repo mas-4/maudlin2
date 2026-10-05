@@ -6,13 +6,13 @@ short name so the same subject is named the same way in every story; names are r
 These groups are not sagas (app/analysis/sagas.py): a saga links the parts of one running story; an entity group is
 every current story that names the same subject, related or not."""
 import hashlib
-import json
 import os
 import re
 
 from app.analysis import llm
 from app.analysis.textnorm import source_suffix
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -59,19 +59,14 @@ def named_in(name: str, text: str) -> bool:
 
 
 def load_aliases() -> dict:
-    try:
-        with open(ALIASES) as f:
-            book = json.load(f)
-    except (OSError, ValueError):
-        book = {}
+    book = read_json(ALIASES, {})
     return {'aliases': {**SEED_ALIASES, **book.get('aliases', {})}, 'not_same': book.get('not_same', [])}
 
 
 def save_aliases(book: dict):
     """Only what a person chose: the seeds stay in the code"""
     mine = {k: v for k, v in book['aliases'].items() if SEED_ALIASES.get(k) != v}
-    with open(ALIASES, 'w') as f:
-        json.dump({'aliases': mine, 'not_same': book['not_same']}, f, indent=1, sort_keys=True)
+    write_json(ALIASES, {'aliases': mine, 'not_same': book['not_same']}, indent=1, sort_keys=True)
 
 
 def canonical(name: str, aliases: dict) -> str:
@@ -90,11 +85,7 @@ def tidy(name: str) -> str:
 
 def of_stories(stories: dict, limit: int = MAX_NEW) -> dict:
     """story key -> its names. `stories`: key (a saved story's id, or the cluster's) -> its headlines."""
-    try:
-        with open(CACHE) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(CACHE, {})
     out, asked = {}, 0
     aliases = load_aliases()['aliases']
     for k, headlines in stories.items():
@@ -116,8 +107,7 @@ def of_stories(stories: dict, limit: int = MAX_NEW) -> dict:
         # Rechecked against all its headlines, so names cached before a fix drop out; then each by its canonical name
         out[k] = list(dict.fromkeys(canonical(n, aliases) for n in cache[k] if named_in(n, ' '.join(every).lower())))
     if asked:
-        with open(CACHE, 'w') as f:
-            json.dump(cache, f)
+        write_json(CACHE, cache)
     logger.info("Entities: %d stories named (%d new model calls)", len(out), asked)
     return out
 
@@ -135,11 +125,7 @@ def groups(named: dict, least: int = 2) -> list[tuple[str, list]]:
 
 def all_names() -> dict[str, int]:
     """Every name the model has given a saved or current story, as it gave it, with how many stories have it."""
-    try:
-        with open(CACHE) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        return {}
+    cache = read_json(CACHE, {})
     counts = {}
     for names in cache.values():
         for n in set(names):
@@ -209,10 +195,8 @@ def history(least: int = 2) -> list[dict]:
     was on the front pages and how many outlets had it, and the outlets on all of them by lean. Names in at least
     `least` stories, most stories first. Uses the names already found (of_stories), asking the model nothing."""
     from app.models import Session, Story, StoryHeadline, Headline, Article, Agency
-    try:
-        with open(CACHE) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
+    cache = read_json(CACHE)
+    if cache is None:
         return []
     aliases = load_aliases()['aliases']
     with Session() as s:

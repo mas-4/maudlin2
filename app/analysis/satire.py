@@ -11,6 +11,7 @@ import os
 
 from app.analysis.ties import tie
 from app.utils import Config
+from app.utils.store import read_json
 
 CACHE = os.path.join(Config.data, 'satire_links.json')
 DAYS = 3
@@ -34,11 +35,7 @@ one of these stories is "none". Answer with the story's number, or none."""
 
 
 def _load() -> dict:
-    try:
-        with open(CACHE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(CACHE, {})
 
 
 def jokes(stories: dict[int, str], items: list[dict] | None = None) -> dict[int, list[dict]]:

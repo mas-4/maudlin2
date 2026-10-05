@@ -6,13 +6,13 @@ run, it failed to load its page, found nothing, kept nothing of what it found, f
 dropped most of what it found as too long (its parser grabbing summaries), or hasn't added a new headline in two
 days.
 A healthy run writes a list that says so."""
-import json
 import os
 import threading
 from datetime import datetime as dt
 from statistics import median
 
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -66,11 +66,7 @@ def write(expected: list[tuple[str, str]] | None = None) -> list[tuple[str, list
     for agency, url in expected or []:
         runs.setdefault(agency, {'at': dt.now().isoformat(timespec='minutes'), 'url': url, 'found': 0, 'kept': 0,
                                  'added': 0, 'too_long': 0, 'error': 'never finished'})
-    try:
-        with open(HISTORY_FILE) as f:
-            history = json.load(f)
-    except (OSError, ValueError):
-        history = {}
+    history = read_json(HISTORY_FILE, {})
     flagged = []
     for agency, now in sorted(runs.items()):
         past = history.get(agency, [])
@@ -78,8 +74,7 @@ def write(expected: list[tuple[str, str]] | None = None) -> list[tuple[str, list
         if found:
             flagged.append((agency, found))
         history[agency] = (past + [now])[-HISTORY:]
-    with open(HISTORY_FILE, 'w') as f:
-        json.dump(history, f)
+    write_json(HISTORY_FILE, history)
     stamp = dt.now().strftime('%Y-%m-%d %H:%M')
     lines = [f'# Scrapers to check ({stamp})', '']
     if flagged:

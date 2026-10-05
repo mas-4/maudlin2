@@ -13,6 +13,7 @@ import time
 
 from app.analysis import llm
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -47,17 +48,11 @@ SCHEMA = {"type": "object", "properties": {
 
 
 def load() -> dict:
-    try:
-        with open(STORE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(STORE, {})
 
 
 def save(store: dict):
-    with open(STORE + '.tmp', 'w') as f:
-        json.dump(store, f, indent=1)
-    os.replace(STORE + '.tmp', STORE)
+    write_json(STORE, store, indent=1)
 
 
 def episodes() -> list[dict]:

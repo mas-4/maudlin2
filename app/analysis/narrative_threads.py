@@ -14,6 +14,7 @@ import numpy as np
 
 from app.analysis import llm
 from app.utils import get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -48,17 +49,11 @@ def store_path() -> str:
 
 
 def load() -> dict:
-    try:
-        with open(store_path()) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {'next': 1, 'threads': {}, 'linked': [], 'verdicts': {}}
+    return read_json(store_path(), {'next': 1, 'threads': {}, 'linked': [], 'verdicts': {}})
 
 
 def save(store: dict):
-    with open(store_path() + '.tmp', 'w') as f:
-        json.dump(store, f, indent=1)
-    os.replace(store_path() + '.tmp', store_path())
+    write_json(store_path(), store, indent=1)
 
 
 def day_reports() -> list[str]:

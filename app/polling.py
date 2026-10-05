@@ -17,6 +17,7 @@ import pandas as pd
 import requests as rq
 
 from app.utils import Config, Constants, get_logger
+from app.utils.store import write_json
 
 logger = get_logger(__name__)
 
@@ -58,8 +59,7 @@ def fetch_polls(force: bool = False):
     except Exception as e:  # noqa
         logger.error("Failed to fetch polls: %s", e)
         return
-    with open(POLLS_FILE, 'wt') as f:
-        json.dump(polls, f)
+    write_json(POLLS_FILE, polls)
     logger.info("Fetched %d polls from VoteHub", len(polls))
 
 
@@ -109,8 +109,7 @@ def fetch_aggregates(force: bool = False):
             logger.warning("No %s aggregate table found on %s; the page layout may have changed", key, page)
             return
         aggregates[key] = {'page': page, 'rows': rows}
-    with open(AGGREGATES_FILE, 'wt') as f:
-        json.dump(aggregates, f)
+    write_json(AGGREGATES_FILE, aggregates)
     logger.info("Fetched published averages: %s", {k: len(v['rows']) for k, v in aggregates.items()})
 
 

@@ -8,11 +8,11 @@ picks it. Checked by hand on Oct 4 against the day's stories and narratives: tie
 FlyDubai videos, the Cornell rumors, Christa Pike's execution team, Trump's ".si" domain); under 0.58 they were
 mostly a different claim on the same subject (FactCheck.org on Trump's taxpayer-funded ads matched Ken Paxton's ads
 at 0.56)."""
-import json
 import os
 
 from app.analysis.ties import tie
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -90,11 +90,7 @@ def label_schema() -> dict:
 
 
 def load_labels() -> dict:
-    try:
-        with open(LABELS) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(LABELS, {})
 
 
 def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
@@ -118,7 +114,6 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
             schema, max_tokens=300)
         if answer:
             labels[item['url']] = {**settle(answer), 'model': llm.model()}
-    with open(LABELS, 'w') as f:
-        json.dump(labels, f)
+    write_json(LABELS, labels)
     logger.info("Fact-checks: labeled %d (%d in all)", len(todo), len(labels))
     return labels

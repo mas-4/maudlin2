@@ -8,7 +8,6 @@ The closest posts are often people sharing the fact-check or the news report its
 FactCheck.org's piece on ads about Susan Collins was its own opening line), which is why stance is asked: telling a
 rumor and debunking it are both circulation, but not the same finding."""
 import hashlib
-import json
 import os
 from datetime import datetime as dt
 
@@ -16,6 +15,7 @@ import numpy as np
 
 from app.analysis import llm
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -45,11 +45,7 @@ def seen(claims: dict[str, str], hours: float = HOURS) -> dict:
     v = narratives.embed([p['text'] for p in posts])
     urls = list(claims)
     q = narratives.embed([claims[u] for u in urls])
-    try:
-        with open(CACHE) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(CACHE, {})
     out = {}
     for url, row in zip(urls, q @ v.T):
         found = np.where(row >= CANDIDATE)[0]
@@ -70,23 +66,15 @@ def seen(claims: dict[str, str], hours: float = HOURS) -> dict:
         out[url] = {'telling': len(telling), 'arguing': len(arguing), 'people': len(telling | arguing),
                     'candidates': int(len(found)), 'checked': len(votes),
                     'at': dt.now().isoformat(timespec='minutes')}
-    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-    with open(CACHE, 'w') as f:
-        json.dump(cache, f)
-    with open(SEEN, 'w') as f:
-        json.dump({'hours': hours, 'posts': len(posts), 'at': dt.now().isoformat(timespec='minutes'),
-                   'claims': out}, f)
+    write_json(CACHE, cache)
+    write_json(SEEN, {'hours': hours, 'posts': len(posts), 'at': dt.now().isoformat(timespec='minutes'), 'claims': out})
     logger.info("Circulation: %d of %d fact-checked claims seen in %d posts (%g hours)",
                 sum(1 for c in out.values() if c['people']), len(out), len(posts), hours)
     return out
 
 
 def load() -> dict:
-    try:
-        with open(SEEN) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(SEEN, {})
 
 
 def nightly():

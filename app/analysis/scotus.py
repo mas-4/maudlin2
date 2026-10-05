@@ -10,7 +10,6 @@ says whether it's about the US Supreme Court (not a state's or another country's
 that names a distinctive party of exactly one case ("Suncor", never "Congress") is tied to that case as well. Verdicts
 are cached per headline, outlet country and case list, at most MAX_NEW_JUDGMENTS new ones a run."""
 import hashlib
-import json
 import os
 import re
 import subprocess
@@ -24,6 +23,7 @@ from app.analysis import llm
 from app.models import Session, Headline, Article, Agency
 from app.utils import Config, get_logger
 from app.utils.constants import Country
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -243,28 +243,19 @@ def refresh_docket(now: dt = None) -> None:
         for case in cases:
             if old.get(case['docket']):
                 case['question'] = old[case['docket']]
-    with open(DOCKET, 'w') as f:
-        json.dump({'term': term(now), 'fetched': now.isoformat(timespec='seconds'), 'source': url, 'cases': cases}, f)
+    write_json(DOCKET, {'term': term(now), 'fetched': now.isoformat(timespec='seconds'), 'source': url, 'cases': cases})
     logger.info("Supreme Court docket: %d cases for October Term %d, %d with a question presented", len(cases),
                 term(now), sum(bool(c.get('question')) for c in cases))
 
 
 def docket() -> dict:
-    try:
-        with open(DOCKET) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(DOCKET, {})
 
 
 def add_glosses(cases: list[dict]) -> None:
     """Each case's plain gloss from its question presented (the model, cached by name and question); a case without
     a question gets none rather than a guess from its name."""
-    try:
-        with open(GLOSSES) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(GLOSSES, {})
     before = len(cache)
     for case in cases:
         if not case.get('question'):
@@ -281,8 +272,7 @@ def add_glosses(cases: list[dict]) -> None:
         case['gloss'] = cache[key]['gloss']
         case['keywords'] = cache[key].get('keywords', [])
     if len(cache) > before:
-        with open(GLOSSES, 'w') as f:
-            json.dump(cache, f)
+        write_json(GLOSSES, cache)
 
 
 def party_words(raw: str) -> set[str]:
@@ -511,11 +501,7 @@ MAX_STORY_GLOSSES = 30  # new ones a run
 
 def story_glosses(groups: list[list[str]]) -> list:
     """A short name for each group of headlines (the model, cached by the group's first headlines), or None."""
-    try:
-        with open(STORY_GLOSSES) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(STORY_GLOSSES, {})
     before, out = len(cache), []
     for titles in groups:
         sample = sorted(dict.fromkeys(titles))[:8]
@@ -527,8 +513,7 @@ def story_glosses(groups: list[list[str]]) -> list:
                 cache[key] = {'name': answer['name'].strip().strip('."'), 'titles': sample, 'model': llm.model()}
         out.append(cache[key]['name'] if key in cache else None)
     if len(cache) > before:
-        with open(STORY_GLOSSES, 'w') as f:
-            json.dump(cache, f)
+        write_json(STORY_GLOSSES, cache)
     return out
 
 
@@ -571,11 +556,7 @@ def coverage(now: dt = None) -> dict:
     cases = docket().get('cases', [])
     add_glosses(cases)
     match = matcher(cases)
-    try:
-        with open(JUDGMENTS) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(JUDGMENTS, {})
     before = len(cache)
     rows = candidates(now - td(days=WINDOW_DAYS))
     asked = 0
@@ -593,8 +574,7 @@ def coverage(now: dt = None) -> dict:
             court.append({**row, 'stage': verdict['stage'], 'topics': verdict.get('topics', []), 'cases': on,
                           'named': named['docket'] if named else None, 'side': side(row)})
     if len(cache) > before:
-        with open(JUDGMENTS, 'w') as f:
-            json.dump(cache, f)
+        write_json(JUDGMENTS, cache)
     logger.info("Supreme Court: %d candidate headlines, %d about the Court; %d newly judged",
                 len(rows), len(court), len(cache) - before)
 

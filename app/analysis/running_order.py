@@ -5,7 +5,6 @@ beside what the front pages led with at that hour.
 The transcripts come from app/transcribe.py. The bigger local model splits each newscast into stories (sign-offs
 alone miss transitions) and says which of that hour's front-page stories each one is, if any. Kept in RUNNING
 (newscast url -> its order), read once per newscast."""
-import json
 import os
 import re
 import time
@@ -13,6 +12,7 @@ from datetime import timedelta
 
 from app.analysis import llm
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -47,17 +47,11 @@ SCHEMA = {"type": "object", "properties": {"stories": {"type": "array", "maxItem
 
 
 def load() -> dict:
-    try:
-        with open(RUNNING) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(RUNNING, {})
 
 
 def save(store: dict):
-    with open(RUNNING + '.tmp', 'w') as f:
-        json.dump(store, f, indent=1)
-    os.replace(RUNNING + '.tmp', RUNNING)
+    write_json(RUNNING, store, indent=1)
 
 
 def newscasts() -> list[dict]:

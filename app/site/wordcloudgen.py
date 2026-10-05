@@ -1,4 +1,3 @@
-import json
 import os
 import string
 from datetime import datetime, timedelta
@@ -14,6 +13,7 @@ from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.pipelines import Pipelines, STOPWORDS, prepare
 from app.utils import Config
 from app.utils.logger import get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -267,9 +267,8 @@ KEEP_HISTORY = timedelta(hours=48)
 def mark_new(words: list[dict], now: datetime | None = None, save: bool = True) -> list[dict]:
     now = now or datetime.utcnow()
     try:
-        with open(CLOUD_HISTORY) as f:
-            history = [h for h in json.load(f) if now - datetime.fromisoformat(h['at']) <= KEEP_HISTORY]
-    except (OSError, ValueError):
+        history = [h for h in read_json(CLOUD_HISTORY, []) if now - datetime.fromisoformat(h['at']) <= KEEP_HISTORY]
+    except ValueError:  # a bad time in it
         history = []
     recent = [h for h in history if now - datetime.fromisoformat(h['at']) <= NEW_WINDOW]
     covered = recent and now - min(datetime.fromisoformat(h['at']) for h in recent) >= MIN_HISTORY
@@ -280,6 +279,5 @@ def mark_new(words: list[dict], now: datetime | None = None, save: bool = True) 
             w['tip'] += ' · ✨ new to the cloud'
     if save:
         history.append({'at': now.isoformat(timespec='seconds'), 'words': [w['text'] for w in words]})
-        with open(CLOUD_HISTORY, 'w') as f:
-            json.dump(history, f)
+        write_json(CLOUD_HISTORY, history)
     return words

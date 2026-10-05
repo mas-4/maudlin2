@@ -13,11 +13,8 @@ Refined by hand on the label-check page (rename, merge), where the entries' name
 A claim can carry up to three motifs (a story is often several shapes at once: who's blamed, what's feared, what's
 hoped), each filed on its own. Stored in data/motif_index.json:
 {'next': 3, 'entries': {'M001': {...}}, 'claims': {claim key: [entry ids]}} (an empty list: filed, no motif kept)."""
-import contextlib
-import fcntl
 import functools
 import hashlib
-import json
 import os
 import re
 from datetime import datetime as dt
@@ -25,7 +22,8 @@ from datetime import datetime as dt
 import numpy as np
 
 from app.analysis import llm
-from app.utils import Config, get_logger
+from app.utils import Config, get_logger, store
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -101,25 +99,17 @@ def key(claim: str) -> str:
 
 
 def load() -> dict:
-    try:
-        with open(INDEX) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {'next': 1, 'entries': {}, 'claims': {}}
+    return read_json(INDEX, {'next': 1, 'entries': {}, 'claims': {}})
 
 
 def save(index: dict):
-    with open(INDEX, 'w') as f:
-        json.dump(index, f, indent=1)
+    write_json(INDEX, index, indent=1)
 
 
-@contextlib.contextmanager
 def locked():
     """One writer at a time: the hourly filing and the organizer and motif check pages each read, change and save the
     whole index, so without this an edit made while a run was filing was lost when the run saved."""
-    with open(INDEX + '.lock', 'w') as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        yield
+    return store.locked(INDEX)
 
 
 def exclusive(fn):

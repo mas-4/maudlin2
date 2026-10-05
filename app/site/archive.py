@@ -2,7 +2,6 @@
 through the day, so the day's last run is the one that stays) and every build publishes the editions at /YYYY/MM/DD/,
 plus archive.html listing them. Links in an edition are made absolute so styles and icons still load from its folder.
 Debug builds never save, so a preview's stale data can't become an edition."""
-import json
 import os
 import re
 import shutil
@@ -12,6 +11,7 @@ import pytz
 
 from app.site.common import TemplateHandler
 from app.utils import Config, Constants, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -25,11 +25,7 @@ def _today() -> str:
 
 
 def _days() -> dict:
-    try:
-        with open(DAYS) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(DAYS, {})
 
 
 def edition(page: str, day: str) -> str:
@@ -52,8 +48,7 @@ def save(newsday: dict | None):
     days = _days()
     days[day] = {'label': (newsday or {}).get('label'), 'emoji': (newsday or {}).get('emoji'),
                  'story': (newsday or {}).get('story'), 'stories': (newsday or {}).get('stories')}
-    with open(DAYS, 'w') as f:
-        json.dump(days, f, indent=1)
+    write_json(DAYS, days, indent=1)
 
 
 def publish():

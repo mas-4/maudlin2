@@ -9,7 +9,6 @@ everything is archived.
 Polite by design: each feed is read at most every REFRESH, with conditional requests (ETag / Last-Modified, so an
 unchanged feed sends nothing back), requests to the same host a few seconds apart, and only the newest items parsed.
 A feed that fails just waits for its next turn."""
-import json
 import os
 import time
 from collections import defaultdict
@@ -25,6 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from app.investigations import _date, _summary
 from app.models import Session, SqlLock, SideItem
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -237,11 +237,7 @@ def parse(xml: str) -> list[dict]:
 
 
 def _load_state() -> dict:
-    try:
-        with open(STATE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(STATE, {})
 
 
 def save(source: str, items: list[dict], now: dt) -> int:
@@ -295,8 +291,7 @@ def fetch_sidefeeds(force: bool = False):
                 logger.warning("Side feeds: %s failed (%s)", src['name'], e)
             entry['fetched'] = now.isoformat()
             state[src['key']] = entry
-    with open(STATE, 'w') as f:
-        json.dump(state, f)
+    write_json(STATE, state)
     logger.info("Side feeds: read %d sources, %d new items", len(due), total)
 
 

@@ -1,11 +1,11 @@
 """What the shows, newsletters, streams and investigations beyond the front pages talk about: the model tags each
 item (its title and summary) with one to three subjects from a fixed list, so they can be read by subject on the
 "Beyond the front pages" page instead of as a list of links. Tags are kept per item (they don't change)."""
-import json
 import os
 
 from app.analysis import llm
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -32,11 +32,7 @@ SCHEMA = {"type": "object", "properties": {"subjects": {"type": "array", "minIte
 
 
 def load() -> dict:
-    try:
-        with open(TAGS) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(TAGS, {})
 
 
 def tag(items: list[dict], limit: int = MAX_NEW) -> dict:
@@ -50,7 +46,6 @@ def tag(items: list[dict], limit: int = MAX_NEW) -> dict:
                                                      subjects='; '.join(SUBJECTS)), SCHEMA, max_tokens=60)
             if answer:
                 tags[item['url']] = list(dict.fromkeys(answer['subjects']))
-        with open(TAGS, 'w') as f:
-            json.dump(tags, f)
+        write_json(TAGS, tags)
         logger.info("Subjects: tagged %d new items (%d in all)", len(todo), len(tags))
     return tags

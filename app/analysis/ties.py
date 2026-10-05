@@ -3,13 +3,13 @@ meaning (mxbai-embed-large, at least `floor` alike, up to `candidates`), then th
 "none" on offer. Asked yes or no about one target, a small model says yes to nearly anything; offered a few and
 "none", it says none when none fits. Answers are cached for a run, so each item is asked once per set of options."""
 import hashlib
-import json
 from collections import defaultdict
 
 import numpy as np
 
 from app.analysis import llm
 from app.utils import get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -30,11 +30,7 @@ def tie(items: list[dict], targets: dict, prompt: str, cache_path: str, floor: f
         logger.warning("%s: skipped, embeddings came from %s", name, model)
         return {}
     similarity = similarity[:len(items), len(items):]
-    try:
-        with open(cache_path) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(cache_path, {})
     used, asked, found = {}, 0, defaultdict(list)
     for item, row in zip(items, similarity):
         top = [int(j) for j in np.argsort(-row)[:candidates] if row[j] >= floor]
@@ -59,8 +55,7 @@ def tie(items: list[dict], targets: dict, prompt: str, cache_path: str, floor: f
         used[key] = cache[key]
         if used[key] != 'none':
             found[ids[top[int(used[key]) - 1]]].append(item)
-    with open(cache_path, 'w') as f:
-        json.dump(used, f)  # only this run's answers: the cache never outgrows a run
+    write_json(cache_path, used)  # only this run's answers: the cache never outgrows a run
     logger.info("%s: %d of %d items tied to %d targets (%d new model calls)",
                 name, sum(len(v) for v in found.values()), len(items), len(found), asked)
     return dict(found)

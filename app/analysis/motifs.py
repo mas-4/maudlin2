@@ -20,6 +20,7 @@ import pandas as pd
 
 from app.analysis import llm
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -69,7 +70,7 @@ def index() -> tuple[pd.DataFrame, np.ndarray]:
             texts = [f"{t} ({s})" if s and s.lower() not in t.lower() else t for t, s in zip(df['text'], df['section'])]
             v = ollama_embed(texts, cache=os.path.join(FOLDER, 'embeddings.sqlite'), keep_days=3650)
             np.save(VECTORS, v.astype(np.float16))
-            json.dump({'stamp': stamp, 'model': 'mxbai-embed-large', 'entries': len(df)}, open(meta, 'w'))
+            write_json(meta, {'stamp': stamp, 'model': 'mxbai-embed-large', 'entries': len(df)})
         _index = (df, v)
     return _index
 
@@ -89,10 +90,7 @@ def pick(claims: list[str], limit: int = 200) -> list[dict | None]:
     if not claims or llm.backend() is None:
         return [None] * len(claims)
     df, _ = index()
-    try:
-        cache = json.load(open(PICKS))
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(PICKS, {})
     out, asked = [], 0
     for claim, rows in zip(claims, candidates(claims)):
         codes = [df['code'][r] for r in rows]
@@ -110,9 +108,7 @@ def pick(claims: list[str], limit: int = 200) -> list[dict | None]:
         row = df[df['code'] == code]
         out.append(None if code == 'none' or row.empty else
                    {'code': code, 'letter': code[0], 'text': row['text'].iloc[0][:MAX_TEXT]})
-    os.makedirs(FOLDER, exist_ok=True)
-    with open(PICKS, 'w') as f:
-        json.dump(cache, f)
+    write_json(PICKS, cache)
     logger.info("Motifs: %d of %d claims are instances of an index entry (%d new model calls)",
                 sum(1 for o in out if o), len(claims), asked)
     return out

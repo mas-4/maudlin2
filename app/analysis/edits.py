@@ -13,7 +13,6 @@ Every article url can collect several headlines over time. Most pairs aren't edi
 import difflib
 import html
 import hashlib
-import json
 import os
 import re
 from datetime import datetime as dt, timedelta as td
@@ -25,6 +24,7 @@ from sqlalchemy import func
 from app.models import Session, Headline, Article, Agency
 from app.analysis import llm
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -171,11 +171,7 @@ JUDGE_SCHEMA = {"type": "object", "properties": {
 
 def judge_edits(pairs: list[tuple[str, str]]) -> dict[tuple[str, str], dict]:
     """(before, after) -> {change, wording, news}, from a cache of earlier judgments; new pairs are judged once."""
-    try:
-        with open(JUDGMENTS) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(JUDGMENTS, {})
     key = lambda b, a: hashlib.sha1(f'{b}\n{a}'.encode()).hexdigest()  # noqa: E731
     fresh = 0
     for before, after in pairs:
@@ -187,7 +183,6 @@ def judge_edits(pairs: list[tuple[str, str]]) -> dict[tuple[str, str], dict]:
             cache[k] = {**answer, 'model': llm.model()}
             fresh += 1
     if fresh:
-        with open(JUDGMENTS, 'w') as f:
-            json.dump(cache, f)
+        write_json(JUDGMENTS, cache)
         logger.info("Judged %d new headline changes", fresh)
     return {(b, a): cache[key(b, a)] for b, a in pairs if key(b, a) in cache}

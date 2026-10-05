@@ -7,7 +7,6 @@ Polite by design: each feed is read once per run (hourly), with conditional requ
 unchanged feed sends nothing back, and only headlines, links and the feed's own short summaries are kept. Results are
 cached in data/investigations.json; a source that errors keeps its last good items."""
 import html
-import json
 import os
 import re
 from datetime import datetime as dt, timedelta as td
@@ -19,6 +18,7 @@ import requests as rq
 from bs4 import BeautifulSoup as Soup
 
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -87,11 +87,7 @@ def parse(xml: str) -> list[dict]:
 
 
 def _load() -> dict:
-    try:
-        with open(CACHE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(CACHE, {})
 
 
 def fetch_investigations():
@@ -116,8 +112,7 @@ def fetch_investigations():
         cache[source['key']] = {'items': items, 'etag': response.headers.get('ETag'),
                                 'modified': response.headers.get('Last-Modified'),
                                 'fetched': dt.now(pytz.UTC).isoformat()}
-    with open(CACHE, 'w') as f:
-        json.dump(cache, f)
+    write_json(CACHE, cache)
     logger.info("Investigations: %d items from %d sources", sum(len(v.get('items', [])) for v in cache.values()),
                 len(cache))
 

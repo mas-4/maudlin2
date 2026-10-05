@@ -16,6 +16,7 @@ from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, R
 from app.analysis import motif_index, narrative_threads
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
+from app.utils.store import read_json
 
 logger = get_logger(__name__)
 
@@ -70,11 +71,7 @@ WITHHELD = os.path.join(FOLDER, 'withheld.json')  # narratives pulled by hand: [
 def withheld() -> set[str]:
     """Claims withheld from the page by hand after a misreading (Oct 4: a group of trans people talking about their
     own identity was labeled as spreading an anti-trans claim one of them had quoted)."""
-    try:
-        with open(WITHHELD) as f:
-            return {w['claim'] for w in json.load(f)}
-    except (OSError, ValueError):
-        return set()
+    return {w['claim'] for w in read_json(WITHHELD, [])}
 
 
 FOCUS_EPISODES = 4  # Focus Group episodes shown, the latest

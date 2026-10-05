@@ -35,6 +35,7 @@ from datetime import datetime as dt, timedelta as td, timezone
 import numpy as np
 
 from app.utils import Config, get_logger
+from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -420,12 +421,8 @@ def current_stories(limit: int = 80) -> list[str]:
 def made_today() -> bool:
     """Whether today's nightly report (a day's posts) has been written."""
     for path in glob.glob(os.path.join(FOLDER, f"report-{dt.now().strftime('%Y-%m-%d')}-*.json")):
-        try:
-            with open(path) as f:
-                if json.load(f).get('hours', 0) >= 24:
-                    return True
-        except (OSError, ValueError):
-            continue
+        if read_json(path, {}).get('hours', 0) >= 24:
+            return True
     return False
 
 
@@ -437,11 +434,7 @@ def report(hours: float = 6) -> dict:
     found = [describe(posts, g, rng) for g in groups(posts)]
     found = [g for g in found if g['authors'] >= MIN_AUTHORS]
     found.sort(key=lambda g: -g['authors'])
-    try:
-        with open(JUDGMENTS) as f:
-            cache = json.load(f)
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(JUDGMENTS, {})
     for g in [g for g in found if g['kind'] != 'copypasta'][:LABEL_TOP]:
         g['label'] = label(g, cache)
         lab = g['label']
@@ -449,8 +442,7 @@ def report(hours: float = 6) -> dict:
             g['about'] = round(about(g, lab['narrative'], cache), 2)
             if g['about'] < ABOUT_SHARE:  # most posts aren't about it: a topic with one post's claim, not a narrative
                 g['label'] = {**lab, 'retold': False, 'misread': True}
-    with open(JUDGMENTS, 'w') as f:
-        json.dump(cache, f)
+    write_json(JUDGMENTS, cache)
     # Cross-checks, by embedding each narrative's claim (or its versions) against voters' words and today's stories
     narratives = [g for g in found if (g.get('label') or {}).get('retold')]
     # The articles their posts share, looked up in our own database: an exact tie to a story, no guessing
@@ -480,8 +472,7 @@ def report(hours: float = 6) -> dict:
             sims = np.maximum(claims @ st.T, centers @ st.T)
             for g, row in zip(narratives, sims):
                 g['story'] = story_link(g, [stories[i] for i in np.argsort(-row)[:CANDIDATES]], cache)
-        with open(JUDGMENTS, 'w') as f:
-            json.dump(cache, f)
+        write_json(JUDGMENTS, cache)
         try:
             from app.analysis import factchecks
             checked = factchecks.for_narratives({n: g['label']['narrative'] for n, g in enumerate(narratives)
@@ -496,8 +487,7 @@ def report(hours: float = 6) -> dict:
            'kinds': dict(Counter(g['kind'] for g in found)), 'focus_group_segments': len(segments),
            'found': [{k: v for k, v in g.items() if k != 'members'} for g in found]}
     stamp = dt.now().strftime('%Y-%m-%d-%H%M')
-    with open(os.path.join(FOLDER, f'report-{stamp}.json'), 'w') as f:
-        json.dump(out, f, indent=1)
+    write_json(os.path.join(FOLDER, f'report-{stamp}.json'), out, indent=1)
     with open(os.path.join(FOLDER, f'report-{stamp}.md'), 'w') as f:
         f.write(markdown(out))
     logger.info("Narratives: %d groups (%s), %d labeled retold narratives; report-%s", len(found), out['kinds'],
