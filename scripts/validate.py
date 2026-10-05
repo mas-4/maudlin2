@@ -816,11 +816,14 @@ def last_undo() -> tuple[str, dict] | None:
         names = sorted(n for n in os.listdir(UNDO) if n.endswith('.json'))
     except OSError:
         return None
-    if not names:
-        return None
-    path = os.path.join(UNDO, names[-1])
-    with open(path) as f:
-        return path, json.load(f)
+    managed = set(undo_paths().values())
+    for name in reversed(names):  # only snapshots of the files undo manages (a stray one from elsewhere is skipped)
+        path = os.path.join(UNDO, name)
+        with open(path) as f:
+            snap = json.load(f)
+        if snap.get('path') in managed:
+            return path, snap
+    return None
 
 
 def undo() -> str:

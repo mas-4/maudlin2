@@ -109,6 +109,7 @@ def test_board_changes_are_logged_with_what_the_model_had_proposed(monkeypatch, 
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
     monkeypatch.setattr(validate, 'FOLDER', str(tmp_path))
     monkeypatch.setattr(validate, 'CURATION_LOG', str(tmp_path / 'log.jsonl'))
+    monkeypatch.setattr(validate, 'UNDO', str(tmp_path / 'undo'))  # never the real undo folder
     mi.save({'next': 3, 'claims': {mi.key('a'): ['M001']}, 'entries': {
         'M001': {'id': 'M001', 'name': 'Smug smirk', 'claims': [{'claim': 'a', 'source': 's'}]},
         'M002': {'id': 'M002', 'name': 'Blame shifting', 'curated': True, 'claims': []}}})
