@@ -360,6 +360,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 .pick { max-height: 46vh; overflow: auto; border-top: 1px dashed #ccc; margin-top: 6px; }
 .pick div { display: flex; gap: 6px; align-items: center; padding: 4px 2px; border-bottom: 1px dashed #eee; }
 .pick div .nm { flex: 1; } .pick div .ct { color: #777; font-size: .8em; }
+.pick button.add, .newrow button.add { background: #c8f7c5; font-weight: 700; }
 .newrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .newrow input { flex: 1; min-width: 12em; padding: 3px 8px; }
 @media (max-width: 700px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
 </style></head><body>
@@ -483,14 +484,16 @@ function drawPicker(q) {
   let others = data.entries.filter((e) => !mine.includes(e) && (!lower || e.name.toLowerCase().includes(lower)
     || e.claims.some((c) => c.claim.toLowerCase().includes(lower))));
   others.sort((a, b) => (lower ? (b.name.toLowerCase().includes(lower) - a.name.toLowerCase().includes(lower)) : 0) || b.claims.length - a.claims.length);
-  const room = mine.length < 3;
+  // A person curating isn't held to the model's three motifs a claim: adding is always on offer
+  const fromName = esc((data.entries.find((e) => e.id === from) || {}).name || 'this motif');
   $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
     <div class="now">Filed under: ${mine.map((e) => `<span><a href="#" class="delname" data-del="${e.id}" title="delete this whole motif">🧩 ${esc(e.name)}</a> <button class="small" data-out="${e.id}" title="take this claim out of this motif for good">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
     <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
     <div class="pick">${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
-      <button class="small" data-move="${e.id}">move here</button>${room ? `<button class="small" data-also="${e.id}">+ also here</button>` : ''}</div>`).join('') || '<p>No motif matches.</p>'}</div>
-    <div class="newrow"><input id="pick-new" placeholder="or a new motif's name"><button class="small" data-movenew="1">move to new</button>${room ? '<button class="small" data-alsonew="1">+ also as new</button>' : ''}</div>
-    ${room ? '' : '<p class="meta" style="font-size:.8em;color:#555">A claim carries three motifs at most: take it out of one to add another.</p>'}`;
+      <button class="small add" data-also="${e.id}" title="file the claim under this motif too, keeping the others">+ add</button>
+      <button class="small" data-move="${e.id}" title="put this motif in place of “${fromName}”">replace “${fromName}”</button></div>`).join('') || '<p>No motif matches.</p>'}</div>
+    <div class="newrow"><input id="pick-new" placeholder="or a new motif's name"><button class="small add" data-alsonew="1">+ add as a new motif</button>
+      <button class="small" data-movenew="1">replace “${fromName}” with a new motif</button></div>`;
   const input = $('#pick-q'); input.focus(); input.setSelectionRange(q.length, q.length);
   input.addEventListener('input', () => drawPicker(input.value));
 }
