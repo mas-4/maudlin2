@@ -3,21 +3,24 @@
 Working thesis: folklore shapes political discourse, and the first step to understanding information warfare is
 understanding its folkloric shape.
 
-Books and a few essential articles, on six shelves. Each entry says what the work gives the BND Motif Index and the
+Books and a few essential articles, on six shelves; (owned) marks the ones on the shelf at home. Each entry says what the work gives the BND Motif Index and the
 site. Dates are first publication (for translated works, the original year first). Annotations are summaries in our
 own words. Research roadmap: issue #146; the folklore lens: #145.
 
-## Start here: seven reads, in order
+## Start here, in order
 
-1. **Fine & Ellis, *The Global Grapevine*** — the thesis's closest ancestor: rumors about terrorism and immigration as
+1. **Brunvand, *The Vanishing Hitchhiker*** (owned) — the basic toolkit: variants, the "friend of a friend",
+   localizing, and reading a legend for what it worries about. Short and readable.
+2. **Frank, *Newslore*** (owned) — Brunvand's ideas applied to the folklore that springs up around news events.
+3. **Fine & Ellis, *The Global Grapevine*** — the thesis's closest ancestor: rumors about terrorism and immigration as
    political folklore.
-2. **Hochschild, *Strangers in Their Own Land*** — the "deep story": the felt narrative under the facts, which is what
+4. **Hochschild, *Strangers in Their Own Land*** — the "deep story": the felt narrative under the facts, which is what
    a motif tries to name.
-3. **Dégh, *Legend and Belief*** — why legends are arguments about what's possible, not just stories.
-4. **Dundes (ed.), *The Blood Libel Legend*** — one shape followed across eight centuries, down to its modern reuse.
-5. **Barkun, *A Culture of Conspiracy*** — the event / systemic / superconspiracy scopes the site already labels with.
-6. **Rid, *Active Measures*** — how state disinformation has always worked by riding stories people already tell.
-7. **Tangherlini et al., "An automated pipeline…" (2020)** — the computational version of all of the above, closest
+5. **Dégh, *Legend and Belief*** — why legends are arguments about what's possible, not just stories.
+6. **Dundes (ed.), *The Blood Libel Legend*** — one shape followed across eight centuries, down to its modern reuse.
+7. **Barkun, *A Culture of Conspiracy*** — the event / systemic / superconspiracy scopes the site already labels with.
+8. **Rid, *Active Measures*** — how state disinformation has always worked by riding stories people already tell.
+9. **Tangherlini et al., "An automated pipeline…" (2020)** — the computational version of all of the above, closest
    to what BND builds.
 
 ## A. Rumor and contemporary legend
@@ -33,7 +36,7 @@ What rumors and legends are, why people pass them on, and how they carry a group
 - [ ] **Tamotsu Shibutani, *Improvised News: A Sociological Study of Rumor*** (1966). Rumor as a group's collective
   problem-solving when official news falls short.
   *BND:* why rumors bloom in the gaps the front pages leave (compare the radio and front-page running orders).
-- [ ] **Jan Harold Brunvand, *The Vanishing Hitchhiker: American Urban Legends and Their Meanings*** (1981). The book
+- [ ] **Jan Harold Brunvand, *The Vanishing Hitchhiker: American Urban Legends and Their Meanings*** (1981). ★ (owned) The book
   that made "urban legend" a household term, with readings of what each one means.
   *BND:* the genre vocabulary behind Folklore's "contemporary legend" label.
 - [ ] **Linda Dégh, *Legend and Belief: Dialectics of a Folklore Genre*** (2001). ★ Legends as debates about belief:
@@ -186,6 +189,11 @@ Folklore online, and reading it at scale: the methods side of what BND builds.
   Posts read at scale for actors and their relations, showing a conspiracy framework stabilizing from scattered
   threads.
   *BND:* the nearest research to the motif index and the cast; a model for narrative frameworks next.
+- [ ] **Russell Frank, *Newslore: Contemporary Folklore on the Internet*** (2011). ★ (owned) The jokes, doctored
+  photos and rumors people make in response to news events, from 9/11 to elections and disasters: folklore as a running
+  commentary on the news.
+  *BND:* the exact meeting point of the site's two halves: what people retell (Folklore) set beside what the front
+  pages report (the "In the news" link on each card).
 - [ ] **Whitney Phillips & Ryan M. Milner, *You Are Here: A Field Guide for Navigating Polarized Speech, Conspiracy
   Theories, and Our Polluted Media Landscape*** (2021). A folklore-literate account of how deep memetic frames spread
   through networks.
