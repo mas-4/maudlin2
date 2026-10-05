@@ -370,7 +370,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 </style></head><body>
 <header>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <b>Motif board</b> <a href="/entities">Names</a></nav>
-<h1>🧩 Motif board</h1><span id="stats"></span>
+<h1>🧩 Motif board</h1><span id="stats"></span> <a href="/motif-empty" id="empty-link"></a>
 <div class="tools">
   <input type="search" id="q" placeholder="search motifs and claims">
   <select id="sort"><option value="size">most claims</option><option value="few">fewest claims</option><option value="new">newest</option><option value="old">oldest</option><option value="az">A–Z</option></select>
@@ -402,6 +402,8 @@ async function act(body) {
 function render() {
   const q = $('#q').value.trim().toLowerCase(), multi = $('#multi').checked, sort = $('#sort').value;
   const count = (g) => data.entries.filter((e) => (g === null ? !e.group : e.group === g)).length;
+  const nEmpty = data.entries.filter((e) => !e.claims.length).length;
+  $('#empty-link').textContent = nEmpty ? `· ${nEmpty} empty motif${nEmpty === 1 ? '' : 's'}` : '';
   const showDone = $('#showdone').checked, left = data.entries.filter((e) => e.done !== 'done').length;
   $('#stats').textContent = `${data.entries.length} motifs · ${data.entries.reduce((n, e) => n + e.claims.length, 0)} filings · ${data.entries.filter((e) => e.claims.length > 1).length} with 2+ claims · ${left} to go`;
   const gs = [{id: 'all', name: 'All motifs', n: data.entries.length}, {id: 'none', name: 'Ungrouped', n: count(null)}]
@@ -611,6 +613,46 @@ fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(
 </script></body></html>"""
 
 
+EMPTY_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty motifs</title><style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 760px; padding: 16px; }
+nav a { margin-right: 1em; } .row { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px dashed #ccc; }
+.row .nm { flex: 1; } .meta { color: #666; font-size: .85em; }
+button { font: inherit; font-size: .9em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+</style></head><body>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Empty motifs</b> <a href="/entities">Names</a></nav>
+<h1>Empty motifs</h1>
+<p>Motifs with no claims: ones you made and never filled, or emptied by moving their claims out. Delete the ones you don't
+want. Deleting one changes nothing else.</p>
+<p><label><input type="checkbox" id="all"> select all</label> <button id="del-sel">🗑 delete selected</button></p>
+<div id="list"></div>
+<script>
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+let data = {entries: []};
+const empty = () => data.entries.filter((e) => !e.claims.length);
+function render() {
+  const list = empty();
+  document.getElementById('list').innerHTML = list.map((e) => `<div class="row"><input type="checkbox" data-id="${e.id}">
+    <span class="nm">🧩 ${esc(e.name)} <span class="meta">${e.id} · since ${esc(e.first_seen)}${e.curated ? ' · made by hand' : ''}</span></span>
+    <button data-del="${e.id}">🗑 delete</button></div>`).join('') || '<p>No empty motifs. 🎉</p>';
+}
+async function del(ids) {
+  for (const id of ids) {
+    const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'delete', id})});
+    if (r.ok) data = await r.json(); else { alert('Failed: ' + await r.text()); break; }
+  }
+  render();
+}
+document.addEventListener('click', (ev) => { const b = ev.target.closest('[data-del]'); if (b) del([b.dataset.del]); });
+document.getElementById('all').addEventListener('change', (ev) => document.querySelectorAll('#list input').forEach((c) => c.checked = ev.target.checked));
+document.getElementById('del-sel').addEventListener('click', () => {
+  const ids = [...document.querySelectorAll('#list input:checked')].map((c) => c.dataset.id);
+  if (ids.length && confirm(`Delete ${ids.length} empty motif${ids.length === 1 ? '' : 's'}?`)) del(ids);
+});
+fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(); });
+</script></body></html>"""
+
+
 def board_action(data: dict):
     """One change from the motif board, applied to the index at once (under its lock)."""
     from app.analysis import motif_index as mi
@@ -768,7 +810,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/motif-board.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.board())
-        body = (BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
+        body = (EMPTY_PAGE if self.path.startswith('/motif-empty') else BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
                 if self.path.startswith('/motifs') else entities_page() if self.path.startswith('/entities')
                 else page()).encode()
         self.send_response(200)
