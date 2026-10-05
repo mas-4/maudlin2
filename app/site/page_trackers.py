@@ -3,6 +3,8 @@
 TRACKERS = [
     {'href': 'edits.html', 'emoji': '✏️', 'name': 'Headline changes',
      'about': 'Headlines outlets rewrote after publishing, and the wordings they A/B test.'},
+    {'href': 'sagas.html', 'emoji': '🧵', 'name': 'Sagas',
+     'about': 'Running stories told in parts, kept after they leave the front pages, with each part on a timeline.'},
     {'href': 'court.html', 'emoji': '⚖️', 'name': 'The Supreme Court',
      'about': "This term's cases: who's covering which, from which side, at which stage."},
     {'href': 'beyond.html', 'emoji': '🎙️', 'name': 'Beyond the front pages',

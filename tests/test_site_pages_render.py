@@ -26,10 +26,12 @@ from app.site.page_trackers import FOLKLORE, TRACKERS
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
+from app.site.page_sagas import SagasPage
 from app.utils.config import Config
 
-PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
+PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
+         'sagas.html']
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
              'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -45,6 +47,16 @@ def stand_in_embed(texts):
             out[i, zlib.crc32(w.encode()) % 256] += 1
     out[:, 0] += 1e-6
     return out
+
+
+# The saga tracker: one canned saga with a part on the front pages now and an earlier one
+SAGA = {'id': 7, 'name': 'Fairford <plot>', 'now': True, 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 5, 13),
+        'outlets': 41, 'left': 17, 'center': 12, 'right': 10, 'unrated': 2,
+        'parts': [{'story': 26, 'label': 'Man bailed over <RAF> plot', 'first': dt(2026, 10, 3, 12),
+                   'last': dt(2026, 10, 5, 7), 'now': False, 'outlets': 19, 'first_outlets': ['AP', 'BBC'],
+                   'first_title': 'UK-Iranian bailed'},
+                  {'story': 70, 'label': 'US pulls bombers', 'first': dt(2026, 10, 4, 22), 'last': dt(2026, 10, 5, 13),
+                   'now': True, 'outlets': 39, 'first_outlets': ['A', 'B', 'C', 'D'], 'first_title': 'Bombers leave'}]}
 
 
 AB_TEST = {'url': 'https://slate.com/a.html', 'agency': 'Slate', 'bias': -2, 'state': 'won', 'winner': 'Kept <wording>',
@@ -98,6 +110,7 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(ph, 'link_sagas', lambda headlines, stories, story_of: {})  # writes sagas to the database
         # A/B tests: a canned one, so the section renders before the database has the table (prod migrates it)
         mp.setattr(abtests, 'tests', lambda: [AB_TEST])
+        mp.setattr(sagas, 'history', lambda: [dict(SAGA, parts=[dict(p) for p in SAGA['parts']])])
         # The Supreme Court page: canned coverage (the real one asks the language model and reads the docket file)
         mp.setattr(scotus, 'coverage', lambda: COURT)
         mp.setattr(scotus, 'refresh_docket', lambda: None)
@@ -119,7 +132,7 @@ def site(data_handler, tmp_path_factory):
         headlines = ph.HeadlinesPage(dh)
         try:
             headlines.generate()
-            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage):
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage):
                 page(data_handler).generate()
         finally:
             event.remove(engine, 'before_cursor_execute', no_writes)
@@ -538,3 +551,15 @@ def test_methods_page_publishes_the_log(monkeypatch, tmp_path):
     html = (tmp_path / 'methods.html').read_text()
     assert '<h2 id="2026-10-05">2026-10-05</h2>' in html and '<strong>A change.</strong>' in html
     assert 'href="#2026-10-04"' in html and 'Intro paragraph' not in html
+
+
+def test_saga_tracker_lays_out_parts_on_a_timeline(site):
+    page = site['soup']['sagas.html']
+    card = page.select_one('#saga-7')
+    assert card.select_one('h3').get_text() == '🧵 Fairford <plot>' and card['data-now'] == '1'
+    first, second = card.select('.saga-timeline li')
+    assert first.select_one('.saga-part-title').get_text() == 'Man bailed over <RAF> plot'  # escaped, no link
+    assert second.select_one('a')['href'] == 'index.html#s-70'  # on the front page now: a link to its card
+    assert first.select_one('.saga-bar')['style'].startswith('left: 0.0%')
+    assert 'first on AP, BBC' in first.get_text() and 'first on 4 outlets at once' in second.get_text()
+    assert [s.get_text() for s in card.select('.saga-lean span')] == ['17', '12', '10']

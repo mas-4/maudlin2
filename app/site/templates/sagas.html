@@ -1,0 +1,65 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>🧵 Sagas</h2>
+    <p class="table-intro">Running stories told in parts: a case, an investigation or an event followed as it develops,
+        each development a story of its own on the front pages. A saga is kept here after its parts leave the front
+        pages. Two stories become parts of one saga when their headlines are close in meaning, share a name, and our
+        local language model, asked two ways, agrees they're one running story ({{ sagas|length }} so far,
+        {{ active }} on the front pages now). Our records start Oct 2, 2026: a part first seen then may have broken
+        earlier, on more outlets than the "first on" count says.</p>
+    {% if sagas %}
+        <div class="table-filters story-sort saga-tools" role="group" aria-label="Search and filter sagas">
+            <span class="bar-group"><input type="search" class="edit-search" id="saga-search" placeholder="🔎 search sagas" aria-label="Search sagas"></span>
+            <span class="bar-group"><span class="bar-label">only:</span>
+            <button data-filter="now" class="toggle" title="Only sagas with a part on the front pages now">📰 on front pages now</button></span>
+        </div>
+        <div class="saga-track-cards">
+            {% for s in sagas %}
+                <div class="saga-card saga-track" id="saga-{{ s.id }}" style="--saga: {{ s.color }}" data-text="{{ s.text|e }}"{% if s.now %} data-now="1"{% endif %}>
+                    <h3>🧵 {{ s.name|e }}</h3>
+                    <p class="saga-facts">{% if s.now %}<span class="saga-live">📰 on front pages now</span>{% else %}last on front pages {{ s.ended }} ET{% endif %}</p>
+                    <p class="saga-facts">{{ s.parts|length }} parts · {{ s.outlets }} outlets · since {{ s.started }} ET · {{ s.lasted }}</p>
+                    <div class="saga-lean" title="Outlets on any part: {{ s.left }} left, {{ s.center }} center, {{ s.right }} right{% if s.unrated %}, {{ s.unrated }} unrated{% endif %}">
+                        {% for side in ('left', 'center', 'right') %}{% if s.shares[side] %}<span class="saga-lean-{{ side }}" style="width: {{ s.shares[side] }}%">{{ s[side] }}</span>{% endif %}{% endfor %}
+                    </div>
+                    <ol class="saga-timeline">
+                        {% for p in s.parts %}
+                            <li{% if p.now %} class="saga-now"{% endif %}>
+                                <p class="saga-part-title">{% if p.now %}<a href="index.html#s-{{ p.story }}" title="This part on the front page">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}</p>
+                                <div class="saga-bar-track" aria-hidden="true"><span class="saga-bar" style="left: {{ p.left }}%; width: {{ p.width }}%"></span></div>
+                                <p class="saga-part-facts">{{ p.when }} ET to {{ p.until }}{% if p.until != 'now' %} ET{% endif %} · {{ p.outlets }} outlet{{ '' if p.outlets == 1 else 's' }}{% if p.first_outlets %} · first on <span title="{{ p.first_title|e }}">{% if p.first_outlets|length <= 3 %}{{ p.first_outlets|join(', ')|e }}{% else %}{{ p.first_outlets|length }} outlets at once{% endif %}</span>{% endif %}</p>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            {% endfor %}
+        </div>
+        <p class="edit-count saga-count" aria-live="polite"></p>
+        <script>
+            (function () {
+                const box = document.querySelector('.saga-track-cards');
+                const all = [...box.querySelectorAll('.saga-track')];
+                const repack = packColumns(box, all, 380);
+                const count = document.querySelector('.saga-count');
+                let words = [], now = false;
+                function apply() {
+                    const shown = all.filter((c) => (!now || c.dataset.now) && words.every((w) => c.dataset.text.includes(w)));
+                    repack(shown);
+                    count.textContent = shown.length === all.length ? '' : shown.length ? `${shown.length} of ${all.length} sagas` : 'No saga matches';
+                }
+                document.getElementById('saga-search').addEventListener('input', (ev) => {
+                    words = ev.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+                    apply();
+                });
+                document.querySelector('.saga-tools [data-filter="now"]').addEventListener('click', (ev) => {
+                    now = ev.currentTarget.classList.toggle('active');
+                    apply();
+                });
+                if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+            })();
+        </script>
+    {% else %}
+        <p class="poll-note">No sagas yet: they form as running stories come back in new parts.</p>
+    {% endif %}
+{% endblock %}

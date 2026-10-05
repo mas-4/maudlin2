@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **A saga taken apart by hand, and a saga tracker.** The 8B judge had joined an Energy Department employee's
+  arrest for aiding the Houthis with the Yemeni offensive against them ("Yemen-Houthi military conflict"); the
+  30B keeps them apart, and saved sagas never come apart on their own, so it was taken apart by hand (as the Iran
+  plot saga was on Oct 4). A new Sagas tracker lists every saga kept, with each part's time on the front pages.
 - **Sagas: a looser name rule and a bigger judge.** Two stories could become parts of one saga only if a name rare on
   the day was in 30% of both stories' headlines; the RAF Fairford bail story and the bombers-pulled-from-Fairford
   story (0.67 alike) never qualified, since "Fairford" was in 42% of one and 10% of the other. Now 30% of one and

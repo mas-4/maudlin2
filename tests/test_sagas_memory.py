@@ -154,3 +154,18 @@ def test_same_saga_needs_both_wordings(monkeypatch, tmp_path):
     monkeypatch.setattr(sg, 'JUDGMENTS', str(tmp_path / 'yes.json'))
     monkeypatch.setattr(sg.llm, 'complete_json', lambda *x, **k: {'reason': 'r', 'verdict': 'one running story'})
     assert sg.same_saga(['Cornell case goes to AG'], ['Hochul picks AG for Cornell case']) is True
+
+
+def test_history_lists_parts_by_when_they_broke_with_outlets_by_lean(db):
+    with db() as s:
+        s.add(sg.Saga(id=3, name='Cornell case', first_seen=dt(2026, 10, 4), last_seen=dt(2026, 10, 5)))
+        s.commit()
+    older = saved_story(db, ['Cornell accuser speaks', 'Cornell case grows'], 30, saga_id=3)
+    newer = saved_story(db, ['AG takes Cornell case'], 0, saga_id=3)
+    saved_story(db, ['Storm hits coast'], 0)  # in no saga
+    [saga] = sg.history()
+    assert saga['id'] == 3 and saga['name'] == 'Cornell case' and saga['now']
+    assert [p['story'] for p in saga['parts']] == [older, newer]
+    assert [p['now'] for p in saga['parts']] == [False, True]
+    assert saga['outlets'] == 1 and saga['center'] == 0 and saga['unrated'] == 1  # AP, unrated in this database
+    assert saga['parts'][0]['first_outlets'] == ['AP'] and saga['parts'][0]['outlets'] == 1

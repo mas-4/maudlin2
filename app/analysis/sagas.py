@@ -388,3 +388,51 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
                 '; '.join(f"{a['name']} ({a['size']} parts, {len(a['clusters'])} on front pages, {a['outlets']} outlets)"
                           for a in active.values()))
     return active
+
+
+AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}  # as in page_headlines
+NOW_SLACK = td(minutes=30)  # a part seen this close to the latest run is on the front pages now
+FIRST_RUN = td(minutes=15)  # headlines first seen this close together came in the same run
+
+
+def history() -> list[dict]:
+    """Every saved saga, for the tracker page: its parts in the order they broke (each with when it was on the front
+    pages, its outlets and who had it first) and the outlets on any part by lean. Newest activity first. Times are
+    UTC, naive, as stored."""
+    with Session() as s:
+        latest = s.query(Story.last_seen).order_by(Story.last_seen.desc()).limit(1).scalar()
+        sagas = {g.id: g for g in s.query(Saga).all()}
+        parts = s.query(Story).filter(Story.saga_id.isnot(None)).order_by(Story.first_seen).all()
+        rows = s.query(StoryHeadline.story_id, Headline.title, Headline.first_accessed, Agency.name, Agency._bias,
+                       Agency.lean_rated).join(Headline, Headline.id == StoryHeadline.headline_id) \
+            .join(Article, Article.id == Headline.article_id).join(Agency, Agency.id == Article.agency_id) \
+            .join(Story, Story.id == StoryHeadline.story_id).filter(Story.saga_id.isnot(None)).all()
+        by_story = {}
+        for story_id, title, first, agency, bias, rated in rows:
+            if agency in AGGREGATORS:
+                continue
+            by_story.setdefault(story_id, []).append((first, agency, title.strip(), bias, rated))
+        out = {}
+        for p in parts:
+            heads = sorted(by_story.get(p.id, []))
+            saga = out.setdefault(p.saga_id, {'id': p.saga_id, 'name': sagas[p.saga_id].name if p.saga_id in sagas
+                                              else None, 'parts': [], 'lean': {}})
+            for _, agency, _, bias, rated in heads:
+                saga['lean'][agency] = ('left' if bias < 0 else 'right' if bias > 0 else 'center') if rated else 'unrated'
+            saga['parts'].append({
+                'story': p.id, 'label': p.label or (heads[0][2] if heads else 'A part'), 'first': p.first_seen,
+                'last': p.last_seen, 'now': latest is not None and p.last_seen >= latest - NOW_SLACK,
+                'outlets': len({h[1] for h in heads}),
+                # Every outlet that had it in the first run it was seen in: one run's headlines share a time, so
+                # there's no telling which of them was first
+                'first_outlets': sorted({h[1] for h in heads if h[0] - heads[0][0] <= FIRST_RUN}),
+                'first_title': heads[0][2] if heads else None})
+    for saga in out.values():
+        saga['first'] = min(p['first'] for p in saga['parts'])
+        saga['last'] = max(p['last'] for p in saga['parts'])
+        saga['now'] = any(p['now'] for p in saga['parts'])
+        sides = Counter(saga['lean'].values())
+        saga.update({side: sides.get(side, 0) for side in ('left', 'center', 'right', 'unrated')})
+        saga['outlets'] = len(saga.pop('lean'))
+        saga['name'] = saga['name'] or saga['parts'][0]['label']
+    return sorted(out.values(), key=lambda g: g['last'], reverse=True)
