@@ -866,6 +866,214 @@ fetch('/motif-board.json').then((r) => r.json()).then((d) => { data = d; render(
 </script></body></html>""".replace('<!--DRAG-->', DRAG_SNIPPET)
 
 
+MAP_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motif map</title><style>
+html, body { height: 100%; } body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0; display: flex; flex-direction: column; }
+nav, .bar { padding: 6px 14px; } nav a { margin-right: 1em; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 2px solid #1f1f2e; font-size: .9em; }
+.bar input[type=search] { font: inherit; padding: 3px 10px; border: 2px solid #1f1f2e; border-radius: 999px; min-width: 16em; }
+.key { display: inline-flex; align-items: center; gap: 4px; } .key svg { vertical-align: middle; }
+main { flex: 1; display: flex; min-height: 0; }
+#tree { width: 300px; overflow: auto; border-right: 2px solid #1f1f2e; padding: 8px 10px; font-size: .88em; background: #fff; }
+#tree h3 { margin: .3em 0; font-size: 1em; } #tree ul { list-style: none; padding-left: 1.1em; margin: 0; } #tree > ul { padding-left: 0; }
+#tree li > span { cursor: pointer; border-radius: 4px; padding: 0 3px; } #tree li > span:hover, #tree li > span.on { background: #c8f7c5; }
+#tree .meta, .meta { color: #666; font-size: .85em; }
+#graph { flex: 1; position: relative; min-width: 0; } svg#net { width: 100%; height: 100%; display: block; cursor: grab; }
+.node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
+.node.dim, .link.dim { opacity: .12; } .node text.minor { display: none; } .node:hover text.minor, .node.hit text.minor { display: inline; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
+.link.kind { stroke: #0a8f7e; stroke-width: 2px; } .link.related { stroke: #ff4fa3; stroke-width: 1.8px; stroke-dasharray: 5 4; } .link.shared { stroke: #9aa0a6; opacity: .45; }
+#info { position: absolute; right: 10px; top: 10px; width: 330px; max-height: calc(100% - 20px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
+  border-radius: 12px; box-shadow: 4px 4px 0 #00c2a8; padding: 8px 12px; font-size: .88em; display: none; }
+#info h3 { margin: .2em 0; } #info ul { padding-left: 1.2em; margin: .2em 0 .5em; } #info .x { float: right; cursor: pointer; border: 0; background: none; font-size: 1.1em; }
+#info a.go { cursor: pointer; color: #0a6d61; text-decoration: underline; }
+#menu { position: absolute; display: none; background: #fffdf6; border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.25); padding: 6px; z-index: 5; font-size: .88em; }
+#menu p { margin: 0 0 4px; font-weight: 600; max-width: 26em; } #menu button { display: block; width: 100%; text-align: left; margin: 3px 0; font: inherit; border: 1.5px solid #1f1f2e; border-radius: 8px; background: #fff; padding: 3px 8px; cursor: pointer; }
+#menu button:hover { background: #c8f7c5; } #menu .say { color: #555; font-weight: 400; font-size: .9em; }
+</style></head><body>
+<nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <a href="/motif-singles">Single motifs</a> <b>Motif map</b> <a href="/entities">Names</a></nav>
+<div class="bar"><input type="search" id="q" placeholder="🔎 find a motif">
+  <span class="key"><svg width="34" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="#0a8f7e" stroke-width="2"/><path d="M26,1 L34,5 L26,9 z" fill="#0a8f7e"/></svg> kind of (points to the broader)</span>
+  <label class="key"><input type="checkbox" id="show-kind" checked></label>
+  <span class="key"><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#ff4fa3" stroke-width="2" stroke-dasharray="5 4"/></svg> related</span>
+  <label class="key"><input type="checkbox" id="show-related" checked></label>
+  <span class="key"><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#9aa0a6" stroke-width="2"/></svg> hold</span>
+  <select id="shared-min" title="grey lines between motifs holding at least this many of the same claims"><option value="0">none of</option><option value="1">1+ of</option><option value="2" selected>2+ of</option><option value="3">3+ of</option></select> the same claims
+  <label class="key"><input type="checkbox" id="only-linked" checked> only motifs with a link</label> <button id="fit" style="font:inherit;border:1.5px solid #1f1f2e;border-radius:999px;background:#fff;padding:1px 10px;cursor:pointer">⤢ fit</button>
+  <span class="meta" id="count"></span>
+  <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot onto another to link them.</span></div>
+<main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="menu"></div></div></main>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const q = (t) => '“' + t + '”';
+const $ = (s) => document.querySelector(s);
+let data, byId, nodes = [], links = [], sim, focus = null;
+const kept = new Map();  // positions kept across redraws
+async function act(body) {
+  const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return false; }
+  if (window.refreshUndo) refreshUndo();
+  await load();
+  return true;
+}
+function buildLinks() {
+  const out = [];
+  if ($('#show-kind').checked) data.entries.forEach((e) => e.parents.forEach((p) => byId[p] && out.push({source: e.id, target: p, kind: 'kind'})));
+  if ($('#show-related').checked) {
+    const seen = new Set();
+    data.entries.forEach((e) => e.related.forEach((r) => { const k = [e.id, r].sort().join(); if (byId[r] && !seen.has(k)) { seen.add(k); out.push({source: e.id, target: r, kind: 'related'}); } }));
+  }
+  const least = +$('#shared-min').value;
+  if (least) {
+    const holders = new Map();
+    data.entries.forEach((e) => e.claims.forEach((c) => { const l = holders.get(c.claim) || []; l.push(e.id); holders.set(c.claim, l); }));
+    const count = new Map();
+    holders.forEach((ids) => { ids = [...new Set(ids)].sort(); for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const k = ids[i] + ',' + ids[j]; count.set(k, (count.get(k) || 0) + 1); } });
+    const linked = new Set(out.map((l) => [l.source, l.target].sort().join()));
+    count.forEach((n, k) => { if (!linked.has(k) && n >= least) { const [a, b] = k.split(','); out.push({source: a, target: b, kind: 'shared', n}); } });
+  }
+  return out;
+}
+function draw() {
+  const raw = buildLinks(), deg = new Map();
+  raw.forEach((l) => { deg.set(l.source, (deg.get(l.source) || 0) + 1); deg.set(l.target, (deg.get(l.target) || 0) + 1); });
+  const only = $('#only-linked').checked;
+  nodes = data.entries.filter((e) => !only || deg.get(e.id)).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
+  const ids = new Set(nodes.map((n) => n.id));
+  links = raw.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => ({...l}));
+  $('#count').textContent = `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} kind-of · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
+  const svg = d3.select('#net'), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
+  svg.selectAll('*').remove();
+  svg.append('defs').append('marker').attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 10).attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#0a8f7e');
+  const root = svg.append('g');
+  zoomer = d3.zoom().scaleExtent([0.15, 5]).on('zoom', (ev) => root.attr('transform', ev.transform));
+  svg.call(zoomer);
+  const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
+  const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
+    .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
+  link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'kind of' : 'related');
+  const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'node');
+  node.append('circle').attr('r', r).attr('fill', (n) => n.e.parents.length ? '#9ee6da' : data.entries.some((x) => x.parents.includes(n.id)) ? '#ffd166' : '#fff');
+  // Names on the dots that matter at a glance (2+ claims, or in the kinds); the rest on hover and when found
+  node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name)
+    .attr('class', (n) => n.e.claims.length > 1 || n.e.parents.length || data.entries.some((x) => x.parents.includes(n.id)) ? '' : 'minor');
+  node.append('title').text((n) => `${n.e.name} (${n.e.claims.length} claim${n.e.claims.length === 1 ? '' : 's'})${n.e.note ? '\n' + n.e.note : ''}`);
+  node.on('click', (ev, n) => { ev.stopPropagation(); show(n.id); });
+  svg.on('click', () => show(null));
+  node.call(d3.drag().on('start', (ev, n) => { if (!ev.active) sim.alphaTarget(0.2).restart(); n.fx = n.x; n.fy = n.y; })
+    .on('drag', (ev, n) => { n.fx = ev.x; n.fy = ev.y; const t = nearest(n); node.classed('target', (m) => m === t); })
+    .on('end', (ev, n) => { if (!ev.active) sim.alphaTarget(0); const t = nearest(n); node.classed('target', false); n.fx = null; n.fy = null; if (t) choose(n, t, ev.sourceEvent); }));
+  function nearest(n) {
+    let best = null, bd = Infinity;
+    nodes.forEach((m) => { if (m === n) return; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d < r(m) + 8 && d < bd) { best = m; bd = d; } });
+    return best;
+  }
+  sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => l.kind === 'shared' ? 0.15 : 0.6))
+    .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collide', d3.forceCollide().radius((n) => r(n) + 4)).force('x', d3.forceX(W / 2).strength(0.03)).force('y', d3.forceY(H / 2).strength(0.04))
+    .on('tick', () => {
+      link.each(function (l) {  // arrows end at the circle's edge
+        const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1, cut = l.kind === 'kind' ? r(l.target) + 2 : 0;
+        d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
+      });
+      node.attr('transform', (n) => `translate(${n.x},${n.y})`);
+      nodes.forEach((n) => kept.set(n.id, {x: n.x, y: n.y}));
+    });
+  if (kept.size) sim.alpha(0.3);
+  else sim.on('end.fit', () => { sim.on('end.fit', null); fit(); });
+  applyFocus();
+}
+let zoomer;
+function fit() {  // the whole map in view
+  if (!nodes.length) return;
+  const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
+  const x0 = Math.min(...xs) - 40, x1 = Math.max(...xs) + 140, y0 = Math.min(...ys) - 30, y1 = Math.max(...ys) + 30;
+  const k = Math.min(2, 0.95 * Math.min(W / (x1 - x0), H / (y1 - y0)));
+  d3.select('#net').transition().duration(600).call(zoomer.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
+}
+function neighbours(id) {
+  const s = new Set([id]);
+  links.forEach((l) => { if (l.source.id === id) s.add(l.target.id); if (l.target.id === id) s.add(l.source.id); });
+  return s;
+}
+function applyFocus() {
+  const term = $('#q').value.trim().toLowerCase();
+  const near = focus ? neighbours(focus) : null;
+  d3.selectAll('.node').classed('dim', (n) => near ? !near.has(n.id) : false).classed('hit', (n) => (term && n.e.name.toLowerCase().includes(term)) || n.id === focus);
+  d3.selectAll('.link').classed('dim', (l) => near ? !(l.source.id === focus || l.target.id === focus) : false);
+  document.querySelectorAll('#tree span[data-id]').forEach((s) => s.classList.toggle('on', s.dataset.id === focus));
+}
+function names(ids) { return ids.filter((i) => byId[i]).map((i) => `<a class="go" data-id="${i}">${esc(byId[i].name)}</a>`).join(', '); }
+function show(id) {
+  focus = id; applyFocus();
+  const box = $('#info');
+  if (!id) { box.style.display = 'none'; return; }
+  const e = byId[id], kinds = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
+  const shared = links.filter((l) => l.kind === 'shared' && (l.source.id === id || l.target.id === id)).map((l) => l.source.id === id ? l.target.id : l.source.id);
+  box.innerHTML = `<button class="x" title="close">✕</button><h3>🧩 ${esc(e.name)} <span class="meta">${e.id}</span></h3>
+    ${e.note ? `<p class="meta">${esc(e.note)}</p>` : ''}
+    ${e.parents.length ? `<p><b>a kind of</b> ${names(e.parents)}</p>` : ''}
+    ${kinds.length ? `<p><b>its kinds</b> ${names(kinds)}</p>` : ''}
+    ${e.related.length ? `<p><b>related</b> ${names(e.related)}</p>` : ''}
+    ${shared.length ? `<p><b>shares claims with</b> ${names(shared)}</p>` : ''}
+    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b></p><ul>${e.claims.slice(0, 8).map((c) => `<li>${esc(c.claim)}</li>`).join('')}</ul>
+    ${e.claims.length > 8 ? `<p class="meta">and ${e.claims.length - 8} more</p>` : ''}
+    <p><a href="/motif-board" target="_blank">open the board</a></p>`;
+  box.style.display = 'block';
+}
+$('#info').addEventListener('click', (ev) => { if (ev.target.closest('.x')) show(null); const a = ev.target.closest('a.go'); if (a) center(a.dataset.id); });
+function center(id) {
+  const n = nodes.find((x) => x.id === id);
+  show(id);
+  if (!n) return;
+  const svg = d3.select('#net'), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
+  svg.transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate((W - 350) / 2 - n.x * 1.3, H / 2 - n.y * 1.3).scale(1.3));  // left of the details box
+}
+function choose(a, b, ev) {
+  const m = $('#menu'), box = $('#graph').getBoundingClientRect();
+  const opts = [
+    ['⊂ under it', `${q(a.e.name)} becomes a kind of ${q(b.e.name)}`, {action: 'parent', id: a.id, parent: b.id}],
+    ['⊃ over it', `${q(b.e.name)} becomes a kind of ${q(a.e.name)}`, {action: 'parent', id: b.id, parent: a.id}],
+    ['↔ related', 'near each other, different stories: both stay, linked', {action: 'relate', a: a.id, b: b.id}],
+    ['⤵ merge into it', `${q(a.e.name)} goes; its claims join ${q(b.e.name)}`, {action: 'merge', source: a.id, target: b.id}],
+  ];
+  m.innerHTML = `<p>🧩 ${esc(a.e.name)} → 🧩 ${esc(b.e.name)}</p>` + opts.map(([l, s], i) => `<button data-i="${i}">${l} <span class="say">${esc(s)}</span></button>`).join('') + '<button data-i="-1">cancel</button>';
+  m.style.left = Math.min(ev.clientX - box.left + 10, box.width - 300) + 'px'; m.style.top = Math.min(ev.clientY - box.top + 10, box.height - 200) + 'px';
+  m.style.display = 'block';
+  m.onclick = (e2) => { const btn = e2.target.closest('button'); if (!btn) return; m.style.display = 'none'; const i = +btn.dataset.i; if (i >= 0) act(opts[i][2]); };
+}
+function tree() {
+  const kids = (id) => data.entries.filter((e) => e.parents.includes(id)).sort((a, b) => a.name.localeCompare(b.name));
+  const item = (e, path) => {
+    const sub = path.has(e.id) ? [] : kids(e.id);
+    const p = new Set(path).add(e.id);
+    return `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">${e.claims.length}${e.related.length ? ' · ↔ ' + e.related.length : ''}</span>${sub.length ? `<ul>${sub.map((k) => item(k, p)).join('')}</ul>` : ''}</li>`;
+  };
+  const roots = data.entries.filter((e) => !e.parents.length && kids(e.id).length).sort((a, b) => a.name.localeCompare(b.name));
+  const rel = data.entries.filter((e) => !e.parents.length && !kids(e.id).length && e.related.length).sort((a, b) => a.name.localeCompare(b.name));
+  $('#tree').innerHTML = `<h3>Kinds</h3><p class="meta">Broader motifs with their kinds under them (a motif with two broader ones shows under both). Click one to find it on the map.</p>
+    <ul>${roots.map((e) => item(e, new Set())).join('') || '<li class="meta">No kinds yet.</li>'}</ul>
+    <h3>Related, outside the kinds</h3><ul>${rel.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">↔ ${e.related.map((r) => byId[r] ? esc(byId[r].name) : r).join(', ')}</span></li>`).join('') || '<li class="meta">None.</li>'}</ul>`;
+}
+$('#tree').addEventListener('click', (ev) => { const s = ev.target.closest('span[data-id]'); if (s) center(s.dataset.id); });
+async function load() {
+  data = await (await fetch('/motif-board.json')).json();
+  byId = Object.fromEntries(data.entries.map((e) => [e.id, e]));
+  if (focus && !byId[focus]) focus = null;
+  tree(); draw(); if (focus) show(focus);
+}
+['#show-kind', '#show-related', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
+$('#q').addEventListener('input', applyFocus);
+$('#fit').addEventListener('click', fit);
+$('#q').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const t = ev.target.value.trim().toLowerCase(); const n = nodes.find((x) => x.e.name.toLowerCase().includes(t)); if (n) center(n.id); } });
+addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { $('#menu').style.display = 'none'; show(null); } });
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 200); });
+load();
+</script></body></html>"""
+
+
 EMPTY_PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Empty motifs</title><style>
 body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 760px; padding: 16px; }
@@ -1088,6 +1296,8 @@ button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-ra
 button.add { background: #c8f7c5; font-weight: 700; } .row { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .say { min-height: 1.4em; margin: 6px 0 2px; padding: 4px 8px; border-radius: 6px; background: #eef9f7; font-size: .9em; }
 .say:empty { background: none; } .result { font-weight: 600; } .find { flex: 1; min-width: 14em; font: inherit; padding: 2px 8px; border: 1.5px solid #1f1f2e; border-radius: 8px; }
+.find-list { position: absolute; z-index: 20; background: #fff; border: 2px solid #1f1f2e; border-radius: 8px; box-shadow: 3px 3px 0 #00c2a8; max-height: 18em; overflow: auto; }
+.find-hit { padding: 4px 8px; cursor: pointer; } .find-hit.on, .find-hit:hover { background: #c8f7c5; }
 .legend { font-size: .9em; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 6px 10px; } .legend b { white-space: nowrap; }
 </style></head><body>
 <nav><a href="/">Label check</a> <a href="/motifs">Motif check</a> <a href="/motif-index">Motif organizer</a> <a href="/motif-board">Motif board</a> <b>Single motifs</b> <a href="/entities">Names</a></nav>
@@ -1101,7 +1311,6 @@ on the page and drop it on what you mean. <span id="count" class="meta"></span><
 <b>＋ file here too</b> the claim also belongs under the other; this one stays as it is ·
 <b>✓ stands alone</b> none of these; it leaves this list</p>
 <div id="list"><p class="meta">Finding the closest motifs…</p></div>
-<datalist id="motif-names"></datalist>
 <!--DRAG-->
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -1140,13 +1349,12 @@ function card(s, n) {
     <p class="claim">${esc(s.claim)} <span class="meta">${esc(s.source === 'narrative' ? 'online' : s.source)}</span></p>
     <div class="sugs">${s.suggest.map((m, k) => row(n, k, m)).join('')}</div>
     <div class="say" aria-live="polite"></div>
-    <div class="row"><input class="find" list="motif-names" data-n="${n}" placeholder="🔎 another motif: type its name, pick it, and it joins the list">
+    <div class="row"><input class="find" data-n="${n}" autocomplete="off" placeholder="🔎 another motif: type words of its name, pick it, and it joins the list">
       <button data-n="${n}" data-do="alone">✓ stands alone</button></div></div>`;
 }
 function draw() {
   document.getElementById('count').textContent = `(${items.length} to look at)`;
   document.getElementById('list').innerHTML = items.map(card).join('') || '<p>None left. 🎉</p>';
-  document.getElementById('motif-names').innerHTML = motifs.map((m) => `<option value="${esc(m.name)}">${m.size} claim${m.size === 1 ? '' : 's'}</option>`).join('');
 }
 function explain(b, on) {
   if (!b || !b.dataset.do) return;
@@ -1158,11 +1366,10 @@ function explain(b, on) {
 document.addEventListener('mouseover', (ev) => { const b = ev.target.closest('button[data-do]'); if (b) explain(b, true); });
 document.addEventListener('mouseout', (ev) => { const b = ev.target.closest('button[data-do]'); if (b && !b.contains(ev.relatedTarget)) explain(b, false); });
 document.addEventListener('focusin', (ev) => explain(ev.target.closest('button[data-do]'), true));
-document.addEventListener('change', (ev) => {
-  const f = ev.target.closest('.find'); if (!f) return;
-  const n = +f.dataset.n, s = items[n], m = motifs.find((x) => x.name === f.value.trim());
-  if (!m) return;
-  f.value = '';
+// '🔎 another motif': our own dropdown of matching names (the browser's datalist showed the claim counts, not names)
+function addRow(f, m) {
+  const n = +f.dataset.n, s = items[n];
+  f.value = ''; closeFind();
   if (m.id === s.id) return;
   let k = s.suggest.findIndex((x) => x.id === m.id);
   if (k < 0) {
@@ -1170,8 +1377,35 @@ document.addEventListener('change', (ev) => {
     k = s.suggest.length - 1;
     f.closest('.card').querySelector('.sugs').insertAdjacentHTML('beforeend', row(n, k, s.suggest[k]));
   }
-  f.closest('.card').querySelector(`.sug[data-k="${k}"]`).scrollIntoView({block: 'nearest'});
+  const r = f.closest('.card').querySelector(`.sug[data-k="${k}"]`);
+  r.scrollIntoView({block: 'nearest'}); r.classList.add('hot'); setTimeout(() => r.classList.remove('hot'), 1500);
+}
+let findBox = null, findHits = [], findAt = 0;
+function closeFind() { if (findBox) findBox.remove(); findBox = null; findHits = []; }
+function drawFind(f) {
+  const words = f.value.toLowerCase().split(/\s+/).filter(Boolean), me = items[+f.dataset.n].id;
+  closeFind();
+  if (!words.length) return;
+  findHits = motifs.filter((m) => m.id !== me && words.every((w) => m.name.toLowerCase().includes(w))).slice(0, 12);
+  findAt = 0;
+  findBox = document.createElement('div'); findBox.className = 'find-list';
+  findBox.innerHTML = findHits.map((m, i) => `<div class="find-hit${i === 0 ? ' on' : ''}" data-i="${i}">🧩 ${esc(m.name)} <span class="meta">${m.size} claim${m.size === 1 ? '' : 's'}</span></div>`).join('')
+    || '<div class="meta" style="padding:4px 8px">No motif has all those words.</div>';
+  f.parentElement.style.position = 'relative'; findBox.style.top = (f.offsetTop + f.offsetHeight + 2) + 'px'; findBox.style.left = f.offsetLeft + 'px'; findBox.style.width = f.offsetWidth + 'px';
+  f.parentElement.appendChild(findBox);
+  findBox.onmousedown = (ev) => { const h = ev.target.closest('.find-hit'); if (h) { ev.preventDefault(); addRow(f, findHits[+h.dataset.i]); } };
+}
+document.addEventListener('input', (ev) => { const f = ev.target.closest('.find'); if (f) drawFind(f); });
+document.addEventListener('keydown', (ev) => {
+  const f = ev.target.closest && ev.target.closest('.find'); if (!f || !findBox) return;
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    ev.preventDefault(); if (!findHits.length) return;
+    findAt = (findAt + (ev.key === 'ArrowDown' ? 1 : findHits.length - 1)) % findHits.length;
+    findBox.querySelectorAll('.find-hit').forEach((h, i) => h.classList.toggle('on', i === findAt));
+  } else if (ev.key === 'Enter' && findHits.length) { ev.preventDefault(); addRow(f, findHits[findAt]); }
+  else if (ev.key === 'Escape') closeFind();
 });
+document.addEventListener('focusout', (ev) => { if (ev.target.closest && ev.target.closest('.find')) setTimeout(closeFind, 150); });
 async function apply(s, m, what) {
   let ok;
   if (what === 'merge') ok = await act({action: 'merge', source: s.id, target: m.id});
@@ -1455,7 +1689,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/motif-board.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.board())
-        body = (SINGLES_PAGE if self.path.startswith('/motif-singles') else EMPTY_PAGE if self.path.startswith('/motif-empty') else BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
+        body = (MAP_PAGE if self.path.startswith('/motif-map') else SINGLES_PAGE if self.path.startswith('/motif-singles') else EMPTY_PAGE if self.path.startswith('/motif-empty') else BOARD_PAGE if self.path.startswith('/motif-board') else organizer_page() if self.path.startswith('/motif-index') else motif_page()
                 if self.path.startswith('/motifs') else entities_page() if self.path.startswith('/entities')
                 else page())
         if self.path.split('?')[0] != '/':  # every organizer page gets the undo button (the label check writes the database)

@@ -91,7 +91,8 @@ def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
     monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
     monkeypatch.setattr(validate, 'MOTIF_VERDICTS', str(tmp_path / 'v.jsonl'))
     pages = {'organizer': validate.organizer_page(), 'motif check': validate.motif_page(), 'board': validate.BOARD_PAGE,
-             'empty': validate.EMPTY_PAGE, 'singles': validate.SINGLES_PAGE, 'names': validate.entities_page()}
+             'empty': validate.EMPTY_PAGE, 'singles': validate.SINGLES_PAGE, 'names': validate.entities_page(),
+             'map': validate.MAP_PAGE}
     for name, html in pages.items():
         for js in re.findall(r'<script>(.*?)</script>', html, re.S):
             path = tmp_path / 'page.js'
