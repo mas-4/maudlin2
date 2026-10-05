@@ -5,6 +5,18 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Hand labels.** A headline checked by hand on our label-check page now carries the person's mood, loaded-wording
+  and feelings labels in every measure (the model's where the person agreed), marked as hand labels so no rescore
+  replaces them. Only a few dozen headlines, chosen evenly across the model's labels; they also measure the model: of
+  the first 19, mood matched 11 (16 within one step, 1 opposite sign), loaded wording 14 (18 within one), feelings
+  12. Of the 7 checked since the Oct 4 rescore: mood 5, loaded wording 6, feelings 7.
+- **Motifs reused, and checked by hand.** Named one claim at a time without seeing the index, nearly every motif was
+  a one-off (223 of 259 held a single claim), and the same name was coined as separate entries ("Blame shifting"
+  four times; now merged). Now the model sees the 15 motifs closest to a claim before naming it, files it under one
+  that fits, and coins a new name only for a shape none of them covers; a new name already in the index, word for
+  word, is that motif. Re-filing 20 claims on a copy of the index, 17 found an existing motif (the old way, 1 of
+  12), though some fits are loose while the index's names are young. A person checks filings one by one ("is this
+  claim an instance of this motif?"); a no takes the claim out of that motif for good.
 - **Motifs for political news, and cleaner names.** Folklore groups that are news reports or shared reactions
   got no motif, but news is powerful when it confirms a story people already tell (a Russian lab worker's plague
   death, retold as a bioweapon): political news is now filed in the motif index too. Non-political news, sports
@@ -47,7 +59,8 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups each current story is about (up to six, by their common short names, remembered per story). A name is kept
   only if the story's headlines actually contain it (asked about an OPEC+ story, the model added Russia, Iran and
   Iraq), and the United States is left out (nearly every story is about it). Names in two or more current stories
-  become "about:" filters over the story cards. Not sagas: these are unrelated stories that name the same subject.
+  become "about:" filters over the story cards (renamed "mentioned:" the same day: often a story only mentions the
+  name). Not sagas: these are unrelated stories that name the same subject.
 - **Our own motif index replaces Thompson's chapters.** Thompson's Motif-Index is built from folktales and fits modern
   political rumor poorly, so the site no longer shows it. Instead we build our own: each folklore narrative and each
   fact-checked claim gets one to three motif names from the model (reusable framings, no names or dates, two-sided
