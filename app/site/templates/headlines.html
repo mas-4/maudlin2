@@ -939,9 +939,22 @@
                     sort = SORTS[button.dataset.sort];
                     document.querySelectorAll('.story-sort button[data-sort]').forEach((b) => b.classList.toggle('active', b === button));
                 }
+                // Cards glide to their new places (FLIP: note where each was, re-lay them out, then slide each from
+                // its old spot to its new one); cards coming back fade in. Skipped for readers who ask for less motion
+                const before = new Map(all.filter((c) => !c.hidden).map((c) => [c, c.getBoundingClientRect()]));
                 all.forEach((card) => { card.hidden = [...only].some((f) => !card.dataset[f]); });
                 cards = all.filter((card) => !card.hidden).sort(sort);
                 layout(true);
+                if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    cards.forEach((card, i) => {
+                        const was = before.get(card);
+                        const now = card.getBoundingClientRect();
+                        const motion = was
+                            ? [{transform: `translate(${was.left - now.left}px, ${was.top - now.top}px)`}, {transform: 'none'}]
+                            : [{opacity: 0, transform: 'scale(0.92)'}, {opacity: 1, transform: 'none'}];
+                        card.animate(motion, {duration: 450, easing: 'cubic-bezier(.2, .8, .2, 1)', delay: Math.min(i, 12) * 15});
+                    });
+                }
             });
         })();
     </script>
