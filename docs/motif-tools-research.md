@@ -1,7 +1,7 @@
 # Tools for organizing motifs: what others have built
 
 Our motif curation pages (the board, organizer, singles, map, notes, motif check and empty pages in `scripts/checker/`)
-solve a known problem: a person and a model building a category system from a pile of short texts, bottom-up, and
+work on a known problem: a person and a model building a category system from a pile of short texts, bottom-up, and
 keeping it tidy as it grows. Several fields have worked on it, under different names: qualitative coding, interactive
 topic modeling, taxonomy building, entity resolution, card sorting, and folklore indexing itself. This is what they
 found that we can use, with what each would mean here. Written Oct 6, 2026; the motif index review is due ~Oct 12.
@@ -13,6 +13,40 @@ found that we can use, with what each would mean here. Written Oct 6, 2026; the 
 - A person merges, moves, splits off, says "kind of" (parent), "related", "not the same", "no motif", marks motifs done
   and writes scope notes; the model drafts notes for motifs with 3+ claims.
 - The checker pages show the motifs as a board, singles with suggestions, a network map and tree, and a notes list.
+
+## Software that organizes this shape of data
+
+Our data has a particular shape: **short items** (claims) filed under **categories** (motifs), an item sometimes in
+two categories; categories nested in a **hierarchy** (kinds) and joined by **relations** (related, not the same);
+categories with **notes**; a **queue** of things to review; and a **pile of unfiled items**. Many tools manage this
+shape. The question for us is how they lay it out and what you can do with a drag.
+
+| Kind | Tools | How they lay it out | What a drag does |
+|---|---|---|---|
+| Qualitative analysis (QDA) | MAXQDA, ATLAS.ti, NVivo, Taguette (open source), Delve | A **code tree** beside the document; a code manager with each code's comment (memo) and counts | Drag a passage onto a code to code it; drag a code onto another to nest it (MAXQDA: up to 10 levels); merge codes; ATLAS.ti also draws codes as a **network** ([MAXQDA](https://www.maxqda.com/qualitative-coding-software), [ATLAS.ti](https://atlasti.com/research-hub/atlas-ti-alternative-to-other-programs)) |
+| Research repositories | Dovetail, Condens | A **tag board**: tags as cards in named groups, each with its highlights | Drag a tag into a group to move it; **drop a tag on another to merge** ([Dovetail tags](https://docs.dovetail.com/help/projects/project-tags)) |
+| Thesaurus and taxonomy managers | PoolParty, VocBench, TopBraid EDG, Protégé (ontologies) | **Concept tree** on the left, the selected concept's details on the right: labels, broader, narrower, related, notes | Drag a concept into another's Narrower section to move it, into Related to relate them, **onto its alternative labels to merge** ([PoolParty](https://help.poolparty.biz/en/user-guide-for-knowledge-engineers/basic-features/managing-your-thesauri/merging-concepts-by-drag-and-drop.html)) |
+| Outliners | Workflowy, Dynalist, Logseq, Tana | **One tree** of everything; zoom into any node to work on just it | Drag to move or nest; Shift-drag makes a **mirror**, the same item live in two places ([Workflowy mirrors](https://blog.workflowy.com/mirrors-create-live-copies-of-any-bullet/)) |
+| Whiteboards | Miro, FigJam, Heptabase, Obsidian Canvas | Cards on a canvas in **sections**; boards nested in boards; the same card on several boards | Drag cards between sections; Miro's AI clusters stickies by keyword into containers to start from ([Miro clustering](https://help.miro.com/hc/en-us/articles/4409706795410-Clustering), [Heptabase](https://wiki.heptabase.com/organize-knowledge-and-projects)) |
+| Hypertext note tools | Tinderbox | The same notes as a **map, an outline or an attribute browser**; **agents** are saved searches that gather matching notes and keep them up to date ([Tinderbox](https://eastgate.com/Tinderbox/index.html)) | Drag in any view; arrangement on the map is meaning |
+| Network maps | Kumu, Gephi, Cytoscape, InfraNodus | Elements and connections; **focus** on one element to see its neighborhood ([Kumu](https://docs.kumu.io/overview/kumus-architecture)) | Drag to arrange; draw a connection between two elements |
+| Card sorting | OptimalSort, Maze, UXtweak | Cards to sort into groups; results as a **similarity matrix** and a dendrogram | Drag a card into a group, or make a new group by dropping on empty space |
+| Annotation | Prodigy, Argilla, Label Studio | **One item at a time**, big, with the model's guess | Keys, not drags: accept, reject, skip, undo; the model picks what to ask next ([Prodigy](https://prodi.gy/docs/api-web-app)) |
+| Boards | Trello, GitHub Projects | Columns of cards | Drag a card between columns |
+
+What the best of them share, and what our pages lack:
+
+1. **One window, three panes.** The categories as a tree or board on one side, the open category with its items in
+   the middle, and the inbox (items to file, things to review) on the other side. Nothing needs a second page.
+2. **Everything is draggable onto everything.** An item onto a category files it; a category onto a category merges,
+   nests or relates it, chosen by where you drop or from a small menu at the drop; a category onto a group moves it.
+   The drop target says what will happen before you let go.
+3. **One search for everything**, items and categories alike, by name, number or words, with a keyboard shortcut.
+4. **Focus**: open any category (or two side by side) without losing your place in the tree.
+5. **A review queue with keys** for the quick yes/no work, ranked by what the model is least sure of.
+6. **Undo** for every move, always visible.
+7. **Saved views** (Tinderbox's agents): "singles", "no note yet", "not done", "unfiled" as filters on the same tree
+   rather than separate pages.
 
 ## Techniques, by field
 
