@@ -220,3 +220,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-bigtext { cursor: text; display: block; }
 .wb-bigtext:hover { background: #fffbe8; border-radius: 6px; }
 .wb-claim-in { width: 100%; font: inherit; border: 0; border-bottom: 3px dashed var(--yellow); background: #fffbe8; resize: vertical; outline: none; }
+
+.wb-pick { gap: 8px; }
+.wb-pickbtns { display: flex; gap: 4px; flex: none; }

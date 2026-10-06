@@ -424,9 +424,10 @@
     if (!words.length) { box.innerHTML = '<p class="wb-faint">type to find a motif, or drag the claim onto one</p>'; return; }
     const found = motifs().filter((e) => !inIds.has(e.id) && words.every((w) => (e.id + ' ' + e.name + ' ' + (e.note || '')).toLowerCase().includes(w)))
       .sort(SORTS.size).slice(0, 12);
-    box.innerHTML = found.map((e) => `<div class="wb-sug">${chip(e.id)}<span class="wb-sbtns">
-        <button class="wb-mini" data-cl="add|${e.id}" title="file it here too">＋ add</button>
-        ${ins.length ? `<button class="wb-mini" data-cl="move|${e.id}" title="file it here and take it out of ${S.claim.from && S.by[S.claim.from] ? '“' + esc(S.by[S.claim.from].name) + '”' : ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span></div>`).join('')
+    // The buttons first, where the eye lands after typing; the motif's name after them (clicking it opens the motif)
+    box.innerHTML = found.map((e) => `<div class="wb-sug wb-pick"><span class="wb-pickbtns">
+        <button class="wb-btn yes" data-cl="add|${e.id}" title="file it here too">＋ add</button>
+        ${ins.length ? `<button class="wb-btn" data-cl="move|${e.id}" title="file it here and take it out of ${S.claim.from && S.by[S.claim.from] ? '“' + esc(S.by[S.claim.from].name) + '”' : ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span>${chip(e.id)}</div>`).join('')
       || `<p class="wb-faint">🦗 no motif matches</p><button class="wb-btn yes" data-cl="newnamed|" id="cl-new">✨ new motif “${esc(S.claimQ.trim())}” with it</button>`;
   }
   function claimAction(kind, id) {
