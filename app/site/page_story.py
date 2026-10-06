@@ -11,6 +11,7 @@ import pytz
 
 from app import chyrons
 from app.analysis import entities, running_order
+from app.site import page_tv, story_charts
 from app.site.common import TemplateHandler, chip_style, outlet_icon, short_name
 from app.site.page_sagas import EASTERN, eastern
 from app.utils import Config, get_logger
@@ -73,9 +74,8 @@ def sparkline(snapshots: list[dict], width: int = 320, height: int = 48) -> dict
 
 def tv_by_story() -> dict:
     """story id -> {'channels': [(name, ink, time)], 'captions': [the longest-running captions]}, over every day read"""
-    from app.site import page_tv
     seconds, captions = defaultdict(lambda: defaultdict(int)), defaultdict(lambda: defaultdict(int))
-    first = {}
+    first, spots = {}, defaultdict(list)
     for path in glob.glob(os.path.join(chyrons.FOLDER, 'matched-*.json')):
         try:
             caps = json.load(open(path))
@@ -87,11 +87,16 @@ def tv_by_story() -> dict:
                 if c['story'] not in first or at < first[c['story']][0]:
                     first[c['story']] = (at, chyrons.CHANNELS[c['channel']])
                 seconds[c['story']][c['channel']] += c['seconds']
+                spots[c['story']].append({'at': at, 'seconds': c['seconds'], 'channel': c['channel'],
+                                          'name': chyrons.CHANNELS[c['channel']], 'text': c['text']})
                 captions[c['story']][(c['channel'], c['text'])] += c['seconds']
     out = {}
     for sid, by in seconds.items():
-        out[sid] = {'channels': [{'name': chyrons.CHANNELS[ch], 'ink': page_tv.CHANNEL_INK[ch], 'time': page_tv.minutes(n)}
+        most = max(by.values()) or 1
+        out[sid] = {'channels': [{'name': chyrons.CHANNELS[ch], 'ink': page_tv.CHANNEL_INK[ch], 'time': page_tv.minutes(n),
+                                  'share': round(100 * n / most)}
                                  for ch, n in sorted(by.items(), key=lambda kv: -kv[1])],
+                    'spots': spots[sid],
                     'captions': [{'channel': chyrons.CHANNELS[ch], 'text': t, 'time': page_tv.minutes(n)}
                                  for (ch, t), n in sorted(captions[sid].items(), key=lambda kv: -kv[1])[:8]],
                     'first': first[sid]}
@@ -219,6 +224,11 @@ class StoryPages:
                 'lean_counts': {'left': sum(b < 0 for b in rated), 'center': sum(b == 0 for b in rated),
                                 'right': sum(b > 0 for b in rated), 'unrated': len(outlets) - len(rated)},
                 'since': eastern(st['first']), 'until': eastern(st['last']), 'spark': sparkline(st['snapshots']),
+                'by_lean': story_charts.by_lean(st, outlets),
+                'timeline': story_charts.timeline(st, outlets, (tv.get(st['id']) or {}).get('spots', []),
+                                                  radio.get(st['id'], []),
+                                                  next((f['day'] for f in folk.get(st['label'], []) if f['day']), None),
+                                                  page_tv.CHANNEL_INK),
                 'names': list(dict.fromkeys(entities.canonical(n, aliases) for n in names.get(f"s{st['id']}", []))),
                 'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': folk.get(st['label'], []),
                 'extras': extras.get(str(st['id']), {}), 'rewordings': rewordings(st['headlines']),

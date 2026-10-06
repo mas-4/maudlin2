@@ -107,3 +107,87 @@
     cursor: pointer;
     font-weight: 600;
 }
+
+/* The story's charts (app/site/story_charts.py): inline SVG, scaled to the column */
+.story-chart-figure {
+    margin: 0.6em 0 1.2em;
+    overflow-x: auto;  /* on a phone the chart keeps a readable size and scrolls sideways */
+}
+
+.story-chart {
+    max-width: 100%;
+    height: auto;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    padding: 4px 0;
+    min-width: 540px;
+}
+
+.story-chart-figure figcaption {
+    font-size: 0.8em;
+    color: #555;
+    max-width: 50em;
+}
+
+.sc-grid {
+    stroke: #e6e6ee;
+    stroke-width: 1;
+}
+
+.sc-lane {
+    stroke: #d0d0dc;
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+}
+
+.sc-tick {
+    font-size: 10px;
+    fill: #666;
+}
+
+.sc-label {
+    font-size: 11px;
+    fill: #1f1f2e;
+}
+
+.sc-more {
+    fill: #777;
+    font-style: italic;
+}
+
+.sc-emoji {
+    font-size: 13px;
+}
+
+.sc-key {
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin: 0 0.25em 0 0.15em;
+    border: 1px solid #1f1f2e;
+    border-radius: 2px;
+    background: var(--key);
+    vertical-align: -0.05em;
+}
+
+.story-tv-bars {
+    display: grid;
+    gap: 0.3em;
+    margin: 0.3em 0 0.6em;
+}
+
+.story-tv-row {
+    display: grid;
+    grid-template-columns: 4.5em 1fr auto;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.85em;
+}
+
+.story-tv-bar {
+    display: block;
+    height: 0.8em;
+    border-radius: 4px;
+    background: var(--ink);
+}

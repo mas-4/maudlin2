@@ -20,12 +20,27 @@
 
     <section class="story-stage">
         <h3 class="radio-hour">📰 Spread: the front pages</h3>
-        {% if spark %}
+        {% if by_lean %}
+            <figure class="story-chart-figure">
+                {{ by_lean.svg|safe }}
+                <figcaption>Front pages carrying it at each hourly run, {{ by_lean.from }} to {{ by_lean.to }} ET (peak {{ by_lean.peak }}), by the outlets' lean:
+                    {% for g in by_lean.legend %}<span class="sc-key" style="--key: {{ g.color }}"></span>{{ g.name }}{% if not loop.last %} · {% endif %}{% endfor %}</figcaption>
+            </figure>
+        {% elif spark %}
             <figure class="story-spark" title="Outlets with this story on their front pages at each hourly run (peak {{ spark.peak }})">
                 <svg viewBox="0 0 {{ spark.width }} {{ spark.height }}" width="{{ spark.width }}" height="{{ spark.height }}" role="img" aria-label="Outlets covering it over time, peak {{ spark.peak }}">
                     <polyline points="{{ spark.points }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
                 </svg>
                 <figcaption>outlets with it on their front pages, {{ spark.from }} to {{ spark.to }} ET (peak {{ spark.peak }})</figcaption>
+            </figure>
+        {% endif %}
+        {% if timeline %}
+            <figure class="story-chart-figure">
+                {{ timeline|safe }}
+                <figcaption>Who carried it and when: each outlet in the order it picked the story up, a bar for each headline
+                    from when we first saw it on the front page to when we last did, in the outlet's lean color (dashed: not
+                    rated); a dot marks a new headline. Beneath, its captions on TV, the radio newscasts that carried it
+                    (bigger: the lead) and when people were found retelling it. Hover for details.</figcaption>
             </figure>
         {% endif %}
         {% if wire %}<p title="Headlines nearly word for word the same as the wire service's, as on the outlets page">📡 wire copy: {{ wire.outlets|length }} outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires }} headline nearly word for word ({{ wire.outlets|join(', ') }})</p>{% endif %}
@@ -54,7 +69,7 @@
                 {% if tv %}
                     <div class="saga-card story-page-card" style="--saga: #cc0000">
                         <h3><a href="tv.html">📺 On TV</a></h3>
-                        <p>{% for t in tv.channels %}<span class="show-chip tv-chip" style="--chip: {{ t.ink }}">{{ t.name }} <b>{{ t.time }}</b></span> {% endfor %}</p>
+                        <div class="story-tv-bars">{% for t in tv.channels %}<div class="story-tv-row"><span class="story-tv-name">{{ t.name }}</span><span class="story-tv-bar" style="--ink: {{ t.ink }}; width: {{ [t.share or 100, 3]|max }}%"></span><b>{{ t.time }}</b></div>{% endfor %}</div>
                         <ul class="radio-items">{% for c in tv.captions %}<li>{{ c.text|e }} <span class="tv-time">{{ c.channel }}, {{ c.time }}</span></li>{% endfor %}</ul>
                     </div>
                 {% endif %}

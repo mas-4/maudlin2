@@ -697,8 +697,9 @@ def test_story_pages_gather_the_trackers(monkeypatch, tmp_path):
     page_story.StoryPages().generate()
     html = (tmp_path / 'story-70.html').read_text()
     assert 'Dubai &lt;flight&gt; attack' in html and 'Co-pilot &lt;attacked&gt; captain' in html
-    assert html.count('Later AP wording') == 1  # in the rewordings, not as AP's headline (each outlet's first)
-    assert 'href="story-69.html"' in html and 'CO-PILOT PROBE' in html and '<polyline' in html
+    assert html.count('“Later AP wording”') == 1  # in the rewordings, not as AP's headline (each outlet's first)
+    assert 'Later AP wording</a>' not in html
+    assert 'href="story-69.html"' in html and 'CO-PILOT PROBE' in html and html.count('class="story-chart"') == 2
     flow = [li.get_text(' ', strip=True) for li in BeautifulSoup(html, 'html.parser').select('.story-flow li')]
     assert flow[0].endswith('first on a front page: AP') and 'first on TV: CNN' in flow[1] and 'peak: on 9' in flow[2]
 
