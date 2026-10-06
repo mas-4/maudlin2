@@ -428,7 +428,7 @@
     box.innerHTML = found.map((e) => `<div class="wb-sug">${chip(e.id)}<span class="wb-sbtns">
         <button class="wb-mini" data-cl="add|${e.id}" title="file it here too">＋ add</button>
         ${ins.length ? `<button class="wb-mini" data-cl="move|${e.id}" title="file it here and take it out of ${S.claim.from && S.by[S.claim.from] ? '“' + esc(S.by[S.claim.from].name) + '”' : ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span></div>`).join('')
-      || '<p class="wb-faint">🦗 no motif matches</p>';
+      || `<p class="wb-faint">🦗 no motif matches</p><button class="wb-btn yes" data-cl="newnamed|" id="cl-new">✨ new motif “${esc(S.claimQ.trim())}” with it</button>`;
   }
   function claimAction(kind, id) {
     const c = S.claim, ins = motifsOf(c.claim), first = ins[0];
@@ -444,6 +444,12 @@
       if (c.from && ins.some((e) => e.id === c.from)) return act({action: 'move', claim: c.claim, source: c.from, target: id}, `⇢ moved from “${name(c.from)}” to “${name(id)}”`);
       const steps = [{action: 'move', claim: c.claim, source: first.id, target: id}].concat(ins.slice(1).map((e) => ({action: 'unfile', claim: c.claim, id: e.id})));
       return batch(steps, `⇢ moved to “${name(id)}”`);
+    }
+    if (kind === 'newnamed') {
+      const n = (S.claimQ || '').trim();
+      if (!n) return;
+      S.claimQ = '';
+      return act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`);
     }
     if (kind === 'new') {
       return ask(null, 'Name the new motif', c.claim.slice(0, 80)).then((n) => n && act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`));
@@ -914,6 +920,13 @@
         S.extra[id] = {kind: 'search', q: t.value, items: await getJSON('/claims.json?q=' + encodeURIComponent(t.value)).catch(() => [])};
         fillExtra(id, +i);
       }, 220);
+    }
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.target.id === 'cl-q' && ev.key === 'Enter') {
+      ev.preventDefault();
+      const make = $('#cl-new');
+      if (make) make.focus();
     }
   });
   document.addEventListener('change', (ev) => {
