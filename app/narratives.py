@@ -418,6 +418,14 @@ def current_stories(limit: int = 80) -> list[str]:
             Story.last_seen.desc()).limit(limit)]
 
 
+def story_ids(labels: list[str]) -> dict[str, int]:
+    """label -> the id of the latest story with it"""
+    from app.models import Session, Story
+    with Session() as s:
+        return {label: sid for sid, label in s.query(Story.id, Story.label).filter(Story.label.in_(labels))
+                .order_by(Story.last_seen)}
+
+
 def made_today() -> bool:
     """Whether today's nightly report (a day's posts) has been written."""
     for path in glob.glob(os.path.join(FOLDER, f"report-{dt.now().strftime('%Y-%m-%d')}-*.json")):
@@ -470,8 +478,11 @@ def report(hours: float = 6) -> dict:
         if stories:
             st = embed(stories)
             sims = np.maximum(claims @ st.T, centers @ st.T)
+            ids = story_ids(stories)
             for g, row in zip(narratives, sims):
                 g['story'] = story_link(g, [stories[i] for i in np.argsort(-row)[:CANDIDATES]], cache)
+                if g['story']:  # its id too, since labels get reworded (the story pages tie by id, Oct 6)
+                    g['story']['id'] = ids.get(g['story']['label'])
         write_json(JUDGMENTS, cache)
         try:
             from app.analysis import factchecks

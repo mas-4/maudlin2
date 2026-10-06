@@ -4,6 +4,7 @@ on TV, the radio newscasts that carried it, and the folklore told around it. The
 import glob
 import json
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta as td
 
@@ -137,6 +138,107 @@ def folklore_by_label() -> dict:
     return out
 
 
+WORDS = re.compile(r"[a-z0-9']+")
+SAME_LABEL = 0.5  # a report's story label this alike (shared words) to a saved story's is that story under older words
+
+
+def reports_by_day(days: int = DAYS) -> list[dict]:
+    """The last narrative report of each of the last `days` days, newest first (a day's earlier reports cover the same
+    posts)"""
+    from app.site.page_folklore import FOLDER
+    from app.utils.store import read_json
+    last = {}
+    for path in sorted(glob.glob(os.path.join(FOLDER, 'report-*.json'))):
+        last[os.path.basename(path)[len('report-'):][:10]] = path
+    since = (datetime.now() - td(days=days)).strftime('%Y-%m-%d')
+    return [dict(read_json(path, {}), file=os.path.basename(path))
+            for day, path in sorted(last.items(), reverse=True) if day >= since]
+
+
+def story_of(link: dict, stories: list[dict], at: datetime | None) -> int | None:
+    """The saved story a report's story link means. Links carry the story's id since Oct 6; before, its label then,
+    which may have been reworded since: the same label, or else the story around then whose label shares the most
+    words with it (at least SAME_LABEL of them)"""
+    ids = {st['id'] for st in stories}
+    if link.get('id') in ids:
+        return link['id']
+    label = link.get('label') or ''
+    same = [st for st in stories if st['label'] == label]
+    if same:
+        return max(same, key=lambda st: st['last'])['id']
+    words = set(WORDS.findall(label.lower()))
+    best, score = None, SAME_LABEL
+    for st in stories:
+        if at and not (st['first'] - td(days=1) <= at <= st['last'] + td(days=2)):
+            continue
+        theirs = set(WORDS.findall((st['label'] or '').lower()))
+        overlap = len(words & theirs) / max(1, len(words | theirs))
+        if overlap >= score:
+            best, score = st['id'], overlap
+    return best
+
+
+def folklore_by_story(stories: list[dict]) -> dict:
+    """story id -> the narratives people retold about it over the last week, newest day first: each day's report (not
+    only the latest), each narrative with the motifs it's filed under, the earlier days it was told (narrative
+    threads) and the focus group episodes where voters voiced it. A narrative told on several days shows once, on its
+    latest day."""
+    from app.analysis import focus_group, motif_index, narrative_threads
+    from app.site.page_folklore import motif_cards, told_before
+    index, threads = motif_index.load(), narrative_threads.load()
+    episodes = focus_group.load()
+    out, seen = defaultdict(list), defaultdict(set)
+    for report in reports_by_day():
+        day = EASTERN.localize(datetime.fromisoformat(report['made'])).astimezone(pytz.UTC).replace(tzinfo=None) \
+            if report.get('made') else None
+        for g in report.get('found', []):
+            label, link = g.get('label') or {}, g.get('story') or {}
+            if not (label.get('retold') and link.get('label')):
+                continue
+            sid = story_of(link, stories, day)
+            claim = motif_index.corrected(label.get('narrative', ''), index)
+            if sid is None or not claim:
+                continue
+            before = told_before(threads, report.get('file', ''), claim, index)
+            same = {motif_index.key(claim)}
+            if same & seen[sid]:
+                continue
+            seen[sid] |= same | {motif_index.key(b['claim']) for b in before}
+            voters = []
+            for v in g.get('voters') or []:  # where voters said it: the episode only (we never quote them)
+                url = next((u for u, ep in episodes.items() if ep.get('title') == v.get('episode')), None)
+                voters.append({'title': v.get('episode', ''), 'url': url, 'date': v.get('date', '')})
+            out[sid].append({'claim': claim, 'people': g['authors'], 'relation': link.get('relation', ''), 'day': day,
+                             'when': pytz.UTC.localize(day).astimezone(EASTERN).strftime('%b %-d') if day else '',
+                             'motifs': motif_cards(index, claim), 'before': before, 'voters': voters})
+    return dict(out)
+
+
+VOTER_CLAIMS = 6
+
+
+def voters_by_motif(folklore: list[dict], index: dict | None = None) -> list[dict]:
+    """What voters in The Focus Group's episodes told that's filed under the same verified motifs as the story's
+    retellings (in our words, as on the motifs page): the same shape, told by ordinary voters, often months before"""
+    from app.analysis import focus_group, motif_index
+    index = index or motif_index.load()
+    episodes = focus_group.load()
+    out, have = [], set()
+    for f in folklore:
+        for m in f['motifs']:
+            entry = index['entries'].get(m['id'])
+            if not entry:
+                continue
+            for c in motif_index.public_claims(entry):
+                if c.get('source') != 'Focus Group' or c['claim'] in have:
+                    continue
+                have.add(c['claim'])
+                ep = episodes.get(c.get('ref', ''), {})
+                out.append({'claim': motif_index.corrected(c['claim'], index), 'motif': m, 'url': c.get('ref', ''),
+                            'episode': ep.get('title', 'The Focus Group'), 'date': c.get('date', '')})
+    return sorted(out, key=lambda v: v['date'], reverse=True)[:VOTER_CLAIMS]
+
+
 def flow(st: dict, outlets: list[dict], tv: dict | None, radio: list[dict], folklore: list[dict]) -> list[dict]:
     """The story's first moments at each stage downstream, in time order (Eastern): its first front page, its peak,
     its first minute on TV and on the radio, and the day people were found retelling it"""
@@ -156,7 +258,7 @@ def flow(st: dict, outlets: list[dict], tv: dict | None, radio: list[dict], folk
         events.append({'at': r['at'].astimezone(pytz.UTC).replace(tzinfo=None), 'stage': 'broadcast', 'emoji': '📻',
                        'text': f"first on the radio: {r['show']}"})
     if folklore:
-        events.append({'at': folklore[0]['day'], 'stage': 'retelling', 'emoji': '🧶',
+        events.append({'at': min((f['day'] for f in folklore if f['day']), default=None), 'stage': 'retelling', 'emoji': '🧶',
                        'text': f"retold online by {sum(f['people'] for f in folklore)} people"})
     events = [e for e in events if e['at']]
     for e in sorted(events, key=lambda e: e['at']):
@@ -233,7 +335,13 @@ class StoryPages:
     def generate(self):
         logger.info("Generating story pages...")
         stories = recent_stories()
-        tv, radio, folk = tv_by_story(), radio_by_story(), folklore_by_label()
+        tv, radio, folk = tv_by_story(), radio_by_story(), folklore_by_story(stories)
+        try:  # fact-checks that came after a story left the front page, or of one that never made a card
+            from app.analysis import factchecks
+            checks = factchecks.for_story_pages({st['id']: st['label'] for st in stories if st['label']})
+        except Exception as e:  # noqa: extra; the pages stand without them
+            logger.warning("Story pages: fact-checks: %s", e)
+            checks = {}
         try:
             names = json.load(open(entities.CACHE))
         except (OSError, ValueError):
@@ -254,22 +362,26 @@ class StoryPages:
             rated = [h['bias'] for h in outlets if h['bias'] is not None]
             lean_counts = {'left': sum(b < 0 for b in rated), 'center': sum(b == 0 for b in rated),
                            'right': sum(b > 0 for b in rated), 'unrated': len(outlets) - len(rated)}
-            ex = extras.get(str(st['id']), {})
+            ex = dict(extras.get(str(st['id']), {}))
+            # The checks found while it was on a card, and since: newest first, each once
+            both = {p['url']: p for p in (checks.get(st['id']) or []) + (ex.get('factchecks') or [])}
+            ex['factchecks'] = sorted(both.values(), key=lambda p: p.get('published', ''), reverse=True)[:6]
+            told = folk.get(st['id'], [])
             self.template.write({
                 'title': st['label'] or 'A story', 'story': st, 'outlets': outlets,
                 'lean_counts': lean_counts,
                 'stickers': stickers(st, outlets, lean_counts, tv.get(st['id']), radio.get(st['id'], []),
-                                     folk.get(st['label'], []), ex.get('factchecks') or [], st['snapshots']),
+                                     told, ex.get('factchecks') or [], st['snapshots']),
                 'since': eastern(st['first']), 'until': eastern(st['last']), 'spark': sparkline(st['snapshots']),
                 'by_lean': story_charts.by_lean(st, outlets),
                 'timeline': story_charts.timeline(st, outlets, (tv.get(st['id']) or {}).get('spots', []),
                                                   radio.get(st['id'], []),
-                                                  next((f['day'] for f in folk.get(st['label'], []) if f['day']), None),
+                                                  min((f['day'] for f in told if f['day']), default=None),
                                                   page_tv.CHANNEL_INK),
                 'names': list(dict.fromkeys(entities.canonical(n, aliases) for n in names.get(f"s{st['id']}", []))),
-                'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': folk.get(st['label'], []),
-                'extras': ex, 'rewordings': rewordings(st['headlines']),
+                'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': told,
+                'voters': voters_by_motif(told), 'extras': ex, 'rewordings': rewordings(st['headlines']),
                 'wire': wire_copied(st['headlines']),
-                'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), folk.get(st['label'], [])),
+                'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
             }, os.path.join(Config.build, page_name(st['id'])))
         logger.info("...%d story pages", len(stories))

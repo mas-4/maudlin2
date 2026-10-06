@@ -40,8 +40,9 @@ class SagaPages:
         found = sagas.history()
         ids = [p['story'] for g in found for p in g['parts']]
         snaps = snapshots(ids)
-        tv, radio, folk = page_story.tv_by_story(), page_story.radio_by_story(), page_story.folklore_by_label()
-        with_page = {st['id'] for st in page_story.recent_stories()}  # parts that have a story page of their own
+        recent = page_story.recent_stories()
+        tv, radio, folk = page_story.tv_by_story(), page_story.radio_by_story(), page_story.folklore_by_story(recent)
+        with_page = {st['id'] for st in recent}  # parts that have a story page of their own
         for saga in found:
             parts = saga['parts']
             for i, p in enumerate(parts):
@@ -52,7 +53,7 @@ class SagaPages:
                 p['lasted'] = lasted(p['first'], p['last'])
                 p['tv'] = tv.get(p['story'])
                 p['radio'] = radio.get(p['story'], [])
-                p['folklore'] = folk.get(p['label'], [])
+                p['folklore'] = folk.get(p['story'], [])
             spots = [{**s, 'story': p['story']} for p in parts if p['tv'] for s in p['tv']['spots']]
             newscasts = [{**r, 'story': p['story']} for p in parts for r in p['radio']]
             retold = [(f['day'], p['story']) for p in parts for f in p['folklore']]

@@ -18,6 +18,10 @@ logger = get_logger(__name__)
 
 STORY_CACHE = os.path.join(Config.data, 'factcheck_story_links.json')
 NARRATIVE_CACHE = os.path.join(Config.data, 'factcheck_narrative_links.json')
+# The story pages' own answers: a week of stories, so a story that left the front page (or never made a card) still
+# gets the checks that came after. Its own file, since a tie cache keeps only one run's answers and the front page's
+# set of stories differs
+PAGE_CACHE = os.path.join(Config.data, 'factcheck_story_page_links.json')
 STORY_DAYS = 7  # a story on the front page now may have been checked last week
 NARRATIVE_DAYS = 30  # folklore lives longer than the news
 SIM_FLOOR = 0.6
@@ -43,6 +47,12 @@ def for_stories(stories: dict[int, str], items: list[dict] | None = None) -> dic
     """story id -> fact-checks examining it, newest first. `stories`: id -> its title."""
     items = _items(STORY_DAYS) if items is None else items
     return tie(items, stories, PROMPT, STORY_CACHE, SIM_FLOOR, 'Fact-checks (stories)', CANDIDATES,)
+
+
+def for_story_pages(stories: dict[int, str], items: list[dict] | None = None) -> dict[int, list[dict]]:
+    """story id -> fact-checks examining it, for the story pages: every story of the last week, by its label"""
+    items = _items(STORY_DAYS) if items is None else items
+    return tie(items, stories, PROMPT, PAGE_CACHE, SIM_FLOOR, 'Fact-checks (story pages)', CANDIDATES)
 
 
 def for_narratives(claims: dict[int, str], items: list[dict] | None = None) -> dict[int, list[dict]]:

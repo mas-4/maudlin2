@@ -108,12 +108,21 @@
             {% if folklore %}
                 <div class="saga-card story-page-card" style="--saga: #8a5cff">
                 <h3><a href="folklore.html">🧶 Retold online</a></h3>
-                <ul class="radio-items">{% for f in folklore %}<li>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people{% if f.relation and f.relation != 'same event' %} ({{ f.relation }}){% endif %}{% if f.before %}; told before on {{ f.before|map(attribute='day')|join(', ') }}{% endif %}</span>
+                <ul class="radio-items">{% for f in folklore %}<li>{{ f.claim|e }} <span class="tv-time">{% if f.when %}{{ f.when }}: {% endif %}told by {{ f.people }} people{% if f.relation and f.relation != 'same event' %} ({{ f.relation }}){% endif %}{% if f.before %}; told before on {{ f.before|map(attribute='day')|join(', ') }}{% endif %}</span>
+                    {% if f.voters %}<br><span class="tv-time">🎙️ voters said it too, in {% for v in f.voters %}{% if v.url %}<a href="{{ v.url|e }}">{{ v.title|e }}</a>{% else %}{{ v.title|e }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
                     {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
-                <p class="tv-time"><a href="folklore.html">On Folklore</a>: these in full, with their motifs and who is telling them.</p>
+                <p class="tv-time"><a href="folklore.html">On Folklore</a>: the latest in full, with their motifs and who is telling them.</p>
                 </div>
+                {% if voters %}
+                <div class="saga-card story-page-card" style="--saga: #00c2a8">
+                <h3><a href="folklore.html#focus-group">🎙️ The same shape, told by voters</a></h3>
+                <p class="tv-time">What voters in <a href="https://www.thebulwark.com/s/focus-group">The Focus Group</a>'s episodes told that's filed under the same motifs, in our words (not theirs), often from months before.</p>
+                <ul class="radio-items">{% for v in voters %}<li>{{ v.claim|e }} <span class="tv-time"><a href="{{ v.url|e }}">{{ v.episode|e }}</a>{% if v.date %}, {{ v.date }}{% endif %}</span>
+                    <br><a class="motif-chip" href="motifs.html#{{ v.motif.id|e }}" title="{{ v.motif.id|e }} in the BND Motif Index">🧩 {{ v.motif.name|e }}</a></li>{% endfor %}</ul>
+                </div>
+                {% endif %}
             {% else %}
-                <p class="stage-empty">🦗 Nobody's retelling it online yet, as far as the daily report can tell.</p>
+                <p class="stage-empty">🦗 Nobody's retelling it online yet, as far as the daily reports of the last week can tell.</p>
             {% endif %}
             {% if names %}<p class="stage-notes">🗣️ names in it: {% for n in names %}<span class="show-chip tv-chip" style="--chip: #00c2a8">{{ n|e }}</span> {% endfor %}</p>{% endif %}
     </section>

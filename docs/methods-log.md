@@ -26,6 +26,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **Story pages: a week of retellings, later fact-checks, and voters.** A story page showed retellings only from the
+  latest nightly report, tied by the story's label (which gets reworded), and fact-checks only if they were found while
+  the story was on a front-page card: 3 of 160 pages had any. Now each day's last report of the week is read; its
+  story links are tied by id (saved from Oct 6 on), or by the same label, or by the label of the story around then that
+  shares at least half its words; a narrative told on several days shows once, on its latest day (51 stories have
+  retellings, up from 37). Fact-checks are matched for every story of the week at build time, in their own cache, so
+  one that came after the story left the front page still appears. And a new card, "the same shape, told by voters",
+  lists what Focus Group voters told that's filed under the same verified motifs as the story's retellings, in our
+  words, with the episode: the first place motifs connect a story to other material.
 - **The motif index can be exported.** The workbench's 📦 export (and `scripts/export_motifs.py`) writes the index as
   a readable catalog (Markdown), a spreadsheet (a row per claim), JSON, or SKOS in Turtle for the planned mapping to
   prior catalogs (docs/motif-catalogs.md). By default only verified motifs, with the claims they held when verified
