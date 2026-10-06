@@ -291,12 +291,17 @@
     if (tab === 'check') {
       const q = await queue('check');
       if (S.tab !== tab) return;
-      const items = (q.error ? [] : q).filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && !c.checked));
+      // One claim at a time (the biggest motifs' first), with every motif it's in to tick or take away
+      const seen = new Set(), items = [];
+      for (const x of (q.error ? [] : q)) {
+        if (seen.has(x.claim)) continue;
+        seen.add(x.claim);
+        if (motifsOf(x.claim).some((e) => e.claims.some((c) => c.claim === x.claim && !c.checked))) items.push(x);
+      }
       const x = items[S.checkAt % Math.max(items.length, 1)];
       if (!x) { box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing to check right now.</p></div>'; S.queues.check = null; return; }
-      // The claim's whole workspace, with the verdict on this one filing on top
-      S.claim = {claim: x.claim, src: x.source, from: x.id};
-      renderClaim(box, x, items.length);
+      S.claim = {claim: x.claim, src: x.source, from: null};
+      renderClaim(box, true, items.length);
       box.dataset.check = JSON.stringify(x);
     } else if (tab === 'pairs') {
       const q = await queue('pairs');
@@ -348,25 +353,22 @@
     const ins = motifsOf(c.claim);
     const first = ins[0], rec = first && first.claims.find((x) => x.claim === c.claim);
     const src = (rec && rec.source) || c.src || '';
-    const e = check && S.by[check.id];
-    const verdict = check ? `<div class="wb-checkcard">
-        <p class="wb-faint">${left} filing${left === 1 ? '' : 's'} to check here (${S.data.to_check} in all) · the biggest motifs first</p>
-        <p class="wb-checkq">Does this claim belong in ${chip(check.id)} ?</p>
-        ${e.note ? `<p class="wb-faint">📝 ${esc(e.note)}</p>` : ''}
-        <div class="wb-checkbtns">
-          <button class="wb-btn yes" data-verdict="yes">✓ yes <kbd>Y</kbd></button>
-          <button class="wb-btn no" data-verdict="no">✗ no, take it out <kbd>N</kbd></button>
-          <button class="wb-btn" data-verdict="unsure">🤷 not sure <kbd>U</kbd></button>
-          <button class="wb-btn" data-verdict="skip">⏭ skip <kbd>S</kbd></button>
-        </div></div>` : '';
+    const verdict = check ? `<div class="wb-checkbar">
+        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest</span>
+        <span class="wb-checkbtns">
+          <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
+          <button class="wb-btn yes" data-verdict="allyes" title="every motif left fits: tick them all and go on">✓ all fit, next <kbd>Y</kbd></button>
+          <button class="wb-btn" data-verdict="next" title="leave it for now">next ▶ <kbd>→</kbd></button>
+        </span></div>` : '';
+    box.classList.toggle('checking', !!check);
     box.innerHTML = verdict + `<div class="wb-inspect" data-drop="claim">
       <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}>${esc(c.claim)}
         <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif</span></blockquote>
       <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
-      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-sug${check && e.id === check.id ? ' wb-checking' : ''}">${chip(e.id)}
-        <span class="wb-faint">${check && e.id === check.id ? '👈 checking this one · ' : ''}${r.checked === 'yes' ? '✓ checked' : r.checked === 'unsure' ? '🤷 unsure' : ''}</span>
-        <span class="wb-sbtns">${r.checked !== 'yes' ? `<button class="wb-mini" data-cl="check|${e.id}" title="yes, it belongs here">✓</button>` : ''}
-        <button class="wb-mini" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
+      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-motifrow${r.checked === 'yes' ? ' fits' : ''}">${chip(e.id)}
+        ${e.note ? `<span class="wb-mnote">${esc(e.note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
+        <span class="wb-sbtns">${r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
+        <button class="wb-btn no" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
         || '<p class="wb-faint">📥 not in any motif</p>'}
       <h3>➕ add it to another motif</h3>
       <label class="wb-addsearch">🔎 <input type="search" id="cl-q" placeholder="find a motif" value="${esc(S.claimQ || '')}" autocomplete="off"></label>
@@ -799,8 +801,12 @@
   async function verdict(answer) {
     const x = JSON.parse($('#inbox').dataset.check || 'null');
     if (!x) return;
-    if (answer === 'skip') { S.checkAt += 1; return renderInbox(); }
-    await act({action: 'check', claim: x.claim, id: x.id, answer}, answer === 'yes' ? '✓ yes' : answer === 'no' ? '✗ taken out' : '🤷 not sure');
+    if (answer === 'next') { S.checkAt += 1; return renderInbox(); }
+    if (answer === 'prev') { S.checkAt = Math.max(0, S.checkAt - 1); return renderInbox(); }
+    if (answer === 'allyes') {
+      const left = motifsOf(x.claim).filter((e) => e.claims.some((c) => c.claim === x.claim && !c.checked));
+      return batch(left.map((e) => ({action: 'check', claim: x.claim, id: e.id, answer: 'yes'})), `✓ ${left.length} motif${left.length === 1 ? '' : 's'} fit`);
+    }
   }
   function saveNote(id) {
     const ta = $(`textarea[data-note="${id}"]`);
@@ -851,10 +857,72 @@
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }
     if (S.tab === 'check' && $('#inbox').dataset.check) {
-      const k = {y: 'yes', n: 'no', u: 'unsure', s: 'skip'}[ev.key.toLowerCase()];
+      const k = {y: 'allyes', arrowright: 'next', j: 'next', s: 'next', arrowleft: 'prev', k: 'prev'}[ev.key.toLowerCase()];
       if (k) { ev.preventDefault(); verdict(k); }
     }
   });
+
+  // ---------- hover a motif: its note and a few claims ----------
+  const hover = document.createElement('div');
+  hover.className = 'wb-hover';
+  hover.hidden = true;
+  document.body.append(hover);
+  let hoverTimer = null, hoverOn = null;
+  document.addEventListener('mouseover', (ev) => {
+    const c = ev.target.closest && ev.target.closest('.wb-chip, .wb-row');
+    if (c === hoverOn) return;
+    hoverOn = c;
+    clearTimeout(hoverTimer);
+    hover.hidden = true;
+    if (!c || drag || !c.dataset.id) return;
+    hoverTimer = setTimeout(() => {
+      const e = S.by[c.dataset.id];
+      if (!e || drag) return;
+      const kids = (S.kids[e.id] || []).map((k) => S.by[k] && S.by[k].name).filter(Boolean);
+      hover.innerHTML = `<b>${esc(e.name)}</b> <span class="wb-faint">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.done === 'done' ? ' · ✓ done' : ''}</span>
+        ${e.note ? `<p>📝 ${esc(e.note)}</p>` : '<p class="wb-faint">no note yet</p>'}
+        ${e.parents.length ? `<p class="wb-faint">↳ a kind of ${e.parents.map((p) => esc((S.by[p] || {}).name || p)).join(', ')}</p>` : ''}
+        ${kids.length ? `<p class="wb-faint">⤷ kinds: ${kids.map(esc).join(', ')}</p>` : ''}
+        <ul>${e.claims.slice(0, 4).map((x) => `<li>${esc(x.claim)}</li>`).join('')}${e.claims.length > 4 ? `<li class="wb-faint">and ${e.claims.length - 4} more</li>` : ''}</ul>`;
+      hover.hidden = false;
+      const r = c.getBoundingClientRect(), m = hover.getBoundingClientRect();
+      let x = r.left, y = r.bottom + 6;
+      if (x + m.width > innerWidth - 8) x = innerWidth - m.width - 8;
+      if (y + m.height > innerHeight - 8) y = Math.max(8, r.top - m.height - 6);
+      hover.style.left = Math.max(8, x) + 'px';
+      hover.style.top = y + 'px';
+    }, 350);
+  });
+  document.addEventListener('pointerdown', () => { clearTimeout(hoverTimer); hover.hidden = true; }, true);
+
+  // ---------- adjustable columns: drag the bars between the panes; the widths are remembered ----------
+  const main = $('.wb-main');
+  function setCols(c) {
+    main.style.setProperty('--left', c.left + 'px');
+    main.style.setProperty('--right', c.right + 'px');
+  }
+  let cols = store.get('cols', null);
+  if (cols) setCols(cols);
+  $$('.wb-split').forEach((bar) => bar.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    const side = bar.dataset.split, start = ev.clientX;
+    const box = main.getBoundingClientRect();
+    const was = {left: $('.wb-tree').getBoundingClientRect().width, right: $('.wb-inbox').getBoundingClientRect().width};
+    try { bar.setPointerCapture(ev.pointerId); } catch (e) { /* a synthetic or ended pointer */ }
+    document.body.classList.add('resizing');
+    const moveTo = (e) => {
+      const dx = e.clientX - start, max = box.width * 0.6;
+      cols = {left: was.left, right: was.right};
+      if (side === 'left') cols.left = Math.min(max, Math.max(180, was.left + dx));
+      else cols.right = Math.min(max, Math.max(240, was.right - dx));
+      setCols(cols);
+    };
+    const done = () => { bar.removeEventListener('pointermove', moveTo); document.body.classList.remove('resizing'); store.set('cols', cols); };
+    bar.addEventListener('pointermove', moveTo);
+    bar.addEventListener('pointerup', done, {once: true});
+    bar.addEventListener('lostpointercapture', done, {once: true});
+  }));
+  $$('.wb-split').forEach((bar) => bar.addEventListener('dblclick', () => { cols = null; store.set('cols', null); main.style.removeProperty('--left'); main.style.removeProperty('--right'); }));
 
   // ---------- toast ----------
   let toastTimer = null;
