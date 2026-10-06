@@ -347,3 +347,19 @@ def test_the_model_may_file_a_claim_under_no_motif(monkeypatch, tmp_path):
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'motifs': []})  # a plain report: no story
     index = mi.file_claims([{'claim': 'The Senate passed the budget on Tuesday.', 'source': 'narrative'}])
     assert index['claims'][mi.key('The Senate passed the budget on Tuesday.')] == [] and mi.live(index) == []
+
+
+def test_a_claim_its_source_took_back_leaves_the_index(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 4, 'claims': {mi.key('a'): ['M001', 'M002'], mi.key('b'): ['M002']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Blame shifting', 'curated': True, 'claims': [{'claim': 'a', 'source': 'x'}],
+                 'done': [mi.key('a')]},
+        'M002': {'id': 'M002', 'name': 'model made', 'claims': [{'claim': 'a', 'source': 'x'}, {'claim': 'b', 'source': 'x'}]},
+        'M003': {'id': 'M003', 'name': 'only a', 'claims': [{'claim': 'a', 'source': 'x'}]}}})
+    mi.save(dict(mi.load(), claims={mi.key('a'): ['M001', 'M002', 'M003'], mi.key('b'): ['M002']}))
+    assert mi.withdraw('a') == ['M001', 'M002', 'M003']
+    index = mi.load()
+    assert mi.key('a') not in index['claims']
+    assert index['entries']['M001']['claims'] == [] and index['entries']['M001']['done'] == []  # a person's motif stays
+    assert [c['claim'] for c in index['entries']['M002']['claims']] == ['b']
+    assert 'M003' not in index['entries']  # a model's motif left empty goes

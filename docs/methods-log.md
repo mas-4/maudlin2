@@ -5,6 +5,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Focus Group: a claim must be what its quote says.** Since Oct 5 a voter claim's quote had to be in the transcript,
+  but nothing checked that the quote said the claim: "Politicians cheat on their spouses but still get elected" was kept
+  with a quote about politicians telling you what you want to hear, and filed in the motif index. Now Gemma 4 26B is
+  asked whether the quote is evidence for the claim (the voter says it, or a central part of it, in any words), and a
+  claim it isn't evidence for is dropped (kept on record with the reason). A first wording ("does it support the claim
+  as worded?") passed only 6 of 16 sound claims; the one in use passed 14 of 16, turning down two that added what the
+  voter didn't say, and still caught the bad ones. Claims read before were checked the same way, in the wording a
+  person had corrected them to, and those dropped were taken out of the motif index.
 - **Transcripts: names Whisper mishears.** 35 of 46 mentions of AIPAC in our podcast and Focus Group transcripts had
   come out as "APEC" or "APAC", and Hegseth and Whatley were misspelled too. Whisper now gets a list of names and terms
   to expect (fixed ones such as AIPAC, Hegseth, MSNOW, and the 50 most-named people and groups in recent stories), and

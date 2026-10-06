@@ -555,6 +555,27 @@ def no_motif(claim: str):
 
 
 @exclusive
+def withdraw(claim: str) -> list[str]:
+    """Its source took the claim back (a Focus Group quote that doesn't support it): out of every motif and the claim
+    list, so it isn't filed again or shown. A model's motif left empty goes. Returns the motifs it was in."""
+    index = load()
+    k = key(claim)
+    was = []
+    for eid in list(_ids(index, k)):
+        entry = index['entries'].get(eid)
+        if not entry:
+            continue
+        was.append(eid)
+        entry['claims'] = [c for c in entry['claims'] if key(c['claim']) != k]
+        entry['done'] = [d for d in entry.get('done', []) if d != k]
+        if not entry['claims'] and not entry.get('curated'):
+            del index['entries'][eid]
+    index['claims'].pop(k, None)
+    save(index)
+    return was
+
+
+@exclusive
 def unfile(claim: str, eid: str):
     """Take a claim out of a motif for good (as a no on the motif check)"""
     check.__wrapped__(claim, eid, 'no')

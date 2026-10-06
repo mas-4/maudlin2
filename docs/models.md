@@ -39,6 +39,7 @@ Qwen3.5, change its schemas that way.
 | Saga names | `sagas.py` | qwen3:8b | — | untested |
 | Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | qwen3:30b-a3b | — | untested |
 | Focus Group voter claims | `focus_group.MODEL` | **gemma4:26b** | Oct 6, 12 transcript parts: all quotes found for every model; Gemma's claims the voters' own with sides; the 30B took a host's analysis for a voter's; Qwen3.5 35B found more but no sides | switched Oct 6 |
+| Focus Group check: is the quote evidence for the claim? | `focus_group.SUPPORT_MODEL` | **gemma4:26b** | Oct 6, prompt tuned on 16 stored claims and the known bad ones (14 of 16 passed, bad ones caught) | in use since Oct 6 |
 | Radio running order | `running_order.MODEL` | **gemma4:26b** | Oct 6, 10 newscasts: 96% of its stories passed the first-words check (30B 81%), front-page picks nearly the same (28 of 30), 6 s a newscast | switched Oct 6 |
 | TV chyron matching to front-page stories (per channel-hour) | `chyrons.MATCH_MODEL` | **gemma4:26b** | Oct 6, an hour of Fox and CNN read by hand: matches right, the channels' own topics left unmatched; embeddings at 0.75 had missed terse captions and let wrong ones through | in use since Oct 6 (embeddings as fallback) |
 | TV chyron OCR cleanup (kind of line, corrected text) | `chyrons.CLEAN_MODEL` | **gemma4:12b** | a 30-line test batch, Oct 6: invented nothing (26B changed Iowa to Ohio; 8B kept garble) | in use since Oct 6 |
