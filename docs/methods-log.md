@@ -16,7 +16,8 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   claim it isn't evidence for is dropped (kept on record with the reason). A first wording ("does it support the claim
   as worded?") passed only 6 of 16 sound claims; the one in use passed 14 of 16, turning down two that added what the
   voter didn't say, and still caught the bad ones. Claims read before were checked the same way, in the wording a
-  person had corrected them to, and those dropped were taken out of the motif index.
+  person had corrected them to: 26 of 231 were dropped (one said a voter praised a governor the voter had said was
+  "not my favorite") and taken out of the motif index.
 - **Transcripts: names Whisper mishears.** 35 of 46 mentions of AIPAC in our podcast and Focus Group transcripts had
   come out as "APEC" or "APAC", and Hegseth and Whatley were misspelled too. Whisper now gets a list of names and terms
   to expect (fixed ones such as AIPAC, Hegseth, MSNOW, and the 50 most-named people and groups in recent stories), and
@@ -35,7 +36,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   the phrases outlets quoted and the wording only one side used; TV minutes by channel and the captions; the radio
   newscasts and its place in each; the shows, investigators and satire on it; what people retell and the names in it;
   the fact-checks; and the saga it belongs to. Each run's findings around a story are kept (story_extras.json), so its
-  page keeps them after it leaves the front page. Every link is made by our tools and can be wrong.
+  page keeps them after it leaves the front page. Every link is made by our tools and can be wrong. Charts: how many
+  front pages carried it at each hourly run, by lean (an outlet counts while one of its headlines on the story was on
+  its front page, within half an hour of the run); and who carried it when, a bar per headline from when we first saw
+  it to when we last did, with its TV captions, radio newscasts and the day it was retold online beneath.
 - **TV and radio on the story cards.** Each card shows its minutes on screen on each news channel and the hourly
   newscasts that carried it in the last day (and how many led with it).
 - **On TV.** The captions along the bottom of the screen (chyrons) on CNN, Fox News, MSNOW and BBC News, as the
