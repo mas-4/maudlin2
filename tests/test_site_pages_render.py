@@ -23,7 +23,7 @@ from app.models import engine
 from app.site import common, page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
 from app.site.page_court import CourtPage
-from app.site.page_trackers import FOLKLORE, TRACKERS
+from app.site.page_trackers import MENUS
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
@@ -35,8 +35,10 @@ from app.utils.config import Config
 
 PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
          'sagas.html', 'names.html', 'radio.html', 'tv.html']
-NAV_LINKS = ['stories.html', 'headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'radio.html', 'tv.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
-             'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
+NAV_LINKS = ['stories.html', 'sagas.html',
+             'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
+             'tv.html', 'radio.html', 'beyond.html', 'folklore.html', 'rumors.html', 'motifs.html',
+             'glossary.html', 'methods.html', 'feed.xml']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
@@ -450,11 +452,17 @@ def test_court_page(site):
     assert [a['href'] for a in court.select('.page-toc a')] == ['#court-cases', '#court-singles', '#court-term']
 
 
-def test_nav_trackers_and_folklore_menus(site):
-    menus = site['soup']['edits.html'].select('nav .nav-menu')
-    assert [m.select_one('summary').get_text(strip=True) for m in menus] == ['trackers', 'folklore']
-    assert [a['href'] for a in menus[0].select('.nav-menu-list a')] == [t['href'] for t in TRACKERS]
-    assert [a['href'] for a in menus[1].select('.nav-menu-list a')] == [t['href'] for t in FOLKLORE]
+def test_nav_menus_follow_a_story_downstream(site):
+    nav = site['soup']['edits.html'].select_one('nav')
+    assert [a['href'] for a in nav.select('.nav-links > a')] == ['stories.html', 'sagas.html']
+    menus = nav.select('.nav-menu')
+    assert [m.select_one('summary').get_text(strip=True) for m in menus] == [label for label, _, _ in MENUS]
+    for menu, (_, items, _) in zip(menus, MENUS):
+        assert [a['href'] for a in menu.select('.nav-menu-list a')] == [t['href'] for t in items]
+    # Every page of the site's own is reachable from the nav (story, saga and outlet pages from their lists)
+    reached = {a['href'] for a in nav.select('a')}
+    pages = {name for name in site['soup'] if not re.match(r'(story|saga|outlet|agency|archive|day)-', name)}
+    assert pages - reached - {'newsletter.html'} == set()
 
 
 def test_edits_page_is_searchable_and_sortable(site):

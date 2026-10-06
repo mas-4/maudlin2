@@ -2,11 +2,10 @@
     <a class="nav-brand" href="index.html">🗞️ bignews.day</a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Menu">☰</button>
     <div class="nav-links" id="nav-links">
-        <a href="stories.html">every story</a>
-        <a href="headlines.html">every headline</a>
-        <a href="agencies.html">outlets</a>
-        {# Menus of related pages, opened on hover or tap: the running measures, and the folklore pages #}
-        {% for label, items, note in (('trackers', trackers, ''), ('folklore', folklore, 'Work in progress: rumors and narratives read for their shapes, not their truth.')) %}
+        <a href="stories.html">📚 every story</a>
+        <a href="sagas.html">🧵 sagas</a>
+        {# Menus of the other pages, opened on hover or tap, in the order a story travels (app/site/page_trackers.py) #}
+        {% for label, items, note in menus %}
         <details class="nav-menu">
             <summary>{{ label }}</summary>
             <div class="nav-menu-list">
@@ -15,7 +14,6 @@
             </div>
         </details>
         {% endfor %}
-        <a href="glossary.html">how it works</a>
     </div>
     <span class="updated" data-built="{{ built_at|e }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
     <script>
@@ -38,7 +36,7 @@
             nav.querySelectorAll('.nav-links a').forEach((a) => {
                 if (a.getAttribute('href') === page) a.setAttribute('aria-current', 'page');
             });
-            // The trackers menu: lit when the page is one of its own; opens on hover where there's a mouse, closes
+            // Each menu: lit when the page is one of its own; opens on hover where there's a mouse, closes
             // on a click elsewhere or Escape
             nav.querySelectorAll('.nav-menu').forEach((menu) => {
                 if (menu.querySelector('a[aria-current]')) menu.classList.add('current');

@@ -26,6 +26,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **The nav follows a story downstream.** Two links (every story, sagas) and four menus in the order a story travels:
+  📰 front pages (every headline, outlets, headline changes, emotions, who's in the news, the Supreme Court, the
+  archive), 📡 on air (TV, radio, shows and newsletters), 🧶 online (folklore, rumors, the motif index) and 🛠️ how it
+  works (now with the methods log, which wasn't in the nav). The old grab-bag "trackers" menu is gone.
 - **Scope-note drafts by Gemma 4 26B.** A motif's draft note is now written by gemma4:26b, not qwen3:30b-a3b, after
   drafting notes for the 49 motifs whose notes the person wrote and comparing them with theirs: Gemma's were closer in
   meaning (0.73 against 0.71) and told the kind of story where the 30B restated a single claim, and the 30B gave up on

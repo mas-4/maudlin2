@@ -1,6 +1,6 @@
-/* The nav's trackers menu */
+/* The nav's menus (front pages, on air, online, how it works; app/site/page_trackers.py) */
 
-/* The nav's trackers menu: a summary styled like the other nav links, opening a card of the tracker pages */
+/* Each menu: a summary styled like the other nav links, opening a card of its pages */
 .nav-menu {
     position: relative;
     display: inline-block;
@@ -76,6 +76,12 @@
     border: 3px solid #1f1f2e;
     border-radius: 14px;
     box-shadow: 6px 6px 0 #ffc400;
+}
+
+/* The last menu opens leftward, so its card doesn't run off the right edge */
+.nav-menu:last-child .nav-menu-list {
+    left: auto;
+    right: 0;
 }
 
 /* An invisible bridge over the gap between the summary and the list, so the pointer never leaves the menu on its way
