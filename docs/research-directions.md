@@ -21,6 +21,14 @@ directions of research behind them. Newest first. Add an entry whenever a new le
   step instead of the eight closest motifs at once. That would make the model's choices smaller and checkable, and the
   tree itself a test of the catalog: a level where claims can't be told apart is a level that isn't doing work.
   Genres (a second axis, added Oct 6) cut across it. To look at in the ~Oct 12 review.
+- **Archetypes: who, beside what happens.** The person's first group of motifs, Politician Archetypes (19 motifs on
+  Oct 6: the owned politician, the senile leader, the showman, the carpetbagger, the work horse, the empty suit...), is
+  a different kind of motif from most: characters rather than plots, the types people use to size up a politician.
+  They pass the review's test (could this describe a completely different story?) cleanly, and they come in pairs, the
+  same trait praised and damned (work horse and show horse, gets stuff done and empty suit, maverick and owned), which
+  is how the two sides argue over one person. Prior catalog: Klapp's social types (*Heroes, Villains, and Fools*,
+  1962); a facet from candidate-trait research (competence, leadership, integrity, empathy). A motif can now be in
+  several groups, so an archetype can also be a kind of a plot motif (Owned politician under Money in politics).
 - **Models chosen by the person's judgments.** Every local model is picked for its job by a test against a person's own
   decisions (motif filings, saga vetoes, label verdicts), not by benchmarks (`docs/models.md`). Method, not topic, but
   it shapes every result.
