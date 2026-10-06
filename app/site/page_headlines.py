@@ -1,9 +1,10 @@
 import hashlib
 import json
 from html import escape
+from urllib.parse import urlparse
 import os
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime as dt, timedelta as td
 from typing import Optional
 
@@ -163,6 +164,14 @@ SORT_BAR = ('<div class="chip-sort" role="group" aria-label="Sort outlets">sort:
             '<button data-key="mood">mood</button>'
             '<button data-key="framing">framing</button>'
             '<span class="sort-legend">outlets left to right, colored by lean</span></div>')
+
+
+def site_name(url: str) -> str:
+    """The site a link goes to, by name: 'rollingstone' for www.rollingstone.com; bbc.com and bbc.co.uk are both 'bbc'"""
+    parts = urlparse(url or '').netloc.lower().removeprefix('www.').split('.')
+    if len(parts) >= 3 and parts[-2] in ('co', 'com', 'org', 'net', 'gov', 'ac') and len(parts[-1]) == 2:
+        return parts[-3]
+    return parts[-2] if len(parts) >= 2 else parts[0]
 
 
 def mood_vs_others(mood: pd.Series, story: pd.Series) -> pd.Series:
@@ -939,6 +948,13 @@ class HeadlinesPage:
         # where many outlets are rewriting
         edits, _ = find_edits()
         rewritten = set(edits['url']) if not edits.empty else set()
+        # Each outlet's own site: where most of its front page links go. A link elsewhere (Rolling Stone's front page
+        # carries IndieWire and Sportico pieces, its sister sites) is marked, so it doesn't read as a misattribution
+        homes = defaultdict(Counter)
+        for c in clusters_list:
+            for a in c['data']:
+                homes[a['agency']][site_name(a['url'])] += 1
+        home = {k: v.most_common(1)[0][0] for k, v in homes.items()}
         now = pd.Timestamp.now(tz='US/Eastern')
         agency_lists = {}
         for cluster in clusters_list:
@@ -978,6 +994,9 @@ class HeadlinesPage:
                 notes = []
                 if edited:
                     notes.append('its headline for this article has changed since first seen')
+                elsewhere = site_name(a['url']) != home.get(a['agency'])
+                if elsewhere:
+                    notes.append(f"a piece on {urlparse(a['url']).netloc.removeprefix('www.')}, linked from its front page")
                 if a['live'] and hours_live < FRESH_HOURS:
                     state, badge, opacity = 'fresh', ' ✨', 1.0
                     notes.append(f'new on its front page in the last {FRESH_HOURS} hours')
@@ -998,7 +1017,7 @@ class HeadlinesPage:
                     f' data-live="{int(bool(a["live"]))}" data-mood="{a["sentiment"]:.3f}"'
                     f' data-framing="{a["deviation"]:.3f}"'
                     f' title="{escape(a["title"])} (first seen {first_seen}) · {mood_note(a["deviation"], feeling)}{escape(note)}"'
-                    f' href="{escape(a["url"])}">{outlet_icon(a["agency"])}{short_name(a["agency"])}{" " + smiley if smiley else ""}{" ✏️" if edited else ""}{badge}</a>'
+                    f' href="{escape(a["url"])}">{outlet_icon(a["agency"])}{short_name(a["agency"])}{" " + smiley if smiley else ""}{" ✏️" if edited else ""}{" ↗" if elsewhere else ""}{badge}</a>'
                 )
             hrefs.append(f'<div class="chips">{" ".join(chips)}</div>')
             agency_lists[cluster['cluster']] = ' '.join(hrefs)

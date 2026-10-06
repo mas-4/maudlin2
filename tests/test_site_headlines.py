@@ -706,3 +706,12 @@ def test_names_for_one_subject_become_one(monkeypatch, tmp_path):
     assert entities.of_stories(stories)['s1'] == ['Trump', 'GOP']
     entities.not_same('Texas', 'Texas A&M')
     assert json.loads((tmp_path / 'a.json').read_text())['not_same'] == [['Texas', 'Texas A&M']]
+
+
+def test_a_link_to_another_site_is_marked_as_one(chip_globals, monkeypatch):
+    assert ph.site_name('https://www.bbc.co.uk/news/x') == ph.site_name('https://www.bbc.com/news/y') == 'bbc'
+    html, _ = run_chips(chip_cluster([
+        {'agency': 'Rolling Stone', 'url': 'https://www.rollingstone.com/a'}, {'agency': 'Rolling Stone', 'url': 'https://www.rollingstone.com/b'},
+        {'agency': 'Rolling Stone', 'url': 'https://www.indiewire.com/c'}]), monkeypatch=monkeypatch)
+    chips = html.split('<div class="chips">')[1].split('</a>')
+    assert sum('↗' in c for c in chips) == 1 and 'a piece on indiewire.com' in html
