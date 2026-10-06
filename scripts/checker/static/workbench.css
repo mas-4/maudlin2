@@ -1,0 +1,149 @@
+/* The motif workbench (workbench.html): three panes in one window, the site's look (docs/style-book.md): ink outlines,
+   hard pop shadows, Comic Neue for talking, Bungee to shout, emoji everywhere */
+:root { --ink: #1f1f2e; --pink: #ff4fa3; --yellow: #ffc400; --teal: #00c2a8; --blue: #3a86ff; --orange: #ff6b1a; --purple: #8a5cff; --paper: #fffdf5; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body.wb { margin: 0; height: 100vh; display: flex; flex-direction: column; background: #f6f3ff; color: var(--ink);
+  font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+body.wb nav.cn { margin: 0; }
+.wb-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: white; border-bottom: 3px solid var(--ink); flex-wrap: wrap; }
+.wb-bar h1 { margin: 0; font: 20px 'Bungee', 'Comic Neue', sans-serif; letter-spacing: .02em; }
+.wb-search { display: flex; align-items: center; gap: 6px; flex: 1 1 22em; max-width: 34em; border: 2.5px solid var(--ink); border-radius: 999px;
+  padding: 3px 12px; background: var(--paper); box-shadow: 3px 3px 0 var(--teal); }
+.wb-search input { border: 0; outline: 0; background: transparent; font: inherit; width: 100%; }
+.wb-stats { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; color: #444; }
+.wb-drops { display: flex; gap: 8px; margin-left: auto; }
+.wb-drop { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; padding: 5px 12px; border: 2.5px dashed var(--ink); border-radius: 12px; background: white; }
+.wb-drop[data-drop="newmotif"] { background: #fff4c2; }
+.wb-drop[data-drop="nomotif"] { background: #eef0f4; }
+.wb-drop[data-drop="trash"] { background: #ffe3e7; }
+body.dragging .wb-drop { border-style: solid; transform: rotate(-1.5deg); box-shadow: 3px 3px 0 var(--ink); }
+
+.wb-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(250px, 22%) 1fr minmax(300px, 26%); gap: 12px; padding: 12px; }
+.wb-pane { min-height: 0; display: flex; flex-direction: column; background: white; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; }
+.wb-tree { box-shadow: 5px 5px 0 var(--teal); }
+.wb-work { box-shadow: 5px 5px 0 var(--pink); background: #fffafd; }
+.wb-inbox { box-shadow: 5px 5px 0 var(--yellow); }
+.wb-pane-head { padding: 8px; border-bottom: 2px solid var(--ink); background: var(--paper); }
+.wb-scroll { flex: 1; min-height: 0; overflow: auto; padding: 8px; }
+
+.wb-btn, .wb-view, .wb-tab { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); background: white; border: 2px solid var(--ink);
+  border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.wb-btn:hover, .wb-view:hover, .wb-tab:hover { background: #fff4c2; }
+.wb-btn:disabled { opacity: .4; cursor: default; background: white; }
+.wb-btn.on, .wb-view.on, .wb-tab.on { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.wb-btn.yes { background: #c8f7c5; } .wb-btn.no { background: #ffd0d6; }
+.wb-mini { font: 12px system-ui, sans-serif; border: 1.5px solid #bbb; background: white; border-radius: 8px; padding: 0 5px; cursor: pointer; color: var(--ink); }
+.wb-mini:hover { border-color: var(--ink); background: #fff4c2; }
+.wb-views { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.wb-view i, .wb-tab i, .wb-ghead i, .wb-chip i, .wb-n { font-style: normal; font-size: 11px; color: #666; margin-left: 2px; }
+.wb-tree-tools { display: flex; gap: 6px; align-items: center; }
+.wb-tree-tools select, .wb-ptools select { font: inherit; border: 2px solid var(--ink); border-radius: 8px; padding: 1px 4px; background: white; }
+.wb-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* the tree */
+.wb-group { margin-bottom: 8px; border-radius: 10px; }
+.wb-group.dz-target { outline: 3px dashed var(--teal); outline-offset: 2px; }
+.wb-ghead { display: flex; align-items: center; gap: 4px; font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; padding: 4px 2px; border-bottom: 2px solid #eee; }
+.wb-gtools { margin-left: auto; opacity: 0; } .wb-ghead:hover .wb-gtools { opacity: 1; }
+.wb-row { display: flex; align-items: center; gap: 4px; padding: 3px 4px 3px calc(4px + var(--depth) * 16px); border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+.wb-row:hover { background: #f3f0ff; }
+.wb-row.open.o0 { background: #ffe3f1; border-color: var(--pink); }
+.wb-row.open.o1 { background: #d9f6f2; border-color: var(--teal); }
+.wb-row.dz-target, .wb-chip.dz-target, .wb-panel.dz-target { outline: 3px solid var(--orange); outline-offset: 1px; background: #fff1c2; }
+.wb-rname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-row[style*="--depth:1"] .wb-rname::before, .wb-row[style*="--depth:2"] .wb-rname::before, .wb-row[style*="--depth:3"] .wb-rname::before { content: '↳ '; color: #999; }
+.wb-badges b { font-weight: 400; font-size: 12px; margin-left: 2px; } .b-faint { opacity: .35; }
+.b-new { color: #c0006a; font-weight: 700 !important; }
+.wb-fold { border: 0; background: none; cursor: pointer; width: 16px; padding: 0; color: #555; font-size: 11px; }
+.wb-fold-sp { width: 16px; display: inline-block; }
+.wb-side { opacity: 0; } .wb-row:hover .wb-side { opacity: 1; }
+.hits { background: #fffbe8; padding: 4px; border: 2px dashed #e5c84a; }
+
+/* chips: a motif anywhere; drag it, drop on it, click to open */
+.wb-chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; margin: 1px 0; border: 2px solid var(--ink); border-radius: 999px; background: white;
+  font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; cursor: pointer; max-width: 100%; }
+.wb-chip:hover { background: #f3f0ff; }
+.wb-x { border: 0; background: none; cursor: pointer; padding: 0 0 0 2px; color: #a00; font-size: 11px; }
+.wb-shared { font: 700 11px system-ui; background: #eee; border-radius: 6px; padding: 0 4px; }
+
+/* the open motifs */
+.wb-panels { display: grid; gap: 12px; align-content: start; }
+.wb-panels.two { grid-template-columns: 1fr 1fr; }
+.wb-panel { background: white; border: 3px solid var(--ink); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.wb-panel.p0 { box-shadow: 4px 4px 0 var(--pink); } .wb-panel.p1 { box-shadow: 4px 4px 0 var(--teal); }
+.wb-phead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.wb-pname { margin: 0; font: 700 22px/1.15 'Comic Neue', 'Comic Sans MS', cursive; cursor: grab; flex: 1 1 100%; }
+.wb-pname::after { content: ''; display: block; height: 6px; margin-top: 3px; background: var(--pink);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='7'%3E%3Cpath d='M0 3.5 Q4 0 8 3.5 T16 3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") repeat-x left center / 16px 7px;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='7'%3E%3Cpath d='M0 3.5 Q4 0 8 3.5 T16 3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") repeat-x left center / 16px 7px; }
+.wb-panel.p1 .wb-pname::after { background: var(--teal); }
+.wb-pid { color: #666; font-size: 12px; }
+.wb-ptools { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.wb-rels { margin: 8px 0; display: grid; gap: 3px; }
+.wb-rlabel { display: inline-block; min-width: 7.5em; font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; color: #555; }
+.wb-note { margin: 8px 0; padding: 6px 8px; border-radius: 10px; border: 2px dashed #ccc; }
+.wb-note.draft { border-color: var(--purple); background: #f6f1ff; } .wb-note.yours { border-style: solid; border-color: #bde7df; }
+.wb-note label { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; } .wb-ntag { color: #777; font-weight: 400; }
+.wb-note textarea { width: 100%; font: inherit; border: 1.5px solid #ccc; border-radius: 8px; padding: 4px 6px; resize: vertical; }
+.wb-nbtns { display: flex; gap: 6px; margin-top: 3px; }
+.wb-selbar { position: sticky; top: -8px; z-index: 2; background: #fff4c2; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; margin: 6px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.wb-claims { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wb-claim { position: relative; padding: 5px 8px; border: 1.5px solid #e2e2ea; border-radius: 10px; background: white; cursor: grab; }
+.wb-claim:hover { border-color: #999; }
+.wb-claim.sel { background: #fff4c2; border-color: var(--ink); box-shadow: 2px 2px 0 var(--yellow); }
+.wb-claim.unfiled { border-style: dashed; }
+.wb-claim.mini { font-size: 13px; padding: 4px 6px; }
+.wb-ctext { cursor: pointer; } .wb-ctext b { margin-right: 4px; font-size: 11px; }
+.wb-meta { display: block; color: #777; font-size: 11.5px; margin-top: 1px; }
+.wb-cbtns { position: absolute; right: 6px; top: 4px; display: none; gap: 2px; background: white; border-radius: 8px; padding: 1px; }
+.wb-claim:hover .wb-cbtns { display: flex; }
+.wb-detail { margin-top: 4px; padding: 6px; background: #f6f6fa; border-radius: 8px; font-size: 12.5px; display: grid; gap: 3px; cursor: auto; }
+.wb-detail q { display: block; font-style: italic; color: #444; }
+.wb-more { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.wb-addsearch { display: flex; align-items: center; gap: 4px; font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; }
+.wb-addsearch input { font: inherit; font-family: system-ui; border: 2px solid var(--ink); border-radius: 999px; padding: 2px 10px; min-width: 14em; }
+.wb-extra h3 { font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; margin: 10px 0 4px; }
+
+/* the inbox */
+.wb-inbox h3 { font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; margin: 10px 0 4px; }
+.wb-card { border: 2px solid var(--ink); border-radius: 12px; padding: 6px 8px; margin-bottom: 8px; background: var(--paper); }
+.wb-pair { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.wb-sug { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 0; border-top: 1px dashed #ddd; }
+.wb-sbtns { display: flex; flex-wrap: wrap; gap: 3px; margin-left: auto; }
+.wb-checkcard { padding: 4px; }
+.wb-checkq { font: 700 16px 'Comic Neue', 'Comic Sans MS', cursive; margin: 6px 0 2px; }
+.wb-claim.big { font-size: 17px; line-height: 1.35; padding: 12px 14px; margin: 10px 0; border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--yellow); background: white; }
+.wb-checkbtns { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.wb-checkbtns kbd { font-size: 10px; border: 1px solid #999; border-radius: 4px; padding: 0 3px; background: #fafafa; }
+
+.wb-welcome { text-align: center; padding: 30px 16px; color: #444; font-family: 'Comic Neue', 'Comic Sans MS', cursive; font-weight: 700; }
+.wb-big { font: 30px 'Bungee', 'Comic Neue', sans-serif; margin-bottom: 8px; }
+.wb-faint { color: #777; font-size: 12.5px; } .wb-empty { color: #777; padding: 8px; }
+
+/* drag and drop */
+.wb-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translateX(-100%); max-width: 22em; padding: 4px 10px; border: 2px solid var(--ink);
+  border-radius: 10px; background: white; box-shadow: 3px 3px 0 var(--pink); font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dz-menu { position: fixed; z-index: 1001; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--paper); border: 3px solid var(--ink);
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--orange); min-width: 13em; }
+.dz-title { font: 11px system-ui; color: #777; text-transform: uppercase; letter-spacing: .04em; padding: 0 4px; }
+.dz-zone { text-align: left; font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 10px; background: white; cursor: pointer; }
+.dz-zone.hot, .dz-zone:hover { background: var(--yellow); transform: translateX(3px); }
+.dz-cancel { font-weight: 400; color: #777; border-style: dashed; }
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+[data-drag] { touch-action: pan-y; }
+
+.wb-toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 1002; padding: 8px 14px; background: white; border: 3px solid var(--ink);
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--teal); font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; max-width: 90vw; }
+.wb-toast.bad { box-shadow: 4px 4px 0 #e0102e; }
+.wb-help { max-width: 40em; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--pink); }
+.wb-help h2 { font: 20px 'Bungee', 'Comic Neue', sans-serif; margin-top: 0; }
+
+/* narrower windows: the panes stack, each scrolling on its own */
+@media (max-width: 1000px) {
+  body.wb { height: auto; overflow: auto; }
+  .wb-main { grid-template-columns: 1fr; }
+  .wb-pane { max-height: 75vh; }
+  .wb-panels.two { grid-template-columns: 1fr; }
+  .wb-drops { margin-left: 0; }
+}

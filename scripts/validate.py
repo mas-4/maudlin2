@@ -27,9 +27,13 @@ from app.utils import Config  # noqa: E402
 # The pages: Jinja templates in checker/templates (one base with the shared nav and undo), shared scripts and styles
 # in checker/static (the drag-with-drop-zones and undo code), served at /checker/static/
 CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
-NAV = [('/', 'Label check'), ('/motifs', 'Motif check'), ('/motif-index', 'Motif organizer'),
-       ('/motif-board', 'Motif board'), ('/motif-singles', 'Single motifs'), ('/motif-empty', 'Empty motifs'),
-       ('/motif-map', 'Motif map'), ('/motif-notes', 'Motif notes'), ('/entities', 'Names')]
+# The nav: the workbench first (everything in one place), then the older single-purpose motif pages, then the other
+# tools. (path, label, section)
+NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'),
+       ('/motifs', '✅ check', 'motifs'), ('/motif-board', '📋 board', 'motifs'), ('/motif-index', '🗂️ organizer', 'motifs'),
+       ('/motif-singles', '1️⃣ singles', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'), ('/motif-map', '🕸️ map', 'motifs'),
+       ('/motif-notes', '📝 notes', 'motifs'),
+       ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
 _templates = None
 
 
@@ -43,7 +47,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
     return _templates.get_template(template).render(nav=NAV, here=here, undo=undo, **context)
 
 
-STATIC_PAGES = {'/motif-map': 'map.html', '/motif-singles': 'singles.html', '/motif-empty': 'empty.html',
+STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-singles': 'singles.html', '/motif-empty': 'empty.html',
                 '/motif-board': 'board.html', '/motif-notes': 'notes.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
@@ -197,6 +201,7 @@ UNDO_KEEP = 50
 def undo_paths() -> dict:
     from app.analysis import entities, motif_index
     return {'/motif-board': motif_index.INDEX, '/motif-index': motif_index.INDEX, '/motif-verdict': motif_index.INDEX,
+            '/workbench': motif_index.INDEX,
             '/entities': entities.ALIASES}
 
 
@@ -362,6 +367,83 @@ def board_action(data: dict):
         raise ValueError(f'unknown action: {data}')
 
 
+# The motif workbench (workbench.html): one page for everything the motif pages do. Its state is the board's plus
+# what only other pages had (stands alone, checks to do); its actions are the board's plus 'not the same', the motif
+# check, and a batch of several (one undo step for a whole multi-select drag)
+def workbench_state() -> dict:
+    from app.analysis import motif_index as mi
+    index = mi.load()
+    state = mi.board()
+    for e in state['entries']:
+        entry = index['entries'].get(e['id'], {})
+        e['stands_alone'] = bool(entry.get('stands_alone'))
+        e['phrases'] = (entry.get('phrases') or [])[:6]
+    state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
+    state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
+    return state
+
+
+def workbench_queue(kind: str):
+    from app.analysis import motif_index as mi
+    if kind == 'check':
+        return mi.to_check(40)
+    if kind == 'singles':
+        return mi.single_suggestions()
+    if kind == 'pairs':
+        try:
+            similar, note = [{'a': a, 'b': b, 'score': round(sim, 2)} for a, b, sim in mi.suggestions(40)], None
+        except Exception as e:  # noqa: the embeddings need Ollama
+            similar, note = [], f'similar names unavailable: {type(e).__name__}'
+        return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
+    raise ValueError(f'no such queue: {kind}')
+
+
+def record_check(data: dict):
+    os.makedirs(FOLDER, exist_ok=True)
+    with open(MOTIF_VERDICTS, 'a') as f:
+        f.write(json.dumps({'claim': data['claim'], 'id': data['id'], 'answer': data['answer'],
+                            'at': dt.now().isoformat(timespec='seconds')}) + '\n')
+
+
+def workbench_action(data: dict):
+    from app.analysis import motif_index as mi
+    act = data.get('action')
+    if act == 'batch':
+        steps = data.get('steps')
+        if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) or x.get('action') == 'batch' for x in steps):
+            raise ValueError('a batch is a list of actions')
+        for step in steps:
+            workbench_action(step)
+    elif act == 'not_same':
+        live = {e['id'] for e in mi.live(mi.load())}
+        if data.get('a') not in live or data.get('b') not in live or data['a'] == data['b']:
+            raise ValueError('not the same: two motifs')
+        mi.not_same(data['a'], data['b'])
+    elif act == 'check':
+        if data.get('answer') not in ('yes', 'no', 'unsure'):
+            raise ValueError('a check is yes, no or unsure')
+        mi.check(data.get('claim', ''), data.get('id', ''), data['answer'])
+        record_check(data)
+    elif act == 'new_with':  # a new motif made from claims dropped on it: each moved or copied from its motif, or filed
+        name, claims = data.get('name'), data.get('claims')
+        if not (isinstance(name, str) and name.strip() and isinstance(claims, list) and claims):
+            raise ValueError('new_with: a name and claims')
+        live = {e['id'] for e in mi.live(mi.load())}
+        eid = mi.add(name)
+        for c in claims:
+            text, source = (c.get('claim') or '').strip(), c.get('source')
+            if not text:
+                continue
+            if source in live and c.get('mode') == 'move':
+                mi.move(text, source, eid)
+            elif source in live:
+                mi.also_file(text, source, eid)
+            else:
+                mi.file_by_hand({'claim': text, 'source': c.get('src', ''), 'ref': c.get('ref', '')}, eid)
+    else:
+        board_action(data)
+
+
 def entities_page() -> str:
     """The names organizer (#165): one name per subject for the 'mentioned:' filters. Suggested merges first (a name
     inside another), then every subject with the names that point to it."""
@@ -454,6 +536,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 return
             return self.send_json(motif_index.similar(eid))
+        if self.path.startswith('/workbench.json'):
+            return self.send_json(workbench_state())
+        if self.path.startswith('/workbench-queue.json'):
+            from urllib.parse import urlparse, parse_qs
+            try:
+                return self.send_json(workbench_queue(parse_qs(urlparse(self.path).query).get('kind', [''])[0]))
+            except ValueError as e:
+                return self.send_json_error(404, str(e))
         if self.path.startswith('/motif-board.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.board())
@@ -498,6 +588,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_json_error(self, code: int, message: str):
+        body = json.dumps({'error': message[:300]}).encode()
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
         if self.path == '/undo':
@@ -509,6 +607,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({'undid': what})
         undo_path = undo_paths().get(self.path)
         self._undo = (undo_path, read_text(undo_path)) if undo_path else None
+        if self.path == '/workbench':
+            try:
+                before = motif_context(data if data.get('action') != 'batch' else (data.get('steps') or [{}])[0])
+                workbench_action(data)
+                log_curation('motif workbench', data, before)
+                self.remember(data if data.get('action') != 'batch' else
+                              {'action': f"{len(data['steps'])} changes: {data['steps'][0].get('action')}…"}, before)
+            except (ValueError, KeyError) as e:
+                self.remember({'action': 'part of a change that failed'}, {})  # a batch stopped midway: still undoable
+                return self.send_json_error(400, str(e))
+            return self.send_json(workbench_state())
         if self.path == '/motif-board':
             from app.analysis import motif_index
             try:

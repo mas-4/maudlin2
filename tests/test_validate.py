@@ -105,7 +105,7 @@ def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
         result = subprocess.run(['node', '--check', str(path)], capture_output=True, text=True)
         assert result.returncode == 0, f'{name}: {result.stderr[:300]}'
     # Every page has the one shared nav, and the label check (it writes the database) no undo button
-    assert all(html.count('<nav>') == 1 and '/motif-map' in html for html in pages.values())
+    assert all(html.count('<nav') == 1 and '/motif-map' in html and '/motif-workbench' in html for html in pages.values())
     assert 'undo-btn' not in pages['label check'] and all('undo-btn' in h for n, h in pages.items() if n != 'label check')
     assert "It&#39;s &lt;a&gt; headline" in pages['label check']  # escaped by the templates
 
@@ -186,3 +186,33 @@ def test_undo_steps_back_but_never_over_a_runs_filing(monkeypatch, tmp_path):
         assert refused.value.code == 409 and mi.live(mi.load())[0]['name'] == 'Blue Texas'
     finally:
         server.shutdown()
+
+
+def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path):
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    monkeypatch.setattr(validate, 'MOTIF_VERDICTS', str(tmp_path / 'v.jsonl'))
+    monkeypatch.setattr(validate, 'FOLDER', str(tmp_path))
+    claim = lambda t: {'claim': t, 'source': 'narrative'}  # noqa: E731
+    mi.save({'next': 4, 'claims': {mi.key('a'): ['M001'], mi.key('b'): ['M001'], mi.key('c'): ['M002']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'empty promises', 'claims': [claim('a'), claim('b')]},
+        'M002': {'id': 'M002', 'name': 'rigged votes', 'claims': [claim('c')]},
+        'M003': {'id': 'M003', 'name': 'stolen elections', 'claims': [], 'curated': True}}})
+    state = validate.workbench_state()
+    assert state['to_check'] == 3 and state['entries'][0]['stands_alone'] is False and state['not_same'] == []
+    # A multi-claim drag is one batch (one undo step): both claims move into a new motif together
+    validate.workbench_action({'action': 'new_with', 'name': 'liars', 'claims': [
+        {'claim': 'a', 'source': 'M001', 'mode': 'move'}, {'claim': 'b', 'source': 'M001', 'mode': 'also'},
+        {'claim': 'an unfiled one', 'source': '', 'src': 'fact-check', 'ref': 'u'}]})
+    by = {e['id']: e for e in mi.board()['entries']}
+    assert [c['claim'] for c in by['M004']['claims']] == ['a', 'b', 'an unfiled one']
+    assert [c['claim'] for c in by['M001']['claims']] == ['b']
+    validate.workbench_action({'action': 'batch', 'steps': [{'action': 'parent', 'id': 'M002', 'parent': 'M003'},
+                                                             {'action': 'not_same', 'a': 'M001', 'b': 'M004'}]})
+    assert mi.board()['entries'][1]['parents'] == ['M003'] and ['M001', 'M004'] in validate.workbench_state()['not_same']
+    validate.workbench_action({'action': 'check', 'claim': 'c', 'id': 'M002', 'answer': 'yes'})
+    assert '"answer": "yes"' in open(tmp_path / 'v.jsonl').read()
+    for bad in ({'action': 'batch', 'steps': [{'action': 'batch', 'steps': []}]}, {'action': 'check', 'claim': 'c', 'id': 'M002', 'answer': 'maybe'},
+                {'action': 'not_same', 'a': 'M001', 'b': 'M001'}, {'action': 'new_with', 'name': '', 'claims': []}):
+        with pytest.raises(ValueError):
+            validate.workbench_action(bad)

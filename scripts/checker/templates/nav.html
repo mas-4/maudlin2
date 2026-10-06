@@ -1,3 +1,21 @@
-{# The nav every checker page shares: `here` in bold, the undo button on pages that change the index #}
-{% macro navbar(nav, here, undo) %}<nav>{% for href, name in nav %}{% if href == here %}<b>{{ name }}</b>{% else %}<a href="{{ href }}">{{ name }}</a>{% endif %} {% endfor %}
-{%- if undo %} <button id="undo-btn" disabled title="undo your last change (Ctrl+Z)">↶ undo</button> <span id="undo-what" style="font-size:.8em;color:#555"></span>{% endif %}</nav>{% endmacro %}
+{# The nav every checker page shares: the workbench first, the single-purpose motif pages, the other tools; `here`
+   highlighted; the undo button on pages that change the index. Sticky, one row (it scrolls sideways when narrow). #}
+{% macro navbar(nav, here, undo) %}<nav class="cn">
+{%- for href, name, section in nav %}{% set new_section = loop.changed(section) %}{% if new_section and section == 'motifs' %}<span class="cn-label">motif pages</span>{% elif new_section and section == 'other' %}<span class="cn-label">other tools</span>{% endif %}
+{%- if href == here %}<b class="cn-{{ section }}" aria-current="page">{{ name }}</b>{% else %}<a class="cn-{{ section }}" href="{{ href }}">{{ name }}</a>{% endif %}{% endfor %}
+{%- if undo %}<span class="cn-undo"><button id="undo-btn" disabled title="undo your last change (Ctrl+Z)">↶ undo</button> <span id="undo-what"></span></span>{% endif %}</nav>
+<style>
+nav.cn { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px 10px; margin: 0 0 8px;
+  background: #fffdf5; border-bottom: 3px solid #1f1f2e; font: 15px system-ui, sans-serif; flex-wrap: wrap; row-gap: 4px; }
+@media (max-width: 700px) { nav.cn { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; } }
+nav.cn a, nav.cn b { margin: 0; padding: 3px 9px; border-radius: 999px; text-decoration: none; color: #1f1f2e; border: 2px solid transparent; }
+nav.cn a:hover { border-color: #1f1f2e; background: #fff; }
+nav.cn b { background: #ffc400; border-color: #1f1f2e; box-shadow: 2px 2px 0 #1f1f2e; }
+nav.cn .cn-main { font-weight: 700; border-color: #1f1f2e; background: #00c2a8; box-shadow: 3px 3px 0 #1f1f2e; margin-right: 6px; }
+nav.cn b.cn-main { background: #ffc400; }
+nav.cn .cn-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #777; margin-left: 10px; }
+nav.cn .cn-undo { margin-left: auto; padding-left: 12px; display: flex; align-items: center; gap: 6px; }
+nav.cn .cn-undo button { font: inherit; padding: 3px 10px; border: 2px solid #1f1f2e; border-radius: 999px; background: #fff; cursor: pointer; }
+nav.cn .cn-undo button:disabled { opacity: .45; cursor: default; }
+nav.cn .cn-undo span { font-size: 12px; color: #555; max-width: 22em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>{% endmacro %}

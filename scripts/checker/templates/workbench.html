@@ -1,0 +1,63 @@
+{% from "nav.html" import navbar %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🧰 Motif workbench</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/checker/static/workbench.css">
+</head><body class="wb">
+{# Everything the motif pages do, in one place: the motifs as a tree (left), one or two open motifs (middle), the
+   inbox of things to decide (right). Anything can be dragged onto anything; the drop shows what it will do. #}
+{{ navbar(nav, here, undo) }}
+<header class="wb-bar">
+  <h1>🧰 Motif workbench</h1>
+  <label class="wb-search">🔎 <input id="q" type="search" placeholder="find a motif, M-number, claim or #id  (press /)" autocomplete="off"></label>
+  <span id="stats" class="wb-stats"></span>
+  <span class="wb-drops" aria-label="Drop here">
+    <span class="wb-drop" data-drop="newmotif" title="drop claims here to start a new motif">✨ new motif</span>
+    <span class="wb-drop" data-drop="nomotif" title="drop claims here: they tell no recurring story">∅ no motif</span>
+    <span class="wb-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span>
+  </span>
+  <button id="help-btn" class="wb-btn" title="how this works">❓</button>
+</header>
+<main class="wb-main">
+  <section class="wb-pane wb-tree" aria-label="All motifs">
+    <div class="wb-pane-head">
+      <div class="wb-views" id="views"></div>
+      <div class="wb-tree-tools">
+        <select id="sort" aria-label="sort">
+          <option value="size">biggest first</option><option value="az">A–Z</option>
+          <option value="new">newest first</option><option value="old">oldest first</option>
+        </select>
+        <button class="wb-btn" id="add-motif" title="a new empty motif">＋ motif</button>
+        <button class="wb-btn" id="add-group" title="a new group">＋ group</button>
+      </div>
+    </div>
+    <div class="wb-scroll" data-scroll id="tree"></div>
+  </section>
+  <section class="wb-pane wb-work" aria-label="Open motifs">
+    <div class="wb-scroll wb-panels" data-scroll id="panels"></div>
+  </section>
+  <section class="wb-pane wb-inbox" aria-label="Inbox">
+    <div class="wb-pane-head"><div class="wb-tabs" id="tabs" role="tablist"></div></div>
+    <div class="wb-scroll" data-scroll id="inbox"></div>
+  </section>
+</main>
+<div id="dz-menu" class="dz-menu" hidden></div>
+<div id="ghost" class="wb-ghost" hidden></div>
+<div id="toast" class="wb-toast" hidden></div>
+<dialog id="help" class="wb-help">
+  <h2>🧰 How the workbench works</h2>
+  <p><b>Left:</b> every motif, by group, with kinds nested under the motif they're a kind of. The chips at the top are
+    views (singles, no note, drafts…). Click a motif to open it; <b>Shift-click</b> (or ⧉) opens it beside the first,
+    to compare.</p>
+  <p><b>Middle:</b> the open motif: rename it, write its note, mark it done, and work its claims. Click claims to
+    select several (Shift-click for a run).</p>
+  <p><b>Right:</b> the inbox: filings to check (keys <kbd>Y</kbd> yes, <kbd>N</kbd> no, <kbd>U</kbd> unsure,
+    <kbd>S</kbd> skip), pairs that may be one motif, single motifs, claims not filed yet, empty motifs.</p>
+  <p><b>Drag anything onto anything</b> (hold a moment on a phone): a claim onto a motif files or moves it; a motif
+    onto a motif merges, nests or relates them; a motif onto a group moves it there. Hover a target and its choices
+    pop up; let go on one. The drops in the top bar start a new motif, say "no motif", or take a claim out.</p>
+  <p><b>Keys:</b> <kbd>/</kbd> search · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Esc</kbd> cancel a drag or close a
+    menu.</p>
+  <form method="dialog"><button class="wb-btn">got it 👍</button></form>
+</dialog>
+<script src="/checker/static/workbench.js"></script>
+</body></html>
