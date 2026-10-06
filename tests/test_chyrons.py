@@ -74,3 +74,11 @@ def test_headline_captions_match_the_story_theyre_about(monkeypatch, tmp_path):
     assert first['story'] == 70 and first['rank'] == 2 and first['seconds'] == 40
     assert 'story' not in second  # nothing close enough
     assert chyrons.read_json(str(tmp_path / 'matched-2026-10-05.json'), [])[0]['text'] == 'CO-PILOT MEANT TO CRASH'
+
+
+def test_bbcs_logo_comes_off_its_headlines():
+    assert list(chyrons.caption_lines('Quebec separatist party projected to win election. B EE NEWS')) == \
+        ['Quebec separatist party projected to win election']
+    assert list(chyrons.caption_lines('B EAE NEWS')) == []
+    assert list(chyrons.caption_lines('TRUMP SAYS BIG NEWS')) == ['TRUMP SAYS BIG NEWS']
+    assert list(chyrons.caption_lines('HEADLINE HERE. . Max Foster | CNN Anchor')) == ['HEADLINE HERE', 'Max Foster | CNN Anchor']

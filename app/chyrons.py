@@ -111,6 +111,20 @@ text: for a headline or name, the line as it was meant to read, corrected for OC
 capitalization: don't add, explain, guess or rewrite; for anything else, empty"""
 
 
+# BBC's logo, alone or after a headline's full stop ('... election. BB E NEWS'); not 'BIG NEWS' ending a headline
+LOGO = re.compile(r'(?:^|\.)\s*B[A-Z€ ]{0,5}N\s?E\s?W\s?S(\s+BUSINESS TODAY)?\W*$', re.I)
+
+
+def caption_lines(text: str):
+    """A row's caption lines: split at line breaks and where OCR ran a headline and a name caption together ('. .'),
+    BBC's logo cut off the end ('Quebec separatist party projected to win election. BB E NEWS'), tidied"""
+    for raw in text.split('\n'):
+        for part in re.split(r'\.\s+\.\s+', raw):
+            line = ' '.join(LOGO.sub('', part.strip()).split()).strip(' .|')
+            if line:
+                yield line
+
+
 def line_key(channel: str, line: str) -> str:
     return channel + '|' + ' '.join(line.split())
 
@@ -119,9 +133,7 @@ def lines_of(day: str) -> dict[str, dict]:
     """The day's distinct caption lines per channel, with the programs they appeared in and their seconds on screen"""
     out = {}
     for r in rows(day):
-        # One OCR line often holds a headline and a name caption run together with '. .': read them apart
-        for line in (part for raw in r['text'].split('\n') for part in re.split(r'\.\s+\.\s+', raw)):
-            line = ' '.join(line.split()).strip(' .|')
+        for line in caption_lines(r['text']):
             if len(line) < 4:
                 continue
             e = out.setdefault(line_key(r['channel'], line), {'channel': r['channel'], 'line': line, 'programs': set(),
@@ -131,7 +143,8 @@ def lines_of(day: str) -> dict[str, dict]:
     return out
 
 
-JUNK = re.compile(r'^\W*[1lIT]\s?[IL1]?IVE\b|^\W*LIVE\s*[>S]|NEWS\W*$', re.I)  # the clock ("1 IVE > 9:47"), logos
+JUNK = re.compile(r'^\W*[1lIT]\s?[IL1]?IVE\b|^\W*LIVE\s*[>S]', re.I)  # MSNOW's clock ("1 IVE > 9:47am"); logos are cut
+# off by LOGO, and what's left of a logo-only line is too short to keep
 SAME = 0.8  # lines this alike (letters and digits) on one channel are one caption read slightly differently
 
 
@@ -263,8 +276,7 @@ def headlines_of(day: str) -> list[dict]:
     store = read_json(CLEAN, {})
     out = []
     for r in rows(day):
-        for line in (part for raw in r['text'].split('\n') for part in re.split(r'\.\s+\.\s+', raw)):
-            line = ' '.join(line.split()).strip(' .|')
+        for line in caption_lines(r['text']):
             c = store.get(line_key(r['channel'], line))
             if c and c['kind'] == 'headline' and c['text']:
                 out.append({'at': r['at'], 'channel': r['channel'], 'seconds': r['seconds'], 'program': r['program'],
