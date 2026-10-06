@@ -16,6 +16,11 @@ directions of research behind them. Newest first. Add an entry whenever a new le
   Tangherlini, the Narrative Policy Framework, the Media Frames Corpus, CARDS and the SemEval taxonomies; map motifs to
   them as SKOS links at the ~Oct 12 review; the unmatched motifs are candidates for what's new
   (`docs/motif-catalogs.md`).
+- **Will the index become a decision tree?** (A question, Oct 6.) As kinds deepen, filing a claim could become a walk
+  down the tree, as Thompson's index is used: first the broad class, then the narrower one, a few choices at each
+  step instead of the eight closest motifs at once. That would make the model's choices smaller and checkable, and the
+  tree itself a test of the catalog: a level where claims can't be told apart is a level that isn't doing work.
+  Genres (a second axis, added Oct 6) cut across it. To look at in the ~Oct 12 review.
 - **Models chosen by the person's judgments.** Every local model is picked for its job by a test against a person's own
   decisions (motif filings, saga vetoes, label verdicts), not by benchmarks (`docs/models.md`). Method, not topic, but
   it shapes every result.
