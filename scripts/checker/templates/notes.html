@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Motif notes{% endblock %}
+{% block head %}<style>
+body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0 auto; max-width: 900px; padding: 16px; }
+h1 { margin: .3em 0 .1em; } .meta { color: #666; font-size: .85em; }
+.progress { height: 8px; background: #eee; border-radius: 999px; overflow: hidden; margin: 6px 0 2px; max-width: 420px; }
+.progress span { display: block; height: 100%; background: #00c2a8; }
+.tools { position: sticky; top: 0; z-index: 2; background: #fffdf6; padding: 8px 0; border-bottom: 2px solid #1f1f2e; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools input[type=search] { font: inherit; padding: 4px 12px; border: 2px solid #1f1f2e; border-radius: 999px; min-width: 16em; flex: 1; }
+.tools select { font: inherit; }
+.chip { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 10px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: #1f1f2e; color: #fff; }
+.card { border: 2px solid #1f1f2e; border-radius: 12px; padding: 10px 14px; margin: 12px 0; background: #fff; box-shadow: 4px 4px 0 #00c2a8; }
+.card.yours { box-shadow: none; border-color: #9ad9cd; }
+.card h3 { margin: 0 0 4px; font-size: 1.05em; } .card h3 .meta { font-weight: 400; }
+.who { font-size: .75em; border-radius: 6px; padding: 1px 6px; margin-left: 6px; font-weight: 600; vertical-align: middle; }
+.who.none { background: #ffe1ec; color: #a3184d; } .who.draft { background: #eef; color: #445; border: 1px dashed #99a; } .who.yours { background: #d9f4ee; color: #0a6d61; }
+textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: .95em; padding: 6px 8px; border: 1.5px solid #1f1f2e; border-radius: 8px; resize: vertical; min-height: 3.2em; }
+textarea:focus { outline: 3px solid #00c2a8; outline-offset: 1px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+button { font: inherit; font-size: .85em; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 3px 12px; cursor: pointer; }
+button.save { background: #c8f7c5; font-weight: 700; } button:disabled { opacity: .45; cursor: default; }
+.status { font-size: .85em; color: #0a6d61; }
+.claims { margin: 6px 0 0; padding-left: 1.2em; font-size: .88em; color: #333; } .claims li { margin: 2px 0; }
+.more { font-size: .85em; color: #0a6d61; cursor: pointer; text-decoration: underline; border: 0; background: none; padding: 0; }
+</style>{% endblock %}
+{% block body %}
+<h1>Motif notes</h1>
+<p>One plain line per motif on what kind of story it covers, as its tellers tell it. Your notes go on the site and help
+the model file new claims. Drafts (mine or the model's) are used in matching but stay off the site until you keep or
+rewrite them. Type in a box and press <b>Enter</b> to save and move to the next; an empty box removes the note.</p>
+<div class="progress" aria-hidden="true"><span id="bar"></span></div>
+<p class="meta" id="count">Loading…</p>
+<div class="tools">
+  <input type="search" id="q" placeholder="🔎 search names, notes and claims">
+  <span role="group" aria-label="Show">
+    <button class="chip" data-show="needs" aria-pressed="true" title="no note, or only a draft">needs you</button>
+    <button class="chip" data-show="none" aria-pressed="false">no note</button>
+    <button class="chip" data-show="draft" aria-pressed="false">drafts</button>
+    <button class="chip" data-show="yours" aria-pressed="false">yours</button>
+    <button class="chip" data-show="all" aria-pressed="false">all</button>
+  </span>
+  <select id="sort" aria-label="Sort"><option value="most">most claims</option><option value="az">A–Z</option><option value="newest">newest</option></select>
+</div>
+<div id="list"></div>
+<script>
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const DRAFTS = {model: "the model's draft", claude: "Claude's draft"};
+let entries = [], byId = {}, show = 'needs', expanded = new Set();
+const state = (e) => !e.note ? 'none' : DRAFTS[e.note_by] ? 'draft' : 'yours';
+async function act(body) {
+  const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { alert('Failed: ' + await r.text()); return false; }
+  if (window.refreshUndo) refreshUndo();
+  return true;
+}
+function counts() {
+  const yours = entries.filter((e) => state(e) === 'yours').length;
+  document.getElementById('count').textContent = `${yours} of ${entries.length} motifs have your note · ${entries.filter((e) => state(e) === 'draft').length} drafts · ${entries.filter((e) => state(e) === 'none').length} with none`;
+  document.getElementById('bar').style.width = (100 * yours / Math.max(entries.length, 1)) + '%';
+}
+function tag(e) {
+  const s = state(e);
+  return `<span class="who ${s}">${s === 'none' ? 'no note' : s === 'draft' ? DRAFTS[e.note_by] : 'yours'}</span>`;
+}
+function card(e) {
+  const names = (ids) => ids.map((i) => byId[i] ? esc(byId[i].name) : i).join(', ');
+  const claims = expanded.has(e.id) ? e.claims : e.claims.slice(0, 4);
+  return `<div class="card${state(e) === 'yours' ? ' yours' : ''}" id="c-${e.id}" data-id="${e.id}">
+    <h3>🧩 ${esc(e.name)} <span class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.parents.length ? ' · kind of ' + names(e.parents) : ''}</span>${tag(e)}</h3>
+    <textarea id="t-${e.id}" rows="2" placeholder="What kind of story does this motif cover? One plain line.">${esc(e.note || '')}</textarea>
+    <div class="row"><button class="save" data-do="save" disabled>save</button>
+      ${state(e) === 'draft' ? '<button data-do="keep" title="keep the draft exactly as it is: it becomes yours">✓ keep draft</button>' : ''}
+      <span class="status" aria-live="polite"></span></div>
+    ${e.claims.length ? `<ul class="claims">${claims.map((c) => `<li>${esc(c.claim)}</li>`).join('')}</ul>` : '<p class="meta">No claims yet: write from the name.</p>'}
+    ${e.claims.length > 4 ? `<button class="more" data-do="more">${expanded.has(e.id) ? 'fewer claims' : `all ${e.claims.length} claims`}</button>` : ''}
+  </div>`;
+}
+function visible() {
+  const words = document.getElementById('q').value.toLowerCase().split(/\s+/).filter(Boolean);
+  const sort = document.getElementById('sort').value;
+  let list = entries.filter((e) => {
+    const s = state(e);
+    if (show === 'needs' ? s === 'yours' : show !== 'all' && s !== show) return false;
+    const text = (e.name + ' ' + (e.note || '') + ' ' + e.claims.map((c) => c.claim).join(' ')).toLowerCase();
+    return words.every((w) => text.includes(w));
+  });
+  const by = {most: (a, b) => b.claims.length - a.claims.length || a.name.localeCompare(b.name),
+              az: (a, b) => a.name.localeCompare(b.name), newest: (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id)};
+  return list.sort(by[sort]);
+}
+function draw() {
+  const list = visible();
+  document.getElementById('list').innerHTML = list.map(card).join('') || '<p>Nothing here. 🎉</p>';
+  counts();
+}
+async function save(c, keep) {
+  const e = byId[c.dataset.id], box = c.querySelector('textarea'), status = c.querySelector('.status');
+  const note = box.value.replace(/\s+/g, ' ').trim();
+  const ok = keep ? await act({action: 'keep_note', id: e.id}) : await act({action: 'note', id: e.id, note});
+  if (!ok) return false;
+  if (!keep) e.note = note;
+  e.note_by = e.note ? 'person' : '';
+  status.textContent = keep ? '✓ kept' : note ? '✓ saved' : '✓ removed';
+  c.querySelector('h3 .who').outerHTML = tag(e);
+  c.classList.toggle('yours', state(e) === 'yours');
+  c.querySelector('.save').disabled = true;
+  const k = c.querySelector('[data-do="keep"]'); if (k && state(e) !== 'draft') k.remove();
+  counts();
+  return true;
+}
+function next(c) {
+  let n = c.nextElementSibling;
+  while (n && !n.classList.contains('card')) n = n.nextElementSibling;
+  if (n) { const t = n.querySelector('textarea'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); n.scrollIntoView({block: 'center', behavior: 'smooth'}); }
+}
+document.addEventListener('input', (ev) => {
+  const t = ev.target.closest('.card textarea'); if (!t) return;
+  const e = byId[t.closest('.card').dataset.id];
+  t.closest('.card').querySelector('.save').disabled = t.value.replace(/\s+/g, ' ').trim() === (e.note || '');
+  t.closest('.card').querySelector('.status').textContent = '';
+});
+document.addEventListener('keydown', async (ev) => {
+  const t = ev.target.closest && ev.target.closest('.card textarea');
+  if (!t || ev.key !== 'Enter' || ev.shiftKey) return;
+  ev.preventDefault();
+  const c = t.closest('.card');
+  if (!c.querySelector('.save').disabled && !(await save(c, false))) return;
+  next(c);
+});
+document.addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-do]'); if (!b) return;
+  const c = b.closest('.card');
+  if (b.dataset.do === 'save') save(c, false);
+  else if (b.dataset.do === 'keep') save(c, true);
+  else if (b.dataset.do === 'more') { const id = c.dataset.id; expanded.has(id) ? expanded.delete(id) : expanded.add(id); c.outerHTML = card(byId[id]); }
+});
+document.querySelectorAll('.chip[data-show]').forEach((b) => b.addEventListener('click', () => {
+  show = b.dataset.show;
+  document.querySelectorAll('.chip[data-show]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  draw();
+}));
+document.getElementById('q').addEventListener('input', draw);
+document.getElementById('sort').addEventListener('change', draw);
+fetch('/motif-board.json').then((r) => r.json()).then((d) => {
+  entries = d.entries; byId = Object.fromEntries(entries.map((e) => [e.id, e])); draw();
+});
+</script>
+{% endblock %}

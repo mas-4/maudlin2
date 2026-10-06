@@ -29,7 +29,7 @@ from app.utils import Config  # noqa: E402
 CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
 NAV = [('/', 'Label check'), ('/motifs', 'Motif check'), ('/motif-index', 'Motif organizer'),
        ('/motif-board', 'Motif board'), ('/motif-singles', 'Single motifs'), ('/motif-empty', 'Empty motifs'),
-       ('/motif-map', 'Motif map'), ('/entities', 'Names')]
+       ('/motif-map', 'Motif map'), ('/motif-notes', 'Motif notes'), ('/entities', 'Names')]
 _templates = None
 
 
@@ -44,7 +44,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
 
 
 STATIC_PAGES = {'/motif-map': 'map.html', '/motif-singles': 'singles.html', '/motif-empty': 'empty.html',
-                '/motif-board': 'board.html'}
+                '/motif-board': 'board.html', '/motif-notes': 'notes.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
 
