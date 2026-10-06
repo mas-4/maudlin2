@@ -116,6 +116,9 @@ One emoji per thing, the same everywhere. Reuse these before picking a new one.
 - **Prefix class names with the page** (`story-`, `tv-`, `radio-`, `saga-`, `folk-`). Before naming a class, grep the
   styles: on Oct 6 a story page bar reused `.tv-bar`, picked up the On TV page's rule and was stretched across the
   page.
+- `tests/test_css_names.py` fails when a class gets a second base rule (`.name { … }`) anywhere in the site's partials
+  or the workbench's stylesheet: check the name isn't already another component's (it was, twice on Oct 6: `.tv-bar`,
+  `.wb-bar`); if the repeat is meant, add it to the test's list.
 - Reuse the shared components above by their existing classes rather than copying their rules.
 - Respect `prefers-reduced-motion`: no drifting or popping for readers who ask for stillness.
 - Check every new page at phone width (375px): no sideways page scroll, tap targets at least ~40px.
