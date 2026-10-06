@@ -26,6 +26,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **Each narrative keeps all its posts.** The nightly report now keeps the private keys of every post in each
+  narrative, not only ten sample texts, so a person checking a claim sees everything it was found in. The texts stay
+  in the post store under its 30-day limit (a deleted post is gone from it too); the reports of Oct 4-6 had their keys
+  rebuilt by grouping their posts again (361 of 367 narratives matched).
 - **Jubilee's Surrounded, transcribed.** Jubilee's weekly Surrounded (one guest against 20-25 people who disagree
   with them) joins The Focus Group and the call-ins as ordinary people speaking for themselves: archived from its
   podcast feed and transcribed on our GPU in the same tier, for research. Its Middle Ground has no audio feed, and its
