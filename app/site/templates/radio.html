@@ -26,7 +26,7 @@
                         <ol class="radio-items">
                             {% for x in c['items'] %}
                                 <li>{{ x.title|e }}
-                                    {% if x.story %}<span class="radio-rank" title="On the front pages that hour as “{{ x.story_label|e }}”: #{{ x.front_rank }} of the front pages' stories, on {{ x.outlets }} outlets">{% if x.now %}<a href="index.html#s-{{ x.story }}">#{{ x.front_rank }}</a>{% else %}#{{ x.front_rank }}{% endif %}</span>
+                                    {% if x.story %}<span class="radio-rank" title="On the front pages that hour as “{{ x.story_label|e }}”: #{{ x.front_rank|e }} of the front pages' stories, on {{ x.outlets|e }} outlets">{% if x.now %}<a href="index.html#s-{{ x.story|e }}">#{{ x.front_rank }}</a>{% else %}#{{ x.front_rank }}{% endif %}</span>
                                     {% else %}<span class="radio-rank radio-off" title="Not among the front pages' stories that hour">not on the front pages</span>{% endif %}
                                 </li>
                             {% endfor %}
@@ -39,7 +39,7 @@
                         <p class="saga-facts">their biggest stories that hour</p>
                         <ol class="radio-items">
                             {% for f in h.front %}
-                                <li>{% if f.now %}<a href="index.html#s-{{ f.id }}">{{ f.label|e }}</a>{% else %}{{ f.label|e }}{% endif %}
+                                <li>{% if f.now %}<a href="index.html#s-{{ f.id|e }}">{{ f.label|e }}</a>{% else %}{{ f.label|e }}{% endif %}
                                     <span class="radio-rank radio-outlets">{{ f.outlets }} outlets</span></li>
                             {% endfor %}
                         </ol>

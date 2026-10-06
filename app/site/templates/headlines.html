@@ -22,8 +22,8 @@
     {% if page_part != 'table' %}
     <figure class="wordcloud">
         {% if newsday %}
-            <a class="newsday-sticker {{ newsday.kind }}" href="#story-{{ newsday.cluster }}"
-               title="On {{ newsday.outlets }} of {{ newsday.active }} outlets' front pages right now; first seen {{ newsday.age }} ago">
+            <a class="newsday-sticker {{ newsday.kind|e }}" href="#story-{{ newsday.cluster|e }}"
+               title="On {{ newsday.outlets|e }} of {{ newsday.active|e }} outlets' front pages right now; first seen {{ newsday.age|e }} ago">
                 <span class="newsday-end" aria-hidden="true">{{ newsday.ends[0] }}</span>
                 <span class="newsday-body">
                     <span class="newsday-label">{{ newsday.label }}</span>
@@ -36,18 +36,18 @@
             </a>
         {% endif %}
         <div id="cloud" class="cloud" role="img" aria-label="Word cloud of the terms the most outlets are using right now"></div>
-        <noscript><img alt="Word cloud of the terms the most outlets are using right now" src="{{ FileNames.main_wordcloud }}"></noscript>
+        <noscript><img alt="Word cloud of the terms the most outlets are using right now" src="{{ FileNames.main_wordcloud|e }}"></noscript>
         <div class="table-filters cloud-sort" role="group" aria-label="Arrange the cloud">
             <button data-cloud="size" class="active">📏 biggest first</button>
             <button data-cloud="side">⚖️ left to right</button>
-            <button data-cloud="spice" title="{{ spicy_tip }}">🌶️ plain to spicy</button>
+            <button data-cloud="spice" title="{{ spicy_tip|e }}">🌶️ plain to spicy</button>
         </div>
         <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Poke (click or tap) a word to see how outlets are using it, and the feeling its headlines stir.">
             <span class="key-part"><span class="key-big">BIGGER</span> <span>= more outlets</span></span>
             <span class="key-part"><span>color = who's saying it</span>
                 <span><b style="color: #1a5cff">left</b>, <b style="color: #e0102e">right</b>,
                 <span class="balanced-text">both</span>, or <b style="color: #8a8f98">center</b></span></span>
-            <span class="key-part"><span>paper = how <span class="spicy-tip" tabindex="0" title="{{ spicy_tip }}">spicy</span></span>
+            <span class="key-part"><span>paper = how <span class="spicy-tip" tabindex="0" title="{{ spicy_tip|e }}">spicy</span></span>
                 <span class="key-paper" aria-hidden="true"><span>🍞</span><span class="key-paper-swatch"></span><span>🌶️</span></span></span>
             <span class="key-part key-click"><span class="key-point" aria-hidden="true">👆</span> poke a word</span></figcaption>
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
@@ -172,12 +172,17 @@
             const width = el.clientWidth;
             // The height is the space #cloud's aspect-ratio (style.css) already reserved
             const height = el.clientHeight || Math.round(width * (width < 600 ? 1.35 : width < 1000 ? 0.8 : 0.6));
-            const counts = WORDS.map((w) => w.outlets);  // (d3-cloud uses d.size for font size)
-            const lo = Math.min(...counts), hi = Math.max(...counts);
+            const counts = WORDS.map((w) => w.outlets).sort((x, y) => y - x);  // (d3-cloud uses d.size for font size)
+            const lo = counts[counts.length - 1];
+            // The scale tops out a little above the runner-up: one word on every outlet (Trump, most days) would
+            // otherwise tower over a cloud of tiny words on a desktop, and on a phone be too wide to place at all
+            const hi = Math.min(counts[0], Math.round((counts[1] || counts[0]) * 1.2));
             const scale = Math.sqrt(width * height) / 10;
-            // A readable floor for the smallest words and a really big top, on a curve that keeps the crowd of
-            // middling words modest so they all fit and only the leaders tower
-            const fontSize = (s) => scale * (0.3 + 1.1 * Math.pow((s - lo) / ((hi - lo) || 1), 1.5));
+            // A readable floor for the smallest words and a big top, on a curve that keeps the crowd of middling
+            // words modest so they all fit and only the leaders tower
+            const curve = (s) => scale * (0.3 + 1.1 * Math.pow(Math.min(1, (s - lo) / ((hi - lo) || 1)), 1.5));
+            // No word wider than about 55% of the cloud (bold Comic Neue runs about 0.58 em a letter), so every word fits
+            const fontSize = (s, label) => Math.min(curve(s), 0.55 * width / (0.58 * Math.max(3, (label || '').length)));
             // The sticker's corner is off limits, so words pack in around it instead of leaving a hole
             const obstacles = [];
             const sticker = document.querySelector('.newsday-sticker');
@@ -202,7 +207,7 @@
                 return random() < 0.03 + 0.22 * size ? angle + 180 : angle;
             };
             const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${BOOKENDS[w.emoji][0]}\u2009${w.text}\u2009${BOOKENDS[w.emoji][1]}` : w.text,
-                                             px: geo.fontSize(w.outlets)}));
+                                             px: geo.fontSize(w.outlets, w.text)}));
             const sort = CLOUD_SORTS[mode];
             const order = sort ? sort.order : (a, b) => b.outlets - a.outlets;
             [...words].sort(order).forEach((d, i, all) => { d.rank = i / Math.max(1, all.length - 1); });
@@ -544,11 +549,11 @@
                 <ol>
                     {% for story in news_trends %}
                         <li>
-                            {% if story.saga %}<span class="saga-tag" style="--saga: {{ story.color }}" title="An ongoing story in {{ story.saga }} parts">🧵 {{ story.saga }} parts</span>{% endif %}
-                            <a href="#story-{{ story.cluster }}">{{ story.title }}</a>
+                            {% if story.saga %}<span class="saga-tag" style="--saga: {{ story.color|e }}" title="An ongoing story in {{ story.saga|e }} parts">🧵 {{ story.saga }} parts</span>{% endif %}
+                            <a href="#story-{{ story.cluster|e }}">{{ story.title }}</a>
                             <span class="trend-posts" title="Outlets with it on their front page now, and all that covered it">{{ story.now }} on front pages now{% if story.outlets > story.now %} · {{ story.outlets }} in all{% endif %}</span>
-                            {% if story.speed %}<span class="fast-break" title="{{ story.speed }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
-                            {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name }}">{{ name }}</span>{% endfor %}
+                            {% if story.speed %}<span class="fast-break" title="{{ story.speed|e }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
+                            {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name|e }}">{{ name }}</span>{% endfor %}
                         </li>
                     {% endfor %}
                 </ol>
@@ -560,9 +565,9 @@
                 <ol>
                     {% for trend in box.trends %}
                         <li{% if loop.index > 6 %} class="trend-extra"{% endif %}>
-                            <a href="{{ trend.link }}" title="{{ trend.description or trend.display_name }}">{{ trend.display_name }}</a>
+                            <a href="{{ trend.link|e }}" title="{{ (trend.description or trend.display_name)|e }}">{{ trend.display_name }}</a>
                             {% if trend.post_count %}<span class="trend-posts">{{ "{:,}".format(trend.post_count) }}{% if box.key == 'google' %}+{% endif %} {{ box.unit }}</span>{% endif %}
-                            {% if trend.topic in box.matches %}<a class="trend-both" href="#story-{{ box.matches[trend.topic] }}" title="Also a top story in the news">news</a>{% endif %}
+                            {% if trend.topic in box.matches %}<a class="trend-both" href="#story-{{ box.matches[trend.topic]|e }}" title="Also a top story in the news">news</a>{% endif %}
                         </li>
                     {% endfor %}
                 </ol>
@@ -665,16 +670,16 @@
         <h2 class="section-divider" id="sagas"><span>Sagas</span></h2>
         <div class="saga-cards">
             {% for saga in saga_list %}
-                <div class="saga-card" style="--saga: {{ saga.color }}">
+                <div class="saga-card" style="--saga: {{ saga.color|e }}">
                     <h3>🧵 {{ saga.name }}</h3>
                     <p class="saga-facts">{{ saga.parts|length }} parts · {{ saga.outlets }} outlets · started {{ saga.started }} ago</p>
                     <ol class="saga-parts">
                         {% for part in saga.parts %}
                             <li{% if not part.now %} class="saga-earlier"{% endif %}>
-                                {% if part.now %}<a class="saga-part" href="#story-{{ part.cluster }}">{{ part.title }}</a>
+                                {% if part.now %}<a class="saga-part" href="#story-{{ part.cluster|e }}">{{ part.title }}</a>
                                 {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
                                 <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}off the front pages · {{ part.age }} ago{% endif %}</span>
-                                {% for f in part.feelings %}<span title="{{ f.name }}">{{ f.emoji }}</span>{% endfor %}
+                                {% for f in part.feelings %}<span title="{{ f.name|e }}">{{ f.emoji }}</span>{% endfor %}
                             </li>
                         {% endfor %}
                     </ol>
@@ -689,7 +694,7 @@
         <span class="bar-group"><span class="bar-label">sort:</span>
         <button data-sort="newest" class="active" title="Most recently broken first">✨ newest</button>
         <button data-sort="biggest" title="On the most outlets first">📰 biggest</button>
-        <button data-sort="spiciest" title="Spiciest first. {{ spicy_tip }}">🌶️ spiciest</button>
+        <button data-sort="spiciest" title="Spiciest first. {{ spicy_tip|e }}">🌶️ spiciest</button>
         <button data-sort="grimmest" title="Grimmest mood first">⛈️ grimmest</button>
         </span>
         <span class="bar-divider" aria-hidden="true"></span>
@@ -702,39 +707,39 @@
         </span>
         {% if entity_chips %}<span class="bar-divider" aria-hidden="true"></span>
         <span class="bar-group entity-group"><span class="bar-label">mentioned:</span>
-        {% for name, n in entity_chips %}<button data-entity="{{ name|e }}" title="The {{ n }} current stories whose headlines mention {{ name|e }}">{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
+        {% for name, n in entity_chips %}<button data-entity="{{ name|e }}" title="The {{ n|e }} current stories whose headlines mention {{ name|e }}">{{ name|e }} <b>{{ n }}</b></button>{% endfor %}
         </span>{% endif %}
     </div>
     <p class="edit-count story-count" aria-live="polite"></p>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
-            <div class="story" id="story-{{ cluster['cluster'] }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']] }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
-                 data-size="{{ cluster['outlets'] }}" data-spice="{{ cluster['spice'] }}"
-                 data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value'] }}"
+            <div class="story" id="story-{{ cluster['cluster']|e }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']]|e }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
+                 data-size="{{ cluster['outlets']|e }}" data-spice="{{ cluster['spice']|e }}"
+                 data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value']|e }}"
                  {% if cluster['blindspot'] %}data-blindspot="{{ cluster['blindspot']['side'] }}"{% endif %}
                  {% if show_coverage is defined and show_coverage.get(cluster['cluster']) %}data-shows="1"{% endif %}
                  {% if satire_of is defined and satire_of.get(cluster['cluster']) %}data-satire="1"{% endif %}
                  {% if factchecks_of is defined and factchecks_of.get(cluster['cluster']) %}data-checked="1"{% endif %}
                  {% if cluster['curators'] %}data-picked="1"{% endif %}
                  {% if entities_of is defined and entities_of.get(cluster['cluster']) %}data-entities="|{{ entities_of[cluster['cluster']]|join('|')|lower|e }}|"{% endif %}
-                 style="--pop: {{ ['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5] }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color'] }}{% endif %}">
+                 style="--pop: {{ (['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][i % 5])|e }};{% if cluster['saga'] %} --saga-edge: {{ cluster['saga']['color']|e }}{% endif %}">
                 {% if cluster['saga'] %}
-                    <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color'] }}"
-                         title="Part of an ongoing story told in {{ cluster['saga']['size'] }} parts, on {{ cluster['saga']['outlets'] }} outlets">
+                    <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color']|e }}"
+                         title="Part of an ongoing story told in {{ cluster['saga']['size']|e }} parts, on {{ cluster['saga']['outlets']|e }} outlets">
                         🧵 {{ cluster['saga']['name'] }} · part {{ cluster['saga']['part_of'][cluster['cluster']] }} of {{ cluster['saga']['size'] }}</div>
                 {% endif %}
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 {% if cluster['blindspot'] %}
                     {% set b = cluster['blindspot'] %}
-                    <div class="card-blindspot" title="A blindspot: {{ b.share }}% of the rated outlets covering it lean {{ b.side }}, far more than our outlets do as a group ({{ b.left }} left, {{ b.center }} center, {{ b.right }} right). The tick marks where an average story splits.">
+                    <div class="card-blindspot" title="A blindspot: {{ b.share|e }}% of the rated outlets covering it lean {{ b.side|e }}, far more than our outlets do as a group ({{ b.left|e }} left, {{ b.center|e }} center, {{ b.right|e }} right). The tick marks where an average story splits.">
                         <span class="card-blindspot-label">🙈 blindspot: mostly {{ b.side }}</span>
                         <span class="bs-meter">
                             <span class="bs-end" aria-hidden="true">🫏</span>
                             <span class="bs-track">
-                                {% if b.left %}<span class="bs-seg bs-left" style="flex: {{ b.left }}"></span>{% endif %}
-                                {% if b.center %}<span class="bs-seg bs-center" style="flex: {{ b.center }}"></span>{% endif %}
-                                {% if b.right %}<span class="bs-seg bs-right" style="flex: {{ b.right }}"></span>{% endif %}
-                                {% if blindspots %}<span class="bs-tick" style="left: {{ blindspots.pool.left }}%"></span>{% endif %}
+                                {% if b.left %}<span class="bs-seg bs-left" style="flex: {{ b.left|e }}"></span>{% endif %}
+                                {% if b.center %}<span class="bs-seg bs-center" style="flex: {{ b.center|e }}"></span>{% endif %}
+                                {% if b.right %}<span class="bs-seg bs-right" style="flex: {{ b.right|e }}"></span>{% endif %}
+                                {% if blindspots %}<span class="bs-tick" style="left: {{ blindspots.pool.left|e }}%"></span>{% endif %}
                             </span>
                             <span class="bs-end" aria-hidden="true">🐘</span>
                         </span>
@@ -742,86 +747,86 @@
                 {% endif %}
                 <div class="meters">
                     {% for feeling in cluster['feelings'] %}
-                        <span class="story-feeling" title="{{ feeling['share'] }}% of the feeling in its headlines">
+                        <span class="story-feeling" title="{{ feeling['share']|e }}% of the feeling in its headlines">
                             <span class="badge-emoji">{{ feeling['emoji'] }}</span>{{ feeling['name'] }} {{ feeling['share'] }}%</span>
                     {% endfor %}
-                    <div class="meter" title="Average lean of the outlets covering this story, relative to all outlets scraped today ({{ cluster['lean']['text'] }})">
-                        <span class="meter-label">covered by{% if cluster['trend'] and cluster['trend']['lean']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['lean']['tip'] }}">{{ cluster['trend']['lean']['arrows'] }}</span>{% endif %}</span>
+                    <div class="meter" title="Average lean of the outlets covering this story, relative to all outlets scraped today ({{ cluster['lean']['text']|e }})">
+                        <span class="meter-label">covered by{% if cluster['trend'] and cluster['trend']['lean']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['lean']['tip']|e }}">{{ cluster['trend']['lean']['arrows'] }}</span>{% endif %}</span>
                         <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>
-                            <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position'] }}%"></span></span>
+                            <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ cluster['lean']['position']|e }}%"></span></span>
                             <span class="meter-end" title="right-leaning outlets">🐘</span></span>
                     </div>
-                    <div class="meter" title="How grim or upbeat its headlines make the news, on average ({{ cluster['mood']['word'] }})">
-                        <span class="meter-label">mood{% if cluster['trend'] and cluster['trend']['mood']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['mood']['tip'] }}">{{ cluster['trend']['mood']['arrows'] }}</span>{% endif %}</span>
+                    <div class="meter" title="How grim or upbeat its headlines make the news, on average ({{ cluster['mood']['word']|e }})">
+                        <span class="meter-label">mood{% if cluster['trend'] and cluster['trend']['mood']['arrows'] %} <span class="trend-arrows" title="{{ cluster['trend']['mood']['tip']|e }}">{{ cluster['trend']['mood']['arrows'] }}</span>{% endif %}</span>
                         <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
-                            <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position'] }}%"></span></span>
+                            <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ cluster['mood']['position']|e }}%"></span></span>
                             <span class="meter-end" title="upbeat">☀️</span></span>
                     </div>
                 </div>
                 <div class="story-extras">
                 {% if cluster['quotes'] %}
                     <p class="story-quotes"><span class="story-quotes-label" title="Phrases the outlets on this story put in quotation marks">💬 quoted</span>
-                        {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %}){% if q.variants %}; also quoted as “{{ q.variants|join('”, “') }}”{% endif %}">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
+                        {% for q in cluster['quotes'] %}<span class="quote-chip quote-{{ q.lead|e }}" title="Quoted by {{ q.outlets|join(', ') }} ({{ q.left|e }} left, {{ q.center|e }} center, {{ q.right|e }} right{% if q.unrated %}, {{ q.unrated|e }} unrated{% endif %}){% if q.variants %}; also quoted as “{{ q.variants|join('”, “') }}”{% endif %}">“{{ q.phrase }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
                     </p>
                 {% endif %}
                 {% if cluster['wording'] %}
                     <p class="story-wording"><span class="story-quotes-label" title="Two-word phrases outlets on one side put in their headlines and no outlet on the other side did (each side needs 3 or more rated outlets on the story)">🗣️ only one side says</span>
-                        {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in cluster['wording'].get(s, []) %}<span class="wording-chip wording-{{ s }}" title="{{ s|capitalize }}-leaning: {{ p.outlets|join(', ')|e }}">{{ emoji }} {{ p.phrase|e }}{% if p.count > 2 %} <b>{{ p.count }}</b>{% endif %}</span>{% endfor %}{% endfor %}
+                        {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in cluster['wording'].get(s, []) %}<span class="wording-chip wording-{{ s|e }}" title="{{ s|capitalize }}-leaning: {{ p.outlets|join(', ')|e }}">{{ emoji }} {{ p.phrase|e }}{% if p.count > 2 %} <b>{{ p.count }}</b>{% endif %}</span>{% endfor %}{% endfor %}
                     </p>
                 {% endif %}
                 {% set on_shows = show_coverage.get(cluster['cluster']) if show_coverage is defined else none %}
                 {% if on_shows %}
                     <div class="story-shows">
                         <span class="story-shows-label">🎙️ on the shows</span>
-                        {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
+                        {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url|e }}" title="{{ p.source|e }}: {{ p.title|e }}" style="--chip: {{ p.color|e }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
                     </div>
                 {% endif %}
                 {% set on_tv = tv_of.get(cluster['cluster']) if tv_of is defined else none %}
                 {% if on_tv %}
                     <div class="story-shows story-tv">
                         <a class="story-shows-label" href="tv.html" title="Minutes this story's captions were on screen in the last day (from the Internet Archive's TV News Archive)">📺 on TV</a>
-                        {% for t in on_tv %}<span class="show-chip tv-chip" style="--chip: {{ t.ink }}" title="{{ t.name }}: {{ t.time }} on screen in the last day">{{ t.name }} <b>{{ t.time }}</b></span>{% endfor %}
+                        {% for t in on_tv %}<span class="show-chip tv-chip" style="--chip: {{ t.ink|e }}" title="{{ t.name|e }}: {{ t.time|e }} on screen in the last day">{{ t.name }} <b>{{ t.time }}</b></span>{% endfor %}
                     </div>
                 {% endif %}
                 {% set on_radio = radio_of.get(cluster['cluster']) if radio_of is defined else none %}
                 {% if on_radio %}
                     <div class="story-shows story-radio">
                         <a class="story-shows-label" href="radio.html" title="Hourly radio newscasts that carried this story in the last day">📻 on the radio</a>
-                        {% for r in on_radio %}<span class="show-chip tv-chip" style="--chip: {{ '#e8463c' if 'NPR' in r.show else '#2f6fe4' }}" title="{{ r.show }}: in {{ r.casts }} newscast{{ '' if r.casts == 1 else 's' }} in the last day{% if r.led %}, the lead in {{ r.led }}{% endif %}">{{ r.show }} <b>{{ r.casts }}×</b>{% if r.led %} · led {{ r.led }}{% endif %}</span>{% endfor %}
+                        {% for r in on_radio %}<span class="show-chip tv-chip" style="--chip: {{ '#e8463c' if 'NPR' in r.show else '#2f6fe4' }}" title="{{ r.show|e }}: in {{ r.casts|e }} newscast{{ '' if r.casts == 1 else 's' }} in the last day{% if r.led %}, the lead in {{ r.led|e }}{% endif %}">{{ r.show }} <b>{{ r.casts }}×</b>{% if r.led %} · led {{ r.led }}{% endif %}</span>{% endfor %}
                     </div>
                 {% endif %}
                 {% set investigated = (investigations or [])|selectattr('story', 'equalto', cluster['cluster'])|list %}
                 {% if investigated %}
                     <div class="story-shows story-investigated">
                         <span class="story-shows-label" title="Investigative and open-source reporting on this story">🕵️ investigated by</span>
-                        {% for p in investigated %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title|e }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.short }}</a>{% endfor %}
+                        {% for p in investigated %}<a class="investigation-source show-chip" href="{{ p.url|e }}" title="{{ p.source|e }}: {{ p.title|e }}" style="--chip: {{ p.color|e }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.short }}</a>{% endfor %}
                     </div>
                 {% endif %}
                 {% set joked = satire_of.get(cluster['cluster']) if satire_of is defined else none %}
                 {% if joked %}
                     <div class="story-shows story-satire">
                         <span class="story-shows-label" title="Satire sites joking about this story. Jokes, not news: they never count as coverage">🃏 joked about by</span>
-                        {% for p in joked %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }} (satire, not news): {{ p.title|e }}" style="--chip: {{ p.color }}">{{ p.source }}</a>{% endfor %}
+                        {% for p in joked %}<a class="investigation-source show-chip" href="{{ p.url|e }}" title="{{ p.source|e }} (satire, not news): {{ p.title|e }}" style="--chip: {{ p.color|e }}">{{ p.source }}</a>{% endfor %}
                     </div>
                 {% endif %}
                 {% set checked = factchecks_of.get(cluster['cluster']) if factchecks_of is defined else none %}
                 {% if checked %}
                     <ul class="story-checks" title="Fact-checkers who examined a claim in this story">
-                        {% for p in checked %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
+                        {% for p in checked %}<li>🔎 <a href="{{ p.url|e }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
                     </ul>
                 {% endif %}
                 {% set retold = retold_of.get(cluster['cluster']) if retold_of is defined else none %}
                 {% if retold %}
                     <div class="story-shows story-retold">
-                        <a class="story-shows-label" href="{% if story_of is defined and cluster['cluster'] in story_of %}story-{{ story_of[cluster['cluster']] }}.html{% else %}folklore.html{% endif %}" title="People retelling this story in their own words on Bluesky and Mastodon, in the latest daily report">🧶 retold online by {{ retold.people }} people</a>
-                        {% for m in retold.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
+                        <a class="story-shows-label" href="{% if story_of is defined and cluster['cluster'] in story_of %}story-{{ story_of[cluster['cluster']]|e }}.html{% else %}folklore.html{% endif %}" title="People retelling this story in their own words on Bluesky and Mastodon, in the latest daily report">🧶 retold online by {{ retold.people }} people</a>
+                        {% for m in retold.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
                     </div>
                 {% endif %}
                 {% if story_of is defined and cluster['cluster'] in story_of %}
-                    <p class="story-link"><a href="story-{{ story_of[cluster['cluster']] }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+                    <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
                 {% endif %}
                 {% if cluster['curators'] %}
-                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ outlet_home(a) or '#' }}" style="{{ chip_style(a, 0) }}" title="{{ a }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
+                    <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ (outlet_home(a) or '#')|e }}" style="{{ (chip_style(a, 0))|e }}" title="{{ a|e }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
                 {% endif %}
                 </div>
                 <div class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</div>
@@ -934,7 +939,7 @@
     <h1>Every headline right now</h1>
     <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, whether it
         presents its news as good or bad, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
-    <p class="table-download"><a href="{{ table_file }}" download="{{ table_download }}">⬇️ Download these headlines as JSON</a></p>
+    <p class="table-download"><a href="{{ table_file|e }}" download="{{ table_download|e }}">⬇️ Download these headlines as JSON</a></p>
     <details class="table-fields">
         <summary>What's in the file</summary>
         <p>A list with one object per headline live on a front page this hour, sorted by buzz. Each has these fields:</p>
@@ -981,7 +986,7 @@
             <div class="table-filters" role="group" aria-label="Filter by feeling">
                 <span>feeling:</span>
                 <button data-filter="feeling" data-value="all" class="active">any</button>
-                {% for name, emoji in emotion_emoji.items() if name != 'neutral' %}<button data-filter="feeling" data-value="{{ name }}" title="Headlines likely to stir {{ name }}, among their strongest feelings">{{ emoji }} {{ name }}</button>
+                {% for name, emoji in emotion_emoji.items() if name != 'neutral' %}<button data-filter="feeling" data-value="{{ name|e }}" title="Headlines likely to stir {{ name|e }}, among their strongest feelings">{{ emoji }} {{ name }}</button>
                 {% endfor %}
             </div>
         </div>

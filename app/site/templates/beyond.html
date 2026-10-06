@@ -9,15 +9,15 @@
     {% if items %}
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter pieces">
             <span class="bar-group"><span class="bar-label">kind:</span>
-                {% for k, n in kind_counts %}<button type="button" data-kind="{{ k }}">{{ kinds.get(k, ('', k))[0] }} {{ kinds.get(k, ('', k))[1]|lower }} <b>{{ n }}</b></button>{% endfor %}</span>
+                {% for k, n in kind_counts %}<button type="button" data-kind="{{ k|e }}">{{ kinds.get(k, ('', k))[0] }} {{ kinds.get(k, ('', k))[1]|lower }} <b>{{ n }}</b></button>{% endfor %}</span>
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">subject:</span>
                 {% for k, n in subject_counts %}<button type="button" data-subject="{{ k|e }}">{{ subject_emoji.get(k, '🏷️') }} {{ subject_label(k)|e }} <b>{{ n }}</b></button>{% endfor %}</span>
         </div>
         <div class="court-cards narrative-cards beyond-cards">
             {% for p in items %}
-                <div class="story court-story narrative" data-kind="{{ p.kind }}" data-subjects="|{{ p.subjects|join('|')|e }}|">
-                    <p class="investigation-meta"><span class="investigation-source" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.kind_emoji }}</span>{{ p.source|e }}</span>
+                <div class="story court-story narrative" data-kind="{{ p.kind|e }}" data-subjects="|{{ p.subjects|join('|')|e }}|">
+                    <p class="investigation-meta"><span class="investigation-source" style="--chip: {{ p.color|e }}"><span aria-hidden="true">{{ p.kind_emoji }}</span>{{ p.source|e }}</span>
                         <span class="trend-posts">{{ p.date }}</span></p>
                     <h4><a href="{{ p.url|e }}">{{ p.title|e }}</a></h4>
                     {% if p.subjects %}<p class="subject-tags">{% for s in p.subjects %}<span class="subject-tag">{{ subject_emoji.get(s, '🏷️') }} {{ subject_label(s)|e }}</span>{% endfor %}</p>{% endif %}
@@ -52,7 +52,7 @@
             <summary>{{ group.emoji }} {{ group.heading }} ({{ group.rows|length }})</summary>
             <ul class="source-list">
                 {% for r in group.rows %}
-                    <li><span class="source-name" style="border-color: {{ r.color or '#b8b8c8' }}">{% if r.home %}<a href="{{ r.home }}">{{ r.name|e }}</a>{% else %}{{ r.name|e }}{% endif %}</span>
+                    <li><span class="source-name" style="border-color: {{ (r.color or '#b8b8c8')|e }}">{% if r.home %}<a href="{{ r.home|e }}">{{ r.name|e }}</a>{% else %}{{ r.name|e }}{% endif %}</span>
                         {% if r.lean %}<span class="source-lean">{{ r.lean }}</span>{% endif %}
                         <span class="source-use">{{ r.use }}</span>
                         {% if r.about %}<span class="source-about">{{ r.about|e }}</span>{% endif %}</li>

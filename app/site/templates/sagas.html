@@ -16,18 +16,18 @@
         </div>
         <div class="saga-track-cards">
             {% for s in sagas %}
-                <div class="saga-card saga-track" id="saga-{{ s.id }}" style="--saga: {{ s.color }}" data-text="{{ s.text|e }}"{% if s.now %} data-now="1"{% endif %}>
+                <div class="saga-card saga-track" id="saga-{{ s.id|e }}" style="--saga: {{ s.color|e }}" data-text="{{ s.text|e }}"{% if s.now %} data-now="1"{% endif %}>
                     <h3>🧵 {{ s.name|e }}</h3>
                     <p class="saga-facts">{% if s.now %}<span class="saga-live">📰 on front pages now</span>{% else %}last on front pages {{ s.ended }} ET{% endif %}</p>
                     <p class="saga-facts">{{ s.parts|length }} parts · {{ s.outlets }} outlets · since {{ s.started }} ET · {{ s.lasted }}</p>
-                    <div class="saga-lean" title="Outlets on any part: {{ s.left }} left, {{ s.center }} center, {{ s.right }} right{% if s.unrated %}, {{ s.unrated }} unrated{% endif %}">
-                        {% for side in ('left', 'center', 'right') %}{% if s.shares[side] %}<span class="saga-lean-{{ side }}" style="width: {{ s.shares[side] }}%">{{ s[side] }}</span>{% endif %}{% endfor %}
+                    <div class="saga-lean" title="Outlets on any part: {{ s.left|e }} left, {{ s.center|e }} center, {{ s.right|e }} right{% if s.unrated %}, {{ s.unrated|e }} unrated{% endif %}">
+                        {% for side in ('left', 'center', 'right') %}{% if s.shares[side] %}<span class="saga-lean-{{ side|e }}" style="width: {{ s.shares[side]|e }}%">{{ s[side] }}</span>{% endif %}{% endfor %}
                     </div>
                     <ol class="saga-timeline">
                         {% for p in s.parts %}
                             <li{% if p.now %} class="saga-now"{% endif %}>
-                                <p class="saga-part-title">{% if p.now %}<a href="index.html#s-{{ p.story }}" title="This part on the front page">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}</p>
-                                <div class="saga-bar-track" aria-hidden="true"><span class="saga-bar" style="left: {{ p.left }}%; width: {{ p.width }}%"></span></div>
+                                <p class="saga-part-title">{% if p.now %}<a href="index.html#s-{{ p.story|e }}" title="This part on the front page">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}</p>
+                                <div class="saga-bar-track" aria-hidden="true"><span class="saga-bar" style="left: {{ p.left|e }}%; width: {{ p.width|e }}%"></span></div>
                                 <p class="saga-part-facts">{{ p.when }} ET to {{ p.until }}{% if p.until != 'now' %} ET{% endif %} · {{ p.outlets }} outlet{{ '' if p.outlets == 1 else 's' }}{% if p.first_outlets %} · first on <span title="{{ p.first_title|e }}">{% if p.first_outlets|length <= 3 %}{{ p.first_outlets|join(', ')|e }}{% else %}{{ p.first_outlets|length }} outlets at once{% endif %}</span>{% endif %}</p>
                             </li>
                         {% endfor %}

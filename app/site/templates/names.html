@@ -19,15 +19,15 @@
                     <h3>🗣️ {{ n.name|e }}</h3>
                     <p class="saga-facts">{% if n.now %}<span class="saga-live">📰 in the news now</span> · {% endif %}{{ n.stories|length }} stories · {{ n.outlets }} outlets · since {{ n.since }} ET</p>
                     <div class="name-days" title="Stories naming {{ n.name|e }} on the front pages each day">
-                        {% for c in n.per_day %}<span class="name-day" title="{{ days[loop.index0] }}: {{ c }} {{ 'story' if c == 1 else 'stories' }}"><span class="name-bar" style="height: {{ (100 * c / n.peak)|round|int }}%"></span><span class="name-day-label">{{ days[loop.index0].split(' ')[1] }}</span></span>{% endfor %}
+                        {% for c in n.per_day %}<span class="name-day" title="{{ days[loop.index0]|e }}: {{ c|e }} {{ 'story' if c == 1 else 'stories' }}"><span class="name-bar" style="height: {{ (100 * c / n.peak)|round|int }}%"></span><span class="name-day-label">{{ days[loop.index0].split(' ')[1] }}</span></span>{% endfor %}
                     </div>
-                    <div class="saga-lean" title="Outlets on any of these stories: {{ n.left }} left, {{ n.center }} center, {{ n.right }} right{% if n.unrated %}, {{ n.unrated }} unrated{% endif %}">
-                        {% for side in ('left', 'center', 'right') %}{% if n.shares[side] %}<span class="saga-lean-{{ side }}" style="width: {{ n.shares[side] }}%">{{ n[side] }}</span>{% endif %}{% endfor %}
+                    <div class="saga-lean" title="Outlets on any of these stories: {{ n.left|e }} left, {{ n.center|e }} center, {{ n.right|e }} right{% if n.unrated %}, {{ n.unrated|e }} unrated{% endif %}">
+                        {% for side in ('left', 'center', 'right') %}{% if n.shares[side] %}<span class="saga-lean-{{ side|e }}" style="width: {{ n.shares[side]|e }}%">{{ n[side] }}</span>{% endif %}{% endfor %}
                     </div>
                     <ol class="saga-timeline">
                         {% for st in n.stories|reverse %}
                             <li{% if st.now %} class="saga-now"{% endif %}>
-                                <p class="saga-part-title">{% if st.now %}<a href="index.html#s-{{ st.id }}" title="This story on the front page">{{ st.label|e }}</a>{% else %}{{ st.label|e }}{% endif %}</p>
+                                <p class="saga-part-title">{% if st.now %}<a href="index.html#s-{{ st.id|e }}" title="This story on the front page">{{ st.label|e }}</a>{% else %}{{ st.label|e }}{% endif %}</p>
                                 <p class="saga-part-facts">{{ st.when }} ET to {{ st.until }}{% if st.until != 'now' %} ET{% endif %} · {{ st.outlets }} outlet{{ '' if st.outlets == 1 else 's' }}</p>
                             </li>
                         {% endfor %}

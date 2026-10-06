@@ -1,18 +1,18 @@
 {% extends "page.html" %}
 
-{% macro chips(items, ink) %}{% for p in items %}<a class="show-chip tv-chip" href="{{ p.url or '#' }}" style="--chip: {{ p.color or ink }}" title="{{ p.source }}{% if p.title %}: {{ p.title|e }}{% endif %}">{% if p.emoji %}{{ p.emoji }} {% endif %}{{ p.source }}</a> {% endfor %}{% endmacro %}
+{% macro chips(items, ink) %}{% for p in items %}<a class="show-chip tv-chip" href="{{ (p.url or '#')|e }}" style="--chip: {{ (p.color or ink)|e }}" title="{{ p.source|e }}{% if p.title %}: {{ p.title|e }}{% endif %}">{% if p.emoji %}{{ p.emoji }} {% endif %}{{ p.source }}</a> {% endfor %}{% endmacro %}
 
-{% macro banner(emoji, title, sub, color) %}<h2 class="section-divider stage-banner" style="--stage: {{ color }}"><span>{{ emoji }} {{ title }}</span></h2>
+{% macro banner(emoji, title, sub, color) %}<h2 class="section-divider stage-banner" style="--stage: {{ color|e }}"><span>{{ emoji }} {{ title }}</span></h2>
     <p class="stage-sub">{{ sub }}</p>{% endmacro %}
 
 {% block content %}
-    <p class="story-page-crumb"><a href="index.html#s-{{ story.id }}">← back to the front page</a></p>
+    <p class="story-page-crumb"><a href="index.html#s-{{ story.id|e }}">← back to the front page</a></p>
     <header class="story-hero">
         <p class="story-kicker"><span>🗞️ Story file #{{ story.id }}</span></p>
         <h2 class="story-page-title">{{ story.label|e }}</h2>
         <p class="saga-facts">{{ since }} ET to {{ until }} ET{% if lean_counts.unrated %} · {{ lean_counts.unrated }} outlet{{ '' if lean_counts.unrated == 1 else 's' }} not rated for lean{% endif %}</p>
         <ul class="story-stickers">
-            {% for k in stickers %}<li style="--sticker: {{ k.color }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
+            {% for k in stickers %}<li style="--sticker: {{ k.color|e }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
         </ul>
     </header>
     <p class="table-intro story-page-intro">👣 How this story traveled: from the front pages that broke it, out through
@@ -22,7 +22,7 @@
 
     {% if flow %}
         <ol class="story-flow" aria-label="Its first moments at each stage">
-            {% for e in flow %}<li class="flow-{{ e.stage }}"><span class="flow-emoji" aria-hidden="true">{{ e.emoji }}</span><span class="flow-text"><span class="flow-when">{{ e.when }} ET</span>{{ e.text }}</span></li>{% endfor %}
+            {% for e in flow %}<li class="flow-{{ e.stage|e }}"><span class="flow-emoji" aria-hidden="true">{{ e.emoji }}</span><span class="flow-text"><span class="flow-when">{{ e.when }} ET</span>{{ e.text }}</span></li>{% endfor %}
         </ol>
     {% endif %}
 
@@ -32,12 +32,12 @@
             <figure class="story-chart-figure">
                 {{ by_lean.svg|safe }}
                 <figcaption>Front pages carrying it at each hourly run, {{ by_lean.from }} to {{ by_lean.to }} ET (peak {{ by_lean.peak }}), by the outlets' lean:
-                    {% for g in by_lean.legend %}<span class="sc-key" style="--key: {{ g.color }}"></span>{{ g.name }}{% if not loop.last %} · {% endif %}{% endfor %}</figcaption>
+                    {% for g in by_lean.legend %}<span class="sc-key" style="--key: {{ g.color|e }}"></span>{{ g.name }}{% if not loop.last %} · {% endif %}{% endfor %}</figcaption>
             </figure>
         {% elif spark %}
-            <figure class="story-spark" title="Outlets with this story on their front pages at each hourly run (peak {{ spark.peak }})">
-                <svg viewBox="0 0 {{ spark.width }} {{ spark.height }}" width="{{ spark.width }}" height="{{ spark.height }}" role="img" aria-label="Outlets covering it over time, peak {{ spark.peak }}">
-                    <polyline points="{{ spark.points }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+            <figure class="story-spark" title="Outlets with this story on their front pages at each hourly run (peak {{ spark.peak|e }})">
+                <svg viewBox="0 0 {{ spark.width|e }} {{ spark.height|e }}" width="{{ spark.width|e }}" height="{{ spark.height|e }}" role="img" aria-label="Outlets covering it over time, peak {{ spark.peak|e }}">
+                    <polyline points="{{ spark.points|e }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
                 </svg>
                 <figcaption>outlets with it on their front pages, {{ spark.from }} to {{ spark.to }} ET (peak {{ spark.peak }})</figcaption>
             </figure>
@@ -55,7 +55,7 @@
         {% if wire %}<p title="Headlines nearly word for word the same as the wire service's, as on the outlets page">📡 wire copy: {{ wire.outlets|length }} outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires }} headline nearly word for word ({{ wire.outlets|join(', ') }})</p>{% endif %}
         {% if extras.curators %}<p>📌 linked by aggregators: {{ chips(extras.curators, '#888') }}</p>{% endif %}
         {% if extras.quotes %}<p>💬 quoted: {% for q in extras.quotes[:8] %}<span class="quote-chip">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span> {% endfor %}</p>{% endif %}
-        {% if extras.wording %}<p>🗣️ only one side says: {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in extras.wording.get(s, []) %}<span class="wording-chip wording-{{ s }}">{{ emoji }} {{ p.phrase|e }}</span> {% endfor %}{% endfor %}</p>{% endif %}
+        {% if extras.wording %}<p>🗣️ only one side says: {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in extras.wording.get(s, []) %}<span class="wording-chip wording-{{ s|e }}">{{ emoji }} {{ p.phrase|e }}</span> {% endfor %}{% endfor %}</p>{% endif %}
         </div>{% endif %}
         {% if rewordings %}
             <details class="story-rewordings"><summary>✏️ {{ rewordings|length }} outlet{{ '' if rewordings|length == 1 else 's' }} ran more than one headline on it (reworded, or a follow-up)</summary>
@@ -65,8 +65,8 @@
         <details class="story-rewordings"><summary>Every outlet's first headline ({{ outlets|length }}), left to right by AllSides rating</summary>
             <ul class="story-page-headlines">
                 {% for h in outlets %}
-                    <li><a class="edit-chip" style="{{ h.chip }}" title="{{ h.outlet }}: {{ h.lean }}">{{ h.icon }}{{ h.short }}</a>
-                        <a href="{{ h.url }}">{{ h.title|e }}</a> <span class="tv-time">{{ h.when }} ET</span></li>
+                    <li><a class="edit-chip" style="{{ h.chip|e }}" title="{{ h.outlet|e }}: {{ h.lean|e }}">{{ h.icon }}{{ h.short }}</a>
+                        <a href="{{ h.url|e }}">{{ h.title|e }}</a> <span class="tv-time">{{ h.when }} ET</span></li>
                 {% endfor %}
             </ul>
         </details>
@@ -79,7 +79,7 @@
                 {% if tv %}
                     <div class="saga-card story-page-card" style="--saga: #cc0000">
                         <h3><a href="tv.html">📺 On TV</a></h3>
-                        <div class="story-tv-bars">{% for t in tv.channels %}<div class="story-tv-row"><span class="story-tv-name">{{ t.name }}</span><span class="story-tv-bar" style="--ink: {{ t.ink }}; width: {{ [t.share or 100, 3]|max }}%"></span><b>{{ t.time }}</b></div>{% endfor %}</div>
+                        <div class="story-tv-bars">{% for t in tv.channels %}<div class="story-tv-row"><span class="story-tv-name">{{ t.name }}</span><span class="story-tv-bar" style="--ink: {{ t.ink|e }}; width: {{ [t.share or 100, 3]|max }}%"></span><b>{{ t.time }}</b></div>{% endfor %}</div>
                         <ul class="radio-items">{% for c in tv.captions %}<li>{{ c.text|e }} <span class="tv-time">{{ c.channel }}, {{ c.time }}</span></li>{% endfor %}</ul>
                     </div>
                 {% endif %}
@@ -109,7 +109,7 @@
                 <div class="saga-card story-page-card" style="--saga: #8a5cff">
                 <h3><a href="folklore.html">🧶 Retold online</a></h3>
                 <ul class="radio-items">{% for f in folklore %}<li>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people{% if f.relation and f.relation != 'same event' %} ({{ f.relation }}){% endif %}{% if f.before %}; told before on {{ f.before|map(attribute='day')|join(', ') }}{% endif %}</span>
-                    {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
+                    {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
                 <p class="tv-time"><a href="folklore.html">On Folklore</a>: these in full, with their motifs and who is telling them.</p>
                 </div>
             {% else %}
@@ -122,7 +122,7 @@
         {{ banner('🔎', 'Checking', 'what the fact-checkers looked into', '#ffc400') }}
         {% if extras.factchecks %}
             <div class="saga-card story-page-card" style="--saga: #f5b700">
-                <ul class="story-checks">{% for p in extras.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}</ul>
+                <ul class="story-checks">{% for p in extras.factchecks %}<li>🔎 <a href="{{ p.url|e }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}</ul>
             </div>
         {% else %}
             <p class="stage-empty">🧐 No fact-checker has taken it on yet.</p>
@@ -136,7 +136,7 @@
                 <h3><a href="sagas.html">{{ story.saga.name|e }}</a></h3>
                 <ol class="saga-timeline">
                     {% for p in story.saga.parts %}
-                        <li{% if p.id == story.id %} class="saga-now"{% endif %}><p class="saga-part-title">{% if p.id == story.id %}<b>{{ p.label|e }}</b> (this story){% else %}<a href="story-{{ p.id }}.html">{{ p.label|e }}</a>{% endif %}</p><p class="saga-part-facts">{{ p.when }} ET</p></li>
+                        <li{% if p.id == story.id %} class="saga-now"{% endif %}><p class="saga-part-title">{% if p.id == story.id %}<b>{{ p.label|e }}</b> (this story){% else %}<a href="story-{{ p.id|e }}.html">{{ p.label|e }}</a>{% endif %}</p><p class="saga-part-facts">{{ p.when }} ET</p></li>
                     {% endfor %}
                 </ol>
             </div>

@@ -3,26 +3,26 @@
 {% macro meters(a) %}
     <div class="meters">
         {% for feeling in a.feelings %}
-            <span class="story-feeling" title="{{ feeling['share'] }}% of the feeling in its headlines">
+            <span class="story-feeling" title="{{ feeling['share']|e }}% of the feeling in its headlines">
                 <span class="badge-emoji">{{ feeling['emoji'] }}</span>{{ feeling['name'] }} {{ feeling['share'] }}%</span>
         {% endfor %}
-        <div class="meter" title="Average lean of the outlets covering it, against all the Court coverage ({{ a.lean.text }}): {{ a.counts.get('left', 0) }} left-leaning, {{ a.counts.get('center', 0) }} center, {{ a.counts.get('right', 0) }} right-leaning{% if a.counts.get('unrated') %}, {{ a.counts.unrated }} not rated{% endif %}">
+        <div class="meter" title="Average lean of the outlets covering it, against all the Court coverage ({{ a.lean.text|e }}): {{ (a.counts.get('left', 0))|e }} left-leaning, {{ (a.counts.get('center', 0))|e }} center, {{ (a.counts.get('right', 0))|e }} right-leaning{% if a.counts.get('unrated') %}, {{ a.counts.unrated|e }} not rated{% endif %}">
             <span class="meter-label">covered by</span>
             <span class="meter-bar"><span class="meter-end" title="left-leaning outlets">🫏</span>
-                <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ a.lean.position }}%"></span></span>
+                <span class="meter-track lean-track"><span class="meter-dot" style="left: {{ a.lean.position|e }}%"></span></span>
                 <span class="meter-end" title="right-leaning outlets">🐘</span></span>
         </div>
-        <div class="meter" title="How grim or upbeat its headlines make the news, on average ({{ a.mood.word }})">
+        <div class="meter" title="How grim or upbeat its headlines make the news, on average ({{ a.mood.word|e }})">
             <span class="meter-label">mood</span>
             <span class="meter-bar"><span class="meter-end" title="grim">⛈️</span>
-                <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ a.mood.position }}%"></span></span>
+                <span class="meter-track mood-track"><span class="meter-dot" style="left: {{ a.mood.position|e }}%"></span></span>
                 <span class="meter-end" title="upbeat">☀️</span></span>
         </div>
         {% if a.spice_position is not none %}
-        <div class="meter" title="Spice {{ a.spice }} (0 plain to 2 loaded, averaged over its headlines). {{ spicy_tip }}">
+        <div class="meter" title="Spice {{ a.spice|e }} (0 plain to 2 loaded, averaged over its headlines). {{ spicy_tip|e }}">
             <span class="meter-label">spice</span>
             <span class="meter-bar"><span class="meter-end" title="plain">🍞</span>
-                <span class="meter-track spice-track"><span class="meter-dot" style="left: {{ a.spice_position }}%"></span></span>
+                <span class="meter-track spice-track"><span class="meter-dot" style="left: {{ a.spice_position|e }}%"></span></span>
                 <span class="meter-end" title="spicy">🌶️</span></span>
         </div>
         {% endif %}
@@ -32,17 +32,17 @@
 {% macro extras(a) %}
     {% if a.quotes %}
         <p class="story-quotes"><span class="story-quotes-label" title="Phrases the outlets put in quotation marks">💬 quoted</span>
-            {% for q in a.quotes %}<span class="quote-chip quote-{{ q.lead }}" title="Quoted by {{ q.outlets|join(', ')|e }} ({{ q.left }} left, {{ q.center }} center, {{ q.right }} right{% if q.unrated %}, {{ q.unrated }} unrated{% endif %}){% if q.variants %}; also quoted as “{{ q.variants|join('”, “')|e }}”{% endif %}">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
+            {% for q in a.quotes %}<span class="quote-chip quote-{{ q.lead|e }}" title="Quoted by {{ q.outlets|join(', ')|e }} ({{ q.left|e }} left, {{ q.center|e }} center, {{ q.right|e }} right{% if q.unrated %}, {{ q.unrated|e }} unrated{% endif %}){% if q.variants %}; also quoted as “{{ q.variants|join('”, “')|e }}”{% endif %}">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span>{% endfor %}
         </p>
     {% endif %}
     {% if a.framing %}
         <div class="court-framing" title="Each side's most loaded headline on it">
             {% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}
                 {% set h = a.framing[side] %}
-                <a class="court-frame court-frame-{{ side }}" href="{{ h.url|e }}">
+                <a class="court-frame court-frame-{{ side|e }}" href="{{ h.url|e }}">
                     <span class="court-frame-side">{{ emoji }} {{ side }}-leaning</span>
                     <span class="court-frame-title">“{{ h.title|e }}”</span>
-                    <span class="edit-chip" style="{{ h.style }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
+                    <span class="edit-chip" style="{{ h.style|e }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
                 </a>
             {% endfor %}
         </div>
@@ -52,8 +52,8 @@
 {% macro headline_list(rows) %}
     <ul class="court-headlines">
         {% for h in rows %}
-            <li><span class="court-stage" title="{{ h.stage }}">{{ h.emoji }}</span>
-                <span class="edit-chip" style="{{ h.style }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
+            <li><span class="court-stage" title="{{ h.stage|e }}">{{ h.emoji }}</span>
+                <span class="edit-chip" style="{{ h.style|e }}">{{ outlet_icon(h.agency) }}{{ short_name(h.agency) }}</span>
                 <a href="{{ h.url|e }}">{{ h.title|e }}</a>
                 <span class="court-when">{{ h.when }}</span></li>
         {% endfor %}
@@ -61,7 +61,7 @@
 {% endmacro %}
 
 {% macro outlet_chips(a) %}
-    <div class="story-outlets">{% for c in a.chips %}<a class="storylink" href="{{ c.url|e }}" style="{{ c.style }}" title="{{ c.agency|e }}">{{ outlet_icon(c.agency) }}{{ c.short }}</a>{% endfor %}</div>
+    <div class="story-outlets">{% for c in a.chips %}<a class="storylink" href="{{ c.url|e }}" style="{{ c.style|e }}" title="{{ c.agency|e }}">{{ outlet_icon(c.agency) }}{{ c.short }}</a>{% endfor %}</div>
 {% endmacro %}
 
 {% block content %}
@@ -69,7 +69,7 @@
     <p class="poll-note">{% if term %}October Term {{ term }}: {% endif %}{{ n_cases }} cases on the docket, {{ cards|length }}
         in the news, from {{ total }} headlines about the Court in the last {{ window_days }} days.
         {% if argued_soon %}Argued this week:
-            {% for c in argued_soon %}<a href="{% if c.headlines %}#case-{{ c.docket }}{% else %}{{ c.docket_url }}{% endif %}">{{ (c.gloss or c.name)|e }}</a> ({{ c.argued_text }}){% if not loop.last %}, {% endif %}{% endfor %}.
+            {% for c in argued_soon %}<a href="{% if c.headlines %}#case-{{ c.docket|e }}{% else %}{{ c.docket_url|e }}{% endif %}">{{ (c.gloss or c.name)|e }}</a> ({{ c.argued_text }}){% if not loop.last %}, {% endif %}{% endfor %}.
         {% endif %}</p>
     <details class="how-it-works">
         <summary>How this works</summary>
@@ -126,12 +126,12 @@
         <h3 id="court-cases">Cases in the news</h3>
         <div class="court-cards">
             {% for c in cards %}
-                <div class="story court-story" id="case-{{ c.docket }}">
+                <div class="story court-story" id="case-{{ c.docket|e }}">
                     <h4>{{ (c.gloss or c.name)|e }}</h4>
-                    <p class="court-meta"><a href="{{ c.docket_url }}">{{ c.name|e }}</a> · No. {{ (c.dockets or [c.docket])|join(', ') }}{% if c.dockets and c.dockets|length > 1 %} · companion cases: one question, argued together{% endif %}
+                    <p class="court-meta"><a href="{{ c.docket_url|e }}">{{ c.name|e }}</a> · No. {{ (c.dockets or [c.docket])|join(', ') }}{% if c.dockets and c.dockets|length > 1 %} · companion cases: one question, argued together{% endif %}
                         {% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}</p>
                     <p class="court-stages">📰 <b>{{ c.outlets }}</b> outlet{{ 's' if c.outlets != 1 }}
-                        {% for stage, n in c.stage_list %} · <span title="{{ stage }}">{{ stage_emoji[stage] }} {{ stage }} {{ n }}</span>{% endfor %}</p>
+                        {% for stage, n in c.stage_list %} · <span title="{{ stage|e }}">{{ stage_emoji[stage] }} {{ stage }} {{ n }}</span>{% endfor %}</p>
                     {{ meters(c) }}
                     <div class="story-extras">{{ extras(c) }}</div>
                     {{ outlet_chips(c) }}
@@ -152,7 +152,7 @@
                         <p class="court-meta">“{{ t.lead.title|e }}”</p>
                     {% else %}<h4>{{ t.lead.title|e }}</h4>{% endif %}
                     <p class="court-stages">📰 <b>{{ t.outlets }}</b> outlets
-                        {% for stage, n in t.stage_list %} · <span title="{{ stage }}">{{ stage_emoji[stage] }} {{ stage }}{% if t.stage_list|length > 1 %} {{ n }}{% endif %}</span>{% endfor %}
+                        {% for stage, n in t.stage_list %} · <span title="{{ stage|e }}">{{ stage_emoji[stage] }} {{ stage }}{% if t.stage_list|length > 1 %} {{ n }}{% endif %}</span>{% endfor %}
                         {% for topic in t.topics %} <span class="court-topic-word">#{{ topic|e }}</span>{% endfor %}</p>
                     {{ meters(t) }}
                     <div class="story-extras">{{ extras(t) }}</div>
@@ -193,7 +193,7 @@
     </div>
     <div class="court-uncovered" id="court-term-list">
         {% for c in term_cases %}
-            <a class="court-quiet{% if c.outlets %} covered{% endif %}" data-outlets="{{ c.outlets }}" data-date="{{ loop.index0 }}" href="{% if c.outlets >= min_card %}#case-{{ c.docket }}{% else %}{{ c.docket_url }}{% endif %}" title="{{ c.name|e }}, No. {{ c.docket }}{% if c.question %}: {{ c.question[:300]|e }}{% endif %}">
+            <a class="court-quiet{% if c.outlets %} covered{% endif %}" data-outlets="{{ c.outlets|e }}" data-date="{{ loop.index0|e }}" href="{% if c.outlets >= min_card %}#case-{{ c.docket|e }}{% else %}{{ c.docket_url|e }}{% endif %}" title="{{ c.name|e }}, No. {{ c.docket|e }}{% if c.question %}: {{ c.question[:300]|e }}{% endif %}">
                 {% if c.gloss %}<span class="court-gloss-tag">{{ c.gloss|e }}</span>{% endif %}
                 <span class="court-quiet-name">{{ c.name|e }}</span>
                 <span class="court-when">No. {{ (c.dockets or [c.docket])|join(', ') }}{% if c.argued_text %} · {% if c.argued_past %}argued{% else %}to be argued{% endif %} {{ c.argued_text }}{% endif %}

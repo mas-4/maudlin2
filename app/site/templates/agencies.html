@@ -7,7 +7,7 @@
                         'surprise': '#fff1b3', 'joy': '#ffe066', 'hope': '#c8f7e6'} %}
 
 {% macro badge(emoji, text, tint, title='') %}
-    <span class="badge" style="--tint: {{ tint }}"{% if title %} title="{{ title }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
+    <span class="badge" style="--tint: {{ tint|e }}"{% if title %} title="{{ title|e }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
 {% endmacro %}
 
 {% block content %}
@@ -30,10 +30,10 @@
     <div class="lineup">
         {% for column in lineup %}
             <div class="lineup-column">
-                <div class="lineup-head{% if column.unrated %} lineup-unrated{% endif %}" style="background-color: {{ column.color }}; color: {{ column.ink }}">{{ column.name }}</div>
+                <div class="lineup-head{% if column.unrated %} lineup-unrated{% endif %}" style="background-color: {{ column.color|e }}; color: {{ column.ink|e }}">{{ column.name }}</div>
                 {% for o in column.outlets %}
-                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}"
-                       style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name }}{% if o.estimate %} (our estimate){% endif %}">{{ short_name(o.name) }}{% if o.estimate %} <small>est.</small>{% endif %}</span></a>
+                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug|e }}"
+                       style="{{ o.style|e }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name|e }}{% if o.estimate %} (our estimate){% endif %}">{{ short_name(o.name) }}{% if o.estimate %} <small>est.</small>{% endif %}</span></a>
                 {% endfor %}
             </div>
         {% endfor %}
@@ -43,7 +43,7 @@
             <div class="unrated-head">Not rated <span>· off the left-right scale: AllSides doesn't rate them and our estimate isn't confident</span></div>
             <div class="unrated-chips">
                 {% for o in unrated_outlets %}
-                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug }}" style="{{ o.style }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name }}">{{ short_name(o.name) }}</span></a>
+                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug|e }}" style="{{ o.style|e }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name|e }}">{{ short_name(o.name) }}</span></a>
                 {% endfor %}
             </div>
         </div>
@@ -65,14 +65,14 @@
     </div>
     <div class="outlet-cards">
         {% for o in outlets %}
-            <div class="outlet-card" id="outlet-{{ o.slug }}" style="--pop: {{ o.color }}"
-                 data-name="{{ o.name.removeprefix('The ') }}" data-lean="{{ o.bias if o.bias is not none else 9 }}"
-                 data-spice="{{ o.spice.value if o.spice else -1 }}" data-mood="{{ o.mood.value if o.mood else 9 }}"
-                 data-framing="{{ o.framing.value if o.framing else 9 }}" data-edits="{{ o.edits }}"
-                 data-headlines="{{ o.headlines }}">
+            <div class="outlet-card" id="outlet-{{ o.slug|e }}" style="--pop: {{ o.color|e }}"
+                 data-name="{{ (o.name.removeprefix('The '))|e }}" data-lean="{{ (o.bias if o.bias is not none else 9)|e }}"
+                 data-spice="{{ (o.spice.value if o.spice else -1)|e }}" data-mood="{{ (o.mood.value if o.mood else 9)|e }}"
+                 data-framing="{{ (o.framing.value if o.framing else 9)|e }}" data-edits="{{ o.edits|e }}"
+                 data-headlines="{{ o.headlines|e }}">
                 <div class="outlet-head">
-                    <span class="edit-chip outlet-name{% if short_name(o.name)|length > 18 %} long-name{% endif %}" style="{{ o.style }}" title="{{ o.name }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
-                    <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
+                    <span class="edit-chip outlet-name{% if short_name(o.name)|length > 18 %} long-name{% endif %}" style="{{ o.style|e }}" title="{{ o.name|e }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
+                    <span class="outlet-flag" title="{{ o.country|e }}">{{ o.flag }}</span>
                 </div>
                 {% if o.wiki %}
                     {% set w = o.wiki %}
@@ -81,10 +81,10 @@
                         {% if w.founded %}<span>📅 since {{ w.founded }}</span>{% endif %}
                         {% if w.headquarters %}<span>📍 {{ w.headquarters[0] }}</span>{% endif %}
                     </div>
-                    {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
+                    {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url|e }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
                 {% endif %}
                 <div class="outlet-facts">
-                    {% if o.lean_url %}<a href="{{ o.lean_url }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% elif o.estimate %}<span title="Not rated by AllSides; estimated from its headlines' wording">⚖️ est. {{ o.estimate }} (ours)</span>{% else %}⚖️ not rated by AllSides{% endif %}
+                    {% if o.lean_url %}<a href="{{ o.lean_url|e }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% elif o.estimate %}<span title="Not rated by AllSides; estimated from its headlines' wording">⚖️ est. {{ o.estimate }} (ours)</span>{% else %}⚖️ not rated by AllSides{% endif %}
                     · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% if o.reliability_note %} ({{ o.reliability_note }}){% endif %}{% else %}not on Wikipedia's list{% endif %}
                 </div>
                 <div class="outlet-badges">
@@ -96,7 +96,7 @@
                     {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff', 'Its headlines are the copy other outlets run') }}{% elif o.wire is not none %}{{ badge('📡', (o.wire ~ '% wire copy') if o.wire else 'no wire copy', '#e0d4ff', 'Share of its headlines in ' ~ window_days ~ ' days that are AP or Reuters headlines, word for word or nearly') }}{% endif %}
                 </div>
                 <div class="outlet-count">📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</div>
-                <a class="outlet-profile-link" href="outlet-{{ o.slug }}.html">full profile →</a>
+                <a class="outlet-profile-link" href="outlet-{{ o.slug|e }}.html">full profile →</a>
             </div>
         {% endfor %}
     </div>

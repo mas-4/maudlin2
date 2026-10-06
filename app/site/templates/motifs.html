@@ -20,7 +20,7 @@
         <p class="poll-note"><label>Search: <input type="search" id="motif-search" placeholder="a word in a motif or claim"></label></p>
         <div class="court-cards narrative-cards motif-cards">
             {% for e in entries %}
-                <div class="story court-story narrative motif-entry" id="{{ e.id }}" data-text="{{ (e.name ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
+                <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-text="{{ (e.name ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
                     <p class="court-when">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %}</p>
                     <h4>🧩 {{ e.name|e }}</h4>
                     {% if e.note %}<p class="motif-note">{{ e.note|e }}</p>{% endif %}

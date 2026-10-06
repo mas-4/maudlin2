@@ -5,15 +5,15 @@
 {% set FRAMING_TINTS = {'😈': '#e0d4ff', '😇': '#fff1b3', '🤝': '#eef1f6'} %}
 
 {% macro badge(emoji, text, tint, title='') %}
-    <span class="badge" style="--tint: {{ tint }}"{% if title %} title="{{ title }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
+    <span class="badge" style="--tint: {{ tint|e }}"{% if title %} title="{{ title|e }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
 {% endmacro %}
 
 {% block content %}
-    <p class="outlet-back"><a href="agencies.html#outlet-{{ o.slug }}">← all outlets</a></p>
-    <div class="outlet-profile" style="--pop: {{ o.color }}">
+    <p class="outlet-back"><a href="agencies.html#outlet-{{ o.slug|e }}">← all outlets</a></p>
+    <div class="outlet-profile" style="--pop: {{ o.color|e }}">
         <div class="outlet-profile-head">
-            <span class="edit-chip outlet-profile-name" style="{{ o.style }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
-            <span class="outlet-flag" title="{{ o.country }}">{{ o.flag }}</span>
+            <span class="edit-chip outlet-profile-name" style="{{ o.style|e }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
+            <span class="outlet-flag" title="{{ o.country|e }}">{{ o.flag }}</span>
         </div>
         {% if o.wiki %}
             {% set w = o.wiki %}
@@ -22,10 +22,10 @@
                 {% if w.founded %}<span>📅 since {{ w.founded }}</span>{% endif %}
                 {% if w.headquarters %}<span>📍 {{ w.headquarters[0] }}</span>{% endif %}
             </div>
-            {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
+            {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url|e }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
         {% endif %}
         <div class="outlet-facts">
-            {% if o.lean_url %}<a href="{{ o.lean_url }}">⚖️ {{ o.lean }} (AllSides)</a>{% elif o.estimate %}⚖️ est. {{ o.estimate }} (ours){% else %}⚖️ not rated by AllSides{% endif %}
+            {% if o.lean_url %}<a href="{{ o.lean_url|e }}">⚖️ {{ o.lean }} (AllSides)</a>{% elif o.estimate %}⚖️ est. {{ o.estimate }} (ours){% else %}⚖️ not rated by AllSides{% endif %}
             · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% else %}not on Wikipedia's list{% endif %}
         </div>
         <div class="outlet-badges">
@@ -41,7 +41,7 @@
     {% if feelings %}
         <h2 class="section-divider"><span>The feelings in its headlines</span></h2>
         <div class="feeling-bar" title="Each feeling's share of its headlines on the front page now, ranked-choice style">
-            {% for f in feelings %}<span class="feeling-seg" style="flex: {{ f.share }}; --c: {{ f.color }}" title="{{ f.name }} {{ f.share }}%">{% if f.share >= 6 %}{{ f.emoji }} {{ f.share }}%{% endif %}</span>{% endfor %}
+            {% for f in feelings %}<span class="feeling-seg" style="flex: {{ f.share|e }}; --c: {{ f.color|e }}" title="{{ f.name|e }} {{ f.share|e }}%">{% if f.share >= 6 %}{{ f.emoji }} {{ f.share }}%{% endif %}</span>{% endfor %}
         </div>
     {% endif %}
 
@@ -49,7 +49,7 @@
     {% if now %}
         <ol class="outlet-now">
             {% for h in now %}
-                <li><a href="{{ h.url }}">{{ h.title }}</a>{% if h.story %} <a class="trend-both" href="index.html#story-{{ h.story[0] }}" title="Part of the story: {{ h.story[1] }}">📰 {{ h.story[1] }}</a>{% endif %}</li>
+                <li><a href="{{ h.url|e }}">{{ h.title }}</a>{% if h.story %} <a class="trend-both" href="index.html#story-{{ h.story[0]|e }}" title="Part of the story: {{ h.story[1]|e }}">📰 {{ h.story[1] }}</a>{% endif %}</li>
             {% endfor %}
         </ol>
     {% else %}

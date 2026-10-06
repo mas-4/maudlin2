@@ -8,7 +8,7 @@
         {% if g and g.mean %}
             <h3>Generic congressional ballot: Democrats {{ '%+.1f'|format(g.mean.margin) }}</h3>
             {% if polling.chart_generic %}
-                <img alt="Generic congressional ballot margin" src="{{ FileNames.generic_ballot }}">
+                <img alt="Generic congressional ballot margin" src="{{ FileNames.generic_ballot|e }}">
             {% endif %}
             <table class="races">
                 <thead><tr><th>Average</th><th>Dem</th><th>Rep</th><th>Margin</th></tr></thead>
@@ -23,7 +23,7 @@
         {% if a and a.mean %}
             <h3>Trump job approval: {{ a.mean.Approve }}% approve, {{ a.mean.Disapprove }}% disapprove</h3>
             {% if polling.chart_approval %}
-                <img alt="Trump job approval" src="{{ FileNames.approval }}">
+                <img alt="Trump job approval" src="{{ FileNames.approval|e }}">
             {% endif %}
             <table class="races">
                 <thead><tr><th>Average</th><th>Approve</th><th>Disapprove</th><th>Net</th></tr></thead>
@@ -36,8 +36,8 @@
             </table>
         {% endif %}
         <p class="poll-note">Headline numbers are the mean of the published averages listed, as tabulated on
-            Wikipedia (<a href="https://en.wikipedia.org/wiki/{{ g.page if g else '' }}">generic ballot</a>,
-            <a href="https://en.wikipedia.org/wiki/{{ a.page if a else '' }}">approval</a>;
+            Wikipedia (<a href="https://en.wikipedia.org/wiki/{{ (g.page if g else '')|e }}">generic ballot</a>,
+            <a href="https://en.wikipedia.org/wiki/{{ (a.page if a else '')|e }}">approval</a>;
             <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>).</p>
 
         {% if polling.senate %}
@@ -74,5 +74,5 @@
     {% endif %}
 
     <h2>How the press covers each party</h2>
-    <img alt="Sentiment of headlines mentioning each party" src="{{ FileNames.mentions_graph }}">
+    <img alt="Sentiment of headlines mentioning each party" src="{{ FileNames.mentions_graph|e }}">
 {% endblock content %}

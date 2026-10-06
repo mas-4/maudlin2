@@ -29,9 +29,9 @@
                     <th data-sort="number">Headlines</th><th data-sort="number">Per 100</th></tr></thead>
                 <tbody>
                 {% for r in rates %}
-                    <tr><td><span class="edit-chip" style="{{ r.style }}" title="{{ r.agency }}">{{ outlet_icon(r.agency) }}{{ short_name(r.agency) }}</span></td>
-                        <td data-value="{{ r.edits }}">{{ r.edits }}</td><td data-value="{{ r.headlines }}">{{ r.headlines }}</td>
-                        <td data-value="{{ r.per_100 }}">{{ r.per_100 }}</td></tr>
+                    <tr><td><span class="edit-chip" style="{{ r.style|e }}" title="{{ r.agency|e }}">{{ outlet_icon(r.agency) }}{{ short_name(r.agency) }}</span></td>
+                        <td data-value="{{ r.edits|e }}">{{ r.edits }}</td><td data-value="{{ r.headlines|e }}">{{ r.headlines }}</td>
+                        <td data-value="{{ r.per_100|e }}">{{ r.per_100 }}</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -48,9 +48,9 @@
             each test below lists the wordings, how long each was up, and the winner once only one is left.</p>
         <div class="edits ab-tests">
             {% for t in tests %}
-                <div class="edit ab-test ab-{{ t.state }}">
+                <div class="edit ab-test ab-{{ t.state|e }}">
                     <div class="edit-meta">
-                        <span class="edit-chip" style="{{ t.style }}">{{ outlet_icon(t.agency) }}{{ short_name(t.agency) }}</span>
+                        <span class="edit-chip" style="{{ t.style|e }}">{{ outlet_icon(t.agency) }}{{ short_name(t.agency) }}</span>
                         <span class="ab-state">{% if t.state == 'running' %}🧪 testing {{ t.variants|length }} wordings since {{ t.started }} ET{% elif t.state == 'won' %}🏆 settled by {{ t.latest }} ET, {{ t.variants|length }} wordings tried{% else %}off the front page {{ t.latest }} ET, no winner seen{% endif %}</span>
                     </div>
                     <ol class="ab-variants">
@@ -81,16 +81,16 @@
     {% endif %}
     <div class="edits" id="rewrites">
         {% for edit in edits %}
-            <div class="edit" data-when="{{ edit.when }}" data-agency="{{ edit.agency|lower|e }}" data-shifts="{{ edit.shifts|join('|')|e }}">
+            <div class="edit" data-when="{{ edit.when|e }}" data-agency="{{ edit.agency|lower|e }}" data-shifts="{{ edit.shifts|join('|')|e }}">
                 <div class="edit-meta">
-                    <span class="edit-chip" style="{{ edit.style }}" title="{{ edit.bias }}">{{ outlet_icon(edit.agency) }}{{ short_name(edit.agency) }}</span>
+                    <span class="edit-chip" style="{{ edit.style|e }}" title="{{ edit.bias|e }}">{{ outlet_icon(edit.agency) }}{{ short_name(edit.agency) }}</span>
                     <span class="edit-source">{{ edit.source }}</span>
                     <span>changed between {{ edit.between }}</span>
                     {% for note in edit.shifts %}<span class="trend-both">{{ note }}</span>{% endfor %}
                     {% if edit.change %}<span class="edit-change" title="The language model's reading of the two versions side by side">✏️ {{ edit.change }}</span>{% endif %}
                 </div>
                 <p class="edit-before">{{ edit.before_html|safe }}</p>
-                <p class="edit-after"><a href="{{ edit.url }}">{{ edit.after_html|safe }}</a></p>
+                <p class="edit-after"><a href="{{ edit.url|e }}">{{ edit.after_html|safe }}</a></p>
             </div>
         {% else %}
             <p>No headline changes yet.</p>

@@ -2,12 +2,12 @@
 
 {% block content %}
     <h1>{{ title }}</h1>
-    <img src="{{ topic.wordcloud }}" alt="{{ title }} Wordcloud">
-    <img src="{{ topic.graph }}" alt="{{ title }} Graph">
+    <img src="{{ topic.wordcloud|e }}" alt="{{ title|e }} Wordcloud">
+    <img src="{{ topic.graph|e }}" alt="{{ title|e }} Graph">
     <ul>
         {% for date in dates %}
             {% if date.topic == title %}
-            <li style="color: {{ topic_colors[date.topic] }}">{{ date.i }}: {{ date.name }} ({{ date.date.strftime("%m/%d") }})</li>
+            <li style="color: {{ topic_colors[date.topic]|e }}">{{ date.i }}: {{ date.name }} ({{ date.date.strftime("%m/%d") }})</li>
             {% endif %}
         {% endfor %}
     </ul>

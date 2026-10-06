@@ -80,13 +80,13 @@
                 {% if with_motifs %}<button type="button" data-filter="motifs" title="Only stories filed under a motif in our motif index">🧩 has a motif <b>{{ with_motifs }}</b></button>{% endif %}</span>
             {% if motif_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">motif:</span>
-                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id }}" title="{{ m.id }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id|e }}" title="{{ m.id|e }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             {% if class_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">rumor:</span>
-                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k }}" title="{{ rumor_classes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k|e }}" title="{{ rumor_classes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             {% if scope_counts and preview %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">conspiracy:</span>
-                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k }}" title="{{ conspiracy_scopes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k|e }}" title="{{ conspiracy_scopes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">genre:</span>
                 {% for genre, n in genres %}<button type="button" data-genre="{{ genre|e }}">{{ genre_emoji.get(genre, '🧶') }} {{ genre|e }} <b>{{ n }}</b></button>{% endfor %}</span>
@@ -94,9 +94,9 @@
 
         <div class="court-cards narrative-cards">
             {% for c in cards %}
-                <div class="story court-story narrative" data-politics="{{ 1 if c.politics else '' }}" data-genre="{{ c.genre|e }}" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}" data-days="{{ c.told_before|length + 1 }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
+                <div class="story court-story narrative" data-politics="{{ (1 if c.politics else '')|e }}" data-genre="{{ c.genre|e }}" data-rumor="{{ (c.rumor_class or '')|e }}" data-scope="{{ (c.conspiracy or '')|e }}" data-days="{{ c.told_before|length + 1 }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
                     <h4>{{ c.claim|e }}</h4>
-                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
+                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink|e }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
                     {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
                         <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
                             {% if c.rumor_class %}<span class="shape-chip" title="Rumor type, from Robert Knapp, “A Psychology of Rumor” (1944): wish, dread or wedge">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor <span class="chip-src">Knapp</span></span>{% endif %}
@@ -105,12 +105,12 @@
                         </p>
                     {% endif %}
                     <div class="meters">
-                        <div class="meter" title="{{ c.people }} different people, {{ c.posts }} posts">
+                        <div class="meter" title="{{ c.people|e }} different people, {{ c.posts|e }} posts">
                             <span class="meter-label">told by {{ c.people }} people</span>
                         </div>
-                        <div class="meter" title="How much their posts share the same words: on average {{ 100 - c.variety_pct }}% of the words in one version are in another. Folklore is retold in people's own words; copypasta is pasted">
+                        <div class="meter" title="How much their posts share the same words: on average {{ (100 - c.variety_pct)|e }}% of the words in one version are in another. Folklore is retold in people's own words; copypasta is pasted">
                             <span class="meter-bar"><span class="meter-end" title="the same words, copied">📋</span><span class="meter-end-word">copied</span>
-                                <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct }}%"></span></span>
+                                <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct|e }}%"></span></span>
                                 <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
                         </div>
                     </div>
@@ -122,13 +122,13 @@
                     {% endif %}
                     {% if c.motifs %}
                         <div class="card-section"><p class="section-label" title="Recurring shapes this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
-                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
                         </div>
                     {% endif %}
                     {% if c.factchecks %}
                         <div class="card-section"><p class="section-label">🔎 Fact-checked</p>
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
-                            {% for p in c.factchecks %}<li><a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
+                            {% for p in c.factchecks %}<li><a href="{{ p.url|e }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
                         </ul></div>
                     {% endif %}
                     {% if c.story_shape and (c.villain or c.victim or c.hero) %}
@@ -169,7 +169,7 @@
                     <summary><b>{{ ep.title|e }}</b> <span class="court-when">{{ ep.date }} · {{ ep.claims|length }} claims</span></summary>
                     <ul class="focus-claims">
                         {% for c in ep.claims %}<li>{{ c.claim|e }}{% if c.side %} <span class="court-when">({{ c.side|e }})</span>{% endif %}
-                            {% for m in c.motifs %}<a class="motif-chip small" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
+                            {% for m in c.motifs %}<a class="motif-chip small" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
                     </ul>
                     <p class="court-when"><a href="{{ ep.url|e }}">Listen to the episode</a></p>
                 </details>

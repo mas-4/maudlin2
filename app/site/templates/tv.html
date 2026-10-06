@@ -13,11 +13,11 @@
             <h3 class="radio-hour">The last 24 hours: stories by time on screen</h3>
             <div class="tv-table-wrap">
                 <table class="tv-table">
-                    <thead><tr><th>Story</th><th>Front pages</th>{% for ch in channels %}<th style="--ink: {{ inks[loop.index0] }}">{{ ch }}</th>{% endfor %}</tr></thead>
+                    <thead><tr><th>Story</th><th>Front pages</th>{% for ch in channels %}<th style="--ink: {{ inks[loop.index0]|e }}">{{ ch }}</th>{% endfor %}</tr></thead>
                     <tbody>
                         {% for r in stories %}
                             <tr><td>{{ r.label|e }}</td><td><span class="radio-rank">#{{ r.rank }}</span></td>
-                                {% for cell in r.cells %}<td class="tv-cell" style="--ink: {{ inks[loop.index0] }}">{% if cell.seconds %}<span class="tv-bar" style="width: {{ cell.share }}%"></span><span class="tv-min">{{ cell.text }}</span>{% endif %}</td>{% endfor %}</tr>
+                                {% for cell in r.cells %}<td class="tv-cell" style="--ink: {{ inks[loop.index0]|e }}">{% if cell.seconds %}<span class="tv-bar" style="width: {{ cell.share|e }}%"></span><span class="tv-min">{{ cell.text }}</span>{% endif %}</td>{% endfor %}</tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -27,12 +27,12 @@
             <h3 class="radio-hour">{{ h.label }} ET</h3>
             <div class="radio-hour-cards">
                 {% for c in h.channels %}
-                    <div class="saga-card radio-card" style="--saga: {{ c.ink }}">
+                    <div class="saga-card radio-card" style="--saga: {{ c.ink|e }}">
                         <h3>📺 {{ c.name }}</h3>
                         <ol class="radio-items">
                             {% for g in c.captions %}
                                 <li>{{ g.text|e }} <span class="tv-time">{{ g.time }}</span>
-                                    {% if g.story %}<span class="radio-rank" title="On the front pages as “{{ g.label|e }}”: #{{ g.rank }}">#{{ g.rank }}</span>
+                                    {% if g.story %}<span class="radio-rank" title="On the front pages as “{{ g.label|e }}”: #{{ g.rank|e }}">#{{ g.rank }}</span>
                                     {% else %}<span class="radio-rank radio-off">not on the front pages</span>{% endif %}</li>
                             {% endfor %}
                         </ol>

@@ -1,7 +1,7 @@
 {% extends "page.html" %}
 
 {% macro term(emoji, name, id=none) %}
-    <div class="term"{% if id %} id="{{ id }}"{% endif %}>
+    <div class="term"{% if id %} id="{{ id|e }}"{% endif %}>
         <h3><span class="term-emoji">{{ emoji }}</span>{{ name }}</h3>
         {{ caller() }}
     </div>

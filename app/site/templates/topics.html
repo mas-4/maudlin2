@@ -12,14 +12,14 @@
         {% endfor %}
     </style>
     <div>
-        <img src="{{ FileNames.topic_today_bar_graph }}" alt="Graphs">
-        <img src="{{ FileNames.topic_today_bubble_graph }}" alt="Graphs">
-        <img src="{{ FileNames.topic_history_bar_graph }}" alt="Graphs">
-        <img src="{{ FileNames.topic_history_stacked_area }}" alt="Graphs">
+        <img src="{{ FileNames.topic_today_bar_graph|e }}" alt="Graphs">
+        <img src="{{ FileNames.topic_today_bubble_graph|e }}" alt="Graphs">
+        <img src="{{ FileNames.topic_history_bar_graph|e }}" alt="Graphs">
+        <img src="{{ FileNames.topic_history_stacked_area|e }}" alt="Graphs">
     </div>
     <ol id="date-key">
         {% for date in dates %}
-            <li class="{{ date.topic.replace(' ', '-') }}">{{ date.name }} ({{ date.date.strftime("%m/%d") }})</li>
+            <li class="{{ (date.topic.replace(' ', '-'))|e }}">{{ date.name }} ({{ date.date.strftime("%m/%d") }})</li>
         {% endfor %}
     </ol>
     <style>
@@ -76,20 +76,20 @@
 
     <div class="tabs">
         {% for topic in topics %}
-            <button class="tab-link" onclick="openTab(event, '{{ topic.name }}')">{{ topic.name }}</button>
+            <button class="tab-link" onclick="openTab(event, '{{ topic.name|e }}')">{{ topic.name }}</button>
         {% endfor %}
     </div>
     {% set topic = topics[0] %}
-    <div id="{{ topic.name }}" class="tab-content active" style="display:block">
-        <h2 style="text-align: center;"><a href="{{ topic.name.replace(' ', '_') }}.html">{{ topic.name }}</a></h2>
-        <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
-        <img src="{{ topic.graph }}" alt="{{ topic.title }} Graph">
+    <div id="{{ topic.name|e }}" class="tab-content active" style="display:block">
+        <h2 style="text-align: center;"><a href="{{ (topic.name.replace(' ', '_'))|e }}.html">{{ topic.name }}</a></h2>
+        <img src="{{ topic.wordcloud|e }}" alt="{{ topic.title|e }} Wordcloud">
+        <img src="{{ topic.graph|e }}" alt="{{ topic.title|e }} Graph">
     </div>
     {% for topic in topics[1:] %}
-        <div id="{{ topic.name }}" class="tab-content">
-            <h2 style="text-align: center;"><a href="{{ topic.name.replace(' ', '_') }}.html">{{ topic.name }}</a></h2>
-            <img src="{{ topic.wordcloud }}" alt="{{ topic.title }} Wordcloud">
-            <img src="{{ topic.graph }}" alt="{{ topic.title }} Graph">
+        <div id="{{ topic.name|e }}" class="tab-content">
+            <h2 style="text-align: center;"><a href="{{ (topic.name.replace(' ', '_'))|e }}.html">{{ topic.name }}</a></h2>
+            <img src="{{ topic.wordcloud|e }}" alt="{{ topic.title|e }} Wordcloud">
+            <img src="{{ topic.graph|e }}" alt="{{ topic.title|e }} Graph">
         </div>
     {% endfor %}
 {% endblock %}

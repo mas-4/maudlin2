@@ -18,10 +18,10 @@
     {% if cards %}
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter rumors">
             {% if class_counts %}<span class="bar-group"><span class="bar-label">rumor:</span>
-                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k }}" title="{{ rumor_classes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k|e }}" title="{{ rumor_classes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             {% if scope_counts and preview %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">conspiracy:</span>
-                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k }}" title="{{ conspiracy_scopes[k] }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k|e }}" title="{{ conspiracy_scopes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">subject:</span>
                 {% for k, n in family_counts %}<button type="button" data-family="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>
@@ -31,26 +31,26 @@
             {% if with_motifs %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">motif:</span>
                 <button type="button" data-hasmotif="1" title="Only rumors filed under a motif in our motif index">🧩 has a motif <b>{{ with_motifs }}</b></button>
-                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id }}" title="{{ m.id }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id|e }}" title="{{ m.id|e }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">checker:</span>
                 {% for k, n in source_counts %}<button type="button" data-source="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>
         </div>
         <div class="court-cards narrative-cards">
             {% for c in cards %}
-                <div class="story court-story narrative" data-rumor="{{ c.rumor_class or '' }}" data-scope="{{ c.conspiracy or '' }}" data-family="{{ c.family or '' }}" data-source="{{ c.source|e }}" data-seen="{{ 1 if c.seen and c.seen.people else '' }}" data-hasmotif="{{ 1 if c.motifs else '' }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
+                <div class="story court-story narrative" data-rumor="{{ (c.rumor_class or '')|e }}" data-scope="{{ (c.conspiracy or '')|e }}" data-family="{{ (c.family or '')|e }}" data-source="{{ c.source|e }}" data-seen="{{ (1 if c.seen and c.seen.people else '')|e }}" data-hasmotif="{{ (1 if c.motifs else '')|e }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
                     <p class="court-when">{{ c.source|e }} · {{ c.date }}</p>
                     <h4><a href="{{ c.url|e }}">{{ c.title|e }}</a></h4>
                     <p class="narrative-claim" title="The claim checked, in the model's words">“{{ c.claim|e }}”</p>
                     <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}</p>
                     {% if c.motifs %}
                         <div class="card-section"><p class="section-label" title="Recurring shapes this rumor is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
-                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in our motif index{% if m.count > 1 %}: seen {{ m.count }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
                         </div>
                     {% endif %}
                     {% if c.seen is not none %}
                         {% if c.seen.people %}
-                            <p class="rumor-seen" title="People in our Bluesky and Mastodon sample (last {{ looked.hours|int }} hours) whose posts take up this claim, out of the {{ c.seen.checked }} closest posts the model read">💬 in our social sample: {% if c.seen.telling %}<b>{{ c.seen.telling }}</b> telling it{% endif %}{% if c.seen.telling and c.seen.arguing %}, {% endif %}{% if c.seen.arguing %}<b>{{ c.seen.arguing }}</b> arguing against it{% endif %}</p>
+                            <p class="rumor-seen" title="People in our Bluesky and Mastodon sample (last {{ looked.hours|int }} hours) whose posts take up this claim, out of the {{ c.seen.checked|e }} closest posts the model read">💬 in our social sample: {% if c.seen.telling %}<b>{{ c.seen.telling }}</b> telling it{% endif %}{% if c.seen.telling and c.seen.arguing %}, {% endif %}{% if c.seen.arguing %}<b>{{ c.seen.arguing }}</b> arguing against it{% endif %}</p>
                         {% else %}
                             <p class="rumor-seen rumor-unseen" title="No post in our Bluesky and Mastodon sample (last {{ looked.hours|int }} hours) takes up this claim">not seen in our social sample</p>
                         {% endif %}

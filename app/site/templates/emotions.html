@@ -6,22 +6,22 @@
         <thead>
         <tr>
             <th data-sort="text">{{ label }}</th>
-            {% for e in emotions %}<th data-sort="number" title="{{ e }}"><span class="matrix-emoji">{{ emoji[e] }}</span><br><span>{{ e }}</span></th>{% endfor %}
+            {% for e in emotions %}<th data-sort="number" title="{{ e|e }}"><span class="matrix-emoji">{{ emoji[e] }}</span><br><span>{{ e }}</span></th>{% endfor %}
             <th data-sort="number">Headlines</th>
         </tr>
         </thead>
         <tbody>
         {% for r in rows %}
             <tr>
-                <td>{% if chips %}<span class="edit-chip" style="{{ r.style }}">{{ outlet_icon(r.name) }}{{ short_name(r.name) }}</span>{% else %}{{ r.name }}{% endif %}</td>
+                <td>{% if chips %}<span class="edit-chip" style="{{ r.style|e }}">{{ outlet_icon(r.name) }}{{ short_name(r.name) }}</span>{% else %}{{ r.name }}{% endif %}</td>
                 {% for e in emotions %}
                     {% set share = r.shares[e] %}
-                    <td data-value="{{ share }}" title="{{ r.name }}: {{ (share * 100)|round(1) }}% {{ e }}"
+                    <td data-value="{{ share|e }}" title="{{ r.name|e }}: {{ (share * 100)|round(1) }}% {{ e|e }}"
                         style="background-color: rgba(106, 63, 181, {{ [share / max_share, 1]|min * (0.15 if e == 'neutral' else 0.85) }})">
                         {{ (share * 100)|round|int }}%
                     </td>
                 {% endfor %}
-                <td data-value="{{ r.headlines }}">{{ r.headlines }}</td>
+                <td data-value="{{ r.headlines|e }}">{{ r.headlines }}</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -41,7 +41,7 @@
 
         <div class="emotion-tiles">
             {% for o in overall %}
-                <div class="emotion-tile tile-{{ o.emotion }}">
+                <div class="emotion-tile tile-{{ o.emotion|e }}">
                     <div class="emotion-tile-emoji">{{ emoji[o.emotion] }}</div>
                     <div class="emotion-tile-share">{{ (o.share * 100)|round|int }}%</div>
                     <div class="emotion-tile-label">{{ o.emotion }}</div>

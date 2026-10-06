@@ -10,13 +10,13 @@
             <summary>{{ label }}</summary>
             <div class="nav-menu-list">
                 {% if note %}<p class="nav-menu-note">🚧 {{ note }}</p>{% endif %}
-                {% for t in items %}<a href="{{ t.href }}"><span class="nav-menu-emoji" aria-hidden="true">{{ t.emoji }}</span><span><b>{{ t.name }}</b><small>{{ t.about }}</small></span></a>{% endfor %}
+                {% for t in items %}<a href="{{ t.href|e }}"><span class="nav-menu-emoji" aria-hidden="true">{{ t.emoji }}</span><span><b>{{ t.name }}</b><small>{{ t.about }}</small></span></a>{% endfor %}
             </div>
         </details>
         {% endfor %}
         <a href="glossary.html">how it works</a>
     </div>
-    <span class="updated" data-built="{{ built_at }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
+    <span class="updated" data-built="{{ built_at|e }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
     <script>
         (function () {
             // "updated 12 min ago", kept current while the page is open; turns orange when the site has gone stale
