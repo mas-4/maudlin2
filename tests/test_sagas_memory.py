@@ -24,14 +24,15 @@ def fake_embed(titles):
 
 
 @pytest.fixture
-def db(monkeypatch):
+def db(monkeypatch, tmp_path):
+    monkeypatch.setattr(sg, 'PAIRS', str(tmp_path / 'pairs.json'))
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)
     monkeypatch.setattr(sg, 'Session', session)
     monkeypatch.setattr(sg, 'embed', fake_embed)
     monkeypatch.setattr(sg, 'name', lambda stories, clusters: 'Cornell case')
-    monkeypatch.setattr(sg, 'same_saga', lambda a, b: True)  # the language model agrees (tests never call it)
+    monkeypatch.setattr(sg, 'saga_verdict', lambda a, b: True)  # the language model agrees (tests never call it)
     return session
 
 
@@ -110,12 +111,19 @@ def test_only_active_sagas_returned_and_ids_negative(db):
 
 def test_language_model_veto_blocks_a_link(db, monkeypatch):
     asked = []
-    monkeypatch.setattr(sg, 'same_saga', lambda a, b: asked.append((a, b)) or False)
+    monkeypatch.setattr(sg, 'saga_verdict', lambda a, b: asked.append((a, b)) or False)
     saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 30)
+    sid = saved_story(db, ['Attorney general takes over Cornell case'], 1)
     headlines, stories = today({0: ['Attorney general takes over Cornell investigation',
                                     'New details in the Cornell investigation']})
-    assert sg.link_sagas(headlines, stories, {0: saved_story(db, ['Attorney general takes over Cornell case'], 1)}) == {}
+    assert sg.link_sagas(headlines, stories, {0: sid}) == {}
     assert len(asked) == 1  # asked once per pair, not again in the same run
+    # ...nor in the next run, though the story's headlines changed (a new sample): the no is kept for the pair of
+    # stories (until Oct 6 the judge was asked each hour until it said yes once)
+    headlines, stories = today({0: ['Attorney general takes over Cornell investigation', 'Cornell probe widens',
+                                    'New details in the Cornell investigation']})
+    assert sg.link_sagas(headlines, stories, {0: sid}) == {}
+    assert len(asked) == 1
 
 
 def test_same_saga_caches_and_never_links_without_an_answer(monkeypatch, tmp_path):
@@ -169,3 +177,24 @@ def test_history_lists_parts_by_when_they_broke_with_outlets_by_lean(db):
     assert [p['now'] for p in saga['parts']] == [False, True]
     assert saga['outlets'] == 1 and saga['center'] == 0 and saga['unrated'] == 1  # AP, unrated in this database
     assert saga['parts'][0]['first_outlets'] == ['AP'] and saga['parts'][0]['outlets'] == 1
+
+
+def test_recheck_detaches_a_part_that_is_no_other_parts_story_and_ends_a_saga_left_alone(db, monkeypatch):
+    now = dt.now(timezone.utc).replace(tzinfo=None)
+    with db() as s:
+        s.add_all([Saga(id=1, name='Supreme Court climate cases', first_seen=now, last_seen=now),
+                   Saga(id=2, name='Cornell case', first_seen=now, last_seen=now)])
+        s.commit()
+    climate = saved_story(db, ['Supreme Court hears climate case'], 40, saga_id=1)
+    term = saved_story(db, ['Supreme Court begins new term'], 20, saga_id=1)
+    cornell = saved_story(db, ['Cornell student alleges assault'], 40, saga_id=2)
+    probe = saved_story(db, ['Attorney general takes over Cornell case'], 10, saga_id=2)
+    vote = saved_story(db, ['Faculty vote no confidence over the case'], 5, saga_id=2)  # one story with the probe only
+    monkeypatch.setattr(sg, 'saga_verdict', lambda a, b: {a[0], b[0]} != {'Supreme Court hears climate case', 'Supreme Court begins new term'}
+                        and not ({a[0], b[0]} == {'Cornell student alleges assault', 'Faculty vote no confidence over the case'}))
+    gone = sg.recheck()
+    assert sorted(d['story'] for d in gone) == sorted([climate, term])  # a two-part saga that isn't one story ends
+    with db() as s:
+        assert s.get(Saga, 1) is None and s.get(Story, climate).saga_id is None and s.get(Story, term).saga_id is None
+        assert s.get(Story, cornell).saga_id == 2 and s.get(Story, probe).saga_id == 2 and s.get(Story, vote).saga_id == 2
+    assert sg.recheck() == []  # verdicts kept by pair: nothing asked or detached again

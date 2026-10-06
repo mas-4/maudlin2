@@ -5,6 +5,20 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Sagas: no more joining by persistence.** An outside reader found three sagas holding a part from another
+  storyline. All three were the old judge's yeses, and one shows the flaw: the Supreme Court climate case and an
+  overview of the court's new term were judged separate 25 times, then joined on the 26th, because each hour the
+  stories had new headlines, so a new sample to ask about, and one yes was kept for good. Now a verdict is kept for the
+  pair of stories (`saga_pairs.json`) and never asked again; the judge sees each story's most central headlines, not
+  ones spread evenly across it (stray headlines from a neighbouring storyline had stood in for a story); and a newcomer
+  is judged against the saga's part nearest to it. The judge's wording now says that different angles on one event,
+  its consequences and reactions are one story, and that a different focus is no reason for "separate": on the 46
+  labeled pairs it found 7 of the 11 true running stories (5 before) and still joined none wrongly. The three wrong
+  parts were detached (the Nebraska rally from the diesel order, the court's new term from the climate case, two
+  Iranians charged over a plot against Jews from the RAF Fairford bombers story); two sagas ended. A check of every
+  saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
+  Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
+  are, for a person to judge.
 - **Word cloud: no made-up words.** The cloud folds plurals to their singular, and the folding turned "dies" into "dy"
   (WordNet's -ies rule), so on Oct 6 a word "dy" gathered every death story of the day (Jim Bakker, Dennis Hastert, the
   Kenya Ebola case). Now the cloud picks nouns before folding, never folds to a word of two letters or fewer, leaves

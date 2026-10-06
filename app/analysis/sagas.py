@@ -59,10 +59,21 @@ _names: dict[frozenset, str] = {}
 JUDGMENTS = os.path.join(Config.data, 'saga_judgments.json')
 JUDGE_SAMPLE = 4  # headlines shown from each side
 JUDGE_MODEL = 'gemma4:26b'  # Oct 6 test against 46 labeled pairs: no wrong joins, 2 s a pair (the 30B 33 s); see docs/models.md
-JUDGE_VERSION = 2  # verdicts cached under an older judge are asked again (hand verdicts are kept)
+JUDGE_VERSION = 4  # verdicts cached under an older judge are asked again (hand verdicts are kept); 3: gemma4:26b;
+# 4: different angles, consequences and reactions count as one story (Oct 6: version 3 refused a resignation over a
+# failed execution, and two speakers at one rally, as 'a different focus')
+# A verdict is also kept for the pair of stories itself (story ids), whatever headlines were shown: until Oct 6 a pair
+# was asked again each hour as its stories grew (new headlines, a new sample) until the judge said yes once, and a yes
+# was forever: the Supreme Court climate case joined the new-term story on its 26th asking (methods log)
+PAIRS = os.path.join(Config.data, 'saga_pairs.json')
 JUDGE_PROMPT = """Two groups of news headlines. Are they parts of one ongoing news story: the same case, incident, \
-event, investigation or negotiation as it develops? Separate cases at the same court, separate crimes by people of the \
-same nationality, or separate events involving the same person or place are different stories.
+event, investigation or negotiation, followed as it develops? The groups may tell it from different angles or focus on \
+different parts of it; that's still one story. So are its consequences and reactions (an official resigns over a \
+failure; a board or faculty votes over how the case was handled) and its later developments. Different stories: \
+separate cases at the same court, separate crimes by people of the same nationality, separate events involving the \
+same person or place (a rally and an executive order signed the same week), and a general overview (a court's coming \
+term, the cases to watch) beside one case in it. A different focus, speaker or angle is never by itself a reason to \
+call them separate.
 
 Group 1:
 {a}
@@ -81,8 +92,10 @@ Group 2:
 {b}
 
 Would a news editor file these two groups under one running story: the same case, incident, event, investigation or \
-negotiation, whether the groups report the same development of it or different developments? Answer no if they are \
-two separate cases or events, even when they share a country, a court, a kind of crime or a person.
+negotiation, whether the groups report the same development of it or different ones, different angles on it, or its \
+consequences and the reactions to it? Answer no if they are two separate cases or events, even when they share a \
+country, a court, a kind of crime or a person, or if one is a general overview and the other a single case in it. \
+Focusing on different people, aspects or angles of one event is not a reason to answer no.
 
 reason: one sentence
 verdict: "one running story" or "separate stories\""""
@@ -109,9 +122,14 @@ def _sample(titles: list[str]) -> list[str]:
 
 
 def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
+    """Whether two groups of headlines are one running story (see saga_verdict); False without an answer."""
+    return bool(saga_verdict(titles_a, titles_b))
+
+
+def saga_verdict(titles_a: list[str], titles_b: list[str]) -> Optional[bool]:
     """Whether two groups of headlines are one running story, by the language model under two wordings, both of
-    which must say yes (cached). False without an answer, so an unchecked link is never saved; the pair is asked
-    again next run."""
+    which must say yes (cached by the headlines shown). None without an answer, so an unchecked link is never saved
+    and nothing is remembered; the pair is asked again next run."""
     a, b = sorted([_sample(titles_a), _sample(titles_b)])
     key = hashlib.sha1(json.dumps([a, b]).encode()).hexdigest()
     cache = read_json(JUDGMENTS, {})
@@ -120,12 +138,12 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
         listed = {'a': '\n'.join(f'- {t}' for t in a), 'b': '\n'.join(f'- {t}' for t in b)}
         first = _ask(JUDGE_PROMPT.format(**listed))
         if first is None:
-            return False
+            return None
         second = None
         if first['same_story']:
             second = _ask(JUDGE_PROMPT_B.format(**listed))
             if second is None:
-                return False
+                return None
         entry = {**first, 'a': a, 'b': b, 'model': JUDGE_MODEL, 'judge': JUDGE_VERSION, 'second': second,
                  'same_story': bool(first['same_story'] and second and second['same_story'])}
         cache[key] = entry
@@ -133,6 +151,31 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
         logger.info("Saga check: %s | %s -> %s (%s)", a[0], b[0], entry['same_story'],
                     (second or first).get('reason', ''))
     return bool(entry['same_story'])
+
+
+def central(titles: list[str], vectors: np.ndarray, n: int = JUDGE_SAMPLE) -> list[str]:
+    """A story's most central headlines (closest to its center), distinct: what the judge is shown, so a few stray
+    headlines from a neighbouring storyline (a rally beside an executive order) don't speak for the story"""
+    center = vectors.mean(axis=0)
+    order = np.argsort(-(vectors @ center))
+    return list(dict.fromkeys(titles[i].strip() for i in order))[:n]
+
+
+def pair_verdict(story_a: int, story_b: int, titles_a: list[str], titles_b: list[str]) -> Optional[bool]:
+    """Whether two saved stories are one running story, remembered by the pair of stories (a person's verdict first,
+    then the current judge's): asked once, not again each hour as their headlines change. None without an answer."""
+    key = '|'.join(str(i) for i in sorted((story_a, story_b)))
+    pairs = read_json(PAIRS, {})
+    known = pairs.get(key)
+    if known and (known.get('hand') or known.get('judge') == JUDGE_VERSION):
+        return bool(known['same'])
+    verdict = saga_verdict(titles_a, titles_b)
+    if verdict is None:
+        return None
+    pairs[key] = {'same': verdict, 'judge': JUDGE_VERSION, 'model': JUDGE_MODEL,
+                  'at': dt.now(pytz.UTC).isoformat(timespec='seconds'), 'a': titles_a[:2], 'b': titles_b[:2]}
+    write_json(PAIRS, pairs)
+    return verdict
 
 
 def words(title: str) -> set[str]:
@@ -228,7 +271,7 @@ def name(stories: pd.DataFrame, clusters: list[int]) -> str:
 
 
 def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counter, common: float,
-           names_ok: set[str], titles: list[str]) -> dict:
+           names_ok: set[str], titles: list[str], story_id=None, member_rows=None) -> dict:
     """Greedy saga merging (as in find_sagas) over `groups`: key -> {'members': [...], 'rows': [title rows]}. Two
     groups join only if they share a distinctive word that's a name (`names_ok`), in NAME_MIN_SHARE of one side's
     headlines and NAME_MIN_OTHER of the other's: sagas are kept for good, so a
@@ -272,7 +315,20 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
         if best is None:
             break
         _, a, b = best
-        if not same_saga([titles[r] for r in groups[a]['rows']], [titles[r] for r in groups[b]['rows']]):
+        if story_id is not None and member_rows is not None:
+            # The two parts nearest each other, one from each side, on their own most central headlines (not a mix of
+            # the whole group's), remembered by the pair of stories so a no isn't asked again each hour
+            def middle(m):
+                v = vectors[member_rows[m]].mean(axis=0)
+                return v / np.linalg.norm(v)
+            ca, cb = max(((x, y) for x in groups[a]['members'] for y in groups[b]['members']),
+                         key=lambda xy: float(middle(xy[0]) @ middle(xy[1])))
+            ra, rb = member_rows[ca], member_rows[cb]
+            same = pair_verdict(story_id(ca), story_id(cb), central([titles[r] for r in ra], vectors[ra]),
+                                central([titles[r] for r in rb], vectors[rb]))
+        else:
+            same = same_saga([titles[r] for r in groups[a]['rows']], [titles[r] for r in groups[b]['rows']])
+        if not same:
             rejected.add(pair(a, b))
             continue
         groups[a]['members'] += groups[b]['members']
@@ -338,7 +394,8 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
         group = groups.setdefault(key, {'members': [], 'rows': []})
         group['members'].append(member)
         group['rows'] += rows
-    groups = _merge(groups, vectors, bags, frequency, common, proper_nouns(titles), titles)
+    story_id = lambda m: current[m[1]] if m[0] == 'now' else m[1]  # noqa: E731
+    groups = _merge(groups, vectors, bags, frequency, common, proper_nouns(titles), titles, story_id, rows_of)
 
     active = {}
     unclustered = headlines.index[headlines['cluster'] == -1]
@@ -392,6 +449,60 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}  # as in page_headlines
 NOW_SLACK = td(minutes=30)  # a part seen this close to the latest run is on the front pages now
 FIRST_RUN = td(minutes=15)  # headlines first seen this close together came in the same run
+
+
+def recheck(dry_run: bool = False) -> list[dict]:
+    """Every saved saga's parts judged by the current judge, each on its most central headlines: a part that is one
+    running story with none of the saga's other parts is detached, and a saga left with one part ends. (A part need
+    not match the first one: a story develops, and a faculty's no-confidence vote is still the Cornell case.) Returns
+    what was detached. Verdicts go into the pair store, so the hourly linking won't join them again."""
+    with Session() as s:
+        parts = s.query(Story.saga_id, Story.id).filter(Story.saga_id.isnot(None)).order_by(Story.first_seen).all()
+        rows = s.query(StoryHeadline.story_id, Headline.title).join(Headline, Headline.id == StoryHeadline.headline_id) \
+            .filter(StoryHeadline.story_id.in_([p[1] for p in parts])).all()
+        names = dict(s.query(Saga.id, Saga.name))
+    titles = {}
+    for sid, title in rows:
+        titles.setdefault(sid, []).append((title or '').strip())
+    by_saga = {}
+    for saga_id, sid in parts:
+        by_saga.setdefault(saga_id, []).append(sid)
+    samples, centers = {}, {}
+    for sid, ts in titles.items():
+        v = embed(ts)
+        v = v / np.linalg.norm(v, axis=1, keepdims=True)
+        samples[sid], centers[sid] = central(ts, v), v.mean(axis=0) / np.linalg.norm(v.mean(axis=0))
+    out = []
+    for saga_id, sids in by_saga.items():
+        for sid in sids:
+            others = [o for o in sids if o != sid and o in samples]
+            if sid not in samples:
+                out.append({'saga': saga_id, 'name': names.get(saga_id), 'story': sid, 'titles': [''], 'with': None})
+                continue
+            # nearest parts first: the likeliest yes is asked first, and asking stops at a yes
+            others.sort(key=lambda o: -float(centers[sid] @ centers[o]))
+            verdicts = []
+            for o in others:
+                verdict = pair_verdict(sid, o, samples[sid], samples[o])
+                verdicts.append(verdict)
+                if verdict:
+                    break
+            if verdicts and all(v is False for v in verdicts):
+                out.append({'saga': saga_id, 'name': names.get(saga_id), 'story': sid, 'titles': samples[sid][:1],
+                            'with': samples[others[0]][:1]})
+    if not dry_run and out:
+        with Session() as s, SqlLock:
+            for d in out:
+                s.query(Story).filter(Story.id == d['story']).update({'saga_id': None})
+            s.flush()
+            for saga_id in {d['saga'] for d in out}:
+                if s.query(Story).filter(Story.saga_id == saga_id).count() < 2:
+                    s.query(Story).filter(Story.saga_id == saga_id).update({'saga_id': None})
+                    s.query(Saga).filter(Saga.id == saga_id).delete()
+            s.commit()
+    for d in out:
+        logger.info("Saga recheck: '%s' loses story %s (%s)", d['name'], d['story'], d['titles'][0])
+    return out
 
 
 def history() -> list[dict]:
