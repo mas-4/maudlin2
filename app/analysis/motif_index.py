@@ -571,6 +571,7 @@ def board() -> dict:
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
+                            'id': key(c['claim'])[:6],  # shown as #3f9a2b, to name a claim in a screenshot or a search
                             'checked': c.get('checked'), 'new': 'done' in e and key(c['claim']) not in e['done']}
                            for c in e['claims']]}
                for e in live(index)]

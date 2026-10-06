@@ -42,6 +42,7 @@ ul.examples li { font-size: .85em; margin: .3em 0; } .lab { font-size: .78em; ba
 .more { color: #555; cursor: pointer; font-size: .8em; padding: 0 10px 6px; }
 .motif li .txt { cursor: pointer; } .motif li .txt:hover { text-decoration: underline dotted; }
 .motif li, .motif .head { user-select: none; touch-action: manipulation; }
+.cid { font: 600 .72em ui-monospace, monospace; color: #8a8f98; }
 body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
 dialog { border: 2px solid #1f1f2e; border-radius: 14px; box-shadow: 6px 6px 0 #ffc400; width: min(640px, 94vw); max-height: 86vh;
   padding: 12px 16px; background: #fffdf6; color: #1f1f2e; } dialog::backdrop { background: rgba(31, 31, 46, .35); }
@@ -105,7 +106,7 @@ function render() {
   let list = data.entries.filter((e) => filter === 'all' || (filter === 'none' ? !e.group : e.group === filter))
     .filter((e) => !multi || e.claims.length > 1)
     .filter((e) => showDone || e.done !== 'done')
-    .filter((e) => !q || (e.name + ' ' + e.claims.map((c) => c.claim).join(' ')).toLowerCase().includes(q));
+    .filter((e) => !q || (e.id + ' ' + e.name + ' ' + e.claims.map((c) => c.claim + ' #' + c.id).join(' ')).toLowerCase().includes(q));
   const newest = (a, b) => (b.first_seen || '').localeCompare(a.first_seen || '') || b.id.localeCompare(a.id);
   list.sort({az: (a, b) => a.name.localeCompare(b.name), new: newest, old: (a, b) => newest(b, a),
     few: (a, b) => a.claims.length - b.claims.length || newest(a, b),
@@ -125,7 +126,7 @@ function render() {
         <div class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'} · since ${esc(e.first_seen)}${e.curated ? ' · ✎ named by hand' : ''}</div></div>
       <ul>${shown.map((c) => `<li data-claim="${esc(c.claim)}" class="${c.new ? 'newclaim' : ''}">
         <span class="txt">${c.new ? '<span class="newtag">NEW </span>' : ''}${c.checked === 'yes' ? '<span class="ok" title="checked">✓</span> ' : ''}${esc(c.claim)}</span>
-        <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)}</span>
+        <span class="src">${esc(c.source === 'narrative' ? 'online' : c.source)} <span class="cid" title="this claim's id: search for it">#${c.id}</span></span>
         <button class="small" data-cact="out" title="take it out of this motif for good">✗</button></li>`).join('')}</ul>
       ${e.claims.length > 6 ? `<div class="more" data-more="1">${expanded.has(e.id) ? 'show fewer' : `show all ${e.claims.length}`}</div>` : ''}
       <div class="acts"><button class="small add" data-mact="more" title="the claims closest to this motif, to add fast">＋ more like this</button><button class="small" data-mact="addclaims" title="search all claims and add some to this motif">＋ add claims…</button><button class="small" data-mact="mergepick" title="pick a motif to merge this one into">⤵ merge into…</button><button class="small" data-mact="rename">✎ rename</button><button class="small" data-mact="note" title="a plain one-line description of what this motif covers (shown on the site, used in matching)">✎ note</button>
@@ -217,7 +218,8 @@ function drawPicker(q) {
   const newRow = typed && !taken ? `<div class="newfromq"><span class="nm">✨ “${esc(typed)}”</span><span class="ct">new</span>
     <button class="small add" data-alsonew="1" title="make a new motif with this name and file the claim under it too">+ add as a new motif</button>
     <button class="small" data-movenew="1" title="make it and put it in place of “${fromName}”">replace “${fromName}”</button></div>` : '';
-  $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
+  const cid = (data.entries.flatMap((e) => e.claims).find((c) => c.claim === claim) || {}).id || '';
+  $('#picker-body').innerHTML = `<h2>${esc(claim)} <span class="cid" title="this claim's id">#${cid}</span></h2>
     <details class="detail" ${detailOpen ? 'open' : ''}><summary>details: what's the story?</summary><div id="detail-body">${detailHtml || 'Loading…'}</div>
       <p><button class="small" data-correct="1">✎ correct the summary</button></p></details>
     <div class="now"><button class="small" data-nomotif="1" title="this claim tells no recurring story: take it out of every motif, and it won't be filed again">∅ no motif: not a story</button> Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take this motif off this claim">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
@@ -228,7 +230,9 @@ function drawPicker(q) {
   const input = $('#pick-q'); input.focus(); input.setSelectionRange(q.length, q.length);
   input.addEventListener('input', () => drawPicker(input.value));
   input.addEventListener('keydown', (ev) => { const add = $('.pick [data-alsonew]');
-    if (ev.key === 'Enter' && add && !$('.pick [data-also]')) { ev.preventDefault(); add.click(); } });
+    // Enter makes a new motif from what's typed only after a yes: a search typed in two goes ("moral", then "empty")
+    // once became a motif called "moralempty" (Oct 6)
+    if (ev.key === 'Enter' && add && !$('.pick [data-also]')) { ev.preventDefault(); if (confirm(`Make a new motif called “${input.value.trim()}”?`)) add.click(); } });
 }
 $('#picker').addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('detail')) detailOpen = ev.target.open; }, true);
 $('#picker').addEventListener('click', (ev) => {
