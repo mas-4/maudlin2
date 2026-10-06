@@ -135,6 +135,16 @@ JUNK = re.compile(r'^\W*[1lIT]\s?[IL1]?IVE\b|^\W*LIVE\s*[>S]|NEWS\W*$', re.I)  #
 SAME = 0.8  # lines this alike (letters and digits) on one channel are one caption read slightly differently
 
 
+def save_clean(found: dict):
+    """Add cleaned lines to CLEAN, merged with what's there under a lock: the hourly run and a backfill may clean at
+    once, and each saving its own whole copy lost the other's work"""
+    from app.utils.store import locked
+    with locked(CLEAN):
+        store = read_json(CLEAN, {})
+        store.update(found)
+        write_json(CLEAN, store)
+
+
 def groups(lines: list[dict]) -> list[list[dict]]:
     """Near-identical lines of one channel together, the longest on screen first in each: the same caption read by
     OCR a little differently minute to minute is cleaned once"""
@@ -160,19 +170,20 @@ def clean_day(day: str, news: list[str], budget: float | None = None) -> int:
     from app.analysis import llm
     store = read_json(CLEAN, {})
     todo = [e for k, e in lines_of(day).items() if k not in store]
+    found = {}
     if not todo or llm.backend() is None:
         return 0
     done = 0
     for e in todo:
         if sum(c.isalpha() for c in e['line']) < 12 or JUNK.search(e['line']):
-            store[line_key(e['channel'], e['line'])] = {'kind': 'junk', 'text': ''}
+            store[line_key(e['channel'], e['line'])] = found[line_key(e['channel'], e['line'])] = {'kind': 'junk', 'text': ''}
             done += 1
     started = time.time()
     for channel in CHANNELS:
         mine = groups([e for e in todo if e['channel'] == channel and line_key(channel, e['line']) not in store])
         for i in range(0, len(mine), BATCH):
             if budget is not None and time.time() - started > budget:
-                write_json(CLEAN, store)
+                save_clean(found)
                 return done
             batch = mine[i:i + BATCH]
             programs = sorted({p for g in batch for e in g for p in e['programs']})[:4]
@@ -187,10 +198,11 @@ def clean_day(day: str, news: list[str], budget: float | None = None) -> int:
                 n = x.get('n')
                 if isinstance(n, int) and 1 <= n <= len(batch) and x.get('kind') in KINDS:
                     for e in batch[n - 1]:
-                        store[line_key(channel, e['line'])] = {'kind': x['kind'], 'text': ' '.join(x.get('text', '').split())}
+                        store[line_key(channel, e['line'])] = found[line_key(channel, e['line'])] = {
+                            'kind': x['kind'], 'text': ' '.join(x.get('text', '').split())}
                         done += 1
-            write_json(CLEAN, store)
-    write_json(CLEAN, store)
+            save_clean(found)
+    save_clean(found)
     return done
 
 
