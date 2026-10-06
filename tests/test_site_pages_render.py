@@ -493,9 +493,12 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
     monkeypatch.setattr(pn.narrative_threads, 'load', lambda: {'threads': {'N0001': {'id': 'N0001', 'days': [
         {'date': '2026-10-04', 'report': 'report-2026-10-04-0400.json', 'people': 7, 'claim': 'Doctors <keep> him alive'},
         {'date': '2026-10-05', 'report': report['file'], 'people': 12, 'claim': 'They are <keeping> him alive'}]}}})
-    monkeypatch.setattr(pn.motif_index, 'load', lambda: {'next': 8, 'claims': {
-        pn.motif_index.key('They are <keeping> him alive'): ['M007']}, 'entries': {'M007': {
-            'id': 'M007', 'name': 'the ruler kept alive in secret', 'claims': [{}, {}, {}]}}})
+    claims = [{'claim': t} for t in ('They are <keeping> him alive', 'b', 'c')]
+    seen = [pn.motif_index.key(c['claim']) for c in claims]
+    index = {'next': 9, 'claims': {seen[0]: ['M007', 'M008']}, 'entries': {
+        'M007': {'id': 'M007', 'name': 'the ruler kept alive in secret', 'claims': claims, 'done': seen},  # verified
+        'M008': {'id': 'M008', 'name': 'a model guess nobody checked', 'claims': claims[:1]}}}
+    monkeypatch.setattr(pn.motif_index, 'load', lambda: index)
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     from app.analysis import focus_group
     (tmp_path / 'fg.json').write_text(json.dumps({'https://ep/1': {'title': 'Ep61: Trump voters', 'date': '2026-10-03',
@@ -518,6 +521,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         assert 'the kept king' not in html  # the labeler's own motif phrase isn't shown; the index entry is
         assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
         assert 'href="motifs.html#M007"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
+        assert 'a model guess nobody checked' not in html  # only motifs a person verified reach the site
         assert '🦹 villain</b> doctors' in html
         assert '🧵 Told on 2 days' in html and '<b>Oct 4</b>, by 7 people: Doctors &lt;keep&gt; him alive' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts

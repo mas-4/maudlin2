@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Only verified motifs on the site.** The motif index grows with the model's filings, but the site now shows a
+  motif only once a person has looked over its claims and marked it done, and shows only the claims they saw then;
+  claims filed since wait until they mark it done again. Unchecked motifs stay in the index and in the curation tools.
+  On Oct 6, 234 of 261 motifs had been marked done.
 - **Sagas: the judge is Gemma 4 26B.** On 46 pairs of stories labeled by hand (11 of them one running story), it agreed
   on 40, joined none wrongly and took 2 seconds a pair; Qwen3 30B-A3B agreed on 41 but joined one pair wrongly and took
   33 seconds. Gemma finds a few fewer true parts (5 of the 11 against 7), so a saga may gain a part an hour or two later

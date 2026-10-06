@@ -363,3 +363,11 @@ def test_a_claim_its_source_took_back_leaves_the_index(monkeypatch, tmp_path):
     assert index['entries']['M001']['claims'] == [] and index['entries']['M001']['done'] == []  # a person's motif stays
     assert [c['claim'] for c in index['entries']['M002']['claims']] == ['b']
     assert 'M003' not in index['entries']  # a model's motif left empty goes
+
+
+def test_only_motifs_a_person_verified_reach_the_site_with_the_claims_they_saw():
+    a, b = {'claim': 'a'}, {'claim': 'b'}
+    assert not mi.public({'id': 'M1', 'claims': [a]})  # the model's, unchecked
+    verified = {'id': 'M2', 'claims': [a, b], 'done': [mi.key('a')]}  # marked done, then b came in
+    assert mi.public(verified) and mi.public_claims(verified) == [a]
+    assert not mi.public({**verified, 'merged_into': 'M3'})

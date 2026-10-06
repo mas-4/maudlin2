@@ -937,6 +937,19 @@ def keep_note(eid: str):
 DRAFTS = ('model', 'claude')  # notes drafted, not yet kept: the local model's, or the Oct 5 one-off backfill by Claude
 
 
+def public(entry: dict) -> bool:
+    """Whether the site may show a motif: only ones a person has verified, by looking over its claims and marking it
+    done (the board's and the workbench's ✓ done). The model's motifs stay in the index, and in the checker, until then."""
+    return bool(entry.get('done')) and not entry.get('merged_into')
+
+
+def public_claims(entry: dict) -> list[dict]:
+    """The claims of a verified motif the site shows: those it held when a person marked it done. Claims filed since
+    wait until they mark it done again."""
+    seen = set(entry.get('done') or [])
+    return [c for c in entry['claims'] if key(c['claim']) in seen]
+
+
 def public_note(entry: dict) -> str:
     """The note the site shows: a person's (written or kept), never a draft"""
     return entry.get('note', '') if entry.get('note') and entry.get('note_by') not in DRAFTS else ''

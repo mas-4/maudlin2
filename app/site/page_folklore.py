@@ -90,9 +90,12 @@ def motif_counts(cards: list[dict]) -> list[tuple[dict, int]]:
 
 
 def motif_cards(index: dict, claim: str) -> list[dict]:
-    """The motif-index entries a claim is filed under, for its card: id, name and how many claims each holds."""
-    return [{'id': e['id'], 'name': e['name'], 'count': len(e['claims']), 'note': motif_index.public_note(e)}
-            for e in (motif_index.entries_of(index, claim) if claim else [])]
+    """The motif-index entries a claim is filed under, for its card: id, name and how many claims each holds. Only
+    motifs a person has verified, and only if they saw this claim in it (motif_index.public)."""
+    k = motif_index.key(claim) if claim else None
+    return [{'id': e['id'], 'name': e['name'], 'count': len(motif_index.public_claims(e)), 'note': motif_index.public_note(e)}
+            for e in (motif_index.entries_of(index, claim) if claim else [])
+            if motif_index.public(e) and k in set(e.get('done') or [])]
 
 
 def told_before(threads: dict, report: str, claim: str, index: dict) -> list[dict]:

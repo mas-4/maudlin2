@@ -18,9 +18,12 @@ class MotifsPage:
         index = motif_index.load()
         entries = []
         for e in motif_index.live(index):
-            sources = Counter('people online' if c['source'] == 'narrative' else c['source'] for c in e['claims'])
-            entries.append({**e, 'note': motif_index.public_note(e), 'count': len(e['claims']), 'sources': sources.most_common(),
-                            'claims': sorted(e['claims'], key=lambda c: c.get('date', ''), reverse=True)})
+            claims = motif_index.public_claims(e) if motif_index.public(e) else []  # only motifs a person verified
+            if not claims:
+                continue
+            sources = Counter('people online' if c['source'] == 'narrative' else c['source'] for c in claims)
+            entries.append({**e, 'note': motif_index.public_note(e), 'count': len(claims), 'sources': sources.most_common(),
+                            'claims': sorted(claims, key=lambda c: c.get('date', ''), reverse=True)})
         entries.sort(key=lambda e: (-e['count'], e['id']))
         self.template.write({'title': 'Motif index', 'entries': entries,
                              'claims': sum(e['count'] for e in entries),
