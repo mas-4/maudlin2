@@ -306,15 +306,29 @@ def claim_detail(claim: str) -> dict:
         out.update(kind='fact-check', url=url, title=item.get('title'), summary=item.get('summary'),
                    published=(item.get('published') or '')[:10], label=label)
         return out
-    report = latest_report() or {}
-    group = next((g for g in report.get('found', []) if (g.get('label') or {}).get('narrative') in words), None)
+    # The narrative report the claim came from (its ref is the report's time), else the latest, else any that has it
+    import glob
+    from app.narratives import FOLDER
+    reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')), reverse=True)
+    ref = filed.get('ref', '').replace('-', '').replace('T', '-').replace(':', '')  # 2026-10-05T08:17 -> 20261005-0817
+    ordered = [r for r in reports if os.path.basename(r)[7:20].replace('-', '', 2) == ref] + reports
+    group, report = None, {}
+    for path in ordered:
+        try:
+            with open(path) as f:
+                report = json.load(f)
+        except (OSError, ValueError):
+            continue
+        group = next((g for g in report.get('found', []) if (g.get('label') or {}).get('narrative') in words), None)
+        if group:
+            break
     if group:
         out.update(kind='folklore', made=report.get('made'), people=group.get('authors'), posts=group.get('posts'),
                    examples=[str(x)[:400] for x in (group.get('examples') or [])[:6]],
                    articles=[a if isinstance(a, dict) else {'title': str(a)} for a in (group.get('articles') or [])[:5]],
                    label=group.get('label') or {})
     else:
-        out['kind'] = 'folklore (not in the latest report)'
+        out['kind'] = 'folklore (its report is gone)'
     return out
 
 
