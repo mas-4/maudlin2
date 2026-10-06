@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **A claim may have no motif.** Until now a claim whose last motif a person removed was filed again next run, and the
+  model was asked for one to three motifs per claim, so claims that only report an event were forced into one. Now the
+  model may give none ("a claim that only reports an event or states a fact, with no story told around it, gets
+  none"), a claim whose last motif a person removes keeps none and isn't filed again, and on the motif board a person
+  can mark a claim "no motif: not a story", which takes it out of every motif for good.
 - **Thresholds rechecked on the bigger embedding model (mxbai-embed-large).** Three measures still matched headlines
   with the small static model (potion-base-8M) at thresholds set by eye. Each was tested on the day's data:
   - *Sagas:* 118 pairs of saved stories sharing a name, judged by the 30B ("one running story?"): 8 were. Both

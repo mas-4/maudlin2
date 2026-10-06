@@ -220,7 +220,7 @@ function drawPicker(q) {
   $('#picker-body').innerHTML = `<h2>${esc(claim)}</h2>
     <details class="detail" ${detailOpen ? 'open' : ''}><summary>details: what's the story?</summary><div id="detail-body">${detailHtml || 'Loading…'}</div>
       <p><button class="small" data-correct="1">✎ correct the summary</button></p></details>
-    <div class="now">Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take this motif off this claim">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
+    <div class="now"><button class="small" data-nomotif="1" title="this claim tells no recurring story: take it out of every motif, and it won't be filed again">∅ no motif: not a story</button> Filed under: ${mine.map((e) => `<span>🧩 ${esc(e.name)} <button class="small" data-out="${e.id}" title="take this motif off this claim">✗</button> <button class="small" data-del="${e.id}" title="delete this whole motif (${e.claims.length} claim${e.claims.length === 1 ? '' : 's'})">🗑</button></span>`).join('')}</div>
     <input type="search" id="pick-q" placeholder="find a motif by name or claim" value="${esc(q)}" style="width:100%;padding:5px 10px;border:2px solid #1f1f2e;border-radius:999px">
     <div class="pick">${newRow}${others.slice(0, 40).map((e) => `<div><span class="nm">🧩 ${esc(e.name)}</span><span class="ct">${e.claims.length}</span>
       <button class="small add" data-also="${e.id}" title="file the claim under this motif too, keeping the others">+ add</button>
@@ -249,14 +249,15 @@ $('#picker').addEventListener('click', (ev) => {
     const q = ($('#pick-q') || {}).value || '';
     await act(body);
     const holders = data.entries.filter((e) => e.claims.some((c) => c.claim === claim));
-    if (!holders.length) { $('#picker').close(); return; }  // its last motif gone: it's filed again next run
+    if (!holders.length) { $('#picker').close(); return; }  // its last motif gone: it has none now, and stays so
     if (!holders.some((e) => e.id === pick.from)) pick.from = holders[0].id;
     drawPicker(q);
   };
   const mine = data.entries.filter((e) => e.claims.some((c) => c.claim === claim)).length;
   if (b.dataset.move) done({action: 'move', claim, source: from, target: b.dataset.move});
   else if (b.dataset.also) done({action: 'also', claim, source: from, target: b.dataset.also});
-  else if (b.dataset.out && (mine > 1 || confirm('That\'s its last motif: take it off, and it\'s filed again next run?')))
+  else if (b.dataset.nomotif) done({action: 'no_motif', claim});
+  else if (b.dataset.out && (mine > 1 || confirm('That\'s its last motif: take it off? The claim will have no motif (it won\'t be filed again).')))
     done({action: 'unfile', claim, id: b.dataset.out});
   else if (b.dataset.del) {
     const e = data.entries.find((x) => x.id === b.dataset.del);

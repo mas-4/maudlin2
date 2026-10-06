@@ -115,9 +115,12 @@ def test_a_no_on_the_motif_check_takes_the_claim_out_for_good(monkeypatch, tmp_p
     mi.check('a', 'M002', 'no')  # its only claim: the motif goes
     index = mi.load()
     assert 'M002' not in index['entries'] and index['claims'][mi.key('a')] == ['M001']
-    mi.check('a', 'M001', 'no')  # its last motif: filed again next run, but never under M001
+    mi.check('a', 'M001', 'no')  # its last motif: it has none now, and isn't filed again (no shoehorning)
     index = mi.load()
-    assert mi.key('a') not in index['claims'] and mi.key('a') in index['entries']['M001']['not_claims']
+    assert index['claims'][mi.key('a')] == [] and mi.key('a') in index['entries']['M001']['not_claims']
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: (_ for _ in ()).throw(AssertionError('asked again')))
+    mi.file_claims([{'claim': 'a', 'source': 'x'}])  # left alone: not asked about again
     assert [q['claim'] for q in mi.to_check()] == []  # b checked, a out
     from app import narratives
     monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)) / np.sqrt(2))
@@ -319,3 +322,24 @@ def test_a_draft_that_judges_or_names_is_asked_for_again(monkeypatch, tmp_path):
     answers = iter([{'common': 'x', 'note': 'The user wants a scope note.'}, {'common': 'x', 'note': 'Texas turns blue and'},
                     {'common': 'x', 'note': 'Texas turns blue.'}])
     assert mi.gloss({'id': 'M2', 'name': 'Blue Texas', 'claims': [{'claim': 'b'}]}) == 'Texas turns blue.'
+
+
+def test_a_person_can_say_a_claim_tells_no_story(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 3, 'claims': {mi.key('a'): ['M001', 'M002']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Blame shifting', 'curated': True, 'claims': [{'claim': 'a', 'source': 'x'}]},
+        'M002': {'id': 'M002', 'name': 'model made', 'claims': [{'claim': 'a', 'source': 'x'}, {'claim': 'b', 'source': 'x'}]}}})
+    mi.no_motif('a')
+    index = mi.load()
+    assert index['claims'][mi.key('a')] == [] and index['entries']['M001']['claims'] == []  # a person's motif stays
+    assert [c['claim'] for c in index['entries']['M002']['claims']] == ['b']
+    assert mi.key('a') in index['entries']['M002']['not_claims']
+
+
+def test_the_model_may_file_a_claim_under_no_motif(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(mi, 'closest', lambda index, claim: [])
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'motifs': []})  # a plain report: no story
+    index = mi.file_claims([{'claim': 'The Senate passed the budget on Tuesday.', 'source': 'narrative'}])
+    assert index['claims'][mi.key('The Senate passed the budget on Tuesday.')] == [] and mi.live(index) == []

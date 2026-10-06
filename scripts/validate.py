@@ -326,6 +326,8 @@ def board_action(data: dict):
         mi.move(data['claim'], data['source'], mi.add(data['name']))
     elif act == 'unfile' and text('claim') and data.get('id') in live:
         mi.unfile(data['claim'], data['id'])
+    elif act == 'no_motif' and text('claim'):
+        mi.no_motif(data['claim'])
     elif act in ('relate', 'unrelate') and data.get('a') in live and data.get('b') in live:
         mi.relate(data['a'], data['b'], act == 'relate')
     elif act == 'parent' and data.get('id') in live and data.get('parent') in live:

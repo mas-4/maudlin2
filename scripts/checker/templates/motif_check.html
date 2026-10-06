@@ -12,7 +12,7 @@ h2 { font-size: 1.1em; margin: .3em 0 .5em; } .said { font-size: .85em; color: #
 <p>Each card is a claim and a motif our index filed it under. Is the claim, as the people telling it tell it, an
 instance of that motif: the same kind of story, whoever it's told about? Judge the story's shape, not whether it's
 true. Answers apply at once: <b>no</b> takes the claim out of that motif for good (a motif left empty goes; a claim
-left with no motif is filed again next run, elsewhere). The most-used motifs come first. {{ todo|length }} filings
+left with no motif keeps none: not every claim tells a story). The most-used motifs come first. {{ todo|length }} filings
 unchecked; reload for more.</p>
 {% for q in todo[:batch] %}
 <section class="card" data-claim="{{ q.claim }}" data-id="{{ q.id }}">

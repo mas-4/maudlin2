@@ -45,7 +45,7 @@ SHOWN_FLOOR = 0.45  # ...if at least this alike
 NAME_PROMPT = """A claim people are telling or arguing over:
 {claim}
 
-Name the recurring rumor or narrative shapes it is an instance of: one to three, each a short reusable framing of \
+Name the recurring rumor or narrative shapes it is an instance of: none to three, each a short reusable framing of \
 three to seven words, terse like a folklorist's label or a proverb (a subject and what it does or is), without \
 hedges such as "a claim that" or "is accused of": a shape that would fit the same kind of story told about \
 other people, places or years. A story often \
@@ -53,8 +53,9 @@ carries more than one shape (who is blamed, what is feared, what is hoped); give
 first, and don't pad: most claims have one or two. No names of people, places, organizations or dates. A framing \
 people contest can name both sides of the dispute in one label. Judge the shapes as the tellers tell the story, not whether it's true. \
 Check each name: would it still fit if the people and the event were different? If it only describes this one \
-event, make it more general; if it would fit almost any story, make it more specific."""
-NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 1, "maxItems": 3,
+event, make it more general; if it would fit almost any story, make it more specific. A claim that only reports an \
+event or states a fact, with no story told around it, has none: give an empty list rather than force one."""
+NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 0, "maxItems": 3,
                                                           "items": {"type": "string", "maxLength": 60}}},
                "required": ["motifs"]}
 REUSE_PROMPT = """A claim people are telling or arguing over:
@@ -69,7 +70,8 @@ place or mood isn't enough. Skip any motif whose name only describes one particu
 shape. Use a fitting motif rather than coining a near-copy of it: the index is only useful if the same shape is \
 filed under the same motif. For any shape of this claim none of them covers, name a new motif: three to seven words, terse like a folklorist's label (a subject and what it does or is), \
 no names of people, places, organizations or dates, general enough to fit the same kind of story about others. \
-One to three motifs in all, the main one first; most claims have one or two.
+None to three motifs in all, the main one first; most claims have one or two. A claim that only reports an event \
+or states a fact, with no story told around it, gets none: don't force one.
 
 reason: a sentence or two
 existing: the numbers of the motifs that fit
@@ -445,7 +447,8 @@ def to_check(limit: int | None = None) -> list[dict]:
 def check(claim: str, eid: str, answer: str):
     """A person's answer to 'is this claim an instance of this motif?', applied at once. Yes or not sure is noted on
     the filing. No takes the claim out of the motif and keeps it out; a motif the model made left with no claims goes
-    (one a person named stays), and a claim left with no motif is filed again next run, among the others."""
+    (one a person named stays). A claim left with no motif stays without one: not every claim tells a recurring story,
+    and filing it again forced it into some other motif (until Oct 5)."""
     index = load()
     entry = index['entries'].get(eid)
     found = next((c for c in (entry or {}).get('claims', []) if c['claim'] == claim), None)
@@ -457,9 +460,7 @@ def check(claim: str, eid: str, answer: str):
         k = key(claim)
         entry['claims'].remove(found)
         entry.setdefault('not_claims', []).append(k)
-        index['claims'][k] = [i for i in _ids(index, k) if i != eid]
-        if not index['claims'][k]:
-            del index['claims'][k]
+        index['claims'][k] = [i for i in _ids(index, k) if i != eid]  # an empty list: no motif, and never refiled
         if not entry['claims'] and not entry.get('curated'):  # a model's motif emptied goes; one a person named stays
             del index['entries'][eid]
     save(index)
@@ -505,6 +506,24 @@ def group_assign(eid: str, gid: str | None):
         index['entries'][eid]['group'] = gid
     else:
         index['entries'][eid].pop('group', None)
+    save(index)
+
+
+@exclusive
+def no_motif(claim: str):
+    """A person says this claim tells no recurring story: out of every motif it was in, kept out, and never filed
+    again (an empty filing). A model's motif left empty goes, as on a 'no' in the motif check."""
+    index = load()
+    k = key(claim)
+    for eid in list(_ids(index, k)):
+        entry = index['entries'].get(eid)
+        if not entry:
+            continue
+        entry['claims'] = [c for c in entry['claims'] if c['claim'] != claim]
+        entry.setdefault('not_claims', []).append(k)
+        if not entry['claims'] and not entry.get('curated'):
+            del index['entries'][eid]
+    index['claims'][k] = []
     save(index)
 
 
