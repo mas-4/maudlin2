@@ -2,7 +2,8 @@
 // choices that drop allows, each saying what it does; letting go on one does it, anywhere else does nothing (as does
 // Escape). A press without moving is a click; on touch, hold a moment before dragging, so a swipe still scrolls.
 // o: {handle, target: selectors; item(handleEl); label(item); name(targetEl): shown over the zones;
-//     zones(item, targetEl) -> [{label, say, run} or null]}
+//     zones(item, targetEl) -> [{label, say, run} or null]; minWidth: the zones at least this wide, centred on a smaller
+//     target (a dot on the map)}
 function dragZones(o) {
   let drag = null, over = null, zoneEl = null, hot = null, justDragged = false;
   addEventListener('click', (e) => { if (justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
@@ -22,7 +23,8 @@ function dragZones(o) {
     // Over a short target, centred on it; over a tall one (a whole card), where the pointer is
     const top = r.height <= 60 ? r.top - (h - r.height) / 2 : Math.max(r.top, Math.min(drag.y - h / 2, r.bottom - h));
     zoneEl = Object.assign(document.createElement('div'), {className: 'dz-zones'});
-    Object.assign(zoneEl.style, {left: r.left + scrollX + 'px', top: top + scrollY + 'px', width: r.width + 'px', height: h + 'px'});
+    const w = Math.max(r.width, o.minWidth || 0), left = Math.max(4, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 4));
+    Object.assign(zoneEl.style, {left: left + scrollX + 'px', top: top + scrollY + 'px', width: w + 'px', height: h + 'px'});
     zoneEl.innerHTML = `<div class="dz-row">${zs.map((z, i) => `<div class="dz-zone" data-z="${i}">${z.label}</div>`).join('')}</div><div class="dz-name"></div>`;
     zoneEl.lastChild.textContent = o.name ? o.name(t) : '';
     zoneEl.zs = zs; document.body.appendChild(zoneEl);

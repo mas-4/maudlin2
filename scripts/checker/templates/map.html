@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Motif map{% endblock %}
-{% block head %}<style>
+{% block head %}<link rel="stylesheet" href="/checker/static/drag.css"><script src="/checker/static/drag.js"></script><style>
 html, body { height: 100%; } body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0; display: flex; flex-direction: column; }
 nav, .bar { padding: 6px 14px; } nav a { margin-right: 1em; }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 2px solid #1f1f2e; font-size: .9em; }
@@ -22,6 +22,11 @@ main { flex: 1; display: flex; min-height: 0; }
 #menu { position: absolute; display: none; background: #fffdf6; border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.25); padding: 6px; z-index: 5; font-size: .88em; }
 #menu p { margin: 0 0 4px; font-weight: 600; max-width: 26em; } #menu button { display: block; width: 100%; text-align: left; margin: 3px 0; font: inherit; border: 1.5px solid #1f1f2e; border-radius: 8px; background: #fff; padding: 3px 8px; cursor: pointer; }
 #menu button:hover { background: #c8f7c5; } #menu .say { color: #555; font-weight: 400; font-size: .9em; }
+#menu input { font: inherit; width: 100%; box-sizing: border-box; padding: 3px 8px; border: 2px solid #1f1f2e; border-radius: 8px; margin: 2px 0 4px; }
+.map-drops { display: inline-flex; gap: 6px; margin-left: auto; }
+.map-drop { border: 2px dashed #1f1f2e; border-radius: 999px; padding: 1px 10px; background: #fff; font-weight: 600; }
+body.dragging .map-drop { background: #eef9f7; }
+.node.dz-target circle { stroke-dasharray: 3 2; } #info li[data-claim] { padding: 1px 3px; } #info h3[data-id] { padding: 2px 4px; }
 </style>{% endblock %}
 {% block body %}
 <div class="bar"><input type="search" id="q" placeholder="🔎 find a motif">
@@ -33,7 +38,8 @@ main { flex: 1; display: flex; min-height: 0; }
   <select id="shared-min" title="grey lines between motifs holding at least this many of the same claims"><option value="0">none of</option><option value="1">1+ of</option><option value="2" selected>2+ of</option><option value="3">3+ of</option></select> the same claims
   <label class="key"><input type="checkbox" id="only-linked" checked> only motifs with a link</label> <button id="fit" style="font:inherit;border:1.5px solid #1f1f2e;border-radius:999px;background:#fff;padding:1px 10px;cursor:pointer">⤢ fit</button>
   <span class="meta" id="count"></span>
-  <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot onto another to link them.</span></div>
+  <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
+  <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
 <main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
@@ -80,7 +86,8 @@ function draw() {
   svg.append('defs').append('marker').attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 10).attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
     .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#0a8f7e');
   const root = svg.append('g');
-  zoomer = d3.zoom().scaleExtent([0.15, 5]).on('zoom', (ev) => root.attr('transform', ev.transform));
+  zoomer = d3.zoom().scaleExtent([0.15, 5]).filter((ev) => ev.type === 'wheel' || (!ev.target.closest('.node') && !ev.ctrlKey && !ev.button))
+    .on('zoom', (ev) => { root.attr('transform', ev.transform); $('#menu').style.display = 'none'; });
   svg.call(zoomer);
   const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
   const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
@@ -94,14 +101,6 @@ function draw() {
   node.append('title').text((n) => `${n.e.name} (${n.e.claims.length} claim${n.e.claims.length === 1 ? '' : 's'})${n.e.note ? '\n' + n.e.note : ''}`);
   node.on('click', (ev, n) => { ev.stopPropagation(); show(n.id); });
   svg.on('click', () => show(null));
-  node.call(d3.drag().on('start', (ev, n) => { if (!ev.active) sim.alphaTarget(0.2).restart(); n.fx = n.x; n.fy = n.y; })
-    .on('drag', (ev, n) => { n.fx = ev.x; n.fy = ev.y; const t = nearest(n); node.classed('target', (m) => m === t); })
-    .on('end', (ev, n) => { if (!ev.active) sim.alphaTarget(0); const t = nearest(n); node.classed('target', false); n.fx = null; n.fy = null; if (t) choose(n, t, ev.sourceEvent); }));
-  function nearest(n) {
-    let best = null, bd = Infinity;
-    nodes.forEach((m) => { if (m === n) return; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d < r(m) + 8 && d < bd) { best = m; bd = d; } });
-    return best;
-  }
   sim = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => l.kind === 'shared' ? 0.15 : 0.6))
     .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
@@ -145,14 +144,13 @@ function show(id) {
   if (!id) { box.style.display = 'none'; return; }
   const e = byId[id], kinds = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
   const shared = links.filter((l) => l.kind === 'shared' && (l.source.id === id || l.target.id === id)).map((l) => l.source.id === id ? l.target.id : l.source.id);
-  box.innerHTML = `<button class="x" title="close">✕</button><h3>🧩 ${esc(e.name)} <span class="meta">${e.id}</span></h3>
+  box.innerHTML = `<button class="x" title="close">✕</button><h3 data-id="${e.id}" title="drag onto a dot or a name">🧩 ${esc(e.name)} <span class="meta">${e.id}</span></h3>
     ${e.note ? `<p class="meta">${esc(e.note)}</p>` : ''}
     ${e.parents.length ? `<p><b>a kind of</b> ${names(e.parents)}</p>` : ''}
     ${kinds.length ? `<p><b>its kinds</b> ${names(kinds)}</p>` : ''}
     ${e.related.length ? `<p><b>related</b> ${names(e.related)}</p>` : ''}
     ${shared.length ? `<p><b>shares claims with</b> ${names(shared)}</p>` : ''}
-    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b></p><ul>${e.claims.slice(0, 8).map((c) => `<li>${esc(c.claim)}</li>`).join('')}</ul>
-    ${e.claims.length > 8 ? `<p class="meta">and ${e.claims.length - 8} more</p>` : ''}
+    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b></p><ul>${e.claims.map((c) => `<li data-claim="${esc(c.claim)}" title="drag onto a dot or a name to file it there">${esc(c.claim)}</li>`).join('')}</ul>
     <p><a href="/motif-board" target="_blank">open the board</a></p>`;
   box.style.display = 'block';
 }
@@ -164,18 +162,53 @@ function center(id) {
   const svg = d3.select('#net'), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
   svg.transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate((W - 350) / 2 - n.x * 1.3, H / 2 - n.y * 1.3).scale(1.3));  // left of the details box
 }
-function choose(a, b, ev) {
-  const m = $('#menu'), box = $('#graph').getBoundingClientRect();
-  const opts = [
-    ['⊂ under it', `${q(a.e.name)} becomes a kind of ${q(b.e.name)}`, {action: 'parent', id: a.id, parent: b.id}],
-    ['⊃ over it', `${q(b.e.name)} becomes a kind of ${q(a.e.name)}`, {action: 'parent', id: b.id, parent: a.id}],
-    ['↔ related', 'near each other, different stories: both stay, linked', {action: 'relate', a: a.id, b: b.id}],
-    ['⤵ merge into it', `${q(a.e.name)} goes; its claims join ${q(b.e.name)}`, {action: 'merge', source: a.id, target: b.id}],
-  ];
-  m.innerHTML = `<p>🧩 ${esc(a.e.name)} → 🧩 ${esc(b.e.name)}</p>` + opts.map(([l, s], i) => `<button data-i="${i}">${l} <span class="say">${esc(s)}</span></button>`).join('') + '<button data-i="-1">cancel</button>';
-  m.style.left = Math.min(ev.clientX - box.left + 10, box.width - 300) + 'px'; m.style.top = Math.min(ev.clientY - box.top + 10, box.height - 200) + 'px';
-  m.style.display = 'block';
-  m.onclick = (e2) => { const btn = e2.target.closest('button'); if (!btn) return; m.style.display = 'none'; const i = +btn.dataset.i; if (i >= 0) act(opts[i][2]); };
+// Drag and drop, as on the workbench (drag.js): a dot, a name in the tree or the motif's box title is a motif; a claim
+// in the box is a claim. Over a dot or a name its choices pop up; let go on one.
+const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
+dragZones({
+  handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim]', target: '.node, #tree span[data-id], .map-drop', minWidth: 300,
+  item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
+  label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
+  name: (t) => t.classList.contains('map-drop') ? '' : 'onto 🧩 ' + byId[motifOf(t)].name,
+  zones: (item, t) => {
+    const drop = t.dataset.drop;
+    if (drop) {
+      if (item.type === 'claim') {
+        if (drop === 'newmotif') return [{label: '✨ new motif', say: 'Start a new motif with this claim, keeping it where it is (name it next).', run: () => named(item)}];
+        if (drop === 'nomotif') return [{label: '∅ no motif', say: 'It tells no recurring story: out of every motif.', run: () => act({action: 'no_motif', claim: item.claim})}];
+        if (drop === 'trash' && item.from) return [{label: '🗑️ take it out', say: `Out of ${q(byId[item.from].name)}.`, run: () => act({action: 'unfile', claim: item.claim, id: item.from})}];
+        return [];
+      }
+      return drop === 'trash' ? [{label: '🗑️ delete the motif', say: `${q(byId[item.id].name)} goes; its claims stay in their other motifs.`,
+                                  run: () => act({action: 'delete', id: item.id})}] : [];
+    }
+    const m = byId[motifOf(t)];
+    if (!m) return [];
+    if (item.type === 'claim') {
+      if (m.id === item.from || m.claims.some((c) => c.claim === item.claim)) return [];
+      const from = byId[item.from];
+      return [{label: '＋ add here', say: `Filed under ${q(m.name)} too; it stays in ${q(from.name)}.`, run: () => act({action: 'also', claim: item.claim, source: from.id, target: m.id})},
+              {label: '⇢ move here', say: `Into ${q(m.name)}, out of ${q(from.name)}.`, run: () => act({action: 'move', claim: item.claim, source: from.id, target: m.id})}];
+    }
+    if (m.id === item.id) return [];
+    const a = byId[item.id], under = a.parents.includes(m.id), over = m.parents.includes(a.id), rel = a.related.includes(m.id);
+    return [{label: '⤵ merge into it', say: `${q(a.name)} goes; its claims join ${q(m.name)}.`, run: () => act({action: 'merge', source: a.id, target: m.id})},
+            under ? {label: '✕ not under it', say: `${q(a.name)} is no longer a kind of ${q(m.name)}.`, run: () => act({action: 'parent', id: a.id, parent: m.id, on: false})}
+                  : {label: '⊂ under it', say: `${q(a.name)} becomes a kind of ${q(m.name)}: both stay.`, run: () => act({action: 'parent', id: a.id, parent: m.id})},
+            over ? null : {label: '⊃ over it', say: `${q(m.name)} becomes a kind of ${q(a.name)}: both stay.`, run: () => act({action: 'parent', id: m.id, parent: a.id})},
+            rel ? {label: '✕ unrelate', say: 'No longer linked as related.', run: () => act({action: 'unrelate', a: a.id, b: m.id})}
+                : {label: '↔ related', say: 'Near each other, different stories: both stay, linked.', run: () => act({action: 'relate', a: a.id, b: m.id})}];
+  },
+});
+// A new motif's name, typed on the page (no pop-up): Enter makes it, Escape cancels
+function named(item) {
+  const m = $('#menu'), at = document.querySelector('.map-drop[data-drop="newmotif"]').getBoundingClientRect(), box = $('#graph').getBoundingClientRect();
+  m.innerHTML = `<p>✨ A new motif for: <span class="say">${esc(item.claim.slice(0, 120))}</span></p><input id="new-name" placeholder="its name, then Enter"><button data-go>✨ make it</button><button data-cancel>cancel</button>`;
+  m.style.left = Math.max(10, Math.min(at.left - box.left, box.width - 320)) + 'px'; m.style.top = '10px'; m.style.display = 'block';
+  const input = $('#new-name'); input.focus();
+  const go = () => { const n = input.value.trim(); m.style.display = 'none'; if (n) act({action: 'also_new', claim: item.claim, source: item.from, name: n}); };
+  input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); if (ev.key === 'Escape') m.style.display = 'none'; });
+  m.onclick = (ev) => { if (ev.target.closest('[data-go]')) go(); if (ev.target.closest('[data-cancel]')) m.style.display = 'none'; };
 }
 function tree() {
   const kids = (id) => data.entries.filter((e) => e.parents.includes(id)).sort((a, b) => a.name.localeCompare(b.name));
