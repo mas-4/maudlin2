@@ -5,6 +5,8 @@ work on a known problem: a person and a model building a category system from a 
 keeping it tidy as it grows. Several fields have worked on it, under different names: qualitative coding, interactive
 topic modeling, taxonomy building, entity resolution, card sorting, and folklore indexing itself. This is what they
 found that we can use, with what each would mean here. Written Oct 6, 2026; the motif index review is due ~Oct 12.
+For how our catalog compares with existing ones (Thompson, ATU, Brunvand, CARDS, SemEval…) and the plan to map our
+motifs to them, see `docs/motif-catalogs.md`; for how the research directions have changed, `docs/research-directions.md`.
 
 ## What we have now
 
