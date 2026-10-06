@@ -207,7 +207,8 @@
     const sel = S.sel[i] || (S.sel[i] = new Set());
     return `<article data-scroll class="wb-panel p${i % COLORS}${i === S.active && S.open.length > 1 ? ' active' : ''}" data-drop="motif" data-id="${e.id}" data-panel="${i}">
       <header class="wb-phead">
-        <h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="click to rename · drag onto another motif or a group">${esc(e.name)}</h2>
+        <div class="wb-titlerow"><h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="click to rename · drag onto another motif or a group">${esc(e.name)}</h2>
+          <button class="wb-btn wb-close" data-close="${i}" title="close this motif">✕</button></div>
         <span class="wb-pid">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.curated ? ' · ✋ by hand' : ''}${e.first_seen ? ' · since ' + esc(e.first_seen.slice(0, 10)) : ''}</span>
         <span class="wb-ptools">
           <button class="wb-btn" data-rename="${e.id}" title="rename">✎ rename</button>
@@ -218,7 +219,6 @@
           <select data-genre="${e.id}" title="its genre"><option value="">🎭 no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
           ${isSingle(e) || e.stands_alone ? `<button class="wb-btn${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
           <button class="wb-btn" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
-          <button class="wb-btn" data-close="${i}" title="close">✕</button>
         </span>
       </header>
       <div class="wb-rels">

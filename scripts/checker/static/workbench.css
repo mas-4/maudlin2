@@ -223,3 +223,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 
 .wb-pick { gap: 8px; }
 .wb-pickbtns { display: flex; gap: 4px; flex: none; }
+
+.wb-titlerow { display: flex; align-items: flex-start; gap: 8px; flex: 1 1 100%; }
+.wb-titlerow .wb-pname { flex: 1; min-width: 0; }
+.wb-close { flex: none; margin-left: auto; }
