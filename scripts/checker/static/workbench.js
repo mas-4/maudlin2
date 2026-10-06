@@ -14,7 +14,7 @@
 
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
-    q: '', sel: [new Set(), new Set()], last: [null, null], tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
+    q: '', sel: [], last: [], active: 0, tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
     checkAt: 0, extra: {}, claimHits: [],
   };
 
@@ -30,7 +30,7 @@
     S.kids = {};
     for (const e of d.entries) for (const p of e.parents) (S.kids[p] = S.kids[p] || []).push(e.id);
     S.open = S.open.filter((id) => S.by[id]);
-    S.sel = [new Set(), new Set()];
+    resetSelection();
   }
   async function act(body, done) {
     const r = await fetch('/workbench', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -43,6 +43,9 @@
     if (done) toast(done, false, true);
     return true;
   }
+  const MAX_OPEN = 8;  // open motifs side by side; the middle scrolls sideways when they don't fit
+  const COLORS = 6;  // panel colors cycle (pink, teal, yellow, blue, orange, purple)
+  function resetSelection() { S.sel = S.open.map(() => new Set()); S.last = S.open.map(() => null); }
   async function reload() { setData(await getJSON('/workbench.json')); render(); refreshUndo(); }
 
   // Undo: the same server-side stack as every motif page (one step per action; a multi-claim drag is one step)
@@ -153,7 +156,7 @@
       ns === 'none' ? '<b title="no note yet" class="b-faint">📝</b>' : ns === 'draft' ? '<b title="the note is a draft">🤖</b>' : '',
       e.stands_alone ? '<b title="stands alone">🧍</b>' : ''].join('');
     const open = S.open.indexOf(e.id);
-    return `<div class="wb-row${open >= 0 ? ' open o' + open : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
+    return `<div class="wb-row${open >= 0 ? ' open o' + (open % COLORS) : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
       ${fold ? `<button class="wb-fold" data-fold="m:${e.id}">${fold}</button>` : '<span class="wb-fold-sp"></span>'}
       <span class="wb-rname">${esc(e.name)}</span><span class="wb-badges">${badges}</span><i class="wb-n">${e.claims.length}</i>
       <button class="wb-mini wb-side" data-open2="${e.id}" title="open beside (compare)">⧉</button></div>`;
@@ -175,13 +178,16 @@
   function renderPanels() {
     const box = $('#panels');
     if (!S.open.length) {
+      $('#work-head').innerHTML = '';
       box.innerHTML = `<div class="wb-welcome"><div class="wb-big">👈 pick a motif</div>
         <p>Click one on the left to open it here; <b>Shift-click</b> or ⧉ opens a second beside it.</p>
         <p>Then drag: claims onto motifs, motifs onto motifs, motifs onto groups. Hover a target to see your choices. 🫳</p>
         <p class="wb-faint">The inbox on the right has decisions waiting: ✅ checks, 🔗 pairs, 1️⃣ singles, 📥 unfiled claims.</p></div>`;
       return;
     }
-    box.classList.toggle('two', S.open.length === 2);
+    box.dataset.count = S.open.length;
+    $('#work-head').innerHTML = S.open.length > 1 ? `<b>${S.open.length}</b> open side by side · a click opens in the outlined one; <b>Shift-click</b> or ⧉ adds another <button class="wb-mini" id="close-all">✕ close all</button>`
+      : 'Shift-click a motif (or ⧉) to open it beside this one, as many as you like';
     box.innerHTML = S.open.map((id, i) => panel(S.by[id], i)).join('');
     S.open.forEach((id, i) => { if (S.extra[id]) fillExtra(id, i); });
   }
@@ -193,8 +199,8 @@
     for (const c of e.claims) for (const o of motifs()) if (o.id !== e.id && o.claims.some((x) => x.claim === c.claim)) shared[o.id] = (shared[o.id] || 0) + 1;
     const sharedIds = Object.keys(shared).sort((a, b) => shared[b] - shared[a]);
     const order = [...e.claims].sort((a, b) => (b.new - a.new));
-    const sel = S.sel[i];
-    return `<article class="wb-panel p${i}" data-drop="motif" data-id="${e.id}" data-panel="${i}">
+    const sel = S.sel[i] || (S.sel[i] = new Set());
+    return `<article data-scroll class="wb-panel p${i % COLORS}${i === S.active && S.open.length > 1 ? ' active' : ''}" data-drop="motif" data-id="${e.id}" data-panel="${i}">
       <header class="wb-phead">
         <h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="drag me onto another motif or a group">${esc(e.name)}</h2>
         <span class="wb-pid">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.curated ? ' · ✋ by hand' : ''}${e.first_seen ? ' · since ' + esc(e.first_seen.slice(0, 10)) : ''}</span>
@@ -355,15 +361,30 @@
   }
 
   // ---------- opening motifs ----------
+  // A click opens a motif in the active panel (the last one you worked in); Shift-click or ⧉ adds a panel beside the
+  // others. A motif already open is just brought into view.
   function openMotif(id, beside) {
     if (!S.by[id]) return;
-    if (beside) {
-      S.open = S.open.filter((x) => x !== id);
-      S.open = S.open.length ? [S.open[0], id] : [id];
-    } else if (!S.open.includes(id)) {
-      S.open = S.open.length === 2 ? [id, S.open[1]] : [id];
+    const at = S.open.indexOf(id);
+    if (at >= 0) S.active = at;
+    else if (beside || !S.open.length) {
+      S.open.push(id);
+      if (S.open.length > MAX_OPEN) S.open.shift();
+      S.active = S.open.length - 1;
+    } else {
+      S.active = Math.min(S.active, S.open.length - 1);
+      S.open[S.active] = id;
     }
-    S.sel = [new Set(), new Set()];
+    resetSelection();
+    store.set('open', S.open);
+    render();
+    const p = $(`.wb-panel[data-panel="${S.active}"]`);
+    if (p) p.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
+  }
+  function closePanel(i) {
+    S.open.splice(i, 1);
+    if (S.active >= i && S.active > 0) S.active -= 1;
+    resetSelection();
     store.set('open', S.open);
     render();
   }
@@ -526,8 +547,15 @@
       drag.scroll = ev.clientY < r.top + 50 ? -1 : ev.clientY > r.bottom - 50 ? 1 : 0;
       drag.scroller = sc;
     }
+    // Near the side of the open motifs' row: scroll it sideways to reach the panels out of view
+    const row = $('#panels'), rr = row.getBoundingClientRect();
+    drag.side = ev.clientY > rr.top && ev.clientY < rr.bottom ? (ev.clientX < rr.left + 40 && ev.clientX > rr.left - 30 ? -1 : ev.clientX > rr.right - 40 && ev.clientX < rr.right + 30 ? 1 : 0) : 0;
   }
-  setInterval(() => { if (drag && drag.on && drag.scroll && drag.scroller) drag.scroller.scrollTop += drag.scroll * 14; }, 30);
+  setInterval(() => {
+    if (!drag || !drag.on) return;
+    if (drag.scroll && drag.scroller) drag.scroller.scrollTop += drag.scroll * 14;
+    if (drag.side) $('#panels').scrollLeft += drag.side * 18;
+  }, 30);
   document.addEventListener('pointermove', (ev) => {
     if (!drag || ev.pointerId !== drag.id) return;
     if (!drag.on) {
@@ -580,14 +608,20 @@
     if (Date.now() - lastDragEnd < 250) { ev.preventDefault(); ev.stopPropagation(); return; }
     const t = ev.target;
     if (pinned && !t.closest('.dz-menu')) { hideMenu(); return; }
+    const inPanel = t.closest('[data-panel]');
+    if (inPanel && +inPanel.dataset.panel !== S.active && !t.closest('[data-close]')) {
+      S.active = +inPanel.dataset.panel;
+      $$('.wb-panel').forEach((p) => p.classList.toggle('active', +p.dataset.panel === S.active && S.open.length > 1));
+    }
     const d = (k) => { const el = t.closest('[data-' + k + ']'); return el && el.dataset[k.replace(/-(\w)/g, (m, c) => c.toUpperCase())]; };
     let v;
     if ((v = d('view'))) { S.view = v; store.set('view', v); return render(); }
     if ((v = d('tab'))) { S.tab = v; store.set('tab', v); renderTabs(); return renderInbox(); }
     if ((v = d('fold'))) { S.folded.has(v) ? S.folded.delete(v) : S.folded.add(v); store.set('folded', [...S.folded]); return renderTree(); }
     if ((v = d('open2'))) return openMotif(v, true);
-    if ((v = d('close')) !== undefined && v !== null && t.closest('[data-close]')) { S.open.splice(+v, 1); store.set('open', S.open); return render(); }
-    if ((v = d('compare'))) { const [a, b] = v.split('|'); S.open = [a, b].filter((x) => S.by[x]); store.set('open', S.open); return render(); }
+    if (t.closest('[data-close]')) return closePanel(+d('close'));
+    if (t.id === 'close-all') { S.open = []; resetSelection(); store.set('open', S.open); return render(); }
+    if ((v = d('compare'))) { for (const x of v.split('|')) if (S.by[x] && !S.open.includes(x)) openMotif(x, true); return; }
     if ((v = d('rename'))) { const e = S.by[v]; const name = prompt('Rename the motif:', e.name); if (name && name.trim() && name.trim() !== e.name) act({action: 'rename', id: v, name: name.trim()}, `✎ renamed to “${name.trim()}”`); return; }
     if ((v = d('done'))) { const e = S.by[v]; return act({action: 'done', id: v, done: e.done !== 'done'}, e.done === 'done' ? '↺ not done' : `✓ “${e.name}” done`); }
     if ((v = d('alone'))) { const e = S.by[v]; return act({action: 'stands_alone', id: v, alone: !e.stands_alone}, e.stands_alone ? '🧍 suggestions back on' : `🧍 “${e.name}” stands alone`); }
