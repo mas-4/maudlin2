@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **A lighter front page.** The front page had become a dashboard, a corpus and a reader at once (an outside reader
+  counted 36 links on one story card). The story cards, every outlet's headline on each, moved to their own page,
+  Every story (stories.html). The front page keeps the cloud and puts the nine hottest stories (ranked as before) in
+  short cards, each with three things: how its coverage spreads across the lean scale, one framing contrast (a phrase
+  only one side uses, skipping phrases made only of the story's title words, or the most-quoted phrase), and one sign
+  from beyond the front pages (TV, radio, people retelling it, a fact-check). Sagas follow, then the trend boxes. Each
+  saga has a page of its own (saga-<id>.html) following it across its parts.
 - **Sagas: no more joining by persistence.** An outside reader found three sagas holding a part from another
   storyline. All three were the old judge's yeses, and one shows the flaw: the Supreme Court climate case and an
   overview of the court's new term were judged separate 25 times, then joined on the 26th, because each hour the

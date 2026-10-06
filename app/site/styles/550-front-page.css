@@ -1,0 +1,114 @@
+/* The lighter front page: top stories (spread by lean, one framing contrast, one cross-media sign), sagas as masonry */
+/* (Oct 6; the full story cards are on stories.html; see docs/style-book.md) */
+.top-stories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19em, 1fr));
+    gap: 1.1em;
+    margin: 0.4em 0 1em;
+}
+
+.top-story {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--pop, #ff4fa3);
+    padding: 0.6em 0.9em 0.7em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.top-story:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 var(--pop, #ff4fa3);
+}
+
+.top-story h3 {
+    font: 700 1.2em/1.2 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0;
+    color: #1f1f2e;
+}
+
+.top-story h3 a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.top-story h3 a:hover {
+    text-decoration: underline wavy var(--pop, #ff4fa3);
+}
+
+.top-story .saga-tag {
+    align-self: flex-start;
+    margin: 0;
+}
+
+/* Who carries it: one bar, left to right as the lean scale runs */
+.spread-bar {
+    display: flex;
+    height: 1.1em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    overflow: hidden;
+    font: 700 0.72em/1.1em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.spread-bar span {
+    display: block;
+    text-align: center;
+    min-width: 3px;
+}
+
+.spread-left { background: #3b4cc0; color: white; }
+.spread-center { background: #c9c9d4; color: #1f1f2e; }
+.spread-right { background: #b40426; color: white; }
+.spread-unrated { background: repeating-linear-gradient(45deg, #fff, #fff 3px, #e4e4ea 3px, #e4e4ea 6px); color: #555; }
+
+.top-facts, .top-line, .top-more {
+    margin: 0;
+    font-size: 0.88em;
+}
+
+.top-facts {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.top-more {
+    margin-top: auto;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+/* Sagas as masonry: cards of different heights stack in columns without gaps */
+.saga-cards.saga-masonry {
+    display: block;
+    columns: 3 21em;
+    column-gap: 1.2em;
+}
+
+.saga-masonry .saga-card {
+    break-inside: avoid;
+    margin: 0 0 1.2em;
+    display: inline-block;
+    width: 100%;
+}
+
+.saga-dots {
+    display: flex;
+    gap: 4px;
+    margin: 0.2em 0;
+}
+
+.saga-dot {
+    width: 0.8em;
+    height: 0.8em;
+    border-radius: 50%;
+    border: 2px solid #1f1f2e;
+    background: color-mix(in srgb, var(--saga) 40%, white);
+}
+
+.saga-dot.now {
+    background: var(--saga);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--saga) 35%, transparent);
+}

@@ -1,7 +1,7 @@
 {% extends "page.html" %}
 
 {% block content %}
-{% set cards_here = page_part in ('front', 'stories') %}
+{% set cards_here = page_part == 'stories' %}
 {% macro card_id(c) %}{{ (anchor_of.get(c, 'story-' ~ c) if anchor_of is defined else 'story-' ~ c)|e }}{% endmacro %}
 {% macro card_href(c) %}{{ '' if cards_here else 'stories.html' }}#{{ card_id(c) }}{% endmacro %}
     <script>
@@ -24,6 +24,9 @@
     </script>
     {% if page_part != 'table' %}
     {% if page_part == 'front' %}{# the cloud, the table of contents and the trend boxes: the front page only #}
+    <script>
+        if (/^#s-\d+$/.test(location.hash)) location.replace('stories.html' + location.hash);  // cards moved there Oct 6
+    </script>
     <figure class="wordcloud">
         {% if newsday %}
             <a class="newsday-sticker {{ newsday.kind|e }}" href="{{ card_href(newsday.cluster) }}"
@@ -62,7 +65,8 @@
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
-        <a href="#current-stories"><span class="toc-emoji">📰</span><span class="toc-label">stories</span></a>
+        <a href="#top-stories"><span class="toc-emoji">📰</span><span class="toc-label">top stories</span></a>
+        <a href="stories.html"><span class="toc-emoji">🗂️</span><span class="toc-label">every story</span></a>
         <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
     </nav>
     <script>
@@ -555,6 +559,52 @@
     </script>
 
 
+    {% if page_part == 'front' and top_stories %}
+    <h2 class="section-divider" id="top-stories"><span>📰 Top stories</span></h2>
+    <p class="stage-sub">what the most front pages carry right now · <a href="stories.html">every story, with every outlet's headline →</a></p>
+    <div class="top-stories">
+        {% for t in top_stories %}
+            <article class="top-story" style="--pop: {{ (['#ff4fa3', '#ffc400', '#00c2a8', '#3a86ff', '#ff6b1a'][loop.index0 % 5])|e }}">
+                {% if t.saga %}<p class="saga-tag" style="--saga: {{ t.color|e }}">🧵 part of a saga · {{ t.saga }} parts</p>{% endif %}
+                <h3><a href="{{ (t.page or 'stories.html#' ~ t.anchor)|e }}">{{ t.title|e }}</a> {% for f in t.feelings %}<span title="{{ f.name|e }}">{{ f.emoji }}</span>{% endfor %}</h3>
+                <div class="spread-bar" title="Outlets carrying it, by lean: {% for side, n, pct in t.spread %}{{ n }} {{ side }}{% if not loop.last %}, {% endif %}{% endfor %}">
+                    {% for side, n, pct in t.spread %}<span class="spread-{{ side|e }}" style="width: {{ pct }}%">{% if pct >= 12 %}{{ n }}{% endif %}</span>{% endfor %}
+                </div>
+                <p class="top-facts">📰 on {{ t.now }} front pages now{% if t.outlets != t.now %} · {{ t.outlets }} in all{% endif %}</p>
+                {% if t.contrast %}<p class="top-line" title="{{ t.contrast.tip|e }}">{{ t.contrast.emoji }} {{ t.contrast.text|e }}</p>{% endif %}
+                {% if t.signal %}<p class="top-line"><a href="{{ t.signal.href|e }}">{{ t.signal.emoji }} {{ t.signal.text|e }}</a></p>{% endif %}
+                <p class="top-more"><a href="stories.html#{{ t.anchor|e }}">every outlet's headline →</a></p>
+            </article>
+        {% endfor %}
+    </div>
+    <p class="more-link"><a href="stories.html">📰 Every story on the front pages now →</a></p>
+    {% endif %}
+    {% if page_part == 'front' %}
+    {% if saga_list %}
+        <h2 class="section-divider" id="sagas"><span>Sagas</span></h2>
+        <p class="stage-sub">running stories, told in parts across days · <a href="sagas.html">every saga →</a></p>
+        <div class="saga-cards saga-masonry">
+            {% for saga in saga_list %}
+                <div class="saga-card" style="--saga: {{ saga.color|e }}">
+                    <h3>🧵 {% if saga.id %}<a href="saga-{{ saga.id|e }}.html">{{ saga.name }}</a>{% else %}{{ saga.name }}{% endif %}</h3>
+                    <p class="saga-dots" aria-hidden="true">{% for part in saga.parts %}<span class="saga-dot{% if part.now %} now{% endif %}" title="{{ part.title|e }}"></span>{% endfor %}</p>
+                    <p class="saga-facts">{{ saga.parts|length }} parts · {{ saga.outlets }} outlets · started {{ saga.started }} ago</p>
+                    <ol class="saga-parts">
+                        {% for part in saga.parts %}
+                            <li{% if not part.now %} class="saga-earlier"{% endif %}>
+                                {% if part.now %}<a class="saga-part" href="{{ card_href(part.cluster) }}">{{ part.title }}</a>
+                                {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
+                                <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}off the front pages · {{ part.age }} ago{% endif %}</span>
+                                {% for f in part.feelings %}<span title="{{ f.name|e }}">{{ f.emoji }}</span>{% endfor %}
+                            </li>
+                        {% endfor %}
+                    </ol>
+                    {% if saga.id %}<p class="story-link"><a href="saga-{{ saga.id|e }}.html">🧵 the whole saga →</a></p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% endif %}
     <div class="trending-row" id="trending">
         {% if news_trends %}
             <section class="trending trending-news">
@@ -680,37 +730,13 @@
 
     </script>
 
-    {% if page_part == 'front' %}
-    {% if saga_list %}
-        <h2 class="section-divider" id="sagas"><span>Sagas</span></h2>
-        <div class="saga-cards">
-            {% for saga in saga_list %}
-                <div class="saga-card" style="--saga: {{ saga.color|e }}">
-                    <h3>🧵 {% if saga.id %}<a href="saga-{{ saga.id|e }}.html">{{ saga.name }}</a>{% else %}{{ saga.name }}{% endif %}</h3>
-                    <p class="saga-facts">{{ saga.parts|length }} parts · {{ saga.outlets }} outlets · started {{ saga.started }} ago</p>
-                    <ol class="saga-parts">
-                        {% for part in saga.parts %}
-                            <li{% if not part.now %} class="saga-earlier"{% endif %}>
-                                {% if part.now %}<a class="saga-part" href="{{ card_href(part.cluster) }}">{{ part.title }}</a>
-                                {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
-                                <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}off the front pages · {{ part.age }} ago{% endif %}</span>
-                                {% for f in part.feelings %}<span title="{{ f.name|e }}">{{ f.emoji }}</span>{% endfor %}
-                            </li>
-                        {% endfor %}
-                    </ol>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-    {% endif %}
-    {% if page_part == 'stories' %}
+
+    {% if page_part == 'stories' %}{# the story cards live on stories.html; the front page has the short list above #}
     <p class="story-page-crumb"><a href="index.html">← back to the front page</a></p>
     <h2 class="section-divider" id="current-stories"><span>📰 Every story</span></h2>
     <p class="table-intro">Every story on the front pages we follow right now: the headlines that make it up, each outlet's
         own, with what the trackers know about it. Search, sort and filter them here; each one's 📄 opens its own page.</p>
-    {% else %}
-    <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
-    {% endif %}
+
     <div class="table-filters story-sort" role="group" aria-label="Search, sort and filter stories">
         <span class="bar-group"><input type="search" class="edit-search story-search" placeholder="🔎 search stories and headlines" aria-label="Search stories"></span>
         <span class="bar-divider" aria-hidden="true"></span>
@@ -956,6 +982,7 @@
         })();
     </script>
 
+    {% endif %}{# the stories page's cards #}
     <p class="more-link"><a href="headlines.html">📋 Every headline right now, with its mood, spin and feelings →</a></p>
     {% endif %}
     {% if page_part == 'table' %}

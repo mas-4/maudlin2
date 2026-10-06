@@ -178,6 +178,12 @@ def front(site):
 
 
 @pytest.fixture(scope='module')
+def cards(site):
+    """The story cards' page (they moved off the front page on Oct 6)"""
+    return site['soup']['stories.html']
+
+
+@pytest.fixture(scope='module')
 def table(site):
     return site['soup']['headlines.html']
 
@@ -235,7 +241,7 @@ def test_built_stylesheet_is_the_joined_partials(built_css):
 
 
 @pytest.mark.parametrize('name, selector', [
-    ('index.html', '.navbar'), ('index.html', '.story'), ('headlines.html', '.headline-table'),
+    ('index.html', '.navbar'), ('index.html', '.top-story'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
     ('agencies.html', '.outlet-card'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
     ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
     ('radio.html', '.radio-stats')])
@@ -295,13 +301,13 @@ def test_front_page_has_no_table(front, site):
     assert [a for a in front.select('a[href="headlines.html"]') if not a.find_parent('nav', class_='navbar')]
 
 
-def test_front_page_story_cards_match_the_clusters(front, site):
+def test_story_cards_match_the_clusters(cards, site):
     clusters = site['context']['clusters']
-    cards = front.select('div.stories > div.story')
+    cards = cards.select('div.stories > div.story')
     assert len(cards) == len(clusters)
     assert cards, 'no stories formed from the sample of headlines'
     for card, c in zip(cards, clusters):
-        assert card['id'] == f'story-{c["cluster"]}'
+        assert card['id'] == site['context']['anchor_of'].get(c['cluster'], f'story-{c["cluster"]}')  # the saved story's id
         assert card.select_one('h4').get_text(strip=True)
         assert card.select('.meter-dot')
 
@@ -462,18 +468,28 @@ def test_edits_page_is_searchable_and_sortable(site):
     assert first['data-when'].isdigit() and first['data-agency']
 
 
-def test_story_outlet_chips_stay_in_their_box(front):
+def test_story_outlet_chips_stay_in_their_box(cards):
     # A <p> can't hold the coverage lines' own <p>s: the browser closes it early and the chips fall out of it
-    cards = front.select('.story')
+    cards = cards.select('.story')
     assert cards and all(card.select('.story-outlets .storylink') for card in cards)
 
 
-def test_story_cards_carry_a_stable_share_anchor(front, site):
+def test_the_front_page_has_a_short_list_and_sends_readers_to_every_story(front, cards, site):
+    top = front.select('.top-story')
+    assert top and len(top) <= 9 and not front.select('div.stories > div.story')
+    assert all(t.select_one('.spread-bar') and t.select_one('.top-more a')['href'].startswith('stories.html#') for t in top)
+    assert front.select_one('a[href="stories.html"]') and cards.select('div.stories > div.story')
+
+
+def test_story_cards_carry_a_stable_share_anchor(cards, site):
     story_of = site['context'].get('story_of') or {}
-    for card in front.select('.story'):
-        cluster = int(card['id'].removeprefix('story-'))
-        if cluster in story_of:
-            assert card['data-share'] == f's-{story_of[cluster]}'
+    found = cards.select('.story')
+    assert found
+    for card in found:
+        if card.get('data-share'):  # a saved story: named by its id, the same in every run
+            assert card['id'] == card['data-share'] and int(card['id'].removeprefix('s-')) in story_of.values()
+        else:
+            assert card['id'].startswith('story-')
 
 
 def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
