@@ -26,6 +26,10 @@ main { flex: 1; display: flex; min-height: 0; }
 .map-drops { display: inline-flex; gap: 6px; margin-left: auto; }
 .map-drop { border: 2px dashed #1f1f2e; border-radius: 999px; padding: 1px 10px; background: #fff; font-weight: 600; }
 body.dragging .map-drop { background: #eef9f7; }
+.map-hull { stroke-width: 1.5px; stroke-linejoin: round; fill-opacity: .13; stroke-opacity: .55; pointer-events: none; }
+.map-glabel { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 4px; }
+.map-gchip { border: 2px solid var(--g); border-radius: 999px; padding: 1px 10px; background: color-mix(in srgb, var(--g) 15%, white); font-weight: 600; cursor: pointer; user-select: none; }
+.map-gchip.off { opacity: .45; text-decoration: line-through; } body.dragging .map-gchip { border-style: dashed; }
 .node.dz-target circle { stroke-dasharray: 3 2; } #info li[data-claim] { padding: 1px 3px; } #info h3[data-id] { padding: 2px 4px; }
 </style>{% endblock %}
 {% block body %}
@@ -39,6 +43,7 @@ body.dragging .map-drop { background: #eef9f7; }
   <label class="key"><input type="checkbox" id="only-linked" checked> only motifs with a link</label> <button id="fit" style="font:inherit;border:1.5px solid #1f1f2e;border-radius:999px;background:#fff;padding:1px 10px;cursor:pointer">⤢ fit</button>
   <span class="meta" id="count"></span>
   <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
+  <span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
 <main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -77,7 +82,7 @@ function draw() {
   const raw = buildLinks(), deg = new Map();
   raw.forEach((l) => { deg.set(l.source, (deg.get(l.source) || 0) + 1); deg.set(l.target, (deg.get(l.target) || 0) + 1); });
   const only = $('#only-linked').checked;
-  nodes = data.entries.filter((e) => !only || deg.get(e.id)).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
+  nodes = data.entries.filter((e) => !only || deg.get(e.id) || (e.groups || []).some((g) => !hiddenGroups.has(g))).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
   const ids = new Set(nodes.map((n) => n.id));
   links = raw.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => ({...l}));
   $('#count').textContent = `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} kind-of · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
@@ -90,6 +95,21 @@ function draw() {
     .on('zoom', (ev) => { root.attr('transform', ev.transform); $('#menu').style.display = 'none'; });
   svg.call(zoomer);
   const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
+  // Groups: a soft area around each group's motifs, with its name (drawn first, under everything)
+  const shown = data.groups.filter((g) => !hiddenGroups.has(g.id));
+  const hulls = root.append('g').selectAll('g').data(shown, (g) => g.id).join('g');
+  hulls.append('path').attr('class', 'map-hull').attr('fill', (g) => groupColor(g.id)).attr('stroke', (g) => groupColor(g.id));
+  hulls.append('text').attr('class', 'map-glabel').attr('fill', (g) => groupColor(g.id)).attr('text-anchor', 'middle').text((g) => '📁 ' + g.name);
+  const members = (g) => nodes.filter((n) => (n.e.groups || []).includes(g.id));
+  function drawHulls() {
+    hulls.each(function (g) {
+      const pts = [];
+      members(g).forEach((n) => { const pad = r(n) + 14; for (let a = 0; a < 12; a++) pts.push([n.x + pad * Math.cos(a * Math.PI / 6), n.y + pad * Math.sin(a * Math.PI / 6)]); });
+      const hull = pts.length >= 3 ? d3.polygonHull(pts) : null;
+      d3.select(this).select('path').attr('d', hull ? 'M' + hull.join('L') + 'Z' : null);
+      d3.select(this).select('text').attr('x', hull ? d3.mean(hull, (p) => p[0]) : -9999).attr('y', hull ? d3.min(hull, (p) => p[1]) - 4 : -9999);
+    });
+  }
   const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
     .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
   link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'kind of' : 'related');
@@ -105,7 +125,16 @@ function draw() {
     .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => l.kind === 'shared' ? 0.15 : 0.6))
     .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
     .force('collide', d3.forceCollide().radius((n) => r(n) + 4)).force('x', d3.forceX(W / 2).strength(0.03)).force('y', d3.forceY(H / 2).strength(0.04))
+    .force('group', (alpha) => {  // a group's motifs drift toward each other, so its area stays compact
+      shown.forEach((g) => {
+        const ms = members(g);
+        if (ms.length < 2) return;
+        const cx = d3.mean(ms, (n) => n.x), cy = d3.mean(ms, (n) => n.y);
+        ms.forEach((n) => { n.vx += (cx - n.x) * GROUP_PULL * alpha; n.vy += (cy - n.y) * GROUP_PULL * alpha; });
+      });
+    })
     .on('tick', () => {
+      drawHulls();
       link.each(function (l) {  // arrows end at the circle's edge
         const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1, cut = l.kind === 'kind' ? r(l.target) + 2 : 0;
         d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
@@ -118,6 +147,20 @@ function draw() {
   applyFocus();
 }
 let zoomer;
+const hiddenGroups = new Set(JSON.parse(localStorage.getItem('map-hidden-groups') || '[]'));
+const GROUP_PULL = 0.4;  // how hard a group's motifs drift together (links pull them toward their neighbours elsewhere)
+const GROUP_COLORS = ['#ff4fa3', '#3a86ff', '#ff6b1a', '#8a5cff', '#00a896', '#e0a800'];
+const groupColor = (gid) => GROUP_COLORS[Math.max(0, data.groups.findIndex((g) => g.id === gid)) % GROUP_COLORS.length];
+function groupChips() {
+  $('#group-chips').innerHTML = data.groups.length ? data.groups.map((g) => `<span class="map-gchip${hiddenGroups.has(g.id) ? ' off' : ''}" data-g="${g.id}" style="--g: ${groupColor(g.id)}">📁 ${esc(g.name)} <span class="meta">${data.entries.filter((e) => (e.groups || []).includes(g.id)).length}</span></span>`).join(' ')
+    : '<span class="meta">no groups yet (make them on the workbench)</span>';
+}
+$('#group-chips').addEventListener('click', (ev) => {
+  const c = ev.target.closest('.map-gchip'); if (!c) return;
+  hiddenGroups.has(c.dataset.g) ? hiddenGroups.delete(c.dataset.g) : hiddenGroups.add(c.dataset.g);
+  try { localStorage.setItem('map-hidden-groups', JSON.stringify([...hiddenGroups])); } catch (e) { /* private window */ }
+  groupChips(); draw();
+});
 function fit() {  // the whole map in view
   if (!nodes.length) return;
   const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
@@ -166,11 +209,18 @@ function center(id) {
 // in the box is a claim. Over a dot or a name its choices pop up; let go on one.
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
 dragZones({
-  handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim]', target: '.node, #tree span[data-id], .map-drop', minWidth: 300,
+  handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim]', target: '.node, #tree span[data-id], .map-drop, .map-gchip', minWidth: 300,
   item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
   label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
-  name: (t) => t.classList.contains('map-drop') ? '' : 'onto 🧩 ' + byId[motifOf(t)].name,
+  name: (t) => t.classList.contains('map-drop') ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
   zones: (item, t) => {
+    if (t.classList.contains('map-gchip')) {
+      if (item.type !== 'motif') return [];
+      const g = data.groups.find((x) => x.id === t.dataset.g), a = byId[item.id], mine = a.groups || [];
+      if (mine.includes(g.id)) return [{label: '✕ out of this group', say: `${q(a.name)} leaves ${q(g.name)}.`, run: () => act({action: 'group_member', id: a.id, group: g.id, on: false})}];
+      return [{label: '📁 into this group', say: `${q(a.name)} in ${q(g.name)}${mine.length ? ', staying in its others' : ''}.`, run: () => act({action: 'group_member', id: a.id, group: g.id})},
+              mine.length ? {label: '⇢ only this group', say: `${q(a.name)} moves to ${q(g.name)}, out of its others.`, run: () => act({action: 'group_assign', id: a.id, group: g.id})} : null];
+    }
     const drop = t.dataset.drop;
     if (drop) {
       if (item.type === 'claim') {
@@ -219,7 +269,9 @@ function tree() {
   };
   const roots = data.entries.filter((e) => !e.parents.length && kids(e.id).length).sort((a, b) => a.name.localeCompare(b.name));
   const rel = data.entries.filter((e) => !e.parents.length && !kids(e.id).length && e.related.length).sort((a, b) => a.name.localeCompare(b.name));
-  $('#tree').innerHTML = `<h3>Kinds</h3><p class="meta">Broader motifs with their kinds under them (a motif with two broader ones shows under both). Click one to find it on the map.</p>
+  const grouped = data.groups.map((g) => `<li><b style="color:${groupColor(g.id)}">📁 ${esc(g.name)}</b><ul>${data.entries.filter((e) => (e.groups || []).includes(g.id)).sort((a, b) => a.name.localeCompare(b.name))
+    .map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">${e.claims.length}</span></li>`).join('')}</ul></li>`).join('');
+  $('#tree').innerHTML = (grouped ? `<h3>Groups</h3><ul>${grouped}</ul>` : '') + `<h3>Kinds</h3><p class="meta">Broader motifs with their kinds under them (a motif with two broader ones shows under both). Click one to find it on the map.</p>
     <ul>${roots.map((e) => item(e, new Set())).join('') || '<li class="meta">No kinds yet.</li>'}</ul>
     <h3>Related, outside the kinds</h3><ul>${rel.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">↔ ${e.related.map((r) => byId[r] ? esc(byId[r].name) : r).join(', ')}</span></li>`).join('') || '<li class="meta">None.</li>'}</ul>`;
 }
@@ -228,7 +280,7 @@ async function load() {
   data = await (await fetch('/motif-board.json')).json();
   byId = Object.fromEntries(data.entries.map((e) => [e.id, e]));
   if (focus && !byId[focus]) focus = null;
-  tree(); draw(); if (focus) show(focus);
+  groupChips(); tree(); draw(); if (focus) show(focus);
 }
 ['#show-kind', '#show-related', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
 $('#q').addEventListener('input', applyFocus);
