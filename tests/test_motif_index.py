@@ -371,3 +371,26 @@ def test_only_motifs_a_person_verified_reach_the_site_with_the_claims_they_saw()
     verified = {'id': 'M2', 'claims': [a, b], 'done': [mi.key('a')]}  # marked done, then b came in
     assert mi.public(verified) and mi.public_claims(verified) == [a]
     assert not mi.public({**verified, 'merged_into': 'M3'})
+
+
+def test_two_claims_told_two_ways_fold_into_one(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    keep, other = 'Billionaires should pay more taxes', 'The very rich should pay their fair share'
+    mi.save({'next': 3, 'claims': {mi.key(keep): ['M001'], mi.key(other): ['M001', 'M002']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Tax the rich', 'claims': [{'claim': keep, 'source': 'narrative'},
+                                                                  {'claim': other, 'source': 'Snopes', 'ref': 'u'}],
+                 'done': [mi.key(keep), mi.key(other)]},
+        'M002': {'id': 'M002', 'name': 'Class conflict', 'claims': [{'claim': other, 'source': 'Snopes', 'ref': 'u'}]}}})
+    mi.same_claim(other, keep)
+    index = mi.load()
+    assert mi.key(other) not in index['claims'] and index['claims'][mi.key(keep)] == ['M001', 'M002']
+    for eid in ('M001', 'M002'):
+        [rec] = index['entries'][eid]['claims']
+        assert rec['claim'] == keep and rec['variants'] == [{'claim': other, 'source': 'Snopes', 'ref': 'u'}]
+    assert index['entries']['M001']['done'] == [mi.key(keep)]
+    assert mi.corrected(other, index) == keep  # told again in the same words: filed as the kept claim
+    # A claim not filed yet can be filed with a claim
+    mi.same_claim('Make billionaires pay', keep)
+    assert [v['claim'] for v in mi.load()['entries']['M002']['claims'][0]['variants']] == [other, 'Make billionaires pay']
+    with pytest.raises(ValueError):
+        mi.same_claim(keep, keep)

@@ -593,7 +593,8 @@ def board() -> dict:
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
                             'id': key(c['claim'])[:6],  # shown as #3f9a2b, to name a claim in a screenshot or a search
-                            'checked': c.get('checked'), 'new': 'done' in e and key(c['claim']) not in e['done']}
+                            'checked': c.get('checked'), 'new': 'done' in e and key(c['claim']) not in e['done'],
+                            **({'variants': [v['claim'] for v in c['variants']]} if c.get('variants') else {})}
                            for c in e['claims']]}
                for e in live(index)]
     return {'groups': list(index.get('groups', {}).values()), 'entries': entries}
@@ -801,6 +802,53 @@ def correct_claim(old: str, new: str):
         if current == old:
             fixes[original] = new
     fixes[old] = new
+    save(index)
+
+
+@exclusive
+def same_claim(variant: str, canonical: str):
+    """A person says two claims are one claim told two ways. The variant folds into the kept claim in every motif either
+    was in; its words are kept on the kept claim's record as a variant (with where they came from); and later tellings
+    in exactly its words are filed as the kept claim (through the corrections). The variant may be one not filed yet."""
+    index = load()
+    kv, kc = key(variant), key(canonical)
+    if kv == kc:
+        raise ValueError('that is the same claim')
+    if kc not in index['claims']:
+        raise ValueError('the claim to keep is not in the index')
+    entries = index['entries']
+    ids_v, ids_c = _ids(index, kv), _ids(index, kc)
+    template = next((c for eid in ids_c if eid in entries for c in entries[eid]['claims'] if key(c['claim']) == kc), None)
+    told = {'claim': variant}
+    for eid in dict.fromkeys(ids_v + ids_c):
+        e = entries.get(eid)
+        if not e:
+            continue
+        vrec = next((c for c in e['claims'] if key(c['claim']) == kv), None)
+        crec = next((c for c in e['claims'] if key(c['claim']) == kc), None)
+        if vrec:
+            e['claims'].remove(vrec)
+            told = {k: vrec[k] for k in ('claim', 'source', 'ref', 'date') if vrec.get(k)}
+            if crec is None:
+                crec = {k: v for k, v in (template or vrec).items() if k not in ('variants', 'checked')}
+                crec['claim'] = canonical
+                e['claims'].append(crec)
+            crec['variants'] = crec.get('variants', []) + vrec.get('variants', [])
+        if e.get('done') and kv in e['done']:
+            e['done'] = sorted((set(e['done']) - {kv}) | {kc})
+        if kv in e.get('not_claims', []):
+            e['not_claims'] = list(dict.fromkeys(kc if k == kv else k for k in e['not_claims']))
+    for eid in dict.fromkeys(ids_c + ids_v):  # the variant's words on every record of the kept claim
+        crec = next((c for c in entries.get(eid, {}).get('claims', []) if key(c['claim']) == kc), None)
+        if crec is not None and all(v.get('claim') != variant for v in crec.get('variants', [])):
+            crec.setdefault('variants', []).append(told)
+    index['claims'][kc] = list(dict.fromkeys(ids_c + ids_v))
+    index['claims'].pop(kv, None)
+    fixes = index.setdefault('corrections', {})
+    for original, current in list(fixes.items()):  # earlier wordings of the variant lead to the kept claim now
+        if current == variant:
+            fixes[original] = canonical
+    fixes[variant] = canonical
     save(index)
 
 

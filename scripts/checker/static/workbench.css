@@ -205,3 +205,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-state.done { background: #c8f7c5; border-color: #1d7a18; color: #12500f; }
 .wb-state.todo { background: #fff; border-color: #b0a8c8; border-style: dashed; color: #555; }
 .wb-state.new { background: #ffe3f1; border-color: #c0006a; color: #8a0050; }
+
+.wb-ways { background: #ece4ff; border: 1.5px solid var(--purple); border-radius: 8px; padding: 0 5px; margin-right: 5px; font-size: 11px; }
+.wb-claim.dz-target { outline: 3px solid var(--purple); outline-offset: 1px; background: #f3eeff; }

@@ -424,6 +424,10 @@ def workbench_action(data: dict):
             raise ValueError('a check is yes, no or unsure')
         mi.check(data.get('claim', ''), data.get('id', ''), data['answer'])
         record_check(data)
+    elif act == 'same_claim':  # one claim told two ways: the variant folds into the kept one
+        if not all(isinstance(data.get(k), str) and data[k].strip() for k in ('variant', 'canonical')):
+            raise ValueError('same_claim: a variant and the claim to keep')
+        mi.same_claim(data['variant'].strip(), data['canonical'].strip())
     elif act == 'new_with':  # a new motif made from claims dropped on it: each moved or copied from its motif, or filed
         name, claims = data.get('name'), data.get('claims')
         if not (isinstance(name, str) and name.strip() and isinstance(claims, list) and claims):

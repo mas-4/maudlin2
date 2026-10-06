@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **One claim, told several ways.** A person can now say two claims in the motif index are the same claim: the one
+  folds into the other in every motif either was in, its words kept as a variant of the kept claim, and a later
+  telling in exactly those words is filed as the kept claim, not as a new one. A motif's claim count then counts
+  claims, not wordings.
 - **Outlet chips: the face is the headline's feeling.** Each outlet's chip on a story card showed 😠 for any headline
   whose mood was below zero, a leftover from the 2024 site, so nearly every chip looked angry, even on obituaries
   whose headlines were mostly sad. It now shows the headline's own strongest feeling (😱 fear, 🤬 anger, 😭 sadness…;

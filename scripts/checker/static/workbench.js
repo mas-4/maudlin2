@@ -239,8 +239,9 @@
   }
   function claimRow(c, e, selected) {
     const tags = [c.new ? '<b class="b-new">NEW</b>' : '', c.checked === 'yes' ? '<b title="checked: belongs here">✓</b>' : c.checked === 'unsure' ? '<b title="checked: not sure">🤷</b>' : ''].join('');
-    return `<li class="wb-claim${selected ? ' sel' : ''}" ${claimData(c, e.id)}>
-      <span class="wb-ctext" data-select="1">${tags}${esc(c.claim)}</span>
+    const ways = c.variants && c.variants.length ? `<b class="wb-ways" title="also told as: ${esc(c.variants.join(' · '))}">≡ ${c.variants.length + 1} ways</b>` : '';
+    return `<li class="wb-claim${selected ? ' sel' : ''}" ${claimData(c, e.id)} data-drop="sameclaim">
+      <span class="wb-ctext" data-select="1">${tags}${ways}${esc(c.claim)}</span>
       <span class="wb-meta"><a class="wb-cid" data-inspect="1" title="open it on the right">#${c.id}</a> · ${esc(SOURCE[c.source] || c.source || '')}</span>
       <span class="wb-cbtns">
         <button class="wb-mini" data-inspect="1" title="open it on the right: its source and every motif it's in, to reassign">🔍</button>
@@ -369,6 +370,7 @@
     box.innerHTML = verdict + `<div class="wb-inspect" data-drop="claim">
       <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}>${esc(c.claim)}
         <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif</span></blockquote>
+      ${rec && rec.variants && rec.variants.length ? `<p class="wb-faint">≡ also told as: ${rec.variants.map((v) => '“' + esc(v) + '”').join(' · ')}</p>` : ''}
       <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
       ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-motifrow${r.checked === 'yes' ? ' fits' : ''}">${chip(e.id)}
         ${e.note ? `<span class="wb-mnote">${esc(e.note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
@@ -485,6 +487,17 @@
   function claimsName(item) { return item.claims.length === 1 ? '“' + item.claims[0].claim.slice(0, 60) + '…”' : item.claims.length + ' claims'; }
   function zones(item, t) {
     const drop = t.dataset.drop;
+    if (drop === 'sameclaim' || (drop === 'claim' && item.kind === 'claim')) {
+      // A claim dropped on a claim: one claim told two ways. Over a claim in an open motif, the motif's own choices too
+      const target = drop === 'claim' ? S.claim && S.claim.claim : t.dataset.claim;
+      const panelEl = drop === 'sameclaim' && t.closest('[data-drop="motif"]');
+      const base = panelEl ? zones(item, panelEl) : [];
+      if (item.kind !== 'claim' || !target || !motifsOf(target).length) return base;
+      const folding = item.claims.filter((c) => c.claim !== target);
+      if (!folding.length) return base;
+      return [...base, {label: '≡ the same claim as this one', say: `fold ${claimsName({claims: folding})} into “${target.slice(0, 60)}…”: one claim, told ${folding.length + 1} ways`,
+        run: () => batch(folding.map((c) => ({action: 'same_claim', variant: c.claim, canonical: target})), `≡ ${claimsName({claims: folding})} folded into one claim`)}];
+    }
     if (item.kind === 'claim') {
       const cs = item.claims;
       if (drop === 'motif') {
