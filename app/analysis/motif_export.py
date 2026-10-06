@@ -38,7 +38,8 @@ def motifs(scope: str = 'verified', index: dict | None = None) -> list[dict]:
             note, drafted = e.get('note', ''), e.get('note_by') in mi.DRAFTS
         out.append({
             'id': e['id'], 'name': e['name'], 'note': note, **({'note_is_draft': True} if note and drafted else {}),
-            'genre': (e.get('facets') or {}).get('genre'), 'group': groups.get(e.get('group')),
+            'genre': (e.get('facets') or {}).get('genre'),
+            'groups': [groups[g] for g in mi.groups_of(e) if g in groups],
             'parents': [p for p in mi.parents_of(e) if p in ids],
             'related': sorted({x for pair in index.get('related', []) if e['id'] in pair for x in pair
                                if x != e['id'] and x in ids}),
@@ -48,7 +49,7 @@ def motifs(scope: str = 'verified', index: dict | None = None) -> list[dict]:
                         **({'checked': c['checked']} if scope == 'all' and c.get('checked') else {}),
                         **({'also_told': [v['claim'] for v in c['variants']]} if c.get('variants') else {})}
                        for c in claims]})
-    out.sort(key=lambda m: ((m['group'] or '\uffff').lower(), m['name'].lower()))
+    out.sort(key=lambda m: m['name'].lower())
     return out
 
 
@@ -60,11 +61,11 @@ def as_json(found: list[dict], scope: str) -> str:
 def as_csv(found: list[dict]) -> str:
     out = io.StringIO()
     w = csv.writer(out)
-    w.writerow(['motif', 'name', 'genre', 'group', 'parents', 'note', 'claim_id', 'claim', 'source', 'side', 'date',
+    w.writerow(['motif', 'name', 'genre', 'groups', 'parents', 'note', 'claim_id', 'claim', 'source', 'side', 'date',
                 'also_told'])
     for m in found:
         for c in m['claims'] or [{}]:  # a motif without claims still gets its row
-            w.writerow([m['id'], m['name'], m['genre'] or '', m['group'] or '', ' '.join(m['parents']), m['note'],
+            w.writerow([m['id'], m['name'], m['genre'] or '', ' | '.join(m['groups']), ' '.join(m['parents']), m['note'],
                         c.get('id', ''), c.get('claim', ''), c.get('source', ''), c.get('side', ''), c.get('date', ''),
                         ' | '.join(c.get('also_told', []))])
     return out.getvalue()
@@ -75,26 +76,36 @@ def as_markdown(found: list[dict], scope: str) -> str:
     lines = [f'# 🧩 BND Motif Index', '',
              f"{len(found)} motifs ({'verified by a person' if scope == 'verified' else 'all, verified or not'}), "
              f"{sum(len(m['claims']) for m in found)} claims; exported {date.today().isoformat()} from bignews.day.", '']
-    group = object()
-    for m in found:
-        if m['group'] != group:
-            group = m['group']
-            lines += [f"## {group or 'Ungrouped'}", '']
-        tags = [f"genre: {m['genre']}"] if m['genre'] else []
-        tags += [f"kind of: {', '.join(names[p] for p in m['parents'])}"] if m['parents'] else []
-        tags += [f"related: {', '.join(names[r] for r in m['related'])}"] if m['related'] else []
-        tags += ['not yet verified'] if scope == 'all' and not m['verified'] else []
-        lines += [f"### {m['name']} ({m['id']})", '']
-        if m['note']:
-            lines += [f"{m['note']}{' *(draft)*' if m.get('note_is_draft') else ''}", '']
-        if tags:
-            lines += [f"*{' · '.join(tags)}*", '']
-        for c in m['claims']:
-            where = ', '.join(x for x in (c['side'], c['source'], c['date']) if x)
-            lines.append(f"- {c['claim']}" + (f" ({where})" if where else ''))
-            lines += [f"  - also told: {v}" for v in c.get('also_told', [])]
-        lines.append('')
+    # By group, a motif in several groups under each, then the ungrouped
+    sections = sorted({g for m in found for g in m['groups']}, key=str.lower)
+    for section in sections + [None]:
+        inside = [m for m in found if (section in m['groups'] if section else not m['groups'])]
+        if not inside:
+            continue
+        lines += [f"## {section or 'Ungrouped'}", '']
+        for m in inside:
+            lines += entry_md(m, names, scope)
     return '\n'.join(lines)
+
+
+def entry_md(m: dict, names: dict, scope: str) -> list[str]:
+    """One motif in the readable catalog"""
+    lines = []
+    tags = [f"genre: {m['genre']}"] if m['genre'] else []
+    tags += [f"kind of: {', '.join(names[p] for p in m['parents'])}"] if m['parents'] else []
+    tags += [f"related: {', '.join(names[r] for r in m['related'])}"] if m['related'] else []
+    tags += ['not yet verified'] if scope == 'all' and not m['verified'] else []
+    lines += [f"### {m['name']} ({m['id']})", '']
+    if m['note']:
+        lines += [f"{m['note']}{' *(draft)*' if m.get('note_is_draft') else ''}", '']
+    if tags:
+        lines += [f"*{' · '.join(tags)}*", '']
+    for c in m['claims']:
+        where = ', '.join(x for x in (c['side'], c['source'], c['date']) if x)
+        lines.append(f"- {c['claim']}" + (f" ({where})" if where else ''))
+        lines += [f"  - also told: {v}" for v in c.get('also_told', [])]
+    lines.append('')
+    return lines
 
 
 def _lit(text: str) -> str:
@@ -130,8 +141,8 @@ def as_turtle(found: list[dict], scope: str) -> str:
         lines += [f"bnd:{m['id']} " + ' ;\n    '.join(props) + ' .', '']
     groups = {}
     for m in found:
-        if m['group']:
-            groups.setdefault(m['group'], []).append(m['id'])
+        for g in m['groups']:
+            groups.setdefault(g, []).append(m['id'])
     for i, (name, members) in enumerate(sorted(groups.items()), 1):
         lines += [f'bnd:group-{i} a skos:Collection ;', f'    skos:prefLabel {_lit(name)} ;',
                   '    skos:member ' + ', '.join(f'bnd:{x}' for x in members) + ' .', '']

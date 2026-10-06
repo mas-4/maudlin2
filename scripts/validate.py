@@ -379,6 +379,8 @@ def board_action(data: dict):
         mi.group_delete(data['group'])
     elif act == 'group_assign' and data.get('id') in live:
         mi.group_assign(data['id'], data.get('group') or None)
+    elif act == 'group_member' and data.get('id') in live and data.get('group') in index.get('groups', {}):
+        mi.group_member(data['id'], data['group'], data.get('on', True) is not False)
     elif act in ('rename', 'merge', 'delete', 'add'):
         organizer_action(data)
     else:

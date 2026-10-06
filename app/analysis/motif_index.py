@@ -338,7 +338,7 @@ def metrics(index: dict | None = None) -> dict:
         'singles': share(sum(1 for k in sizes if k == 1)), 'two_plus': share(sum(1 for k in sizes if k >= 2)),
         'in_tree': share(sum(1 for e in es if parents_of(e) or e['id'] in kids)),
         'with_genre': share(sum(1 for e in es if (e.get('facets') or {}).get('genre'))),
-        'in_group': share(sum(1 for e in es if e.get('group'))),
+        'in_group': share(sum(1 for e in es if groups_of(e))),
         'done': share(sum(1 for e in es if e.get('done'))),
         'your_notes': share(sum(1 for e in es if e.get('note') and e.get('note_by') not in DRAFTS)),
         'checked': round(100 * sum(1 for e in es for c in e['claims'] if c.get('checked')) / max(1, filings), 1),
@@ -590,7 +590,21 @@ def check(claim: str, eid: str, answer: str):
 
 
 # Groups: a person's own chapters over the motifs (as Thompson grouped his into chapters), made on the motif board.
-# Kept in the index: 'groups' (id -> name) and each entry's 'group'.
+# Kept in the index: 'groups' (id -> name) and each entry's 'groups', a list: a motif can be in several (Oct 6: "Owned
+# politician" is a kind of Money in politics and also a Politician archetype). Entries saved before then have a single
+# 'group', read as a list of one.
+
+
+def groups_of(entry: dict) -> list[str]:
+    return list(entry.get('groups') or ([entry['group']] if entry.get('group') else []))
+
+
+def _set_groups(entry: dict, gids: list[str]):
+    entry.pop('group', None)
+    if gids:
+        entry['groups'] = list(dict.fromkeys(gids))
+    else:
+        entry.pop('groups', None)
 
 @exclusive
 def group_add(name: str) -> str:
@@ -615,20 +629,29 @@ def group_delete(gid: str):
     index = load()
     index.get('groups', {}).pop(gid, None)
     for e in index['entries'].values():
-        if e.get('group') == gid:
-            e.pop('group')
+        if gid in groups_of(e):
+            _set_groups(e, [g for g in groups_of(e) if g != gid])
     save(index)
 
 
 @exclusive
 def group_assign(eid: str, gid: str | None):
+    """In this group only (or in none)"""
     index = load()
     if gid and gid not in index.get('groups', {}):
         raise ValueError(f'no such group: {gid}')
-    if gid:
-        index['entries'][eid]['group'] = gid
-    else:
-        index['entries'][eid].pop('group', None)
+    _set_groups(index['entries'][eid], [gid] if gid else [])
+    save(index)
+
+
+@exclusive
+def group_member(eid: str, gid: str, on: bool = True):
+    """Into a group as well (keeping its others), or out of one"""
+    index = load()
+    if gid not in index.get('groups', {}):
+        raise ValueError(f'no such group: {gid}')
+    entry = index['entries'][eid]
+    _set_groups(entry, groups_of(entry) + [gid] if on else [g for g in groups_of(entry) if g != gid])
     save(index)
 
 
@@ -727,7 +750,8 @@ def unfile(claim: str, eid: str):
 def board() -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
     index = load()
-    entries = [{'id': e['id'], 'name': e['name'], 'group': e.get('group'), 'curated': bool(e.get('curated')),
+    entries = [{'id': e['id'], 'name': e['name'], 'group': (groups_of(e) or [None])[0], 'groups': groups_of(e),
+                'curated': bool(e.get('curated')),
                 'done': is_done(e), 'note': e.get('note', ''), 'note_by': e.get('note_by', 'person' if e.get('note') else ''),
                 'parents': [p for p in parents_of(e) if p in index['entries'] and not index['entries'][p].get('merged_into')],
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p

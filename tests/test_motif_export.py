@@ -32,11 +32,11 @@ def index():
 
 def test_verified_shows_what_the_site_shows(index):
     found = x.motifs('verified', index)
-    assert [m['id'] for m in found] == ['M001', 'M002']  # grouped first; unverified and merged motifs left out
-    m1, m2 = found
+    assert [m['id'] for m in found] == ['M002', 'M001']  # by name; unverified and merged motifs left out
+    m2, m1 = found
     assert [c['claim'] for c in m1['claims']] == ['The "deep state" hid it']  # not the claim filed since
     assert m1['claims'][0]['also_told'] == ['The deep state buried it']
-    assert (m1['group'], m1['genre'], m1['related']) == ('Secrets', 'conspiracy theory', [])  # M003 isn't verified
+    assert (m1['groups'], m1['genre'], m1['related']) == (['Secrets'], 'conspiracy theory', [])  # M003 isn't verified
     assert m2['note'] == '' and m2['parents'] == ['M001']  # a model's draft note isn't shown
 
 
@@ -50,9 +50,9 @@ def test_all_has_every_live_motif_and_marks_drafts(index):
 def test_every_format_reads_back(index, monkeypatch):
     monkeypatch.setattr(mi, 'load', lambda: index)
     data = json.loads(x.export('json')[0])
-    assert [m['name'] for m in data['motifs']] == ['Hidden hand', 'Cover-up']
+    assert [m['name'] for m in data['motifs']] == ['Cover-up', 'Hidden hand']
     rows = list(csv.DictReader(io.StringIO(x.export('csv')[0])))
-    assert [r['motif'] for r in rows] == ['M001', 'M002'] and rows[0]['also_told'] == 'The deep state buried it'
+    assert [r['motif'] for r in rows] == ['M002', 'M001'] and rows[1]['also_told'] == 'The deep state buried it'
     md, media, name = x.export('md', 'all')
     assert '## Secrets' in md and '### Unchecked (M003)' in md and 'not yet verified' in md and name.endswith('.md')
     ttl = x.export('ttl')[0]

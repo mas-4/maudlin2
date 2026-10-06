@@ -70,8 +70,15 @@ def test_the_motif_board_regroups_moves_merges_and_unfiles(monkeypatch, tmp_path
         ('M001', 'blame shifting', 'G01', ['b']), ('M004', 'the crowd as threat', None, ['a'])]
     validate.board_action({'action': 'also', 'claim': 'a', 'source': 'M004', 'target': 'M001'})  # kept in M004 too
     assert [len(e['claims']) for e in mi.board()['entries']] == [2, 1] and mi.load()['claims'][mi.key('a')] == ['M004', 'M001']
+    # In a second group too, then out of the first: a motif can be in several
+    validate.board_action({'action': 'group_add', 'name': 'archetypes'})
+    validate.board_action({'action': 'group_member', 'id': 'M001', 'group': 'G02'})
+    assert mi.board()['entries'][0]['groups'] == ['G01', 'G02']
+    validate.board_action({'action': 'group_member', 'id': 'M001', 'group': 'G01', 'on': False})
+    assert mi.board()['entries'][0]['groups'] == ['G02']
+    validate.board_action({'action': 'group_assign', 'id': 'M001', 'group': 'G01'})  # this group only
     validate.board_action({'action': 'group_delete', 'group': 'G01'})
-    assert mi.board()['entries'][0]['group'] is None
+    assert mi.board()['entries'][0]['group'] is None and mi.board()['entries'][0]['groups'] == []
     with pytest.raises(ValueError):
         validate.board_action({'action': 'move', 'claim': 'b', 'source': 'M001', 'target': 'M999'})
 

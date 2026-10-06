@@ -132,11 +132,13 @@
       html += `<div class="wb-group"><div class="wb-ghead">${shown.length} motif${shown.length === 1 ? '' : 's'}</div>${shown.map((e) => row(e, 0, false)).join('')}</div>`;
     } else {
       const ids = new Set(shown.map((e) => e.id));
+      shownIds = ids;
       for (const g of groups) {
-        const inG = shown.filter((e) => sectionOf(e) === g.id);
+        const inG = shown.filter((e) => sectionsOf(e).includes(g.id));
         if (!inG.length && !g.id) continue;
-        // Roots: no parent in this section. Kinds nest under their parents (a motif with two parents shows under both)
-        const roots = inG.filter((e) => !e.parents.some((p) => ids.has(p) && sectionOf(S.by[p]) === g.id));
+        // Roots: no parent in this section. Kinds nest under their parents wherever those are (a motif with two parents
+        // shows under both), and in their own groups too: a motif can be in several groups
+        const roots = inG.filter((e) => !e.parents.some((p) => ids.has(p) && sectionsOf(S.by[p]).includes(g.id)));
         const fold = 'g:' + by + ':' + g.id, folded = S.folded.has(fold) || (by === 'genre' && !inG.length);
         html += `<div class="wb-group${inG.length ? '' : ' wb-empty-sec'}" data-drop="${by === 'genre' ? 'facet' : 'group'}" data-g="${esc(g.id)}">
           <div class="wb-ghead"><button class="wb-fold" data-fold="${esc(fold)}">${folded ? '▸' : '▾'}</button>
@@ -147,15 +149,16 @@
     }
     $('#tree').innerHTML = html || '<p class="wb-empty">🦗 nothing here</p>';
   }
-  const sectionOf = (e) => (S.groupBy === 'genre' ? (e.facets || {}).genre || '' : e.group || '');
+  const sectionsOf = (e) => (S.groupBy === 'genre' ? [(e.facets || {}).genre || ''] : (e.groups || []).length ? e.groups : ['']);
+  let shownIds = new Set();
   function branch(e, depth, gid, seen) {
     if (seen.has(e.id)) return '';
     seen = new Set(seen).add(e.id);
-    const kids = (S.kids[e.id] || []).map((k) => S.by[k]).filter((k) => k && sectionOf(k) === gid).sort(SORTS[S.sort]);
+    const kids = (S.kids[e.id] || []).map((k) => S.by[k]).filter((k) => k && shownIds.has(k.id)).sort(SORTS[S.sort]);
     const folded = S.folded.has('m:' + e.id);
-    return row(e, depth, kids.length ? (folded ? '▸' : '▾') : '') + (folded ? '' : kids.map((k) => branch(k, depth + 1, gid, seen)).join(''));
+    return row(e, depth, kids.length ? (folded ? '▸' : '▾') : '', gid) + (folded ? '' : kids.map((k) => branch(k, depth + 1, gid, seen)).join(''));
   }
-  function row(e, depth, fold) {
+  function row(e, depth, fold, gid) {
     const n = newCount(e), ns = noteState(e);
     const badges = [e.done === 'done' ? '<b title="done">✓</b>' : '', n ? `<b class="b-new" title="new since done">🆕${n}</b>` : '',
       ns === 'none' ? '<b title="no note yet" class="b-faint">📝</b>' : ns === 'draft' ? '<b title="the note is a draft">🤖</b>' : '',
@@ -163,8 +166,13 @@
     const open = S.open.indexOf(e.id);
     return `<div class="wb-row${open >= 0 ? ' open o' + (open % COLORS) : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
       ${fold ? `<button class="wb-fold" data-fold="m:${e.id}">${fold}</button>` : '<span class="wb-fold-sp"></span>'}
-      <span class="wb-rname">${esc(e.name)}</span><span class="wb-badges">${badges}</span><i class="wb-n">${e.claims.length}</i>
+      <span class="wb-rname">${esc(e.name)}</span>${gid !== undefined && S.groupBy !== 'genre' ? elsewhere(e, gid) : ''}<span class="wb-badges">${badges}</span><i class="wb-n">${e.claims.length}</i>
       <button class="wb-mini wb-side" data-open2="${e.id}" title="open it too, under the others (compare)">⧉</button></div>`;
+  }
+  // The other groups a motif is in, beside it in the tree (it shows in each, and under its broader motif)
+  function elsewhere(e, gid) {
+    const other = (e.groups || []).filter((g) => g !== gid).map((g) => (S.data.groups.find((x) => x.id === g) || {}).name).filter(Boolean);
+    return other.length ? `<span class="wb-also" title="also in ${esc(other.join(', '))}">📁${other.length > 1 ? other.length : ''}</span>` : '';
   }
   function claimHitsHTML(words) {
     const local = [];
@@ -209,7 +217,9 @@
   }
   function panel(e, i) {
     const kids = S.kids[e.id] || [];
-    const groups = S.data.groups.map((g) => `<option value="${g.id}"${e.group === g.id ? ' selected' : ''}>📁 ${esc(g.name)}</option>`).join('');
+    const mine = e.groups || [];
+    const groups = S.data.groups.filter((g) => !mine.includes(g.id)).map((g) => `<option value="${g.id}">📁 ${esc(g.name)}</option>`).join('');
+    const tags = mine.map((g) => `<span class="wb-gtag">📁 ${esc((S.data.groups.find((x) => x.id === g) || {}).name || g)}<button class="wb-x" data-ungroup="${e.id}|${g}" title="out of this group">✕</button></span>`).join('');
     const ns = noteState(e);
     const shared = {};
     for (const c of e.claims) for (const o of motifs()) if (o.id !== e.id && o.claims.some((x) => x.claim === c.claim)) shared[o.id] = (shared[o.id] || 0) + 1;
@@ -226,7 +236,7 @@
           ${e.done === 'done' ? `<span class="wb-state done" title="you've looked over its claims; it can appear on the site">✅ Done</span><button class="wb-mini" data-done="${e.id}" title="it goes back to not done, and off the site">unmark done</button>`
             : e.done === 'new' ? `<span class="wb-state new" title="marked done, but claims came in since; the site shows only the ones you saw">🆕 Done, ${newCount(e)} new since</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked at the new claims too">mark done again</button>`
             : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ Not done yet</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked over its claims: it can go on the site">mark as done</button>`}
-          <select data-group="${e.id}" title="its group"><option value="">🗃️ no group</option>${groups}</select>
+          ${tags}${groups ? `<select data-group="${e.id}" title="put it in a group as well (a motif can be in several)"><option value="">📁 ＋ group…</option>${groups}</select>` : ''}
           <select data-genre="${e.id}" title="its genre"><option value="">🎭 no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
           ${isSingle(e) || e.stands_alone ? `<button class="wb-btn${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
           <button class="wb-btn" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
@@ -654,10 +664,14 @@
         run: () => act({action: 'facet', id: a, facet: 'genre', value}, `🎭 “${A.name}”: ${value || 'no genre'}`)}];
     }
     if (drop === 'group') {
-      const g = t.dataset.g || null;
-      if ((A.group || null) === g) return [];
-      const name = g ? (S.data.groups.find((x) => x.id === g) || {}).name : 'no group';
-      return [{label: '📁 move to ' + (g ? 'this group' : 'no group'), say: `put “${A.name}” in ${name}`, run: () => act({action: 'group_assign', id: a, group: g}, `📁 “${A.name}” → ${name}`)}];
+      const g = t.dataset.g || null, mine = A.groups || [];
+      if (!g) return mine.length ? [{label: '🗃️ out of every group', say: `“${A.name}” in no group`, run: () => act({action: 'group_assign', id: a, group: null}, `🗃️ “${A.name}”: no group`)}] : [];
+      if (mine.includes(g)) return [];
+      const name = (S.data.groups.find((x) => x.id === g) || {}).name;
+      const also = {label: '📁 into this group', say: mine.length ? `“${A.name}” in ${name} as well, staying in its others` : `put “${A.name}” in ${name}`,
+        run: () => act({action: 'group_member', id: a, group: g}, `📁 “${A.name}” in ${name}`)};
+      return mine.length ? [also, {label: '⇢ only this group', say: `“${A.name}” moves to ${name}, out of its others`,
+        run: () => act({action: 'group_assign', id: a, group: g}, `📁 “${A.name}” → ${name}`)}] : [also];
     }
     if (drop === 'trash') {
       return [{label: '🗑️ delete it', say: 'delete the motif (its claims aren’t filed again)', run: () =>
@@ -847,6 +861,7 @@
     if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” is no longer a kind of “${S.by[p].name}”`); }
     if ((v = d('unrelate'))) { const [a, b] = v.split('|'); return act({action: 'unrelate', a, b}, '↔ unrelated'); }
     if ((v = d('keepnote'))) return act({action: 'keep_note', id: v}, '✓ kept the draft note');
+    if ((v = d('ungroup'))) { const [id, g] = v.split('|'); return act({action: 'group_member', id, group: g, on: false}, '📁 out of the group'); }
     if ((v = d('grename'))) { const g = S.data.groups.find((x) => x.id === v); return ask(t, 'Rename the group', g.name).then((name) => name && act({action: 'group_rename', group: v, name}, '✎ group renamed')); }
     if ((v = d('gdelete'))) return sure(t, 'Delete the group? Its motifs stay, ungrouped.').then((ok) => ok && act({action: 'group_delete', group: v}, '🗑️ group deleted'));
     if ((v = d('pair'))) {
@@ -1008,7 +1023,7 @@
   });
   document.addEventListener('change', (ev) => {
     const t = ev.target;
-    if (t.dataset.group !== undefined) act({action: 'group_assign', id: t.dataset.group, group: t.value || null}, '📁 moved');
+    if (t.dataset.group !== undefined && t.value) act({action: 'group_member', id: t.dataset.group, group: t.value}, '📁 in the group too');
     if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
     if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group'; renderTree(); }
   });
