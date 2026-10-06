@@ -26,6 +26,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **Narrative threads judged by Gemma 4 26B.** Whether a narrative told today is one told on an earlier day is now
+  asked of gemma4:26b, not qwen3:30b-a3b, after a test on the 32 pairs the live code had asked about (labeled by
+  Claude): Gemma found 18 of 21 retellings in both runs and wrongly joined 1 of 9; the 30B found 15 and 17, missing
+  plain repeats (the same Nobel prize, Sánchez's snap election). The threads were rebuilt from the three daily reports
+  with it: 17 narratives told on two or more days (was 16).
 - **New motif names matched more often to the motifs already there.** When the filing judge names a new motif, its
   name is first checked against existing ones, but only those at least 0.7 alike by meaning were offered to the model.
   Tested against the person's merges: the motif a duplicate was later merged into reached the model for only 7 of 31.

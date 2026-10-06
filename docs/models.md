@@ -37,7 +37,7 @@ Qwen3.5, change its schemas that way.
 | Motif scope-note drafts | `motif_index.MODEL` (`gloss`) | qwen3:30b-a3b | prompt tuned by eye Oct 5 | untested against others |
 | Saga judge ("one running story?") | `sagas.JUDGE_MODEL` | **gemma4:26b** | Oct 6, 46 story pairs labeled by Claude (11 the same story): Gemma 40 of 46 agree, found 5 of the 11, none wrongly joined, 2.2 s a pair; qwen3:30b-a3b 41/46, 7 of 11, 1 wrongly joined, 33 s; qwen3.5:35b 40/46, 6, 1 wrong, 2.8 s; gpt-oss:120b as Gemma at 26 s. A wrong join is what a person has had to veto, so none wrong won. Reworded the same day (angles, consequences and reactions are one story; a different focus is no reason for "separate"): 42/46, found 7 of 11, none wrong | switched Oct 6 |
 | Saga names | `sagas.py` | qwen3:8b | — | untested |
-| Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | qwen3:30b-a3b | — | untested |
+| Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | **gemma4:26b** | Oct 6, the 32 pairs the live code had asked about, labeled by Claude (21 told again, 9 not, 2 too close to call), each model twice: Gemma 18 of 21 found in both runs, 1 of 9 wrongly joined, 1.8 s a pair; qwen3:30b-a3b 15 and 17, 1 (missed plain repeats: the same Nobel prize, Sánchez's snap election); gemma4:12b 21, but 2-3 wrong; qwen3:8b 11, 2. Threads rebuilt with it (17 told on 2+ days, was 16) | switched Oct 6 |
 | Focus Group voter claims | `focus_group.MODEL` | **gemma4:26b** | Oct 6, 12 transcript parts: all quotes found for every model; Gemma's claims the voters' own with sides; the 30B took a host's analysis for a voter's; Qwen3.5 35B found more but no sides | switched Oct 6 |
 | Focus Group check: is the quote evidence for the claim? | `focus_group.SUPPORT_MODEL` | **gemma4:26b** | Oct 6, prompt tuned on 16 stored claims and the known bad ones (14 of 16 passed, bad ones caught) | in use since Oct 6 |
 | Radio running order | `running_order.MODEL` | **gemma4:26b** | Oct 6, 10 newscasts: 96% of its stories passed the first-words check (30B 81%), front-page picks nearly the same (28 of 30), 6 s a newscast | switched Oct 6 |
@@ -68,7 +68,7 @@ they named), each held out of the index and filed again.
 
 ## Next
 
-1. The remaining 30B jobs, each with its own test: narrative threads and scope notes (motif matching done Oct 6).
+1. The last 30B job with no test: scope-note drafts (motif matching and narrative threads done Oct 6).
 2. The 8B labeller against qwen3.5:9b and gemma4:12b, once there are enough label verdicts.
 3. gpt-oss:120b for small, hard jobs where 30 seconds a call is affordable.
 

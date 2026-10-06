@@ -22,7 +22,7 @@ WINDOW = 14  # days a thread waits to be told again
 CANDIDATE = 0.7  # a thread at least this alike (mxbai) is put to the model
 CANDIDATES = 3
 MIN_HOURS = 6  # reports covering less (early trials) aren't a day
-MODEL = 'qwen3:30b-a3b'
+MODEL = 'gemma4:26b'  # Oct 6 test: 18 of 21 retold found, 1 of 9 wrongly joined, the same both runs (30B: 15-17, 1)
 PROMPT = """Two claims that many people retold in their own words online, on different days:
 
 Earlier: {a}
