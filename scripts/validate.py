@@ -550,6 +550,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 return
             return self.send_json(motif_index.similar(eid))
+        if self.path.startswith('/claim-similar.json'):
+            from urllib.parse import urlparse, parse_qs
+            from app.analysis import motif_index
+            return self.send_json(motif_index.similar_claims(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))
         if self.path.startswith('/workbench.json'):
             return self.send_json(workbench_state())
         if self.path.startswith('/workbench-queue.json'):

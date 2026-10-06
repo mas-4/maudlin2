@@ -721,6 +721,25 @@ def similar(eid: str, n: int = 15) -> list[dict]:
     return sorted(items, key=lambda i: -i['score'])[:n]
 
 
+def similar_claims(claim: str, n: int = 8) -> list[dict]:
+    """The claims closest in meaning to one claim (cosine similarity of their embeddings), filed or not: to spot the
+    same claim told another way (same_claim) or a neighbor worth filing with it. Its own wordings are left out."""
+    from app.narratives import embed
+    index = load()
+    mine = originals(claim, index) | {claim}
+    for e in entries_of(index, claim):
+        for c in e['claims']:
+            if key(c['claim']) == key(claim):
+                mine |= {v.get('claim', '') for v in c.get('variants', [])}
+    items = [c for c in searchable_claims() if c['claim'] not in mine and key(c['claim']) != key(claim)]
+    if not items:
+        return []
+    v = embed([claim] + [c['claim'] for c in items])
+    for c, s in zip(items, v[1:] @ v[0]):
+        c['score'] = round(float(s), 3)
+    return sorted(items, key=lambda c: -c['score'])[:n]
+
+
 @exclusive
 def reject(claim: str, eid: str):
     """A person says this claim isn't this motif: it's never suggested for it, or filed under it by the model"""

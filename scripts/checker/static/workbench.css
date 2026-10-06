@@ -211,3 +211,5 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 
 .wb-group.wb-empty-sec .wb-ghead { opacity: .55; border-bottom-style: dashed; }
 .wb-tree-tools { flex-wrap: wrap; }
+
+.wb-cbtns.wb-show { display: flex; position: static; margin-top: 3px; }

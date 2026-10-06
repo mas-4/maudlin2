@@ -407,3 +407,18 @@ def test_a_motif_has_a_genre_from_a_list_a_person_can_grow(monkeypatch, tmp_path
     assert 'facets' not in mi.load()['entries']['M001']
     with pytest.raises(ValueError):
         mi.set_facet('M001', 'color', 'blue')
+
+
+def test_claims_like_a_claim_leave_out_its_own_wordings(monkeypatch, tmp_path):
+    import numpy as np
+    from app import narratives
+    fresh(monkeypatch, tmp_path)
+    keep, told, near, far = 'Politicians lie to voters', 'Politicians always lie', 'Politicians say what you want', 'Cats are cute'
+    mi.save({'next': 2, 'claims': {mi.key(keep): ['M001'], mi.key(near): ['M001'], mi.key(far): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Empty promises', 'claims': [
+            {'claim': keep, 'variants': [{'claim': told}]}, {'claim': near}, {'claim': far}]}}})
+    vec = {keep: [1, 0], told: [1, 0], near: [0.9, 0.44], far: [0, 1]}
+    monkeypatch.setattr(narratives, 'embed', lambda texts: np.array([vec.get(t, [0, 1]) for t in texts], dtype=float))
+    monkeypatch.setattr(mi, 'searchable_claims', lambda: [{'claim': t, 'source': '', 'ref': '', 'motifs': []} for t in (told, near, far)])
+    found = mi.similar_claims(keep)
+    assert [c['claim'] for c in found] == [near, far] and found[0]['score'] > 0.8

@@ -392,12 +392,30 @@
         ${ins.length ? '<button class="wb-btn" data-cl="nomotif|">∅ no motif</button>' : ''}
       </div>
       <h3>📜 where it came from</h3><div class="wb-detail" id="cl-detail">⏳</div>
+      <h3>≡ claims like this one <span class="wb-faint">closest in meaning; fold one in if it's the same claim told another way</span></h3>
+      <ul class="wb-claims" id="cl-similar"><li class="wb-faint">⏳</li></ul>
     </div>`;
     claimResults();
     getJSON('/claim-detail.json?claim=' + encodeURIComponent(c.claim)).then((x) => {
       const d = $('#cl-detail');
       if (d) d.innerHTML = detailHTML(x, c.claim);
     }).catch(() => { const d = $('#cl-detail'); if (d) d.textContent = '😬 couldn’t load it'; });
+    loadSimilarClaims(c.claim, ins.length > 0);
+  }
+  async function loadSimilarClaims(claim, filed) {
+    const items = await getJSON('/claim-similar.json?claim=' + encodeURIComponent(claim)).catch(() => null);
+    const box = $('#cl-similar');
+    if (!box || !S.claim || S.claim.claim !== claim) return;
+    if (!items) { box.innerHTML = '<li class="wb-faint">😬 couldn’t compare (are the embeddings up?)</li>'; return; }
+    box.innerHTML = items.map((x) => {
+      const src = x.motifs[0] ? x.motifs[0].id : '';
+      // Fold that one into this one (if this one is filed); or, for a claim not filed yet, keep that one instead
+      const fold = filed ? `<button class="wb-mini" data-fold-in="1" title="the same claim: fold it into this one">≡ same claim</button>`
+        : x.motifs.length ? `<button class="wb-mini" data-fold-to="1" title="the same claim: fold this one into it">≡ same (keep that)</button>` : '';
+      return `<li class="wb-claim mini${x.motifs.length ? '' : ' unfiled'}" ${claimData(x, src)}><span class="wb-ctext">${esc(x.claim)}</span>
+        <span class="wb-meta">${x.motifs.length ? 'in ' + x.motifs.map((m) => chip(m.id)).join(' ') : '📥 not filed · ' + esc(SOURCE[x.source] || x.source || '')} · alike ${x.score.toFixed(2)}</span>
+        <span class="wb-cbtns wb-show">${fold}</span></li>`;
+    }).join('') || '<li class="wb-faint">🦗 nothing close</li>';
   }
   function claimResults() {
     const box = $('#cl-results');
@@ -788,6 +806,8 @@
       if (b.dataset.nomotif) return sure(b, 'No motif: take it out of every motif, for good?').then((ok) => ok && act({action: 'no_motif', claim: c}, '∅ no motif'));
       if (b.dataset.correct) return ask(b, 'Correct the wording (our summary, not the source)', c, true).then((text) => text && text !== c && act({action: 'correct', claim: c, text}, '✎ corrected'));
       if (b.dataset.detail) return detail(li);
+      if (b.dataset.foldIn && S.claim) return act({action: 'same_claim', variant: c, canonical: S.claim.claim}, '≡ folded into this claim');
+      if (b.dataset.foldTo && S.claim) { const keep = c; return act({action: 'same_claim', variant: S.claim.claim, canonical: keep}, '≡ folded into the other claim').then((ok) => { if (ok) { S.claim.claim = keep; S.claim.from = null; renderInbox(); } }); }
       if (b.dataset.addhere) { const to = b.dataset.addhere; const step = src ? {action: 'also', claim: c, source: src, target: to} : {action: 'file', claim: c, id: to, source: li.dataset.src, ref: li.dataset.ref}; await act(step, `＋ added to “${S.by[to].name}”`); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
       if (b.dataset.reject) { const to = b.dataset.reject; await act({action: 'reject', claim: c, id: to}, '✕ won’t suggest it again'); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
     }
