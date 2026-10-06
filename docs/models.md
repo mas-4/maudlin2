@@ -18,7 +18,7 @@ named below, note it here and in the methods log.
 | qwen3.5:9b | 6.6 GB | dense | Oct 2026 release; bake-off Oct 5 |
 | qwen3.5:35b | 22 GB | mixture of experts | bake-off Oct 5 |
 | gemma4:12b | 8 GB | dense | bake-off Oct 5 |
-| gemma4:26b | 18 GB | mixture of experts, 3.8B active | **motif filing since Oct 6** |
+| gemma4:26b | 18 GB | mixture of experts, 3.8B active | **motif filing, Focus Group, radio running order since Oct 6** |
 | gpt-oss:120b | 65 GB | mixture of experts, ~5B active, mostly in RAM | best in the Oct 5 bake-off, ~29 s a call |
 | mxbai-embed-large | 0.7 GB | embeddings | stories, narratives, motif search, wire share and curators (Oct 5) |
 | potion-base-8M / 32M | small | static embeddings, CPU | sagas (stays, Oct 5 test), fallback when Ollama can't embed |
@@ -38,8 +38,8 @@ Qwen3.5, change its schemas that way.
 | Saga judge ("one running story?") | `sagas.JUDGE_MODEL` | qwen3:30b-a3b | the 8B refused real parts (Oct 5) | untested against new models; test set: saga_judgments.json hand vetoes |
 | Saga names | `sagas.py` | qwen3:8b | — | untested |
 | Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | qwen3:30b-a3b | — | untested |
-| Focus Group voter claims | `focus_group.MODEL` | qwen3:30b-a3b | — | testable: share of quotes found in the transcript |
-| Radio running order | `running_order.MODEL` | qwen3:30b-a3b | — | testable: first words found in order |
+| Focus Group voter claims | `focus_group.MODEL` | **gemma4:26b** | Oct 6, 12 transcript parts: all quotes found for every model; Gemma's claims the voters' own with sides; the 30B took a host's analysis for a voter's; Qwen3.5 35B found more but no sides | switched Oct 6 |
+| Radio running order | `running_order.MODEL` | **gemma4:26b** | Oct 6, 10 newscasts: 96% of its stories passed the first-words check (30B 81%), front-page picks nearly the same (28 of 30), 6 s a newscast | switched Oct 6 |
 | TV chyron OCR cleanup (kind of line, corrected text) | `chyrons.CLEAN_MODEL` | **gemma4:12b** | a 30-line test batch, Oct 6: invented nothing (26B changed Iowa to Ohio; 8B kept garble) | in use since Oct 6 |
 | Headline labels (mood, spice, feelings) | `newsfilter.py` | qwen3:8b | — | waiting: 19 label verdicts so far, needs more |
 | Story labels, names in stories, fact-check labels, narrative labels, SCOTUS judging and glosses, edits, subjects, ties, circulation | various | qwen3:8b | — | untested |

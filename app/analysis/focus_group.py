@@ -18,7 +18,9 @@ from app.utils.store import read_json, write_json
 logger = get_logger(__name__)
 
 STORE = os.path.join(Config.data, 'focus_group_claims.json')  # episode url -> its claims, filled chunk by chunk
-MODEL = 'qwen3:30b-a3b'
+# Gemma 4 26B since Oct 6: on 12 transcript parts its claims were the voters' own, each with its side; Qwen3 30B-A3B
+# took a host's analysis for a voter's, and Qwen3.5 35B found more but left every side blank (docs/models.md)
+MODEL = 'gemma4:26b'
 CHUNK = 6000  # characters of transcript a call
 SOURCE = 'Focus Group'
 FOUND = 0.6  # a quote counts as the voter's words if this share of its four-word runs is in the transcript part

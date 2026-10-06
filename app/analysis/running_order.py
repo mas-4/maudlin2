@@ -18,7 +18,9 @@ logger = get_logger(__name__)
 
 RUNNING = os.path.join(Config.data, 'running_order.json')
 SOURCES = {'nprnewsnow': 'NPR News Now', 'abcupdate': 'ABC News Update'}
-MODEL = 'qwen3:30b-a3b'
+# Gemma 4 26B since Oct 6: on 10 newscasts its stories passed the first-words check 96% of the time (Qwen3 30B-A3B 81%),
+# with nearly the same front-page picks, and a little faster (docs/models.md)
+MODEL = 'gemma4:26b'
 DAYS = 3  # newscasts this recent are read
 NEAR = timedelta(minutes=50)  # the front-page run this close to a newscast is its hour's
 FRONT = 40  # the front pages' biggest stories at that hour, offered to the model to match

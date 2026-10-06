@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Focus Group and radio running order on Gemma 4 26B.** Each tested on its own work: on 10 newscasts, Gemma's stories
+  passed the first-words check 96% of the time (Qwen3 30B-A3B 81%) with nearly the same front-page picks; on 12 Focus
+  Group transcript parts every model's quotes were found in the transcript, but Gemma's claims were the voters' own,
+  each with the voter's side, where Qwen3 30B-A3B took a host's analysis for a voter's.
 - **Story pages: following a story downstream.** Every saved story seen in the last week has a page, and its card on
   the front page links to it. The page follows the story as it spread and changed: the first front page to carry it
   (a headline first seen before the story began is left out: it joined later), its peak, its first minute on TV and on
