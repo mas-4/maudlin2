@@ -154,3 +154,10 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .wb-panel { flex-basis: 85vw; }
   .wb-drops { margin-left: 0; }
 }
+
+/* the claim inspector (right pane, 🔍 claim) */
+.wb-cid { color: #3a3ad0; text-decoration: underline dotted; cursor: pointer; }
+.wb-inspect { border-radius: 12px; padding: 2px; }
+.wb-inspect.dz-target { outline: 3px solid var(--orange); background: #fff1c2; }
+.wb-inspect h3 i { font-style: normal; font-size: 12px; color: #666; }
+.wb-clacts { margin: 10px 0 4px; }

@@ -239,8 +239,9 @@
     const tags = [c.new ? '<b class="b-new">NEW</b>' : '', c.checked === 'yes' ? '<b title="checked: belongs here">✓</b>' : c.checked === 'unsure' ? '<b title="checked: not sure">🤷</b>' : ''].join('');
     return `<li class="wb-claim${selected ? ' sel' : ''}" ${claimData(c, e.id)}>
       <span class="wb-ctext" data-select="1">${tags}${esc(c.claim)}</span>
-      <span class="wb-meta">#${c.id} · ${esc(SOURCE[c.source] || c.source || '')}</span>
+      <span class="wb-meta"><a class="wb-cid" data-inspect="1" title="open it on the right">#${c.id}</a> · ${esc(SOURCE[c.source] || c.source || '')}</span>
       <span class="wb-cbtns">
+        <button class="wb-mini" data-inspect="1" title="open it on the right: its source and every motif it's in, to reassign">🔍</button>
         ${c.checked !== 'yes' ? `<button class="wb-mini" data-check="yes" title="yes, it belongs here">✓</button>` : ''}
         <button class="wb-mini" data-unfile="1" title="take it out of this motif">✕</button>
         <button class="wb-mini" data-nomotif="1" title="no motif: tells no recurring story">∅</button>
@@ -270,7 +271,7 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
     const counts = {check: S.data.to_check, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
@@ -286,6 +287,7 @@
     const box = $('#inbox');
     const tab = S.tab;
     delete box.dataset.check;
+    if (tab === 'claim') return renderClaim(box);
     if (tab === 'check') {
       const q = await queue('check');
       if (S.tab !== tab) return;
@@ -339,6 +341,88 @@
         : '<div class="wb-welcome"><div class="wb-big">✨</div><p>No empty motifs.</p></div>';
     }
   }
+  // ---------- one claim, inspected: where it came from, every motif it's in, and moving it ----------
+  function motifsOf(text) { return motifs().filter((e) => e.claims.some((c) => c.claim === text)); }
+  function inspect(li) {
+    S.claim = {claim: li.dataset.claim, src: li.dataset.src, ref: li.dataset.ref};
+    S.tab = 'claim';
+    S.claimQ = '';
+    renderTabs();
+    renderInbox();
+  }
+  function renderClaim(box) {
+    const c = S.claim;
+    if (!c) {
+      box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🔍</div><p>Click a claim’s 🔍 or its #id (or a claim in the search results) to open it here: where it came from, every motif it’s in, and where to move it.</p></div>';
+      return;
+    }
+    const ins = motifsOf(c.claim);
+    const first = ins[0], rec = first && first.claims.find((x) => x.claim === c.claim);
+    const src = (rec && rec.source) || c.src || '';
+    box.innerHTML = `<div class="wb-inspect" data-drop="claim">
+      <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}>${esc(c.claim)}
+        <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif</span></blockquote>
+      <h3>🧩 filed under <i>${ins.length}</i></h3>
+      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-sug">${chip(e.id)}
+        <span class="wb-faint">${r.checked === 'yes' ? '✓ checked' : r.checked === 'unsure' ? '🤷 unsure' : ''}</span>
+        <span class="wb-sbtns">${r.checked !== 'yes' ? `<button class="wb-mini" data-cl="check|${e.id}" title="yes, it belongs here">✓</button>` : ''}
+        <button class="wb-mini" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
+        || '<p class="wb-faint">📥 not in any motif</p>'}
+      <h3>➕ file it under…</h3>
+      <label class="wb-addsearch">🔎 <input type="search" id="cl-q" placeholder="find a motif" value="${esc(S.claimQ || '')}" autocomplete="off"></label>
+      <div id="cl-results"></div>
+      <div class="wb-sbtns wb-clacts">
+        <button class="wb-btn" data-cl="new|">✨ new motif with it</button>
+        <button class="wb-btn" data-cl="correct|">✎ correct wording</button>
+        ${ins.length ? '<button class="wb-btn" data-cl="nomotif|">∅ no motif</button>' : ''}
+      </div>
+      <h3>📜 where it came from</h3><div class="wb-detail" id="cl-detail">⏳</div>
+    </div>`;
+    claimResults();
+    getJSON('/claim-detail.json?claim=' + encodeURIComponent(c.claim)).then((x) => {
+      const d = $('#cl-detail');
+      if (d) d.innerHTML = detailHTML(x, c.claim);
+    }).catch(() => { const d = $('#cl-detail'); if (d) d.textContent = '😬 couldn’t load it'; });
+  }
+  function claimResults() {
+    const box = $('#cl-results');
+    if (!box || !S.claim) return;
+    const words = (S.claimQ || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const ins = motifsOf(S.claim.claim), inIds = new Set(ins.map((e) => e.id));
+    if (!words.length) { box.innerHTML = '<p class="wb-faint">type to find a motif, or drag the claim onto one</p>'; return; }
+    const found = motifs().filter((e) => !inIds.has(e.id) && words.every((w) => (e.id + ' ' + e.name + ' ' + (e.note || '')).toLowerCase().includes(w)))
+      .sort(SORTS.size).slice(0, 12);
+    box.innerHTML = found.map((e) => `<div class="wb-sug">${chip(e.id)}<span class="wb-sbtns">
+        <button class="wb-mini" data-cl="add|${e.id}" title="file it here too">＋ add</button>
+        ${ins.length ? `<button class="wb-mini" data-cl="move|${e.id}" title="file it here and take it out of ${ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span></div>`).join('')
+      || '<p class="wb-faint">🦗 no motif matches</p>';
+  }
+  function claimAction(kind, id) {
+    const c = S.claim, ins = motifsOf(c.claim), first = ins[0];
+    const rec = first && first.claims.find((x) => x.claim === c.claim);
+    const src = (rec && rec.source) || c.src || '', ref = (rec && rec.ref) || c.ref || '';
+    const fileHere = (to) => first ? {action: 'also', claim: c.claim, source: first.id, target: to} : {action: 'file', claim: c.claim, id: to, source: src, ref};
+    const name = (to) => (S.by[to] || {}).name;
+    if (kind === 'check') return act({action: 'check', claim: c.claim, id, answer: 'yes'}, '✓ checked');
+    if (kind === 'unfile') return act({action: 'unfile', claim: c.claim, id}, `✕ out of “${name(id)}”`);
+    if (kind === 'add') return act(fileHere(id), `＋ filed in “${name(id)}”`);
+    if (kind === 'move') {
+      const steps = [{action: 'move', claim: c.claim, source: first.id, target: id}].concat(ins.slice(1).map((e) => ({action: 'unfile', claim: c.claim, id: e.id})));
+      return batch(steps, `⇢ moved to “${name(id)}”`);
+    }
+    if (kind === 'new') {
+      const n = prompt('Name the new motif:', c.claim.slice(0, 80));
+      if (n && n.trim()) act({action: 'new_with', name: n.trim(), claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n.trim()}”`);
+      return;
+    }
+    if (kind === 'correct') {
+      const text = prompt('Correct the wording (the summary, not the source):', c.claim);
+      if (text && text.trim() && text.trim() !== c.claim) act({action: 'correct', claim: c.claim, text: text.trim()}, '✎ corrected').then((ok) => { if (ok) { S.claim.claim = text.trim(); renderInbox(); } });
+      return;
+    }
+    if (kind === 'nomotif' && confirm('No motif: take it out of every motif, for good?')) return act({action: 'no_motif', claim: c.claim}, '∅ no motif');
+  }
+
   function pairCard(a, b, why, example) {
     return `<div class="wb-card"><div class="wb-pair">${chip(a)} <span class="wb-faint">&amp;</span> ${chip(b)}</div>
       <p class="wb-faint">${esc(why)}${example ? ': “' + esc(example.slice(0, 120)) + '”' : ''}</p>
@@ -452,6 +536,10 @@
         {label: '↔ related', say: 'related, but different', run: () => act({action: 'relate', a, b}, `↔ related “${A.name}” and “${B.name}”`)},
         {label: '≠ not the same', say: 'different motifs: stop suggesting them as a pair', run: () => act({action: 'not_same', a, b}, `≠ “${A.name}” and “${B.name}” are different`)},
       ];
+    }
+    if (drop === 'claim' && S.claim) {
+      if (motifsOf(S.claim.claim).some((e) => e.id === a)) return [];
+      return [{label: '＋ file the claim here', say: `file the claim in “${A.name}”`, run: () => claimAction('add', a)}];
     }
     if (drop === 'group') {
       const g = t.dataset.g || null;
@@ -647,8 +735,11 @@
     if (t.id === 'add-motif') { const name = prompt('Name the new motif:'); if (name && name.trim()) { const before = new Set(Object.keys(S.by)); if (await act({action: 'add', name: name.trim()}, `✨ made “${name.trim()}”`)) { const n = Object.keys(S.by).find((x) => !before.has(x)); if (n) openMotif(n); } } return; }
     if (t.id === 'add-group') { const name = prompt('Name the new group:'); if (name && name.trim()) act({action: 'group_add', name: name.trim()}, `📁 made “${name.trim()}”`); return; }
     if (t.id === 'help-btn') return $('#help').showModal();
+    if ((v = d('cl'))) { const [kind, id] = v.split('|'); return claimAction(kind, id); }
     // claim buttons
     const li = t.closest('.wb-claim');
+    if (li && t.closest('[data-inspect]')) return inspect(li);
+    if (li && t.closest('.wb-ctext') && !t.closest('[data-select]') && !li.closest('.wb-inspect')) return inspect(li);
     if (li && t.closest('button')) {
       const b = t.closest('button'), c = li.dataset.claim, src = li.dataset.source;
       if (b.dataset.check) return act({action: 'check', claim: c, id: src, answer: 'yes'}, '✓ checked');
@@ -688,8 +779,11 @@
     box.textContent = '⏳';
     const x = await getJSON('/claim-detail.json?claim=' + encodeURIComponent(li.dataset.claim)).catch(() => null);
     if (!x) { box.textContent = '😬 couldn’t load it'; return; }
+    box.innerHTML = detailHTML(x, li.dataset.claim);
+  }
+  function detailHTML(x, claim) {
     const lab = x.label || {};
-    box.innerHTML = [
+    return [
       `<b>${esc(x.kind)}</b>`,
       x.title ? (x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)) : '',
       x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',
@@ -697,7 +791,7 @@
       (x.examples || []).slice(0, 3).map((t) => `<q>${esc(t)}</q>`).join(''),
       x.summary ? esc(x.summary) : '',
       ['genre', 'villain', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${esc(lab[k])}`).join(' · '),
-      x.model_words && x.model_words !== li.dataset.claim ? `the model's words: “${esc(x.model_words)}”` : '',
+      (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `the model's words: ${w.map((m) => '“' + esc(m) + '”').join(' · ')}` : ''; })(),
     ].filter(Boolean).map((s) => `<div>${s}</div>`).join('');
   }
   async function verdict(answer) {
@@ -731,6 +825,7 @@
   document.addEventListener('input', (ev) => {
     const t = ev.target;
     if (t.dataset.note !== undefined) { const b = $(`[data-savenote="${t.dataset.note}"]`); if (b) b.disabled = t.value.trim() === ((S.by[t.dataset.note] || {}).note || ''); }
+    if (t.id === 'cl-q') { S.claimQ = t.value; claimResults(); }
     if (t.id === 'unfiled-q') { S.unfiledQ = t.value; clearTimeout(unfiledTimer); unfiledTimer = setTimeout(loadUnfiled, 200); }
     if (t.dataset.claimsearch !== undefined) {
       const [id, i] = t.dataset.claimsearch.split('|');
