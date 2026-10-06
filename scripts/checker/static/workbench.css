@@ -190,3 +190,18 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   box-shadow: 4px 4px 0 var(--purple); font-size: 13px; pointer-events: none; }
 .wb-hover b { font: 700 16px 'Comic Neue', 'Comic Sans MS', cursive; }
 .wb-hover p { margin: 4px 0; } .wb-hover ul { margin: 4px 0 0; padding-left: 16px; } .wb-hover li { margin: 2px 0; }
+
+/* in-page fields (instead of the browser's prompt and confirm) */
+.wb-ask { position: fixed; z-index: 1004; width: min(26em, 90vw); padding: 10px 12px; background: var(--paper); border: 3px solid var(--ink);
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--teal); display: grid; gap: 6px; }
+.wb-ask label, .wb-ask p { font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; margin: 0; }
+.wb-ask input, .wb-ask textarea { font: 15px system-ui, sans-serif; border: 2px solid var(--ink); border-radius: 8px; padding: 4px 8px; width: 100%; }
+.wb-askbtns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.wb-title-in { font: inherit; width: 100%; border: 0; border-bottom: 3px dashed var(--pink); background: #fff8fc; padding: 0 4px; outline: none; }
+.wb-pname { cursor: text; }
+.wb-pname:hover { background: #fff8fc; border-radius: 6px; }
+/* done or not: a badge you can't miss */
+.wb-state { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; padding: 3px 10px; border-radius: 999px; border: 2px solid; }
+.wb-state.done { background: #c8f7c5; border-color: #1d7a18; color: #12500f; }
+.wb-state.todo { background: #fff; border-color: #b0a8c8; border-style: dashed; color: #555; }
+.wb-state.new { background: #ffe3f1; border-color: #c0006a; color: #8a0050; }

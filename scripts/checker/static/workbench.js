@@ -202,11 +202,13 @@
     const sel = S.sel[i] || (S.sel[i] = new Set());
     return `<article data-scroll class="wb-panel p${i % COLORS}${i === S.active && S.open.length > 1 ? ' active' : ''}" data-drop="motif" data-id="${e.id}" data-panel="${i}">
       <header class="wb-phead">
-        <h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="drag me onto another motif or a group">${esc(e.name)}</h2>
+        <h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="click to rename · drag onto another motif or a group">${esc(e.name)}</h2>
         <span class="wb-pid">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.curated ? ' · ✋ by hand' : ''}${e.first_seen ? ' · since ' + esc(e.first_seen.slice(0, 10)) : ''}</span>
         <span class="wb-ptools">
           <button class="wb-btn" data-rename="${e.id}" title="rename">✎ rename</button>
-          <button class="wb-btn${e.done === 'done' ? ' on' : ''}" data-done="${e.id}" title="mark it done: you've looked at every claim">${e.done === 'done' ? '✓ done' : e.done === 'new' ? '🆕 new claims' : '✓ mark done'}</button>
+          ${e.done === 'done' ? `<span class="wb-state done" title="you've looked over its claims; it can appear on the site">✅ done</span><button class="wb-mini" data-done="${e.id}" title="take it back to not done">↺ not done</button>`
+            : e.done === 'new' ? `<span class="wb-state new" title="done, but claims came in since">🆕 ${newCount(e)} new since done</span><button class="wb-btn yes" data-done="${e.id}">✓ mark done</button>`
+            : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ not done</span><button class="wb-btn yes" data-done="${e.id}">✓ mark done</button>`}
           <select data-group="${e.id}" title="its group"><option value="">🗃️ no group</option>${groups}</select>
           ${isSingle(e) || e.stands_alone ? `<button class="wb-btn${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
           <button class="wb-btn" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
@@ -220,7 +222,7 @@
         ${sharedIds.length ? `<div><span class="wb-rlabel">🤝 shares claims with</span> ${sharedIds.slice(0, 8).map((o) => chip(o, `<b class="wb-shared">${shared[o]}</b>`)).join(' ')}</div>` : ''}
       </div>
       <div class="wb-note ${ns}">
-        <label>📝 note <span class="wb-ntag">${ns === 'none' ? 'none yet' : ns === 'draft' ? '🤖 draft by the ' + esc(e.note_by) : 'yours'}</span></label>
+        <label>📝 note <span class="wb-ntag">${ns === 'none' ? 'none yet' : ns === 'draft' ? '🤖 draft by ' + (e.note_by === 'claude' ? 'Claude' : 'the model') : 'yours'}</span></label>
         <textarea data-note="${e.id}" rows="2" placeholder="what this motif is, in a sentence (Enter saves, Shift+Enter for a new line)">${esc(e.note || '')}</textarea>
         <div class="wb-nbtns"><button class="wb-btn" data-savenote="${e.id}" disabled>💾 save</button>${ns === 'draft' ? `<button class="wb-btn" data-keepnote="${e.id}">✓ keep the draft</button>` : ''}</div>
       </div>
@@ -418,16 +420,14 @@
       return batch(steps, `⇢ moved to “${name(id)}”`);
     }
     if (kind === 'new') {
-      const n = prompt('Name the new motif:', c.claim.slice(0, 80));
-      if (n && n.trim()) act({action: 'new_with', name: n.trim(), claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n.trim()}”`);
-      return;
+      return ask(null, 'Name the new motif', c.claim.slice(0, 80)).then((n) => n && act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`));
     }
     if (kind === 'correct') {
-      const text = prompt('Correct the wording (the summary, not the source):', c.claim);
-      if (text && text.trim() && text.trim() !== c.claim) act({action: 'correct', claim: c.claim, text: text.trim()}, '✎ corrected').then((ok) => { if (ok) { S.claim.claim = text.trim(); renderInbox(); } });
-      return;
+      return ask(null, 'Correct the wording (our summary, not the source)', c.claim, true).then((text) => {
+        if (text && text !== c.claim) act({action: 'correct', claim: c.claim, text}, '✎ corrected').then((ok) => { if (ok) { S.claim.claim = text; renderInbox(); } });
+      });
     }
-    if (kind === 'nomotif' && confirm('No motif: take it out of every motif, for good?')) return act({action: 'no_motif', claim: c.claim}, '∅ no motif');
+    if (kind === 'nomotif') return sure(null, 'No motif: take it out of every motif, for good?').then((ok) => ok && act({action: 'no_motif', claim: c.claim}, '∅ no motif'));
   }
 
   function pairCard(a, b, why, example) {
@@ -510,10 +510,8 @@
         return out;
       }
       if (drop === 'newmotif') {
-        const named = (mode) => () => {
-          const name = prompt('Name the new motif:', cs.length === 1 ? cs[0].claim.slice(0, 80) : '');
-          if (name && name.trim()) act({action: 'new_with', name: name.trim(), claims: cs.map((c) => ({...c, mode}))}, `✨ made “${name.trim()}”`);
-        };
+        const named = (mode) => () => ask(t, 'Name the new motif', cs.length === 1 ? cs[0].claim.slice(0, 80) : '')
+          .then((name) => name && act({action: 'new_with', name, claims: cs.map((c) => ({...c, mode}))}, `✨ made “${name}”`));
         return cs.some((c) => c.source)
           ? [{label: '⇢ move into a new motif', say: 'move them out into a motif of their own', run: named('move')},
             {label: '＋ copy into a new motif', say: 'start a new motif with them, keeping where they are', run: named('also')}]
@@ -521,7 +519,7 @@
       }
       if (drop === 'nomotif') {
         return [{label: '∅ no motif', say: 'they tell no recurring story: out of every motif, never filed again', run: () =>
-          confirm(`Take ${claimsName(item)} out of every motif, for good?`) && batch(cs.map((c) => ({action: 'no_motif', claim: c.claim})), `∅ ${claimsName(item)}: no motif`)}];
+          sure(t, `Take ${claimsName(item)} out of every motif, for good?`).then((ok) => ok && batch(cs.map((c) => ({action: 'no_motif', claim: c.claim})), `∅ ${claimsName(item)}: no motif`))}];
       }
       if (drop === 'trash') {
         const filed = cs.filter((c) => c.source);
@@ -556,7 +554,7 @@
     }
     if (drop === 'trash') {
       return [{label: '🗑️ delete it', say: 'delete the motif (its claims aren’t filed again)', run: () =>
-        confirm(`Delete “${A.name}”? Its ${A.claims.length} claims won't be filed again.`) && act({action: 'delete', id: a}, `🗑️ deleted “${A.name}”`)}];
+        sure(t, `Delete “${A.name}”? Its ${A.claims.length} claims won't be filed again.`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: a}, `🗑️ deleted “${A.name}”`))}];
     }
     return [];
   }
@@ -677,10 +675,10 @@
     if (cancel) { hideMenu(); return; }
     const el = document.elementFromPoint(ev.clientX, ev.clientY);
     const z = el && el.closest('.dz-zone');
-    if (z && menu._zones) { const run = menu._zones[+z.dataset.zone]; hideMenu(); if (run) run.run(); return; }
+    if (z && menu._zones) { const run = menu._zones[+z.dataset.zone]; lastAnchor = menu._target; hideMenu(); if (run) run.run(); return; }
     const t = el && el.closest('[data-drop]');
     if (t && menu._zones && t === menu._target) {
-      if (menu._zones.length === 1) { const run = menu._zones[0]; hideMenu(); run.run(); return; }
+      if (menu._zones.length === 1) { const run = menu._zones[0]; lastAnchor = t; hideMenu(); run.run(); return; }
       pinned = t;
       showMenu(t, menu._zones, true, ev.clientX, ev.clientY);  // let go on the target itself: the choices stay up to click
       return;
@@ -694,6 +692,7 @@
     const z = ev.target.closest('.dz-zone');
     if (!z || !pinned) return;
     const run = z.dataset.zone === 'cancel' ? null : menu._zones[+z.dataset.zone];
+    lastAnchor = menu._target;
     hideMenu();
     if (run) run.run();
   });
@@ -702,6 +701,8 @@
   document.addEventListener('click', async (ev) => {
     if (Date.now() - lastDragEnd < 250) { ev.preventDefault(); ev.stopPropagation(); return; }
     const t = ev.target;
+    if (t.closest('.wb-ask')) return;
+    lastAnchor = t;
     if (pinned && !t.closest('.dz-menu')) { hideMenu(); return; }
     const inPanel = t.closest('[data-panel]');
     if (inPanel && +inPanel.dataset.panel !== S.active && !t.closest('[data-close]')) {
@@ -717,17 +718,18 @@
     if (t.closest('[data-close]')) return closePanel(+d('close'));
     if (t.id === 'close-all') { S.open = []; resetSelection(); store.set('open', S.open); return render(); }
     if ((v = d('compare'))) { for (const x of v.split('|')) if (S.by[x] && !S.open.includes(x)) openMotif(x, true); return; }
-    if ((v = d('rename'))) { const e = S.by[v]; const name = prompt('Rename the motif:', e.name); if (name && name.trim() && name.trim() !== e.name) act({action: 'rename', id: v, name: name.trim()}, `✎ renamed to “${name.trim()}”`); return; }
+    if ((v = d('rename'))) return editTitle(v);
+    if (t.closest('.wb-pname') && !t.closest('input')) return editTitle(t.closest('[data-panel]').dataset.id);
     if ((v = d('done'))) { const e = S.by[v]; return act({action: 'done', id: v, done: e.done !== 'done'}, e.done === 'done' ? '↺ not done' : `✓ “${e.name}” done`); }
     if ((v = d('alone'))) { const e = S.by[v]; return act({action: 'stands_alone', id: v, alone: !e.stands_alone}, e.stands_alone ? '🧍 suggestions back on' : `🧍 “${e.name}” stands alone`); }
     if ((v = d('alone1'))) return act({action: 'stands_alone', id: v, alone: true}, `🧍 “${S.by[v].name}” stands alone`);
-    if ((v = d('delete'))) { const e = S.by[v]; if (confirm(`Delete “${e.name}”?${e.claims.length ? ` Its ${e.claims.length} claims won't be filed again.` : ''}`)) act({action: 'delete', id: v}, `🗑️ deleted “${e.name}”`); return; }
+    if ((v = d('delete'))) { const e = S.by[v]; return sure(t, `Delete “${e.name}”?${e.claims.length ? ` Its ${e.claims.length} claims won't be filed again.` : ''}`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: v}, `🗑️ deleted “${e.name}”`)); }
     if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” is no longer a kind of “${S.by[p].name}”`); }
     if ((v = d('unrelate'))) { const [a, b] = v.split('|'); return act({action: 'unrelate', a, b}, '↔ unrelated'); }
     if ((v = d('keepnote'))) return act({action: 'keep_note', id: v}, '✓ kept the draft note');
     if ((v = d('savenote'))) return saveNote(v);
-    if ((v = d('grename'))) { const g = S.data.groups.find((x) => x.id === v); const name = prompt('Rename the group:', g.name); if (name && name.trim()) act({action: 'group_rename', group: v, name: name.trim()}, '✎ group renamed'); return; }
-    if ((v = d('gdelete'))) { if (confirm('Delete the group? Its motifs stay, ungrouped.')) act({action: 'group_delete', group: v}, '🗑️ group deleted'); return; }
+    if ((v = d('grename'))) { const g = S.data.groups.find((x) => x.id === v); return ask(t, 'Rename the group', g.name).then((name) => name && act({action: 'group_rename', group: v, name}, '✎ group renamed')); }
+    if ((v = d('gdelete'))) return sure(t, 'Delete the group? Its motifs stay, ungrouped.').then((ok) => ok && act({action: 'group_delete', group: v}, '🗑️ group deleted'));
     if ((v = d('pair'))) {
       const [kind, a, b] = v.split('|'), A = S.by[a], B = S.by[b];
       const body = {merge: {action: 'merge', source: a, target: b}, under: {action: 'parent', id: a, parent: b}, related: {action: 'relate', a, b}, notsame: {action: 'not_same', a, b}}[kind];
@@ -738,9 +740,15 @@
     if ((v = d('similar'))) { const [id, i] = v.split('|'); S.extra[id] = {kind: 'similar', items: await getJSON('/motif-similar.json?id=' + id).catch(() => [])}; return fillExtra(id, +i); }
     if ((v = d('closeextra'))) { delete S.extra[v]; return renderPanels(); }
     if ((v = d('bulk'))) return bulk(...v.split('|'));
-    if (t.id === 'delete-empty') { const ids = motifs().filter(isEmpty).map((e) => e.id); if (confirm(`Delete ${ids.length} empty motifs?`)) batch(ids.map((id) => ({action: 'delete', id})), `🗑️ deleted ${ids.length} empty motifs`); return; }
-    if (t.id === 'add-motif') { const name = prompt('Name the new motif:'); if (name && name.trim()) { const before = new Set(Object.keys(S.by)); if (await act({action: 'add', name: name.trim()}, `✨ made “${name.trim()}”`)) { const n = Object.keys(S.by).find((x) => !before.has(x)); if (n) openMotif(n); } } return; }
-    if (t.id === 'add-group') { const name = prompt('Name the new group:'); if (name && name.trim()) act({action: 'group_add', name: name.trim()}, `📁 made “${name.trim()}”`); return; }
+    if (t.id === 'delete-empty') { const ids = motifs().filter(isEmpty).map((e) => e.id); return sure(t, `Delete ${ids.length} empty motifs?`, '🗑️ delete them').then((ok) => ok && batch(ids.map((id) => ({action: 'delete', id})), `🗑️ deleted ${ids.length} empty motifs`)); }
+    if (t.id === 'add-motif') {
+      const name = await ask(t, 'Name the new motif');
+      if (!name) return;
+      const before = new Set(Object.keys(S.by));
+      if (await act({action: 'add', name}, `✨ made “${name}”`)) { const n = Object.keys(S.by).find((x) => !before.has(x)); if (n) openMotif(n); }
+      return;
+    }
+    if (t.id === 'add-group') return ask(t, 'Name the new group').then((name) => name && act({action: 'group_add', name}, `📁 made “${name}”`));
     if (t.id === 'help-btn') return $('#help').showModal();
     if ((v = d('cl'))) { const [kind, id] = v.split('|'); return claimAction(kind, id); }
     // claim buttons
@@ -751,8 +759,8 @@
       const b = t.closest('button'), c = li.dataset.claim, src = li.dataset.source;
       if (b.dataset.check) return act({action: 'check', claim: c, id: src, answer: 'yes'}, '✓ checked');
       if (b.dataset.unfile) return act({action: 'unfile', claim: c, id: src}, '✕ taken out');
-      if (b.dataset.nomotif) { if (confirm('No motif: take it out of every motif, for good?')) act({action: 'no_motif', claim: c}, '∅ no motif'); return; }
-      if (b.dataset.correct) { const text = prompt('Correct the wording (the summary, not the source):', c); if (text && text.trim() && text.trim() !== c) act({action: 'correct', claim: c, text: text.trim()}, '✎ corrected'); return; }
+      if (b.dataset.nomotif) return sure(b, 'No motif: take it out of every motif, for good?').then((ok) => ok && act({action: 'no_motif', claim: c}, '∅ no motif'));
+      if (b.dataset.correct) return ask(b, 'Correct the wording (our summary, not the source)', c, true).then((text) => text && text !== c && act({action: 'correct', claim: c, text}, '✎ corrected'));
       if (b.dataset.detail) return detail(li);
       if (b.dataset.addhere) { const to = b.dataset.addhere; const step = src ? {action: 'also', claim: c, source: src, target: to} : {action: 'file', claim: c, id: to, source: li.dataset.src, ref: li.dataset.ref}; await act(step, `＋ added to “${S.by[to].name}”`); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
       if (b.dataset.reject) { const to = b.dataset.reject; await act({action: 'reject', claim: c, id: to}, '✕ won’t suggest it again'); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
@@ -777,7 +785,7 @@
     if (kind === 'clear') { S.sel[i].clear(); return renderPanels(); }
     if (kind === 'unfile') return batch(cs.map((c) => ({action: 'unfile', claim: c, id})), `🗑️ took ${cs.length} out`);
     if (kind === 'check') return batch(cs.map((c) => ({action: 'check', claim: c, id, answer: 'yes'})), `✓ checked ${cs.length}`);
-    if (kind === 'no_motif' && confirm(`No motif for ${cs.length} claims: out of every motif, for good?`)) return batch(cs.map((c) => ({action: 'no_motif', claim: c})), `∅ ${cs.length} claims: no motif`);
+    if (kind === 'no_motif') return sure(null, `No motif for ${cs.length} claims: out of every motif, for good?`).then((ok) => ok && batch(cs.map((c) => ({action: 'no_motif', claim: c})), `∅ ${cs.length} claims: no motif`));
   }
   async function detail(li) {
     const box = $('.wb-detail', li);
@@ -878,6 +886,76 @@
       if (k) { ev.preventDefault(); verdict(k); }
     }
   });
+
+  // ---------- in-page fields instead of the browser's prompt and confirm boxes ----------
+  let askCard = null, lastAnchor = null;
+  function closeAsk(value) {
+    if (!askCard) return;
+    const done = askCard._resolve;
+    askCard.remove();
+    askCard = null;
+    done(value);
+  }
+  function askCardAt(anchor, html, submit) {
+    closeAsk(null);
+    return new Promise((resolve) => {
+      const f = document.createElement('form');
+      f.className = 'wb-ask';
+      f.innerHTML = html;
+      f._resolve = resolve;
+      document.body.append(f);
+      askCard = f;
+      const a = [anchor, lastAnchor].find((x) => x && x.isConnected);
+      const r = a ? a.getBoundingClientRect() : {left: innerWidth / 2 - 180, top: innerHeight / 3, bottom: innerHeight / 3};
+      const m = f.getBoundingClientRect();
+      let y = r.bottom + 6;
+      if (y + m.height > innerHeight - 8) y = Math.max(8, r.top - m.height - 6);
+      f.style.left = Math.max(8, Math.min(r.left, innerWidth - m.width - 8)) + 'px';
+      f.style.top = y + 'px';
+      const field = f.querySelector('input, textarea');
+      (field || f.querySelector('button')).focus();
+      if (field) field.select();
+      f.addEventListener('submit', (ev) => { ev.preventDefault(); closeAsk(submit(f)); });
+      f.addEventListener('click', (ev) => { if (ev.target.closest('[data-askcancel]')) closeAsk(null); });
+      f.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') { ev.preventDefault(); closeAsk(null); }
+        if (ev.key === 'Enter' && !ev.shiftKey && ev.target.tagName === 'TEXTAREA') { ev.preventDefault(); f.requestSubmit(); }
+      });
+    });
+  }
+  function ask(anchor, label, value = '', multiline = false) {
+    const field = multiline ? `<textarea rows="3">${esc(value)}</textarea>` : `<input type="text" value="${esc(value)}">`;
+    return askCardAt(anchor, `<label>${esc(label)}</label>${field}<div class="wb-askbtns"><button class="wb-btn yes" type="submit">💾 save</button>
+      <button class="wb-btn" type="button" data-askcancel>cancel</button><span class="wb-faint">Enter saves · Esc cancels</span></div>`,
+    (f) => f.querySelector('input, textarea').value.trim() || null);
+  }
+  function sure(anchor, text, ok = 'yes, do it') {
+    return askCardAt(anchor, `<p>${esc(text)}</p><div class="wb-askbtns"><button class="wb-btn no" type="submit">${esc(ok)}</button>
+      <button class="wb-btn" type="button" data-askcancel>cancel</button></div>`, () => true).then((v) => !!v);
+  }
+  document.addEventListener('pointerdown', (ev) => { if (askCard && !askCard.contains(ev.target)) closeAsk(null); }, true);
+  // The open motif's name edits where it is: click it (or ✎), type, Enter or click away saves, Esc puts it back
+  function editTitle(id) {
+    const h = $(`.wb-panel[data-id="${id}"] .wb-pname`), e = S.by[id];
+    if (!h || !e || h.querySelector('input')) return;
+    h.innerHTML = `<input class="wb-title-in" value="${esc(e.name)}" aria-label="the motif's name">`;
+    const inp = h.querySelector('input');
+    inp.focus();
+    inp.select();
+    let over = false;
+    const finish = (save) => {
+      if (over) return;
+      over = true;
+      const v = inp.value.trim();
+      if (save && v && v !== e.name) act({action: 'rename', id, name: v}, `✎ renamed to “${v}”`);
+      else renderPanels();
+    };
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+      if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+    });
+    inp.addEventListener('blur', () => finish(true));
+  }
 
   // ---------- hover a motif: its note and a few claims ----------
   const hover = document.createElement('div');
