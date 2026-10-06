@@ -167,6 +167,8 @@ def main(args: argparse.Namespace):
             fetch_investigations()
             wiki.refresh()  # weekly: each outlet's Wikipedia opening and Wikidata facts
             fetch_sidefeeds()  # newsletters, podcasts and political video channels, each at most every 2 hours
+            from app.chyrons import fetch_chyrons
+            fetch_chyrons()  # TV news chyrons from the Internet Archive: one request a run (today so far, UTC)
             fetch_polls()
             fetch_aggregates()
     build()
