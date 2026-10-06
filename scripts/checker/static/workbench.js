@@ -193,8 +193,19 @@
     box.dataset.count = S.open.length;
     $('#work-head').innerHTML = S.open.length > 1 ? `<b>${S.open.length}</b> open, one under another · a click opens in the outlined one; <b>Shift-click</b> or ⧉ adds another <button class="wb-mini" id="close-all">✕ close all</button>`
       : 'Shift-click a motif (or ⧉) to open another under this one, as many as you like';
+    // A note being written survives a re-render (any action anywhere redraws the panels; Oct 6 notes were lost so)
+    const drafts = {};
+    document.querySelectorAll('textarea[data-note]').forEach((t) => {
+      if (t.value.trim() !== ((S.by[t.dataset.note] || {}).note || '')) drafts[t.dataset.note] = {v: t.value, at: t.selectionStart, focus: document.activeElement === t};
+    });
     box.innerHTML = S.open.map((id, i) => panel(S.by[id], i)).join('');
     S.open.forEach((id, i) => { if (S.extra[id]) fillExtra(id, i); });
+    for (const [id, d] of Object.entries(drafts)) {
+      const t = $(`textarea[data-note="${id}"]`);
+      if (!t) continue;
+      t.value = d.v;
+      if (d.focus) { t.focus(); t.setSelectionRange(d.at, d.at); }
+    }
   }
   function panel(e, i) {
     const kids = S.kids[e.id] || [];
@@ -229,8 +240,8 @@
       </div>
       <div class="wb-note ${ns}">
         <label>📝 note <span class="wb-ntag">${ns === 'none' ? 'none yet' : ns === 'draft' ? '🤖 draft by ' + (e.note_by === 'claude' ? 'Claude' : 'the model') : 'yours'}</span></label>
-        <textarea data-note="${e.id}" rows="2" placeholder="what this motif is, in a sentence (Enter saves, Shift+Enter for a new line)">${esc(e.note || '')}</textarea>
-        <div class="wb-nbtns"><button class="wb-btn" data-savenote="${e.id}" disabled>💾 save</button>${ns === 'draft' ? `<button class="wb-btn" data-keepnote="${e.id}">✓ keep the draft</button>` : ''}</div>
+        <textarea data-note="${e.id}" rows="2" placeholder="what this motif is, in a sentence (saves when you click away or press Enter; Shift+Enter for a new line)">${esc(e.note || '')}</textarea>
+        ${ns === 'draft' ? `<div class="wb-nbtns"><button class="wb-btn" data-keepnote="${e.id}">✓ keep the draft</button></div>` : ''}
       </div>
       ${sel.size ? `<div class="wb-selbar">☑️ <b>${sel.size}</b> selected: drag them anywhere, or
         <button class="wb-btn" data-bulk="unfile|${i}">🗑️ take out</button><button class="wb-btn" data-bulk="no_motif|${i}">∅ no motif</button>
@@ -823,7 +834,6 @@
     if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” is no longer a kind of “${S.by[p].name}”`); }
     if ((v = d('unrelate'))) { const [a, b] = v.split('|'); return act({action: 'unrelate', a, b}, '↔ unrelated'); }
     if ((v = d('keepnote'))) return act({action: 'keep_note', id: v}, '✓ kept the draft note');
-    if ((v = d('savenote'))) return saveNote(v);
     if ((v = d('grename'))) { const g = S.data.groups.find((x) => x.id === v); return ask(t, 'Rename the group', g.name).then((name) => name && act({action: 'group_rename', group: v, name}, '✎ group renamed')); }
     if ((v = d('gdelete'))) return sure(t, 'Delete the group? Its motifs stay, ungrouped.').then((ok) => ok && act({action: 'group_delete', group: v}, '🗑️ group deleted'));
     if ((v = d('pair'))) {
@@ -942,7 +952,7 @@
   }
   function saveNote(id) {
     const ta = $(`textarea[data-note="${id}"]`);
-    if (ta) act({action: 'note', id, note: ta.value.trim()}, '💾 note saved');
+    if (ta && S.by[id] && ta.value.trim() !== (S.by[id].note || '')) act({action: 'note', id, note: ta.value.trim()}, '💾 note saved');
   }
 
   // ---------- typing ----------
@@ -964,7 +974,6 @@
   $('#sort').addEventListener('change', (ev) => { S.sort = ev.target.value; store.set('sort', S.sort); renderTree(); });
   document.addEventListener('input', (ev) => {
     const t = ev.target;
-    if (t.dataset.note !== undefined) { const b = $(`[data-savenote="${t.dataset.note}"]`); if (b) b.disabled = t.value.trim() === ((S.by[t.dataset.note] || {}).note || ''); }
     if (t.id === 'cl-q') { S.claimQ = t.value; claimResults(); }
     if (t.id === 'unfiled-q') { S.unfiledQ = t.value; clearTimeout(unfiledTimer); unfiledTimer = setTimeout(loadUnfiled, 200); }
     if (t.dataset.claimsearch !== undefined) {
@@ -990,10 +999,14 @@
     if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
     if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group'; renderTree(); }
   });
+  // A note saves as you leave it, like a title (there's no save button to forget)
+  document.addEventListener('focusout', (ev) => {
+    if (ev.target.dataset && ev.target.dataset.note !== undefined && ev.target.isConnected) saveNote(ev.target.dataset.note);
+  });
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target.closest && ev.target.closest('input, textarea, select');
     if (ev.key === 'Escape') { if (drag) end(ev, true); hideMenu(); }
-    if (ev.target.dataset && ev.target.dataset.note !== undefined && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); saveNote(ev.target.dataset.note); return; }
+    if (ev.target.dataset && ev.target.dataset.note !== undefined && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); ev.target.blur(); return; }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !typing) { ev.preventDefault(); undo(); return; }
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }
