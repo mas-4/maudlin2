@@ -309,9 +309,17 @@
         if (motifsOf(x.claim).some((e) => e.claims.some((c) => c.claim === x.claim && !c.checked))) items.push(x);
       }
       // ◀ goes back along the claims you've seen (even one you've finished, which has left the list)
+      // The claim on screen stays until next ▶ or ✓ all fit: ticking or taking out its last motif, adding one, or
+      // rewording it leaves it here for the next edit (it used to jump to the next claim)
       const back = S.checkBack;
-      const x = back ? {claim: back, source: (motifsOf(back)[0] || {claims: []}).claims.find((c) => c.claim === back)?.source || ''}
-        : items[S.checkAt % Math.max(items.length, 1)];
+      S.checkItems = items;
+      let x;
+      if (back) x = {claim: back, source: (motifsOf(back)[0] || {claims: []}).claims.find((c) => c.claim === back)?.source || ''};
+      else if (S.checkHere) x = S.checkHere;
+      else {
+        x = items[S.checkAt % Math.max(items.length, 1)];
+        if (x) S.checkHere = {claim: x.claim, source: x.source};
+      }
       if (!x) { box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing to check right now.</p></div>'; S.queues.check = null; return; }
       S.claim = {claim: x.claim, src: x.source, from: null};
       renderClaim(box, true, items.length);
@@ -501,7 +509,7 @@
     }
     if (kind === 'correct') {
       return ask(null, 'Correct the wording (our summary, not the source)', c.claim, true).then((text) => {
-        if (text && text !== c.claim) act({action: 'correct', claim: c.claim, text}, '✎ corrected').then((ok) => { if (ok) { S.claim.claim = text; renderInbox(); } });
+        if (text && text !== c.claim) act({action: 'correct', claim: c.claim, text}, '✎ corrected').then((ok) => { const old = c.claim; if (ok) { S.claim.claim = text; renamed(old, text); renderInbox(); } });
       });
     }
     if (kind === 'nomotif') return sure(null, 'No motif: take it out of every motif, for good?').then((ok) => ok && act({action: 'no_motif', claim: c.claim}, '∅ no motif'));
@@ -859,7 +867,7 @@
       if (b.dataset.correct) return ask(b, 'Correct the wording (our summary, not the source)', c, true).then((text) => text && text !== c && act({action: 'correct', claim: c, text}, '✎ corrected'));
       if (b.dataset.detail) return detail(li);
       if (b.dataset.foldIn && S.claim) return act({action: 'same_claim', variant: c, canonical: S.claim.claim}, '≡ folded into this claim');
-      if (b.dataset.foldTo && S.claim) { const keep = c; return act({action: 'same_claim', variant: S.claim.claim, canonical: keep}, '≡ folded into the other claim').then((ok) => { if (ok) { S.claim.claim = keep; S.claim.from = null; renderInbox(); } }); }
+      if (b.dataset.foldTo && S.claim) { const keep = c, old = S.claim.claim; return act({action: 'same_claim', variant: old, canonical: keep}, '≡ folded into the other claim').then((ok) => { if (ok) { S.claim.claim = keep; S.claim.from = null; renamed(old, keep); renderInbox(); } }); }
       if (b.dataset.addhere) { const to = b.dataset.addhere; const step = src ? {action: 'also', claim: c, source: src, target: to} : {action: 'file', claim: c, id: to, source: li.dataset.src, ref: li.dataset.ref}; await act(step, `＋ added to “${S.by[to].name}”`); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
       if (b.dataset.reject) { const to = b.dataset.reject; await act({action: 'reject', claim: c, id: to}, '✕ won’t suggest it again'); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
     }
@@ -914,7 +922,13 @@
     S.checkTrail = S.checkTrail || [];
     if (answer === 'next') {
       if (S.checkBack) S.checkBack = S.checkForward.pop() || null;  // stepping forward again through the trail
-      else { S.checkTrail.push(x.claim); S.checkAt += 1; }
+      else {
+        S.checkTrail.push(x.claim);
+        // still to check: step past it; finished: the next claim has slid into its place
+        const at = (S.checkItems || []).findIndex((i) => i.claim === x.claim);
+        if (at >= 0) S.checkAt = at + 1;
+        S.checkHere = null;
+      }
       return renderInbox();
     }
     if (answer === 'prev') {
@@ -926,7 +940,7 @@
     }
     if (answer === 'allyes') {
       const left = motifsOf(x.claim).filter((e) => e.claims.some((c) => c.claim === x.claim && !c.checked));
-      if (!S.checkBack) S.checkTrail.push(x.claim);
+      if (!S.checkBack) { S.checkTrail.push(x.claim); S.checkHere = null; }
       else S.checkBack = (S.checkForward || []).pop() || null;
       if (!left.length) return renderInbox();
       return batch(left.map((e) => ({action: 'check', claim: x.claim, id: e.id, answer: 'yes'})), `✓ ${left.length} motif${left.length === 1 ? '' : 's'} fit`);
@@ -1066,6 +1080,9 @@
   }
 
   // The claim in the claim view edits where it is: a person's correction of our summary (never the source's words)
+  function renamed(old, text) {  // the claim pinned in the check tab, now under other words
+    if (S.checkHere && S.checkHere.claim === old) S.checkHere = {...S.checkHere, claim: text};
+  }
   function editClaim() {
     const box = $('#inbox .wb-bigtext');
     if (!box || !S.claim || box.querySelector('textarea')) return;
@@ -1080,7 +1097,7 @@
       over = true;
       const text = ta.value.trim();
       if (save && text && text !== old) {
-        act({action: 'correct', claim: old, text}, '✎ corrected').then((ok) => { if (ok && S.claim) { S.claim.claim = text; renderInbox(); } });
+        act({action: 'correct', claim: old, text}, '✎ corrected').then((ok) => { if (ok && S.claim) { S.claim.claim = text; renamed(old, text); renderInbox(); } });
       } else renderInbox();
     };
     ta.addEventListener('keydown', (ev) => {
