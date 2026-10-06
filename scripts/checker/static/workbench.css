@@ -161,3 +161,5 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-inspect.dz-target { outline: 3px solid var(--orange); background: #fff1c2; }
 .wb-inspect h3 i { font-style: normal; font-size: 12px; color: #666; }
 .wb-clacts { margin: 10px 0 4px; }
+.wb-sug.wb-checking { background: #fff4c2; border-radius: 8px; padding-left: 4px; }
+.wb-inspect h3 .wb-faint { font: 400 11.5px system-ui, sans-serif; margin-left: 4px; }

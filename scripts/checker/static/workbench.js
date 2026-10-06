@@ -294,20 +294,9 @@
       const items = (q.error ? [] : q).filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && !c.checked));
       const x = items[S.checkAt % Math.max(items.length, 1)];
       if (!x) { box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing to check right now.</p></div>'; S.queues.check = null; return; }
-      const e = S.by[x.id];
-      box.innerHTML = `<div class="wb-checkcard">
-        <p class="wb-faint">${items.length} filing${items.length === 1 ? '' : 's'} to check here (${S.data.to_check} in all) · the biggest motifs first</p>
-        <p class="wb-checkq">Does this claim belong in</p><p>${chip(x.id)}</p>
-        <blockquote class="wb-claim big" ${claimData({claim: x.claim, source: x.source}, x.id)}>${esc(x.claim)}<span class="wb-meta">${esc(SOURCE[x.source] || x.source || '')}</span></blockquote>
-        ${e.note ? `<p class="wb-faint">📝 ${esc(e.note)}</p>` : ''}
-        ${x.others.length ? `<p class="wb-faint">also there: ${x.others.map((o) => '“' + esc(o.slice(0, 140)) + '”').join(' · ')}</p>` : ''}
-        <div class="wb-checkbtns">
-          <button class="wb-btn yes" data-verdict="yes">✓ yes <kbd>Y</kbd></button>
-          <button class="wb-btn no" data-verdict="no">✗ no, take it out <kbd>N</kbd></button>
-          <button class="wb-btn" data-verdict="unsure">🤷 not sure <kbd>U</kbd></button>
-          <button class="wb-btn" data-verdict="skip">⏭ skip <kbd>S</kbd></button>
-        </div>
-        <p class="wb-faint">Or drag the claim onto the motif it does belong in. <button class="wb-mini" data-open="${x.id}">open the motif</button></p></div>`;
+      // The claim's whole workspace, with the verdict on this one filing on top
+      S.claim = {claim: x.claim, src: x.source, from: x.id};
+      renderClaim(box, x, items.length);
       box.dataset.check = JSON.stringify(x);
     } else if (tab === 'pairs') {
       const q = await queue('pairs');
@@ -344,13 +333,13 @@
   // ---------- one claim, inspected: where it came from, every motif it's in, and moving it ----------
   function motifsOf(text) { return motifs().filter((e) => e.claims.some((c) => c.claim === text)); }
   function inspect(li) {
-    S.claim = {claim: li.dataset.claim, src: li.dataset.src, ref: li.dataset.ref};
+    S.claim = {claim: li.dataset.claim, src: li.dataset.src, ref: li.dataset.ref, from: null};
     S.tab = 'claim';
     S.claimQ = '';
     renderTabs();
     renderInbox();
   }
-  function renderClaim(box) {
+  function renderClaim(box, check, left) {
     const c = S.claim;
     if (!c) {
       box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🔍</div><p>Click a claim’s 🔍 or its #id (or a claim in the search results) to open it here: where it came from, every motif it’s in, and where to move it.</p></div>';
@@ -359,16 +348,27 @@
     const ins = motifsOf(c.claim);
     const first = ins[0], rec = first && first.claims.find((x) => x.claim === c.claim);
     const src = (rec && rec.source) || c.src || '';
-    box.innerHTML = `<div class="wb-inspect" data-drop="claim">
+    const e = check && S.by[check.id];
+    const verdict = check ? `<div class="wb-checkcard">
+        <p class="wb-faint">${left} filing${left === 1 ? '' : 's'} to check here (${S.data.to_check} in all) · the biggest motifs first</p>
+        <p class="wb-checkq">Does this claim belong in ${chip(check.id)} ?</p>
+        ${e.note ? `<p class="wb-faint">📝 ${esc(e.note)}</p>` : ''}
+        <div class="wb-checkbtns">
+          <button class="wb-btn yes" data-verdict="yes">✓ yes <kbd>Y</kbd></button>
+          <button class="wb-btn no" data-verdict="no">✗ no, take it out <kbd>N</kbd></button>
+          <button class="wb-btn" data-verdict="unsure">🤷 not sure <kbd>U</kbd></button>
+          <button class="wb-btn" data-verdict="skip">⏭ skip <kbd>S</kbd></button>
+        </div></div>` : '';
+    box.innerHTML = verdict + `<div class="wb-inspect" data-drop="claim">
       <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}>${esc(c.claim)}
         <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif</span></blockquote>
-      <h3>🧩 filed under <i>${ins.length}</i></h3>
-      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-sug">${chip(e.id)}
-        <span class="wb-faint">${r.checked === 'yes' ? '✓ checked' : r.checked === 'unsure' ? '🤷 unsure' : ''}</span>
+      <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
+      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-sug${check && e.id === check.id ? ' wb-checking' : ''}">${chip(e.id)}
+        <span class="wb-faint">${check && e.id === check.id ? '👈 checking this one · ' : ''}${r.checked === 'yes' ? '✓ checked' : r.checked === 'unsure' ? '🤷 unsure' : ''}</span>
         <span class="wb-sbtns">${r.checked !== 'yes' ? `<button class="wb-mini" data-cl="check|${e.id}" title="yes, it belongs here">✓</button>` : ''}
         <button class="wb-mini" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
         || '<p class="wb-faint">📥 not in any motif</p>'}
-      <h3>➕ file it under…</h3>
+      <h3>➕ add it to another motif</h3>
       <label class="wb-addsearch">🔎 <input type="search" id="cl-q" placeholder="find a motif" value="${esc(S.claimQ || '')}" autocomplete="off"></label>
       <div id="cl-results"></div>
       <div class="wb-sbtns wb-clacts">
@@ -394,7 +394,7 @@
       .sort(SORTS.size).slice(0, 12);
     box.innerHTML = found.map((e) => `<div class="wb-sug">${chip(e.id)}<span class="wb-sbtns">
         <button class="wb-mini" data-cl="add|${e.id}" title="file it here too">＋ add</button>
-        ${ins.length ? `<button class="wb-mini" data-cl="move|${e.id}" title="file it here and take it out of ${ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span></div>`).join('')
+        ${ins.length ? `<button class="wb-mini" data-cl="move|${e.id}" title="file it here and take it out of ${S.claim.from && S.by[S.claim.from] ? '“' + esc(S.by[S.claim.from].name) + '”' : ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span></div>`).join('')
       || '<p class="wb-faint">🦗 no motif matches</p>';
   }
   function claimAction(kind, id) {
@@ -407,6 +407,8 @@
     if (kind === 'unfile') return act({action: 'unfile', claim: c.claim, id}, `✕ out of “${name(id)}”`);
     if (kind === 'add') return act(fileHere(id), `＋ filed in “${name(id)}”`);
     if (kind === 'move') {
+      // From the check card: out of the motif being checked only. From the inspector: out of every motif it's in
+      if (c.from && ins.some((e) => e.id === c.from)) return act({action: 'move', claim: c.claim, source: c.from, target: id}, `⇢ moved from “${name(c.from)}” to “${name(id)}”`);
       const steps = [{action: 'move', claim: c.claim, source: first.id, target: id}].concat(ins.slice(1).map((e) => ({action: 'unfile', claim: c.claim, id: e.id})));
       return batch(steps, `⇢ moved to “${name(id)}”`);
     }
