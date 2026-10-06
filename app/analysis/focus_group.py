@@ -110,6 +110,34 @@ def checked(claims: list[dict], text: str) -> tuple[list[dict], list[dict]]:
     return kept, dropped
 
 
+SUPPORT_MODEL = 'gemma4:26b'
+SUPPORT_PROMPT = """A voter in a focus group said:
+"{quote}"
+
+Someone summed up what the voter believes as this claim: {claim}
+
+Is the quote evidence for the claim: does the voter say the claim, or a central part of it, even in other words? The \
+claim may add a little context from the conversation. Answer "unrelated" only when the quote is about something \
+else, or says the opposite.
+
+reason: a sentence
+verdict: "evidence" or "unrelated\""""
+SUPPORT_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 500},
+                                                   "verdict": {"type": "string", "enum": ["evidence", "unrelated"]}},
+                  "required": ["reason", "verdict"]}
+
+
+def supported(claim: str, quote: str) -> bool | None:
+    """Whether the voter's words support the claim as worded, by the model; None without an answer. The quote
+    checks catch made-up and reused quotes, not a real quote under the wrong claim (Oct 6: 'Politicians cheat on their
+    spouses but still get elected' over a voter saying politicians tell you what you want to hear)."""
+    answer = llm.complete_json(SUPPORT_PROMPT.format(quote=quote, claim=claim), SUPPORT_SCHEMA, max_tokens=400,
+                               model=SUPPORT_MODEL)
+    if not answer or answer.get('verdict') not in ('evidence', 'unrelated'):
+        return None
+    return answer['verdict'] == 'evidence'
+
+
 def extract(budget: float | None = None) -> dict:
     """Read the episodes not read yet, newest first, chunk by chunk, saving as it goes, for at most `budget`
     seconds (the next run carries on)."""
@@ -134,6 +162,10 @@ def extract(budget: float | None = None) -> dict:
                 side = c.get('side', '').split('(')[0].strip()  # 'Trump voter (implied by context...)'
                 found.append({'claim': claim, 'quote': c.get('quote', '').strip(), 'side': side, 'at': round(chunk['at'])})
             kept, dropped = checked(found, chunk['text'])
+            for c in list(kept):
+                if supported(c['claim'], c['quote']) is False:
+                    kept.remove(c)
+                    dropped.append(dict(c, why="the quote doesn't support the claim"))
             entry['claims'] += kept
             entry.setdefault('dropped', []).extend(dropped)
             entry['read'] += 1
@@ -164,6 +196,31 @@ def recheck() -> list[str]:
         kept += [c for c in entry['claims'] if c.get('at') not in {round(ch['at']) for ch in ep['chunks']}]
         entry['claims'] = kept
     save(store)
+    return gone
+
+
+def recheck_support(budget: float | None = None) -> list[str]:
+    """Check the claims kept before the support check (Oct 6) the same way, in the words a person may have corrected
+    them to; those not supported move to 'dropped'. Returns the dropped claims (their original words). Checked claims
+    are marked, so each is asked about once."""
+    import time
+    from app.analysis import motif_index
+    index = motif_index.load()
+    store, gone, started = load(), [], time.time()
+    for entry in store.values():
+        keep = []
+        for c in entry['claims']:
+            if c.get('support') or (budget is not None and time.time() - started > budget):
+                keep.append(c)
+                continue
+            ok = supported(motif_index.corrected(c['claim'], index), c['quote'])
+            if ok is False:
+                entry.setdefault('dropped', []).append(dict(c, why="the quote doesn't support the claim"))
+                gone.append(c['claim'])
+            else:
+                keep.append(dict(c, support='checked') if ok else c)
+        entry['claims'] = keep
+        save(store)
     return gone
 
 

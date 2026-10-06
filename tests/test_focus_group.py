@@ -36,3 +36,21 @@ def test_extraction_keeps_only_checked_claims(monkeypatch, tmp_path):
     assert [c['claim'] for c in store['u']['claims']] == ['Vivek is rich and out of touch']
     assert store['u']['dropped'][0]['why'] == 'quote not in the transcript'
     assert [c['claim'] for c in fg.claims()] == ['Vivek is rich and out of touch']
+
+
+def test_a_claim_its_quote_doesnt_support_is_dropped(monkeypatch, tmp_path):
+    monkeypatch.setattr(fg, 'STORE', str(tmp_path / 'fg.json'))
+    monkeypatch.setattr(fg.llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(fg, 'episodes', lambda: [{'title': 'Ep', 'url': 'u', 'date': '2026-10-01',
+                                                  'chunks': [{'at': 0.0, 'text': PART}]}])
+
+    def answer(prompt, *a, **k):
+        if prompt.startswith('A voter in a focus group said'):
+            return {'reason': '', 'verdict': 'unrelated' if 'cheat' in prompt else 'evidence'}
+        return {'reason': 'voters', 'claims': [
+            {'claim': 'Vivek is rich and out of touch', 'quote': 'they just have no clue what it is like', 'side': ''},
+            {'claim': 'Politicians cheat on their spouses', 'quote': 'She is pro-choice.', 'side': ''}]}
+    monkeypatch.setattr(fg.llm, 'complete_json', answer)
+    store = fg.extract()
+    assert [c['claim'] for c in store['u']['claims']] == ['Vivek is rich and out of touch']
+    assert store['u']['dropped'][0]['why'] == "the quote doesn't support the claim"
