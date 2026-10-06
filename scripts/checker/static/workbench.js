@@ -474,10 +474,10 @@
     if (!words.length) { box.innerHTML = '<p class="wb-faint">type to find a motif, or drag the claim onto one</p>'; return; }
     const found = motifs().filter((e) => !inIds.has(e.id) && words.every((w) => (e.id + ' ' + e.name + ' ' + (e.note || '')).toLowerCase().includes(w)))
       .sort(SORTS.size).slice(0, 12);
-    // The buttons first, where the eye lands after typing; the motif's name after them (clicking it opens the motif)
+    // The button first, where the eye lands after typing; the motif's name after it (clicking it opens the motif). No
+    // 'move here' (Oct 6: never used, easy to hit by mistake): add it, then ✕ it out of the old one
     box.innerHTML = found.map((e) => `<div class="wb-sug wb-pick"><span class="wb-pickbtns">
-        <button class="wb-btn yes" data-cl="add|${e.id}" title="file it here too">＋ add</button>
-        ${ins.length ? `<button class="wb-btn" data-cl="move|${e.id}" title="file it here and take it out of ${S.claim.from && S.by[S.claim.from] ? '“' + esc(S.by[S.claim.from].name) + '”' : ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span>${chip(e.id)}</div>`).join('')
+        <button class="wb-btn yes" data-cl="add|${e.id}" title="file it here too">＋ add</button></span>${chip(e.id)}</div>`).join('')
       || '<p class="wb-faint">🦗 no motif matches</p>';
     // A new motif named what was typed, offered whatever else matched (unless a motif already has that very name)
     const typed = S.claimQ.trim(), taken = motifs().some((e) => e.name.toLowerCase() === typed.toLowerCase());
@@ -492,12 +492,6 @@
     if (kind === 'check') return act({action: 'check', claim: c.claim, id, answer: 'yes'}, '✓ checked');
     if (kind === 'unfile') return act({action: 'unfile', claim: c.claim, id}, `✕ out of “${name(id)}”`);
     if (kind === 'add') return act(fileHere(id), `＋ filed in “${name(id)}”`);
-    if (kind === 'move') {
-      // From the check card: out of the motif being checked only. From the inspector: out of every motif it's in
-      if (c.from && ins.some((e) => e.id === c.from)) return act({action: 'move', claim: c.claim, source: c.from, target: id}, `⇢ moved from “${name(c.from)}” to “${name(id)}”`);
-      const steps = [{action: 'move', claim: c.claim, source: first.id, target: id}].concat(ins.slice(1).map((e) => ({action: 'unfile', claim: c.claim, id: e.id})));
-      return batch(steps, `⇢ moved to “${name(id)}”`);
-    }
     if (kind === 'newnamed') {
       const n = (S.claimQ || '').trim();
       if (!n) return;
