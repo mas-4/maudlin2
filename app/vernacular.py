@@ -8,10 +8,12 @@ not marked as bots, without a content warning.
 
 Each run listens to Bluesky's public stream (Jetstream, run by Bluesky for exactly this) for a few minutes. Kept: a
 post's text, when it was written, whether it's a reply or a quote, and a salted fingerprint of its author (enough to
-count distinct people, never to say who they are). Never kept: images, video, links' previews, handles, names. Posts
-their authors labeled (adult content, gore and so on) are skipped. A post deleted while we listen is deleted here
-too, and raw text is dropped after RETENTION_DAYS; only the narratives found in it (app/narratives.py) are kept longer.
-Nothing here is published as is."""
+count distinct people, never to say who they are), and since Oct 6 the post's address (at://...), so that a narrative
+can show a few of its posts that were already widely seen, embedded from Bluesky (app/bluesky_examples.py). Never
+kept: images, video, links' previews, handles, names. Posts their authors labeled (adult content, gore and so on) are
+skipped. A post deleted while we listen is deleted here too, and raw text and addresses are dropped after
+RETENTION_DAYS; only the narratives found in it (app/narratives.py) are kept longer. No post is published as is: one is
+only ever embedded from Bluesky itself, so a deleted post disappears."""
 import hashlib
 import re
 import json
@@ -31,8 +33,8 @@ JETSTREAM = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=a
 MINUTES = 5  # listened per run
 RETENTION_DAYS = 30
 MIN_CHARS = 20  # shorter is mostly "lol", emoji, single words
-INSERT = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media, links) '
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+INSERT = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media, links, uri) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
 INSERT_SOURCE = ('INSERT OR IGNORE INTO post (key, author, created, collected, text, reply, quote, media, links, '
                  'source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
 MENTION = re.compile(r'@[\w.-]+(?:\.[a-z]{2,})+|@\w+')
@@ -96,6 +98,8 @@ def connect() -> sqlite3.Connection:
         source TEXT NOT NULL DEFAULT 'bluesky', links TEXT)""")
     if 'links' not in {row[1] for row in con.execute('PRAGMA table_info(post)')}:
         con.execute('ALTER TABLE post ADD COLUMN links TEXT')  # article links, added Oct 4
+    if 'uri' not in {row[1] for row in con.execute('PRAGMA table_info(post)')}:
+        con.execute('ALTER TABLE post ADD COLUMN uri TEXT')  # a Bluesky post's address, added Oct 6
     con.execute('CREATE INDEX IF NOT EXISTS ix_post_collected ON post (collected)')
     con.execute('CREATE INDEX IF NOT EXISTS ix_post_author ON post (author)')
     return con
@@ -176,7 +180,8 @@ def row(message: dict, pepper: str):
     now = dt.now(timezone.utc).isoformat(timespec='seconds')
     return 'create', (key, fingerprint(did, pepper), record.get('createdAt'), now, scrub(record['text']),
                       int('reply' in record), int('record' in kind),
-                      int('images' in kind or 'video' in kind or 'media' in kind), article_links(bluesky_links(record)))
+                      int('images' in kind or 'video' in kind or 'media' in kind), article_links(bluesky_links(record)),
+                      f'at://{did}/app.bsky.feed.post/{rkey}' if did and rkey else None)
 
 
 def sample(minutes: float = MINUTES, url: str = JETSTREAM) -> int:

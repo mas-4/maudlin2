@@ -35,6 +35,10 @@ def pytest_sessionstart(session):
     def no_ollama(*args, **kwargs):
         raise RuntimeError('no Ollama embeddings in tests')
     clustering.ollama_embed = no_ollama
+    # Nor Bluesky's API (and its cache is in the shared data folder): no posts to show
+    from app import bluesky_examples
+    bluesky_examples.prepared = lambda: {}
+    bluesky_examples.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-bsky-'), 'bluesky_examples.json')
 
 
 @pytest.fixture(scope='session')

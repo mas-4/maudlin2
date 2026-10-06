@@ -13,6 +13,7 @@ from collections import Counter
 from datetime import date
 
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
+from app import bluesky_examples
 from app.analysis import motif_index, narrative_threads
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
@@ -124,6 +125,7 @@ class FolklorePage:
         logger.info("Generating folklore page...")
         report = latest_report()
         cards, copies, fewer = [], [], 0
+        bsky = bluesky_examples.prepared()
         pulled = withheld()
         index = motif_index.load()
         threads = narrative_threads.load()
@@ -157,6 +159,7 @@ class FolklorePage:
                         'factchecks': g.get('factchecks') or [],
                         'motifs': motif_cards(index, motif_index.corrected(label.get('narrative') or '', index)),
                         'examples': g['examples'][:4] if Config.debug else [],
+                        'bluesky': bluesky_examples.examples(g.get('uris'), bsky),
                         'told_before': told_before(threads, report.get('file', ''), label.get('narrative') or '', index),
                     })
                 elif g['kind'] == 'copypasta':
@@ -173,7 +176,8 @@ class FolklorePage:
             if said:
                 voters.append({'title': ep['title'], 'date': ep['date'], 'url': url, 'claims': said})
         self.template.write({
-            'title': 'Folklore', 'report': report, 'cards': cards, 'copies': copies, 'voters': voters,
+            'title': 'Folklore', 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
+            'report': report, 'cards': cards, 'copies': copies, 'voters': voters,
             'floor': floor, 'fewer': fewer, 'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
             'genre_notes': GENRE_NOTES, 'chapter_notes': CHAPTER_NOTES,
             'rumor_classes': RUMOR_CLASSES, 'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,

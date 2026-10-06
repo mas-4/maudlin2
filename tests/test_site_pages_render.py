@@ -715,7 +715,9 @@ def test_story_pages_gather_the_trackers(monkeypatch, tmp_path):
     monkeypatch.setattr(page_story, 'radio_by_story', lambda: {})
     monkeypatch.setattr(page_story, 'folklore_by_story', lambda stories: {70: [
         {'claim': 'The co-pilot was <a plant>', 'people': 30, 'relation': 'same event', 'day': dt(2026, 10, 6, 8),
-         'when': 'Oct 6', 'motifs': [], 'before': [], 'voters': [{'title': 'S6 Ep1: Voters', 'url': 'https://fg.example/1', 'date': ''}]}]})
+         'when': 'Oct 6', 'motifs': [], 'before': [], 'voters': [{'title': 'S6 Ep1: Voters', 'url': 'https://fg.example/1', 'date': ''}],
+         'bluesky': [{'uri': 'at://did:plc:a/app.bsky.feed.post/1', 'cid': 'c1', 'url': 'https://bsky.app/profile/did:plc:a/post/1',
+                      'likes': 40, 'reposts': 3}]}]})
     monkeypatch.setattr(page_story, 'voters_by_motif', lambda told: [
         {'claim': 'Planes are flown by plants', 'motif': {'id': 'M211', 'name': 'The sleeper agent'}, 'url': 'https://fg.example/2',
          'episode': 'S6 Ep2: More voters', 'date': '2026-08-01'}])
@@ -724,6 +726,7 @@ def test_story_pages_gather_the_trackers(monkeypatch, tmp_path):
     monkeypatch.setattr(factchecks, 'for_story_pages', lambda stories: {70: [checked]} if stories.get(70) else {})
     page_story.StoryPages().generate()
     html = (tmp_path / 'story-70.html').read_text()
+    assert 'data-bluesky-uri="at://did:plc:a/app.bsky.feed.post/1"' in html and html.count('embed.bsky.app/static/embed.js') == 1
     assert 'Oct 6: told by 30 people' in html and 'href="https://fg.example/1"' in html  # a retelling, and where voters said it
     assert 'The same shape, told by voters' in html and 'Planes are flown by plants' in html
     assert 'Was the co-pilot &lt;a plant&gt;?' in html  # a fact-check found for its page, not while on a card

@@ -33,8 +33,10 @@
                 offer, picks one. When a fact-checker (PolitiFact, Snopes, FactCheck.org, Lead Stories, Full Fact, NewsGuard,
                 Science Feedback) has examined the same claim in the last 30 days, the check is linked (🔎), chosen the
                 same way.</p>
-            <p class="poll-note">People's posts are never shown here, only the model's summary of what they share;
-                accounts are never identified. Raw posts are kept 30 days for this research and never published.</p>
+            <p class="poll-note">What's here is the model's summary of what people's posts share. A post is shown only if
+                it was already widely seen ({{ bsky_rule }}), and only embedded from Bluesky itself, so it disappears
+                here if its author deletes it; never from anyone who has asked Bluesky not to show their posts to
+                logged-out visitors, and never from Mastodon. Raw posts are kept 30 days for this research.</p>
         </details>
         <details class="how-it-works" id="labels">
             <summary>What the labels mean</summary>
@@ -125,6 +127,7 @@
                             {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
                         </div>
                     {% endif %}
+                    {% with shown = c.bluesky %}{% include "bluesky_posts.html" %}{% endwith %}
                     {% if c.factchecks %}
                         <div class="card-section"><p class="section-label">🔎 Fact-checked</p>
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
@@ -212,4 +215,5 @@
     {% else %}
         <p class="poll-note">No report yet: the first one is written overnight.</p>
     {% endif %}
+{% if cards|selectattr('bluesky')|list %}{{ bsky_script }}{% endif %}
 {% endblock %}

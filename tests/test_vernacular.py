@@ -24,6 +24,7 @@ def test_rows_keep_english_unlabeled_text_and_fingerprint_authors():
     kind, values = v.row(message('They are putting something in the water again, my aunt says'), 'pepper')
     assert kind == 'create' and values[4].startswith('They are putting')
     assert values[1] == v.fingerprint('did:plc:abc', 'pepper') and 'did:plc' not in values[1]
+    assert values[9] == 'at://did:plc:abc/app.bsky.feed.post/1'  # its address, to embed it if it was widely seen
     assert v.row(message('Elles mettent quelque chose dans l eau', langs=('fr',)), 'p') is None
     assert v.row(message('A long enough post with an adult label', labels='porn'), 'p') is None
     assert v.row(message('lol'), 'p') is None

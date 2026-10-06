@@ -1,0 +1,6 @@
+{# A narrative's widely seen Bluesky posts (app/bluesky_examples.py), embedded from Bluesky: `shown` is the list #}
+{% if shown %}
+    <div class="card-section bsky-posts"><p class="section-label" title="Posts telling it that were already widely seen ({{ bsky_rule }}), embedded from Bluesky: if their author deletes one, it disappears here too">🦋 Widely seen on Bluesky</p>
+        {% for p in shown %}<blockquote class="bluesky-embed" data-bluesky-uri="{{ p.uri|e }}" data-bluesky-cid="{{ p.cid|e }}"><p class="bsky-fallback"><a href="{{ p.url|e }}">🦋 a post on Bluesky</a> · {{ p.likes }} likes, {{ p.reposts }} reposts</p></blockquote>{% endfor %}
+    </div>
+{% endif %}

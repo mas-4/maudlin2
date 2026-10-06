@@ -10,7 +10,7 @@ from datetime import datetime, timedelta as td
 
 import pytz
 
-from app import chyrons
+from app import bluesky_examples, chyrons
 from app.analysis import entities, running_order
 from app.site import page_tv, story_charts
 from app.site.common import TemplateHandler, chip_style, outlet_icon, short_name
@@ -187,6 +187,7 @@ def folklore_by_story(stories: list[dict]) -> dict:
     from app.site.page_folklore import motif_cards, told_before
     index, threads = motif_index.load(), narrative_threads.load()
     episodes = focus_group.load()
+    bsky = bluesky_examples.prepared()
     out, seen = defaultdict(list), defaultdict(set)
     for report in reports_by_day():
         day = EASTERN.localize(datetime.fromisoformat(report['made'])).astimezone(pytz.UTC).replace(tzinfo=None) \
@@ -210,7 +211,8 @@ def folklore_by_story(stories: list[dict]) -> dict:
                 voters.append({'title': v.get('episode', ''), 'url': url, 'date': v.get('date', '')})
             out[sid].append({'claim': claim, 'people': g['authors'], 'relation': link.get('relation', ''), 'day': day,
                              'when': pytz.UTC.localize(day).astimezone(EASTERN).strftime('%b %-d') if day else '',
-                             'motifs': motif_cards(index, claim), 'before': before, 'voters': voters})
+                             'motifs': motif_cards(index, claim), 'before': before, 'voters': voters,
+                             'bluesky': bluesky_examples.examples(g.get('uris'), bsky)})
     return dict(out)
 
 
@@ -380,7 +382,8 @@ class StoryPages:
                                                   page_tv.CHANNEL_INK),
                 'names': list(dict.fromkeys(entities.canonical(n, aliases) for n in names.get(f"s{st['id']}", []))),
                 'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': told,
-                'voters': voters_by_motif(told), 'extras': ex, 'rewordings': rewordings(st['headlines']),
+                'voters': voters_by_motif(told), 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
+                'extras': ex, 'rewordings': rewordings(st['headlines']),
                 'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
             }, os.path.join(Config.build, page_name(st['id'])))

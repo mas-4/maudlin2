@@ -1,0 +1,17 @@
+/* Widely seen Bluesky posts embedded with a narrative (app/bluesky_examples.py, bluesky_posts.html); Bluesky's script swaps each blockquote for its own frame */
+.bsky-posts blockquote.bluesky-embed {
+    margin: 0.4em 0;
+    padding: 0.3em 0.6em;
+    border-left: 4px solid #3a86ff;
+    background: color-mix(in srgb, #3a86ff 8%, white);
+    border-radius: 8px;
+}
+
+.bsky-posts iframe {
+    max-width: 100% !important;
+}
+
+.bsky-fallback {
+    margin: 0;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+}

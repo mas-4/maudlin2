@@ -115,6 +115,9 @@ NOISE = re.compile(r'@someone|\[link: [^\]]*\]|(?:[a-z0-9-]+\.)+[a-z]{2,}/\S*') 
 _embedder = None
 
 
+URI_CANDIDATES = 20  # a narrative's posts kept by address, closest to its claim first
+
+
 def embed(texts: list[str]) -> np.ndarray:
     """Unit vectors from mxbai-embed-large on the GPU (through Ollama), as for stories, cached for a few days in a
     file of their own; the static model if Ollama can't."""
@@ -144,7 +147,7 @@ def load(hours: float) -> list[dict]:
     from app.vernacular import DB
     since = (dt.now(timezone.utc) - td(hours=hours)).isoformat(timespec='seconds')
     con = sqlite3.connect(DB)
-    rows = con.execute('SELECT key, author, text, reply, source, links FROM post WHERE collected >= ?',
+    rows = con.execute('SELECT key, author, text, reply, source, links, uri FROM post WHERE collected >= ?',
                        (since,)).fetchall()
     con.close()
     # Feeds and bots post far more than people: an account with more than FEED_POSTS posts in the window is left
@@ -152,8 +155,8 @@ def load(hours: float) -> list[dict]:
     # post with hardly any words (emoji and a link: promotion, not talk)
     from app.vernacular import ADULT, english
     per_author = Counter(row[1] for row in rows)
-    return [{'key': k, 'author': a, 'text': t, 'reply': r, 'source': s, 'links': json.loads(links or '[]')}
-            for k, a, t, r, s, links in rows
+    return [{'key': k, 'author': a, 'text': t, 'reply': r, 'source': s, 'links': json.loads(links or '[]'), 'uri': uri}
+            for k, a, t, r, s, links, uri in rows
             if len(NOISE.sub('', t).strip()) >= MIN_CHARS and len(WORD.findall(NOISE.sub(' ', t.lower()))) >= MIN_WORDS
             and english(t) and not ADULT.search(t) and per_author[a] <= FEED_POSTS * max(1, hours / 6)
             and not ('[link:' in t and len(NOISE.sub('', t).strip()) < 120) and '[BOT]' not in t]
@@ -464,6 +467,13 @@ def report(hours: float = 6) -> dict:
     stories = current_stories()
     if narratives:
         claims = embed([g['label']['narrative'] or g['examples'][0] for g in narratives])
+        # Its Bluesky posts that tell the claim most closely, by address: candidates to embed on the site if they were
+        # widely seen (app/bluesky_examples.py decides, from Bluesky's own counts)
+        for g, claim in zip(narratives, claims):
+            told = [i for i in g['members'] if posts[i].get('uri')]
+            if told:
+                near = embed([posts[i]['text'] for i in told]) @ claim
+                g['uris'] = [posts[told[j]]['uri'] for j in np.argsort(-near)[:URI_CANDIDATES]]
         centers = np.vstack([embed(g['examples']).mean(axis=0) for g in narratives])
         centers /= np.maximum(np.linalg.norm(centers, axis=1, keepdims=True), 1e-12)
         if segments:
