@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Outlet chips: the face is the headline's feeling.** Each outlet's chip on a story card showed 😠 for any headline
+  whose mood was below zero, a leftover from the 2024 site, so nearly every chip looked angry, even on obituaries
+  whose headlines were mostly sad. It now shows the headline's own strongest feeling (😱 fear, 🤬 anger, 😭 sadness…;
+  none when neutral). Its mood is compared with the other outlets' headlines on the story (it had included itself),
+  and when they agree the tooltip says "same mood as the other outlets" instead of "+0.00". Most outlets do agree:
+  mood is a five-step scale, and the same event usually gets the same step. Found by an outside reader.
 - **Only verified motifs on the site.** The motif index grows with the model's filings, but the site now shows a
   motif only once a person has looked over its claims and marked it done, and shows only the claims they saw then;
   claims filed since wait until they mark it done again. Unchecked motifs stay in the index and in the curation tools.

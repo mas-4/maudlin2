@@ -1,5 +1,6 @@
 import hashlib
 import json
+from html import escape
 import os
 import re
 from collections import defaultdict
@@ -162,6 +163,26 @@ SORT_BAR = ('<div class="chip-sort" role="group" aria-label="Sort outlets">sort:
             '<button data-key="mood">mood</button>'
             '<button data-key="framing">framing</button>'
             '<span class="sort-legend">outlets left to right, colored by lean</span></div>')
+
+
+def mood_vs_others(mood: pd.Series, story: pd.Series) -> pd.Series:
+    """Each headline's mood minus the mean of the OTHER outlets' headlines on its story (0 for a story's only one)"""
+    total, count = mood.groupby(story).transform('sum'), mood.groupby(story).transform('count')
+    others = (total - mood) / (count - 1).where(count > 1)
+    return (mood - others).fillna(0.0)
+
+
+def top_feeling(ranks) -> str | None:
+    """A headline's strongest feeling (the first of its ranked emotions), or None when it's neutral or unscored"""
+    first = ranks.split(',')[0].strip() if isinstance(ranks, str) and ranks else None
+    return first if first in EMOTION_EMOJI and first != 'neutral' else None
+
+
+def mood_note(deviation: float, feeling: str | None) -> str:
+    """The chip tooltip's mood words: how the headline's mood compares with the other outlets', and its feeling"""
+    mood = ('same mood as the other outlets' if abs(deviation) < 0.005 else
+            f'{"brighter" if deviation > 0 else "darker"} than the other outlets ({deviation:+.2f})')
+    return mood + (f' · feels like {feeling}' if feeling else '')
 
 
 def story_feelings(group) -> list[dict]:
@@ -417,7 +438,7 @@ class HeadlinesPage:
         df = df.groupby('cluster').filter(lambda x: len(x) >= n_samples_per_cluster)
         logger.info("%i clusters left after filtering", df['cluster'].nunique())
         sentiment = df['sentiment'] = headline_sentiment(df)
-        df['deviation'] = sentiment - sentiment.groupby(df['cluster']).transform('mean')
+        df['deviation'] = mood_vs_others(sentiment, df['cluster'])
         stories = sync_stories(df)
         self.story_of = {int(k): story.id for k, story in stories.items()}  # cluster -> saved story, for sagas
         self.context['story_of'] = self.story_of  # stable ids for share links (cluster numbers change every run)
@@ -886,7 +907,8 @@ class HeadlinesPage:
             hrefs.append(SORT_BAR)
             chips = []
             for a in sorted(cluster['data'], key=lambda x: x['bias']):
-                smiley = '😐' if a['sentiment'] == 0 else '😊' if a['sentiment'] > 0 else '😠'
+                feeling = top_feeling(a.get('emotion_ranks'))
+                smiley = EMOTION_EMOJI[feeling] if feeling else ''
                 bias = a['bias'] + 3
                 first_seen = a['appearance'].strftime(TOOLTIP_TIME)
                 edited = a['url'] in rewritten
@@ -914,8 +936,8 @@ class HeadlinesPage:
                     f' data-last="{a["last_seen"].timestamp():.0f}"'
                     f' data-live="{int(bool(a["live"]))}" data-mood="{a["sentiment"]:.3f}"'
                     f' data-framing="{a["deviation"]:.3f}"'
-                    f' title="{a["title"]} (first seen {first_seen}) · {a["deviation"]:+.2f} vs. other outlets{note}"'
-                    f' href="{a["url"]}">{outlet_icon(a["agency"])}{short_name(a["agency"])} {smiley}{" ✏️" if edited else ""}{badge}</a>'
+                    f' title="{escape(a["title"])} (first seen {first_seen}) · {mood_note(a["deviation"], feeling)}{escape(note)}"'
+                    f' href="{escape(a["url"])}">{outlet_icon(a["agency"])}{short_name(a["agency"])}{" " + smiley if smiley else ""}{" ✏️" if edited else ""}{badge}</a>'
                 )
             hrefs.append(f'<div class="chips">{" ".join(chips)}</div>')
             agency_lists[cluster['cluster']] = ' '.join(hrefs)

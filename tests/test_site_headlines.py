@@ -452,7 +452,7 @@ def chip_cluster(entries, first_minutes=600, speed=None):
         data.append({'agency': e.get('agency', f'Outlet {i}'), 'bias': e.get('bias', 0), 'url': e.get('url', f'u{i}'),
                      'title': f'Headline {i}', 'live': e.get('live', True), 'appearance': first,
                      'first_seen': first, 'last_seen': now - td(hours=e.get('hours_gone', 0)),
-                     'sentiment': e.get('sentiment', 0.0), 'deviation': 0.0})
+                     'sentiment': e.get('sentiment', 0.0), 'deviation': 0.0, 'emotion_ranks': e.get('emotion_ranks')})
     return {'cluster': 1, 'data': data, 'coverage': 5.0, 'first': first_minutes * 60, 'speed': speed}
 
 
@@ -481,22 +481,32 @@ def test_chip_states(chip_globals, monkeypatch):
         {'agency': 'Ghost', 'bias': 2, 'live': False, 'hours_gone': 30},
     ]), monkeypatch=monkeypatch)
     chips = html.split('<div class="chips">')[1].split('</a>')
-    by_name = {name: next(c for c in chips if f'>{name} ' in c) for name in ('Fresh', 'Live', 'Fading', 'Ghost')}
+    by_name = {name: next(c for c in chips if f'</span>{name}' in c) for name in ('Fresh', 'Live', 'Fading', 'Ghost')}
     assert 'chip-fresh' in by_name['Fresh'] and '✨' in by_name['Fresh'] and 'opacity: 1.00' in by_name['Fresh']
     assert 'chip-live' in by_name['Live'] and '✨' not in by_name['Live']
     assert 'chip-gone' in by_name['Fading'] and 'opacity: 0.50' in by_name['Fading'] and '👻' in by_name['Fading']
     assert f'opacity: {ph.GHOST_OPACITY:.2f}' in by_name['Ghost']
     # left to right by lean
-    assert html.index('>Fresh ') < html.index('>Live ') < html.index('>Fading ') < html.index('>Ghost ')
+    assert html.index('</span>Fresh') < html.index('</span>Live') < html.index('</span>Fading') < html.index('</span>Ghost')
     assert '2 of 4 outlets still showing it' in html
 
 
-def test_chip_smileys_and_short_names(chip_globals, monkeypatch):
+def test_chip_feelings_and_short_names(chip_globals, monkeypatch):
+    # The face is the headline's own strongest feeling (none when neutral), not its mood: an obituary is sad, not angry
     html, _ = run_chips(chip_cluster([
-        {'agency': 'The Wall Street Journal', 'sentiment': 0.4},
-        {'agency': 'CNN', 'sentiment': -0.3}, {'agency': 'AP', 'sentiment': 0.0}]), monkeypatch=monkeypatch)
-    assert 'WSJ 😊' in html and 'CNN 😠' in html and 'AP 😐' in html
-    assert 'Wall Street Journal 😊' not in html
+        {'agency': 'The Wall Street Journal', 'sentiment': 0.4, 'emotion_ranks': 'hope,joy'},
+        {'agency': 'CNN', 'sentiment': -0.3, 'emotion_ranks': 'sadness,fear'},
+        {'agency': 'AP', 'sentiment': 0.0, 'emotion_ranks': 'neutral'}]), monkeypatch=monkeypatch)
+    assert 'WSJ 🤞' in html and 'CNN 😭' in html and 'AP</a>' in html and '😠' not in html
+    assert 'Wall Street Journal' not in html.split('<div class="chips">')[1].split('title=')[0]
+
+
+def test_mood_is_compared_with_the_other_outlets_only():
+    mood = pd.Series([0.0, 0.0, -1.0, 0.5])
+    story = pd.Series([1, 1, 1, 2])
+    assert list(ph.mood_vs_others(mood, story)) == [0.5, 0.5, -1.0, 0.0]
+    assert ph.mood_note(0.0, None) == 'same mood as the other outlets'
+    assert ph.mood_note(-1.0, 'sadness') == 'darker than the other outlets (-1.00) · feels like sadness'
 
 
 @pytest.mark.parametrize('minutes, breaking', [(ph.BREAKING_MINUTES - 1, True), (ph.BREAKING_MINUTES, False)])
