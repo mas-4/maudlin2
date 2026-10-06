@@ -661,3 +661,17 @@ def test_tv_page_shows_minutes_on_screen_by_channel(site):
     cnn, fox = page.select('.radio-card')
     assert cnn.select_one('li').get_text().startswith('CO-PILOT <MEANT> TO CRASH PLANE')  # escaped
     assert fox.select('li')[1].select_one('.radio-off')  # not matched to a story
+
+
+def test_story_cards_carry_tv_minutes_and_radio_newscasts(monkeypatch):
+    from app.site import page_headlines, page_tv
+    from app.analysis import running_order
+    monkeypatch.setattr(page_tv, 'matched', lambda days=2: [dict(c) for c in TV_CAPTIONS])
+    monkeypatch.setattr(running_order, 'load', lambda: {'npr/1': RADIO_CAST})
+    monkeypatch.setattr(page_headlines.HeadlinesPage, 'BROADCAST_HOURS', 10 ** 6)  # the canned day is any day
+    page = page_headlines.HeadlinesPage.__new__(page_headlines.HeadlinesPage)
+    page.context, page.story_of = {}, {3: 70, 4: 26}
+    page.broadcast_coverage([{'cluster': 3}, {'cluster': 4}])
+    assert [(t['name'], t['time']) for t in page.context['tv_of'][3]] == [('CNN', '2 min'), ('Fox News', '60 s')]
+    assert page.context['radio_of'] == {3: [{'casts': 1, 'led': 1, 'show': 'NPR News Now'}]}  # its first story
+    assert 4 not in page.context['tv_of']

@@ -48,3 +48,20 @@
     font-size: 0.8em;
     color: #555;
 }
+
+/* TV and radio lines on the front page's story cards */
+.tv-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    border: 1.5px solid var(--chip);
+    border-radius: 999px;
+    padding: 0 0.55em;
+    font-size: 0.82em;
+    background: color-mix(in srgb, var(--chip) 10%, white);
+}
+
+a.story-shows-label {
+    color: inherit;
+    text-decoration: none;
+}

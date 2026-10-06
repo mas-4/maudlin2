@@ -493,6 +493,7 @@ class HeadlinesPage:
         self.show_coverage(clusters_list)
         self.satire_coverage(clusters_list)
         self.factcheck_coverage(clusters_list)
+        self.broadcast_coverage(clusters_list)
         self.entity_groups(clusters_list)
         self.news_day(df, active_outlets)
 
@@ -625,6 +626,45 @@ class HeadlinesPage:
         shown = {name.lower() for name, _ in chips}
         self.context['entities_of'] = {cluster_of[k]: [n for n in names if n.lower() in shown]
                                        for k, names in named.items()}
+
+    BROADCAST_HOURS = 24  # TV and radio coverage counted over the last day
+
+    def broadcast_coverage(self, clusters_list):
+        """How much TV and radio carried each current story over the last day: its minutes on screen on each news
+        channel (chyrons, app/chyrons.py) and the hourly newscasts that had it (app/analysis/running_order.py), for a
+        📺 and a 📻 line on its card. Both are matched to the saved story, so a story's whole day counts."""
+        self.context['tv_of'], self.context['radio_of'] = {}, {}
+        story_of = getattr(self, 'story_of', {})
+        cluster_of = {sid: cl for cl, sid in story_of.items()}
+        if not cluster_of:
+            return
+        since = dt.utcnow() - td(hours=self.BROADCAST_HOURS)
+        try:
+            from app.site import page_tv
+            from app import chyrons
+            seconds = defaultdict(lambda: defaultdict(int))
+            for c in page_tv.matched():
+                if c.get('story') in cluster_of and c['at'] >= since:
+                    seconds[c['story']][c['channel']] += c['seconds']
+            for sid, by in seconds.items():
+                self.context['tv_of'][cluster_of[sid]] = [
+                    {'name': chyrons.CHANNELS[ch], 'ink': page_tv.CHANNEL_INK[ch], 'time': page_tv.minutes(n)}
+                    for ch, n in sorted(by.items(), key=lambda kv: -kv[1]) if n >= 30]
+            from app.analysis import running_order
+            casts = defaultdict(lambda: defaultdict(lambda: {'casts': 0, 'led': 0}))
+            for cast in running_order.load().values():
+                if dt.fromisoformat(cast['published']) < since:
+                    continue
+                for n, item in enumerate(cast['items']):
+                    if item.get('story') in cluster_of:
+                        tally = casts[item['story']][cast['show']]
+                        tally['casts'] += 1
+                        tally['led'] += n == 0
+            for sid, shows in casts.items():
+                self.context['radio_of'][cluster_of[sid]] = [dict(t, show=show) for show, t in sorted(
+                    shows.items(), key=lambda kv: -kv[1]['casts'])]
+        except Exception as e:  # noqa: extra; never let it stop the page
+            logger.warning("Broadcast coverage: %s", e)
 
     def factcheck_coverage(self, clusters_list):
         """Fact-checks of the current stories (app/analysis/factchecks.py), for a 🔎 row on each story card."""

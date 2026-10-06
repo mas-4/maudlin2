@@ -776,6 +776,20 @@
                         {% for p in on_shows %}<a class="investigation-source show-chip" href="{{ p.url }}" title="{{ p.source }}: {{ p.title }}" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.emoji }}</span>{{ p.source }}</a>{% endfor %}
                     </div>
                 {% endif %}
+                {% set on_tv = tv_of.get(cluster['cluster']) if tv_of is defined else none %}
+                {% if on_tv %}
+                    <div class="story-shows story-tv">
+                        <a class="story-shows-label" href="tv.html" title="Minutes this story's captions were on screen in the last day (from the Internet Archive's TV News Archive)">📺 on TV</a>
+                        {% for t in on_tv %}<span class="show-chip tv-chip" style="--chip: {{ t.ink }}" title="{{ t.name }}: {{ t.time }} on screen in the last day">{{ t.name }} <b>{{ t.time }}</b></span>{% endfor %}
+                    </div>
+                {% endif %}
+                {% set on_radio = radio_of.get(cluster['cluster']) if radio_of is defined else none %}
+                {% if on_radio %}
+                    <div class="story-shows story-radio">
+                        <a class="story-shows-label" href="radio.html" title="Hourly radio newscasts that carried this story in the last day">📻 on the radio</a>
+                        {% for r in on_radio %}<span class="show-chip tv-chip" style="--chip: {{ '#e8463c' if 'NPR' in r.show else '#2f6fe4' }}" title="{{ r.show }}: in {{ r.casts }} newscast{{ '' if r.casts == 1 else 's' }} in the last day{% if r.led %}, the lead in {{ r.led }}{% endif %}">{{ r.show }} <b>{{ r.casts }}×</b>{% if r.led %} · led {{ r.led }}{% endif %}</span>{% endfor %}
+                    </div>
+                {% endif %}
                 {% set investigated = (investigations or [])|selectattr('story', 'equalto', cluster['cluster'])|list %}
                 {% if investigated %}
                     <div class="story-shows story-investigated">
