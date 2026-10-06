@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **On TV.** The captions along the bottom of the screen (chyrons) on CNN, Fox News, MSNOW and BBC News, as the
+  Internet Archive's TV News Archive reads them by OCR about once a minute (its "Third Eye" service, running since
+  2017), with how many seconds each stayed up. One request a run; each day is kept as sent. The OCR is noisy ("NICOI I E
+  WAL ACE DRECENTS" for the program title Nicolle Wallace Presents), and a line often runs a headline and a guest's
+  name together, so lines are split, the clock and logos set aside, near-identical lines grouped, and a local model
+  (Gemma 4 12B) says what each is (headline, name, promo, ad, junk) and corrects headlines and names for OCR errors only,
+  with the program and the day's story labels as context. On a test batch Gemma 4 12B invented nothing; Gemma 4 26B
+  "corrected" a steel plant in Iowa to Ohio and Qwen3 8B kept garbled promos as headlines. Each headline is matched by
+  meaning to the stories on the front pages at the nearest run; the page shows each story's minutes on each channel
+  beside its front-page rank, and each hour's longest-running captions.
 - **Motif filing upgraded.** Claims are now filed by Gemma 4 26B judging the 8 closest motifs side by side (each by its
   name, scope note and three of its claims): which of them, none to three, is the claim clearly an instance of? Only
   when none fits is it asked, separately, whether the claim tells a recurring story worth a new motif; a plain report

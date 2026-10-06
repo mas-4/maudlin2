@@ -40,6 +40,7 @@ Qwen3.5, change its schemas that way.
 | Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | qwen3:30b-a3b | — | untested |
 | Focus Group voter claims | `focus_group.MODEL` | qwen3:30b-a3b | — | testable: share of quotes found in the transcript |
 | Radio running order | `running_order.MODEL` | qwen3:30b-a3b | — | testable: first words found in order |
+| TV chyron OCR cleanup (kind of line, corrected text) | `chyrons.CLEAN_MODEL` | **gemma4:12b** | a 30-line test batch, Oct 6: invented nothing (26B changed Iowa to Ohio; 8B kept garble) | in use since Oct 6 |
 | Headline labels (mood, spice, feelings) | `newsfilter.py` | qwen3:8b | — | waiting: 19 label verdicts so far, needs more |
 | Story labels, names in stories, fact-check labels, narrative labels, SCOTUS judging and glosses, edits, subjects, ties, circulation | various | qwen3:8b | — | untested |
 
