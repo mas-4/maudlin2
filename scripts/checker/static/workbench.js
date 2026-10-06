@@ -298,7 +298,10 @@
         seen.add(x.claim);
         if (motifsOf(x.claim).some((e) => e.claims.some((c) => c.claim === x.claim && !c.checked))) items.push(x);
       }
-      const x = items[S.checkAt % Math.max(items.length, 1)];
+      // ◀ goes back along the claims you've seen (even one you've finished, which has left the list)
+      const back = S.checkBack;
+      const x = back ? {claim: back, source: (motifsOf(back)[0] || {claims: []}).claims.find((c) => c.claim === back)?.source || ''}
+        : items[S.checkAt % Math.max(items.length, 1)];
       if (!x) { box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing to check right now.</p></div>'; S.queues.check = null; return; }
       S.claim = {claim: x.claim, src: x.source, from: null};
       renderClaim(box, true, items.length);
@@ -801,10 +804,24 @@
   async function verdict(answer) {
     const x = JSON.parse($('#inbox').dataset.check || 'null');
     if (!x) return;
-    if (answer === 'next') { S.checkAt += 1; return renderInbox(); }
-    if (answer === 'prev') { S.checkAt = Math.max(0, S.checkAt - 1); return renderInbox(); }
+    S.checkTrail = S.checkTrail || [];
+    if (answer === 'next') {
+      if (S.checkBack) S.checkBack = S.checkForward.pop() || null;  // stepping forward again through the trail
+      else { S.checkTrail.push(x.claim); S.checkAt += 1; }
+      return renderInbox();
+    }
+    if (answer === 'prev') {
+      if (!S.checkTrail.length) { toast('◀ that’s the first one you’ve seen'); return; }
+      S.checkForward = S.checkForward || [];
+      if (S.checkBack) S.checkForward.push(S.checkBack);
+      S.checkBack = S.checkTrail.pop();
+      return renderInbox();
+    }
     if (answer === 'allyes') {
       const left = motifsOf(x.claim).filter((e) => e.claims.some((c) => c.claim === x.claim && !c.checked));
+      if (!S.checkBack) S.checkTrail.push(x.claim);
+      else S.checkBack = (S.checkForward || []).pop() || null;
+      if (!left.length) return renderInbox();
       return batch(left.map((e) => ({action: 'check', claim: x.claim, id: e.id, answer: 'yes'})), `✓ ${left.length} motif${left.length === 1 ? '' : 's'} fit`);
     }
   }
