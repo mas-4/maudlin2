@@ -208,3 +208,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 
 .wb-ways { background: #ece4ff; border: 1.5px solid var(--purple); border-radius: 8px; padding: 0 5px; margin-right: 5px; font-size: 11px; }
 .wb-claim.dz-target { outline: 3px solid var(--purple); outline-offset: 1px; background: #f3eeff; }
+
+.wb-group.wb-empty-sec .wb-ghead { opacity: .55; border-bottom-style: dashed; }
+.wb-tree-tools { flex-wrap: wrap; }

@@ -380,6 +380,7 @@ def workbench_state() -> dict:
         e['phrases'] = (entry.get('phrases') or [])[:6]
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
+    state['facets'] = mi.facet_values(index)
     return state
 
 
@@ -424,6 +425,15 @@ def workbench_action(data: dict):
             raise ValueError('a check is yes, no or unsure')
         mi.check(data.get('claim', ''), data.get('id', ''), data['answer'])
         record_check(data)
+    elif act == 'facet':  # a motif's genre (or none)
+        live = {e['id'] for e in mi.live(mi.load())}
+        if data.get('id') not in live or not isinstance(data.get('facet'), str):
+            raise ValueError('facet: a motif and a facet')
+        mi.set_facet(data['id'], data['facet'], data.get('value') or None)
+    elif act == 'facet_value':  # a new genre to sort by
+        if not (isinstance(data.get('facet'), str) and isinstance(data.get('value'), str) and data['value'].strip()):
+            raise ValueError('facet_value: a facet and a value')
+        mi.add_facet_value(data['facet'], data['value'])
     elif act == 'same_claim':  # one claim told two ways: the variant folds into the kept one
         if not all(isinstance(data.get(k), str) and data[k].strip() for k in ('variant', 'canonical')):
             raise ValueError('same_claim: a variant and the claim to keep')

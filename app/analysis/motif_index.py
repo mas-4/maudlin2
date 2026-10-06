@@ -536,6 +536,53 @@ def group_assign(eid: str, gid: str | None):
     save(index)
 
 
+# Facets: ways of sorting motifs that cut across the kinds tree, one value per motif in each. Genre first, its
+# starting values the genres the narrative labeler uses; a person adds more. (Later, perhaps: Barkun's conspiracy scope,
+# a frame from the Media Frames codebook.)
+FACETS = {'genre': ['rumor', 'contemporary legend', 'conspiracy theory', 'folk belief', 'prophecy or prediction',
+                    'cautionary tale', 'atrocity story', 'trickster tale', 'joke formula or meme', 'proverb or catchphrase',
+                    'personal testimony', 'moral panic', 'political attack line']}
+
+
+def facet_values(index: dict | None = None) -> dict[str, list[str]]:
+    """Each facet's values: the starting ones, the ones a person added, and any in use"""
+    index = index if index is not None else load()
+    out = {}
+    for facet, start in FACETS.items():
+        used = [e.get('facets', {}).get(facet) for e in live(index)]
+        out[facet] = list(dict.fromkeys(start + index.get('facet_values', {}).get(facet, []) + [u for u in used if u]))
+    return out
+
+
+@exclusive
+def set_facet(eid: str, facet: str, value: str | None):
+    """A motif's value in a facet (its genre), or none"""
+    if facet not in FACETS:
+        raise ValueError(f'no such facet: {facet}')
+    index = load()
+    entry = index['entries'][eid]
+    value = ' '.join((value or '').split())
+    if value:
+        entry.setdefault('facets', {})[facet] = value
+    else:
+        entry.get('facets', {}).pop(facet, None)
+        if not entry.get('facets'):
+            entry.pop('facets', None)
+    save(index)
+
+
+@exclusive
+def add_facet_value(facet: str, value: str):
+    if facet not in FACETS:
+        raise ValueError(f'no such facet: {facet}')
+    value = ' '.join(value.split())
+    index = load()
+    values = index.setdefault('facet_values', {}).setdefault(facet, [])
+    if value and value not in values and value not in FACETS[facet]:
+        values.append(value)
+    save(index)
+
+
 @exclusive
 def no_motif(claim: str):
     """A person says this claim tells no recurring story: out of every motif it was in, kept out, and never filed
@@ -590,6 +637,7 @@ def board() -> dict:
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
                                    if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
+                'facets': e.get('facets', {}),
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
                             'id': key(c['claim'])[:6],  # shown as #3f9a2b, to name a claim in a screenshot or a search

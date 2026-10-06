@@ -394,3 +394,16 @@ def test_two_claims_told_two_ways_fold_into_one(monkeypatch, tmp_path):
     assert [v['claim'] for v in mi.load()['entries']['M002']['claims'][0]['variants']] == [other, 'Make billionaires pay']
     with pytest.raises(ValueError):
         mi.same_claim(keep, keep)
+
+
+def test_a_motif_has_a_genre_from_a_list_a_person_can_grow(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'Elite cabal', 'claims': []}}})
+    mi.set_facet('M001', 'genre', 'conspiracy theory')
+    mi.add_facet_value('genre', 'origin myth')
+    assert mi.load()['entries']['M001']['facets'] == {'genre': 'conspiracy theory'}
+    assert 'origin myth' in mi.facet_values()['genre'] and mi.board()['entries'][0]['facets']['genre'] == 'conspiracy theory'
+    mi.set_facet('M001', 'genre', None)
+    assert 'facets' not in mi.load()['entries']['M001']
+    with pytest.raises(ValueError):
+        mi.set_facet('M001', 'color', 'blue')

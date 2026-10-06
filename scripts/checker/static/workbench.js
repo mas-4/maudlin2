@@ -15,7 +15,7 @@
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
     q: '', sel: [], last: [], active: 0, tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
-    checkAt: 0, extra: {}, claimHits: [],
+    checkAt: 0, extra: {}, claimHits: [], groupBy: store.get('groupby', 'group'),
   };
 
   // ---------- talking to the server ----------
@@ -81,6 +81,7 @@
     ['todo', '⏳ not done', (e) => e.done !== 'done'],
     ['new', '🆕 new claims', (e) => e.done === 'new'],
     ['unchecked', '❔ unchecked', (e) => e.claims.some((c) => !c.checked)],
+    ['nogenre', '🎭 no genre', (e) => !(e.facets || {}).genre],
     ['empty', '🫙 empty', isEmpty],
   ];
   const SORTS = {
@@ -121,7 +122,10 @@
     const test = (VIEWS.find((v) => v[0] === S.view) || VIEWS[0])[2];
     const shown = motifs().filter((e) => test(e) && matches(e, words)).sort(SORTS[S.sort]);
     const flat = S.view !== 'all' || words.length;
-    const groups = [...S.data.groups, {id: '', name: 'Ungrouped'}];
+    // Sections: the person's groups, or a facet's values (genre)
+    const by = S.groupBy;
+    const groups = by === 'genre' ? [...(S.data.facets.genre || []).map((v) => ({id: v, name: v})), {id: '', name: 'no genre yet'}]
+      : [...S.data.groups, {id: '', name: 'Ungrouped'}];
     let html = '';
     if (words.length) html += claimHitsHTML(words);
     if (flat) {
@@ -129,24 +133,25 @@
     } else {
       const ids = new Set(shown.map((e) => e.id));
       for (const g of groups) {
-        const inG = shown.filter((e) => (e.group || '') === g.id);
+        const inG = shown.filter((e) => sectionOf(e) === g.id);
         if (!inG.length && !g.id) continue;
-        // Roots: no parent in this group. Kinds nest under their parents (a motif with two parents shows under both)
-        const roots = inG.filter((e) => !e.parents.some((p) => ids.has(p) && (S.by[p].group || '') === g.id));
-        const folded = S.folded.has('g:' + g.id);
-        html += `<div class="wb-group" data-drop="group" data-g="${g.id}">
-          <div class="wb-ghead"><button class="wb-fold" data-fold="g:${g.id}">${folded ? '▸' : '▾'}</button>
-            <span class="wb-gname">${g.id ? '📁 ' : '🗃️ '}${esc(g.name)}</span> <i>${inG.length}</i>
-            ${g.id ? `<span class="wb-gtools"><button class="wb-mini" data-grename="${g.id}" title="rename">✎</button><button class="wb-mini" data-gdelete="${g.id}" title="delete the group (its motifs stay)">🗑️</button></span>` : ''}</div>
+        // Roots: no parent in this section. Kinds nest under their parents (a motif with two parents shows under both)
+        const roots = inG.filter((e) => !e.parents.some((p) => ids.has(p) && sectionOf(S.by[p]) === g.id));
+        const fold = 'g:' + by + ':' + g.id, folded = S.folded.has(fold) || (by === 'genre' && !inG.length);
+        html += `<div class="wb-group${inG.length ? '' : ' wb-empty-sec'}" data-drop="${by === 'genre' ? 'facet' : 'group'}" data-g="${esc(g.id)}">
+          <div class="wb-ghead"><button class="wb-fold" data-fold="${esc(fold)}">${folded ? '▸' : '▾'}</button>
+            <span class="wb-gname">${by === 'genre' ? '🎭 ' : g.id ? '📁 ' : '🗃️ '}${esc(g.name)}</span> <i>${inG.length}</i>
+            ${g.id && by !== 'genre' ? `<span class="wb-gtools"><button class="wb-mini" data-grename="${g.id}" title="rename">✎</button><button class="wb-mini" data-gdelete="${g.id}" title="delete the group (its motifs stay)">🗑️</button></span>` : ''}</div>
           ${folded ? '' : roots.map((e) => branch(e, 0, g.id, new Set())).join('')}</div>`;
       }
     }
     $('#tree').innerHTML = html || '<p class="wb-empty">🦗 nothing here</p>';
   }
+  const sectionOf = (e) => (S.groupBy === 'genre' ? (e.facets || {}).genre || '' : e.group || '');
   function branch(e, depth, gid, seen) {
     if (seen.has(e.id)) return '';
     seen = new Set(seen).add(e.id);
-    const kids = (S.kids[e.id] || []).map((k) => S.by[k]).filter((k) => k && (k.group || '') === gid).sort(SORTS[S.sort]);
+    const kids = (S.kids[e.id] || []).map((k) => S.by[k]).filter((k) => k && sectionOf(k) === gid).sort(SORTS[S.sort]);
     const folded = S.folded.has('m:' + e.id);
     return row(e, depth, kids.length ? (folded ? '▸' : '▾') : '') + (folded ? '' : kids.map((k) => branch(k, depth + 1, gid, seen)).join(''));
   }
@@ -210,6 +215,7 @@
             : e.done === 'new' ? `<span class="wb-state new" title="done, but claims came in since">🆕 ${newCount(e)} new since done</span><button class="wb-btn yes" data-done="${e.id}">✓ mark done</button>`
             : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ not done</span><button class="wb-btn yes" data-done="${e.id}">✓ mark done</button>`}
           <select data-group="${e.id}" title="its group"><option value="">🗃️ no group</option>${groups}</select>
+          <select data-genre="${e.id}" title="its genre"><option value="">🎭 no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
           ${isSingle(e) || e.stands_alone ? `<button class="wb-btn${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
           <button class="wb-btn" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
           <button class="wb-btn" data-close="${i}" title="close">✕</button>
@@ -559,6 +565,12 @@
       if (motifsOf(S.claim.claim).some((e) => e.id === a)) return [];
       return [{label: '＋ file the claim here', say: `file the claim in “${A.name}”`, run: () => claimAction('add', a)}];
     }
+    if (drop === 'facet') {
+      const value = t.dataset.g || null;
+      if (((A.facets || {}).genre || null) === value) return [];
+      return [{label: value ? '🎭 genre: ' + value : '🎭 no genre', say: `“${A.name}” is a ${value || 'motif of no genre yet'}`,
+        run: () => act({action: 'facet', id: a, facet: 'genre', value}, `🎭 “${A.name}”: ${value || 'no genre'}`)}];
+    }
     if (drop === 'group') {
       const g = t.dataset.g || null;
       if ((A.group || null) === g) return [];
@@ -761,6 +773,7 @@
       if (await act({action: 'add', name}, `✨ made “${name}”`)) { const n = Object.keys(S.by).find((x) => !before.has(x)); if (n) openMotif(n); }
       return;
     }
+    if (t.id === 'add-group' && S.groupBy === 'genre') return ask(t, 'A new genre').then((value) => value && act({action: 'facet_value', facet: 'genre', value}, `🎭 added “${value}”`));
     if (t.id === 'add-group') return ask(t, 'Name the new group').then((name) => name && act({action: 'group_add', name}, `📁 made “${name}”`));
     if (t.id === 'help-btn') return $('#help').showModal();
     if ((v = d('cl'))) { const [kind, id] = v.split('|'); return claimAction(kind, id); }
@@ -886,6 +899,8 @@
   document.addEventListener('change', (ev) => {
     const t = ev.target;
     if (t.dataset.group !== undefined) act({action: 'group_assign', id: t.dataset.group, group: t.value || null}, '📁 moved');
+    if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
+    if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group'; renderTree(); }
   });
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target.closest && ev.target.closest('input, textarea, select');
@@ -988,6 +1003,7 @@
       if (!e || drag) return;
       const kids = (S.kids[e.id] || []).map((k) => S.by[k] && S.by[k].name).filter(Boolean);
       hover.innerHTML = `<b>${esc(e.name)}</b> <span class="wb-faint">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.done === 'done' ? ' · ✓ done' : ''}</span>
+        ${(e.facets || {}).genre ? `<p>🎭 ${esc(e.facets.genre)}</p>` : ''}
         ${e.note ? `<p>📝 ${esc(e.note)}</p>` : '<p class="wb-faint">no note yet</p>'}
         ${e.parents.length ? `<p class="wb-faint">↳ a kind of ${e.parents.map((p) => esc((S.by[p] || {}).name || p)).join(', ')}</p>` : ''}
         ${kids.length ? `<p class="wb-faint">⤷ kinds: ${kids.map(esc).join(', ')}</p>` : ''}
@@ -1045,5 +1061,7 @@
     toastTimer = setTimeout(() => { t.hidden = true; }, bad ? 7000 : 4500);
   }
 
+  $('#groupby').value = S.groupBy;
+  $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group';
   reload().catch((e) => { $('#panels').innerHTML = `<p class="wb-faint">😬 couldn’t load the index: ${esc(e.message)}</p>`; });
 })();
