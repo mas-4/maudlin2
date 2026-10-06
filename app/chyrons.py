@@ -217,3 +217,75 @@ def clean_recent(budget: float = 180, now: dt | None = None) -> int:
     if done:
         logger.info("Chyrons: %d caption lines cleaned", done)
     return done
+
+
+# Matching: each headline caption to the story on the front pages it's about, by meaning against the stories'
+# headlines at the nearest run (an hour's front pages), when it's at least MATCH alike
+MATCH = 0.75  # mxbai cosine; checked by hand on Oct 5's captions
+NEAR = td(minutes=50)
+
+
+def front_at(when: dt) -> list[dict]:
+    """The stories at the run nearest a time (within NEAR), each with its label, outlets then and headlines"""
+    from app.models import Session, Story, StorySnapshot, StoryHeadline, Headline
+    with Session() as s:
+        runs = [r for (r,) in s.query(StorySnapshot.at).filter(StorySnapshot.at.between(when - NEAR, when + NEAR)).distinct()]
+        if not runs:
+            return []
+        run = min(runs, key=lambda r: abs(r - when))
+        stories = {i: {'id': i, 'label': label or '', 'outlets': n, 'headlines': []} for i, label, n in s.query(
+            Story.id, Story.label, StorySnapshot.outlets).join(StorySnapshot, StorySnapshot.story_id == Story.id)
+            .filter(StorySnapshot.at == run)}
+        for sid, title in s.query(StoryHeadline.story_id, Headline.title).join(Headline, Headline.id == StoryHeadline.headline_id) \
+                .filter(StoryHeadline.story_id.in_(list(stories))):
+            if title and len(stories[sid]['headlines']) < 12:
+                stories[sid]['headlines'].append(title)
+    ranked = sorted(stories.values(), key=lambda st: -st['outlets'])
+    for n, st in enumerate(ranked, 1):
+        st['rank'] = n
+    return ranked
+
+
+def headlines_of(day: str) -> list[dict]:
+    """The day's headline captions as cleaned: one per row and caption, with its time, channel, seconds and text"""
+    store = read_json(CLEAN, {})
+    out = []
+    for r in rows(day):
+        for line in (part for raw in r['text'].split('\n') for part in re.split(r'\.\s+\.\s+', raw)):
+            line = ' '.join(line.split()).strip(' .|')
+            c = store.get(line_key(r['channel'], line))
+            if c and c['kind'] == 'headline' and c['text']:
+                out.append({'at': r['at'], 'channel': r['channel'], 'seconds': r['seconds'], 'program': r['program'],
+                            'text': c['text']})
+    return out
+
+
+def match_day(day: str) -> list[dict]:
+    """The day's headline captions with the story each is about (or none), hour by hour; kept in
+    data/chyrons/matched-<day>.json"""
+    import numpy as np
+    from app.analysis.clustering import ollama_embed
+    caps = headlines_of(day)
+    by_hour = {}
+    for c in caps:
+        by_hour.setdefault(c['at'].replace(minute=0, second=0), []).append(c)
+    for hour, items in by_hour.items():
+        front = front_at(hour + td(minutes=30))
+        texts = sorted({c['text'] for c in items})
+        if not front or not texts:
+            continue
+        heads = [(st, h) for st in front for h in [st['label']] + st['headlines']]
+        v = ollama_embed(texts + [h for _, h in heads])
+        sims = v[:len(texts)] @ v[len(texts):].T
+        best = {}
+        for t, row in zip(texts, sims):
+            j = int(np.argmax(row))
+            if row[j] >= MATCH:
+                st = heads[j][0]
+                best[t] = {'story': st['id'], 'label': st['label'], 'rank': st['rank'], 'outlets': st['outlets'],
+                           'score': round(float(row[j]), 3)}
+        for c in items:
+            c.update(best.get(c['text'], {}))
+    out = [{**c, 'at': c['at'].isoformat()} for c in caps]
+    write_json(os.path.join(FOLDER, f'matched-{day}.json'), out)
+    return out

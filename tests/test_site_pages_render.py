@@ -30,11 +30,12 @@ from app.site.page_glossary import GlossaryPage
 from app.site.page_sagas import SagasPage
 from app.site.page_names import NamesPage
 from app.site.page_radio import RadioPage
+from app.site.page_tv import TvPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
-         'sagas.html', 'names.html', 'radio.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'radio.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
+         'sagas.html', 'names.html', 'radio.html', 'tv.html']
+NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'radio.html', 'tv.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
              'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -93,6 +94,11 @@ def refuse_connection(*args, **kwargs):
     raise RuntimeError('network access in a test')
 
 
+TV_CAPTIONS = [{'at': dt(2026, 10, 5, 18, 5), 'channel': 'CNNW', 'seconds': 120, 'text': 'CO-PILOT <MEANT> TO CRASH PLANE',
+                'story': 70, 'label': 'Dubai flight attack', 'rank': 2},
+               {'at': dt(2026, 10, 5, 18, 6), 'channel': 'FOXNEWSW', 'seconds': 60, 'text': 'CO-PILOT ATTACK PROBE',
+                'story': 70, 'label': 'Dubai flight attack', 'rank': 2},
+               {'at': dt(2026, 10, 5, 18, 7), 'channel': 'FOXNEWSW', 'seconds': 45, 'text': 'LOCAL WEATHER'}]
 RADIO_CAST = {'source': 'nprnewsnow', 'show': 'NPR News Now', 'title': '2pm ET', 'published': '2026-10-05T18:09',
               'items': [{'title': 'Co-pilot <meant> to crash plane', 'story': 70, 'story_label': 'Dubai flight attack',
                          'front_rank': 2, 'outlets': 30},
@@ -130,6 +136,8 @@ def site(data_handler, tmp_path_factory):
                 {'id': 70, 'label': 'Trump defends tariffs', 'first': dt(2026, 10, 4, 22), 'last': dt(2026, 10, 5, 13), 'outlets': 40}]}])
         from app.analysis import running_order
         mp.setattr(running_order, 'load', lambda: {'npr/1': RADIO_CAST})
+        from app.site import page_tv
+        mp.setattr(page_tv, 'matched', lambda days=2: [dict(c) for c in TV_CAPTIONS])
         # The Supreme Court page: canned coverage (the real one asks the language model and reads the docket file)
         mp.setattr(scotus, 'coverage', lambda: COURT)
         mp.setattr(scotus, 'refresh_docket', lambda: None)
@@ -151,7 +159,7 @@ def site(data_handler, tmp_path_factory):
         headlines = ph.HeadlinesPage(dh)
         try:
             headlines.generate()
-            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage, NamesPage, RadioPage):
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage, NamesPage, RadioPage, TvPage):
                 page(data_handler).generate()
         finally:
             event.remove(engine, 'before_cursor_execute', no_writes)
@@ -643,3 +651,13 @@ def test_radio_page_sets_each_newscast_beside_the_front_pages(site):
     assert second.select_one('.radio-off')
     assert [li.get_text().split()[0] for li in front.select('.radio-items li')] == ['Trump', 'Dubai']
     assert 'of 1 newscasts, 0 led with' in page.select_one('.radio-stats').get_text()
+
+
+def test_tv_page_shows_minutes_on_screen_by_channel(site):
+    page = site['soup']['tv.html']
+    row = page.select_one('.tv-table tbody tr')
+    assert row.select_one('td').get_text() == 'Dubai flight attack' and row.select_one('.radio-rank').get_text() == '#2'
+    assert [c.get_text(strip=True) for c in row.select('.tv-cell')] == ['2 min', '60 s', '', '']  # CNN, Fox, MSNOW, BBC
+    cnn, fox = page.select('.radio-card')
+    assert cnn.select_one('li').get_text().startswith('CO-PILOT <MEANT> TO CRASH PLANE')  # escaped
+    assert fox.select('li')[1].select_one('.radio-off')  # not matched to a story

@@ -1,0 +1,46 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>📺 On TV</h2>
+    <p class="table-intro">What CNN, Fox News, MSNOW and BBC News kept on screen: the captions (chyrons) along the bottom
+        of the picture, and for how long, beside what the news sites' front pages led with. The words come from the
+        Internet Archive's TV News Archive, which reads the screen about once a minute (its Third Eye service). A local
+        language model corrects the reading errors and sets aside names, promos and ads, and each headline is matched by
+        meaning to the story on the front pages it's about. The number beside a story is its place on the front pages
+        then: #1 is the story the most outlets had.</p>
+    {% if stories or hours %}
+        {% if stories %}
+            <h3 class="radio-hour">The last 24 hours: stories by time on screen</h3>
+            <div class="tv-table-wrap">
+                <table class="tv-table">
+                    <thead><tr><th>Story</th><th>Front pages</th>{% for ch in channels %}<th style="--ink: {{ inks[loop.index0] }}">{{ ch }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                        {% for r in stories %}
+                            <tr><td>{{ r.label|e }}</td><td><span class="radio-rank">#{{ r.rank }}</span></td>
+                                {% for cell in r.cells %}<td class="tv-cell" style="--ink: {{ inks[loop.index0] }}">{% if cell.seconds %}<span class="tv-bar" style="width: {{ cell.share }}%"></span><span class="tv-min">{{ cell.text }}</span>{% endif %}</td>{% endfor %}</tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+        {% for h in hours %}
+            <h3 class="radio-hour">{{ h.label }} ET</h3>
+            <div class="radio-hour-cards">
+                {% for c in h.channels %}
+                    <div class="saga-card radio-card" style="--saga: {{ c.ink }}">
+                        <h3>📺 {{ c.name }}</h3>
+                        <ol class="radio-items">
+                            {% for g in c.captions %}
+                                <li>{{ g.text|e }} <span class="tv-time">{{ g.time }}</span>
+                                    {% if g.story %}<span class="radio-rank" title="On the front pages as “{{ g.label|e }}”: #{{ g.rank }}">#{{ g.rank }}</span>
+                                    {% else %}<span class="radio-rank radio-off">not on the front pages</span>{% endif %}</li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No captions read yet.</p>
+    {% endif %}
+{% endblock %}

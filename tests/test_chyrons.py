@@ -52,3 +52,25 @@ def test_cleaning_asks_once_per_caption_and_skips_the_clock(monkeypatch, tmp_pat
     assert store['CNNW|TRUMP RALIIES IN RED STATES'] == {'kind': 'headline', 'text': 'TRUMP RALLIES IN RED STATES'}
     assert store['MSNOW|1 IVE > 9:47am']['kind'] == 'junk'  # the clock, without asking
     assert chyrons.clean_day('2026-10-05', []) == 0  # nothing left
+
+
+def test_headline_captions_match_the_story_theyre_about(monkeypatch, tmp_path):
+    import numpy as np
+    monkeypatch.setattr(chyrons, 'FOLDER', str(tmp_path))
+    monkeypatch.setattr(chyrons, 'CLEAN', str(tmp_path / 'clean.json'))
+    (tmp_path / '2026-10-05.tsv').write_text(
+        "date_time_(UTC)\tchannel\tduration\thttps://archive.org/details/\ttext\n"
+        "2026-10-05 18:05:00\tCNNW\t40\tCNNW_x/start/1\tC0-PILOT MEANT TO CRASH\n"
+        "2026-10-05 18:06:00\tCNNW\t30\tCNNW_x/start/61\tWEATHER AHEAD\n")
+    chyrons.write_json(chyrons.CLEAN, {'CNNW|C0-PILOT MEANT TO CRASH': {'kind': 'headline', 'text': 'CO-PILOT MEANT TO CRASH'},
+                                       'CNNW|WEATHER AHEAD': {'kind': 'headline', 'text': 'WEATHER AHEAD'}})
+    monkeypatch.setattr(chyrons, 'front_at', lambda when: [{'id': 70, 'label': 'Dubai flight attack', 'outlets': 30, 'rank': 2,
+                                                            'headlines': ['Co-pilot attacked captain']}])
+    vec = {'CO-PILOT MEANT TO CRASH': [1, 0], 'WEATHER AHEAD': [0, 1], 'Dubai flight attack': [0.8, 0.6],
+           'Co-pilot attacked captain': [0.95, 0.31]}
+    from app.analysis import clustering
+    monkeypatch.setattr(clustering, 'ollama_embed', lambda texts: np.array([vec[t] for t in texts], float))
+    first, second = chyrons.match_day('2026-10-05')
+    assert first['story'] == 70 and first['rank'] == 2 and first['seconds'] == 40
+    assert 'story' not in second  # nothing close enough
+    assert chyrons.read_json(str(tmp_path / 'matched-2026-10-05.json'), [])[0]['text'] == 'CO-PILOT MEANT TO CRASH'
