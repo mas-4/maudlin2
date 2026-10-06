@@ -199,6 +199,7 @@ def main(args: argparse.Namespace):
         # TV chyrons: the OCR read into headlines, names, promos and ads, a few minutes a run
         from app import chyrons
         chyrons.clean_recent(budget=CHYRON_BUDGET)
+        chyrons.match_recent()
         from app.analysis import motif_index
         motif_index.nightly(budget=MOTIF_BUDGET)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))

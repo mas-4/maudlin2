@@ -289,3 +289,16 @@ def match_day(day: str) -> list[dict]:
     out = [{**c, 'at': c['at'].isoformat()} for c in caps]
     write_json(os.path.join(FOLDER, f'matched-{day}.json'), out)
     return out
+
+
+def match_recent(now: dt | None = None):
+    """Match yesterday's and today's cleaned headline captions to stories (each run: cleaning fills in through the day)"""
+    now = now or dt.utcnow()
+    for day in ((now - td(days=1)).strftime('%Y-%m-%d'), now.strftime('%Y-%m-%d')):
+        if os.path.exists(path(day)):
+            try:
+                caps = match_day(day)
+                logger.info("Chyrons: %s, %d headline captions, %d matched to a story", day, len(caps),
+                            sum(1 for c in caps if c.get('story')))
+            except Exception as e:  # noqa: extra; the run goes on without it
+                logger.warning("Chyrons: matching %s failed (%s)", day, e)
