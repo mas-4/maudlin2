@@ -422,3 +422,16 @@ def test_claims_like_a_claim_leave_out_its_own_wordings(monkeypatch, tmp_path):
     monkeypatch.setattr(mi, 'searchable_claims', lambda: [{'claim': t, 'source': '', 'ref': '', 'motifs': []} for t in (told, near, far)])
     found = mi.similar_claims(keep)
     assert [c['claim'] for c in found] == [near, far] and found[0]['score'] > 0.8
+
+
+def test_a_claim_a_person_files_is_already_checked(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 4, 'claims': {mi.key('a'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'one', 'claims': [{'claim': 'a', 'source': 'x'}]},
+        'M002': {'id': 'M002', 'name': 'two', 'claims': []}, 'M003': {'id': 'M003', 'name': 'three', 'claims': []}}})
+    mi.also_file('a', 'M001', 'M002')
+    mi.move('a', 'M001', 'M003')
+    mi.file_by_hand({'claim': 'b', 'source': 'y'}, 'M002')
+    entries = mi.load()['entries']
+    assert [c.get('checked') for c in entries['M002']['claims']] == ['yes', 'yes']
+    assert entries['M003']['claims'][0]['checked'] == 'yes'

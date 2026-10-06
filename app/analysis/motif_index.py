@@ -423,8 +423,8 @@ def move(claim: str, source: str, target: str):
     moved = [c for c in entry['claims'] if key(c['claim']) == k]
     entry['claims'] = [c for c in entry['claims'] if key(c['claim']) != k]
     entry.setdefault('not_claims', []).append(k)  # moved out by hand: it isn't this motif
-    if not any(key(c['claim']) == k for c in index['entries'][target]['claims']):
-        index['entries'][target]['claims'] += moved
+    if not any(key(c['claim']) == k for c in index['entries'][target]['claims']):  # moved there by a person: checked
+        index['entries'][target]['claims'] += [{**c, 'checked': 'yes'} for c in moved]
     index['claims'][k] = list(dict.fromkeys([target if i == source else i for i in _ids(index, k)] + [target]))
     if not entry['claims'] and not entry.get('curated'):  # emptied: a motif the model made goes; one a person made stays
         del index['entries'][source]
@@ -657,8 +657,8 @@ def also_file(claim: str, source: str, target: str):
     entry = index['entries'][target]
     if found is None or entry.get('merged_into'):
         raise ValueError(f'no such claim in {source}, or {target} is gone')
-    if not any(key(c['claim']) == k for c in entry['claims']):
-        entry['claims'].append({kk: v for kk, v in found.items() if kk != 'checked'})
+    if not any(key(c['claim']) == k for c in entry['claims']):  # a person filed it here: already checked
+        entry['claims'].append({**{kk: v for kk, v in found.items() if kk != 'checked'}, 'checked': 'yes'})
     entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
     index['claims'][k] = list(dict.fromkeys(_ids(index, k) + [target]))
     save(index)
@@ -972,7 +972,7 @@ def file_by_hand(claim: dict, eid: str):
     k = key(claim['claim'])
     if not any(key(c['claim']) == k for c in entry['claims']):
         entry['claims'].append({'claim': claim['claim'], 'source': claim.get('source', ''), 'ref': claim.get('ref', ''),
-                                'date': dt.now().strftime('%Y-%m-%d')})
+                                'date': dt.now().strftime('%Y-%m-%d'), 'checked': 'yes'})  # a person's filing
     entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
     index['claims'][k] = list(dict.fromkeys(index['claims'].get(k, []) + [eid]))
     save(index)
