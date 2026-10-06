@@ -70,7 +70,7 @@ def test_headline_captions_match_the_story_theyre_about(monkeypatch, tmp_path):
            'Co-pilot attacked captain': [0.95, 0.31]}
     from app.analysis import clustering
     monkeypatch.setattr(clustering, 'ollama_embed', lambda texts: np.array([vec[t] for t in texts], float))
-    first, second = chyrons.match_day('2026-10-05')
+    first, second = chyrons.match_day('2026-10-05', use_model=False)  # the fallback, without the model
     assert first['story'] == 70 and first['rank'] == 2 and first['seconds'] == 40
     assert 'story' not in second  # nothing close enough
     assert chyrons.read_json(str(tmp_path / 'matched-2026-10-05.json'), [])[0]['text'] == 'CO-PILOT MEANT TO CRASH'
@@ -82,3 +82,32 @@ def test_bbcs_logo_comes_off_its_headlines():
     assert list(chyrons.caption_lines('B EAE NEWS')) == []
     assert list(chyrons.caption_lines('TRUMP SAYS BIG NEWS')) == ['TRUMP SAYS BIG NEWS']
     assert list(chyrons.caption_lines('HEADLINE HERE. . Max Foster | CNN Anchor')) == ['HEADLINE HERE', 'Max Foster | CNN Anchor']
+
+
+def test_the_model_matches_each_channel_hour_once(monkeypatch, tmp_path):
+    monkeypatch.setattr(chyrons, 'FOLDER', str(tmp_path))
+    monkeypatch.setattr(chyrons, 'CLEAN', str(tmp_path / 'clean.json'))
+    monkeypatch.setattr(chyrons, 'MATCHES', str(tmp_path / 'matches.json'))
+    (tmp_path / '2026-10-06.tsv').write_text(
+        "date_time_(UTC)\tchannel\tduration\thttps://archive.org/details/\ttext\n"
+        "2026-10-06 13:05:00\tFOXNEWSW\t40\tFOXNEWSW_x/start/1\tU.S. B-1 BOMBERS EVACUATED\n"
+        "2026-10-06 13:06:00\tFOXNEWSW\t30\tFOXNEWSW_x/start/61\tDIVIDED OVER THE DSA\n")
+    chyrons.write_json(chyrons.CLEAN, {'FOXNEWSW|U.S. B-1 BOMBERS EVACUATED': {'kind': 'headline', 'text': 'U.S. B-1 BOMBERS EVACUATED'},
+                                       'FOXNEWSW|DIVIDED OVER THE DSA': {'kind': 'headline', 'text': 'DIVIDED OVER THE DSA'}})
+    monkeypatch.setattr(chyrons, 'front_at', lambda when: [
+        {'id': 26, 'label': 'Trump rallies in Ohio', 'outlets': 40, 'rank': 1, 'headlines': []},
+        {'id': 70, 'label': 'U.S. removes bombers from UK air base', 'outlets': 30, 'rank': 2, 'headlines': []}])
+    from app.analysis import llm
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    asked = []
+
+    def complete(prompt, schema, max_tokens, model):
+        asked.append(prompt)
+        assert model == chyrons.MATCH_MODEL and 'B. U.S. removes bombers' in prompt
+        caps = [l.split('. ', 1)[1] for l in prompt.splitlines() if l[:1].isdigit()]
+        return {'captions': [{'n': n, 'story': 'B' if 'BOMBERS' in c else 'none'} for n, c in enumerate(caps, 1)]}
+    monkeypatch.setattr(llm, 'complete_json', complete)
+    bombers, dsa = chyrons.match_day('2026-10-06')
+    assert bombers['story'] == 70 and bombers['rank'] == 2 and 'story' not in dsa
+    chyrons.match_day('2026-10-06')
+    assert len(asked) == 1  # answers kept: each caption asked about once

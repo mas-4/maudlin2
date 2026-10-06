@@ -284,44 +284,118 @@ def headlines_of(day: str) -> list[dict]:
     return out
 
 
-def match_day(day: str) -> list[dict]:
+MATCHES = os.path.join(FOLDER, 'matches.json')  # channel|hour|caption -> story id (0: none), as the model answered
+MATCH_MODEL = 'gemma4:26b'
+MATCH_FRONT = 80  # the front pages' stories offered to the model (an hour has about 65; at 40 a stabbing story ranked 47th was missed)
+MATCH_BATCH = 40  # captions a call
+MATCH_PROMPT = """Captions (chyrons) {channel} showed at the bottom of the screen during one hour, numbered:
+{captions}
+
+The stories on the news sites' front pages that hour, lettered:
+{front}
+
+For each caption, by its number: the letter of the front-page story it is about (the same news event, not just the \
+same topic or person), or "none"."""
+
+
+def letters(n: int) -> list[str]:
+    import string
+    a = string.ascii_uppercase
+    return [a[i] if i < 26 else a[i // 26 - 1] + a[i % 26] for i in range(n)]
+
+
+def judge_hour(channel: str, texts: list[str], front: list[dict]) -> dict[str, int] | None:
+    """caption -> story id (0: none) for one channel-hour, by the model; None if it couldn't answer"""
+    from app.analysis import llm
+    tags = letters(len(front))
+    out = {}
+    for i in range(0, len(texts), MATCH_BATCH):
+        batch = texts[i:i + MATCH_BATCH]
+        schema = {"type": "object", "properties": {"captions": {"type": "array", "items": {"type": "object", "properties": {
+            "n": {"type": "integer", "minimum": 1, "maximum": len(batch)},
+            "story": {"type": "string", "enum": tags + ['none']}}, "required": ["n", "story"]}}}, "required": ["captions"]}
+        answer = llm.complete_json(MATCH_PROMPT.format(
+            channel=CHANNELS[channel], captions='\n'.join(f'{n}. {t}' for n, t in enumerate(batch, 1)),
+            front='\n'.join(f'{tag}. {st["label"]}' for tag, st in zip(tags, front))), schema, max_tokens=3000, model=MATCH_MODEL)
+        if answer is None:
+            return None
+        for x in answer.get('captions', []):
+            n = x.get('n')
+            if isinstance(n, int) and 1 <= n <= len(batch):
+                out[batch[n - 1]] = front[tags.index(x['story'])]['id'] if x.get('story') in tags else 0
+    return out
+
+
+def match_day(day: str, use_model: bool = True, budget: float | None = None) -> list[dict]:
     """The day's headline captions with the story each is about (or none), hour by hour; kept in
-    data/chyrons/matched-<day>.json"""
+    data/chyrons/matched-<day>.json. The model reads each channel-hour's captions against the front pages' stories at
+    the nearest run (embeddings at MATCH missed terse captions such as "U.S. B-1 BOMBERS EVACUATED" and let a few wrong
+    ones through, Oct 6); its answers are kept in MATCHES, so a caption is asked about once. Without the model, or
+    past `budget` seconds of asking it (the rest is asked next run), embeddings."""
+    import time
     import numpy as np
+    from app.analysis import llm
     from app.analysis.clustering import ollama_embed
     caps = headlines_of(day)
     by_hour = {}
     for c in caps:
         by_hour.setdefault(c['at'].replace(minute=0, second=0), []).append(c)
-    for hour, items in by_hour.items():
+    asked = read_json(MATCHES, {})
+    model = use_model and llm.backend() is not None
+    started = time.time()
+    for hour, items in sorted(by_hour.items(), reverse=True):  # the latest hours first: what the page shows
+        if model and budget is not None and time.time() - started > budget:
+            model = False
         front = front_at(hour + td(minutes=30))
-        texts = sorted({c['text'] for c in items})
-        if not front or not texts:
+        if not front:
             continue
-        heads = [(st, h) for st in front for h in [st['label']] + st['headlines']]
-        v = ollama_embed(texts + [h for _, h in heads])
-        sims = v[:len(texts)] @ v[len(texts):].T
-        best = {}
-        for t, row in zip(texts, sims):
-            j = int(np.argmax(row))
-            if row[j] >= MATCH:
-                st = heads[j][0]
-                best[t] = {'story': st['id'], 'label': st['label'], 'rank': st['rank'], 'outlets': st['outlets'],
-                           'score': round(float(row[j]), 3)}
+        byid = {st['id']: st for st in front}
+        found = {}
+        if model:
+            for channel in CHANNELS:
+                texts = sorted({c['text'] for c in items if c['channel'] == channel})
+                key = lambda t: f"{channel}|{hour.isoformat()}|{t}"  # noqa: E731
+                todo = [t for t in texts if key(t) not in asked]
+                if todo:
+                    got = judge_hour(channel, todo, front[:MATCH_FRONT])
+                    if got is None:
+                        continue
+                    for t, sid in got.items():
+                        asked[key(t)] = sid
+                    write_json(MATCHES, asked)
+                for t in texts:
+                    sid = asked.get(key(t))
+                    if sid and sid in byid:
+                        found[(channel, t)] = {'story': sid, 'label': byid[sid]['label'], 'rank': byid[sid]['rank'],
+                                               'outlets': byid[sid]['outlets']}
+        if not model:
+            texts = sorted({c['text'] for c in items})
+            heads = [(st, h) for st in front for h in [st['label']] + st['headlines']]
+            v = ollama_embed(texts + [h for _, h in heads])
+            sims = v[:len(texts)] @ v[len(texts):].T
+            for t, row in zip(texts, sims):
+                j = int(np.argmax(row))
+                if row[j] >= MATCH:
+                    st = heads[j][0]
+                    for channel in CHANNELS:
+                        found.setdefault((channel, t), {'story': st['id'], 'label': st['label'], 'rank': st['rank'],
+                                                        'outlets': st['outlets'], 'score': round(float(row[j]), 3)})
         for c in items:
-            c.update(best.get(c['text'], {}))
+            c.update(found.get((c['channel'], c['text']), {}))
     out = [{**c, 'at': c['at'].isoformat()} for c in caps]
     write_json(os.path.join(FOLDER, f'matched-{day}.json'), out)
     return out
 
 
-def match_recent(now: dt | None = None):
-    """Match yesterday's and today's cleaned headline captions to stories (each run: cleaning fills in through the day)"""
-    now = now or dt.utcnow()
-    for day in ((now - td(days=1)).strftime('%Y-%m-%d'), now.strftime('%Y-%m-%d')):
+def match_recent(budget: float = 180, now: dt | None = None):
+    """Match today's and yesterday's cleaned headline captions to stories (each run: cleaning fills in through the
+    day), the model asked for at most `budget` seconds in all"""
+    import time
+    now, started = now or dt.utcnow(), time.time()
+    for day in (now.strftime('%Y-%m-%d'), (now - td(days=1)).strftime('%Y-%m-%d')):
         if os.path.exists(path(day)):
             try:
-                caps = match_day(day)
+                caps = match_day(day, budget=max(0, budget - (time.time() - started)))
                 logger.info("Chyrons: %s, %d headline captions, %d matched to a story", day, len(caps),
                             sum(1 for c in caps if c.get('story')))
             except Exception as e:  # noqa: extra; the run goes on without it
