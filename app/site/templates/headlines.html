@@ -182,7 +182,7 @@
             // words modest so they all fit and only the leaders tower
             const curve = (s) => scale * (0.3 + 1.1 * Math.pow(Math.min(1, (s - lo) / ((hi - lo) || 1)), 1.5));
             // No word wider than about 55% of the cloud (bold Comic Neue runs about 0.58 em a letter), so every word fits
-            const fontSize = (s, label) => Math.min(curve(s), 0.55 * width / (0.58 * Math.max(3, (label || '').length)));
+            const fontSize = (s, label) => Math.min(curve(s), 0.5 * width / (0.58 * Math.max(3, [...(label || '')].length)));
             // The sticker's corner is off limits, so words pack in around it instead of leaving a hole
             const obstacles = [];
             const sticker = document.querySelector('.newsday-sticker');
@@ -191,7 +191,7 @@
                 obstacles.push({x0: s.left - c.left - pad, y0: s.top - c.top - pad,
                                 x1: s.right - c.left + pad, y1: s.bottom - c.top + pad});
             }
-            return {width, height, scale, fontSize, obstacles};
+            return {width, height, scale, fontSize, obstacles, shrink: 1};
         }
 
         function layoutCloud(mode, geo) {
@@ -207,7 +207,7 @@
                 return random() < 0.03 + 0.22 * size ? angle + 180 : angle;
             };
             const words = WORDS.map((w) => ({...w, word: w.text, label: w.emoji ? `${BOOKENDS[w.emoji][0]}\u2009${w.text}\u2009${BOOKENDS[w.emoji][1]}` : w.text,
-                                             px: geo.fontSize(w.outlets, w.text)}));
+                                             px: geo.shrink * geo.fontSize(w.outlets, w.emoji ? w.text + '    ' : w.text)}));
             const sort = CLOUD_SORTS[mode];
             const order = sort ? sort.order : (a, b) => b.outlets - a.outlets;
             [...words].sort(order).forEach((d, i, all) => { d.rank = i / Math.max(1, all.length - 1); });
@@ -258,10 +258,19 @@
             el.innerHTML = '';
             drawEnds(cloudMode);  // the end labels first, so the layout keeps words off them
             cloudGeo = cloudGeometry(el);
-            layoutCloud(cloudMode, cloudGeo).then((placed) => {
+            // A word too big for any gap is dropped by the layout, silently: if one of the leaders didn't land (the
+            // top word on a phone, most days), lay the cloud out again a little smaller, up to three times
+            const leaders = new Set([...WORDS].sort((a, b) => b.outlets - a.outlets).slice(0, 10).map((w) => w.text));
+            const attempt = (tries) => layoutCloud(cloudMode, cloudGeo).then((placed) => {
+                const landed = new Set(placed.map((d) => d.word));
+                if (tries > 0 && [...leaders].some((w) => !landed.has(w))) {
+                    cloudGeo.shrink *= 0.85;
+                    return attempt(tries - 1);
+                }
                 render(el, placed, cloudGeo.width, cloudGeo.height);
                 drawArrow(document.querySelector('#cloud svg'), cloudMode);
             });
+            attempt(3);
         }
 
         function arrangeCloud(mode) {
