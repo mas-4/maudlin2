@@ -213,3 +213,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-tree-tools { flex-wrap: wrap; }
 
 .wb-cbtns.wb-show { display: flex; position: static; margin-top: 3px; }
+
+.wb-transcript { line-height: 1.5; color: #333; }
+.wb-transcript mark { background: #fff1a8; padding: 0 2px; border-radius: 3px; font-weight: 600; }

@@ -853,7 +853,8 @@
     return [
       `<b>${esc(x.kind)}</b>`,
       x.title ? (x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)) : '',
-      x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',
+      x.context ? `<div class="wb-transcript">🗣️ ${esc(x.context.before)}<mark>${esc(x.context.quote)}</mark>${esc(x.context.after)}${x.side ? ` <span class="wb-faint">· the voter: ${esc(x.side)}</span>` : ''}</div>`
+        : x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',
       x.people ? `🧶 told by ${x.people} people` : '',
       (x.examples || []).slice(0, 3).map((t) => `<q>${esc(t)}</q>`).join(''),
       x.summary ? esc(x.summary) : '',

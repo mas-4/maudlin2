@@ -54,3 +54,12 @@ def test_a_claim_its_quote_doesnt_support_is_dropped(monkeypatch, tmp_path):
     store = fg.extract()
     assert [c['claim'] for c in store['u']['claims']] == ['Vivek is rich and out of touch']
     assert store['u']['dropped'][0]['why'] == "the quote doesn't support the claim"
+
+
+def test_a_quote_is_shown_in_the_transcript_around_it():
+    text = ('Intro music. So these comments respond to his remarks. I don\'t think that was okay at all. '
+            'It\'s describing something that\'s accurate, isn\'t it? That kind of bothers me more. Next segment.')
+    got = fg.context_in(text, "It's describing something that's accurate, isn't it?", before=60, after=30)
+    assert got['quote'] == "It's describing something that's accurate, isn't it?"
+    assert got['before'] == "…I don't think that was okay at all. " and got['after'].startswith(' That kind of bothers me more.')
+    assert fg.context_in(text, 'never said') is None

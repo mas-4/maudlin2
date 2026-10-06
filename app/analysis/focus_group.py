@@ -80,6 +80,40 @@ def episodes() -> list[dict]:
     return out
 
 
+def context(url: str, quote: str, before: int = 600, after: int = 300) -> dict | None:
+    """The transcript around a voter's quote, to read it in: about `before` characters leading up to it (whole
+    sentences) and `after` following it. None if the transcript or the quote can't be found."""
+    from app.models import Session, SideItem, SideTranscript
+    with Session() as s:
+        row = s.query(SideTranscript.segments).join(SideItem, SideItem.id == SideTranscript.item_id) \
+            .filter(SideItem.url == url).first()
+    if not row or not quote:
+        return None
+    return context_in(' '.join(seg['text'].strip() for seg in json.loads(row[0] or '[]')), quote, before, after)
+
+
+def context_in(text: str, quote: str, before: int = 600, after: int = 300) -> dict | None:
+    """The text around a quote (see context)"""
+    low, q = text.lower(), ' '.join(quote.split()).lower()
+    at = low.find(q)
+    if at < 0:  # the model trimmed or retouched it: find its first words
+        head = ' '.join(q.split()[:6])
+        at = low.find(head) if len(head) > 12 else -1
+        if at < 0:
+            return None
+        q = q[:len(head)] if low.find(q[:len(head)]) == at else head
+    end = at + len(q)
+    start = max(0, at - before)
+    if start > 0:  # begin at the first sentence inside the window
+        cut = text.find('. ', start, at)
+        start = cut + 2 if cut >= 0 else start
+    stop = min(len(text), end + after)
+    cut = text.find('. ', end, stop)
+    stop = cut + 1 if cut >= 0 else stop
+    return {'before': ('…' if start > 0 else '') + text[start:at], 'quote': text[at:end],
+            'after': text[end:stop] + ('…' if stop < len(text) else '')}
+
+
 CONTRACTIONS = [("n't", ' not'), ("'re", ' are'), ("'m", ' am'), ("'ll", ' will'), ("'ve", ' have'), ("'d", ' would'),
                 ("'s", ' is')]  # 's as 'is' even where it's a possessive: both sides are read alike
 

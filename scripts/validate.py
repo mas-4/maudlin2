@@ -290,6 +290,10 @@ def claim_detail(claim: str) -> dict:
         said = next((c for c in ep.get('claims', []) if c['claim'] in words), {})
         out.update(kind='focus-group', title=ep.get('title'), url=filed.get('ref'), published=ep.get('date', ''),
                    quote=said.get('quote'), side=said.get('side'), at=said.get('at'))
+        try:  # the transcript around the quote, to read it in
+            out['context'] = focus_group.context(filed.get('ref', ''), said.get('quote', ''))
+        except Exception:  # noqa: the detail stands without it
+            out['context'] = None
         return out
     if filed.get('source') and filed['source'] != 'narrative':
         url = filed.get('ref', '')
