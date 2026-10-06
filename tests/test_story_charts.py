@@ -43,3 +43,15 @@ def test_timeline_has_a_row_per_outlet_in_pickup_order_and_lanes_for_what_it_has
     assert '📻 radio' in svg and '📺 TV' not in svg and '🧶 online' not in svg
     assert svg.count('<circle') == 2  # one new headline, one newscast
     assert sc.timeline({**st, 'headlines': []}, [], [], [], None, {}) is None
+
+
+def test_stickers_count_each_stage_it_reached():
+    from app.site.page_story import stickers
+    st = story()
+    st['id'], st['saga'] = 7, {'parts': [{'id': 5}, {'id': 7}, {'id': 9}]}
+    unique = list({o['outlet']: o for o in outlets(st)}.values())
+    got = stickers(st, unique, {'left': 1, 'center': 0, 'right': 1, 'unrated': 1}, {'total': '6 min'},
+                   [{'show': 'NPR'}], [{'people': 4}, {'people': 3}], [], st['snapshots'])
+    by = {k['emoji']: k for k in got}
+    assert by['📰']['big'] == 3 and by['📺']['big'] == '6 min' and by['📻']['small'] == 'radio newscast'
+    assert by['🧶']['big'] == 7 and by['🧵']['big'] == '2 of 3' and '🔎' not in by

@@ -2,24 +2,32 @@
 
 {% macro chips(items, ink) %}{% for p in items %}<a class="show-chip tv-chip" href="{{ p.url or '#' }}" style="--chip: {{ p.color or ink }}" title="{{ p.source }}{% if p.title %}: {{ p.title|e }}{% endif %}">{% if p.emoji %}{{ p.emoji }} {% endif %}{{ p.source }}</a> {% endfor %}{% endmacro %}
 
+{% macro banner(emoji, title, sub, color) %}<h2 class="section-divider stage-banner" style="--stage: {{ color }}"><span>{{ emoji }} {{ title }}</span></h2>
+    <p class="stage-sub">{{ sub }}</p>{% endmacro %}
+
 {% block content %}
-    <p class="story-page-crumb"><a href="index.html#s-{{ story.id }}">← front page</a></p>
-    <h2 class="story-page-title">{{ story.label|e }}</h2>
-    <p class="saga-facts">{{ outlets|length }} outlet{{ '' if outlets|length == 1 else 's' }} · {{ since }} ET to {{ until }} ET
-        · {% for side, n in lean_counts.items() if n %}{{ n }} {{ side }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
-    <p class="table-intro story-page-intro">How this story traveled: from the front pages that broke it, out through TV,
-        radio and the shows, into what people retold and what fact-checkers examined, and on into the saga it is part
-        of. Everything here is matched to the story by our tools, so a link can be wrong; the trackers' pages say how
-        each is made.</p>
+    <p class="story-page-crumb"><a href="index.html#s-{{ story.id }}">← back to the front page</a></p>
+    <header class="story-hero">
+        <p class="story-kicker"><span>🗞️ Story file #{{ story.id }}</span></p>
+        <h2 class="story-page-title">{{ story.label|e }}</h2>
+        <p class="saga-facts">{{ since }} ET to {{ until }} ET{% if lean_counts.unrated %} · {{ lean_counts.unrated }} outlet{{ '' if lean_counts.unrated == 1 else 's' }} not rated for lean{% endif %}</p>
+        <ul class="story-stickers">
+            {% for k in stickers %}<li style="--sticker: {{ k.color }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
+        </ul>
+    </header>
+    <p class="table-intro story-page-intro">👣 How this story traveled: from the front pages that broke it, out through
+        TV, radio and the shows, into what people retold and what fact-checkers examined, and on into the saga it is
+        part of. Everything here is matched to the story by our tools, so a link can be wrong; the trackers' pages say
+        how each is made.</p>
 
     {% if flow %}
         <ol class="story-flow" aria-label="Its first moments at each stage">
-            {% for e in flow %}<li class="flow-{{ e.stage }}"><span class="flow-emoji" aria-hidden="true">{{ e.emoji }}</span><span class="flow-when">{{ e.when }} ET</span> {{ e.text }}</li>{% endfor %}
+            {% for e in flow %}<li class="flow-{{ e.stage }}"><span class="flow-emoji" aria-hidden="true">{{ e.emoji }}</span><span class="flow-text"><span class="flow-when">{{ e.when }} ET</span>{{ e.text }}</span></li>{% endfor %}
         </ol>
     {% endif %}
 
     <section class="story-stage">
-        <h3 class="radio-hour">📰 Spread: the front pages</h3>
+        {{ banner('📰', 'Spread', 'the front pages that ran it, hour by hour', '#00c2a8') }}
         {% if by_lean %}
             <figure class="story-chart-figure">
                 {{ by_lean.svg|safe }}
@@ -43,10 +51,12 @@
                     (bigger: the lead) and when people were found retelling it. Hover for details.</figcaption>
             </figure>
         {% endif %}
+        {% if wire or extras.curators or extras.quotes or extras.wording %}<div class="stage-notes">
         {% if wire %}<p title="Headlines nearly word for word the same as the wire service's, as on the outlets page">📡 wire copy: {{ wire.outlets|length }} outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires }} headline nearly word for word ({{ wire.outlets|join(', ') }})</p>{% endif %}
         {% if extras.curators %}<p>📌 linked by aggregators: {{ chips(extras.curators, '#888') }}</p>{% endif %}
         {% if extras.quotes %}<p>💬 quoted: {% for q in extras.quotes[:8] %}<span class="quote-chip">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span> {% endfor %}</p>{% endif %}
         {% if extras.wording %}<p>🗣️ only one side says: {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in extras.wording.get(s, []) %}<span class="wording-chip wording-{{ s }}">{{ emoji }} {{ p.phrase|e }}</span> {% endfor %}{% endfor %}</p>{% endif %}
+        </div>{% endif %}
         {% if rewordings %}
             <details class="story-rewordings"><summary>✏️ {{ rewordings|length }} outlet{{ '' if rewordings|length == 1 else 's' }} ran more than one headline on it (reworded, or a follow-up)</summary>
                 <ul class="radio-items">{% for r in rewordings %}<li><b>{{ r.outlet }}</b> ({{ r.times }} wordings): “{{ r.first|e }}” → “{{ r.latest|e }}”</li>{% endfor %}</ul>
@@ -62,9 +72,9 @@
         </details>
     </section>
 
-    {% if tv or radio or extras.shows or extras.investigations or extras.satire %}
-        <section class="story-stage">
-            <h3 class="radio-hour">📡 Broadcast and the shows</h3>
+    <section class="story-stage">
+        {{ banner('📡', 'Broadcast', 'TV, radio, and the shows that talked about it', '#ff6b1a') }}
+        {% if tv or radio or extras.shows or extras.investigations or extras.satire %}
             <div class="story-page-grid">
                 {% if tv %}
                     <div class="saga-card story-page-card" style="--saga: #cc0000">
@@ -88,31 +98,40 @@
                     </div>
                 {% endif %}
             </div>
-        </section>
-    {% endif %}
+        {% else %}
+            <p class="stage-empty">📺🤷 No TV captions or radio newscasts matched to it yet. It may still get there, or our matchers missed it.</p>
+        {% endif %}
+    </section>
 
-    {% if folklore or names %}
-        <section class="story-stage">
-            <h3 class="radio-hour">🧶 Retelling</h3>
+    <section class="story-stage">
+        {{ banner('🧶', 'Retelling', 'what people online made of it', '#8a5cff') }}
             {% if folklore %}
+                <div class="saga-card story-page-card" style="--saga: #8a5cff">
+                <h3><a href="folklore.html">🧶 Retold online</a></h3>
                 <ul class="radio-items">{% for f in folklore %}<li>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people{% if f.relation and f.relation != 'same event' %} ({{ f.relation }}){% endif %}{% if f.before %}; told before on {{ f.before|map(attribute='day')|join(', ') }}{% endif %}</span>
                     {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
                 <p class="tv-time"><a href="folklore.html">On Folklore</a>: these in full, with their motifs and who is telling them.</p>
+                </div>
+            {% else %}
+                <p class="stage-empty">🦗 Nobody's retelling it online yet, as far as the daily report can tell.</p>
             {% endif %}
-            {% if names %}<p>🗣️ names in it: {% for n in names %}<span class="show-chip tv-chip" style="--chip: #00c2a8">{{ n|e }}</span> {% endfor %}</p>{% endif %}
-        </section>
-    {% endif %}
+            {% if names %}<p class="stage-notes">🗣️ names in it: {% for n in names %}<span class="show-chip tv-chip" style="--chip: #00c2a8">{{ n|e }}</span> {% endfor %}</p>{% endif %}
+    </section>
 
-    {% if extras.factchecks %}
-        <section class="story-stage">
-            <h3 class="radio-hour">🔎 Checking</h3>
-            <ul class="story-checks">{% for p in extras.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}</ul>
-        </section>
-    {% endif %}
+    <section class="story-stage">
+        {{ banner('🔎', 'Checking', 'what the fact-checkers looked into', '#ffc400') }}
+        {% if extras.factchecks %}
+            <div class="saga-card story-page-card" style="--saga: #f5b700">
+                <ul class="story-checks">{% for p in extras.factchecks %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}</ul>
+            </div>
+        {% else %}
+            <p class="stage-empty">🧐 No fact-checker has taken it on yet.</p>
+        {% endif %}
+    </section>
 
-    {% if story.saga %}
-        <section class="story-stage">
-            <h3 class="radio-hour">🧵 Persistence: part of a saga</h3>
+    <section class="story-stage">
+        {{ banner('🧵', 'Persistence', 'the running story it belongs to', '#ff4fa3') }}
+        {% if story.saga %}
             <div class="saga-card story-page-card" style="--saga: #7a5cff">
                 <h3><a href="sagas.html">{{ story.saga.name|e }}</a></h3>
                 <ol class="saga-timeline">
@@ -121,6 +140,8 @@
                     {% endfor %}
                 </ol>
             </div>
-        </section>
-    {% endif %}
+        {% else %}
+            <p class="stage-empty">🌱 A story of its own so far: no saga yet.</p>
+        {% endif %}
+    </section>
 {% endblock %}

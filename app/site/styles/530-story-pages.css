@@ -191,3 +191,213 @@
     border-radius: 4px;
     background: var(--ink);
 }
+
+/* The story page's personality, borrowed from the front page (docs/style-book.md): a sticker-card hero with the
+   story's numbers as tilted stickers, a loud banner for each stage of its journey, the journey itself as a row of
+   stops, and a wink where a stage is still empty */
+.story-hero {
+    position: relative;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 7px 7px 0 #ff4fa3;
+    padding: 1.4em 1.2em 1em;
+    margin: 1.4em 0 1.2em;
+}
+
+.story-kicker {
+    position: absolute;
+    top: -1em;
+    left: 1em;
+    margin: 0;
+}
+
+.story-kicker span {
+    display: inline-block;
+    font: 1em 'Bungee', 'Comic Neue', sans-serif;
+    text-transform: uppercase;
+    color: #1f1f2e;
+    background: #ffc400;
+    border: 3px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+    padding: 0.05em 0.6em;
+    transform: rotate(-2.5deg);
+}
+
+.story-hero .story-page-title {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 2.1em;
+    line-height: 1.15;
+    color: #1f1f2e;
+    margin: 0.3em 0 0.2em;
+}
+
+.story-hero .story-page-title::after {
+    content: '';
+    display: block;
+    height: 8px;
+    margin-top: 0.25em;
+    background: #ff4fa3;
+    --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='7'%3E%3Cpath d='M0 3.5 Q4 0 8 3.5 T16 3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+    -webkit-mask: var(--wave) repeat-x left center / 16px 7px;
+    mask: var(--wave) repeat-x left center / 16px 7px;
+}
+
+.story-stickers {
+    list-style: none;
+    padding: 0;
+    margin: 0.9em 0 0.2em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9em 1em;
+}
+
+.story-stickers li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 0.45em;
+    align-items: center;
+    background: color-mix(in srgb, var(--sticker) 22%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--sticker);
+    padding: 0.35em 0.75em 0.4em 0.55em;
+    color: #1f1f2e;
+    transform: rotate(-1.5deg);
+    transition: transform 0.15s;
+}
+
+.story-stickers li:nth-child(even) {
+    transform: rotate(1.8deg);
+}
+
+.story-stickers li:nth-child(3n) {
+    transform: rotate(-0.6deg);
+}
+
+.story-stickers li:hover {
+    transform: rotate(0) scale(1.06);
+}
+
+.sticker-emoji {
+    grid-row: span 2;
+    font-size: 1.9em;
+    line-height: 1;
+}
+
+.story-stickers b {
+    font: 1.25em 'Bungee', 'Comic Neue', sans-serif;
+    line-height: 1.1;
+}
+
+.story-stickers li > span:last-child {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    line-height: 1.15;
+}
+
+/* Each stage of the journey gets the front page's section banner in its own color */
+.stage-banner {
+    margin: 2em 0 0.1em;
+}
+
+.stage-banner span {
+    background: color-mix(in srgb, var(--stage) 70%, white);
+    box-shadow: 4px 4px 0 #1f1f2e;
+}
+
+.stage-sub {
+    text-align: center;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0.2em 0 0.9em;
+}
+
+.stage-notes {
+    background: rgba(255, 255, 255, 0.94);
+    border: 2.5px dashed #1f1f2e;
+    border-radius: 14px;
+    padding: 0.2em 1em;
+    margin: 0.6em 0 1em;
+}
+
+.stage-empty {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.94);
+    border: 2.5px dashed #b8b8c8;
+    border-radius: 14px;
+    padding: 0.5em 1em;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+}
+
+.story-chart {
+    box-shadow: 5px 5px 0 #00c2a8;
+    border-width: 3px;
+}
+
+.story-chart text {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+/* The journey: its stops down a dashed road, each a little card with a big emoji, tilted this way and that */
+.story-flow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1em;
+    margin: 0.8em 0 1.6em;
+}
+
+.story-flow li {
+    position: relative;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 #1f1f2e;
+    padding: 0.4em 0.9em 0.45em 0.5em;
+    font-size: 0.95em;
+    transform: rotate(-0.8deg);
+}
+
+.story-flow li:nth-child(even) {
+    transform: rotate(0.9deg);
+}
+
+.story-flow li + li::before {
+    content: '';
+    position: absolute;
+    left: 1.25em;
+    top: -1.15em;
+    height: 1.05em;
+    margin: 0;
+    border-left: 3px dashed #1f1f2e;
+}
+
+.story-flow .flow-emoji {
+    font-size: 1.8em;
+    line-height: 1;
+}
+
+.flow-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.flow-when {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story-flow .flow-origin { background: #d9f6f2; }
+.story-flow .flow-spread { background: #fff1c2; }
+.story-flow .flow-broadcast { background: #ffe0cc; }
+.story-flow .flow-retelling { background: #ece4ff; }
+
+@media (max-width: 700px) {
+    .story-hero .story-page-title {
+        font-size: 1.6em;
+    }
+}

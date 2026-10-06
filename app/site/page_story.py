@@ -96,7 +96,7 @@ def tv_by_story() -> dict:
         out[sid] = {'channels': [{'name': chyrons.CHANNELS[ch], 'ink': page_tv.CHANNEL_INK[ch], 'time': page_tv.minutes(n),
                                   'share': round(100 * n / most)}
                                  for ch, n in sorted(by.items(), key=lambda kv: -kv[1])],
-                    'spots': spots[sid],
+                    'spots': spots[sid], 'total': page_tv.minutes(sum(by.values())),
                     'captions': [{'channel': chyrons.CHANNELS[ch], 'text': t, 'time': page_tv.minutes(n)}
                                  for (ch, t), n in sorted(captions[sid].items(), key=lambda kv: -kv[1])[:8]],
                     'first': first[sid]}
@@ -182,6 +182,39 @@ def wire_copied(headlines: list[dict]) -> dict:
     return {'wires': wires, 'outlets': outlets} if outlets else {}
 
 
+def stickers(st: dict, outlets: list[dict], lean_counts: dict, tv: dict | None, radio: list[dict],
+             folklore: list[dict], factchecks: list, snapshots: list[dict]) -> list[dict]:
+    """The story's numbers as stickers across the top of its page, in the order it traveled: a big number or word,
+    what it counts, an emoji and a color from the front page's palette. Stages with nothing to count are left off."""
+    from app.site.page_sagas import lasted
+    out = [{'emoji': '📰', 'big': len(outlets), 'small': 'outlet' + ('' if len(outlets) == 1 else 's') + ' carried it',
+            'color': '#00c2a8'}]
+    if any(lean_counts[k] for k in ('left', 'center', 'right')):
+        out.append({'emoji': '⚖️', 'big': f"🫏{lean_counts['left']} · {lean_counts['center']} · {lean_counts['right']}🐘",
+                    'small': 'left · center · right', 'color': '#3a86ff'})
+    out.append({'emoji': '⏱️', 'big': lasted(st['first'], st['last']), 'small': 'on the front pages', 'color': '#ffc400'})
+    if snapshots:
+        peak = max(s['outlets'] for s in snapshots)
+        out.append({'emoji': '📈', 'big': peak, 'small': 'front pages at once, at its peak', 'color': '#ff6b1a'})
+    if tv and tv.get('total'):
+        out.append({'emoji': '📺', 'big': tv['total'], 'small': 'of TV captions', 'color': '#cc0000'})
+    if radio:
+        out.append({'emoji': '📻', 'big': len(radio), 'small': 'radio newscast' + ('' if len(radio) == 1 else 's'),
+                    'color': '#e8463c'})
+    people = sum(f['people'] for f in folklore)
+    if people:
+        out.append({'emoji': '🧶', 'big': people, 'small': 'people retold it online', 'color': '#8a5cff'})
+    if factchecks:
+        out.append({'emoji': '🔎', 'big': len(factchecks), 'small': 'fact-check' + ('' if len(factchecks) == 1 else 's'),
+                    'color': '#f5b700'})
+    if st.get('saga'):
+        parts = [p['id'] for p in st['saga']['parts']]
+        if st['id'] in parts:
+            out.append({'emoji': '🧵', 'big': f"{parts.index(st['id']) + 1} of {len(parts)}", 'small': 'parts of a saga',
+                        'color': '#ff4fa3'})
+    return out
+
+
 def rewordings(headlines: list[dict]) -> list[dict]:
     """Outlets that ran more than one headline on the story (a reworded headline or a follow-up piece): the first and
     the latest"""
@@ -219,10 +252,14 @@ class StoryPages:
                          short=short_name(h['outlet']), lean=LEAN_WORD.get(h['bias'], 'not rated'),
                          when=eastern(h['first']) if h['first'] else '')
             rated = [h['bias'] for h in outlets if h['bias'] is not None]
+            lean_counts = {'left': sum(b < 0 for b in rated), 'center': sum(b == 0 for b in rated),
+                           'right': sum(b > 0 for b in rated), 'unrated': len(outlets) - len(rated)}
+            ex = extras.get(str(st['id']), {})
             self.template.write({
                 'title': st['label'] or 'A story', 'story': st, 'outlets': outlets,
-                'lean_counts': {'left': sum(b < 0 for b in rated), 'center': sum(b == 0 for b in rated),
-                                'right': sum(b > 0 for b in rated), 'unrated': len(outlets) - len(rated)},
+                'lean_counts': lean_counts,
+                'stickers': stickers(st, outlets, lean_counts, tv.get(st['id']), radio.get(st['id'], []),
+                                     folk.get(st['label'], []), ex.get('factchecks') or [], st['snapshots']),
                 'since': eastern(st['first']), 'until': eastern(st['last']), 'spark': sparkline(st['snapshots']),
                 'by_lean': story_charts.by_lean(st, outlets),
                 'timeline': story_charts.timeline(st, outlets, (tv.get(st['id']) or {}).get('spots', []),
@@ -231,7 +268,7 @@ class StoryPages:
                                                   page_tv.CHANNEL_INK),
                 'names': list(dict.fromkeys(entities.canonical(n, aliases) for n in names.get(f"s{st['id']}", []))),
                 'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': folk.get(st['label'], []),
-                'extras': extras.get(str(st['id']), {}), 'rewordings': rewordings(st['headlines']),
+                'extras': ex, 'rewordings': rewordings(st['headlines']),
                 'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), folk.get(st['label'], [])),
             }, os.path.join(Config.build, page_name(st['id'])))
