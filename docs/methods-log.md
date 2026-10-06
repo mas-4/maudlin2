@@ -26,6 +26,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **New motif names matched more often to the motifs already there.** When the filing judge names a new motif, its
+  name is first checked against existing ones, but only those at least 0.7 alike by meaning were offered to the model.
+  Tested against the person's merges: the motif a duplicate was later merged into reached the model for only 7 of 31.
+  At 0.6 it reaches it for 20, and the model found 14 (against 7), joining 2 of 26 pairs the person had said were not
+  the same (against 1 of 11). The floor is now 0.6; the model stays (gemma4:26b, gemma4:12b and qwen3:8b did no better).
 - **Widely seen Bluesky posts, embedded.** Until now no post was ever shown, only the model's summary of what a
   narrative's posts share. Now each narrative can show up to two of its own Bluesky posts that were already widely
   seen: 25+ likes, reposts, quotes and replies together, or 3+ from an account with 5,000+ followers (Bluesky gives no

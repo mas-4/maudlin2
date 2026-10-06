@@ -33,7 +33,7 @@ Qwen3.5, change its schemas that way.
 | Job | Code | Model | How it was chosen | Status |
 |---|---|---|---|---|
 | Motif filing: judge the 8 closest motifs side by side; name a new one only if none fits | `motif_index.JUDGE_MODEL` | **gemma4:26b** | Oct 5–6 tests on the person's settled filings (below) | switched Oct 6 |
-| Motif matching of a new name to an existing motif | `motif_index.MODEL` (`match`) | qwen3:30b-a3b | — | untested |
+| Motif matching of a new name to an existing motif | `motif_index.MODEL` (`match`) | qwen3:30b-a3b | Oct 6, against the person's 31 merges (the merged motif's name should match where it went) and 45 "not the same" verdicts. At the old floor (0.7) the right motif reached the model for only 7 merges; at 0.6, for 20: 30B found 14 and joined 2 of 26 not-same pairs (5 s); qwen3:8b 13 and 3 (1.2 s); gemma4:26b 12 and 1 (3.4 s); gemma4:12b 11 and 1. Too few cases to separate the models; the floor was the real gap | kept; floor lowered to 0.6 Oct 6 |
 | Motif scope-note drafts | `motif_index.MODEL` (`gloss`) | qwen3:30b-a3b | prompt tuned by eye Oct 5 | untested against others |
 | Saga judge ("one running story?") | `sagas.JUDGE_MODEL` | **gemma4:26b** | Oct 6, 46 story pairs labeled by Claude (11 the same story): Gemma 40 of 46 agree, found 5 of the 11, none wrongly joined, 2.2 s a pair; qwen3:30b-a3b 41/46, 7 of 11, 1 wrongly joined, 33 s; qwen3.5:35b 40/46, 6, 1 wrong, 2.8 s; gpt-oss:120b as Gemma at 26 s. A wrong join is what a person has had to veto, so none wrong won. Reworded the same day (angles, consequences and reactions are one story; a different focus is no reason for "separate"): 42/46, found 7 of 11, none wrong | switched Oct 6 |
 | Saga names | `sagas.py` | qwen3:8b | — | untested |
@@ -68,8 +68,7 @@ they named), each held out of the index and filed again.
 
 ## Next
 
-1. The remaining 30B jobs, each with its own test: narrative threads (by a person's checks), motif matching and scope
-   notes.
+1. The remaining 30B jobs, each with its own test: narrative threads and scope notes (motif matching done Oct 6).
 2. The 8B labeller against qwen3.5:9b and gemma4:12b, once there are enough label verdicts.
 3. gpt-oss:120b for small, hard jobs where 30 seconds a call is affordable.
 

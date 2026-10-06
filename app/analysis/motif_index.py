@@ -35,9 +35,11 @@ INDEX = os.path.join(Config.data, 'motif_index.json')
 MODEL = 'qwen3:30b-a3b'
 CANDIDATES = 5
 # Entries less alike than this aren't offered. Oct 5, with the 8B judging: good merges' phrases were 0.77-0.86 alike,
-# most bad ones 0.71-0.75 (0.6 let vague early entries snowball); the 30B judges the 0.7-0.76 band. A missed merge
-# is easier to fix by hand than a wrong one
-MATCH_FLOOR = 0.7
+# most bad ones 0.71-0.75 (0.6 let vague early entries snowball). Oct 6, the 30B judging against a person's 31 merges
+# and 45 "not the same" verdicts: at 0.7 the merged motif reached it for 7 merges (it found all 7) and 1 of 11
+# not-same pairs was joined; at 0.6, 14 found of 20 reaching it, 2 of 26 joined: twice the duplicates caught, at the
+# same rate of wrong joins (docs/models.md)
+MATCH_FLOOR = 0.6
 MAX_NEW = 200  # claims filed a run, at most
 # Naming sees the index first (Oct 5): named one claim at a time without it, 223 of 259 motifs held one claim
 # ('Smug smirk', 'Houthi territorial expansion') and the same name was coined three times as separate entries
