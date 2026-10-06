@@ -5,6 +5,19 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-05
+- **Choosing motifs, tested against a person's own filings.** The 160 claims a person had settled on the motif board
+  (each held out of the index in turn) were filed by the live method (the 15 closest motifs by name and claims, one
+  pick-or-name call to Qwen3 30B-A3B) and by a new one (three de-named "shapes" per claim, candidates found by shape,
+  a yes/no check on each of six). The live method picked the person's motif for 37% of claims, 52% of its picks theirs;
+  the new one 47%, but only 28% of its picks theirs. Finding candidates by shape was the weak part: the person's motif
+  was among the 6 closest by shape for 58% of claims, by the claim's own words 74% (82% of the closest 10). Shapes stay
+  out. A third design, the 8 closest motifs by the claim's words judged side by side in one call ("which of these, none
+  to three, is the claim clearly an instance of?"), was then run with seven local models on 60 of the claims (the
+  person's motif among the 8 for 46 of them, so 77% at most): gpt-oss 120B picked it for 62% (56% of its picks the
+  person's; 29 s a claim), Qwen3.5 9B 60% (48%; 1 s), Qwen3.5 35B 58% (50%; 3 s), Gemma 4 12B 58% (46%; 2 s), Gemma 4
+  26B 57% (54%; 2.4 s), Qwen3 8B 53% (42%), and the live Qwen3 30B-A3B 52% (52%; 4.6 s). Differences of a few points
+  are within what 60 claims can tell apart; every model beat the live method's 37%. Qwen3.5 under Ollama returned an
+  empty list whenever the schema asked for a list of fixed strings, so its answers are asked for as numbers.
 - **A claim may have no motif.** Until now a claim whose last motif a person removed was filed again next run, and the
   model was asked for one to three motifs per claim, so claims that only report an event were forced into one. Now the
   model may give none ("a claim that only reports an event or states a fact, with no story told around it, gets
