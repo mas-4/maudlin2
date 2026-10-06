@@ -82,7 +82,7 @@ function draw() {
   const raw = buildLinks(), deg = new Map();
   raw.forEach((l) => { deg.set(l.source, (deg.get(l.source) || 0) + 1); deg.set(l.target, (deg.get(l.target) || 0) + 1); });
   const only = $('#only-linked').checked;
-  nodes = data.entries.filter((e) => !only || deg.get(e.id) || (e.groups || []).some((g) => !hiddenGroups.has(g))).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
+  nodes = data.entries.filter((e) => !only || deg.get(e.id) || e.id === focus || (e.groups || []).some((g) => !hiddenGroups.has(g))).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
   const ids = new Set(nodes.map((n) => n.id));
   links = raw.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => ({...l}));
   $('#count').textContent = `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} kind-of · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
@@ -198,10 +198,13 @@ function show(id) {
   box.style.display = 'block';
 }
 $('#info').addEventListener('click', (ev) => { if (ev.target.closest('.x')) show(null); const a = ev.target.closest('a.go'); if (a) center(a.dataset.id); });
-function center(id) {
+function center(id, again) {
   const n = nodes.find((x) => x.id === id);
   show(id);
-  if (!n) return;
+  if (!n) {  // not on the map (no links, with "only motifs with a link" on): put it there, then go to it
+    if (!again && byId[id]) { draw(); setTimeout(() => center(id, true), 500); }
+    return;
+  }
   const svg = d3.select('#net'), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
   svg.transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate((W - 350) / 2 - n.x * 1.3, H / 2 - n.y * 1.3).scale(1.3));  // left of the details box
 }
@@ -269,11 +272,16 @@ function tree() {
   };
   const roots = data.entries.filter((e) => !e.parents.length && kids(e.id).length).sort((a, b) => a.name.localeCompare(b.name));
   const rel = data.entries.filter((e) => !e.parents.length && !kids(e.id).length && e.related.length).sort((a, b) => a.name.localeCompare(b.name));
+  // Every motif somewhere in the list: those the sections above don't hold, A to Z
+  const listed = new Set([...roots.flatMap(function all(e) { return [e.id, ...kids(e.id).flatMap(all)]; }), ...rel.map((e) => e.id)]);
+  const rest = data.entries.filter((e) => !listed.has(e.id) && !e.parents.length && !(e.groups || []).length).sort((a, b) => a.name.localeCompare(b.name));
   const grouped = data.groups.map((g) => `<li><b style="color:${groupColor(g.id)}">📁 ${esc(g.name)}</b><ul>${data.entries.filter((e) => (e.groups || []).includes(g.id)).sort((a, b) => a.name.localeCompare(b.name))
     .map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">${e.claims.length}</span></li>`).join('')}</ul></li>`).join('');
   $('#tree').innerHTML = (grouped ? `<h3>Groups</h3><ul>${grouped}</ul>` : '') + `<h3>Kinds</h3><p class="meta">Broader motifs with their kinds under them (a motif with two broader ones shows under both). Click one to find it on the map.</p>
     <ul>${roots.map((e) => item(e, new Set())).join('') || '<li class="meta">No kinds yet.</li>'}</ul>
-    <h3>Related, outside the kinds</h3><ul>${rel.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">↔ ${e.related.map((r) => byId[r] ? esc(byId[r].name) : r).join(', ')}</span></li>`).join('') || '<li class="meta">None.</li>'}</ul>`;
+    <h3>Related, outside the kinds</h3><ul>${rel.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">↔ ${e.related.map((r) => byId[r] ? esc(byId[r].name) : r).join(', ')}</span></li>`).join('') || '<li class="meta">None.</li>'}</ul>
+    <h3>Everything else <span class="meta">${rest.length}</span></h3><p class="meta">No kinds, no related, no group yet. Click one to put it on the map.</p>
+    <ul>${rest.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">${e.claims.length}</span></li>`).join('')}</ul>`;
 }
 $('#tree').addEventListener('click', (ev) => { const s = ev.target.closest('span[data-id]'); if (s) center(s.dataset.id); });
 async function load() {
