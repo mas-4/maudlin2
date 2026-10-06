@@ -111,9 +111,12 @@ def radio_by_story() -> dict:
 
 
 def folklore_by_label() -> dict:
-    """story label -> the narratives in the latest report tied to it (people retelling it, in our words)"""
-    from app.site.page_folklore import latest_report
+    """story label -> the narratives in the latest report tied to it (people retelling it, in our words), each with
+    the motifs it's filed under and the days it was told before (narrative threads)"""
+    from app.analysis import motif_index, narrative_threads
+    from app.site.page_folklore import latest_report, motif_cards, told_before
     report = latest_report() or {'found': []}
+    index, threads = motif_index.load(), narrative_threads.load()
     # The report's time is the machine's local (Eastern) time; everything else here is UTC
     day = EASTERN.localize(datetime.fromisoformat(report['made'])).astimezone(pytz.UTC).replace(tzinfo=None) \
         if report.get('made') else None
@@ -121,8 +124,11 @@ def folklore_by_label() -> dict:
     for g in report['found']:
         label, story = g.get('label') or {}, g.get('story') or {}
         if label.get('retold') and story.get('label'):
-            out[story['label']].append({'claim': label.get('narrative', ''), 'people': g['authors'],
-                                        'relation': story.get('relation', ''), 'day': day})
+            claim = label.get('narrative', '')
+            out[story['label']].append({'claim': motif_index.corrected(claim, index), 'people': g['authors'],
+                                        'relation': story.get('relation', ''), 'day': day,
+                                        'motifs': motif_cards(index, motif_index.corrected(claim, index)),
+                                        'before': told_before(threads, report.get('file', ''), claim, index)})
     return out
 
 

@@ -79,7 +79,8 @@
         <section class="story-stage">
             <h3 class="radio-hour">🧶 Retelling</h3>
             {% if folklore %}
-                <ul class="radio-items">{% for f in folklore %}<li>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people{% if f.relation and f.relation != 'same event' %} ({{ f.relation }}){% endif %}</span></li>{% endfor %}</ul>
+                <ul class="radio-items">{% for f in folklore %}<li>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people{% if f.relation and f.relation != 'same event' %} ({{ f.relation }}){% endif %}{% if f.before %}; told before on {{ f.before|map(attribute='day')|join(', ') }}{% endif %}</span>
+                    {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
                 <p class="tv-time"><a href="folklore.html">On Folklore</a>: these in full, with their motifs and who is telling them.</p>
             {% endif %}
             {% if names %}<p>🗣️ names in it: {% for n in names %}<span class="show-chip tv-chip" style="--chip: #00c2a8">{{ n|e }}</span> {% endfor %}</p>{% endif %}
