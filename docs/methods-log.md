@@ -4,6 +4,15 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-06
+- **Motif filing upgraded.** Claims are now filed by Gemma 4 26B judging the 8 closest motifs side by side (each by its
+  name, scope note and three of its claims): which of them, none to three, is the claim clearly an instance of? Only
+  when none fits is it asked, separately, whether the claim tells a recurring story worth a new motif; a plain report
+  gets none. Tested on 60 of a person's settled filings, each held out: the old method (pick or name from the 15
+  closest, Qwen3 30B-A3B) chose their motif for 37%; the new one 53% on the current index (65% on the bake-off's
+  candidates, with 66% of its picks theirs). Asking for a new name in the same call as the judging cost several points,
+  so the two are separate questions. Which model does which job, and how each was tested: docs/models.md.
+
 ## 2026-10-05
 - **Choosing motifs, tested against a person's own filings.** The 160 claims a person had settled on the motif board
   (each held out of the index in turn) were filed by the live method (the 15 closest motifs by name and claims, one

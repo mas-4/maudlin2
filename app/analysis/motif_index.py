@@ -39,7 +39,12 @@ MATCH_FLOOR = 0.7
 MAX_NEW = 200  # claims filed a run, at most
 # Naming sees the index first (Oct 5): named one claim at a time without it, 223 of 259 motifs held one claim
 # ('Smug smirk', 'Houthi territorial expansion') and the same name was coined three times as separate entries
-SHOWN = 15  # existing motifs shown when naming a claim, the closest to it
+SHOWN = 8  # existing motifs shown when filing a claim, the closest to it (the user's motif was among the closest 8 for
+# 77% of their settled claims, Oct 5)
+# Filing judges the closest motifs side by side (Oct 6, after a bake-off on 60 of the user's settled claims: the old
+# pick-or-name call to the 30B chose their motif for 37%; side by side, Gemma 4 26B for 57% with 54% of its picks
+# theirs, at 2.4 s a claim; methods log and docs/models.md)
+JUDGE_MODEL = 'gemma4:26b'
 SHOWN_FLOOR = 0.45  # ...if at least this alike
 
 NAME_PROMPT = """A claim people are telling or arguing over:
@@ -58,24 +63,34 @@ event or states a fact, with no story told around it, has none: give an empty li
 NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 0, "maxItems": 3,
                                                           "items": {"type": "string", "maxLength": 60}}},
                "required": ["motifs"]}
-REUSE_PROMPT = """A claim people are telling or arguing over:
+REUSE_PROMPT = """Today is {today}. A claim people are telling or arguing over:
 {claim}
 
-Motifs already in our index, each a recurring rumor or narrative shape, with a claim filed under it:
+Motifs in our index of recurring rumor and narrative shapes, each with some of the claims filed under it:
 {options}
 
-Which of these motifs is this claim another instance of? A motif fits only when the claim is clearly the same \
-kind of story as its example, the same shape told about different people, places or years; a shared topic, group, \
-place or mood isn't enough. Skip any motif whose name only describes one particular event rather than a recurring \
-shape. Use a fitting motif rather than coining a near-copy of it: the index is only useful if the same shape is \
-filed under the same motif. For any shape of this claim none of them covers, name a new motif: three to seven words, terse like a folklorist's label (a subject and what it does or is), \
-no names of people, places, organizations or dates, general enough to fit the same kind of story about others. \
-None to three motifs in all, the main one first; most claims have one or two. A claim that only reports an event \
-or states a fact, with no story told around it, gets none: don't force one.
+Which of these motifs is this claim clearly another instance of: the same kind of story as the claims filed under it, \
+told about other people, places or years? Judge by what a motif's claims have in common, not by details only some of \
+them share; a shared topic, person or place alone isn't enough. Most claims fit one or two; if none fits clearly, \
+give none.
 
 reason: a sentence or two
-existing: the numbers of the motifs that fit
-new: names for shapes none of them covers (often none)"""
+fits: the numbers of the motifs it clearly fits (none to three)"""
+
+# Asked only when no motif fits: one question at a time (offering a new name in the same call as the judging made the
+# judge pick the user's motif for 50% of their claims instead of 57%, Oct 6)
+NEW_PROMPT = """A claim people are telling or arguing over:
+{claim}
+
+None of the motifs in our index of recurring rumor and narrative shapes fits it; the closest were: {closest}.
+
+Does the claim tell a recurring story, the kind told again about other people, places or years? If it does, name it \
+as a new motif: three to seven words, terse like a folklorist's label (a subject and what it does or is), no names of \
+people, places, organizations or dates. If it only reports an event or states a fact, with no story told around it, \
+give no name: don't force one.
+
+reason: a sentence
+new: the new motif's name, or nothing"""
 
 MATCH_PROMPT = """A rumor shape: {phrase}
 (from the claim: {claim})
@@ -198,22 +213,34 @@ def closest(index: dict, claim: str) -> list[dict]:
 
 
 def name_claim(claim: str, shown: list[dict]) -> dict | None:
-    """{'existing': [entries the model filed it under], 'new': [names for shapes none of them covers]}, or None"""
+    """{'existing': [entries the judge filed it under], 'new': [a name for a shape none of them covers]}, or None.
+    The closest motifs are judged side by side, each by its name, scope note and three of its claims; the picks come
+    back as numbers (Qwen3.5 under Ollama returned an empty list of fixed strings, Oct 5)."""
+    from datetime import datetime
     if not shown:
-        named = llm.complete_json(NAME_PROMPT.format(claim=claim), NAME_SCHEMA, max_tokens=160, model=MODEL)
-        return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)]}
-    options = '\n'.join(f'{n}. {described(e)} (e.g. "{e["claims"][-1]["claim"][:110]}")' if e['claims'] else
-                        f'{n}. {e["name"]}' for n, e in enumerate(shown, 1))
+        named = llm.complete_json(NAME_PROMPT.format(claim=claim), NAME_SCHEMA, max_tokens=300, model=JUDGE_MODEL)
+        return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)][:1]}
+    options = '\n'.join(f'{n}. {described(e)}\n' + '\n'.join(f'   - {c["claim"][:160]}' for c in e['claims'][-3:])
+                        for n, e in enumerate(shown, 1))
     schema = {"type": "object", "properties": {
         "reason": {"type": "string", "maxLength": 1000},
-        "existing": {"type": "array", "maxItems": 3, "items": {"type": "string", "enum": [str(n) for n in range(1, len(shown) + 1)]}},
-        "new": {"type": "array", "maxItems": 3, "items": {"type": "string", "maxLength": 60}}},
-        "required": ["reason", "existing", "new"]}
-    answer = llm.complete_json(REUSE_PROMPT.format(claim=claim, options=options), schema, max_tokens=600, model=MODEL)
+        "fits": {"type": "array", "maxItems": 3, "items": {"type": "integer", "minimum": 1, "maximum": len(shown)}}},
+        "required": ["reason", "fits"]}
+    answer = llm.complete_json(REUSE_PROMPT.format(today=datetime.now().strftime('%B %-d, %Y'), claim=claim,
+                                                   options=options), schema, max_tokens=900, model=JUDGE_MODEL)
     if not answer:
         return None
-    existing = [shown[int(n) - 1] for n in dict.fromkeys(answer.get('existing', []))][:3]
-    return {'existing': existing, 'new': [m for m in map(clean, answer.get('new', [])) if fits_name(m)]}
+    existing = [shown[n - 1] for n in dict.fromkeys(answer.get('fits', [])) if isinstance(n, int) and 1 <= n <= len(shown)][:3]
+    if existing:
+        return {'existing': existing, 'new': []}
+    schema = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
+                                               "new": {"type": "array", "maxItems": 1, "items": {"type": "string", "maxLength": 60}}},
+              "required": ["reason", "new"]}
+    named = llm.complete_json(NEW_PROMPT.format(claim=claim, closest='; '.join(e['name'] for e in shown[:5])), schema,
+                              max_tokens=500, model=JUDGE_MODEL)
+    if named is None:
+        return None
+    return {'existing': [], 'new': [m for m in map(clean, named.get('new', [])) if fits_name(m)]}
 
 
 def fits_name(name: str) -> bool:

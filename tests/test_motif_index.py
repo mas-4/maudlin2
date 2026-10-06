@@ -15,14 +15,17 @@ def test_files_new_and_matching_claims(monkeypatch, tmp_path):
              'Texas will turn blue this year': 'the realignment that keeps not coming'}
 
     def complete_json(prompt, schema, max_tokens=0, model=None):
-        assert model == mi.MODEL  # the bigger model does the hard calls
+        # Filing is judged by JUDGE_MODEL; matching a new name to an existing motif stays with MODEL
+        assert model == (mi.MODEL if 'pick' in schema['properties'] else mi.JUDGE_MODEL)
         claim = prompt.splitlines()[1]  # the claim's own line: the shown motifs' example claims come later
         name = next(v for k, v in names.items() if k in claim)
         if 'motifs' in schema['properties']:  # the first claim, with nothing in the index to show
             return {'motifs': [name + '.']}
-        if 'existing' in schema['properties']:  # named with the closest motifs shown: reuse one that fits
-            shown = [line.split('. ', 1)[1].split(' (e.g.')[0] for line in prompt.splitlines() if line[:1].isdigit()]
-            return {'reason': '', 'existing': [str(shown.index(name) + 1)] if name in shown else [], 'new': [] if name in shown else [name]}
+        if 'fits' in schema['properties']:  # judged with the closest motifs shown side by side: reuse one that fits
+            shown = [line.split('. ', 1)[1].split(' (')[0] for line in prompt.splitlines() if line[:1].isdigit()]
+            return {'reason': '', 'fits': [shown.index(name) + 1] if name in shown else []}
+        if 'new' in schema['properties']:  # none fits: asked whether it tells a story to name
+            return {'reason': '', 'new': [name]}
         return {'reason': '', 'pick': 'new'}
 
     monkeypatch.setattr(llm, 'complete_json', complete_json)
@@ -95,7 +98,8 @@ def test_a_name_already_in_the_index_is_reused_word_for_word(monkeypatch, tmp_pa
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
     monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, **k:
                         {'motifs': ['Blame shifting']} if 'motifs' in schema['properties']
-                        else {'reason': '', 'existing': [], 'new': ['Blame-shifting.']} if 'existing' in schema['properties']
+                        else {'reason': '', 'fits': []} if 'fits' in schema['properties']
+                        else {'reason': '', 'new': ['Blame-shifting.']} if 'new' in schema['properties']
                         else {'reason': '', 'pick': 'new'})  # the model says new; the name says otherwise
     from app import narratives
     monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)) / np.sqrt(2))
