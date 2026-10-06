@@ -33,3 +33,11 @@ def test_shared_phrases_and_filler_never_count():
                                                              ('F', 2))]
     assert w.side_phrases(rows) == {}  # both sides wrote it
     assert 'trump says' not in w.bigrams('Trump says wall paused') and 'wall paused' in w.bigrams('Trump says wall paused')
+
+
+def test_the_storys_own_words_in_another_form_are_not_framing():
+    rows = [row('Jim Bakker dies at 86', a, -1) for a in 'ABC'] + \
+           [row('Jim Bakker dead at 86', a, 1) for a in 'DE'] + [row('Televangelist Jim Bakker dead', 'F', 2)]
+    assert w.side_phrases(rows) == {}  # "bakker dead": the left wrote both words, as "Bakker dies"
+    rows[3:] = [row('Police kill Bakker', a, 1) for a in 'DEF']
+    assert [p['phrase'] for p in w.side_phrases(rows)['right']] == ['police kill bakker']  # killed vs. died is framing

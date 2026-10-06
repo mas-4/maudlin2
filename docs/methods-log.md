@@ -26,6 +26,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **One-sided wording: the story's own words don't count.** "Only the right says 'bakker dead'" was on the front page
+  while the left wrote "Bakker dies": a phrase one side used, but not a framing. A phrase now counts only if at least
+  one of its words (stemmed, with dead/death/dies folded together) never appears in the other side's headlines on the
+  story. On three days of stories this dropped 39 of 101 phrases, mostly vocabulary ("federal judge", "former rep",
+  "terror plot" against "terrorism plot"); "killed" and "died" are kept apart, since that choice is framing.
 - **Word cloud: no made-up words.** The cloud folds plurals to their singular, and the folding turned "dies" into "dy"
   (WordNet's -ies rule), so on Oct 6 a word "dy" gathered every death story of the day (Jim Bakker, Dennis Hastert, the
   Kenya Ebola case). Now the cloud picks nouns before folding, never folds to a word of two letters or fewer, leaves

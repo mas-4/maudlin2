@@ -5,11 +5,14 @@ number, "Trump urges" against "Trump doxes". Word choice in plain sight, with no
 
 Our outlets lean left as a group, so a phrase only the left uses is less telling than one only the right uses unless
 both sides are well represented: a story needs MIN_SIDE rated outlets on each side, and a phrase needs MIN_OUTLETS
-outlets and MIN_SHARE of its side's outlets, with none on the other side."""
+outlets and MIN_SHARE of its side's outlets, with none on the other side. A phrase whose every word the other side also
+wrote, in some form, is the story's own vocabulary rather than framing ("bakker dead" when the left wrote "Bakker
+dies"): it's dropped (Oct 6)."""
 import re
 from collections import defaultdict
 
 from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 
 MIN_SIDE = 3
 MIN_OUTLETS = 2
@@ -21,6 +24,15 @@ FILLER = set(stopwords.words('english')) | {
     'says', 'say', 'said', 'new', 'us', 'u.s', 'report', 'reports', 'amid', 'could', 'would', 'may', 'video',
     'watch', 'live', 'update', 'updates', 'news', 'latest', 'per', 'via', 'gets', 'get', 'set', 'one', 'two',
 }
+
+# Forms a stemmer doesn't fold together but headlines swap freely
+FOLD = {'dead': 'die', 'death': 'die'}  # never 'kill': killed vs. died is framing
+_stem = PorterStemmer().stem
+
+
+def stem(word: str) -> str:
+    s = _stem(word.replace("'s", ''))
+    return FOLD.get(s, s)
 
 
 def bigrams(title: str) -> set[str]:
@@ -60,11 +72,13 @@ def side_phrases(rows: list[dict]) -> dict:
     story's headlines, one per outlet (title, agency, bias, rated)."""
     outlets = {'left': set(), 'right': set()}
     used = defaultdict(lambda: {'left': set(), 'right': set()})
+    vocab = {'left': set(), 'right': set()}  # word stems each side wrote anywhere in its headlines
     for row in rows:
         s = side(row)
         if s is None:
             continue
         outlets[s].add(row['agency'])
+        vocab[s] |= {stem(word) for word in WORD.findall(row['title'].lower().replace('’', "'"))}
         for phrase in bigrams(row['title']):
             used[phrase][s].add(row['agency'])
     if min(len(outlets['left']), len(outlets['right'])) < MIN_SIDE:
@@ -73,7 +87,8 @@ def side_phrases(rows: list[dict]) -> dict:
     for phrase, by in used.items():
         for s, other in (('left', 'right'), ('right', 'left')):
             n = len(by[s])
-            if n >= MIN_OUTLETS and n >= MIN_SHARE * len(outlets[s]) and not by[other]:
+            if n >= MIN_OUTLETS and n >= MIN_SHARE * len(outlets[s]) and not by[other] \
+                    and not all(stem(word) in vocab[other] for word in phrase.split()):
                 out[s].append({'phrase': phrase, 'outlets': sorted(by[s]), 'count': n})
     for s in out:
         out[s] = joined(out[s])
