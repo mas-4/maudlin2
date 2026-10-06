@@ -57,6 +57,7 @@ BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedn
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}
 # An aggregator's headline this close to one of a story's headlines links to that story, per model. Oct 5, on 200
 # aggregator headlines judged by the 30B: potion-base-8M at 0.7 made 46 right links of 60, mxbai at 0.8 60 of 75
+STORY_EXTRAS = os.path.join(Config.data, 'story_extras.json')  # saved story id -> what was found around it, for its page
 CURATOR_MATCH = {'mxbai-embed-large': 0.8, 'potion-base-8M': 0.7}
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
@@ -495,6 +496,7 @@ class HeadlinesPage:
         self.factcheck_coverage(clusters_list)
         self.broadcast_coverage(clusters_list)
         self.entity_groups(clusters_list)
+        self.save_story_extras(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -626,6 +628,44 @@ class HeadlinesPage:
         shown = {name.lower() for name, _ in chips}
         self.context['entities_of'] = {cluster_of[k]: [n for n in names if n.lower() in shown]
                                        for k, names in named.items()}
+
+    def save_story_extras(self, clusters_list):
+        """What this run found around each saved story (the shows, fact-checks, investigations and satire on it, the
+        aggregators linking it, its quotes and one-sided wording), merged into STORY_EXTRAS so its story page has the
+        whole of it after the story leaves the front page. Lists keep every item ever found, newest kept first."""
+        from app.utils.store import read_json, write_json
+        story_of = getattr(self, 'story_of', {})
+        if not story_of or Config.debug and not os.environ.get('MAUDLIN_STORY_EXTRAS'):
+            return  # preview builds read the extras but don't add to them
+        store = read_json(STORY_EXTRAS, {})
+        now = dt.utcnow().isoformat(timespec='minutes')
+        invest = defaultdict(list)
+        for p in self.context.get('investigations') or []:
+            if p.get('story') is not None:
+                invest[p['story']].append(p)
+        for c in clusters_list:
+            sid = story_of.get(int(c['cluster']))
+            if sid is None:
+                continue
+            cl = c['cluster']
+            found = {'shows': [{k: p.get(k) for k in ('source', 'title', 'url', 'color', 'emoji')}
+                               for p in (self.context.get('show_coverage') or {}).get(cl, [])],
+                     'factchecks': [{k: p.get(k) for k in ('source', 'title', 'url')}
+                                    for p in (self.context.get('factchecks_of') or {}).get(cl, [])],
+                     'investigations': [{k: p.get(k) for k in ('source', 'title', 'url', 'color', 'emoji')} for p in invest[cl]],
+                     'satire': [{k: p.get(k) for k in ('source', 'title', 'url')}
+                                for p in (self.context.get('satire_of') or {}).get(cl, [])],
+                     'curators': [{'source': a, 'seen': now} for a in c.get('curators') or []],
+                     'quotes': [{'phrase': q['phrase'], 'count': q['count']} for q in c.get('quotes') or []]}
+            entry = store.setdefault(str(sid), {})
+            for key, items in found.items():
+                have = entry.get(key, [])
+                ident = (lambda x: x.get('phrase')) if key == 'quotes' else (lambda x: x.get('url') or x.get('source'))
+                seen = {ident(x) for x in items}
+                entry[key] = items + [x for x in have if ident(x) not in seen]
+            entry['wording'] = c.get('wording') or entry.get('wording') or {}
+            entry['updated'] = now
+        write_json(STORY_EXTRAS, store)
 
     BROADCAST_HOURS = 24  # TV and radio coverage counted over the last day
 

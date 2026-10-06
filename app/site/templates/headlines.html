@@ -810,6 +810,9 @@
                         {% for p in checked %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
                     </ul>
                 {% endif %}
+                {% if story_of is defined and cluster['cluster'] in story_of %}
+                    <p class="story-link"><a href="story-{{ story_of[cluster['cluster']] }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+                {% endif %}
                 {% if cluster['curators'] %}
                     <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ outlet_home(a) or '#' }}" style="{{ chip_style(a, 0) }}" title="{{ a }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
                 {% endif %}

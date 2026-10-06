@@ -675,3 +675,29 @@ def test_story_cards_carry_tv_minutes_and_radio_newscasts(monkeypatch):
     assert [(t['name'], t['time']) for t in page.context['tv_of'][3]] == [('CNN', '2 min'), ('Fox News', '60 s')]
     assert page.context['radio_of'] == {3: [{'casts': 1, 'led': 1, 'show': 'NPR News Now'}]}  # its first story
     assert 4 not in page.context['tv_of']
+
+
+def test_story_pages_gather_the_trackers(monkeypatch, tmp_path):
+    from app.site import page_story
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    story = {'id': 70, 'label': 'Dubai <flight> attack', 'first': dt(2026, 10, 5, 12), 'last': dt(2026, 10, 5, 20),
+             'saga': {'id': 7, 'name': 'Flight', 'parts': [{'id': 69, 'label': 'Earlier part', 'when': 'Oct 4, 9 AM'},
+                                                           {'id': 70, 'label': 'Dubai <flight> attack', 'when': 'Oct 5, 8 AM'}]},
+             'headlines': [{'title': 'Co-pilot <attacked> captain', 'url': 'https://a.example/1', 'outlet': 'AP', 'bias': 0,
+                            'first': dt(2026, 10, 5, 12), 'last': dt(2026, 10, 5, 20)},
+                           {'title': 'Later AP wording', 'url': 'https://a.example/2', 'outlet': 'AP', 'bias': 0,
+                            'first': dt(2026, 10, 5, 15), 'last': dt(2026, 10, 5, 20)}],
+             'snapshots': [{'at': dt(2026, 10, 5, 12), 'outlets': 3}, {'at': dt(2026, 10, 5, 16), 'outlets': 9}]}
+    monkeypatch.setattr(page_story, 'recent_stories', lambda: [story])
+    monkeypatch.setattr(page_story, 'tv_by_story', lambda: {70: {'channels': [{'name': 'CNN', 'ink': '#c00', 'time': '2 min'}],
+                                                                 'captions': [{'channel': 'CNN', 'text': 'CO-PILOT PROBE', 'time': '2 min'}],
+                                                                 'first': (dt(2026, 10, 5, 13), 'CNN')}})
+    monkeypatch.setattr(page_story, 'radio_by_story', lambda: {})
+    monkeypatch.setattr(page_story, 'folklore_by_label', lambda: {})
+    page_story.StoryPages().generate()
+    html = (tmp_path / 'story-70.html').read_text()
+    assert 'Dubai &lt;flight&gt; attack' in html and 'Co-pilot &lt;attacked&gt; captain' in html
+    assert html.count('Later AP wording') == 1  # in the rewordings, not as AP's headline (each outlet's first)
+    assert 'href="story-69.html"' in html and 'CO-PILOT PROBE' in html and '<polyline' in html
+    flow = [li.get_text(' ', strip=True) for li in BeautifulSoup(html, 'html.parser').select('.story-flow li')]
+    assert flow[0].endswith('first on a front page: AP') and 'first on TV: CNN' in flow[1] and 'peak: on 9' in flow[2]
