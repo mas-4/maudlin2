@@ -24,6 +24,7 @@ logger = get_logger(__name__)
 NARRATIVE_HOUR = 4  # the run that writes the day's narrative report
 FOCUS_BUDGET = 180  # seconds a run spends reading new Focus Group episodes (one a week, about a minute and a half)
 RUNNING_BUDGET = 120  # seconds a run spends splitting the radio newscasts into their stories (two an hour)
+CHYRON_BUDGET = 180  # seconds a run spends cleaning TV chyron OCR (about 45 minutes of work a day)
 MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
 QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
@@ -195,6 +196,9 @@ def main(args: argparse.Namespace):
         # The hourly radio newscasts' running order beside the front pages' (#159)
         from app.analysis import running_order
         running_order.read(budget=RUNNING_BUDGET)
+        # TV chyrons: the OCR read into headlines, names, promos and ads, a few minutes a run
+        from app import chyrons
+        chyrons.clean_recent(budget=CHYRON_BUDGET)
         from app.analysis import motif_index
         motif_index.nightly(budget=MOTIF_BUDGET)
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
