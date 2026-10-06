@@ -143,12 +143,14 @@ def normalized(text: str) -> str:
     return ' '.join(WORD.findall(NOISE.sub(' ', text.lower())))
 
 
-def load(hours: float) -> list[dict]:
+def load(hours: float, until: dt | None = None) -> list[dict]:
+    """The posts collected in the `hours` before `until` (now), less feeds, bots, bare link shares and the like"""
     from app.vernacular import DB
-    since = (dt.now(timezone.utc) - td(hours=hours)).isoformat(timespec='seconds')
+    end = until or dt.now(timezone.utc)
+    since = (end - td(hours=hours)).isoformat(timespec='seconds')
     con = sqlite3.connect(DB)
-    rows = con.execute('SELECT key, author, text, reply, source, links, uri FROM post WHERE collected >= ?',
-                       (since,)).fetchall()
+    rows = con.execute('SELECT key, author, text, reply, source, links, uri FROM post WHERE collected >= ? AND collected <= ?',
+                       (since, end.isoformat(timespec='seconds'))).fetchall()
     con.close()
     # Feeds and bots post far more than people: an account with more than FEED_POSTS posts in the window is left
     # out, and so is a bare link share (a headline and its link), which is a story being passed on, not told, and a
@@ -429,6 +431,25 @@ def story_ids(labels: list[str]) -> dict[str, int]:
                 .order_by(Story.last_seen)}
 
 
+def posts_of(keys: list[str]) -> list[dict]:
+    """The posts with these keys still in the store (30 days, less the deleted), each text once with how many posted it,
+    most first"""
+    from app.vernacular import DB
+    if not keys:
+        return []
+    con = sqlite3.connect(DB)
+    rows = []
+    for start in range(0, len(keys), 500):
+        part = keys[start:start + 500]
+        rows += con.execute(f'SELECT text, source, reply FROM post WHERE key IN ({",".join("?" * len(part))})', part).fetchall()
+    con.close()
+    seen = {}
+    for text, source, reply in rows:
+        p = seen.setdefault(normalized(text), {'text': text, 'n': 0, 'source': source, 'reply': bool(reply)})
+        p['n'] += 1
+    return sorted(seen.values(), key=lambda p: -p['n'])
+
+
 def made_today() -> bool:
     """Whether today's nightly report (a day's posts) has been written."""
     for path in glob.glob(os.path.join(FOLDER, f"report-{dt.now().strftime('%Y-%m-%d')}-*.json")):
@@ -503,6 +524,10 @@ def report(hours: float = 6) -> dict:
             checked = {}
         for n, g in enumerate(narratives):
             g['factchecks'] = [{k: c[k] for k in ('source', 'title', 'url', 'published')} for c in checked.get(n, [])]
+    # Every post in each narrative, by its private key (for the checker's "where it came from": all of them, not a
+    # sample); the texts stay in the post store, under its 30-day limit
+    for g in narratives:
+        g['keys'] = [posts[i]['key'] for i in g['members']]
     out = {'made': dt.now().isoformat(timespec='minutes'), 'hours': hours, 'posts': len(posts),
            'authors': len({p['author'] for p in posts}), 'groups': len(found),
            'kinds': dict(Counter(g['kind'] for g in found)), 'focus_group_segments': len(segments),

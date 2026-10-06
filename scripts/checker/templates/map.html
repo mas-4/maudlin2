@@ -280,10 +280,29 @@ async function load() {
   data = await (await fetch('/motif-board.json')).json();
   byId = Object.fromEntries(data.entries.map((e) => [e.id, e]));
   if (focus && !byId[focus]) focus = null;
-  groupChips(); tree(); draw(); if (focus) show(focus);
+  groupChips(); tree(); filterTree(); draw(); if (focus) show(focus);
 }
 ['#show-kind', '#show-related', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
-$('#q').addEventListener('input', applyFocus);
+$('#q').addEventListener('input', () => { applyFocus(); filterTree(); });
+// The list on the left narrowed to what the search finds (a match's broader motifs and group stay, to show where it is)
+function filterTree() {
+  const words = $('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = (el) => { const t = el.textContent.toLowerCase(); return words.every((w) => t.includes(w)); };
+  const walk = (li) => {
+    const own = li.querySelector(':scope > span[data-id], :scope > b');
+    const kids = [...li.querySelectorAll(':scope > ul > li')].map(walk);  // every child walked, so each is shown or hidden
+    const show = !words.length || (own && hit(own)) || kids.some(Boolean);
+    li.hidden = !show;
+    return show;
+  };
+  document.querySelectorAll('#tree > ul > li').forEach(walk);
+  document.querySelectorAll('#tree h3').forEach((h) => {  // a heading with nothing left under it goes too
+    const list = h.nextElementSibling && h.nextElementSibling.tagName === 'UL' ? h.nextElementSibling : h.nextElementSibling?.nextElementSibling;
+    const any = list && [...list.children].some((li) => !li.hidden);
+    h.hidden = Boolean(words.length) && !any;
+    if (h.nextElementSibling && h.nextElementSibling.tagName === 'P') h.nextElementSibling.hidden = Boolean(words.length);
+  });
+}
 $('#fit').addEventListener('click', fit);
 $('#q').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const t = ev.target.value.trim().toLowerCase(); const n = nodes.find((x) => x.e.name.toLowerCase().includes(t)); if (n) center(n.id); } });
 addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { $('#menu').style.display = 'none'; show(null); } });

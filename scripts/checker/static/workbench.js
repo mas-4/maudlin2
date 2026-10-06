@@ -942,7 +942,10 @@
       x.context ? `<div class="wb-transcript">🗣️ ${esc(x.context.before)}<mark>${esc(x.context.quote)}</mark>${esc(x.context.after)}${x.side ? ` <span class="wb-faint">· the voter: ${esc(x.side)}</span>` : ''}</div>`
         : x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',
       x.people ? `🧶 told by ${x.people} people` : '',
-      (x.examples || []).slice(0, 3).map((t) => `<q>${esc(t)}</q>`).join(''),
+      (x.all_posts || []).length
+        ? `<details class="wb-posts" open><summary>💬 all ${x.all_posts.reduce((n, p) => n + p.n, 0)} posts still kept (${x.all_posts.length} different)</summary>`
+          + x.all_posts.map((p) => `<q>${esc(p.text)}${p.n > 1 ? ` <b class="wb-faint">×${p.n}</b>` : ''}${p.reply ? ' <span class="wb-faint">↩ reply</span>' : ''}${p.source === 'mastodon' ? ' <span class="wb-faint">🐘</span>' : ''}</q>`).join('') + '</details>'
+        : (x.examples || []).map((t) => `<q>${esc(t)}</q>`).join('') + (x.posts > (x.examples || []).length ? `<span class="wb-faint">${(x.examples || []).length} of ${x.posts} posts: the report kept only a sample</span>` : ''),
       x.summary ? esc(x.summary) : '',
       ['genre', 'villain', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${esc(lab[k])}`).join(' · '),
       (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `the model's words: ${w.map((m) => '“' + esc(m) + '”').join(' · ')}` : ''; })(),

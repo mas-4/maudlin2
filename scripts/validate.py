@@ -323,8 +323,11 @@ def claim_detail(claim: str) -> dict:
         if group:
             break
     if group:
+        from app.narratives import posts_of
+        every = posts_of(group.get('keys') or [])  # every post in it, where the report kept them (Oct 6 on)
         out.update(kind='folklore', made=report.get('made'), people=group.get('authors'), posts=group.get('posts'),
                    examples=[str(x)[:400] for x in (group.get('examples') or [])[:6]],
+                   all_posts=[{**p, 'text': p['text'][:500]} for p in every],
                    articles=[a if isinstance(a, dict) else {'title': str(a)} for a in (group.get('articles') or [])[:5]],
                    label=group.get('label') or {})
     else:
