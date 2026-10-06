@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Transcripts: names Whisper mishears.** 35 of 46 mentions of AIPAC in our podcast and Focus Group transcripts had
+  come out as "APEC" or "APAC", and Hegseth and Whatley were misspelled too. Whisper now gets a list of names and terms
+  to expect (fixed ones such as AIPAC, Hegseth, MSNOW, and the 50 most-named people and groups in recent stories), and
+  known mishearings are corrected after transcription, sentence by sentence and only where it's safe: APEC is left alone
+  in a sentence about the Asia-Pacific summit, and "a PAC" is never touched. The same corrections were applied to the
+  transcripts already made (14 changed) and to the Focus Group claims drawn from them (10), five of which were already in
+  the motif index and were corrected there through its record of corrected wording.
 - **Focus Group and radio running order on Gemma 4 26B.** Each tested on its own work: on 10 newscasts, Gemma's stories
   passed the first-words check 96% of the time (Qwen3 30B-A3B 81%) with nearly the same front-page picks; on 12 Focus
   Group transcript parts every model's quotes were found in the transcript, but Gemma's claims were the voters' own,
