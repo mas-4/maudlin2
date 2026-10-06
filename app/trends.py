@@ -36,6 +36,14 @@ def _topic(source: str, key: str) -> str:
     return topic if len(topic) <= 64 else f'{source}:{hashlib.sha1(key.encode()).hexdigest()}'
 
 
+def bluesky_link(link: str | None) -> str | None:
+    """A Bluesky trend's page: the API gives a path ('/profile/…/feed/…'), or now and then a whole URL"""
+    if not link:
+        return None
+    link = link[len('https://bsky.app'):] if link.startswith('https://bsky.apphttps://') else link
+    return link if link.startswith(('http://', 'https://')) else 'https://bsky.app' + link
+
+
 def bluesky() -> list[dict]:
     trends = _get('https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrends', limit=LIMIT).json()['trends']
     return [{
@@ -43,7 +51,7 @@ def bluesky() -> list[dict]:
         'display_name': t['displayName'],
         'description': t.get('description'),
         'category': t.get('category'),
-        'link': f"https://bsky.app{t['link']}" if t.get('link') else None,
+        'link': bluesky_link(t.get('link')),
         'status': t.get('status'),
         'post_count': t.get('postCount'),
         'started_at': t.get('startedAt'),

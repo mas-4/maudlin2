@@ -249,3 +249,9 @@ def test_wikipedia_falls_back_a_day_while_yesterday_is_not_published(monkeypatch
     monkeypatch.setattr(trends, '_get', get)
     assert trends.wikipedia() == []
     assert len(asked) == 2 and asked[0] != asked[1]  # the day before, after a 404
+def test_a_bluesky_trend_link_is_one_url_whether_the_api_gives_a_path_or_a_whole_url():
+    from app.trends import bluesky_link
+    assert bluesky_link('/profile/x/feed/bannedbooksweek') == 'https://bsky.app/profile/x/feed/bannedbooksweek'
+    assert bluesky_link('https://bsky.app/profile/x/feed/y') == 'https://bsky.app/profile/x/feed/y'
+    assert bluesky_link('https://bsky.apphttps://bsky.app/profile/x') == 'https://bsky.app/profile/x'
+    assert bluesky_link(None) is None
