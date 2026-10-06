@@ -72,3 +72,12 @@ they named), each held out of the index and filed again.
    found; running order by first words found; narrative threads by a person's checks).
 2. The 8B labeller against qwen3.5:9b and gemma4:12b, once there are enough label verdicts.
 3. gpt-oss:120b for small, hard jobs where 30 seconds a call is affordable.
+
+## Considered and not taken
+
+- **Pydantic AI / Pydantic AI Harness** (suggested Oct 6). The Harness is for long-running autonomous agents (shells,
+  file workspaces, subagents, memory), and bignews.day has no agents: every model job is a single structured call,
+  made through `app/analysis/llm.py`, with Ollama limiting the answer to the job's JSON schema. Plain Pydantic AI
+  could swap those dict schemas for Pydantic classes with validation and retries. But the failures we've had were
+  failures of judgment, not of shape: a claim its quote didn't support, Iowa changed to Ohio, a story missed. Schemas
+  can't catch those; tests against a person's judgments do. Worth another look if the schemas get hard to maintain.
