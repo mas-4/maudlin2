@@ -435,3 +435,23 @@ def test_a_claim_a_person_files_is_already_checked(monkeypatch, tmp_path):
     entries = mi.load()['entries']
     assert [c.get('checked') for c in entries['M002']['claims']] == ['yes', 'yes']
     assert entries['M003']['claims'][0]['checked'] == 'yes'
+
+
+def test_metrics_say_how_the_catalog_is_shaped_and_keep_a_day_by_day_history(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    monkeypatch.setattr(mi, 'METRICS', str(tmp_path / 'metrics.json'))
+    monkeypatch.setattr(mi, 'FILING_LOG', str(tmp_path / 'filing.jsonl'))
+    monkeypatch.setattr(mi.Config, 'data', str(tmp_path))
+    mi.save({'next': 4, 'claims': {mi.key('a'): ['M001', 'M002'], mi.key('b'): ['M002'], mi.key('c'): []}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'one', 'first_seen': '2026-10-05', 'claims': [{'claim': 'a', 'checked': 'yes'}],
+                 'facets': {'genre': 'rumor'}, 'done': [mi.key('a')]},
+        'M002': {'id': 'M002', 'name': 'two', 'first_seen': '2026-10-06', 'claims': [{'claim': 'a'}, {'claim': 'b'}],
+                 'parents': ['M001']}}})
+    m = mi.metrics()
+    assert (m['motifs'], m['claims'], m['filings'], m['no_motif']) == (2, 2, 3, 1)
+    assert (m['singles'], m['two_plus'], m['in_tree'], m['with_genre'], m['done']) == (50.0, 50.0, 100.0, 50.0, 50.0)
+    mi.snapshot_metrics()
+    with open(mi.FILING_LOG, 'w') as f:
+        f.write('{"at": "2026-10-06T04:00:00", "matched": 3, "new": 1}\n')
+    days = {d['day']: d for d in mi.metrics_history()['days']}
+    assert days['2026-10-05']['new_motifs'] == 1 and days['2026-10-06']['filed_matched'] == 3

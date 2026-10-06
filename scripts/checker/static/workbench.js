@@ -280,7 +280,7 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
     const counts = {check: S.data.to_check, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
@@ -297,6 +297,7 @@
     const tab = S.tab;
     delete box.dataset.check;
     if (tab === 'claim') return renderClaim(box);
+    if (tab === 'stats') return renderStats(box);
     if (tab === 'check') {
       const q = await queue('check');
       if (S.tab !== tab) return;
@@ -347,6 +348,47 @@
         : '<div class="wb-welcome"><div class="wb-big">✨</div><p>No empty motifs.</p></div>';
     }
   }
+  // ---------- the catalog's numbers, now and day by day ----------
+  async function renderStats(box) {
+    box.innerHTML = '<p class="wb-faint">⏳</p>';
+    const m = await getJSON('/workbench-metrics.json').catch((e) => ({error: e.message}));
+    if (S.tab !== 'stats') return;
+    if (m.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(m.error)}</p>`; return; }
+    const n = m.now;
+    const tile = (emoji, big, small, color) => `<li style="--sticker: ${color}"><span class="sticker-emoji">${emoji}</span><b>${big}</b><span>${small}</span></li>`;
+    const days = m.days;
+    // A small bar chart per measure: one bar a day (stacked when there are parts), the day under it
+    const bars = (title, keys, colors, note) => {
+      const totals = days.map((d) => keys.reduce((t, k) => t + (d[k] || 0), 0));
+      const peak = Math.max(1, ...totals);
+      if (!totals.some(Boolean)) return '';
+      return `<div class="wb-stat"><h3>${title}</h3><div class="wb-bars">${days.map((d, i) => `<div class="wb-bar" title="${d.day}: ${keys.map((k) => `${k.replace(/_/g, ' ')} ${d[k] || 0}`).join(', ')}">
+        <div class="wb-stack" style="height: ${Math.round(100 * totals[i] / peak)}%">${keys.map((k, j) => d[k] ? `<span style="flex: ${d[k]}; background: ${colors[j]}"></span>` : '').join('')}</div>
+        <i>${totals[i] || ''}</i><small>${d.day.slice(5)}</small></div>`).join('')}</div>
+        ${keys.length > 1 ? `<p class="wb-faint">${keys.map((k, j) => `<span class="sc-key" style="--key: ${colors[j]}"></span>${k.replace(/^\w+_/, '').replace(/_/g, ' ')}`).join(' · ')}${note ? ' · ' + note : ''}</p>` : note ? `<p class="wb-faint">${note}</p>` : ''}</div>`;
+    };
+    // The shape over days, from the daily snapshots (they begin Oct 6)
+    const shaped = days.filter((d) => d.shape);
+    const line = (key, label) => shaped.length ? `<tr><td>${label}</td>${shaped.map((d) => `<td>${d.shape[key]}%</td>`).join('')}</tr>` : '';
+    box.innerHTML = `<div class="wb-stats-tab">
+      <h3>📊 the catalog now</h3>
+      <ul class="story-stickers wb-stat-tiles">
+        ${tile('🧩', n.motifs, 'motifs', '#00c2a8')}${tile('💬', n.claims, `claims (${n.filings} filings, ${n.per_motif} a motif)`, '#3a86ff')}
+        ${tile('1️⃣', n.singles + '%', 'single-claim motifs', '#ffc400')}${tile('🌳', n.in_tree + '%', 'in the kinds tree', '#8a5cff')}
+        ${tile('🎭', n.with_genre + '%', 'with a genre', '#ff6b1a')}${tile('✅', n.done + '%', 'done by you', '#7fd97a')}
+        ${tile('📝', n.your_notes + '%', 'with your note', '#ff4fa3')}${tile('☑️', n.checked + '%', 'of filings checked', '#a9a9b8')}
+        ${tile('∅', n.no_motif, 'claims with no motif', '#e2e2ea')}${tile('≡', n.variants, 'claims folded in as the same', '#ece4ff')}
+      </ul>
+      ${bars('✨ new motifs a day', ['new_motifs'], ['#00c2a8'], 'the model makes most; a merge doesn\'t take one back')}
+      ${bars('🤖 how the model filed claims', ['filed_matched', 'filed_new', 'filed_none'], ['#3a86ff', '#ffc400', '#c9c9d4'], 'counted from Oct 6: into motifs already there, into a new one, or none')}
+      ${bars('✋ your changes a day', ['actions'], ['#ff4fa3'], 'merges, moves, kinds, notes, checks… in the curation log')}
+      ${bars('☑️ your checks', ['checks_yes', 'checks_no', 'checks_unsure'], ['#7fd97a', '#ff6b6b', '#c9c9d4'])}
+      ${shaped.length ? `<div class="wb-stat"><h3>🧱 the shape, day by day</h3><table class="wb-shape"><tr><th></th>${shaped.map((d) => `<th>${d.day.slice(5)}</th>`).join('')}</tr>
+        ${line('singles', 'single-claim')}${line('two_plus', '2+ claims')}${line('in_tree', 'in the tree')}${line('with_genre', 'with a genre')}${line('done', 'done')}${line('your_notes', 'your notes')}</table>
+        <p class="wb-faint">a snapshot after each filing run, from Oct 6</p></div>` : ''}
+    </div>`;
+  }
+
   // ---------- one claim, inspected: where it came from, every motif it's in, and moving it ----------
   function motifsOf(text) { return motifs().filter((e) => e.claims.some((c) => c.claim === text)); }
   function inspect(li) {

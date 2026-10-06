@@ -14,6 +14,8 @@ A claim can carry up to three motifs (a story is often several shapes at once: w
 hoped), each filed on its own. Stored in data/motif_index.json:
 {'next': 3, 'entries': {'M001': {...}}, 'claims': {claim key: [entry ids]}} (an empty list: filed, no motif kept)."""
 import functools
+import json
+from collections import Counter, defaultdict
 import hashlib
 import os
 import re
@@ -263,6 +265,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     today = dt.now().strftime('%Y-%m-%d')
     import time
     started = time.time()
+    outcomes = Counter()  # for the metrics: each claim matched to motifs already there, given a new one, or none
     for n, c in enumerate(todo):
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
@@ -298,9 +301,96 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
                 entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
                 filed.append(eid)
             index['claims'][key(c['claim'])] = filed
+            made = sum(1 for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1)
+            outcomes['none' if not filed else 'new' if made else 'matched'] += 1
             save(index)
-    logger.info("Motif index: filed %d claims; %d motifs", len(todo), len(live(index)))
+    if outcomes:
+        os.makedirs(os.path.dirname(FILING_LOG), exist_ok=True)
+        with open(FILING_LOG, 'a') as f:
+            f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), **outcomes}) + '\n')
+    logger.info("Motif index: filed %d claims (%s); %d motifs", len(todo), dict(outcomes), len(live(index)))
     return index
+
+
+# The index's shape over time (for the workbench's stats): a snapshot a day, the latest of the day kept; and each
+# filing run's outcomes. What came before Oct 6 is rebuilt where it can be (new motifs from first_seen, a person's
+# work from the curation log and the motif checks)
+METRICS = os.path.join(Config.data, 'motifs', 'metrics.json')
+FILING_LOG = os.path.join(Config.data, 'motifs', 'filing_log.jsonl')
+
+
+def metrics(index: dict | None = None) -> dict:
+    """How the catalog looks now: its size, how much of it is single claims, how much is organized (kinds, genres,
+    groups), how much a person has been through (done, notes, checks)"""
+    index = index if index is not None else load()
+    es = live(index)
+    n = max(1, len(es))
+    kids = {p for e in es for p in parents_of(e)}
+    sizes = [len(e['claims']) for e in es]
+    filings = sum(sizes)
+    share = lambda k: round(100 * k / n, 1)  # noqa: E731
+    return {
+        'motifs': len(es), 'claims': sum(1 for ids in index['claims'].values() if ids), 'filings': filings,
+        'no_motif': sum(1 for ids in index['claims'].values() if not ids),
+        'per_motif': round(filings / n, 2),
+        'singles': share(sum(1 for k in sizes if k == 1)), 'two_plus': share(sum(1 for k in sizes if k >= 2)),
+        'in_tree': share(sum(1 for e in es if parents_of(e) or e['id'] in kids)),
+        'with_genre': share(sum(1 for e in es if (e.get('facets') or {}).get('genre'))),
+        'in_group': share(sum(1 for e in es if e.get('group'))),
+        'done': share(sum(1 for e in es if e.get('done'))),
+        'your_notes': share(sum(1 for e in es if e.get('note') and e.get('note_by') not in DRAFTS)),
+        'checked': round(100 * sum(1 for e in es for c in e['claims'] if c.get('checked')) / max(1, filings), 1),
+        'variants': sum(len(c.get('variants', [])) for e in es for c in e['claims']),
+    }
+
+
+def snapshot_metrics():
+    """Today's metrics into the history (the latest of the day wins)"""
+    from app.utils.store import read_json, write_json
+    history = read_json(METRICS, {})
+    history[dt.now().strftime('%Y-%m-%d')] = metrics()
+    write_json(METRICS, history)
+
+
+def metrics_history() -> dict:
+    """Per day: the snapshots, new motifs (from first_seen; merged ones count, they were made), the filing runs'
+    outcomes, and a person's work (curation actions, motif checks)"""
+    from app.utils.store import read_json
+    index = load()
+    days = defaultdict(lambda: defaultdict(int))
+    for e in index['entries'].values():
+        if e.get('first_seen'):
+            days[e['first_seen'][:10]]['new_motifs'] += 1
+    try:
+        with open(FILING_LOG) as f:
+            for line in f:
+                r = json.loads(line)
+                for k in ('matched', 'new', 'none'):
+                    days[r['at'][:10]]['filed_' + k] += r.get(k, 0)
+    except OSError:
+        pass
+    folder = os.path.join(Config.data, 'validation')
+    for name, field in (('curation_log.jsonl', 'actions'), ('motif_verdicts.jsonl', 'checks')):
+        try:
+            with open(os.path.join(folder, name)) as f:
+                for line in f:
+                    r = json.loads(line)
+                    day = (r.get('at') or '')[:10]
+                    if not day:
+                        continue
+                    if field == 'checks':
+                        days[day]['checks_' + ('yes' if r.get('answer') == 'yes' else 'no' if r.get('answer') == 'no' else 'unsure')] += 1
+                    elif (r.get('action') or {}).get('action') not in (None, 'undo'):
+                        days[day]['actions'] += 1
+        except (OSError, ValueError):
+            pass
+    snaps = read_json(METRICS, {})
+    out = []
+    for day in sorted(set(days) | set(snaps)):
+        if day < '2026-10-01':
+            continue
+        out.append({'day': day, **days.get(day, {}), **({'shape': snaps[day]} if day in snaps else {})})
+    return {'now': metrics(index), 'days': out}
 
 
 def nightly(budget: float | None = None):
@@ -329,6 +419,10 @@ def nightly(budget: float | None = None):
     import time
     started = time.time()
     index = file_claims(claims, budget=budget)
+    try:
+        snapshot_metrics()
+    except Exception as e:  # noqa: the stats are extra
+        logger.warning("Motif metrics: %s", e)
     # New motifs get the model's draft of a scope note (shown on the board to keep or edit; used in matching at once)
     gloss_missing(budget=None if budget is None else max(30, budget - (time.time() - started)))
     return index
