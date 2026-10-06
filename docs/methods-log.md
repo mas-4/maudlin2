@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Story pages: following a story downstream.** Every saved story seen in the last week has a page, and its card on
+  the front page links to it. The page follows the story as it spread and changed: the first front page to carry it
+  (a headline first seen before the story began is left out: it joined later), its peak, its first minute on TV and on
+  the radio, the day people were found retelling it; then the front pages over time with the aggregators linking it,
+  the phrases outlets quoted and the wording only one side used; TV minutes by channel and the captions; the radio
+  newscasts and its place in each; the shows, investigators and satire on it; what people retell and the names in it;
+  the fact-checks; and the saga it belongs to. Each run's findings around a story are kept (story_extras.json), so its
+  page keeps them after it leaves the front page. Every link is made by our tools and can be wrong.
+- **TV and radio on the story cards.** Each card shows its minutes on screen on each news channel and the hourly
+  newscasts that carried it in the last day (and how many led with it).
 - **On TV.** The captions along the bottom of the screen (chyrons) on CNN, Fox News, MSNOW and BBC News, as the
   Internet Archive's TV News Archive reads them by OCR about once a minute (its "Third Eye" service, running since
   2017), with how many seconds each stayed up. One request a run; each day is kept as sent. The OCR is noisy ("NICOI I E
