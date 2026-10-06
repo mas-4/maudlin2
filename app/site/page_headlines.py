@@ -497,6 +497,7 @@ class HeadlinesPage:
         self.broadcast_coverage(clusters_list)
         self.entity_groups(clusters_list)
         self.save_story_extras(clusters_list)
+        self.retold_online(clusters_list)
         self.news_day(df, active_outlets)
 
     def trending_in_the_news(self, df):
@@ -666,6 +667,23 @@ class HeadlinesPage:
             entry['wording'] = c.get('wording') or entry.get('wording') or {}
             entry['updated'] = now
         write_json(STORY_EXTRAS, store)
+
+    def retold_online(self, clusters_list):
+        """People retelling each current story in their own words on Bluesky and Mastodon (the latest narrative report,
+        tied to the story by its label), for a 🧶 line on its card: how many people, and the motifs it's filed under"""
+        self.context['retold_of'] = {}
+        try:
+            from app.site.page_story import folklore_by_label
+            told = folklore_by_label()
+        except Exception as e:  # noqa: extra; never let it stop the page
+            logger.warning("Retold online: %s", e)
+            return
+        for c in clusters_list:
+            found = told.get(self.context['titles'].get(c['cluster'], ''))
+            if found:
+                motifs = {m['id']: m for f in found for m in f['motifs']}
+                self.context['retold_of'][c['cluster']] = {'people': sum(f['people'] for f in found),
+                                                           'motifs': list(motifs.values())[:3]}
 
     BROADCAST_HOURS = 24  # TV and radio coverage counted over the last day
 

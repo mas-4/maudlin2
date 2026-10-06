@@ -810,6 +810,13 @@
                         {% for p in checked %}<li>🔎 <a href="{{ p.url }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
                     </ul>
                 {% endif %}
+                {% set retold = retold_of.get(cluster['cluster']) if retold_of is defined else none %}
+                {% if retold %}
+                    <div class="story-shows story-retold">
+                        <a class="story-shows-label" href="{% if story_of is defined and cluster['cluster'] in story_of %}story-{{ story_of[cluster['cluster']] }}.html{% else %}folklore.html{% endif %}" title="People retelling this story in their own words on Bluesky and Mastodon, in the latest daily report">🧶 retold online by {{ retold.people }} people</a>
+                        {% for m in retold.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
+                    </div>
+                {% endif %}
                 {% if story_of is defined and cluster['cluster'] in story_of %}
                     <p class="story-link"><a href="story-{{ story_of[cluster['cluster']] }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
                 {% endif %}

@@ -701,3 +701,16 @@ def test_story_pages_gather_the_trackers(monkeypatch, tmp_path):
     assert 'href="story-69.html"' in html and 'CO-PILOT PROBE' in html and '<polyline' in html
     flow = [li.get_text(' ', strip=True) for li in BeautifulSoup(html, 'html.parser').select('.story-flow li')]
     assert flow[0].endswith('first on a front page: AP') and 'first on TV: CNN' in flow[1] and 'peak: on 9' in flow[2]
+
+
+def test_cards_say_when_people_retell_the_story(monkeypatch):
+    from app.site import page_headlines, page_story
+    monkeypatch.setattr(page_story, 'folklore_by_label', lambda: {'Dubai flight attack': [
+        {'claim': 'The co-pilot was a plant', 'people': 30, 'motifs': [{'id': 'M211', 'name': 'The sleeper agent', 'note': ''}]},
+        {'claim': 'It was staged', 'people': 12, 'motifs': [{'id': 'M084', 'name': 'False flag operation', 'note': ''}]}]})
+    page = page_headlines.HeadlinesPage.__new__(page_headlines.HeadlinesPage)
+    page.context = {'titles': {3: 'Dubai flight attack', 4: 'Something else'}}
+    page.retold_online([{'cluster': 3}, {'cluster': 4}])
+    retold = page.context['retold_of']
+    assert list(retold) == [3] and retold[3]['people'] == 42
+    assert [m['name'] for m in retold[3]['motifs']] == ['The sleeper agent', 'False flag operation']
