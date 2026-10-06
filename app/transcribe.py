@@ -42,6 +42,43 @@ AD = re.compile(r'\b(?:this (?:message|episode|podcast) (?:comes|is brought|is s
 _model = None
 
 
+# Names and terms Whisper mishears in political talk ("APEC" for AIPAC, "Hexeth" for Hegseth), given to it as hotwords
+# on every stretch of audio, with the people most named in recent stories (entities); and the mishearings fixed after
+# transcription, each only where it's safe (APEC is also the Asia-Pacific summit; "a PAC" is a political action committee)
+TERMS = ['AIPAC', 'DOGE', 'MSNOW', 'MAGA', 'SCOTUS', 'Hegseth', 'Whatley', 'Ramaswamy', 'El-Sayed', 'Tallarico',
+         'Ossoff', 'Houthis', 'Hezbollah', 'Netanyahu', 'Zelensky', 'Bolsonaro', 'Epstein', 'Fairford', 'ICE']
+HOTWORD_NAMES = 50  # the most-named people and groups in recent stories added to TERMS
+FIXES = [
+    (re.compile(r'\bAPAC\b'), 'AIPAC', None),
+    (re.compile(r'\bAPEC\b'), 'AIPAC', re.compile(r'summit|Asia|Pacific|trade|economic cooperation|ministers|Korea|leaders\' meeting', re.I)),
+    (re.compile(r'\b(?:Hexeth|Heggseth|Hegsath|Hexath)\b'), 'Hegseth', None),
+    (re.compile(r'\bWattley\b'), 'Whatley', None),
+]
+
+
+def hotwords() -> str:
+    """The terms Whisper should expect: TERMS and the most-named people and groups in recent stories"""
+    try:
+        from app.analysis import entities
+        names = [n for n, _ in sorted(entities.all_names().items(), key=lambda kv: -kv[1])
+                 if n[:1].isupper()][:HOTWORD_NAMES]
+    except Exception:  # noqa: the fixed terms alone will do
+        names = []
+    return ', '.join(dict.fromkeys(TERMS + names))
+
+
+def fix_text(text: str) -> str:
+    """Known mishearings corrected, sentence by sentence: a fix with a guard isn't made in a sentence the guard
+    matches (APEC the summit stays APEC)"""
+    out = []
+    for sentence in re.split(r'(?<=[.!?])\s+', text):
+        for pattern, right, guard in FIXES:
+            if guard is None or not guard.search(sentence):
+                sentence = pattern.sub(right, sentence)
+        out.append(sentence)
+    return ' '.join(out)
+
+
 def _load_cuda_libs():
     """ctranslate2 looks up cuBLAS and cuDNN when it first runs; the pip-installed copies live in the venv, which
     the dynamic linker doesn't search, so load them by full path first (they then satisfy its lookups)."""
@@ -162,6 +199,7 @@ def transcribe_pending(budget: float = 600) -> int:
         logger.info("Transcribe: the language model is busy; trying next run")
         return 0
     started, done = time.time(), 0
+    words = hotwords()
     for item in items:
         if time.time() - started > budget:
             break
@@ -173,8 +211,8 @@ def transcribe_pending(budget: float = 600) -> int:
                     save(item.id, [], 0, model='skipped: over the size limit')  # so it isn't downloaded again
                     continue
                 audio = decode(path)
-            segments, info = model().transcribe(audio, language='en', vad_filter=True, beam_size=1)
-            kept = trim_ads([{'start': round(s.start, 1), 'end': round(s.end, 1), 'text': s.text.strip()}
+            segments, info = model().transcribe(audio, language='en', vad_filter=True, beam_size=1, hotwords=words)
+            kept = trim_ads([{'start': round(s.start, 1), 'end': round(s.end, 1), 'text': fix_text(s.text.strip())}
                              for s in segments])
             save(item.id, kept, len(audio) / 16000)
             done += 1
