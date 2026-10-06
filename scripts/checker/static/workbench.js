@@ -470,7 +470,10 @@
     box.innerHTML = found.map((e) => `<div class="wb-sug wb-pick"><span class="wb-pickbtns">
         <button class="wb-btn yes" data-cl="add|${e.id}" title="file it here too">＋ add</button>
         ${ins.length ? `<button class="wb-btn" data-cl="move|${e.id}" title="file it here and take it out of ${S.claim.from && S.by[S.claim.from] ? '“' + esc(S.by[S.claim.from].name) + '”' : ins.length === 1 ? '“' + esc(ins[0].name) + '”' : 'the ' + ins.length + ' motifs it’s in'}">⇢ move here</button>` : ''}</span>${chip(e.id)}</div>`).join('')
-      || `<p class="wb-faint">🦗 no motif matches</p><button class="wb-btn yes" data-cl="newnamed|" id="cl-new">✨ new motif “${esc(S.claimQ.trim())}” with it</button>`;
+      || '<p class="wb-faint">🦗 no motif matches</p>';
+    // A new motif named what was typed, offered whatever else matched (unless a motif already has that very name)
+    const typed = S.claimQ.trim(), taken = motifs().some((e) => e.name.toLowerCase() === typed.toLowerCase());
+    if (!taken) box.innerHTML += `<button class="wb-btn yes wb-newnamed" data-cl="newnamed|" id="cl-new">✨ new motif “${esc(typed)}” with it</button>`;
   }
   function claimAction(kind, id) {
     const c = S.claim, ins = motifsOf(c.claim), first = ins[0];
@@ -494,7 +497,7 @@
       return act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`);
     }
     if (kind === 'new') {
-      return ask(null, 'Name the new motif', c.claim.slice(0, 80)).then((n) => n && act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`));
+      return ask(null, 'Name the new motif', (S.claimQ || '').trim() || c.claim.slice(0, 80)).then((n) => n && act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`));
     }
     if (kind === 'correct') {
       return ask(null, 'Correct the wording (our summary, not the source)', c.claim, true).then((text) => {

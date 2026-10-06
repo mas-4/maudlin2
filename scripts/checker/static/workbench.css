@@ -240,3 +240,4 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-shape { border-collapse: collapse; font-size: 12.5px; }
 .wb-shape td, .wb-shape th { padding: 2px 8px; border-bottom: 1px solid #eee; text-align: right; }
 .wb-shape td:first-child { text-align: left; }
+.wb-newnamed { margin-top: 6px; }
