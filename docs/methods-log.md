@@ -26,6 +26,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **The motif index can be exported.** The workbench's 📦 export (and `scripts/export_motifs.py`) writes the index as
+  a readable catalog (Markdown), a spreadsheet (a row per claim), JSON, or SKOS in Turtle for the planned mapping to
+  prior catalogs (docs/motif-catalogs.md). By default only verified motifs, with the claims they held when verified
+  and only a person's notes, the same as the site; "everything" adds unverified motifs and marks draft notes.
 - **One-sided wording: the story's own words don't count.** "Only the right says 'bakker dead'" was on the front page
   while the left wrote "Bakker dies": a phrase one side used, but not a framing. A phrase now counts only if at least
   one of its words (stemmed, with dead/death/dies folded together) never appears in the other side's headlines on the

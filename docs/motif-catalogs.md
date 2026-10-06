@@ -48,6 +48,9 @@ be read alongside them and the motifs with no match stand out as candidates for 
 
 1. **Export the index as SKOS.** Each motif a `skos:Concept` with `skos:prefLabel` (its name), `skos:scopeNote` (its
    note), `skos:broader` (its kinds' parents), `skos:related`; its claims and spread in our own properties.
+   *Done Oct 6:* `app/analysis/motif_export.py` (the workbench's 📦 export, or `scripts/export_motifs.py ttl`), at the
+   motifs' addresses on the site (`bnd:` = `https://bignews.day/motifs.html#`), claims as `skos:example`, genre as
+   `dct:type`, groups as `skos:Collection`s; verified motifs only unless `--all`. Spread isn't in it yet.
 2. **Load the catalogs we can use.** Machine-readable: Thompson's index (a CSV transcription exists, e.g.
    KatjaMellmann/TMI_as_CSV on GitHub), the 15 Media Frames, CARDS's taxonomy (its replication repository), the
    SemEval 2025 narrative taxonomy (in the task paper and data). By hand, numbers and names only (the books are under

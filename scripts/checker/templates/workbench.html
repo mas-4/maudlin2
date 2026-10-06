@@ -15,6 +15,21 @@
     <span class="wb-drop" data-drop="nomotif" title="drop claims here: they tell no recurring story">∅ no motif</span>
     <span class="wb-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span>
   </span>
+  <details class="wb-export">
+    <summary class="wb-btn" title="download the motif index">📦 export</summary>
+    <div class="wb-export-menu">
+      <p>✅ <b>verified</b> (what the site shows)</p>
+      <a href="/motif-export?format=md&amp;scope=verified" download>📄 readable (.md)</a>
+      <a href="/motif-export?format=csv&amp;scope=verified" download>📊 spreadsheet (.csv)</a>
+      <a href="/motif-export?format=json&amp;scope=verified" download>🧱 data (.json)</a>
+      <a href="/motif-export?format=ttl&amp;scope=verified" download>🕸️ SKOS (.ttl)</a>
+      <p>🧩 <b>everything</b> (unverified too)</p>
+      <a href="/motif-export?format=md&amp;scope=all" download>📄 .md</a>
+      <a href="/motif-export?format=csv&amp;scope=all" download>📊 .csv</a>
+      <a href="/motif-export?format=json&amp;scope=all" download>🧱 .json</a>
+      <a href="/motif-export?format=ttl&amp;scope=all" download>🕸️ .ttl</a>
+    </div>
+  </details>
   <button id="help-btn" class="wb-btn" title="how this works">❓</button>
 </header>
 <main class="wb-main">
@@ -64,6 +79,8 @@
     pop up; let go on one. The drops in the top bar start a new motif, say "no motif", or take a claim out.</p>
   <p><b>Columns:</b> drag the bars between the panes to make one wider (double-click a bar to reset). Hover a motif
     to see its note and claims.</p>
+  <p><b>📦 Export</b> downloads the index: only verified motifs (what the site shows) or everything, as a readable
+    catalog, a spreadsheet (a row per claim), JSON, or SKOS for linking to other catalogs.</p>
   <p><b>Keys:</b> <kbd>/</kbd> search · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Esc</kbd> cancel a drag or close a
     menu.</p>
   <form method="dialog"><button class="wb-btn">got it 👍</button></form>

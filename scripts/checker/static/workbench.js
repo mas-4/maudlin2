@@ -1187,3 +1187,15 @@
   $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group';
   reload().catch((e) => { $('#panels').innerHTML = `<p class="wb-faint">😬 couldn’t load the index: ${esc(e.message)}</p>`; });
 })();
+
+// The 📦 export menu opens toward the side with room (the button wraps to the left on a narrow window), and closes on a
+// pick or a click anywhere else
+document.querySelector('.wb-export')?.addEventListener('toggle', e => {
+  const menu = e.target.querySelector('.wb-export-menu');
+  menu.classList.remove('wb-export-left');
+  if (e.target.open && menu.getBoundingClientRect().left < 0) menu.classList.add('wb-export-left');
+});
+document.addEventListener('click', e => {
+  const menu = document.querySelector('.wb-export');
+  if (menu && menu.open && (!(e.target instanceof Element) || !e.target.closest('.wb-export summary'))) menu.open = false;
+});

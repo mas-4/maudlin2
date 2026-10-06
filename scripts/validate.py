@@ -572,6 +572,22 @@ class Handler(BaseHTTPRequestHandler):
             from urllib.parse import urlparse, parse_qs
             from app.analysis import motif_index
             return self.send_json(motif_index.similar_claims(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))
+        if self.path.startswith('/motif-export'):  # ?format=json|csv|md|ttl&scope=verified|all, as a download
+            from urllib.parse import urlparse, parse_qs
+            from app.analysis import motif_export
+            q = parse_qs(urlparse(self.path).query)
+            fmt, scope = q.get('format', ['json'])[0], q.get('scope', ['verified'])[0]
+            if fmt not in motif_export.FORMATS or scope not in motif_export.SCOPES:
+                return self.send_json_error(400, f'format: {sorted(motif_export.FORMATS)}; scope: {motif_export.SCOPES}')
+            text, media, name = motif_export.export(fmt, scope)
+            body = text.encode()
+            self.send_response(200)
+            self.send_header('Content-Type', f'{media}; charset=utf-8')
+            self.send_header('Content-Disposition', f'attachment; filename="{name}"')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path.startswith('/workbench-metrics.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.metrics_history())
