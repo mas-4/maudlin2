@@ -26,6 +26,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **Scope-note drafts by Gemma 4 26B.** A motif's draft note is now written by gemma4:26b, not qwen3:30b-a3b, after
+  drafting notes for the 49 motifs whose notes the person wrote and comparing them with theirs: Gemma's were closer in
+  meaning (0.73 against 0.71) and told the kind of story where the 30B restated a single claim, and the 30B gave up on
+  10. A draft that opens with the motif's own name ("Breaking ranks occurs when...", half of Gemma's) is asked again.
 - **Narrative threads judged by Gemma 4 26B.** Whether a narrative told today is one told on an earlier day is now
   asked of gemma4:26b, not qwen3:30b-a3b, after a test on the 32 pairs the live code had asked about (labeled by
   Claude): Gemma found 18 of 21 retellings in both runs and wrongly joined 1 of 9; the 30B found 15 and 17, missing

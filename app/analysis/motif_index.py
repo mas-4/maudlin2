@@ -1178,11 +1178,15 @@ note: then the motif's scope note: one plain sentence saying what kind of story 
 they have in common. Write it the way its tellers tell it, as if it were so; never judge it (no "false", \
 "misleading", "debunked", "claims that" or "alleged"). Use kinds of people and places, not particular ones, unless \
 the motif's own name names them: then it is a named narrative, and the note keeps that name. Start with what \
-happens, not with "This motif", "A motif" or "Stories"."""
+happens, not with the motif's name, "This motif", "A motif" or "Stories"."""
 GLOSS_SCHEMA = {"type": "object", "properties": {"common": {"type": "string", "maxLength": 500},
                                                  "note": {"type": "string", "maxLength": 320}},
                 "required": ["common", "note"]}
 GLOSS_CLAIMS = 8  # claims shown when drafting a note
+# Oct 6, drafts for the 49 motifs whose notes a person wrote, compared with theirs: gemma4:26b drafted all 49, closest
+# to the person's (0.73 by meaning), describing the kind of story; qwen3:30b-a3b gave up on 10 (judged or named
+# people three times) and restated single claims (0.71)
+GLOSS_MODEL = 'gemma4:26b'
 GLOSS_MIN = 3  # claims a motif needs before the model drafts its note: with one or two it restated them (Oct 5)
 
 
@@ -1198,7 +1202,7 @@ def gloss(entry: dict) -> str | None:
     prompt = GLOSS_PROMPT.format(name=entry['name'], claims=claims)
     about_falsehood = re.search(r'\b(fake|false|lie|lies|hoax|disinformation|misinformation|propaganda)\b', entry['name'], re.I)
     for attempt in range(3):
-        answer = llm.complete_json(prompt, GLOSS_SCHEMA, max_tokens=600, model=MODEL)
+        answer = llm.complete_json(prompt, GLOSS_SCHEMA, max_tokens=600, model=GLOSS_MODEL)
         note = ' '.join((answer or {}).get('note', '').split())
         if not note or note[-1] not in '.!?"\u201d':
             continue  # none, or cut off at the length limit mid-sentence
@@ -1207,11 +1211,15 @@ def gloss(entry: dict) -> str | None:
         judged = VERDICT_WORDS.search(note) and not about_falsehood
         own = {w.lower() for w in re.findall(r"[\w'-]+", entry['name'])}  # a named narrative keeps its names
         named = [w for w in names_in(note) if w.lower() not in own]
-        if not judged and not named:
+        # A draft opening with the motif's own name ("Breaking ranks occurs when...") defines a word instead of telling
+        # what happens (17 of 49 Gemma drafts did, Oct 6)
+        echoed = note.lower().startswith(entry['name'].lower())
+        if not judged and not named and not echoed:
             return note
         prompt += ('\n\nYour last answer: "' + note + '". ' + ('It judged the story: say only what the people telling '
-                   'it say happens. ' if judged else '') + (f'It named {", ".join(named)}: say what they are instead.'
-                                                            if named else ''))
+                   'it say happens. ' if judged else '') + (f'It named {", ".join(named)}: say what they are instead. '
+                                                            if named else '')
+                   + ('It began with the motif\'s name: begin with who does what instead.' if echoed else ''))
     return None
 
 

@@ -34,7 +34,7 @@ Qwen3.5, change its schemas that way.
 |---|---|---|---|---|
 | Motif filing: judge the 8 closest motifs side by side; name a new one only if none fits | `motif_index.JUDGE_MODEL` | **gemma4:26b** | Oct 5–6 tests on the person's settled filings (below) | switched Oct 6 |
 | Motif matching of a new name to an existing motif | `motif_index.MODEL` (`match`) | qwen3:30b-a3b | Oct 6, against the person's 31 merges (the merged motif's name should match where it went) and 45 "not the same" verdicts. At the old floor (0.7) the right motif reached the model for only 7 merges; at 0.6, for 20: 30B found 14 and joined 2 of 26 not-same pairs (5 s); qwen3:8b 13 and 3 (1.2 s); gemma4:26b 12 and 1 (3.4 s); gemma4:12b 11 and 1. Too few cases to separate the models; the floor was the real gap | kept; floor lowered to 0.6 Oct 6 |
-| Motif scope-note drafts | `motif_index.MODEL` (`gloss`) | qwen3:30b-a3b | prompt tuned by eye Oct 5 | untested against others |
+| Motif scope-note drafts | `motif_index.GLOSS_MODEL` (`gloss`) | **gemma4:26b** | Oct 6, drafts for the 49 motifs whose notes the person wrote, compared with theirs by meaning (mxbai): gemma4:26b 49 drafted, 0.73; qwen3:30b-a3b 39 (gave up on 10, judging or naming people), 0.71, and it restated single claims; gemma4:12b 49, 0.71; qwen3:8b 45, 0.69. Read side by side, Gemma tells the kind of story better but opened half its drafts with the motif's name ("Breaking ranks occurs when..."): such a draft is now asked again, which leaves 43 drafted, none opening with the name, 0.73 | switched Oct 6 |
 | Saga judge ("one running story?") | `sagas.JUDGE_MODEL` | **gemma4:26b** | Oct 6, 46 story pairs labeled by Claude (11 the same story): Gemma 40 of 46 agree, found 5 of the 11, none wrongly joined, 2.2 s a pair; qwen3:30b-a3b 41/46, 7 of 11, 1 wrongly joined, 33 s; qwen3.5:35b 40/46, 6, 1 wrong, 2.8 s; gpt-oss:120b as Gemma at 26 s. A wrong join is what a person has had to veto, so none wrong won. Reworded the same day (angles, consequences and reactions are one story; a different focus is no reason for "separate"): 42/46, found 7 of 11, none wrong | switched Oct 6 |
 | Saga names | `sagas.py` | qwen3:8b | — | untested |
 | Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | **gemma4:26b** | Oct 6, the 32 pairs the live code had asked about, labeled by Claude (21 told again, 9 not, 2 too close to call), each model twice: Gemma 18 of 21 found in both runs, 1 of 9 wrongly joined, 1.8 s a pair; qwen3:30b-a3b 15 and 17, 1 (missed plain repeats: the same Nobel prize, Sánchez's snap election); gemma4:12b 21, but 2-3 wrong; qwen3:8b 11, 2. Threads rebuilt with it (17 told on 2+ days, was 16) | switched Oct 6 |
@@ -68,7 +68,7 @@ they named), each held out of the index and filed again.
 
 ## Next
 
-1. The last 30B job with no test: scope-note drafts (motif matching and narrative threads done Oct 6).
+1. Every 30B job now has its test (Oct 6): only motif matching stays on qwen3:30b-a3b.
 2. The 8B labeller against qwen3.5:9b and gemma4:12b, once there are enough label verdicts.
 3. gpt-oss:120b for small, hard jobs where 30 seconds a call is affordable.
 
