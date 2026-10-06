@@ -26,6 +26,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   saga against this judge would also have split four borderline ones (Alito's two stories, the Saudi-Houthi fighting,
   Paxton's campaign, measles in two states) and one clear one (two headlines on one Ohio rally); those were left as they
   are, for a person to judge.
+- **Jubilee's Surrounded, transcribed.** Jubilee's weekly Surrounded (one guest against 20-25 people who disagree
+  with them) joins The Focus Group and the call-ins as ordinary people speaking for themselves: archived from its
+  podcast feed and transcribed on our GPU in the same tier, for research. Its Middle Ground has no audio feed, and its
+  YouTube feed is now mostly short clips of its commentary show, so neither is followed.
 - **The nav follows a story downstream.** Two links (every story, sagas) and four menus in the order a story travels:
   📰 front pages (every headline, outlets, headline changes, emotions, who's in the news, the Supreme Court, the
   archive), 📡 on air (TV, radio, shows and newsletters), 🧶 online (folklore, rumors, the motif index) and 🛠️ how it

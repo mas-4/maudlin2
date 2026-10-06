@@ -108,6 +108,10 @@ SOURCES = [
     # Ordinary voters in their own words: recorded focus groups (swing and crossover voters), kept for research on how
     # people talk about the news; transcribed from Oct 4 2026 on
     _source('focusgroup', 'The Focus Group', 'podcast', 'crossover', 'https://audioboom.com/channels/5114313.rss'),
+    # Jubilee's Surrounded: one guest against 20-25 people who disagree with them, the people speaking for themselves
+    # (Oct 6, the user asked for Jubilee; its Middle Ground has no audio feed, and its YouTube feed is now mostly clips)
+    _source('surrounded', 'Surrounded (Jubilee)', 'podcast', 'crossover',
+            'https://feeds.speakeasystudio.ai/feeds/h2wLC7fJo0Nnyrly/feed.xml'),
     _source('krugman', 'Paul Krugman', 'newsletter', 'left', 'https://paulkrugman.substack.com/feed'),
     _source('silver', 'Silver Bulletin', 'newsletter', 'center', 'https://www.natesilver.net/feed'),
     _source('slowboring', 'Slow Boring', 'newsletter', 'center', 'https://www.slowboring.com/feed'),

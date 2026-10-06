@@ -179,11 +179,11 @@ def pending(limit: int = 50) -> list[SideItem]:
                                         SideItem.id.notin_(done)).all()
         s.expunge_all()
 
-    voices = {s['key'] for s in sidefeeds.SOURCES if s['kind'] == 'call-in'} | {'focusgroup'}
+    voices = {s['key'] for s in sidefeeds.SOURCES if s['kind'] == 'call-in'} | {'focusgroup', 'surrounded'}
 
     def rank(item):
-        # Hourly newscasts, then shows on the site, then ordinary people's voices (call-ins, focus groups), then the
-        # rest of the archive (long talk shows and streams)
+        # Hourly newscasts, then shows on the site, then ordinary people's voices (call-ins, focus groups, Jubilee's
+        # Surrounded), then the rest of the archive (long talk shows and streams)
         tier = (0 if item.source in PRIORITY else 1 if item.source in published else 2 if item.source in voices
                 else 3)
         return tier, -item.published.timestamp()
