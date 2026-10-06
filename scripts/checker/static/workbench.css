@@ -230,12 +230,12 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-stats-tab h3 { font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; margin: 12px 0 4px; }
 .wb-stat-tiles li { transform: none !important; }
 .wb-stat-tiles b { font-size: 1.05em; }
-.wb-bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 4px 0; border-bottom: 2px solid var(--ink); }
-.wb-bar { flex: 1; max-width: 46px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
+.wb-daybars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 4px 0; border-bottom: 2px solid var(--ink); }
+.wb-daybar { flex: 1; max-width: 46px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
 .wb-stack { width: 100%; display: flex; flex-direction: column-reverse; border: 2px solid var(--ink); border-radius: 6px 6px 0 0; overflow: hidden; min-height: 2px; }
 .wb-stack span { display: block; min-height: 1px; }
-.wb-bar i { font: 700 11px system-ui; position: absolute; top: -2px; }
-.wb-bar small { position: absolute; bottom: -18px; font-size: 10px; color: #666; }
+.wb-daybar i { font: 700 11px system-ui; position: absolute; top: -2px; }
+.wb-daybar small { position: absolute; bottom: -18px; font-size: 10px; color: #666; }
 .wb-stat { margin-bottom: 26px; }
 .wb-shape { border-collapse: collapse; font-size: 12.5px; }
 .wb-shape td, .wb-shape th { padding: 2px 8px; border-bottom: 1px solid #eee; text-align: right; }

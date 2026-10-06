@@ -362,7 +362,7 @@
       const totals = days.map((d) => keys.reduce((t, k) => t + (d[k] || 0), 0));
       const peak = Math.max(1, ...totals);
       if (!totals.some(Boolean)) return '';
-      return `<div class="wb-stat"><h3>${title}</h3><div class="wb-bars">${days.map((d, i) => `<div class="wb-bar" title="${d.day}: ${keys.map((k) => `${k.replace(/_/g, ' ')} ${d[k] || 0}`).join(', ')}">
+      return `<div class="wb-stat"><h3>${title}</h3><div class="wb-daybars">${days.map((d, i) => `<div class="wb-daybar" title="${d.day}: ${keys.map((k) => `${k.replace(/_/g, ' ')} ${d[k] || 0}`).join(', ')}">
         <div class="wb-stack" style="height: ${Math.round(100 * totals[i] / peak)}%">${keys.map((k, j) => d[k] ? `<span style="flex: ${d[k]}; background: ${colors[j]}"></span>` : '').join('')}</div>
         <i>${totals[i] || ''}</i><small>${d.day.slice(5)}</small></div>`).join('')}</div>
         ${keys.length > 1 ? `<p class="wb-faint">${keys.map((k, j) => `<span class="sc-key" style="--key: ${colors[j]}"></span>${k.replace(/^\w+_/, '').replace(/_/g, ' ')}`).join(' · ')}${note ? ' · ' + note : ''}</p>` : note ? `<p class="wb-faint">${note}</p>` : ''}</div>`;
