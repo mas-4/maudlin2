@@ -716,7 +716,19 @@
     document.body.classList.add('dragging');
     ghost.hidden = false;
     ghost.textContent = label(drag.item);
+    groupTray(drag.item);
     move(ev);
+  }
+  // Dragging a motif: every group (or genre) pinned above the tree as a drop, so one far up the list is in reach
+  function groupTray(item) {
+    const tray = $('#gtray');
+    if (!item || item.kind !== 'motif') { tray.hidden = true; return; }
+    const genre = S.groupBy === 'genre';
+    const all = genre ? [...(S.data.facets.genre || []).map((v) => ({id: v, name: v})), {id: '', name: 'no genre'}]
+      : [...S.data.groups, {id: '', name: 'no group'}];
+    tray.innerHTML = `<span class="wb-faint">${genre ? '🎭 genres' : '📁 groups'}:</span>` + all.map((g) =>
+      `<span class="wb-gchip" data-drop="${genre ? 'facet' : 'group'}" data-g="${esc(g.id)}">${genre ? '🎭' : g.id ? '📁' : '🗃️'} ${esc(g.name)}</span>`).join('');
+    tray.hidden = false;
   }
   function move(ev) {
     ghost.style.left = ev.clientX - 12 + 'px';  // below-left of the pointer (the choices pop up to its right)
@@ -775,6 +787,7 @@
     drag = null;
     document.body.classList.remove('dragging');
     ghost.hidden = true;
+    $('#gtray').hidden = true;
     $$('.dz-target').forEach((x) => x.classList.remove('dz-target'));
     if (!was.on) return;
     was.ended = Date.now();

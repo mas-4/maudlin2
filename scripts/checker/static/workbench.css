@@ -59,7 +59,13 @@ html, body.wb { max-width: 100vw; overflow-x: hidden; }
 /* the tree */
 .wb-group { margin-bottom: 8px; border-radius: 10px; }
 .wb-group.dz-target { outline: 3px dashed var(--teal); outline-offset: 2px; }
-.wb-ghead { display: flex; align-items: center; gap: 4px; font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; padding: 4px 2px; border-bottom: 2px solid #eee; }
+.wb-ghead { display: flex; align-items: center; gap: 4px; font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; padding: 4px 2px; border-bottom: 2px solid #eee;
+  position: sticky; top: 0; z-index: 2; background: white; }
+/* While a motif is dragged: every group (or genre) as a drop above the tree, wherever the tree is scrolled */
+.wb-gtray { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 6px 8px; max-height: 30%; overflow: auto;
+  background: #fff4c2; border-bottom: 2px solid var(--ink); }
+.wb-gchip { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; padding: 3px 10px; border: 2px dashed var(--ink); border-radius: 999px; background: white; }
+.wb-gchip.dz-target { border-style: solid; background: #c8f7c5; }
 .wb-gtools { margin-left: auto; opacity: 0; } .wb-ghead:hover .wb-gtools { opacity: 1; }
 .wb-row { display: flex; align-items: center; gap: 4px; padding: 3px 4px 3px calc(4px + var(--depth) * 16px); border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
 .wb-row:hover { background: #f3f0ff; }
