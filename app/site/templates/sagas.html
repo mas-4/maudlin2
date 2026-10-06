@@ -17,7 +17,7 @@
         <div class="saga-track-cards">
             {% for s in sagas %}
                 <div class="saga-card saga-track" id="saga-{{ s.id|e }}" style="--saga: {{ s.color|e }}" data-text="{{ s.text|e }}"{% if s.now %} data-now="1"{% endif %}>
-                    <h3>🧵 {{ s.name|e }}</h3>
+                    <h3>🧵 <a href="saga-{{ s.id|e }}.html">{{ s.name|e }}</a></h3>
                     <p class="saga-facts">{% if s.now %}<span class="saga-live">📰 on front pages now</span>{% else %}last on front pages {{ s.ended }} ET{% endif %}</p>
                     <p class="saga-facts">{{ s.parts|length }} parts · {{ s.outlets }} outlets · since {{ s.started }} ET · {{ s.lasted }}</p>
                     <div class="saga-lean" title="Outlets on any part: {{ s.left|e }} left, {{ s.center|e }} center, {{ s.right|e }} right{% if s.unrated %}, {{ s.unrated|e }} unrated{% endif %}">

@@ -1,0 +1,67 @@
+{% extends "page.html" %}
+
+{% macro banner(emoji, title, sub, color) %}<h2 class="section-divider stage-banner" style="--stage: {{ color|e }}"><span>{{ emoji }} {{ title }}</span></h2>
+    <p class="stage-sub">{{ sub }}</p>{% endmacro %}
+
+{% block content %}
+    <p class="story-page-crumb"><a href="sagas.html">← every saga</a> · <a href="index.html">front page</a></p>
+    <header class="story-hero saga-hero" style="--saga: {{ color|e }}">
+        <p class="story-kicker"><span>🧵 Saga file #{{ saga.id }}</span></p>
+        <h2 class="story-page-title">{{ saga.name|e }}</h2>
+        <p class="saga-facts">{{ since }} ET to {{ until }} ET{% if saga.now %} · 🔴 on the front pages now{% endif %}</p>
+        <ul class="story-stickers">
+            {% for k in stickers %}<li style="--sticker: {{ k.color|e }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
+        </ul>
+    </header>
+    <p class="table-intro story-page-intro">🧵 One running story, told across days: each part is a story of its own on the
+        front pages, joined to the others because our tools judged them one case, event or investigation as it
+        developed. A part can be joined wrongly; the saga tracker says how they're made.</p>
+
+    <ol class="story-flow saga-journey" aria-label="Its parts, in the order they broke">
+        {% for p in parts %}<li style="background: color-mix(in srgb, {{ p.color|e }} 22%, white)"><span class="flow-emoji" aria-hidden="true">{{ loop.index }}</span><span class="flow-text"><span class="flow-when">{{ p.when }} ET · on the front pages {{ p.lasted }}</span>{% if p.page %}<a href="{{ p.page|e }}">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}</span></li>{% endfor %}
+    </ol>
+
+    <section class="story-stage">
+        {{ banner('📰', 'Spread', 'each part on the front pages, hour by hour', '#00c2a8') }}
+        {% if coverage %}
+            <figure class="story-chart-figure">
+                {{ coverage.svg|safe }}
+                <figcaption>Front pages carrying each part at each hourly run, {{ coverage.from }} to {{ coverage.to }} ET (peak {{ coverage.peak }}), stacked by part:
+                    {% for p in parts %}<span class="sc-key" style="--key: {{ p.color|e }}"></span>{{ loop.index }}{% if not loop.last %} · {% endif %}{% endfor %}</figcaption>
+            </figure>
+        {% endif %}
+        {% if lanes %}
+            <figure class="story-chart-figure">
+                {{ lanes|safe }}
+                <figcaption>Its parts in the order they broke, each from when we first saw it on a front page to when we last
+                    did; beneath, the TV captions, radio newscasts and retellings, each in the color of the part it was
+                    about. Hover for details.</figcaption>
+            </figure>
+        {% endif %}
+    </section>
+
+    <section class="story-stage">
+        {{ banner('🧩', 'The parts', 'each one opens its own page', '#ff4fa3') }}
+        <div class="story-page-grid">
+            {% for p in parts %}
+                <div class="saga-card story-page-card" style="--saga: {{ p.color|e }}">
+                    <h3>{{ loop.index }}. {% if p.page %}<a href="{{ p.page|e }}">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}</h3>
+                    <p class="saga-facts">{{ p.when }} ET · {{ p.outlets }} outlets · on the front pages {{ p.lasted }}{% if p.now %} · 🔴 now{% endif %}</p>
+                    {% if p.first_title %}<p>“{{ p.first_title|e }}”{% if p.first_outlets %} <span class="tv-time">first: {{ p.first_outlets|join(', ') }}</span>{% endif %}</p>{% endif %}
+                    <p class="tv-time">{% if p.tv %}📺 {% for t in p.tv.channels %}{{ t.name }} {{ t.time }}{% if not loop.last %}, {% endif %}{% endfor %} {% endif %}{% if p.radio %}· 📻 {{ p.radio|length }} newscast{{ '' if p.radio|length == 1 else 's' }} {% endif %}{% if p.folklore %}· 🧶 retold by {{ p.folklore|sum(attribute='people') }}{% endif %}</p>
+                    {% if not p.page %}<p class="tv-time">(older than a week: no page of its own)</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="story-stage">
+        {{ banner('🧶', 'Retelling', 'what people online made of it, part by part', '#8a5cff') }}
+        {% if retellings %}
+            <ul class="radio-items">{% for f in retellings %}<li><span class="sc-key" style="--key: {{ f.color|e }}"></span>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people, on “{{ f.part|e }}”</span>
+                {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
+        {% else %}
+            <p class="stage-empty">🦗 Nobody's retelling any part of it online yet, as far as the daily report can tell.</p>
+        {% endif %}
+    </section>
+{% endblock %}

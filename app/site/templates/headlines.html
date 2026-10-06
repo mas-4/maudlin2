@@ -686,7 +686,7 @@
         <div class="saga-cards">
             {% for saga in saga_list %}
                 <div class="saga-card" style="--saga: {{ saga.color|e }}">
-                    <h3>🧵 {{ saga.name }}</h3>
+                    <h3>🧵 {% if saga.id %}<a href="saga-{{ saga.id|e }}.html">{{ saga.name }}</a>{% else %}{{ saga.name }}{% endif %}</h3>
                     <p class="saga-facts">{{ saga.parts|length }} parts · {{ saga.outlets }} outlets · started {{ saga.started }} ago</p>
                     <ol class="saga-parts">
                         {% for part in saga.parts %}
@@ -749,7 +749,7 @@
                 {% if cluster['saga'] %}
                     <div class="saga-ribbon" style="--saga: {{ cluster['saga']['color']|e }}"
                          title="Part of an ongoing story told in {{ cluster['saga']['size']|e }} parts, on {{ cluster['saga']['outlets']|e }} outlets">
-                        🧵 {{ cluster['saga']['name'] }} · part {{ cluster['saga']['part_of'][cluster['cluster']] }} of {{ cluster['saga']['size'] }}</div>
+                        🧵 {% if cluster['saga']['id'] %}<a href="saga-{{ cluster['saga']['id']|e }}.html">{{ cluster['saga']['name'] }}</a>{% else %}{{ cluster['saga']['name'] }}{% endif %} · part {{ cluster['saga']['part_of'][cluster['cluster']] }} of {{ cluster['saga']['size'] }}</div>
                 {% endif %}
                 <h4>{{ summaries[cluster['cluster']] }}</h4>
                 {% if cluster['blindspot'] %}

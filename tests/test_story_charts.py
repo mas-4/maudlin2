@@ -55,3 +55,16 @@ def test_stickers_count_each_stage_it_reached():
     by = {k['emoji']: k for k in got}
     assert by['📰']['big'] == 3 and by['📺']['big'] == '6 min' and by['📻']['small'] == 'radio newscast'
     assert by['🧶']['big'] == 7 and by['🧵']['big'] == '2 of 3' and '🔎' not in by
+
+
+def test_a_saga_draws_a_lane_per_part_and_coverage_stacked_by_part():
+    parts = [{'story': 1, 'label': 'Governor appoints a prosecutor', 'first': T, 'last': T + td(hours=30), 'outlets': 20,
+              'snapshots': [{'at': T + td(hours=h), 'outlets': 10} for h in (0, 1, 2)]},
+             {'story': 2, 'label': 'Faculty vote <no confidence>', 'first': T + td(hours=20), 'last': T + td(hours=26),
+              'outlets': 8, 'snapshots': [{'at': T + td(hours=2), 'outlets': 4}]}]
+    radio = [{'story': 2, 'at': sc.EASTERN.localize(datetime(2026, 10, 7, 10)), 'show': 'NPR', 'when': 'Oct 7, 10 AM', 'place': 1}]
+    svg = sc.saga_lanes(parts, [], radio, [], {})
+    assert '1. Governor appoints a prosecutor' in svg and '2. Faculty vote &lt;no confidence&gt;' in svg
+    assert '📻 radio' in svg and f'fill="{sc.PART_COLORS[1]}"' in svg  # the newscast in its part's color
+    cov = sc.saga_coverage(parts)
+    assert cov['peak'] == 14 and cov['svg'].count('<polygon') == 2

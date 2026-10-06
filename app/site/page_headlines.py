@@ -481,7 +481,7 @@ class HeadlinesPage:
             saga['part_of'] = {p['cluster']: n for n, p in enumerate(saga['parts_all'], start=1) if p['cluster'] is not None}
         for cluster in clusters_list:
             sid = saga_of.get(cluster['cluster'])
-            cluster['saga'] = {**sagas[sid], 'id': sid} if sid is not None else None
+            cluster['saga'] = {**sagas[sid], 'key': sid} if sid is not None else None  # 'id' stays the saved saga's id
         newest = {}
         for cluster in clusters_list:
             key = saga_of.get(cluster['cluster'], ('story', cluster['cluster']))

@@ -133,7 +133,7 @@
         {{ banner('🧵', 'Persistence', 'the running story it belongs to', '#ff4fa3') }}
         {% if story.saga %}
             <div class="saga-card story-page-card" style="--saga: #7a5cff">
-                <h3><a href="sagas.html">{{ story.saga.name|e }}</a></h3>
+                <h3><a href="saga-{{ story.saga.id|e }}.html">🧵 {{ story.saga.name|e }}</a></h3>
                 <ol class="saga-timeline">
                     {% for p in story.saga.parts %}
                         <li{% if p.id == story.id %} class="saga-now"{% endif %}><p class="saga-part-title">{% if p.id == story.id %}<b>{{ p.label|e }}</b> (this story){% else %}<a href="story-{{ p.id|e }}.html">{{ p.label|e }}</a>{% endif %}</p><p class="saga-part-facts">{{ p.when }} ET</p></li>

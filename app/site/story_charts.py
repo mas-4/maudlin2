@@ -193,3 +193,97 @@ def by_lean(story: dict, outlets: list[dict], height: int = 120) -> dict | None:
               if any(c[g] for c in counts)]
     return {'svg': svg, 'peak': peak, 'from': _local(t0).strftime('%b %-d, %-I %p'),
             'to': _local(t1).strftime('%b %-d, %-I %p'), 'legend': legend}
+
+
+PART_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff']  # the front page's pops, in turn
+
+
+def saga_lanes(parts: list[dict], tv_spots: list[dict], radio: list[dict], retold: list, channel_ink: dict) -> str | None:
+    """A saga's parts in the order they broke: a row each, a bar from first to last seen on the front pages, in the
+    part's color, and beneath, its TV captions, radio newscasts and retellings, each in the color of its part.
+    `parts`: [{'story', 'label', 'first', 'last', 'outlets'}]; spots and newscasts carry 'story'; retold: [(when, story)]"""
+    if not parts:
+        return None
+    color = {p['story']: PART_COLORS[i % len(PART_COLORS)] for i, p in enumerate(parts)}
+    radio_at = [(r['at'].astimezone(pytz.UTC).replace(tzinfo=None), r) for r in radio]
+    t0 = min(p['first'] for p in parts) - td(hours=1)
+    t1 = max([p['last'] for p in parts] + [s['at'] for s in tv_spots] + [a for a, _ in radio_at] + [w for w, _ in retold if w])
+    t1 = max(t1, t0 + td(hours=3))
+    lanes = [(n, k) for n, k in (('📺 TV', 'tv'), ('📻 radio', 'radio'), ('🧶 online', 'online'))
+             if {'tv': tv_spots, 'radio': radio_at, 'online': retold}[k]]
+    top, label_w = 6, 210
+    rows_end = top + ROW_H * len(parts)
+    lanes_top = rows_end + (8 if lanes else 0)
+    bottom = lanes_top + ROW_H * len(lanes)
+    axis = Axis(t0, t1, label_w, WIDTH - 10)
+    out = _grid(axis, top - 4, bottom + 2)
+    for i, p in enumerate(parts):
+        y = top + i * ROW_H
+        name = p['label'] if len(p['label']) <= 34 else p['label'][:33] + '…'
+        x0, x1 = axis.x(p['first']), axis.x(p['last'])
+        out.append(f'<text x="{label_w - 6}" y="{y + 13}" class="sc-label" text-anchor="end">{i + 1}. {escape(name)}'
+                   f'<title>{escape(p["label"])}</title></text>'
+                   f'<rect x="{x0:.1f}" y="{y + 3}" width="{max(4.0, x1 - x0):.1f}" height="{ROW_H - 6}" rx="4" '
+                   f'fill="{color[p["story"]]}" stroke="#1f1f2e" stroke-width="0.8"><title>{escape(p["label"])}: '
+                   f'{_local(p["first"]).strftime("%b %-d, %-I %p")} to {_local(p["last"]).strftime("%b %-d, %-I %p")} ET'
+                   f'{", " + str(p["outlets"]) + " outlets" if p.get("outlets") else ""}</title></rect>')
+    for j, (name, kind) in enumerate(lanes):
+        y = lanes_top + j * ROW_H
+        out.append(f'<text x="{label_w - 6}" y="{y + 13}" class="sc-label" text-anchor="end">{name}</text>'
+                   f'<line x1="{label_w}" y1="{y + ROW_H / 2}" x2="{WIDTH - 10}" y2="{y + ROW_H / 2}" class="sc-lane"/>')
+        if kind == 'tv':
+            for s in tv_spots:
+                x = axis.x(s['at'])
+                w = max(2.0, axis.x(s['at'] + td(seconds=s['seconds'])) - x)
+                out.append(f'<rect x="{x:.1f}" y="{y + 3}" width="{w:.1f}" height="{ROW_H - 6}" '
+                           f'fill="{color.get(s["story"], channel_ink.get(s["channel"], "#888"))}" stroke="#1f1f2e" stroke-width="0.4">'
+                           f'<title>{escape(s["name"])}, {_local(s["at"]).strftime("%b %-d, %-I:%M %p")} ET: {escape(s["text"])}</title></rect>')
+        elif kind == 'radio':
+            for at, r in radio_at:
+                out.append(f'<circle cx="{axis.x(at):.1f}" cy="{y + ROW_H / 2}" r="{6 if r["place"] == 1 else 4}" '
+                           f'fill="{color.get(r["story"], "#e8463c")}" stroke="#1f1f2e" stroke-width="0.8"><title>'
+                           f'{escape(r["show"])}, {escape(r["when"])} ET</title></circle>')
+        else:
+            for when, story in retold:
+                if when:
+                    out.append(f'<text x="{axis.x(when):.1f}" y="{y + 14}" text-anchor="middle" class="sc-emoji">🧶'
+                               f'<title>retold online (the day\'s report)</title></text>')
+    height = bottom + 20
+    return (f'<svg viewBox="0 0 {WIDTH} {height}" width="{WIDTH}" height="{height}" role="img" class="story-chart" '
+            f'aria-label="The saga\'s parts over time, with TV, radio and online beneath">{"".join(out)}</svg>')
+
+
+def saga_coverage(parts: list[dict], height: int = 140) -> dict | None:
+    """Front pages carrying each part at each hourly run, stacked by part in its color: an SVG and the peak.
+    `parts` carry 'snapshots': [{'at', 'outlets'}]"""
+    times = sorted({s['at'] for p in parts for s in p.get('snapshots', [])})
+    if len(times) < 2:
+        return None
+    counts = []
+    for p in parts:
+        snap = {s['at']: s['outlets'] for s in p.get('snapshots', [])}
+        counts.append([snap.get(t, 0) for t in times])
+    totals = [sum(c[i] for c in counts) for i in range(len(times))]
+    peak = max(totals) or 1
+    axis = Axis(times[0], times[-1], 30, WIDTH - 10)
+    top, bottom = 8, height - 20
+
+    def y(v):
+        return bottom - (bottom - top) * v / peak
+    out = _grid(axis, top, bottom)
+    for v in sorted({peak, round(peak / 2)} - {0}):
+        out.append(f'<line x1="30" y1="{y(v):.1f}" x2="{WIDTH - 10}" y2="{y(v):.1f}" class="sc-grid"/>'
+                   f'<text x="24" y="{y(v) + 4:.1f}" class="sc-tick" text-anchor="end">{v}</text>')
+    below = [0] * len(times)
+    for i, (p, c) in enumerate(zip(parts, counts)):
+        above = [b + n for b, n in zip(below, c)]
+        if any(c):
+            pts = [f'{axis.x(t):.1f},{y(v):.1f}' for t, v in zip(times, above)]
+            back = [f'{axis.x(t):.1f},{y(v):.1f}' for t, v in reversed(list(zip(times, below)))]
+            out.append(f'<polygon points="{" ".join(pts + back)}" fill="{PART_COLORS[i % len(PART_COLORS)]}" '
+                       f'stroke="#1f1f2e" stroke-width="0.6"><title>{escape(p["label"])}</title></polygon>')
+        below = above
+    out.append(f'<line x1="30" y1="{bottom}" x2="{WIDTH - 10}" y2="{bottom}" stroke="#1f1f2e" stroke-width="1"/>')
+    return {'svg': f'<svg viewBox="0 0 {WIDTH} {height}" width="{WIDTH}" height="{height}" role="img" class="story-chart" '
+                   f'aria-label="Front pages carrying each part over time, peak {peak}">{"".join(out)}</svg>',
+            'peak': peak, 'from': _local(times[0]).strftime('%b %-d, %-I %p'), 'to': _local(times[-1]).strftime('%b %-d, %-I %p')}
