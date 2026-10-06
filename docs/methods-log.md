@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Word cloud: no made-up words.** The cloud folds plurals to their singular, and the folding turned "dies" into "dy"
+  (WordNet's -ies rule), so on Oct 6 a word "dy" gathered every death story of the day (Jim Bakker, Dennis Hastert, the
+  Kenya Ebola case). Now the cloud picks nouns before folding, never folds to a word of two letters or fewer, leaves
+  words in -ics alone, and drops "dies". On the day's 10,477 headlines this also took out verbs that had passed as
+  nouns ("calls", "plans", "vows", "warns") and two more mangled words ("leaves" as "leaf", "discusses" as "discus");
+  the top 25 words didn't change. Also: the top word is sized against the runner-up, not the smallest word, so it no
+  longer dwarfs the cloud, and on a phone it's no longer dropped for lack of room.
 - **One claim, told several ways.** A person can now say two claims in the motif index are the same claim: the one
   folds into the other in every motif either was in, its words kept as a variant of the kept claim, and a later
   telling in exactly those words is filed as the kept claim, not as a new one. A motif's claim count then counts

@@ -35,7 +35,9 @@ STOPWORDS.extend([
     "big", "could", "would", "may", "might", "show", "help", "face", "faces", "make", "take", "get", "set", "way",
     "city", "center", "rule", "plan", "record", "man", "woman", "leader", "report", "east", "west", "north", "south",
     "top", "first", "last", "next", "back", "today", "tonight", "inside", "here", "what", "why", "how", "know",
-    "state", "case", "end", "call", "look", "claim", "release", "history", "country", "world", "family", "issue"
+    "state", "case", "end", "call", "look", "claim", "release", "history", "country", "world", "family", "issue",
+    # verbs the tagger takes for plural nouns once the little words are gone ("Bakker dies" -> dies, as in dice)
+    "dies", "dead"
 ])
 # strip stray letters
 STOPWORDS.extend(list(string.ascii_lowercase))
@@ -55,8 +57,9 @@ PIPELINE = [
     Pipelines.tokenize,
     Pipelines.expand_contractions,
     partial(Pipelines.remove_stop, stopwords=STOPWORDS),
-    Pipelines.lemmatize,
+    # Nouns only, picked before the plural is folded, so the tagger reads each word as written ("dies" is a verb)
     Pipelines.pos_filter,
+    Pipelines.lemmatize,
     lambda x: ' '.join(x)
 ]
 

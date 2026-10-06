@@ -82,8 +82,17 @@ class Pipelines:
 
     @staticmethod
     def lemmatize(tokens: list[str]):
+        """Plural nouns to their singular, but never to a 'word' WordNet doesn't know: its -ies rule made "dies" into
+        "dy" (which WordNet knows, as dysprosium), and the word cloud showed "dy" for every death story of the day
+        (Oct 6). So a lemma of two letters or fewer is never taken, and words in -ics (physics, politics) keep their form."""
+        from nltk.corpus import wordnet
         lemmatizer = nltk.WordNetLemmatizer()
-        return [lemmatizer.lemmatize(tok) for tok in tokens]
+        out = []
+        for tok in tokens:
+            lemma = lemmatizer.lemmatize(tok)
+            keep = lemma == tok or len(lemma) <= 2 or tok.lower().endswith('ics') or not wordnet.synsets(lemma)
+            out.append(tok if keep else lemma)
+        return out
 
     @staticmethod
     def ngrams(tokens, n=2, sep=' ', stopwords=None):
