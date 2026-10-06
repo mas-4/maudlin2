@@ -159,6 +159,24 @@ def flow(st: dict, outlets: list[dict], tv: dict | None, radio: list[dict], folk
     return sorted(events, key=lambda e: e['at'])
 
 
+def wire_copied(headlines: list[dict]) -> dict:
+    """The outlets that ran an AP or Reuters headline on the story nearly word for word (the wire-share test,
+    app/analysis/wire.py): wire -> outlets"""
+    import pandas as pd
+    from app.analysis import wire
+    df = pd.DataFrame([{'title': h['title'], 'agency': h['outlet']} for h in headlines if h['title']])
+    if df.empty or not df['agency'].isin(wire.WIRES).any():
+        return {}
+    try:
+        copies = wire.wire_copies(df)
+    except Exception as e:  # noqa: extra; the page stands without it
+        logger.warning("Story pages: wire copies: %s", e)
+        return {}
+    wires = ', '.join(sorted(set(df.loc[df['agency'].isin(wire.WIRES), 'agency'])))
+    outlets = sorted(set(df.loc[copies, 'agency']))
+    return {'wires': wires, 'outlets': outlets} if outlets else {}
+
+
 def rewordings(headlines: list[dict]) -> list[dict]:
     """Outlets that ran more than one headline on the story (a reworded headline or a follow-up piece): the first and
     the latest"""
@@ -204,6 +222,7 @@ class StoryPages:
                 'names': list(dict.fromkeys(entities.canonical(n, aliases) for n in names.get(f"s{st['id']}", []))),
                 'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': folk.get(st['label'], []),
                 'extras': extras.get(str(st['id']), {}), 'rewordings': rewordings(st['headlines']),
+                'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), folk.get(st['label'], [])),
             }, os.path.join(Config.build, page_name(st['id'])))
         logger.info("...%d story pages", len(stories))

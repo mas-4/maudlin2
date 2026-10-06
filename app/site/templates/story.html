@@ -28,6 +28,7 @@
                 <figcaption>outlets with it on their front pages, {{ spark.from }} to {{ spark.to }} ET (peak {{ spark.peak }})</figcaption>
             </figure>
         {% endif %}
+        {% if wire %}<p title="Headlines nearly word for word the same as the wire service's, as on the outlets page">📡 wire copy: {{ wire.outlets|length }} outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires }} headline nearly word for word ({{ wire.outlets|join(', ') }})</p>{% endif %}
         {% if extras.curators %}<p>📌 linked by aggregators: {{ chips(extras.curators, '#888') }}</p>{% endif %}
         {% if extras.quotes %}<p>💬 quoted: {% for q in extras.quotes[:8] %}<span class="quote-chip">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span> {% endfor %}</p>{% endif %}
         {% if extras.wording %}<p>🗣️ only one side says: {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in extras.wording.get(s, []) %}<span class="wording-chip wording-{{ s }}">{{ emoji }} {{ p.phrase|e }}</span> {% endfor %}{% endfor %}</p>{% endif %}
