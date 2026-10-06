@@ -216,3 +216,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 
 .wb-transcript { line-height: 1.5; color: #333; }
 .wb-transcript mark { background: #fff1a8; padding: 0 2px; border-radius: 3px; font-weight: 600; }
+
+.wb-bigtext { cursor: text; display: block; }
+.wb-bigtext:hover { background: #fffbe8; border-radius: 6px; }
+.wb-claim-in { width: 100%; font: inherit; border: 0; border-bottom: 3px dashed var(--yellow); background: #fffbe8; resize: vertical; outline: none; }

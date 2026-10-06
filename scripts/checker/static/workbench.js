@@ -374,8 +374,8 @@
         </span></div>` : '';
     box.classList.toggle('checking', !!check);
     box.innerHTML = verdict + `<div class="wb-inspect" data-drop="claim">
-      <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}>${esc(c.claim)}
-        <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif</span></blockquote>
+      <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}><span class="wb-bigtext" title="click to correct the wording">${esc(c.claim)}</span>
+        <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif · <button class="wb-mini" data-editclaim="1" title="correct the wording (our summary, not the source)">✎ correct wording</button></span></blockquote>
       ${rec && rec.variants && rec.variants.length ? `<p class="wb-faint">≡ also told as: ${rec.variants.map((v) => '“' + esc(v) + '”').join(' · ')}</p>` : ''}
       <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
       ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-motifrow${r.checked === 'yes' ? ' fits' : ''}">${chip(e.id)}
@@ -388,7 +388,6 @@
       <div id="cl-results"></div>
       <div class="wb-sbtns wb-clacts">
         <button class="wb-btn" data-cl="new|">✨ new motif with it</button>
-        <button class="wb-btn" data-cl="correct|">✎ correct wording</button>
         ${ins.length ? '<button class="wb-btn" data-cl="nomotif|">∅ no motif</button>' : ''}
       </div>
       <h3>📜 where it came from</h3><div class="wb-detail" id="cl-detail">⏳</div>
@@ -801,6 +800,7 @@
     if (t.id === 'add-group') return ask(t, 'Name the new group').then((name) => name && act({action: 'group_add', name}, `📁 made “${name}”`));
     if (t.id === 'help-btn') return $('#help').showModal();
     if ((v = d('cl'))) { const [kind, id] = v.split('|'); return claimAction(kind, id); }
+    if (t.closest('[data-editclaim]') || (t.closest('.wb-bigtext') && !t.closest('textarea'))) return editClaim();
     // claim buttons
     const li = t.closest('.wb-claim');
     if (li && t.closest('[data-inspect]')) return inspect(li);
@@ -1017,6 +1017,31 @@
       if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
     });
     inp.addEventListener('blur', () => finish(true));
+  }
+
+  // The claim in the claim view edits where it is: a person's correction of our summary (never the source's words)
+  function editClaim() {
+    const box = $('#inbox .wb-bigtext');
+    if (!box || !S.claim || box.querySelector('textarea')) return;
+    const old = S.claim.claim;
+    box.innerHTML = `<textarea class="wb-claim-in" rows="3" aria-label="the claim's wording">${esc(old)}</textarea><span class="wb-faint">Enter saves · Esc cancels</span>`;
+    const ta = box.querySelector('textarea');
+    ta.focus();
+    ta.select();
+    let over = false;
+    const finish = (save) => {
+      if (over) return;
+      over = true;
+      const text = ta.value.trim();
+      if (save && text && text !== old) {
+        act({action: 'correct', claim: old, text}, '✎ corrected').then((ok) => { if (ok && S.claim) { S.claim.claim = text; renderInbox(); } });
+      } else renderInbox();
+    };
+    ta.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finish(true); }
+      if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+    });
+    ta.addEventListener('blur', () => finish(true));
   }
 
   // ---------- hover a motif: its note and a few claims ----------
