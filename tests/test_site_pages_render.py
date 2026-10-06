@@ -33,9 +33,9 @@ from app.site.page_radio import RadioPage
 from app.site.page_tv import TvPage
 from app.utils.config import Config
 
-PAGES = ['index.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
+PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
          'sagas.html', 'names.html', 'radio.html', 'tv.html']
-NAV_LINKS = ['headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'radio.html', 'tv.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
+NAV_LINKS = ['stories.html', 'headlines.html', 'agencies.html', 'edits.html', 'sagas.html', 'names.html', 'radio.html', 'tv.html', 'court.html', 'beyond.html', 'emotions.html', 'archive.html',
              'feed.xml', 'folklore.html', 'rumors.html', 'motifs.html', 'glossary.html']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000

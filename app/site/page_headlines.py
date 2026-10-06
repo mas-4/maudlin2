@@ -293,6 +293,7 @@ class HeadlinesPage:
         self.template = TemplateHandler('headlines.html', 'index.html')
         # The headline table has a page of its own, rendered from the same template (`page_part` picks the sections)
         self.table_page = TemplateHandler('headlines.html', 'headlines.html')
+        self.stories_page = TemplateHandler('headlines.html', 'stories.html')
         self.newsletter = TemplateHandler('newsletter.html')
         self.context = {'title': 'Current Headlines', 'page_title': 'Big News Day', 'breaking_minutes': BREAKING_MINUTES}
 
@@ -321,6 +322,8 @@ class HeadlinesPage:
         self.newsletter.write(self.context)
         self.write_feed()
         self.template.write({**self.context, 'page_part': 'front'})
+        self.stories_page.write({**self.context, 'page_part': 'stories', 'title': 'Every story',
+                                 'page_title': f'{Config.site_name} - Every story'})
         self.table_page.write({**self.context, 'page_part': 'table', 'title': 'Every Headline'})
         logger.info("...done")
 
@@ -442,6 +445,9 @@ class HeadlinesPage:
         stories = sync_stories(df)
         self.story_of = {int(k): story.id for k, story in stories.items()}  # cluster -> saved story, for sagas
         self.context['story_of'] = self.story_of  # stable ids for share links (cluster numbers change every run)
+        # Every link to a story card uses the saved story's id (s-123), never the card's place this hour (cluster
+        # numbers change every run: an outside reader found #story-2 and story-10.html naming different stories)
+        self.context['anchor_of'] = {int(k): f's-{sid}' for k, sid in self.story_of.items()}
         self.summarize(df, label_stories(df, stories))
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
@@ -505,7 +511,7 @@ class HeadlinesPage:
         self.meter_trends(clusters_list)
         self.make_agency_lists(clusters_list)
         # For the outlet pages: which current story each headline (by url) belongs to
-        SHARED['story_of_url'] = {a['url']: (int(c['cluster']), self.context['titles'][c['cluster']])
+        SHARED['story_of_url'] = {a['url']: (self.context['anchor_of'].get(int(c['cluster']), f"story-{int(c['cluster'])}"), self.context['titles'][c['cluster']])
                                   for c in clusters_list for a in c['data']}
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)

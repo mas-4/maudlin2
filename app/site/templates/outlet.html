@@ -49,7 +49,7 @@
     {% if now %}
         <ol class="outlet-now">
             {% for h in now %}
-                <li><a href="{{ h.url|e }}">{{ h.title }}</a>{% if h.story %} <a class="trend-both" href="index.html#story-{{ h.story[0]|e }}" title="Part of the story: {{ h.story[1]|e }}">📰 {{ h.story[1] }}</a>{% endif %}</li>
+                <li><a href="{{ h.url|e }}">{{ h.title }}</a>{% if h.story %} <a class="trend-both" href="stories.html#{{ h.story[0]|e }}" title="Part of the story: {{ h.story[1]|e }}">📰 {{ h.story[1] }}</a>{% endif %}</li>
             {% endfor %}
         </ol>
     {% else %}

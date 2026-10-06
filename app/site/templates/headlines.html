@@ -1,6 +1,9 @@
 {% extends "page.html" %}
 
 {% block content %}
+{% set cards_here = page_part in ('front', 'stories') %}
+{% macro card_id(c) %}{{ (anchor_of.get(c, 'story-' ~ c) if anchor_of is defined else 'story-' ~ c)|e }}{% endmacro %}
+{% macro card_href(c) %}{{ '' if cards_here else 'stories.html' }}#{{ card_id(c) }}{% endmacro %}
     <script>
         // Shared by the cloud, the story cards and the headline table (the front page and the table page)
         const BIAS_COLORS = {{ bias_colors|tojson }};
@@ -20,9 +23,10 @@
         const BIAS_INK = {{ bias_ink|tojson }};
     </script>
     {% if page_part != 'table' %}
+    {% if page_part == 'front' %}{# the cloud, the table of contents and the trend boxes: the front page only #}
     <figure class="wordcloud">
         {% if newsday %}
-            <a class="newsday-sticker {{ newsday.kind|e }}" href="#story-{{ newsday.cluster|e }}"
+            <a class="newsday-sticker {{ newsday.kind|e }}" href="{{ card_href(newsday.cluster) }}"
                title="On {{ newsday.outlets|e }} of {{ newsday.active|e }} outlets' front pages right now; first seen {{ newsday.age|e }} ago">
                 <span class="newsday-end" aria-hidden="true">{{ newsday.ends[0] }}</span>
                 <span class="newsday-body">
@@ -559,7 +563,7 @@
                     {% for story in news_trends %}
                         <li>
                             {% if story.saga %}<span class="saga-tag" style="--saga: {{ story.color|e }}" title="An ongoing story in {{ story.saga|e }} parts">🧵 {{ story.saga }} parts</span>{% endif %}
-                            <a href="#story-{{ story.cluster|e }}">{{ story.title }}</a>
+                            <a href="{{ card_href(story.cluster) }}">{{ story.title }}</a>
                             <span class="trend-posts" title="Outlets with it on their front page now, and all that covered it">{{ story.now }} on front pages now{% if story.outlets > story.now %} · {{ story.outlets }} in all{% endif %}</span>
                             {% if story.speed %}<span class="fast-break" title="{{ story.speed|e }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
                             {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name|e }}">{{ name }}</span>{% endfor %}
@@ -576,7 +580,7 @@
                         <li{% if loop.index > 6 %} class="trend-extra"{% endif %}>
                             <a href="{{ trend.link|e }}" title="{{ (trend.description or trend.display_name)|e }}">{{ trend.display_name }}</a>
                             {% if trend.post_count %}<span class="trend-posts">{{ "{:,}".format(trend.post_count) }}{% if box.key == 'google' %}+{% endif %} {{ box.unit }}</span>{% endif %}
-                            {% if trend.topic in box.matches %}<a class="trend-both" href="#story-{{ box.matches[trend.topic]|e }}" title="Also a top story in the news">news</a>{% endif %}
+                            {% if trend.topic in box.matches %}<a class="trend-both" href="{{ card_href(box.matches[trend.topic]) }}" title="Also a top story in the news">news</a>{% endif %}
                         </li>
                     {% endfor %}
                 </ol>
@@ -587,6 +591,7 @@
             </section>
         {% endfor %}
     </div>
+    {% endif %}
 
 
 
@@ -675,6 +680,7 @@
 
     </script>
 
+    {% if page_part == 'front' %}
     {% if saga_list %}
         <h2 class="section-divider" id="sagas"><span>Sagas</span></h2>
         <div class="saga-cards">
@@ -685,7 +691,7 @@
                     <ol class="saga-parts">
                         {% for part in saga.parts %}
                             <li{% if not part.now %} class="saga-earlier"{% endif %}>
-                                {% if part.now %}<a class="saga-part" href="#story-{{ part.cluster|e }}">{{ part.title }}</a>
+                                {% if part.now %}<a class="saga-part" href="{{ card_href(part.cluster) }}">{{ part.title }}</a>
                                 {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
                                 <span class="trend-posts">{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{% if part.now %}{{ part.age }} ago{% else %}off the front pages · {{ part.age }} ago{% endif %}</span>
                                 {% for f in part.feelings %}<span title="{{ f.name|e }}">{{ f.emoji }}</span>{% endfor %}
@@ -696,7 +702,15 @@
             {% endfor %}
         </div>
     {% endif %}
+    {% endif %}
+    {% if page_part == 'stories' %}
+    <p class="story-page-crumb"><a href="index.html">← back to the front page</a></p>
+    <h2 class="section-divider" id="current-stories"><span>📰 Every story</span></h2>
+    <p class="table-intro">Every story on the front pages we follow right now: the headlines that make it up, each outlet's
+        own, with what the trackers know about it. Search, sort and filter them here; each one's 📄 opens its own page.</p>
+    {% else %}
     <h2 class="section-divider" id="current-stories"><span>Current stories</span></h2>
+    {% endif %}
     <div class="table-filters story-sort" role="group" aria-label="Search, sort and filter stories">
         <span class="bar-group"><input type="search" class="edit-search story-search" placeholder="🔎 search stories and headlines" aria-label="Search stories"></span>
         <span class="bar-divider" aria-hidden="true"></span>
@@ -722,7 +736,7 @@
     <p class="edit-count story-count" aria-live="polite"></p>
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
-            <div class="story" id="story-{{ cluster['cluster']|e }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']]|e }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
+            <div class="story" id="{{ card_id(cluster['cluster']) }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']]|e }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
                  data-size="{{ cluster['outlets']|e }}" data-spice="{{ cluster['spice']|e }}"
                  data-lean="{{ cluster['lean']['value']|abs }}" data-mood="{{ cluster['mood']['value']|e }}"
                  {% if cluster['blindspot'] %}data-blindspot="{{ cluster['blindspot']['side'] }}"{% endif %}
@@ -1005,6 +1019,7 @@
         // The rows are a separate file of a few megabytes, fetched once the page is up. It's packed (pack_table in
         // page_headlines.py: lists instead of named fields, repeated values listed once); unpacked here into the
         // same rows with named fields, which is also what the download button saves
+        const ANCHORS = {{ (anchor_of if anchor_of is defined else {})|tojson }};  // story number -> its card's id (s-123)
         function unpackTable(data) {
             return data.rows.map(([outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story]) => {
                 const [agency, bias, rated] = data.outlets[outlet];
@@ -1096,7 +1111,7 @@
                 },
                 story: {
                     label: 'Story',
-                    cell: (r) => `<a class="badge table-story-badge" style="--tint: ${storyTint(r.story)}" href="#story-${r.story}"><span class="badge-emoji">📰</span>${esc(r.story_title)}</a>`,
+                    cell: (r) => `<a class="badge table-story-badge" style="--tint: ${storyTint(r.story)}" href="stories.html#${ANCHORS[r.story] || 'story-' + r.story}"><span class="badge-emoji">📰</span>${esc(r.story_title)}</a>`,
                     compare: (a, b) => a.story_title.localeCompare(b.story_title),
                     // Biggest stories first, each story's headlines together
                     order: (a, b) => b.story_size - a.story_size || a.story - b.story,
@@ -1131,7 +1146,7 @@
                     name: 'Headline',
                     attributes: rowTint,
                     formatter: (r) => gridjs.html(`<a href="${esc(r.url)}">${esc(r.title)}</a>`
-                        + (r.story !== null ? ` <a class="table-story" href="#story-${r.story}" title="Jump to its story">📌</a>` : '')),
+                        + (r.story !== null ? ` <a class="table-story" href="stories.html#${ANCHORS[r.story] || 'story-' + r.story}" title="Open its story">📌</a>` : '')),
                     sort: {compare: (a, b) => a.title.localeCompare(b.title)},
                 },
                 {
