@@ -63,6 +63,7 @@ class BeyondPage:
         self.template.write({
             'title': 'Beyond the front pages', 'items': items, 'directory': directory, 'kinds': KIND,
             'subject_counts': Counter(s for i in items for s in i['subjects']).most_common(),
+            'subject_emoji': subjects.EMOJI, 'subject_label': subjects.label,
             'kind_counts': Counter(i['kind'] for i in items).most_common(),
             'total_sources': sum(len(d['rows']) for d in directory),
         })

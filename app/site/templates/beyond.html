@@ -12,7 +12,7 @@
                 {% for k, n in kind_counts %}<button type="button" data-kind="{{ k }}">{{ kinds.get(k, ('', k))[0] }} {{ kinds.get(k, ('', k))[1]|lower }} <b>{{ n }}</b></button>{% endfor %}</span>
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">subject:</span>
-                {% for k, n in subject_counts %}<button type="button" data-subject="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+                {% for k, n in subject_counts %}<button type="button" data-subject="{{ k|e }}">{{ subject_emoji.get(k, '🏷️') }} {{ subject_label(k)|e }} <b>{{ n }}</b></button>{% endfor %}</span>
         </div>
         <div class="court-cards narrative-cards beyond-cards">
             {% for p in items %}
@@ -20,7 +20,7 @@
                     <p class="investigation-meta"><span class="investigation-source" style="--chip: {{ p.color }}"><span aria-hidden="true">{{ p.kind_emoji }}</span>{{ p.source|e }}</span>
                         <span class="trend-posts">{{ p.date }}</span></p>
                     <h4><a href="{{ p.url|e }}">{{ p.title|e }}</a></h4>
-                    {% if p.subjects %}<p class="rumor-shape">{% for s in p.subjects %}<span class="shape-family subject-tag">{{ s|e }}</span>{% endfor %}</p>{% endif %}
+                    {% if p.subjects %}<p class="subject-tags">{% for s in p.subjects %}<span class="subject-tag">{{ subject_emoji.get(s, '🏷️') }} {{ subject_label(s)|e }}</span>{% endfor %}</p>{% endif %}
                 </div>
             {% endfor %}
         </div>

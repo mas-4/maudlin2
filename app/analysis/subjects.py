@@ -19,6 +19,23 @@ SUBJECTS = ['elections and campaigns', 'Congress and legislation', 'the White Ho
             'Russia and Ukraine', 'China', 'the Middle East', 'Europe', 'Latin America', 'Asia', 'Africa',
             'national security and the military', 'corruption and scandal', 'conspiracy theories and disinformation',
             'culture and entertainment', 'sports', 'science', 'history', 'other']
+# An emoji and a capitalized label for each subject, for its tag on the page
+EMOJI = {'elections and campaigns': '🗳️', 'Congress and legislation': '🏛️', 'the White House and the presidency': '🦅',
+         'courts and the law': '⚖️', 'immigration': '🛂', 'the economy and jobs': '💼', 'taxes and government spending': '💸',
+         'health and medicine': '🩺', 'crime and policing': '🚓', 'guns': '🔫', 'abortion and reproductive rights': '🤰',
+         'race and civil rights': '✊', 'gender and sexuality': '🏳️‍🌈', 'religion': '🙏', 'education': '🎓',
+         'climate and energy': '🌍', 'technology and AI': '🤖', 'media and the press': '📰', 'foreign policy and war': '🌐',
+         'Israel and Gaza': '🕊️', 'Russia and Ukraine': '🪖', 'China': '🐉', 'the Middle East': '🕌', 'Europe': '🇪🇺',
+         'Latin America': '🌎', 'Asia': '🌏', 'Africa': '🌍', 'national security and the military': '🛡️',
+         'corruption and scandal': '💰', 'conspiracy theories and disinformation': '🕵️', 'culture and entertainment': '🎬',
+         'sports': '🏟️', 'science': '🔬', 'history': '📜', 'other': '🏷️'}
+
+
+def label(subject: str) -> str:
+    """'the White House and the presidency' -> 'The White House and the presidency'"""
+    return subject[:1].upper() + subject[1:]
+
+
 PROMPT = """A piece from {source}:
 {title}
 {summary}

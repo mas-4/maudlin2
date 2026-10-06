@@ -1,0 +1,21 @@
+/* Subject tags under each item on Beyond the front pages */
+.subject-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    margin: 0.4em 0 0;
+}
+
+.subject-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #1f1f2e;
+    background: white;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.05em 0.6em;
+    white-space: nowrap;
+}
