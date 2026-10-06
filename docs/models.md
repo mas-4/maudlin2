@@ -35,7 +35,7 @@ Qwen3.5, change its schemas that way.
 | Motif filing: judge the 8 closest motifs side by side; name a new one only if none fits | `motif_index.JUDGE_MODEL` | **gemma4:26b** | Oct 5–6 tests on the person's settled filings (below) | switched Oct 6 |
 | Motif matching of a new name to an existing motif | `motif_index.MODEL` (`match`) | qwen3:30b-a3b | — | untested |
 | Motif scope-note drafts | `motif_index.MODEL` (`gloss`) | qwen3:30b-a3b | prompt tuned by eye Oct 5 | untested against others |
-| Saga judge ("one running story?") | `sagas.JUDGE_MODEL` | qwen3:30b-a3b | the 8B refused real parts (Oct 5) | untested against new models; test set: saga_judgments.json hand vetoes |
+| Saga judge ("one running story?") | `sagas.JUDGE_MODEL` | **gemma4:26b** | Oct 6, 46 story pairs labeled by Claude (11 the same story): Gemma 40 of 46 agree, found 5 of the 11, none wrongly joined, 2.2 s a pair; qwen3:30b-a3b 41/46, 7 of 11, 1 wrongly joined, 33 s; qwen3.5:35b 40/46, 6, 1 wrong, 2.8 s; gpt-oss:120b as Gemma at 26 s. A wrong join is what a person has had to veto, so none wrong won | switched Oct 6 (cached verdicts kept) |
 | Saga names | `sagas.py` | qwen3:8b | — | untested |
 | Narrative threads ("same narrative told again?") | `narrative_threads.MODEL` | qwen3:30b-a3b | — | untested |
 | Focus Group voter claims | `focus_group.MODEL` | **gemma4:26b** | Oct 6, 12 transcript parts: all quotes found for every model; Gemma's claims the voters' own with sides; the 30B took a host's analysis for a voter's; Qwen3.5 35B found more but no sides | switched Oct 6 |
@@ -68,8 +68,8 @@ they named), each held out of the index and filed again.
 
 ## Next
 
-1. The other 30B jobs, one at a time, each with its own test (saga judge against the hand vetoes; Focus Group by quotes
-   found; running order by first words found; narrative threads by a person's checks).
+1. The remaining 30B jobs, each with its own test: narrative threads (by a person's checks), motif matching and scope
+   notes.
 2. The 8B labeller against qwen3.5:9b and gemma4:12b, once there are enough label verdicts.
 3. gpt-oss:120b for small, hard jobs where 30 seconds a call is affordable.
 

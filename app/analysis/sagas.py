@@ -58,7 +58,7 @@ _names: dict[frozenset, str] = {}
 # Iranian nationals both passed the word rule on Oct 4). Verdicts are cached by the headlines shown.
 JUDGMENTS = os.path.join(Config.data, 'saga_judgments.json')
 JUDGE_SAMPLE = 4  # headlines shown from each side
-JUDGE_MODEL = 'qwen3:30b-a3b'  # the 8B said no to parts it called 'related cases, different outcomes' (Oct 5)
+JUDGE_MODEL = 'gemma4:26b'  # Oct 6 test against 46 labeled pairs: no wrong joins, 2 s a pair (the 30B 33 s); see docs/models.md
 JUDGE_VERSION = 2  # verdicts cached under an older judge are asked again (hand verdicts are kept)
 JUDGE_PROMPT = """Two groups of news headlines. Are they parts of one ongoing news story: the same case, incident, \
 event, investigation or negotiation as it develops? Separate cases at the same court, separate crimes by people of the \
