@@ -164,7 +164,7 @@
     return `<div class="wb-row${open >= 0 ? ' open o' + (open % COLORS) : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
       ${fold ? `<button class="wb-fold" data-fold="m:${e.id}">${fold}</button>` : '<span class="wb-fold-sp"></span>'}
       <span class="wb-rname">${esc(e.name)}</span><span class="wb-badges">${badges}</span><i class="wb-n">${e.claims.length}</i>
-      <button class="wb-mini wb-side" data-open2="${e.id}" title="open beside (compare)">⧉</button></div>`;
+      <button class="wb-mini wb-side" data-open2="${e.id}" title="open it too, under the others (compare)">⧉</button></div>`;
   }
   function claimHitsHTML(words) {
     const local = [];
@@ -185,14 +185,14 @@
     if (!S.open.length) {
       $('#work-head').innerHTML = '';
       box.innerHTML = `<div class="wb-welcome"><div class="wb-big">👈 pick a motif</div>
-        <p>Click one on the left to open it here; <b>Shift-click</b> or ⧉ opens a second beside it.</p>
+        <p>Click one on the left to open it here; <b>Shift-click</b> or ⧉ opens another under it.</p>
         <p>Then drag: claims onto motifs, motifs onto motifs, motifs onto groups. Hover a target to see your choices. 🫳</p>
         <p class="wb-faint">The inbox on the right has decisions waiting: ✅ checks, 🔗 pairs, 1️⃣ singles, 📥 unfiled claims.</p></div>`;
       return;
     }
     box.dataset.count = S.open.length;
-    $('#work-head').innerHTML = S.open.length > 1 ? `<b>${S.open.length}</b> open side by side · a click opens in the outlined one; <b>Shift-click</b> or ⧉ adds another <button class="wb-mini" id="close-all">✕ close all</button>`
-      : 'Shift-click a motif (or ⧉) to open it beside this one, as many as you like';
+    $('#work-head').innerHTML = S.open.length > 1 ? `<b>${S.open.length}</b> open, one under another · a click opens in the outlined one; <b>Shift-click</b> or ⧉ adds another <button class="wb-mini" id="close-all">✕ close all</button>`
+      : 'Shift-click a motif (or ⧉) to open another under this one, as many as you like';
     box.innerHTML = S.open.map((id, i) => panel(S.by[id], i)).join('');
     S.open.forEach((id, i) => { if (S.extra[id]) fillExtra(id, i); });
   }
@@ -205,7 +205,7 @@
     const sharedIds = Object.keys(shared).sort((a, b) => shared[b] - shared[a]);
     const order = [...e.claims].sort((a, b) => (b.new - a.new));
     const sel = S.sel[i] || (S.sel[i] = new Set());
-    return `<article data-scroll class="wb-panel p${i % COLORS}${i === S.active && S.open.length > 1 ? ' active' : ''}" data-drop="motif" data-id="${e.id}" data-panel="${i}">
+    return `<article class="wb-panel p${i % COLORS}${i === S.active && S.open.length > 1 ? ' active' : ''}" data-drop="motif" data-id="${e.id}" data-panel="${i}">
       <header class="wb-phead">
         <div class="wb-titlerow"><h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="click to rename · drag onto another motif or a group">${esc(e.name)}</h2>
           <button class="wb-btn wb-close" data-close="${i}" title="close this motif">✕</button></div>

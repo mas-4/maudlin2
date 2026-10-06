@@ -75,13 +75,12 @@ html, body.wb { max-width: 100vw; overflow-x: hidden; }
 .wb-shared { font: 700 11px system-ui; background: #eee; border-radius: 6px; padding: 0 4px; }
 
 /* the open motifs */
-/* Open motifs sit side by side as columns, each scrolling on its own; past what fits, the row scrolls sideways */
+/* Open motifs stack one under another (easier to read than columns, Oct 6); the middle scrolls as one */
 .wb-work-head { padding: 5px 10px; font-size: 12.5px; color: #555; border-bottom: 2px solid #f0d6e6; min-height: 1.6em; }
 .wb-work-head:empty { display: none; }
-.wb-panels { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 10px 14px 12px 10px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; }
-.wb-panel { flex: 1 0 380px; max-width: 100%; display: block; overflow-y: auto; scroll-snap-align: start; background: white; border: 3px solid var(--ink);
+.wb-panels { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 10px 14px 14px 10px; overflow-y: auto; overflow-x: hidden; }
+.wb-panel { flex: none; display: block; background: white; border: 3px solid #1f1f2e;
   border-radius: 14px; padding: 10px 12px; min-width: 0; --pc: var(--pink); box-shadow: 4px 4px 0 var(--pc); }
-.wb-panels[data-count="1"] .wb-panel { flex-basis: 100%; }
 .wb-panel.p1 { --pc: var(--teal); } .wb-panel.p2 { --pc: var(--yellow); } .wb-panel.p3 { --pc: var(--blue); }
 .wb-panel.p4 { --pc: var(--orange); } .wb-panel.p5 { --pc: var(--purple); }
 .wb-panel.active { outline: 3px dashed var(--pc); outline-offset: 3px; }
@@ -158,7 +157,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   body.wb { height: auto; overflow: auto; }
   .wb-main { grid-template-columns: 1fr; }
   .wb-pane { max-height: 75vh; }
-  .wb-panel { flex-basis: 85vw; }
   .wb-drops { margin-left: 0; }
 }
 
