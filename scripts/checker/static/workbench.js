@@ -992,6 +992,10 @@
       x.kind ? `Source: ${x.kind}${x.title ? ', ' + x.title : ''}${x.url ? ' ' + x.url : ''}` : '',
       x.context ? `Quote: ${x.context.before}${x.context.quote}${x.context.after}` : x.quote ? `Quote: “${x.quote}”` : '',
       x.people ? `Told by ${x.people} people` : '',
+      (() => {  // the motifs it's in now, each with its scope note
+        const ms = motifsOf(claim);
+        return ms.length ? `Motifs (${ms.length}):\n` + ms.map((e) => `- ${e.name} (${e.id})${e.note ? ': ' + e.note : ': no note yet'}`).join('\n') : 'Motifs: none yet';
+      })(),
       x.summary || '',
       ['genre', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${lab[k]}`).join(' · '),
       posts.length ? `Posts (${posts.length}):\n${posts.join('\n')}` : '',
