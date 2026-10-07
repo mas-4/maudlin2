@@ -129,7 +129,7 @@
     : ((e.facets || {}).genre || '') === S.shelf.id;
   function renderShelf() {
     const ms = motifs();
-    const sc = (kind, id, label, n, color, tools) => `<span class="wb-schip${S.shelf && S.shelf.kind === kind && S.shelf.id === id ? ' on' : ''}" data-drop="${kind === 'group' ? 'group' : 'facet'}" data-g="${esc(id)}" data-shelf="${kind}|${esc(id)}" style="--g: ${color}" title="click: show only these · drop a motif here">${label} <i>${n}</i>${tools
+    const sc = (kind, id, label, n, color, tools) => `<span class="wb-schip${S.shelf && S.shelf.kind === kind && S.shelf.id === id ? ' on' : ''}"${kind === 'group' && id ? ` data-drag="group"` : ''} data-drop="${kind === 'group' ? 'group' : 'facet'}" data-g="${esc(id)}" data-shelf="${kind}|${esc(id)}" style="--g: ${color}" title="click: show only these · drop a motif here">${label} <i>${n}</i>${tools
       ? `<button class="wb-x" data-shelfedit="${kind}|${esc(id)}" title="rename">✎</button><button class="wb-x" data-shelfdel="${kind}|${esc(id)}" title="${kind === 'group' ? 'delete the group (its motifs stay)' : 'remove the genre (its motifs keep none)'}">✕</button>` : ''}</span>`;
     $('#shelf-groups').innerHTML = '<b class="wb-shelfhead">📁 groups</b>'
       + S.data.groups.map((g) => sc('group', g.id, '📁 ' + esc(g.name), ms.filter((e) => (e.groups || []).includes(g.id)).length, '#8a5cff', true)).join('')
@@ -149,7 +149,8 @@
     const flat = S.view !== 'all' || words.length || S.shelf;
     // Sections: the person's groups, or a facet's values (genre)
     const by = S.groupBy;
-    const groups = by === 'genre' ? [...(S.data.facets.genre || []).map((v) => ({id: v, name: v})), {id: '', name: 'no genre yet'}]
+    const groups = by === 'none' ? [{id: '', name: 'every motif'}]
+      : by === 'genre' ? [...(S.data.facets.genre || []).map((v) => ({id: v, name: v})), {id: '', name: 'no genre yet'}]
       : [...S.data.groups, {id: '', name: 'Ungrouped'}];
     let html = '';
     if (words.length) html += claimHitsHTML(words);
@@ -166,17 +167,17 @@
         // shows under both), and in their own groups too: a motif can be in several groups
         const roots = inG.filter((e) => !e.parents.some((p) => ids.has(p) && sectionsOf(S.by[p]).includes(g.id)));
         const fold = 'g:' + by + ':' + g.id, folded = S.folded.has(fold) || (by === 'genre' && !inG.length);
-        html += `<div class="wb-group${inG.length ? '' : ' wb-empty-sec'}" data-drop="${by === 'genre' ? 'facet' : 'group'}" data-g="${esc(g.id)}">
-          <div class="wb-ghead"><button class="wb-fold" data-fold="${esc(fold)}">${folded ? '▸' : '▾'}</button>
-            <span class="wb-gname">${by === 'genre' ? '🎭 ' : g.id ? '📁 ' : '🗃️ '}${esc(g.name)}</span> <i>${inG.length}</i>
-            ${g.id && by !== 'genre' ? `<span class="wb-gtools"><button class="wb-mini" data-grename="${g.id}" title="rename">✎</button><button class="wb-mini" data-gdelete="${g.id}" title="delete the group (its motifs stay)">🗑️</button></span>` : ''}</div>
+        html += `<div class="wb-group${inG.length ? '' : ' wb-empty-sec'}"${by === 'none' ? '' : ` data-drop="${by === 'genre' ? 'facet' : 'group'}"`} data-g="${esc(g.id)}">
+          <div class="wb-ghead"${g.id && by === 'group' ? ` data-drag="group" data-g="${esc(g.id)}" title="drag the group onto a genre to give all its motifs that genre"` : ''}><button class="wb-fold" data-fold="${esc(fold)}">${folded ? '▸' : '▾'}</button>
+            <span class="wb-gname">${by === 'none' ? '🧩 ' : by === 'genre' ? '🎭 ' : g.id ? '📁 ' : '🗃️ '}${esc(g.name)}</span> <i>${inG.length}</i>
+            ${g.id && by === 'group' ? `<span class="wb-gtools"><button class="wb-mini" data-grename="${g.id}" title="rename">✎</button><button class="wb-mini" data-gdelete="${g.id}" title="delete the group (its motifs stay)">🗑️</button></span>` : ''}</div>
           ${folded ? '' : roots.map((e) => branch(e, 0, g.id, new Set())).join('')}</div>`;
       }
     }
     const sel = S.msel.size ? `<div class="wb-selbar">☑️ <b>${S.msel.size}</b> selected · drag any of them to move them all <button class="wb-mini" data-clearsel="1">✕ clear</button></div>` : '';
     $('#tree').innerHTML = sel + (html || '<p class="wb-empty">🦗 nothing here</p>');
   }
-  const sectionsOf = (e) => (S.groupBy === 'genre' ? [(e.facets || {}).genre || ''] : (e.groups || []).length ? e.groups : ['']);
+  const sectionsOf = (e) => (S.groupBy === 'none' ? [''] : S.groupBy === 'genre' ? [(e.facets || {}).genre || ''] : (e.groups || []).length ? e.groups : ['']);
   let shownIds = new Set();
   function branch(e, depth, gid, seen) {
     if (seen.has(e.id)) return '';
@@ -787,6 +788,10 @@
   const menu = $('#dz-menu'), ghost = $('#ghost');
   let drag = null, pinned = null;
   function itemOf(el) {
+    if (el.dataset.drag === 'group') {  // a group, from its folder in the list or its chip on the shelf: all its motifs
+      const g = el.dataset.g, ids = motifs().filter((e) => (e.groups || []).includes(g)).map((e) => e.id);
+      return ids.length ? {kind: 'motifs', ids, group: (S.data.groups.find((x) => x.id === g) || {}).name} : null;
+    }
     if (el.dataset.drag === 'motif' && S.msel.size > 1 && S.msel.has(el.dataset.id)) return {kind: 'motifs', ids: [...S.msel].filter((i) => S.by[i])};
     if (el.dataset.drag === 'motif') return {kind: 'motif', id: el.dataset.id};
     const one = {claim: el.dataset.claim, source: el.dataset.source, src: el.dataset.src, ref: el.dataset.ref};
@@ -798,7 +803,7 @@
     }
     return {kind: 'claim', claims: [one]};
   }
-  function label(item) { return item.kind === 'motifs' ? `🧩 ${item.ids.length} motifs` : item.kind === 'motif' ? '🧩 ' + (S.by[item.id] || {}).name : '💬 ' + claimsName(item); }
+  function label(item) { return item.kind === 'motifs' ? (item.group ? `📁 ${item.group}: ` : '🧩 ') + `${item.ids.length} motifs` : item.kind === 'motif' ? '🧩 ' + (S.by[item.id] || {}).name : '💬 ' + claimsName(item); }
   function showMenu(t, list, pin, px, py) {
     menu.innerHTML = `<div class="dz-title">${pin ? 'drop it as…' : 'let go on a choice'}</div>` + list.map((z, k) => `<button class="dz-zone" data-zone="${k}" title="${esc(z.say || '')}">${esc(z.label)}</button>`).join('')
       + (pin ? '<button class="dz-zone dz-cancel" data-zone="cancel">cancel</button>' : '');
@@ -824,8 +829,9 @@
     if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.on) start(ev); }, 350);
   });
   function start(ev) {
-    drag.on = true;
     drag.item = itemOf(drag.h);
+    if (!drag.item) { drag = null; return; }  // an empty group: nothing to carry
+    drag.on = true;
     document.body.classList.add('dragging');
     ghost.hidden = false;
     ghost.textContent = label(drag.item);
@@ -888,6 +894,7 @@
       if (drag.touch) { if (far > 8) { clearTimeout(drag.timer); drag = null; } return; }
       if (far < 6) return;
       start(ev);
+      if (!drag) return;
     }
     ev.preventDefault();
     move(ev);
@@ -1051,15 +1058,22 @@
     const treeRow = t.closest('#tree .wb-row');
     if (treeRow && (ev.shiftKey || ev.ctrlKey || ev.metaKey) && !t.closest('button')) {  // selecting motifs in the list
       const id = treeRow.dataset.id;
-      if (ev.shiftKey && S.mlast) {
+      if (ev.shiftKey && S.mlast) {  // everything from the last one clicked to this one, as the list shows them
         const order = [...new Set($$('#tree .wb-row').map((r) => r.dataset.id))], i = order.indexOf(S.mlast), j = order.indexOf(id);
         if (i >= 0 && j >= 0) order.slice(Math.min(i, j), Math.max(i, j) + 1).forEach((x) => S.msel.add(x));
         else S.msel.add(id);
-      } else S.msel.has(id) ? S.msel.delete(id) : S.msel.add(id);
-      S.mlast = id;
+      } else {
+        S.msel.has(id) ? S.msel.delete(id) : S.msel.add(id);
+        S.mlast = id;
+      }
       return renderTree();
     }
-    if (treeRow && S.msel.size) { S.msel.clear(); S.mlast = null; renderTree(); }
+    if (treeRow) {  // a plain click: the start of a run for the next shift-click (and opens it, below)
+      const had = S.msel.size;
+      S.msel.clear();
+      S.mlast = treeRow.dataset.id;
+      if (had) renderTree();
+    }
     if ((v = d('clearsel'))) { S.msel.clear(); S.mlast = null; return renderTree(); }
     if ((v = d('open'))) return openMotif(v, !treeRow && (ev.shiftKey || ev.metaKey || ev.ctrlKey));
   });
