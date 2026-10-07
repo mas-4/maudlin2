@@ -537,6 +537,7 @@ def history() -> list[dict]:
                 # there's no telling which of them was first
                 'first_outlets': sorted({h[1] for h in heads if h[0] - heads[0][0] <= FIRST_RUN}),
                 'first_title': heads[0][2] if heads else None})
+    out = {k: v for k, v in out.items() if len(v['parts']) >= 2}  # a saga left with one part (a merge) is no saga
     for saga in out.values():
         saga['first'] = min(p['first'] for p in saga['parts'])
         saga['last'] = max(p['last'] for p in saga['parts'])

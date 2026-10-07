@@ -13,7 +13,7 @@ import pytz
 from sqlalchemy import func, update
 
 from app.analysis import llm
-from app.models import Session, SqlLock, Story, StoryHeadline, StorySnapshot, Headline, Article, Agency
+from app.models import Session, SqlLock, Saga, Story, StoryHeadline, StorySnapshot, Headline, Article, Agency
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 
@@ -157,6 +157,11 @@ def merge_stories(keep: int, gone: int, why: str = ''):
         record = {'into': keep, 'label': b.label, 'first_seen': b.first_seen.isoformat(), 'headlines': moved,
                   'at': dt.now(pytz.UTC).isoformat(timespec='seconds'), 'why': why}
         s.delete(b)
+        s.flush()
+        if a.saga_id and s.query(Story).filter(Story.saga_id == a.saga_id).count() < 2:  # a saga of one is no saga
+            saga = a.saga_id
+            a.saga_id = None
+            s.query(Saga).filter(Saga.id == saga).delete()
         s.commit()
     done = read_json(MERGES, {})
     done[str(gone)] = record
