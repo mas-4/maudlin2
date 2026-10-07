@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **A merge keeps everything.** Merging one motif into another moved its claims, related links and kinds, but lost its
+  own broader motifs, its groups, its genre, its note and the person's "not the same" verdicts, and its claims seen
+  when it was marked done showed as new again. Now all of it comes along (a broader motif only where it can't make the
+  motif a kind of itself; the note and genre only where the motif kept has none).
 - **A claim a person checked counts as seen.** A motif reaches the site once a person marks it done, with the claims it
   held then; claims filed since waited, marked new, until it was marked done again, even ones the person had checked
   ✓ one by one in the meantime. A claim checked ✓ or filed by hand now counts as seen: no longer new, and shown with

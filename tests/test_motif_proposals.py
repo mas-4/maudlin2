@@ -114,3 +114,36 @@ def test_nightly_once_a_day(tmp_path, monkeypatch):
     monkeypatch.setattr(mp, 'propose', lambda budget=None: runs.append(1) or {'finished': len(runs) > 1})
     mp.nightly(); mp.nightly(); mp.nightly()
     assert len(runs) == 2  # cut short once, finished the second time, then done for the day
+
+
+def test_a_merge_brings_everything_the_merged_motif_had(tmp_path, monkeypatch):
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    claim = lambda t, **k: {'claim': t, 'source': 'narrative', **k}  # noqa: E731
+    mi.save({'next': 6, 'claims': {mi.key('a'): ['M001'], mi.key('b'): ['M002']}, 'related': [['M001', 'M004']],
+             'not_same': [['M001', 'M005']], 'groups': {'G01': {'id': 'G01', 'name': 'Archetypes'}}, 'entries': {
+                 'M001': {'id': 'M001', 'name': 'x', 'claims': [claim('a')], 'parents': ['M003'], 'groups': ['G01'],
+                          'facets': {'genre': 'rumor'}, 'note': 'its note', 'note_by': 'person', 'done': [mi.key('a')]},
+                 'M002': {'id': 'M002', 'name': 'y', 'claims': [claim('b')], 'done': [mi.key('b')]},
+                 'M003': {'id': 'M003', 'name': 'broader', 'claims': []},
+                 'M004': {'id': 'M004', 'name': 'cousin', 'claims': []},
+                 'M005': {'id': 'M005', 'name': 'not it', 'claims': []},
+                 'M006': {'id': 'M006', 'name': 'a kind of x', 'claims': [], 'parents': ['M001']}}})
+    mi.merge('M001', 'M002')
+    index = mi.load()
+    y = index['entries']['M002']
+    assert mi.parents_of(y) == ['M003'] and mi.groups_of(y) == ['G01'] and y['facets'] == {'genre': 'rumor'}
+    assert y['note'] == 'its note' and mi.is_done(y) == 'done'  # x's claim was seen when x was marked done
+    assert ['M002', 'M004'] in index['related'] and ['M002', 'M005'] in index['not_same']
+    assert mi.parents_of(index['entries']['M006']) == ['M002']
+
+
+def test_a_merge_never_makes_a_motif_a_kind_of_its_own_kind(tmp_path, monkeypatch):
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    # x is a kind of k, and k is a kind of y: x into y mustn't make y a kind of k (its own kind)
+    mi.save({'next': 4, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'x', 'claims': [], 'parents': ['M003']},
+        'M002': {'id': 'M002', 'name': 'y', 'claims': []},
+        'M003': {'id': 'M003', 'name': 'k', 'claims': [], 'parents': ['M002']}}})
+    mi.merge('M001', 'M002')
+    entries = mi.load()['entries']
+    assert mi.parents_of(entries['M002']) == [] and mi.parents_of(entries['M003']) == ['M002']

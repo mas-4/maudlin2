@@ -475,11 +475,35 @@ def add(name: str) -> str:
 @exclusive
 def merge(source: str, target: str):
     """Fold `source` into `target`: its claims and phrases move over (a claim in both counts once), and its number
-    points to `target`."""
+    points to `target`. Everything else it had comes along too (Oct 7; until then its broader motifs, groups, genre,
+    note and 'not the same' verdicts were lost): its related links and kinds, its broader motifs, its groups, its
+    genre and note where the target has none, the claims a person saw when marking it done, and 'not the same'
+    verdicts."""
     index = load()
     if source == target:
         return
     src, dst = index['entries'][source], index['entries'][target]
+    # its broader motifs, unless that would make the target a kind of itself or of one of its own kinds
+    below = {target}
+    while True:
+        more = {e['id'] for e in index['entries'].values() if set(parents_of(e)) & below} - below
+        if not more:
+            break
+        below |= more
+    ups = [p for p in parents_of(dst) + parents_of(src) if p != source and p not in below]
+    if ups or 'parents' in dst or 'parent' in dst:
+        dst.pop('parent', None)
+        dst['parents'] = list(dict.fromkeys(ups))
+    _set_groups(dst, list(dict.fromkeys(groups_of(dst) + groups_of(src))))
+    for k, v in (src.get('facets') or {}).items():
+        dst.setdefault('facets', {}).setdefault(k, v)
+    if src.get('note') and not dst.get('note'):
+        dst['note'], dst['note_by'] = src['note'], src.get('note_by', 'person')
+    if 'done' in src and 'done' in dst:  # both looked over: what was seen in either stays seen
+        dst['done'] = list(dict.fromkeys(dst['done'] + src['done']))
+    index['not_same'] = [p for p in (sorted([target if x == source else x for x in p]) for p in index.get('not_same', []))
+                         if p[0] != p[1]]
+    index['not_same'] = [p for i, p in enumerate(index['not_same']) if p not in index['not_same'][:i]]
     have = {key(c['claim']) for c in dst['claims']}
     dst['claims'] += [c for c in src['claims'] if key(c['claim']) not in have]
     dst['phrases'] = (dst.get('phrases', []) + src.get('phrases', []))[-20:]
