@@ -37,6 +37,8 @@ FOLKLORE = [
      'about': "Rumors the fact-checkers examined, read for their shape: what drives them, what plot they claim."},
     {'href': 'motifs.html', 'emoji': '🧩', 'name': 'Motif index',
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
+    {'href': 'motif-map.html', 'emoji': '🕸️', 'name': 'Motif map',
+     'about': 'The motif index as a map: which motifs are kinds of which, which go together.'},
 ]
 
 ABOUT = [

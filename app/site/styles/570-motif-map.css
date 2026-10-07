@@ -1,0 +1,325 @@
+/* The motif map (motif-map.html): the motif index as a map, on a card in the front page's style */
+
+.mm-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em 0.9em;
+    margin: 0.8em 0;
+    padding: 0.5em 0.8em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 12px;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.mm-search input {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.25em 0.8em;
+    box-shadow: 3px 3px 0 #8a5cff;
+    min-width: 14em;
+}
+
+.mm-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    color: #555;
+}
+
+.mm-dot {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    border-radius: 50%;
+    border: 2px solid #1f1f2e;
+    background: white;
+}
+
+.mm-dot.mm-kind {
+    background: #ffc400;
+}
+
+.mm-dot.mm-sub {
+    background: #9ee6da;
+}
+
+.mm-line {
+    display: inline-block;
+    width: 1.6em;
+    border-top: 2px solid #1f1f2e;
+}
+
+.mm-line.mm-related {
+    border-top: 3px dashed #8a5cff;
+}
+
+.mm-line.mm-shared {
+    border-top: 2px dotted #8a8f98;
+}
+
+.mm-size input {
+    width: 7em;
+    accent-color: #8a5cff;
+}
+
+.mm-group {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, var(--pop) 25%, white);
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 var(--pop);
+    padding: 0.15em 0.8em;
+    cursor: pointer;
+    transform: rotate(-1.5deg);
+}
+
+.mm-group[aria-pressed="false"] {
+    background: white;
+    box-shadow: none;
+    border-style: dashed;
+    color: #8a8f98;
+}
+
+/* No frame: the map runs edge to edge of the window like the front page's cloud (figure.wordcloud: --page-width is
+   the window without its scrollbar, set by the page's script; html clips the rest), and the card floats on it */
+.mm-wrap {
+    position: relative;
+    width: var(--page-width, 100vw);
+    margin-left: calc(50% - var(--page-width, 100vw) / 2);
+}
+
+.mm-map {
+    position: relative;
+    height: 88vh;
+    min-height: 480px;
+    background: radial-gradient(circle, color-mix(in srgb, #8a5cff 22%, transparent) 1.2px, transparent 1.4px) 0 0 / 22px 22px,
+        rgba(255, 255, 255, 0.72);
+}
+
+#mm-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+}
+
+#mm-svg:active {
+    cursor: grabbing;
+}
+
+.mm-zoom {
+    position: absolute;
+    left: 1em;
+    bottom: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+}
+
+.mm-zoom button {
+    width: 2.1em;
+    height: 2.1em;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+    box-shadow: 2px 2px 0 #ffc400;
+    cursor: pointer;
+}
+
+.mm-zoom button:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+}
+
+.mm-hull path {
+    fill: color-mix(in srgb, var(--pop) 16%, transparent);
+    stroke: var(--pop);
+    stroke-width: 2.5px;
+    stroke-dasharray: 7 5;
+    stroke-linejoin: round;
+}
+
+.mm-hull text {
+    font: 0.8em 'Bungee', cursive;
+    fill: #1f1f2e;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: color-mix(in srgb, var(--pop) 35%, white);
+    stroke-width: 5px;
+    pointer-events: none;
+}
+
+.mm-link {
+    stroke: #1f1f2e;
+    stroke-width: 1.6px;
+}
+
+.mm-link.mm-related {
+    stroke: #8a5cff;
+    stroke-width: 2.4px;
+    stroke-dasharray: 6 4;
+}
+
+.mm-link.mm-shared {
+    stroke: #8a8f98;
+    stroke-width: 1.4px;
+    stroke-dasharray: 2 3;
+}
+
+.mm-node {
+    cursor: pointer;
+    outline: none;
+}
+
+.mm-node circle {
+    stroke: #1f1f2e;
+    stroke-width: 2.2px;
+    filter: drop-shadow(2px 2px 0 #1f1f2e);
+    transition: transform 0.15s;
+}
+
+.mm-node:hover circle, .mm-node:focus-visible circle {
+    transform: scale(1.18);
+}
+
+.mm-node text {
+    font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive;
+    fill: #1f1f2e;
+    paint-order: stroke;
+    stroke: white;
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.mm-node text.mm-minor {
+    opacity: 0;
+}
+
+.mm-node:hover text.mm-minor, .mm-node.mm-picked text, .mm-node.mm-hit text, .mm-node:focus-visible text {
+    opacity: 1;
+}
+
+.mm-node.mm-picked circle {
+    stroke-width: 3.5px;
+    filter: drop-shadow(3px 3px 0 #ff4fa3);
+}
+
+.mm-node.mm-hit circle {
+    stroke: #ff4fa3;
+    stroke-width: 3.5px;
+}
+
+.mm-dim {
+    opacity: 0.15;
+}
+
+.mm-card {
+    position: absolute;
+    top: 1em;
+    right: 1.2em;
+    width: 22em;
+    max-height: calc(100% - 2em);
+    overflow-y: auto;
+    background: color-mix(in srgb, #8a5cff 8%, white);
+    border: 3px solid #1f1f2e;
+    border-left: 10px solid #8a5cff;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #ff4fa3;
+    padding: 0.8em 1em;
+}
+
+.mm-card h3 {
+    font: 700 1.25em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.1em 0 0.4em;
+}
+
+.mm-hint {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.mm-id {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0;
+}
+
+.mm-count {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0.7em 0 0;
+}
+
+.mm-note {
+    font-style: italic;
+    color: #333;
+}
+
+.mm-gtag {
+    display: inline-block;
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    background: color-mix(in srgb, var(--pop) 25%, white);
+    border: 1.5px solid var(--pop);
+    border-radius: 999px;
+    padding: 0 0.6em;
+}
+
+.mm-rel {
+    margin: 0.35em 0;
+    font-size: 0.9em;
+}
+
+.mm-chip {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: white;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.05em 0.6em;
+    margin: 0.1em 0;
+    cursor: pointer;
+}
+
+.mm-chip:hover {
+    background: color-mix(in srgb, #ffc400 30%, white);
+}
+
+.mm-claims {
+    padding-left: 1.1em;
+    margin: 0.3em 0;
+}
+
+.mm-claims li {
+    margin: 0.4em 0;
+    color: #444;
+}
+
+@media (max-width: 800px) {
+    .mm-map {
+        height: 70vh;
+        min-height: 360px;
+    }
+
+    .mm-card {
+        position: static;
+        width: auto;
+        max-height: none;
+        margin: 1em 16px;
+    }
+
+    .mm-search input {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .mm-search {
+        flex: 1 1 100%;
+    }
+}

@@ -1,0 +1,238 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h2>🕸️ Motif map</h2>
+    <div class="rumor-warning" role="note">
+        <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>
+        <p>Each motif is <b>the shape of a story as people tell it</b>, not a claim that it's true: many of the claims
+            filed under them are false, some are true.</p>
+    </div>
+    <p class="wip-banner">🚧 <b>Work in progress.</b> The <a href="motifs.html">motif index</a> drawn as a map: {{ motifs }}
+        motifs a person has checked, each a dot that grows with its claims. Lines join a motif to the broader kind it's
+        a kind of, to motifs a person marked related, and to motifs that share a claim{% if groups %}; the colored areas
+        are groups a person made of motifs that go together{% endif %}. Pick a dot to read its claims; drag to look
+        around, scroll or pinch to zoom.</p>
+
+    <div class="mm-bar">
+        <label class="mm-search">🔎 <input type="search" id="mm-search" placeholder="find a motif" list="mm-names" autocomplete="off"></label>
+        <datalist id="mm-names"></datalist>
+        <span class="mm-key"><i class="mm-dot mm-kind"></i> a broad kind</span>
+        <span class="mm-key"><i class="mm-dot mm-sub"></i> a kind of one</span>
+        <span class="mm-key"><i class="mm-dot"></i> on its own</span>
+        <span class="mm-key"><i class="mm-line"></i> kind of</span>
+        <span class="mm-key"><i class="mm-line mm-related"></i> related</span>
+        <span class="mm-key"><i class="mm-line mm-shared"></i> share a claim</span>
+        {% for g in groups %}<button type="button" class="mm-group" data-group="{{ g.id|e }}" style="--pop: {{ g.color|e }}" aria-pressed="true">📁 {{ g.name|e }} · {{ g.size }}</button>{% endfor %}
+        <label class="mm-key"><input type="checkbox" id="mm-lonely"> show motifs with no links</label>
+        <label class="mm-key mm-size">⚪ dot size <input type="range" id="mm-size" min="0.6" max="3" step="0.1" value="1.6"></label>
+    </div>
+
+    <div class="mm-wrap">
+        <div class="mm-map" id="mm-map">
+            <svg id="mm-svg" role="img" aria-label="A map of the motif index"></svg>
+            <div class="mm-zoom">
+                <button type="button" data-zoom="1.4" title="Zoom in">＋</button>
+                <button type="button" data-zoom="0.7" title="Zoom out">－</button>
+                <button type="button" data-zoom="0" title="Fit the whole map">⤢</button>
+            </div>
+        </div>
+        <aside class="mm-card" id="mm-card" aria-live="polite">
+            <p class="mm-hint">👆 Pick a dot to see its motif: what kind of story it is and the claims filed under it.</p>
+        </aside>
+    </div>
+    <p class="poll-note">Only motifs a person has checked appear, with the claims they saw in them. A claim accusing someone
+        named of a crime is shown with the name swapped out for who they are, unless they hold public office or the news
+        names them often. Every motif and all its claims are on <a href="motifs.html">the motif index</a>.</p>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script id="mm-data" type="application/json">{{ data|safe }}</script>
+    <script>
+    (function () {
+        // The window's width without its scrollbar, for the edge-to-edge map (as the front page's cloud does)
+        const setPageWidth = () => document.documentElement.style.setProperty('--page-width', document.documentElement.clientWidth + 'px');
+        setPageWidth();
+        new ResizeObserver(setPageWidth).observe(document.body);
+        const data = JSON.parse(document.getElementById('mm-data').textContent);
+        const $ = (s) => document.querySelector(s);
+        const byId = new Map(data.motifs.map((m) => [m.id, m]));
+        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+        const hidden = new Set();  // groups switched off
+        let picked = null, sim, zoomer, root, nodes, links;
+        $('#mm-names').innerHTML = data.motifs.map((m) => `<option value="${esc(m.name)}">`).join('');
+        let size = +$('#mm-size').value, zoomK = 1;  // the dot-size slider; the current zoom, for the names' offset
+        const r = (m) => (6 + 3.2 * Math.sqrt(m.count)) * size;
+        const fill = (m) => m.role === 'kind' ? '#ffc400' : m.role === 'sub' ? '#9ee6da' : '#fff';
+
+        function draw() {
+            const svg = d3.select('#mm-svg'), box = $('#mm-map'), W = box.clientWidth, H = box.clientHeight;
+            const deg = new Map();
+            data.links.forEach((l) => { deg.set(l.source, (deg.get(l.source) || 0) + 1); deg.set(l.target, (deg.get(l.target) || 0) + 1); });
+            const lonely = $('#mm-lonely').checked;
+            const kept = new Map((nodes || []).map((n) => [n.id, n]));
+            nodes = data.motifs.filter((m) => lonely || deg.get(m.id) || m.groups.some((g) => data.groups.some((x) => x.id === g)))
+                .map((m) => Object.assign({id: m.id, m}, kept.has(m.id) ? {x: kept.get(m.id).x, y: kept.get(m.id).y} : {}));
+            const ids = new Set(nodes.map((n) => n.id));
+            links = data.links.filter((l) => ids.has(l.source.id || l.source) && ids.has(l.target.id || l.target))
+                .map((l) => ({...l, source: l.source.id || l.source, target: l.target.id || l.target}));
+            svg.selectAll('*').remove();
+            svg.attr('viewBox', [0, 0, W, H]);
+            svg.append('defs').append('marker').attr('id', 'mm-arrow').attr('viewBox', '0 -5 10 10').attr('refX', 10)
+                .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto').append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#1f1f2e');
+            root = svg.append('g');
+            zoomer = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (ev) => {
+                root.attr('transform', ev.transform);
+                // names stay the same size on screen at any zoom, so a zoomed-out map is still readable
+                const k = zoomK = ev.transform.k;
+                root.selectAll('.mm-node text').style('font-size', `${12 / k}px`).style('stroke-width', `${4 / k}px`)
+                    .attr('x', (n) => r(n.m) + 4 / k).attr('y', 4 / k);
+                root.selectAll('.mm-hull text').style('font-size', `${11 / k}px`).style('stroke-width', `${5 / k}px`);
+            });
+            svg.call(zoomer).on('dblclick.zoom', null);
+            const groups = data.groups.filter((g) => !hidden.has(g.id));
+            const members = (g) => nodes.filter((n) => n.m.groups.includes(g.id));
+            const hull = root.append('g').selectAll('g').data(groups).join('g').attr('class', 'mm-hull').style('--pop', (g) => g.color);
+            hull.append('path');
+            hull.append('text').text((g) => '📁 ' + g.name);
+            const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'mm-link mm-' + l.kind)
+                .attr('marker-end', (l) => l.kind === 'kind' ? 'url(#mm-arrow)' : null);
+            link.append('title').text((l) => l.kind === 'kind' ? 'a kind of' : l.kind === 'related' ? 'related' : `${l.n} claim${l.n === 1 ? '' : 's'} in both`);
+            const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'mm-node')
+                .attr('tabindex', 0).attr('role', 'button').attr('aria-label', (n) => `${n.m.name}, ${n.m.count} claims`);
+            node.append('circle').attr('r', (n) => r(n.m)).attr('fill', (n) => fill(n.m));
+            node.append('text').attr('x', (n) => r(n.m) + 4).attr('y', 4).text((n) => n.m.name)
+                .attr('class', (n) => n.m.count > 1 || n.m.role ? '' : 'mm-minor');
+            node.on('click', (ev, n) => { ev.stopPropagation(); pick(n.id); })
+                .on('keydown', (ev, n) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(n.id); } });
+            node.call(d3.drag().on('start', (ev, n) => { if (!ev.active) sim.alphaTarget(0.2).restart(); n.fx = n.x; n.fy = n.y; })
+                .on('drag', (ev, n) => { n.fx = ev.x; n.fy = ev.y; })
+                .on('end', (ev, n) => { if (!ev.active) sim.alphaTarget(0); n.fx = null; n.fy = null; }));
+            svg.on('click', () => pick(null));
+            sim = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 90 : l.kind === 'related' ? 140 : 190)
+                    .strength((l) => l.kind === 'shared' ? 0.08 : 0.5))
+                // room for the names: dots push each other well apart, and a name's width keeps its neighbors off it
+                .force('charge', d3.forceManyBody().strength(-420).distanceMax(700))
+                .force('collide', d3.forceCollide().radius((n) => r(n.m) + 14 + Math.min(60, n.m.name.length * 2.2)).strength(0.7))
+                .force('x', d3.forceX(W / 2).strength(0.025)).force('y', d3.forceY(H / 2).strength(0.04))
+                .force('group', (alpha) => groups.forEach((g) => {
+                    const ms = members(g);
+                    if (ms.length < 2) return;
+                    const cx = d3.mean(ms, (n) => n.x), cy = d3.mean(ms, (n) => n.y);
+                    ms.forEach((n) => { n.vx += (cx - n.x) * 0.4 * alpha; n.vy += (cy - n.y) * 0.4 * alpha; });
+                }))
+                .on('tick', () => {
+                    hull.each(function (g) {
+                        const pts = [];
+                        members(g).forEach((n) => { const pad = r(n.m) + 16; for (let a = 0; a < 12; a++) pts.push([n.x + pad * Math.cos(a * Math.PI / 6), n.y + pad * Math.sin(a * Math.PI / 6)]); });
+                        const h = pts.length >= 3 ? d3.polygonHull(pts) : null;
+                        d3.select(this).select('path').attr('d', h ? 'M' + h.join('L') + 'Z' : null);
+                        d3.select(this).select('text').attr('x', h ? d3.mean(h, (p) => p[0]) : -9999).attr('y', h ? d3.min(h, (p) => p[1]) - 6 : -9999);
+                    });
+                    link.each(function (l) {
+                        const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1;
+                        const cut = l.kind === 'kind' ? r(l.target.m) + 3 : 0;
+                        d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
+                    });
+                    node.attr('transform', (n) => `translate(${n.x},${n.y})`);
+                })
+                .on('end', () => { if (!fitted) { fitted = true; fit(); } });
+            mark();
+        }
+
+        let fitted = false;
+        // the width of the map left of the card, where it floats over the map (wide screens)
+        const open = () => { const card = $('#mm-card'), W = $('#mm-map').clientWidth;
+            return getComputedStyle(card).position === 'absolute' ? W - card.offsetWidth - 40 : W; };
+        function fit(ns) {
+            ns = ns || nodes;
+            if (!ns.length) return;
+            const box = $('#mm-map'), W = box.clientWidth, H = box.clientHeight;  // the whole window: the card is small until a motif is picked
+            // the bulk of the map, not its farthest strays (they're a drag away)
+            const q = (k, p) => d3.quantile(ns, p, (n) => n[k]), edge = ns.length > 20 ? 0.04 : 0;
+            const x0 = q('x', edge) - 80, x1 = q('x', 1 - edge) + 80, y0 = q('y', edge) - 40, y1 = q('y', 1 - edge) + 40;
+            const k = Math.min(2, 0.95 * Math.min(W / (x1 - x0), H / (y1 - y0)));
+            d3.select('#mm-svg').transition().duration(600).call(zoomer.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
+        }
+
+        function neighbors(id) {
+            const out = new Set([id]);
+            links.forEach((l) => { if (l.source.id === id) out.add(l.target.id); if (l.target.id === id) out.add(l.source.id); });
+            return out;
+        }
+
+        function mark() {
+            const near = picked ? neighbors(picked) : null;
+            d3.selectAll('.mm-node').classed('mm-dim', (n) => near ? !near.has(n.id) : false).classed('mm-picked', (n) => n.id === picked);
+            d3.selectAll('.mm-link').classed('mm-dim', (l) => near ? !(l.source.id === picked || l.target.id === picked) : false);
+        }
+
+        function pick(id) {
+            picked = id;
+            mark();
+            const card = $('#mm-card');
+            if (!id) { card.innerHTML = '<p class="mm-hint">👆 Pick a dot to see its motif: what kind of story it is and the claims filed under it.</p>'; return; }
+            const m = byId.get(id);
+            const rel = (kind, label) => {
+                const ids = data.links.filter((l) => l.kind === kind && ((l.source.id || l.source) === id || (l.target.id || l.target) === id))
+                    .map((l) => ({from: l.source.id || l.source, to: l.target.id || l.target}));
+                const list = kind === 'kind' ? null : ids.map((x) => x.from === id ? x.to : x.from);
+                return list ? list : ids;
+            };
+            const up = rel('kind').filter((x) => x.from === id).map((x) => x.to), down = rel('kind').filter((x) => x.to === id).map((x) => x.from);
+            const chips = (ids) => ids.map((x) => `<button type="button" class="mm-chip" data-go="${esc(x)}">${esc(byId.get(x).name)}</button>`).join(' ');
+            const row = (emoji, label, ids) => ids.length ? `<p class="mm-rel">${emoji} <b>${label}</b> ${chips(ids)}</p>` : '';
+            const groups = m.groups.map((g) => data.groups.find((x) => x.id === g)).filter(Boolean);
+            card.innerHTML = `<p class="mm-id">${esc(m.id)} · first seen ${esc(m.first)}</p>
+                <h3>🧩 ${esc(m.name)}</h3>
+                ${groups.map((g) => `<span class="mm-gtag" style="--pop: ${esc(g.color)}">📁 ${esc(g.name)}</span>`).join(' ')}
+                ${m.note ? `<p class="mm-note">${esc(m.note)}</p>` : ''}
+                ${row('⬆️', 'a kind of', up)}${row('⬇️', 'its kinds', down)}${row('🔗', 'related', rel('related'))}${row('🤝', 'shares claims with', rel('shared'))}
+                <p class="mm-count">${m.count} claim${m.count === 1 ? '' : 's'}${m.count > m.claims.length ? `, the newest ${m.claims.length}` : ''}</p>
+                <ul class="mm-claims">${m.claims.map((c) => `<li>“${esc(c.claim)}” <span class="court-when">${c.url ? `<a href="${esc(c.url)}">${esc(c.source)}</a>` : esc(c.source)}</span></li>`).join('')}</ul>
+                <p class="saga-go"><a href="motifs.html#${esc(m.id)}">🧩 in the motif index →</a></p>`;
+            card.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+            if (window.matchMedia('(max-width: 800px)').matches) card.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }
+
+        function go(id) {
+            fitted = true;  // going somewhere: the first fit mustn't pull the view away after
+            if (!nodes.some((n) => n.id === id)) { $('#mm-lonely').checked = true; draw(); }
+            pick(id);
+            const n = nodes.find((x) => x.id === id), box = $('#mm-map');
+            if (n && n.x != null) d3.select('#mm-svg').transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate(open() / 2 - n.x * 1.4, box.clientHeight / 2 - n.y * 1.4).scale(1.4));
+            history.replaceState(null, '', '#' + id);
+        }
+
+        $('#mm-search').addEventListener('change', (ev) => {
+            const q = ev.target.value.trim().toLowerCase();
+            const m = data.motifs.find((x) => x.name.toLowerCase() === q) || data.motifs.find((x) => x.name.toLowerCase().includes(q));
+            if (q && m) go(m.id);
+        });
+        $('#mm-search').addEventListener('input', (ev) => {
+            const q = ev.target.value.trim().toLowerCase();
+            d3.selectAll('.mm-node').classed('mm-hit', (n) => q.length > 1 && n.m.name.toLowerCase().includes(q));
+        });
+        $('#mm-lonely').addEventListener('change', () => { fitted = false; draw(); });
+        $('#mm-size').addEventListener('input', (ev) => {
+            size = +ev.target.value;
+            d3.selectAll('.mm-node circle').attr('r', (n) => r(n.m));
+            d3.selectAll('.mm-node text').attr('x', (n) => r(n.m) + 4 / zoomK);
+            sim.force('collide').radius((n) => r(n.m) + 14 + Math.min(60, n.m.name.length * 2.2));
+            sim.alpha(0.15).restart();  // make room around the bigger dots
+        });
+        document.querySelectorAll('.mm-group').forEach((b) => b.addEventListener('click', () => {
+            const on = hidden.has(b.dataset.group);
+            on ? hidden.delete(b.dataset.group) : hidden.add(b.dataset.group);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            draw();
+        }));
+        document.querySelectorAll('[data-zoom]').forEach((b) => b.addEventListener('click', () => {
+            const k = +b.dataset.zoom;
+            k ? d3.select('#mm-svg').transition().duration(300).call(zoomer.scaleBy, k) : fit();
+        }));
+        draw();
+        const start = location.hash.slice(1);
+        if (byId.has(start)) setTimeout(() => go(start), 1200);
+    })();
+    </script>
+{% endblock %}
