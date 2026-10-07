@@ -31,6 +31,18 @@ body.dragging .map-drop { background: #eef9f7; }
 .map-gchip { border: 2px solid var(--g); border-radius: 999px; padding: 1px 10px; background: color-mix(in srgb, var(--g) 15%, white); font-weight: 600; cursor: pointer; user-select: none; }
 .map-gchip.off { opacity: .45; text-decoration: line-through; } body.dragging .map-gchip { border-style: dashed; }
 .node.dz-target circle { stroke-dasharray: 3 2; } #info li[data-claim] { padding: 1px 3px; } #info h3[data-id] { padding: 2px 4px; }
+/* The desk: a circle at the top right to drop motifs on; each stays open as a card in a stack down the right */
+#desk-drop { position: absolute; right: 14px; top: 10px; width: 46px; height: 46px; border-radius: 50%; border: 2.5px dashed #1f1f2e;
+  background: #fff; display: grid; place-items: center; font-size: 1.3em; z-index: 3; box-shadow: 3px 3px 0 #ffc400; cursor: default; }
+body.dragging #desk-drop { background: #fff6cc; transform: scale(1.12); }
+#desk-drop i { position: absolute; right: -4px; bottom: -4px; font: 700 11px system-ui; font-style: normal; background: #1f1f2e; color: #fff; border-radius: 999px; padding: 0 5px; }
+#desk { position: absolute; right: 10px; top: 66px; bottom: 10px; width: 330px; overflow: auto; display: none; flex-direction: column; gap: 10px; z-index: 2; padding: 2px 6px 6px 2px; }
+#desk.on { display: flex; }
+.desk-card { background: #fff; border: 2px solid #1f1f2e; border-radius: 12px; box-shadow: 4px 4px 0 #ffc400; padding: 6px 10px; font-size: .85em; flex: none; }
+.desk-card h3 { margin: .1em 0; font-size: 1em; padding: 2px 4px; } .desk-card ul { padding-left: 1.1em; margin: .2em 0 .4em; } .desk-card .x { float: right; cursor: pointer; border: 0; background: none; font-size: 1.05em; }
+.desk-card.closed ul, .desk-card.closed .more { display: none; } .desk-card .fold { cursor: pointer; border: 0; background: none; float: right; }
+body.desk-open #info { right: 352px; }
+.unlink { border: 0; background: none; cursor: pointer; color: #c0392b; font-size: .8em; padding: 0 2px; } .unlink:hover { background: #ffe3e7; border-radius: 4px; }
 </style>{% endblock %}
 {% block body %}
 <div class="bar"><input type="search" id="q" placeholder="🔎 find a motif">
@@ -45,7 +57,7 @@ body.dragging .map-drop { background: #eef9f7; }
   <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
   <span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
-<main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="menu"></div></div></main>
+<main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -180,24 +192,59 @@ function applyFocus() {
   d3.selectAll('.link').classed('dim', (l) => near ? !(l.source.id === focus || l.target.id === focus) : false);
   document.querySelectorAll('#tree span[data-id]').forEach((s) => s.classList.toggle('on', s.dataset.id === focus));
 }
-function names(ids) { return ids.filter((i) => byId[i]).map((i) => `<a class="go" data-id="${i}">${esc(byId[i].name)}</a>`).join(', '); }
+// Linked motifs, each with an ✕ that takes the link away (unlink: 'rel', 'up' = it's a kind of that one, 'down' = that one is a kind of it)
+function names(ids, id, unlink) {
+  return ids.filter((i) => byId[i]).map((i) => `<a class="go" data-id="${i}">${esc(byId[i].name)}</a>`
+    + (unlink ? `<button class="unlink" data-unlink="${unlink}|${id}|${i}" title="take this link away">✕</button>` : '')).join(', ');
+}
+// A motif's card, for the box that follows the focus and for the desk
+function cardHTML(id) {
+  const e = byId[id], kinds = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
+  const shared = links.filter((l) => l.kind === 'shared' && (l.source.id === id || l.target.id === id)).map((l) => l.source.id === id ? l.target.id : l.source.id);
+  return `<h3 data-id="${e.id}" title="drag onto a dot, a name or the 📌">🧩 ${esc(e.name)} <span class="meta">${e.id}</span></h3>
+    ${e.note ? `<p class="meta">${esc(e.note)}</p>` : ''}
+    ${e.parents.length ? `<p><b>a kind of</b> ${names(e.parents, id, 'up')}</p>` : ''}
+    ${kinds.length ? `<p><b>its kinds</b> ${names(kinds, id, 'down')}</p>` : ''}
+    ${e.related.length ? `<p><b>related</b> ${names(e.related, id, 'rel')}</p>` : ''}
+    ${shared.length ? `<p class="more"><b>shares claims with</b> ${names(shared)}</p>` : ''}
+    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b></p><ul data-motif="${e.id}">${e.claims.map((c) => `<li data-claim="${esc(c.claim)}" title="drag onto a dot or a name to file it there">${esc(c.claim)}</li>`).join('')}</ul>`;
+}
 function show(id) {
   focus = id; applyFocus();
   const box = $('#info');
   if (!id) { box.style.display = 'none'; return; }
-  const e = byId[id], kinds = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
-  const shared = links.filter((l) => l.kind === 'shared' && (l.source.id === id || l.target.id === id)).map((l) => l.source.id === id ? l.target.id : l.source.id);
-  box.innerHTML = `<button class="x" title="close">✕</button><h3 data-id="${e.id}" title="drag onto a dot or a name">🧩 ${esc(e.name)} <span class="meta">${e.id}</span></h3>
-    ${e.note ? `<p class="meta">${esc(e.note)}</p>` : ''}
-    ${e.parents.length ? `<p><b>a kind of</b> ${names(e.parents)}</p>` : ''}
-    ${kinds.length ? `<p><b>its kinds</b> ${names(kinds)}</p>` : ''}
-    ${e.related.length ? `<p><b>related</b> ${names(e.related)}</p>` : ''}
-    ${shared.length ? `<p><b>shares claims with</b> ${names(shared)}</p>` : ''}
-    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b></p><ul>${e.claims.map((c) => `<li data-claim="${esc(c.claim)}" title="drag onto a dot or a name to file it there">${esc(c.claim)}</li>`).join('')}</ul>
-    <p><a href="/motif-board" target="_blank">open the board</a></p>`;
+  box.innerHTML = `<button class="x" title="close">✕</button>${cardHTML(id)}<p><a href="/motif-board" target="_blank">open the board</a></p>`;
   box.style.display = 'block';
 }
-$('#info').addEventListener('click', (ev) => { if (ev.target.closest('.x')) show(null); const a = ev.target.closest('a.go'); if (a) center(a.dataset.id); });
+// The desk: motifs kept open as cards, in the order they were pinned (remembered in this browser)
+let desk = (() => { try { return JSON.parse(localStorage.getItem('map-desk') || '[]'); } catch (e) { return []; } })();
+const folded = new Set();
+function renderDesk() {
+  desk = desk.filter((id) => byId[id]);
+  try { localStorage.setItem('map-desk', JSON.stringify(desk)); } catch (e) { /* private window */ }
+  const box = $('#desk');
+  box.innerHTML = desk.map((id) => `<div class="desk-card${folded.has(id) ? ' closed' : ''}" data-card="${id}"><button class="x" data-unpin="${id}" title="take it off the desk">✕</button><button class="fold" data-foldcard="${id}" title="fold or unfold its claims">${folded.has(id) ? '▸' : '▾'}</button>${cardHTML(id)}</div>`).join('');
+  box.classList.toggle('on', desk.length > 0);
+  document.body.classList.toggle('desk-open', desk.length > 0);
+  $('#desk-drop').innerHTML = '📌' + (desk.length ? `<i>${desk.length}</i>` : '');
+}
+function pin(id) { desk = [id, ...desk.filter((x) => x !== id)]; renderDesk(); }
+function onCardClick(ev) {
+  const t = ev.target;
+  if (t.closest('#info .x')) return show(null);
+  const un = t.closest('[data-unpin]'); if (un) { desk = desk.filter((x) => x !== un.dataset.unpin); return renderDesk(); }
+  const f = t.closest('[data-foldcard]'); if (f) { const id = f.dataset.foldcard; folded.has(id) ? folded.delete(id) : folded.add(id); return renderDesk(); }
+  const u = t.closest('[data-unlink]');
+  if (u) {
+    const [how, id, other] = u.dataset.unlink.split('|');
+    if (how === 'rel') return act({action: 'unrelate', a: id, b: other});
+    if (how === 'up') return act({action: 'parent', id, parent: other, on: false});
+    return act({action: 'parent', id: other, parent: id, on: false});
+  }
+  const a = t.closest('a.go'); if (a) center(a.dataset.id);
+}
+$('#info').addEventListener('click', onCardClick);
+$('#desk').addEventListener('click', onCardClick);
 function center(id, again) {
   const n = nodes.find((x) => x.id === id);
   show(id);
@@ -212,11 +259,16 @@ function center(id, again) {
 // in the box is a claim. Over a dot or a name its choices pop up; let go on one.
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
 dragZones({
-  handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim]', target: '.node, #tree span[data-id], .map-drop, .map-gchip', minWidth: 300,
-  item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
+  handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim], #desk h3[data-id], #desk li[data-claim]',
+  target: '.node, #tree span[data-id], .map-drop, .map-gchip, #desk-drop, #desk h3[data-id]', minWidth: 300,
+  item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: h.closest('[data-motif]')?.dataset.motif || focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
   label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
-  name: (t) => t.classList.contains('map-drop') ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
+  name: (t) => t.classList.contains('map-drop') || t.id === 'desk-drop' ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
   zones: (item, t) => {
+    if (t.id === 'desk-drop') {
+      const id = item.type === 'motif' ? item.id : item.from;
+      return byId[id] ? [{label: '📌 open on the desk', say: `${q(byId[id].name)} stays open on the right while you work.`, run: () => pin(id)}] : [];
+    }
     if (t.classList.contains('map-gchip')) {
       if (item.type !== 'motif') return [];
       const g = data.groups.find((x) => x.id === t.dataset.g), a = byId[item.id], mine = a.groups || [];
@@ -288,7 +340,7 @@ async function load() {
   data = await (await fetch('/motif-board.json')).json();
   byId = Object.fromEntries(data.entries.map((e) => [e.id, e]));
   if (focus && !byId[focus]) focus = null;
-  groupChips(); tree(); filterTree(); draw(); if (focus) show(focus);
+  groupChips(); tree(); filterTree(); draw(); if (focus) show(focus); renderDesk();
 }
 ['#show-kind', '#show-related', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
 $('#q').addEventListener('input', () => { applyFocus(); filterTree(); });
