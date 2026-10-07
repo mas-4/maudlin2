@@ -261,6 +261,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-newnamed { margin-top: 6px; }
 
 /* Every post in a narrative, in the claim's "where it came from" */
+.wb-copy { float: right; margin-left: 6px; }
 .wb-posts { max-height: 22em; overflow: auto; border: 1.5px solid #ddd; border-radius: 8px; padding: 4px 8px; background: white; }
 .wb-posts summary { cursor: pointer; font-weight: 700; }
 .wb-posts q { display: block; margin: 4px 0; padding-bottom: 4px; border-bottom: 1px dashed #eee; }

@@ -934,10 +934,47 @@
     if (!x) { box.textContent = '😬 couldn’t load it'; return; }
     box.innerHTML = detailHTML(x, li.dataset.claim);
   }
+  // Where a claim came from as plain text, for the 📋 copy button: the claim, its source and every post kept
+  function detailText(x, claim) {
+    const lab = x.label || {};
+    const posts = (x.all_posts || []).length ? x.all_posts.map((p) => `- ${p.text}${p.n > 1 ? ` (×${p.n})` : ''}`)
+      : (x.examples || []).map((t) => `- ${t}`);
+    return [
+      `Claim: ${claim}`,
+      x.kind ? `Source: ${x.kind}${x.title ? ', ' + x.title : ''}${x.url ? ' ' + x.url : ''}` : '',
+      x.context ? `Quote: ${x.context.before}${x.context.quote}${x.context.after}` : x.quote ? `Quote: “${x.quote}”` : '',
+      x.people ? `Told by ${x.people} people` : '',
+      x.summary || '',
+      ['genre', 'villain', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${lab[k]}`).join(' · '),
+      posts.length ? `Posts (${posts.length}):\n${posts.join('\n')}` : '',
+    ].filter(Boolean).join('\n');
+  }
+  function copyText(text) {
+    // the clipboard API only works on https or localhost (the checker is opened over the LAN too) and can be refused:
+    // then the old way, a hidden text box selected and copied
+    const old = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok ? Promise.resolve() : Promise.reject(new Error('copy refused'));
+    };
+    return navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(text).catch(old) : old();
+  }
+  document.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-copy]');
+    if (!b) return;
+    ev.stopPropagation();
+    copyText(b.dataset.copy).then(() => toast('📋 copied'), () => toast('😬 couldn’t copy', true));
+  }, true);
   function detailHTML(x, claim) {
     const lab = x.label || {};
     return [
-      `<b>${esc(x.kind)}</b>`,
+      `<button class="wb-mini wb-copy" data-copy="${esc(detailText(x, claim))}" title="copy the claim, where it came from and every post">📋 copy</button><b>${esc(x.kind)}</b>`,
       x.title ? (x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)) : '',
       x.context ? `<div class="wb-transcript">🗣️ ${esc(x.context.before)}<mark>${esc(x.context.quote)}</mark>${esc(x.context.after)}${x.side ? ` <span class="wb-faint">· the voter: ${esc(x.side)}</span>` : ''}</div>`
         : x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',
