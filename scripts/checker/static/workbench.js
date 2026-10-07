@@ -1300,8 +1300,9 @@
   // ---------- adjustable columns: drag the bars between the panes; the widths are remembered ----------
   const main = $('.wb-main');
   function setCols(c) {
-    main.style.setProperty('--left', c.left + 'px');
-    main.style.setProperty('--right', c.right + 'px');
+    // capped to the window, so a width remembered from a wider window never pushes the inbox past the edge
+    main.style.setProperty('--left', `min(${c.left}px, 35vw)`);
+    main.style.setProperty('--right', `min(${c.right}px, 45vw)`);
   }
   let cols = store.get('cols', null);
   if (cols) setCols(cols);
