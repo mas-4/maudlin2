@@ -10,22 +10,26 @@
     <p class="wip-banner">🚧 <b>Work in progress.</b> The <a href="motifs.html">motif index</a> drawn as a map: {{ motifs }}
         motifs a person has checked, each a dot that grows with its claims. Lines join a motif to the broader kind it's
         a kind of, to motifs a person marked related, and to motifs that share a claim{% if groups %}; the colored areas
-        are groups a person made of motifs that go together{% endif %}. Pick a dot to read its claims; drag to look
+        are groups a person made of motifs that go together{% endif %}{% if genres %}, and a dot's color is its genre{% endif %}. Pick a dot to read its claims; drag to look
         around, scroll or pinch to zoom.</p>
 
     <div class="mm-bar">
         <label class="mm-search">🔎 <input type="search" id="mm-search" placeholder="find a motif" list="mm-names" autocomplete="off"></label>
         <datalist id="mm-names"></datalist>
-        <span class="mm-key"><i class="mm-dot mm-kind"></i> a broad kind</span>
+        <span class="mm-key"><i class="mm-dot mm-broad"></i> a broad kind</span>
         <span class="mm-key"><i class="mm-dot mm-sub"></i> a kind of one</span>
-        <span class="mm-key"><i class="mm-dot"></i> on its own</span>
         <span class="mm-key"><i class="mm-line"></i> kind of</span>
         <span class="mm-key"><i class="mm-line mm-related"></i> related</span>
         <span class="mm-key"><i class="mm-line mm-shared"></i> share a claim</span>
-        {% for g in groups %}<button type="button" class="mm-group" data-group="{{ g.id|e }}" style="--pop: {{ g.color|e }}" aria-pressed="true">📁 {{ g.name|e }} · {{ g.size }}</button>{% endfor %}
         <label class="mm-key"><input type="checkbox" id="mm-lonely"> show motifs with no links</label>
         <label class="mm-key mm-size">⚪ dot size <input type="range" id="mm-size" min="0.6" max="3" step="0.1" value="1.6"></label>
     </div>
+    {% if groups or genres %}<div class="mm-bar">
+        {% if groups %}<span class="mm-key" title="click a group to hide or show it">📁 groups</span>
+        {% for g in groups %}<button type="button" class="mm-group" data-group="{{ g.id|e }}" data-k="{{ g.k }}" aria-pressed="true">📁 {{ g.name|e }} · {{ g.size }}</button>{% endfor %}{% endif %}
+        {% if genres %}<span class="mm-key" title="a dot's color is its genre: click one to pick out its motifs">🎭 genres</span>
+        {% for g in genres %}<button type="button" class="mm-genre" data-genre="{{ g.name|e }}" data-k="{{ g.k }}" aria-pressed="false">{{ g.name|e }} · {{ g.size }}</button>{% endfor %}{% endif %}
+    </div>{% endif %}
 
     <div class="mm-wrap">
         <div class="mm-map" id="mm-map">
@@ -45,6 +49,7 @@
         names them often. Every motif and all its claims are on <a href="motifs.html">the motif index</a>.</p>
 
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="motif-map-layout.js"></script>
     <script id="mm-data" type="application/json">{{ data|safe }}</script>
     <script>
     (function () {
@@ -57,11 +62,21 @@
         const byId = new Map(data.motifs.map((m) => [m.id, m]));
         const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
         const hidden = new Set();  // groups switched off
+        let genre = null;  // the genre picked out, if any
+        const M = window.MotifMap;  // the layout and colors shared with the checker's map (motif-map-layout.js)
+        const groupOf = new Map(data.groups.map((g) => [g.id, g]));
+        const groupColor = (id) => M.groupColor(groupOf.get(id).k);
+        const genreK = new Map(data.genres.map((g) => [g.name, g.k]));  // a genre's place among all of them, its color
+        const genreColor = (v) => M.GENRE_COLORS[(genreK.get(v) || 0) % M.GENRE_COLORS.length];
+        document.querySelectorAll('.mm-group').forEach((b) => b.style.setProperty('--pop', groupColor(b.dataset.group)));
+        document.querySelectorAll('.mm-genre').forEach((b) => b.style.setProperty('--g', genreColor(b.dataset.genre)));
         let picked = null, sim, zoomer, root, nodes, links;
         $('#mm-names').innerHTML = data.motifs.map((m) => `<option value="${esc(m.name)}">`).join('');
         let size = +$('#mm-size').value, zoomK = 1;  // the dot-size slider; the current zoom, for the names' offset
         const r = (m) => (6 + 3.2 * Math.sqrt(m.count)) * size;
-        const fill = (m) => m.role === 'kind' ? '#ffc400' : m.role === 'sub' ? '#9ee6da' : '#fff';
+        const fill = (m) => m.genre ? genreColor(m.genre) : '#fff';  // its genre; the outline is its place in the kinds
+        const shownGroups = (n) => n.m.groups.filter((g) => groupOf.has(g) && !hidden.has(g));
+        const crossing = M.crossing(shownGroups);
 
         function draw() {
             const svg = d3.select('#mm-svg'), box = $('#mm-map'), W = box.clientWidth, H = box.clientHeight;
@@ -90,17 +105,18 @@
             svg.call(zoomer).on('dblclick.zoom', null);
             const groups = data.groups.filter((g) => !hidden.has(g.id));
             const members = (g) => nodes.filter((n) => n.m.groups.includes(g.id));
-            const hull = root.append('g').selectAll('g').data(groups).join('g').attr('class', 'mm-hull').style('--pop', (g) => g.color);
-            hull.append('path');
+            const hull = root.append('g').selectAll('g').data(groups).join('g').attr('class', 'mm-hull').style('--pop', (g) => groupColor(g.id));
+            hull.append('g');
             hull.append('text').text((g) => '📁 ' + g.name);
             const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'mm-link mm-' + l.kind)
                 .attr('marker-end', (l) => l.kind === 'kind' ? 'url(#mm-arrow)' : null);
             link.append('title').text((l) => l.kind === 'kind' ? 'a kind of' : l.kind === 'related' ? 'related' : `${l.n} claim${l.n === 1 ? '' : 's'} in both`);
             const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'mm-node')
+                .classed('mm-broad', (n) => n.m.broad).classed('mm-sub', (n) => n.m.sub)
                 .attr('tabindex', 0).attr('role', 'button').attr('aria-label', (n) => `${n.m.name}, ${n.m.count} claims`);
             node.append('circle').attr('r', (n) => r(n.m)).attr('fill', (n) => fill(n.m));
             node.append('text').attr('x', (n) => r(n.m) + 4).attr('y', 4).text((n) => n.m.name)
-                .attr('class', (n) => n.m.count > 1 || n.m.role ? '' : 'mm-minor');
+                .attr('class', (n) => n.m.count > 1 || n.m.broad || n.m.sub ? '' : 'mm-minor');
             node.on('click', (ev, n) => { ev.stopPropagation(); pick(n.id); })
                 .on('keydown', (ev, n) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(n.id); } });
             node.call(d3.drag().on('start', (ev, n) => { if (!ev.active) sim.alphaTarget(0.2).restart(); n.fx = n.x; n.fy = n.y; })
@@ -109,25 +125,16 @@
             svg.on('click', () => pick(null));
             sim = d3.forceSimulation(nodes)
                 .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 90 : l.kind === 'related' ? 140 : 190)
-                    .strength((l) => l.kind === 'shared' ? 0.08 : 0.5))
+                    .strength((l) => (l.kind === 'shared' ? 0.08 : 0.5) * (crossing(l) ? M.CROSSING : 1)))
                 // room for the names: dots push each other well apart, and a name's width keeps its neighbors off it
                 .force('charge', d3.forceManyBody().strength(-420).distanceMax(700))
                 .force('collide', d3.forceCollide().radius((n) => r(n.m) + 14 + Math.min(60, n.m.name.length * 2.2)).strength(0.7))
                 .force('x', d3.forceX(W / 2).strength(0.025)).force('y', d3.forceY(H / 2).strength(0.04))
-                .force('group', (alpha) => groups.forEach((g) => {
-                    const ms = members(g);
-                    if (ms.length < 2) return;
-                    const cx = d3.mean(ms, (n) => n.x), cy = d3.mean(ms, (n) => n.y);
-                    ms.forEach((n) => { n.vx += (cx - n.x) * 0.4 * alpha; n.vy += (cy - n.y) * 0.4 * alpha; });
-                }))
+                // groups apart: each drawn to a home of its own, non-members kept off its members
+                .force('group', M.groupForce(nodes, groups.map((g) => g.id), shownGroups, (n) => r(n.m), W, H, 40))
                 .on('tick', () => {
-                    hull.each(function (g) {
-                        const pts = [];
-                        members(g).forEach((n) => { const pad = r(n.m) + 16; for (let a = 0; a < 12; a++) pts.push([n.x + pad * Math.cos(a * Math.PI / 6), n.y + pad * Math.sin(a * Math.PI / 6)]); });
-                        const h = pts.length >= 3 ? d3.polygonHull(pts) : null;
-                        d3.select(this).select('path').attr('d', h ? 'M' + h.join('L') + 'Z' : null);
-                        d3.select(this).select('text').attr('x', h ? d3.mean(h, (p) => p[0]) : -9999).attr('y', h ? d3.min(h, (p) => p[1]) - 6 : -9999);
-                    });
+                    // each group a blob hugging its members: an outline in its color under a pale fill
+                    M.drawBlobs(hull, members, (n) => r(n.m) + 16, [{cls: 'mm-blob-edge', grow: 3}, {cls: 'mm-blob-fill', grow: 0}]);
                     link.each(function (l) {
                         const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1;
                         const cut = l.kind === 'kind' ? r(l.target.m) + 3 : 0;
@@ -137,6 +144,12 @@
                 })
                 .on('end', () => { if (!fitted) { fitted = true; fit(); } });
             mark();
+            markGenre();
+        }
+
+        function markGenre() {
+            d3.selectAll('.mm-node').classed('mm-gdim', (n) => genre !== null && n.m.genre !== genre);
+            document.querySelectorAll('.mm-genre').forEach((b) => b.setAttribute('aria-pressed', b.dataset.genre === genre ? 'true' : 'false'));
         }
 
         let fitted = false;
@@ -181,10 +194,11 @@
             const up = rel('kind').filter((x) => x.from === id).map((x) => x.to), down = rel('kind').filter((x) => x.to === id).map((x) => x.from);
             const chips = (ids) => ids.map((x) => `<button type="button" class="mm-chip" data-go="${esc(x)}">${esc(byId.get(x).name)}</button>`).join(' ');
             const row = (emoji, label, ids) => ids.length ? `<p class="mm-rel">${emoji} <b>${label}</b> ${chips(ids)}</p>` : '';
-            const groups = m.groups.map((g) => data.groups.find((x) => x.id === g)).filter(Boolean);
+            const groups = m.groups.map((g) => groupOf.get(g)).filter(Boolean);
             card.innerHTML = `<p class="mm-id">${esc(m.id)} · first seen ${esc(m.first)}</p>
                 <h3>🧩 ${esc(m.name)}</h3>
-                ${groups.map((g) => `<span class="mm-gtag" style="--pop: ${esc(g.color)}">📁 ${esc(g.name)}</span>`).join(' ')}
+                ${groups.map((g) => `<span class="mm-gtag" style="--pop: ${groupColor(g.id)}">📁 ${esc(g.name)}</span>`).join(' ')}
+                ${m.genre ? `<span class="mm-gtag" style="--pop: ${genreColor(m.genre)}">🎭 ${esc(m.genre)}</span>` : ''}
                 ${m.note ? `<p class="mm-note">${esc(m.note)}</p>` : ''}
                 ${row('⬆️', 'a kind of', up)}${row('⬇️', 'its kinds', down)}${row('🔗', 'related', rel('related'))}${row('🤝', 'shares claims with', rel('shared'))}
                 <p class="mm-count">${m.count} claim${m.count === 1 ? '' : 's'}${m.count > m.claims.length ? `, the newest ${m.claims.length}` : ''}</p>
@@ -225,6 +239,10 @@
             on ? hidden.delete(b.dataset.group) : hidden.add(b.dataset.group);
             b.setAttribute('aria-pressed', on ? 'true' : 'false');
             draw();
+        }));
+        document.querySelectorAll('.mm-genre').forEach((b) => b.addEventListener('click', () => {
+            genre = genre === b.dataset.genre ? null : b.dataset.genre;
+            markGenre();
         }));
         document.querySelectorAll('[data-zoom]').forEach((b) => b.addEventListener('click', () => {
             const k = +b.dataset.zoom;

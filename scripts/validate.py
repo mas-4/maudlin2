@@ -27,6 +27,8 @@ from app.utils import Config  # noqa: E402
 # The pages: Jinja templates in checker/templates (one base with the shared nav and undo), shared scripts and styles
 # in checker/static (the drag-with-drop-zones and undo code), served at /checker/static/
 CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
+# files the checker shares with the site, served from the site's static folder (the motif maps' layout)
+SHARED_STATIC = {'motif-map-layout.js': os.path.join(os.path.dirname(CHECKER), '..', 'app', 'site', 'static', 'motif-map-layout.js')}
 # The nav: the workbench and the map first (the two the person works in), then the older single-purpose motif pages,
 # then the other tools. The organizer, the singles page and the board were dropped Oct 7 (the workbench does their
 # work; the board's /motif-board.json and POST /motif-board stay, for the map and the other pages). (path, label, section)
@@ -610,7 +612,7 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split('?')[0]
         if path.startswith('/checker/static/'):
             name = os.path.basename(path)
-            file = os.path.join(CHECKER, 'static', name)
+            file = SHARED_STATIC.get(name) or os.path.join(CHECKER, 'static', name)
             if os.path.splitext(name)[1] not in STATIC_TYPES or not os.path.isfile(file):
                 self.send_error(404)
                 return

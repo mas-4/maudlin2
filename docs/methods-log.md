@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **The public motif map looks like the working one.** The site's map was drawn once (Oct 6) and missed a day of
+  layout work on the checker's map. Both now draw through one script (static/motif-map-layout.js): each group placed
+  on a ring of its own, links out of a group pulling weakly, a group drawn as a blob around its members with
+  non-members kept out, a dot's fill its genre and its outline its place in the kinds, and one color per group and
+  genre on every page. The site shows genres only once a checked motif has one. Editing stays on the checker.
 - **A motif a person made and wrote a note for is done.** Marking it done was a second step after writing the note,
   and 92 motifs the person had made (or renamed) and described sat unmarked, off the site. Now saving a note of
   theirs (or keeping the model's draft) on such a motif marks it done, with the claims it holds then; one they unmark

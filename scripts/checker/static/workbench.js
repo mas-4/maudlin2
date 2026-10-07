@@ -122,8 +122,7 @@
   // A chip each, with its count: click it to show only its motifs on the left (again to show all), drop a motif on it to
   // put it in (a group as well as its others; a genre instead of its genre), ✎ renames, ✕ removes. Groups and genres
   // are separate things: a motif can be in groups and have a genre
-  const GENRE_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff', '#2bb673', '#e0102e', '#a0522d', '#00a6d6', '#c2185b', '#6b8e23', '#ff8fab', '#5c6bc0'];
-  const genreColor = (v) => GENRE_COLORS[Math.max(0, (S.data.facets.genre || []).indexOf(v)) % GENRE_COLORS.length];
+  const genreColor = (v) => MotifMap.genreColor(S.data.facets.genre || [], v);  // the maps' colors (motif-map-layout.js)
   const inShelf = (e) => !S.shelf ? true : S.shelf.kind === 'group'
     ? (S.shelf.id ? (e.groups || []).includes(S.shelf.id) : !(e.groups || []).length)
     : ((e.facets || {}).genre || '') === S.shelf.id;

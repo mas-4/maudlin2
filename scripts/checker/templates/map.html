@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Motif map{% endblock %}
-{% block head %}<link rel="stylesheet" href="/checker/static/drag.css"><script src="/checker/static/drag.js"></script><style>
+{% block head %}<link rel="stylesheet" href="/checker/static/drag.css"><script src="/checker/static/drag.js"></script><script src="/checker/static/motif-map-layout.js"></script><style>
 html, body { height: 100%; } body { font-family: system-ui, sans-serif; background: #fffdf6; color: #1f1f2e; margin: 0; display: flex; flex-direction: column; }
 nav, .bar { padding: 6px 14px; } nav a { margin-right: 1em; }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 2px solid #1f1f2e; font-size: .9em; }
@@ -140,29 +140,8 @@ function draw() {
   hulls.append('g').attr('class', 'map-blob').attr('fill', (g) => groupColor(g.id)).attr('stroke', (g) => groupColor(g.id));
   hulls.append('text').attr('class', 'map-glabel').attr('fill', (g) => groupColor(g.id)).attr('text-anchor', 'middle').text((g) => '📁 ' + g.name);
   const members = (g) => nodes.filter((n) => (n.e.groups || []).includes(g.id));
-  // A group as a blob hugging its members (a bubble set): a bubble round each, joined by bands along the shortest links
-  // between them (a minimum spanning tree), a band longer than BLOB_GAP cut, so a far-off member is an island of its
-  // own. Until Oct 7 a convex hull round all of them took in every motif in between (non-members looked like members)
-  function drawHulls() {
-    hulls.each(function (g) {
-      const ms = members(g), pad = (n) => r(n) + 14, edges = [];
-      if (ms.length > 1) {
-        const inTree = new Set([0]), best = ms.map((n) => [Math.hypot(n.x - ms[0].x, n.y - ms[0].y), 0]);
-        while (inTree.size < ms.length) {
-          let k = -1;
-          ms.forEach((_, i) => { if (!inTree.has(i) && (k < 0 || best[i][0] < best[k][0])) k = i; });
-          inTree.add(k);
-          if (best[k][0] <= BLOB_GAP) edges.push([ms[best[k][1]], ms[k]]);
-          ms.forEach((n, i) => { if (!inTree.has(i)) { const d = Math.hypot(n.x - ms[k].x, n.y - ms[k].y); if (d < best[i][0]) best[i] = [d, k]; } });
-        }
-      }
-      const blob = d3.select(this).select('.map-blob');
-      blob.selectAll('circle').data(ms, (n) => n.id).join('circle').attr('cx', (n) => n.x).attr('cy', (n) => n.y).attr('r', pad);
-      blob.selectAll('line').data(edges).join('line').attr('x1', (e) => e[0].x).attr('y1', (e) => e[0].y).attr('x2', (e) => e[1].x).attr('y2', (e) => e[1].y)
-        .attr('stroke-width', (e) => 1.6 * Math.min(pad(e[0]), pad(e[1])));
-      d3.select(this).select('text').attr('x', ms.length ? d3.mean(ms, (n) => n.x) : -9999).attr('y', ms.length ? d3.min(ms, (n) => n.y - pad(n)) - 4 : -9999);
-    });
-  }
+  // a group as a blob hugging its members (motif-map-layout.js, shared with the site's map)
+  const drawHulls = () => MotifMap.drawBlobs(hulls, members, (n) => r(n) + 14);
   const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
     .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
   link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'kind of' : 'related');
@@ -207,34 +186,11 @@ function draw() {
   });
   markPicked();
   sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => (l.kind === 'shared' ? 0.15 : 0.6) * (crossing(l) ? 0.2 : 1)))
+    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => (l.kind === 'shared' ? 0.15 : 0.6) * (crossing(l) ? MotifMap.CROSSING : 1)))
     .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
     .force('collide', d3.forceCollide().radius((n) => r(n) + 4)).force('x', d3.forceX(W / 2).strength(0.03)).force('y', d3.forceY(H / 2).strength(0.04))
-    .force('group', (alpha) => {
-      // Each group has a home of its own, spaced evenly on a ring around the middle, and its motifs are drawn there; a
-      // motif in two groups settles between their homes, one in none stays free in the middle. Pulling each group to
-      // its own center and pushing groups apart lost to the links (every pair of 8 groups still overlapped, Oct 7)
-      const homes = new Map(), ring = 0.42 * Math.min(W, H);
-      shown.forEach((g, k) => { const t = 2 * Math.PI * k / Math.max(1, shown.length) - Math.PI / 2; homes.set(g.id, [W / 2 + 1.5 * ring * Math.cos(t), H / 2 + ring * Math.sin(t)]); });
-      // a motif not in a group is kept off that group's members, so it never sits inside the group's blob
-      shown.forEach((g) => {
-        const ms = members(g);
-        if (!ms.length) return;
-        nodes.forEach((n) => {
-          if ((n.e.groups || []).includes(g.id)) return;
-          ms.forEach((m) => {
-            const dx = n.x - m.x, dy = n.y - m.y, d = Math.hypot(dx, dy) || 1, room = r(m) + r(n) + 30;
-            if (d < room) { const f = (room - d) / d * 0.5 * alpha; n.vx += dx * f; n.vy += dy * f; }
-          });
-        });
-      });
-      nodes.forEach((n) => {
-        const hs = (n.e.groups || []).map((g) => homes.get(g)).filter(Boolean);
-        if (!hs.length) return;
-        const tx = d3.mean(hs, (h) => h[0]), ty = d3.mean(hs, (h) => h[1]);
-        n.vx += (tx - n.x) * GROUP_PULL * alpha; n.vy += (ty - n.y) * GROUP_PULL * alpha;
-      });
-    })
+    // groups apart: each drawn to a home of its own, non-members kept off its members (motif-map-layout.js)
+    .force('group', MotifMap.groupForce(nodes, shown.map((g) => g.id), shownGroups, r, W, H))
     .on('tick', () => {
       drawHulls();
       link.each(function (l) {  // arrows end at the circle's edge
@@ -250,21 +206,13 @@ function draw() {
 }
 let zoomer;
 const hiddenGroups = new Set(JSON.parse(localStorage.getItem('map-hidden-groups') || '[]'));
-const BLOB_GAP = 180;  // members further apart than this aren't joined in their group's blob
-const GROUP_PULL = 0.9;  // how hard a group's motifs are drawn to its home (links pull them toward their neighbours elsewhere)
-// A link from a motif in a group to one outside all its groups pulls a fifth as hard, so groups keep to their homes
-const crossing = (l) => {
-  const shown = (n) => (n.e.groups || []).filter((g) => !hiddenGroups.has(g));
-  const a = shown(l.source), b = shown(l.target);
-  return (a.length || b.length) && !a.some((g) => b.includes(g));
-};
-const GROUP_COLORS = ['#ff4fa3', '#3a86ff', '#ff6b1a', '#8a5cff', '#00a896', '#e0a800'];
-const groupColor = (gid) => GROUP_COLORS[Math.max(0, data.groups.findIndex((g) => g.id === gid)) % GROUP_COLORS.length];
+const shownGroups = (n) => (n.e.groups || []).filter((g) => !hiddenGroups.has(g));
+const crossing = MotifMap.crossing(shownGroups);  // a link out of a motif's groups pulls weakly, so groups keep to their homes
+const groupColor = (gid) => MotifMap.groupColor(data.groups.findIndex((g) => g.id === gid));
 // Genres: a color each (the workbench shelf's colors, in the same order), chips to pick one out or drop a motif on
-const GENRE_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff', '#2bb673', '#e0102e', '#a0522d', '#00a6d6', '#c2185b', '#6b8e23', '#ff8fab', '#5c6bc0'];
 const genres = () => (data.facets || {}).genre || [];
 const genreOf = (e) => (e.facets || {}).genre || '';
-const genreColor = (v) => GENRE_COLORS[Math.max(0, genres().indexOf(v)) % GENRE_COLORS.length];
+const genreColor = (v) => MotifMap.genreColor(genres(), v);
 let pickedGenre = null;
 function markGenre() { d3.selectAll('.node').classed('gdim', (n) => pickedGenre !== null && genreOf(n.e) !== pickedGenre); }
 function genreChips() {

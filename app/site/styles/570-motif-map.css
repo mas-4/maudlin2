@@ -38,12 +38,13 @@
     background: white;
 }
 
-.mm-dot.mm-kind {
-    background: #ffc400;
+/* a dot's outline is its place in the kinds (as on the checker's map); its fill, its genre */
+.mm-dot.mm-broad {
+    border-width: 4px;
 }
 
 .mm-dot.mm-sub {
-    background: #9ee6da;
+    border-style: dashed;
 }
 
 .mm-line {
@@ -75,6 +76,23 @@
     padding: 0.15em 0.8em;
     cursor: pointer;
     transform: rotate(-1.5deg);
+}
+
+.mm-genre {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, var(--g) 30%, white);
+    border: 2px solid var(--g);
+    border-radius: 999px;
+    padding: 0.1em 0.7em;
+    cursor: pointer;
+}
+
+.mm-genre[aria-pressed="true"] {
+    background: var(--g);
+    color: white;
+    border-color: #1f1f2e;
+    box-shadow: 2px 2px 0 #1f1f2e;
 }
 
 .mm-group[aria-pressed="false"] {
@@ -137,12 +155,19 @@
     box-shadow: none;
 }
 
-.mm-hull path {
-    fill: color-mix(in srgb, var(--pop) 16%, transparent);
+/* a group's blob (static/motif-map-layout.js): its color a little wider under a pale fill, the two see-through as one */
+.mm-hull > g {
+    opacity: 0.6;
+}
+
+.mm-blob-edge {
+    fill: var(--pop);
     stroke: var(--pop);
-    stroke-width: 2.5px;
-    stroke-dasharray: 7 5;
-    stroke-linejoin: round;
+}
+
+.mm-blob-fill {
+    fill: color-mix(in srgb, var(--pop) 18%, white);
+    stroke: color-mix(in srgb, var(--pop) 18%, white);
 }
 
 .mm-hull text {
@@ -204,6 +229,18 @@
 
 .mm-node:hover text.mm-minor, .mm-node.mm-picked text, .mm-node.mm-hit text, .mm-node:focus-visible text {
     opacity: 1;
+}
+
+.mm-node.mm-broad circle {
+    stroke-width: 4.5px;
+}
+
+.mm-node.mm-sub circle {
+    stroke-dasharray: 4 3;
+}
+
+.mm-node.mm-gdim {
+    opacity: 0.15;
 }
 
 .mm-node.mm-picked circle {

@@ -15,12 +15,14 @@ def entry(eid, name, claims, done=True, **more):
             **({'done': [motif_index.key(c) for c in claims]} if done else {}), **more}
 
 
-INDEX = {'next': 9, 'claims': {}, 'related': [['M2', 'M3']], 'groups': {'G01': {'id': 'G01', 'name': 'Archetypes'}},
+INDEX = {'next': 9, 'claims': {}, 'related': [['M2', 'M3']],
+         'groups': {'G01': {'id': 'G01', 'name': 'Archetypes'}, 'G02': {'id': 'G02', 'name': 'Aardvarks'}},
          'entries': {
              'M1': entry('M1', 'Corrupt official', ['The mayor takes bribes.', 'Jacob Geller is a rapist.'], groups=['G01']),
              'M2': entry('M2', 'Bought politician', ['The mayor takes bribes.'], parents=['M1'], groups=['G01']),
-             'M3': entry('M3', 'Secret donor', ['A donor pays the senator.']),
-             'M4': entry('M4', 'Unchecked motif', ['Not seen by a person.'], done=False, parents=['M1']),
+             'M3': entry('M3', 'Secret donor', ['A donor pays the senator.'], facets={'genre': 'scandal'}),
+             'M4': entry('M4', 'Unchecked motif', ['Not seen by a person.'], done=False, parents=['M1'], groups=['G02'],
+                         facets={'genre': 'legend'}),
          }}
 
 
@@ -43,8 +45,12 @@ def test_graph_shows_verified_motifs_screened_claims_and_their_links(tmp_path, m
     kinds = {(l['source'], l['target'], l['kind']) for l in g['links']}
     assert ('M2', 'M1', 'kind') in kinds and ('M2', 'M3', 'related') in kinds
     assert not any(l['kind'] == 'shared' and {l['source'], l['target']} == {'M1', 'M2'} for l in g['links'])  # already a kind
-    assert by['M1']['role'] == 'kind' and by['M2']['role'] == 'sub' and by['M3']['role'] == ''
-    assert [x['name'] for x in g['groups']] == ['Archetypes']
+    assert (by['M1']['broad'], by['M1']['sub'], by['M2']['broad'], by['M2']['sub']) == (True, False, False, True)
+    assert not by['M3']['broad'] and not by['M3']['sub']
+    # groups and genres keep their place among all of them A to Z (their color, as on the checker), shown if used here
+    assert [(x['name'], x['k']) for x in g['groups']] == [('Archetypes', 1)]
+    assert g['genres'] == [{'name': 'scandal', 'k': 1, 'size': 1}] and 'legend' not in json.dumps(g)  # unchecked only
+    assert by['M3']['genre'] == 'scandal' and by['M1']['genre'] == ''
 
 
 def test_page_renders_its_data(tmp_path, monkeypatch):
