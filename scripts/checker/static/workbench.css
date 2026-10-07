@@ -168,7 +168,7 @@ details.wb-rchips { display: block; } details.wb-rchips[open] { display: flex; }
 .wb-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translateX(-100%); max-width: 22em; padding: 4px 10px; border: 2px solid var(--ink);
   border-radius: 10px; background: white; box-shadow: 3px 3px 0 var(--pink); font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dz-menu { position: fixed; z-index: 1001; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--paper); border: 3px solid var(--ink);
-  border-radius: 12px; box-shadow: 4px 4px 0 var(--orange); min-width: 13em; }
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--orange); min-width: 13em; max-width: 26em; }
 .dz-title { font: 11px system-ui; color: #777; text-transform: uppercase; letter-spacing: .04em; padding: 0 4px; }
 .dz-zone { text-align: left; font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 10px; background: white; cursor: pointer; }
 .dz-zone.hot, .dz-zone:hover { background: var(--yellow); transform: translateX(3px); }

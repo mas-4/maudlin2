@@ -728,17 +728,17 @@
         const named = (mode) => () => ask(t, 'Name the new motif', cs.length === 1 ? cs[0].claim.slice(0, 80) : '')
           .then((name) => name && makeNew(name, cs.map((c) => ({...c, mode}))));
         return cs.some((c) => c.source)
-          ? [{label: '⇢ move into a new motif', say: 'move them out into a motif of their own', run: named('move')},
-            {label: '＋ copy into a new motif', say: 'start a new motif with them, keeping where they are', run: named('also')}]
-          : [{label: '✨ new motif', say: 'start a new motif with them', run: named('file')}];
+          ? [{label: '⇢ move into a new motif', say: `move ${claimsName(item)} out into a new motif of their own`, run: named('move')},
+            {label: '＋ copy into a new motif', say: `start a new motif with ${claimsName(item)}, keeping where they are`, run: named('also')}]
+          : [{label: '✨ new motif', say: `start a new motif with ${claimsName(item)}`, run: named('file')}];
       }
       if (drop === 'nomotif') {
-        return [{label: '∅ no motif', say: 'they tell no recurring story: out of every motif, never filed again', run: () =>
+        return [{label: '∅ no motif', say: `no motif: ${claimsName(item)} tells no recurring story; out of every motif, never filed again`, run: () =>
           sure(t, `Take ${claimsName(item)} out of every motif, for good?`).then((ok) => ok && batch(cs.map((c) => ({action: 'no_motif', claim: c.claim})), `∅ ${claimsName(item)}: no motif`))}];
       }
       if (drop === 'trash') {
         const filed = cs.filter((c) => c.source);
-        return filed.length ? [{label: '🗑️ take out', say: 'out of the motif you dragged them from', run: () =>
+        return filed.length ? [{label: '🗑️ take out', say: `take ${claimsName(item)} out of the motif you dragged from`, run: () =>
           batch(filed.map((c) => ({action: 'unfile', claim: c.claim, id: c.source})), `🗑️ took ${claimsName(item)} out`)}] : [];
       }
       return [];
@@ -749,24 +749,24 @@
         const b = t.dataset.id, B = S.by[b], rest = ids.filter((i) => i !== b);
         if (!B || !rest.length) return [];
         return [
-          {label: `⤵ merge all ${rest.length} into it`, say: `merge them into “${B.name}”`, run: () => sure(t, `Merge ${rest.length} motifs into “${B.name}”?`, '⤵ merge them').then((ok) => ok && batch(rest.map((i) => ({action: 'merge', source: i, target: b})), done(`⤵ merged ${rest.length} into “${B.name}”`)))},
-          {label: '⊂ all kinds of it', say: `each a kind of “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'parent', id: i, parent: b})), done(`⊂ ${rest.length} kinds of “${B.name}”`))},
-          {label: '↔ all related to it', say: `each related to “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'relate', a: i, b})), done(`↔ ${rest.length} related to “${B.name}”`))},
+          {label: `⤵ merge all ${rest.length} into it`, say: `merge all ${rest.length} into “${B.name}”`, run: () => sure(t, `Merge ${rest.length} motifs into “${B.name}”?`, '⤵ merge them').then((ok) => ok && batch(rest.map((i) => ({action: 'merge', source: i, target: b})), done(`⤵ merged ${rest.length} into “${B.name}”`)))},
+          {label: '⊂ all kinds of it', say: `make each of the ${rest.length} a kind of “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'parent', id: i, parent: b})), done(`⊂ ${rest.length} kinds of “${B.name}”`))},
+          {label: '↔ all related to it', say: `relate each of the ${rest.length} to “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'relate', a: i, b})), done(`↔ ${rest.length} related to “${B.name}”`))},
         ];
       }
       if (drop === 'facet') {
         const value = t.dataset.g || null;
-        return [{label: value ? `🎭 all: ${value}` : '🎭 all: no genre', say: `${n}: ${value || 'no genre'}`,
+        return [{label: value ? `🎭 all: ${value}` : '🎭 all: no genre', say: value ? `give ${n} the genre ${value}` : `take the genre off ${n}`,
           run: () => batch(ids.map((i) => ({action: 'facet', id: i, facet: 'genre', value})), done(`🎭 ${n}: ${value || 'no genre'}`))}];
       }
       if (drop === 'group') {
         const g = t.dataset.g || null, name = (S.data.groups.find((x) => x.id === g) || {}).name;
-        if (!g) return [{label: '🗃️ all out of every group', say: `${n} in no group`, run: () => batch(ids.map((i) => ({action: 'group_assign', id: i, group: null})), done(`🗃️ ${n}: no group`))}];
-        return [{label: '📁 all into this group', say: `${n} in ${name}, staying in their others`, run: () => batch(ids.filter((i) => !(S.by[i].groups || []).includes(g)).map((i) => ({action: 'group_member', id: i, group: g})), done(`📁 ${n} in ${name}`))},
-          {label: '⇢ all only this group', say: `${n} move to ${name}, out of their others`, run: () => batch(ids.map((i) => ({action: 'group_assign', id: i, group: g})), done(`📁 ${n} → ${name}`))}];
+        if (!g) return [{label: '🗃️ all out of every group', say: `take ${n} out of every group`, run: () => batch(ids.map((i) => ({action: 'group_assign', id: i, group: null})), done(`🗃️ ${n}: no group`))}];
+        return [{label: '📁 all into this group', say: `put ${n} in ${name} as well, staying in their other groups`, run: () => batch(ids.filter((i) => !(S.by[i].groups || []).includes(g)).map((i) => ({action: 'group_member', id: i, group: g})), done(`📁 ${n} in ${name}`))},
+          {label: '⇢ all only this group', say: `move ${n} to ${name} only, out of their other groups`, run: () => batch(ids.map((i) => ({action: 'group_assign', id: i, group: g})), done(`📁 ${n} → ${name}`))}];
       }
       if (drop === 'trash') {
-        return [{label: `🗑️ delete all ${ids.length}`, say: 'delete the motifs (their claims aren’t filed again)', run: () =>
+        return [{label: `🗑️ delete all ${ids.length}`, say: `delete all ${ids.length} motifs (their claims aren’t filed again)`, run: () =>
           sure(t, `Delete ${n}? Their claims won't be filed again.`, '🗑️ delete them').then((ok) => ok && batch(ids.map((i) => ({action: 'delete', id: i})), done(`🗑️ deleted ${n}`)))}];
       }
       return [];
@@ -779,10 +779,10 @@
       if (!B || a === b) return [];
       return [
         {label: '⤵ merge into it', say: `merge “${A.name}” into “${B.name}”`, run: () => act({action: 'merge', source: a, target: b}, `⤵ merged “${A.name}” into “${B.name}”`)},
-        {label: '⊂ a kind of it', say: `“${A.name}” is a kind of “${B.name}”`, run: () => act({action: 'parent', id: a, parent: b}, `⊂ “${A.name}” is a kind of “${B.name}”`)},
-        {label: '⊃ it’s a kind of this', say: `“${B.name}” is a kind of “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `⊃ “${B.name}” is a kind of “${A.name}”`)},
-        {label: '↔ related', say: 'related, but different', run: () => act({action: 'relate', a, b}, `↔ related “${A.name}” and “${B.name}”`)},
-        {label: '≠ not the same', say: 'different motifs: stop suggesting them as a pair', run: () => act({action: 'not_same', a, b}, `≠ “${A.name}” and “${B.name}” are different`)},
+        {label: '⊂ a kind of it', say: `make “${A.name}” a kind of “${B.name}”`, run: () => act({action: 'parent', id: a, parent: b}, `⊂ “${A.name}” is a kind of “${B.name}”`)},
+        {label: '⊃ it’s a kind of this', say: `make “${B.name}” a kind of “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `⊃ “${B.name}” is a kind of “${A.name}”`)},
+        {label: '↔ related', say: `relate “${A.name}” and “${B.name}”: related, but different`, run: () => act({action: 'relate', a, b}, `↔ related “${A.name}” and “${B.name}”`)},
+        {label: '≠ not the same', say: `“${A.name}” and “${B.name}” are different: stop suggesting them as a pair`, run: () => act({action: 'not_same', a, b}, `≠ “${A.name}” and “${B.name}” are different`)},
       ];
     }
     if (drop === 'claim' && S.claim) {
@@ -792,21 +792,21 @@
     if (drop === 'facet') {
       const value = t.dataset.g || null;
       if (((A.facets || {}).genre || null) === value) return [];
-      return [{label: value ? '🎭 genre: ' + value : '🎭 no genre', say: `“${A.name}” is a ${value || 'motif of no genre yet'}`,
+      return [{label: value ? '🎭 genre: ' + value : '🎭 no genre', say: value ? `give “${A.name}” the genre ${value}` : `take the genre off “${A.name}”`,
         run: () => act({action: 'facet', id: a, facet: 'genre', value}, `🎭 “${A.name}”: ${value || 'no genre'}`)}];
     }
     if (drop === 'group') {
       const g = t.dataset.g || null, mine = A.groups || [];
-      if (!g) return mine.length ? [{label: '🗃️ out of every group', say: `“${A.name}” in no group`, run: () => act({action: 'group_assign', id: a, group: null}, `🗃️ “${A.name}”: no group`)}] : [];
+      if (!g) return mine.length ? [{label: '🗃️ out of every group', say: `take “${A.name}” out of every group`, run: () => act({action: 'group_assign', id: a, group: null}, `🗃️ “${A.name}”: no group`)}] : [];
       if (mine.includes(g)) return [];
       const name = (S.data.groups.find((x) => x.id === g) || {}).name;
-      const also = {label: '📁 into this group', say: mine.length ? `“${A.name}” in ${name} as well, staying in its others` : `put “${A.name}” in ${name}`,
+      const also = {label: '📁 into this group', say: mine.length ? `put “${A.name}” in ${name} as well, staying in its other groups` : `put “${A.name}” in ${name}`,
         run: () => act({action: 'group_member', id: a, group: g}, `📁 “${A.name}” in ${name}`)};
-      return mine.length ? [also, {label: '⇢ only this group', say: `“${A.name}” moves to ${name}, out of its others`,
+      return mine.length ? [also, {label: '⇢ only this group', say: `move “${A.name}” to ${name} only, out of its other groups`,
         run: () => act({action: 'group_assign', id: a, group: g}, `📁 “${A.name}” → ${name}`)}] : [also];
     }
     if (drop === 'trash') {
-      return [{label: '🗑️ delete it', say: 'delete the motif (its claims aren’t filed again)', run: () =>
+      return [{label: '🗑️ delete it', say: `delete “${A.name}” (its claims aren’t filed again)`, run: () =>
         sure(t, `Delete “${A.name}”? Its ${A.claims.length} claims won't be filed again.`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: a}, `🗑️ deleted “${A.name}”`))}];
     }
     return [];
@@ -837,8 +837,14 @@
     return {kind: 'claim', claims: [one]};
   }
   function label(item) { return item.kind === 'motifs' ? (item.group ? `📁 ${item.group}: ` : '🧩 ') + `${item.ids.length} motifs` : item.kind === 'motif' ? '🧩 ' + (S.by[item.id] || {}).name : '💬 ' + claimsName(item); }
+  // A choice says what it does in full: the label's sign (⤵, ⊂, 📁…) and its sentence; the short label alone if it has none
+  function zoneText(z) {
+    if (!z.say) return z.label;
+    const sign = z.label.split(' ')[0];
+    return /[\p{L}\p{N}]/u.test(sign) ? z.say : `${sign} ${z.say}`;
+  }
   function showMenu(t, list, pin, px, py) {
-    menu.innerHTML = `<div class="dz-title">${pin ? 'drop it as…' : 'let go on a choice'}</div>` + list.map((z, k) => `<button class="dz-zone" data-zone="${k}" title="${esc(z.say || '')}">${esc(z.label)}</button>`).join('')
+    menu.innerHTML = `<div class="dz-title">${pin ? 'drop it as…' : 'let go on a choice'}</div>` + list.map((z, k) => `<button class="dz-zone" data-zone="${k}" title="${esc(z.label)}">${esc(zoneText(z))}</button>`).join('')
       + (pin ? '<button class="dz-zone dz-cancel" data-zone="cancel">cancel</button>' : '');
     menu.hidden = false;
     // Beside the pointer, so the choices are a short move away (to the left of it near the window's right edge)
@@ -890,7 +896,7 @@
     const z = el && el.closest('.dz-zone');
     if (z) {
       z.classList.add('hot');
-      ghost.textContent = (menu._zones[+z.dataset.zone] || {}).say || z.textContent;
+      // the choice already says what it does; the ghost keeps naming what is carried
     } else {
       const t = el && el.closest('[data-drop]');
       if (t && t !== menu._target) {
