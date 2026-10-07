@@ -12,7 +12,7 @@ check first, so one deleted or hidden since drops off.
 Mastodon posts are never shown: their authors opted in to search, not to being republished."""
 import os
 import time
-from datetime import datetime as dt, timedelta as td, timezone
+from datetime import datetime as dt, timedelta as td, UTC
 
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
@@ -34,7 +34,7 @@ HIDE = {'!no-unauthenticated', '!hide', '!warn', 'bot', 'porn', 'sexual', 'nudit
 
 
 def now() -> dt:
-    return dt.now(timezone.utc).replace(tzinfo=None)
+    return dt.now(UTC).replace(tzinfo=None)
 
 
 def interactions(p: dict) -> int:
@@ -88,7 +88,7 @@ def refresh(uris: list[str], calls: int = CALLS, get=_get, sleep=time.sleep) -> 
             sleep(GAP)
         try:
             posts = {p['uri']: p for p in _posts(get, batch)}
-        except Exception as e:  # noqa: Bluesky down: what we had stands
+        except Exception as e:  # noqa: BLE001 - Bluesky down: what we had stands
             logger.warning("Bluesky examples: lookup failed (%s)", e)
             break
         used += 1

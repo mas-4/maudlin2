@@ -268,7 +268,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     import time
     started = time.time()
     outcomes = Counter()  # for the metrics: each claim matched to motifs already there, given a new one, or none
-    for n, c in enumerate(todo):
+    for c in todo:
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
         # One claim at a time on a fresh read of the index, saved as it goes: a run cut short keeps what it filed,
@@ -423,7 +423,7 @@ def nightly(budget: float | None = None):
     index = file_claims(claims, budget=budget)
     try:
         snapshot_metrics()
-    except Exception as e:  # noqa: the stats are extra
+    except Exception as e:  # noqa: BLE001 - the stats are extra
         logger.warning("Motif metrics: %s", e)
     # New motifs get the model's draft of a scope note (shown on the board to keep or edit; used in matching at once)
     gloss_missing(budget=None if budget is None else max(30, budget - (time.time() - started)))
@@ -1205,7 +1205,7 @@ def single_suggestions(n: int = 5) -> list[dict]:
         k = key(e['claims'][0]['claim'])
         sims = motifs_v @ cv
         # Motifs already holding this very claim first: two names for one claim are the likeliest merge of all
-        open_ = lambda m: m['id'] != e['id'] and frozenset([e['id'], m['id']]) not in settled  # noqa: E731
+        open_ = lambda m: m['id'] != e['id'] and frozenset([e['id'], m['id']]) not in settled  # noqa: E731, B023 - used in this iteration only
         siblings = [m for m in entries if open_(m) and any(key(c['claim']) == k for c in m['claims'])]
         picks = [(entries[i], float(sims[i])) for i in np.argsort(-sims)
                  if open_(entries[i]) and k not in entries[i].get('not_claims', [])
@@ -1310,7 +1310,7 @@ def gloss(entry: dict) -> str | None:
     claims = '\n'.join(f'- {c["claim"][:180]}' for c in entry['claims'][-GLOSS_CLAIMS:]) or '(none yet)'
     prompt = GLOSS_PROMPT.format(name=entry['name'], claims=claims)
     about_falsehood = re.search(r'\b(fake|false|lie|lies|hoax|disinformation|misinformation|propaganda)\b', entry['name'], re.I)
-    for attempt in range(3):
+    for _attempt in range(3):
         answer = llm.complete_json(prompt, GLOSS_SCHEMA, max_tokens=600, model=GLOSS_MODEL)
         note = ' '.join((answer or {}).get('note', '').split())
         if not note or note[-1] not in '.!?"\u201d':

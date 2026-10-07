@@ -721,7 +721,7 @@ def test_story_pages_gather_the_trackers(monkeypatch, tmp_path):
     monkeypatch.setattr(page_story, 'tv_by_story', lambda: {70: {'channels': [{'name': 'CNN', 'ink': '#c00', 'time': '2 min'}],
                                                                  'captions': [{'channel': 'CNN', 'text': 'CO-PILOT PROBE', 'time': '2 min'}],
                                                                  'first': (dt(2026, 10, 5, 13), 'CNN')}})
-    monkeypatch.setattr(page_story, 'radio_by_story', lambda: {})
+    monkeypatch.setattr(page_story, 'radio_by_story', dict)
     monkeypatch.setattr(page_story, 'folklore_by_story', lambda stories: {70: [
         {'claim': 'The co-pilot was <a plant>', 'people': 30, 'relation': 'same event', 'day': dt(2026, 10, 6, 8),
          'when': 'Oct 6', 'motifs': [], 'before': [], 'voters': [{'title': 'S6 Ep1: Voters', 'url': 'https://fg.example/1', 'date': ''}],

@@ -151,7 +151,7 @@ def main(args: argparse.Namespace):
         newsfilter.rescore_all(outdated=True, wait=between_runs)
         return
     if args.email_newsletter:
-        with open(Config.newsletter, 'rt') as f:
+        with open(Config.newsletter) as f:
             send_notification(f.read())
         return
     # What people say on Bluesky and Mastodon (research only, #153): sampled on a thread of its own while the outlets are

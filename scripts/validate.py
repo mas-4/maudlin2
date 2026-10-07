@@ -265,7 +265,6 @@ def claim_detail(claim: str) -> dict:
     """What's behind a claim for the motif board: the fact-check it came from (headline, summary, link, the model's
     labels) or the folklore group (how many told it, a few of their posts, linked articles, labels). Local only."""
     from app.analysis import factchecks, motif_index as mi
-    from app.site.page_folklore import latest_report
     index = mi.load()
     words = mi.originals(claim, index)
     filed = next((c for e in mi.live(index) for c in e['claims'] if c['claim'] == claim), {})

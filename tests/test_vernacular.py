@@ -1,5 +1,6 @@
-import pytest
 """The Bluesky and Mastodon sample: what's kept, what's scrubbed, what's skipped."""
+import pytest
+
 from app import vernacular as v
 
 

@@ -6,7 +6,7 @@ from datetime import timedelta as td
 
 import pandas as pd
 
-from app.models import Session, Story, StoryHeadline, Headline, Article, Agency
+from app.models import Session, StoryHeadline, Headline, Article, Agency
 from app.utils import get_logger
 
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}  # as in page_headlines

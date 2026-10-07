@@ -31,8 +31,8 @@ def test_retold_on_several_days_shows_once(monkeypatch, tmp_path):
                           group('It was a bioweapon test', 'Russian lab worker dies from plague', 4)]}]
     monkeypatch.setattr(ps, 'reports_by_day', lambda days=7: reports)
     monkeypatch.setattr(motif_index, 'load', lambda: {'entries': {}, 'claims': {}, 'corrections': {}})
-    monkeypatch.setattr(narrative_threads, 'load', lambda: {})
-    monkeypatch.setattr(focus_group, 'load', lambda: {})
+    monkeypatch.setattr(narrative_threads, 'load', dict)
+    monkeypatch.setattr(focus_group, 'load', dict)
     monkeypatch.setattr(page_folklore, 'told_before', lambda *a: [])
     found = ps.folklore_by_story(STORIES)
     assert [(f['when'], f['people'], f['claim']) for f in found[1]] == [

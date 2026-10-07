@@ -21,7 +21,7 @@ import os
 import secrets
 import sqlite3
 import time
-from datetime import datetime as dt, timedelta as td, timezone
+from datetime import datetime as dt, timedelta as td, UTC
 
 from app.utils import Config, get_logger
 
@@ -177,7 +177,7 @@ def row(message: dict, pepper: str):
         return None
     embed = record.get('embed') or {}
     kind = embed.get('$type', '')
-    now = dt.now(timezone.utc).isoformat(timespec='seconds')
+    now = dt.now(UTC).isoformat(timespec='seconds')
     return 'create', (key, fingerprint(did, pepper), record.get('createdAt'), now, scrub(record['text']),
                       int('reply' in record), int('record' in kind),
                       int('images' in kind or 'video' in kind or 'media' in kind), article_links(bluesky_links(record)),
@@ -214,7 +214,7 @@ def sample(minutes: float = MINUTES, url: str = JETSTREAM) -> int:
     finally:
         if ws is not None:
             ws.close()
-        cutoff = (dt.now(timezone.utc) - td(days=RETENTION_DAYS)).isoformat(timespec='seconds')
+        cutoff = (dt.now(UTC) - td(days=RETENTION_DAYS)).isoformat(timespec='seconds')
         dropped = con.execute('DELETE FROM post WHERE collected < ?', (cutoff,)).rowcount
         con.commit()
         con.close()
@@ -239,7 +239,7 @@ def mastodon_row(status: dict, pepper: str):
     links = [a.get('href', '') for a in soup.find_all('a')] + [(status.get('card') or {}).get('url') or '']
     if len(text) < MIN_CHARS or not english(text) or ADULT.search(text):
         return None
-    now = dt.now(timezone.utc).isoformat(timespec='seconds')
+    now = dt.now(UTC).isoformat(timespec='seconds')
     return (fingerprint(status.get('uri', ''), pepper), fingerprint(account.get('uri', ''), pepper),
             status.get('created_at'), now, text, int(bool(status.get('in_reply_to_id'))), int(bool(status.get('quote'))),
             int(bool(status.get('media_attachments'))), article_links(links), 'mastodon')

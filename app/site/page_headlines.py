@@ -6,14 +6,13 @@ import os
 import re
 from collections import Counter, defaultdict
 from datetime import datetime as dt, timedelta as td
-from typing import Optional
 
 import numpy as np
 import pytz
 import pandas as pd
 from sqlalchemy import func
 
-from app.analysis.clustering import prepare_embedding_cosine, story_similarity, headline_vectors, form_clusters, label_clusters, embed, \
+from app.analysis.clustering import story_similarity, headline_vectors, form_clusters, label_clusters, embed, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
 from app.analysis import entities, factchecks, satire, trends_meter
@@ -22,7 +21,7 @@ from app.analysis.wording import side_phrases
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
-from app.analysis import llm, textnorm
+from app.analysis import textnorm
 from app.analysis.pipelines import Pipelines, prepare
 from app.site.common import SHARED, calculate_xkeyscore, chip_style, copy_assets, outlet_icon, short_name, TemplateHandler
 from app.models import Session, Headline
@@ -111,7 +110,7 @@ def first_scrape() -> dt:
         return s.query(func.min(Headline.first_accessed)).scalar() or dt(2000, 1, 1)
 
 
-def break_speed(headlines: list[dict]) -> Optional[int]:
+def break_speed(headlines: list[dict]) -> int | None:
     """How fast a story broke: how many outlets had it within about an hour of our first sighting (the first two
     hourly scrapes). None for stories already running when the database started, whose first sighting is ours, not
     theirs."""
@@ -497,7 +496,7 @@ class HeadlinesPage:
         sagas = link_sagas(considered, df, getattr(self, 'story_of', {}))
         saga_of = {k: sid for sid, saga in sagas.items() for k in saga['clusters']}
         age = {c['cluster']: c['first'] for c in clusters_list}
-        for sid, saga in sagas.items():
+        for saga in sagas.values():
             saga['color'] = SAGA_COLORS[saga['id'] % len(SAGA_COLORS)]  # a saga keeps its color from run to run
             saga['lead'] = max(saga['clusters'], key=lambda k: (df['cluster'] == k).sum())  # its biggest story now
             saga['clusters'].sort(key=lambda k: -age[k])  # in the order they broke
@@ -611,7 +610,6 @@ class HeadlinesPage:
         """Our own trending list, ranked by how many outlets carry each story, next to what's trending on social
         media, search and Wikipedia. Where a trend and a story are about the same thing both get marked, so the
         overlap (and the gap) between what the press covers and what people pay attention to is visible."""
-        outlets = df.groupby('cluster')['agency'].nunique().sort_values(ascending=False)
         speeds = {c['cluster']: c['speed'] for c in self.context.get('clusters', [])
                   if c.get('speed') and c['speed'] >= FAST_BREAK}
         logger.info("Break speeds (outlets in the first hour): %s",
@@ -679,7 +677,7 @@ class HeadlinesPage:
         per source, each pointed at the current story it's about when one is close enough in meaning."""
         try:
             items = sidefeeds.recent()
-        except Exception as e:  # noqa: e.g. the table doesn't exist yet on a database that hasn't migrated
+        except Exception as e:  # noqa: BLE001 - e.g. the table doesn't exist yet on a database that hasn't migrated
             logger.warning("Shows: %s", e)
             items = []
         if items and clusters_list:
@@ -707,7 +705,7 @@ class HeadlinesPage:
             return
         try:
             found = satire.jokes({int(c['cluster']): self.context['titles'][c['cluster']] for c in clusters_list})
-        except Exception as e:  # noqa: jokes are extra; never let them stop the page
+        except Exception as e:  # noqa: BLE001 - jokes are extra; never let them stop the page
             logger.warning("Satire: %s", e)
             return
         self.context['satire_of'] = {
@@ -727,7 +725,7 @@ class HeadlinesPage:
                for c in clusters_list}
         try:
             named = entities.of_stories({key[int(c['cluster'])]: [a['title'] for a in c['data']] for c in clusters_list})
-        except Exception as e:  # noqa: extra; never let it stop the page
+        except Exception as e:  # noqa: BLE001 - extra; never let it stop the page
             logger.warning("Entities: %s", e)
             return
         cluster_of = {k: cl for cl, k in key.items()}
@@ -782,7 +780,7 @@ class HeadlinesPage:
         try:
             from app.site.page_story import folklore_by_label
             told = folklore_by_label()
-        except Exception as e:  # noqa: extra; never let it stop the page
+        except Exception as e:  # noqa: BLE001 - extra; never let it stop the page
             logger.warning("Retold online: %s", e)
             return
         for c in clusters_list:
@@ -828,7 +826,7 @@ class HeadlinesPage:
             for sid, shows in casts.items():
                 self.context['radio_of'][cluster_of[sid]] = [dict(t, show=show) for show, t in sorted(
                     shows.items(), key=lambda kv: -kv[1]['casts'])]
-        except Exception as e:  # noqa: extra; never let it stop the page
+        except Exception as e:  # noqa: BLE001 - extra; never let it stop the page
             logger.warning("Broadcast coverage: %s", e)
 
     def factcheck_coverage(self, clusters_list):
@@ -839,7 +837,7 @@ class HeadlinesPage:
         try:
             found = factchecks.for_stories({int(c['cluster']): self.context['titles'][c['cluster']]
                                             for c in clusters_list})
-        except Exception as e:  # noqa: extra; never let it stop the page
+        except Exception as e:  # noqa: BLE001 - extra; never let it stop the page
             logger.warning("Fact-checks: %s", e)
             return
         self.context['factchecks_of'] = {cluster: items[:3] for cluster, items in found.items()}

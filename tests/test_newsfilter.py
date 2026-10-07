@@ -2,7 +2,7 @@
 import hashlib
 import json
 import re
-from datetime import datetime as dt, timezone
+from datetime import datetime as dt, UTC
 
 import numpy as np
 import pandas as pd
@@ -70,7 +70,7 @@ def test_rubric_id_is_eight_hex_chars():
 
 def test_rubric_id_matches_prompt_and_schema_hash():
     expected = hashlib.sha1((newsfilter.PROMPT + json.dumps(newsfilter.SCHEMA, sort_keys=True)).encode()).hexdigest()
-    assert RUBRIC_ID == expected[:8]
+    assert expected[:8] == RUBRIC_ID
 
 
 def test_rubric_id_changes_when_prompt_changes():
@@ -124,7 +124,7 @@ def test_assess_empty_titles():
 def test_assess_with_llm_scores_and_provenance(fake_llm):
     answers, _ = fake_llm
     answers['Strike kills 12'] = judgment()
-    before = dt.now(timezone.utc).replace(tzinfo=None)
+    before = dt.now(UTC).replace(tzinfo=None)
     [result] = newsfilter.assess(['Strike kills 12'], 'Reuters')
     assert result['news_score'] == 1.0
     assert result['event_score'] == -2.0 and isinstance(result['event_score'], float)
@@ -133,7 +133,7 @@ def test_assess_with_llm_scores_and_provenance(fake_llm):
     assert result['emotion_ranks'] == 'fear,sadness'
     assert result['scored_by'] == f'test-model rubric:{RUBRIC_ID}'
     assert isinstance(result['scored_at'], dt) and result['scored_at'].tzinfo is None
-    assert before.replace(microsecond=0) <= result['scored_at'] <= dt.now(timezone.utc).replace(tzinfo=None)
+    assert before.replace(microsecond=0) <= result['scored_at'] <= dt.now(UTC).replace(tzinfo=None)
     assert result['affected'] == 'residents, harmed'
     assert set(result) == set(EMPTY)
 

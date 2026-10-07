@@ -10,7 +10,6 @@ import os
 import re
 import time
 from datetime import date, timedelta as td
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -67,7 +66,7 @@ def _clean(cell) -> str:
     return re.sub(r'\[[^]]*]', '', str(cell)).strip()
 
 
-def _percent(cell) -> Optional[float]:
+def _percent(cell) -> float | None:
     match = re.search(r'-?\d+(\.\d+)?', _clean(cell).replace('\u2212', '-'))
     return float(match.group()) if match else None
 
@@ -117,7 +116,7 @@ def load_polls() -> pd.DataFrame:
     """One row per poll answer: poll metadata plus `choice` and `pct`."""
     if not os.path.exists(POLLS_FILE):
         return pd.DataFrame()
-    with open(POLLS_FILE, 'rt') as f:
+    with open(POLLS_FILE) as f:
         polls = json.load(f)
     rows = [{**{k: p[k] for k in ('id', 'poll_type', 'subject', 'pollster', 'sample_size', 'population',
                                   'end_date', 'partisan', 'url')},
@@ -204,7 +203,7 @@ class Polling:
         """Each published average plus their mean, for approval and the generic ballot."""
         if not os.path.exists(AGGREGATES_FILE):
             return {}
-        with open(AGGREGATES_FILE, 'rt') as f:
+        with open(AGGREGATES_FILE) as f:
             aggregates = json.load(f)
         for key, (a, b) in {'approval': ('Approve', 'Disapprove'), 'generic': ('Democrats', 'Republicans')}.items():
             if key not in aggregates:
@@ -229,7 +228,7 @@ class Polling:
             # The newest poll defines the matchup; older polls without both of its leaders are primary polls
             newest = recent[recent['id'] == recent.sort_values('end_date')['id'].iloc[-1]]
             matchup = set(newest.nlargest(2, 'pct')['choice'])
-            has_both = recent.groupby('id')['choice'].transform(lambda c: matchup <= set(c))
+            has_both = recent.groupby('id')['choice'].transform(lambda c: matchup <= set(c))  # noqa: B023 - used in this iteration only
             recent = recent[has_both & recent['choice'].isin(matchup)]
             if recent['id'].nunique() < MIN_RACE_POLLS:
                 continue

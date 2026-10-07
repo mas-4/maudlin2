@@ -7,12 +7,11 @@ from app.analysis import textnorm
 
 STOPWORDS = set(nltk.corpus.stopwords.words('english'))
 include_stopwords = {'dear', 'New York Times', 'Getty Images',
-                     'AP', "'s", "’", "``", "''", "—", "–", "“", "”", "‘", "’",
-                     "the", "of", "in", "ago"}
+                     'AP', "'s", "’", "``", "''", "—", "–", "“", "”", "‘", "the", "of", "in", "ago"}
 include_stopwords.update(string.punctuation)
 exclude_stopwords = {'not', 'no', 'nor', 'none', 'neither', 'never', 'nothing',
-                     'nowhere', 'nobody', 'noone', 'nought', 'nay', 'nix', 'nil', 'negatory', 'nay', 'nope', 'nah',
-                     'naw', 'no way', 'no way', 'ago', 'said', 'go'}
+                     'nowhere', 'nobody', 'noone', 'nought', 'nay', 'nix', 'nil', 'negatory', 'nope', 'nah',
+                     'naw', 'no way', 'ago', 'said', 'go'}
 STOPWORDS |= include_stopwords
 STOPWORDS -= exclude_stopwords
 STOPWORDS = [word.lower() for word in STOPWORDS]

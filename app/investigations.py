@@ -11,7 +11,6 @@ import os
 import re
 from datetime import datetime as dt, timedelta as td
 from email.utils import parsedate_to_datetime
-from typing import Optional
 
 import pytz
 import requests as rq
@@ -48,7 +47,7 @@ SOURCES = [
 ]
 
 
-def _date(text: Optional[str]) -> Optional[str]:
+def _date(text: str | None) -> str | None:
     """RSS (RFC 822) or Atom (ISO 8601) dates as UTC ISO strings."""
     if not text:
         return None
@@ -65,7 +64,7 @@ def _date(text: Optional[str]) -> Optional[str]:
     return when.astimezone(pytz.UTC).isoformat()
 
 
-def _summary(text: Optional[str], limit: int = 280) -> str:
+def _summary(text: str | None, limit: int = 280) -> str:
     plain = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', text or ''))).strip()
     return plain if len(plain) <= limit else plain[:limit].rsplit(' ', 1)[0] + '…'
 

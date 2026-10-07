@@ -112,7 +112,8 @@ def test_nightly_once_a_day(tmp_path, monkeypatch):
     monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
     runs = []
     monkeypatch.setattr(mp, 'propose', lambda budget=None: runs.append(1) or {'finished': len(runs) > 1})
-    mp.nightly(); mp.nightly(); mp.nightly()
+    for _ in range(3):
+        mp.nightly()
     assert len(runs) == 2  # cut short once, finished the second time, then done for the day
 
 

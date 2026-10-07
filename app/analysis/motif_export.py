@@ -73,7 +73,7 @@ def as_csv(found: list[dict]) -> str:
 
 def as_markdown(found: list[dict], scope: str) -> str:
     names = {m['id']: m['name'] for m in found}
-    lines = [f'# 🧩 BND Motif Index', '',
+    lines = ['# 🧩 BND Motif Index', '',
              f"{len(found)} motifs ({'verified by a person' if scope == 'verified' else 'all, verified or not'}), "
              f"{sum(len(m['claims']) for m in found)} claims; exported {date.today().isoformat()} from bignews.day.", '']
     # By group, a motif in several groups under each, then the ungrouped

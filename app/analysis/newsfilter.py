@@ -25,7 +25,6 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime as dt
-from typing import Optional
 
 import joblib
 import numpy as np
@@ -133,7 +132,7 @@ def ranked(emotions: list[str]) -> dict:
     return {'emotion': order[0], 'emotion_ranks': ','.join(order)}
 
 
-def emotion_weights(ranks: Optional[str]) -> dict[str, float]:
+def emotion_weights(ranks: str | None) -> dict[str, float]:
     """Ranked choice, Borda style: a headline's one vote split 3:2:1 across its ranked emotions (normalized, so a
     headline with one emotion gives it the whole vote). Averaging these across a story or an outlet lets feelings
     that are often second choice show up, instead of only counting top picks."""
@@ -145,7 +144,7 @@ def emotion_weights(ranks: Optional[str]) -> dict[str, float]:
     return {e: p / total for e, p in points.items()}
 
 
-def judge(title: str, agency: str) -> Optional[dict]:
+def judge(title: str, agency: str) -> dict | None:
     return llm.complete_json(PROMPT.format(agency=agency, title=title.strip()), SCHEMA, max_tokens=MAX_TOKENS)
 
 
@@ -222,7 +221,7 @@ def train():
 _model = None
 
 
-def _load() -> Optional[dict]:
+def _load() -> dict | None:
     global _model
     if _model is None and os.path.exists(MODEL_FILE):
         _model = joblib.load(MODEL_FILE)

@@ -1,5 +1,4 @@
 from functools import partial
-from typing import Optional
 
 import nltk
 import pandas as pd
@@ -32,8 +31,8 @@ pipeline = [
 ]
 
 
-def load_and_update_topics(s: Optional[Session] = None):
-    with (open(Constants.Paths.TOPICS_FILE, 'rt') as f):
+def load_and_update_topics(s: Session | None = None):
+    with (open(Constants.Paths.TOPICS_FILE) as f):
         topic_dict: dict = yaml.safe_load(f)
     commit = False
     if s is None:
@@ -83,7 +82,7 @@ def analyze_all_topics(reset=False):
         essentials = [word for topic in topics for word in topic.essential]
         headlines = s.query(Headline).join(Headline.article).filter(
             or_(*[Headline.title.like(f"%{word}%") for word in essentials]),
-            Article.topic_id == None
+            Article.topic_id.is_(None)
         ).all()
         logger.info("Analyzing %d headlines for %d topics", len(headlines), len(topics))
 

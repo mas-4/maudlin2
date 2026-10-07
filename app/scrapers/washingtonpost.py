@@ -1,5 +1,4 @@
 from app.scraper import FeedScraper
-from app.utils.constants import Bias, Credibility
 
 
 class WashingtonPost(FeedScraper):

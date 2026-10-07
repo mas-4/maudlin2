@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup as Soup
 
 from app.scraper import Scraper
-from app.utils.constants import Bias, Credibility, Constants
+from app.utils.constants import Constants
 from app.utils.constants import Country
 from app.utils.logger import get_logger
 

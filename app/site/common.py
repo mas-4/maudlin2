@@ -63,7 +63,7 @@ def stylesheet() -> str:
 
 def copy_assets():
     for file in os.listdir(Config.assets):
-        logger.debug(f"Copying %s", file)
+        logger.debug("Copying %s", file)
         shutil.copy(os.path.join(Config.assets, file), Config.build)
     # Written after the copy, so it always replaces any style.css in the static folder
     with open(os.path.join(Config.build, 'style.css'), 'w', encoding='utf-8') as f:
@@ -72,7 +72,7 @@ def copy_assets():
 
 def clear_build():
     for file in os.listdir(Config.build):
-        logger.debug(f"Removing %s", file)
+        logger.debug("Removing %s", file)
         path = os.path.join(Config.build, file)
         if os.path.isdir(path):
             shutil.rmtree(path)

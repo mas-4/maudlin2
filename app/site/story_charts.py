@@ -244,7 +244,7 @@ def saga_lanes(parts: list[dict], tv_spots: list[dict], radio: list[dict], retol
                            f'fill="{color.get(r["story"], "#e8463c")}" stroke="#1f1f2e" stroke-width="0.8"><title>'
                            f'{escape(r["show"])}, {escape(r["when"])} ET</title></circle>')
         else:
-            for when, story in retold:
+            for when, _story in retold:
                 if when:
                     out.append(f'<text x="{axis.x(when):.1f}" y="{y + 14}" text-anchor="middle" class="sc-emoji">🧶'
                                f'<title>retold online (the day\'s report)</title></text>')

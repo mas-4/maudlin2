@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup as Soup
 
 from app.scraper import SeleniumScraper
-from app.utils.constants import Bias, Credibility, Constants
+from app.utils.constants import Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

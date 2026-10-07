@@ -1,6 +1,6 @@
 from datetime import datetime as dt, timedelta as td
 from threading import Lock
-from typing import Optional, cast
+from typing import cast
 
 import numpy as np
 import pytz
@@ -22,16 +22,16 @@ class Agency(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30), index=True)
     url: Mapped[str] = mapped_column(String(100))
-    articles: Mapped[list["Article"]] = relationship("Article", back_populates="agency", lazy="dynamic")
+    articles: Mapped[list[Article]] = relationship("Article", back_populates="agency", lazy="dynamic")
     _bias: Mapped[int] = mapped_column(Integer())
     _credibility: Mapped[int] = mapped_column(Integer())  # legacy MBFC rating, no longer shown
     _country: Mapped[int] = mapped_column(Integer())
     # Licensed ratings from ratings.csv (see app/ratings.py): AllSides lean, stored in _bias as -2..2, and Wikipedia's
     # reliability status. An outlet AllSides doesn't rate has lean_rated False and a placeholder _bias of 0.
     lean_rated: Mapped[bool] = mapped_column(Boolean(), default=False, server_default='0')
-    lean_url: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    reliability: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    reliability_note: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    lean_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    reliability: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reliability_note: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     def __repr__(self) -> str:
         return f"Agency(id={self.id!r}, name={self.name!r}, url={self.url!r})"
@@ -110,11 +110,11 @@ class Article(Base, AccessTimeMixin):
     __tablename__ = "article"
     id: Mapped[int] = mapped_column(primary_key=True)
     agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
-    agency: Mapped["Agency"] = relationship(Agency, back_populates="articles")
+    agency: Mapped[Agency] = relationship(Agency, back_populates="articles")
     url: Mapped[str] = mapped_column(String(254), index=True)
-    headlines: Mapped[list["Headline"]] = relationship("Headline", back_populates="article")
+    headlines: Mapped[list[Headline]] = relationship("Headline", back_populates="article")
     topic_id: Mapped[int] = mapped_column(ForeignKey("topic.id"), nullable=True)
-    topic: Mapped["Topic"] = relationship("Topic")
+    topic: Mapped[Topic] = relationship("Topic")
     topic_score: Mapped[float] = mapped_column(Float(), nullable=True)
 
     def __repr__(self) -> str:
@@ -135,7 +135,7 @@ class Headline(Base, AccessTimeMixin):
     # Mapping to article
     id: Mapped[int] = mapped_column(primary_key=True)
     article_id: Mapped[int] = mapped_column(ForeignKey("article.id"))
-    article: Mapped["Article"] = relationship(Article, back_populates="headlines")
+    article: Mapped[Article] = relationship(Article, back_populates="headlines")
 
     # Headline data
     raw: Mapped[str] = mapped_column(Text(), nullable=True)
@@ -287,8 +287,8 @@ class Story(Base):
     labeled_with: Mapped[int] = mapped_column(Integer(), nullable=True)  # outlet count when the label was written
     first_seen: Mapped[dt] = mapped_column(DateTime())
     last_seen: Mapped[dt] = mapped_column(DateTime())
-    saga_id: Mapped[Optional[int]] = mapped_column(ForeignKey("saga.id"), nullable=True, index=True)
-    headlines: Mapped[list["StoryHeadline"]] = relationship("StoryHeadline", back_populates="story")
+    saga_id: Mapped[int | None] = mapped_column(ForeignKey("saga.id"), nullable=True, index=True)
+    headlines: Mapped[list[StoryHeadline]] = relationship("StoryHeadline", back_populates="story")
 
     def __repr__(self):
         return f"Story(id={self.id!r}, label={self.label!r})"
@@ -326,7 +326,7 @@ class StoryHeadline(Base):
     __tablename__ = "story_headline"
     id: Mapped[int] = mapped_column(primary_key=True)
     story_id: Mapped[int] = mapped_column(ForeignKey("story.id"), index=True)
-    story: Mapped["Story"] = relationship(Story, back_populates="headlines")
+    story: Mapped[Story] = relationship(Story, back_populates="headlines")
     headline_id: Mapped[int] = mapped_column(ForeignKey("headline.id"), unique=True)
     sentiment: Mapped[float] = mapped_column(Float())
     deviation: Mapped[float] = mapped_column(Float())  # sentiment minus the story's mean across outlets

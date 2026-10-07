@@ -142,7 +142,7 @@ def deduplicate(df):
     # create a list of deletes that contains the id of the duplicates that we're not keeping
     updates = []
     deletes = []
-    for title, group in df.groupby('processed'):
+    for _title, group in df.groupby('processed'):
         if len(group) == 1:
             continue
         keep = group.sort_values('first_accessed').iloc[0]

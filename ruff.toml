@@ -1,0 +1,21 @@
+# Lint for the whole repo (ruff check .). Lines run to 120 as the code is written; the rules: real errors (F, E9),
+# style that hides bugs (E7, W6), likely bugs (B), and simpler equivalents (SIM, C4, PIE, UP) worth taking
+line-length = 120
+target-version = "py314"
+extend-exclude = ["_build", "build", "alembic", "dev", "data"]
+
+[lint]
+select = ["F", "E", "W", "B", "SIM", "C4", "PIE", "UP"]
+ignore = [
+    "E501",  # long lines: the formatter's call, not a bug
+    "E731",  # a lambda assigned to a name: used on purpose for small local helpers
+    "SIM108", # a ternary for every if/else: not always clearer
+    "B905",  # zip() without strict=: the zips here pair lists built together; strict=True would only add crashes
+    "E741",  # `l` for a link or line in a short comprehension
+    "UP031", # %-formatting kept where it builds regexes full of braces
+    "C408",  # dict(key=...) reads fine
+    "SIM105", # try/except/pass is as clear as contextlib.suppress
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["SIM115"]  # a test reading a file it just wrote

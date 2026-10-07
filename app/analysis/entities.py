@@ -5,7 +5,6 @@ short name so the same subject is named the same way in every story; names are r
 
 These groups are not sagas (app/analysis/sagas.py): a saga links the parts of one running story; an entity group is
 every current story that names the same subject, related or not."""
-import hashlib
 import os
 import re
 

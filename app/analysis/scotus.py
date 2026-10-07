@@ -115,7 +115,7 @@ GENERIC = {
     'care', 'games', 'heights', 'valley', 'grand', 'black', 'grant', 'johnson', 'blanche', 'alaska', 'florida', 'texas',
     'california', 'trump', 'biden', 'roy', 'cook', 'missionaries', 'ferguson', 'young', 'smith', 'jones', 'brown',
     'univ', 'deptartment',  # (sic: the list's own typo)
-    'dist', 'younge', 'young', 'north', 'south', 'maxwell',  # Maxwell: also Ghislaine Maxwell, in court news on her own
+    'dist', 'younge', 'north', 'south', 'maxwell',  # Maxwell: also Ghislaine Maxwell, in court news on her own
 }
 # Short names the press uses for a party, by a phrase in the party's name
 ALIASES = {'REPUBLICAN NATIONAL COMMITTEE': ['RNC']}
@@ -365,7 +365,7 @@ def cue_sets(cases: list[dict]) -> dict[str, set[str]]:
 # Capitalized words in keywords that aren't names a headline would single a case out by
 NOT_NAMES = {'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
              'fourteenth', 'step', 'act', 'amendment', 'amendments', 'clause', 'court', 'courts', 'supreme', 'federal',
-             'national', 'title', 'us', 'u.s.', 'american', 'act', 'bill', 'rights', 'circuit', 'appeals'}
+             'national', 'title', 'us', 'u.s.', 'american', 'bill', 'rights', 'circuit', 'appeals'}
 
 
 def keyword_sets(cases: list[dict]) -> dict[str, dict[str, set[str]]]:

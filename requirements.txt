@@ -26,3 +26,4 @@ anthropic==1.11.0
 faster-whisper==1.2.1
 nvidia-cublas-cu12==12.9.2.10
 nvidia-cudnn-cu12==9.27.0.42
+ruff==0.16.10  # lint, in the pre-commit hook (ruff.toml)

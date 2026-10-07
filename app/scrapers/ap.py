@@ -1,5 +1,4 @@
 from app.scraper import GoogleNewsScraper
-from app.utils.constants import Bias, Credibility
 
 
 class AP(GoogleNewsScraper):

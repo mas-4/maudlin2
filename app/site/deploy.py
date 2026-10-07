@@ -22,7 +22,7 @@ def move_to_public():
         return
 
     for file in os.listdir(Config.build):
-        logger.debug(f"Moving %s", file)
+        logger.debug("Moving %s", file)
         shutil.move(os.path.join(Config.build, file), os.path.join(server_location, file))
 
 

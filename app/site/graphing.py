@@ -7,7 +7,6 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import dates as mdates
 
-from app.analysis.topics import load_and_update_topics
 from app.site.common import PathHandler
 from app.utils.config import Config
 from app.utils.constants import Bias, Credibility
@@ -166,7 +165,7 @@ class Plots:
         # Assuming `get_bottom` is a function that returns a DataFrame with a 'bot' column initialized to zeros
         sorted_topics = df.groupby('topic').size().sort_values(ascending=False)
         bottom = get_week_bottom(df)
-        for i, topic in enumerate(sorted_topics.index):
+        for topic in sorted_topics.index:
             topic_df = df[df['topic'] == topic].copy()
             topic_df = topic_df.groupby(pd.Grouper(key='first_accessed', freq='W')).agg({'afinn': 'count'})
             # Group by day and calculate number of articles
@@ -506,7 +505,7 @@ class Plots:
         def aggregate(df):
             cols = ['Vader', 'Afinn', 'PVI', 'PAI']
             agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
-                .agg({col: 'mean' for col in cols}).dropna().reset_index()
+                .agg(dict.fromkeys(cols, 'mean')).dropna().reset_index()
             # moving averages for vader and afinn
             agg['Vader MA'] = agg['Vader'].rolling(window=7, min_periods=1).mean()
             agg['Afinn MA'] = agg['Afinn'].rolling(window=7, min_periods=1).mean()

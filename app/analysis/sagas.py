@@ -15,7 +15,6 @@ import json
 import os
 import re
 from collections import Counter
-from typing import Optional
 from datetime import datetime as dt, timedelta as td
 
 import numpy as np
@@ -108,7 +107,7 @@ JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "m
                 "required": ["reason", "verdict"]}
 
 
-def _ask(prompt: str) -> Optional[dict]:
+def _ask(prompt: str) -> dict | None:
     answer = llm.complete_json(prompt, JUDGE_SCHEMA, max_tokens=500, model=JUDGE_MODEL)
     if not answer or answer.get('verdict') not in JUDGE_SCHEMA['properties']['verdict']['enum']:
         return None
@@ -126,7 +125,7 @@ def same_saga(titles_a: list[str], titles_b: list[str]) -> bool:
     return bool(saga_verdict(titles_a, titles_b))
 
 
-def saga_verdict(titles_a: list[str], titles_b: list[str]) -> Optional[bool]:
+def saga_verdict(titles_a: list[str], titles_b: list[str]) -> bool | None:
     """Whether two groups of headlines are one running story, by the language model under two wordings, both of
     which must say yes (cached by the headlines shown). None without an answer, so an unchecked link is never saved
     and nothing is remembered; the pair is asked again next run."""
@@ -161,7 +160,7 @@ def central(titles: list[str], vectors: np.ndarray, n: int = JUDGE_SAMPLE) -> li
     return list(dict.fromkeys(titles[i].strip() for i in order))[:n]
 
 
-def pair_verdict(story_a: int, story_b: int, titles_a: list[str], titles_b: list[str]) -> Optional[bool]:
+def pair_verdict(story_a: int, story_b: int, titles_a: list[str], titles_b: list[str]) -> bool | None:
     """Whether two saved stories are one running story, remembered by the pair of stories (a person's verdict first,
     then the current judge's): asked once, not again each hour as their headlines change. None without an answer."""
     key = '|'.join(str(i) for i in sorted((story_a, story_b)))
@@ -370,8 +369,8 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
     current = {int(k): story_of[int(k)] for k in stories['cluster'].unique() if int(k) in story_of}
     past = _past_stories(set(current.values()), now - SAGA_MEMORY)
     with Session() as s:
-        saga_of = {sid: saga for sid, saga in s.query(Story.id, Story.saga_id).filter(
-            Story.id.in_(list(current.values())), Story.saga_id.isnot(None))}
+        saga_of = dict(s.query(Story.id, Story.saga_id).filter(
+            Story.id.in_(list(current.values())), Story.saga_id.isnot(None)).all())
     saga_of.update({sid: p['saga'] for sid, p in past.items() if p['saga'] is not None})
 
     # One list of titles: today's considered headlines, then each past story's headlines

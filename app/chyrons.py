@@ -354,7 +354,7 @@ def match_day(day: str, use_model: bool = True, budget: float | None = None) -> 
         if model:
             for channel in CHANNELS:
                 texts = sorted({c['text'] for c in items if c['channel'] == channel})
-                key = lambda t: f"{channel}|{hour.isoformat()}|{t}"  # noqa: E731
+                key = lambda t: f"{channel}|{hour.isoformat()}|{t}"  # noqa: E731, B023 - used in this iteration only
                 todo = [t for t in texts if key(t) not in asked]
                 if todo:
                     got = judge_hour(channel, todo, front[:MATCH_FRONT])
@@ -398,5 +398,5 @@ def match_recent(budget: float = 180, now: dt | None = None):
                 caps = match_day(day, budget=max(0, budget - (time.time() - started)))
                 logger.info("Chyrons: %s, %d headline captions, %d matched to a story", day, len(caps),
                             sum(1 for c in caps if c.get('story')))
-            except Exception as e:  # noqa: extra; the run goes on without it
+            except Exception as e:  # noqa: BLE001 - extra; the run goes on without it
                 logger.warning("Chyrons: matching %s failed (%s)", day, e)

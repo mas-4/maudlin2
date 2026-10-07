@@ -31,7 +31,7 @@ import random
 import re
 import sqlite3
 from collections import Counter, defaultdict
-from datetime import datetime as dt, timedelta as td, timezone
+from datetime import datetime as dt, timedelta as td, UTC
 
 import numpy as np
 
@@ -144,7 +144,7 @@ def normalized(text: str) -> str:
 def load(hours: float, until: dt | None = None) -> list[dict]:
     """The posts collected in the `hours` before `until` (now), less feeds, bots, bare link shares and the like"""
     from app.vernacular import DB
-    end = until or dt.now(timezone.utc)
+    end = until or dt.now(UTC)
     since = (end - td(hours=hours)).isoformat(timespec='seconds')
     con = sqlite3.connect(DB)
     rows = con.execute('SELECT key, author, text, reply, source, links, uri FROM post WHERE collected >= ? AND collected <= ?',

@@ -2,7 +2,6 @@
 place: every outlet's headline, how coverage grew and faded, the saga it belongs to, the names it mentions, its minutes
 on TV, the radio newscasts that carried it, and the folklore told around it. The front page's cards link here."""
 import glob
-import json
 import os
 import re
 from collections import defaultdict
@@ -17,6 +16,7 @@ from app.site import page_tv, story_charts
 from app.site.common import TemplateHandler, chip_style, outlet_icon, short_name
 from app.site.page_sagas import EASTERN, eastern
 from app.utils import Config, get_logger
+from app.utils.store import read_json
 
 logger = get_logger(__name__)
 DAYS = 7  # stories seen this recently get a page
@@ -85,11 +85,7 @@ def tv_by_story() -> dict:
     first, spots = {}, defaultdict(list)
     merged = story_merges()  # a story merged into another: its captions count for that one
     for path in glob.glob(os.path.join(chyrons.FOLDER, 'matched-*.json')):
-        try:
-            caps = json.load(open(path))
-        except (OSError, ValueError):
-            continue
-        for c in caps:
+        for c in read_json(path, []):
             if c.get('story'):
                 c = {**c, 'story': merged.get(c['story'], c['story'])}
                 at = datetime.fromisoformat(c['at'])
@@ -155,7 +151,6 @@ def reports_by_day(days: int = DAYS) -> list[dict]:
     """The last narrative report of each of the last `days` days, newest first (a day's earlier reports cover the same
     posts)"""
     from app.site.page_folklore import FOLDER
-    from app.utils.store import read_json
     last = {}
     for path in sorted(glob.glob(os.path.join(FOLDER, 'report-*.json'))):
         last[os.path.basename(path)[len('report-'):][:10]] = path
@@ -310,7 +305,7 @@ def wire_copied(headlines: list[dict]) -> dict:
         return {}
     try:
         copies = wire.wire_copies(df)
-    except Exception as e:  # noqa: extra; the page stands without it
+    except Exception as e:  # noqa: BLE001 - extra; the page stands without it
         logger.warning("Story pages: wire copies: %s", e)
         return {}
     wires = ', '.join(sorted(set(df.loc[df['agency'].isin(wire.WIRES), 'agency'])))
@@ -373,16 +368,12 @@ class StoryPages:
         try:  # fact-checks that came after a story left the front page, or of one that never made a card
             from app.analysis import factchecks
             checks = factchecks.for_story_pages({st['id']: st['label'] for st in stories if st['label']})
-        except Exception as e:  # noqa: extra; the pages stand without them
+        except Exception as e:  # noqa: BLE001 - extra; the pages stand without them
             logger.warning("Story pages: fact-checks: %s", e)
             checks = {}
-        try:
-            names = json.load(open(entities.CACHE))
-        except (OSError, ValueError):
-            names = {}
+        names = read_json(entities.CACHE, {})
         aliases = entities.load_aliases()['aliases']
         from app.site.page_headlines import STORY_EXTRAS
-        from app.utils.store import read_json
         extras = read_json(STORY_EXTRAS, {})
         for st in stories:
             by_outlet = {}

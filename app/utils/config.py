@@ -11,7 +11,7 @@ from app.utils.constants import Constants
 
 def read_creds(path):
     if os.path.exists(path):
-        with open(path, 'rt') as f_in:
+        with open(path) as f_in:
             return f_in.read().strip()
     return ''
 
@@ -83,7 +83,7 @@ class Config:
     domain = ''
 
     if os.path.exists(Constants.Paths.EMAIL_CREDS):
-        with open(Constants.Paths.EMAIL_CREDS, 'rt') as f_in:
+        with open(Constants.Paths.EMAIL_CREDS) as f_in:
             emails, domain, email, pw = f_in.read().strip().splitlines()
             emails_to_notify = emails.split(',')
 
@@ -91,11 +91,11 @@ class Config:
     dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
     anthropic = read_creds(Constants.Paths.ANTHROPIC_CREDS) or os.environ.get('ANTHROPIC_API_KEY', '')
 
-    with open(Constants.Paths.TOPICS_FILE, 'rt') as f_in:
+    with open(Constants.Paths.TOPICS_FILE) as f_in:
         topics = [Topic(x) for x in yaml.safe_load(f_in)]  # Need to deprecate load and update in topics file
 
     topic_dict = {x.name: x for x in topics}
-    with open(Constants.Paths.SPECIAL_DATES, 'rt') as f_in:
+    with open(Constants.Paths.SPECIAL_DATES) as f_in:
         special_dates = []
         for i, x in enumerate(yaml.safe_load(f_in)):
             special_dates.append(SpecialDate(i, x, topic_dict))  # binding issue in list comprehension

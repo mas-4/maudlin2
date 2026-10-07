@@ -13,7 +13,6 @@ import os
 import time
 from collections import defaultdict
 from datetime import datetime as dt, timedelta as td
-from typing import Optional
 from urllib.parse import urlparse
 
 import pytz
@@ -338,5 +337,5 @@ def satire(days: int = 3) -> list[dict]:
     return of_kind('satire', days)
 
 
-def source_for(key: str) -> Optional[dict]:
+def source_for(key: str) -> dict | None:
     return BY_KEY.get(key)

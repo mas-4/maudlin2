@@ -37,7 +37,7 @@ def pytest_sessionstart(session):
     clustering.ollama_embed = no_ollama
     # Nor Bluesky's API (and its cache is in the shared data folder): no posts to show
     from app import bluesky_examples
-    bluesky_examples.prepared = lambda: {}
+    bluesky_examples.prepared = dict
     bluesky_examples.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-bsky-'), 'bluesky_examples.json')
     # Nor the accusations screen's model (its cache is in the shared data folder too): no one accused
     from app.analysis import accusations

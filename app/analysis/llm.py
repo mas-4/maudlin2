@@ -8,7 +8,6 @@ configured). MAUDLIN_LLM_MODEL overrides the model name for either backend."""
 import json
 import os
 import threading
-from typing import Optional
 
 import requests as rq
 
@@ -24,7 +23,7 @@ DEFAULT_MODELS = {
 TIMEOUT = 120
 BIG_TIMEOUT = 600  # a bigger model, partly on the CPU, loading and answering
 
-_backend: Optional[str] = None
+_backend: str | None = None
 _resolved = False
 _lock = threading.Lock()
 
@@ -36,7 +35,7 @@ def _ollama_up() -> bool:
         return False
 
 
-def backend() -> Optional[str]:
+def backend() -> str | None:
     """The llm backend in use, or None if there isn't one. Resolved once per process; the lock keeps parallel
     callers from reading the answer before the first caller has finished working it out."""
     global _backend, _resolved
@@ -67,7 +66,7 @@ def model() -> str:
     return os.environ.get('MAUDLIN_LLM_MODEL') or DEFAULT_MODELS.get(_backend or '', '')
 
 
-def complete_json(prompt: str, schema: dict, max_tokens: int = 1024, model: Optional[str] = None) -> Optional[dict]:
+def complete_json(prompt: str, schema: dict, max_tokens: int = 1024, model: str | None = None) -> dict | None:
     """Ask the llm for JSON matching `schema`. Returns None if there's no backend or the call fails. `model` picks
     a different local model for this call (Ollama only), e.g. a bigger one for a small, hard job."""
     which = backend()
@@ -81,7 +80,7 @@ def complete_json(prompt: str, schema: dict, max_tokens: int = 1024, model: Opti
     return None
 
 
-def _ollama(prompt: str, schema: dict, max_tokens: int, name: Optional[str] = None) -> Optional[dict]:
+def _ollama(prompt: str, schema: dict, max_tokens: int, name: str | None = None) -> dict | None:
     response = rq.post(f'{OLLAMA_URL}/api/chat', timeout=TIMEOUT if not name else BIG_TIMEOUT, json={
         'model': name or model(),
         'messages': [{'role': 'user', 'content': prompt}],
@@ -97,7 +96,7 @@ def _ollama(prompt: str, schema: dict, max_tokens: int, name: Optional[str] = No
 _client = None
 
 
-def _anthropic(prompt: str, schema: dict, max_tokens: int) -> Optional[dict]:
+def _anthropic(prompt: str, schema: dict, max_tokens: int) -> dict | None:
     global _client
     if _client is None:
         import anthropic

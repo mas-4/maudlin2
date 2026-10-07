@@ -14,7 +14,6 @@ import subprocess
 import tempfile
 import time
 from datetime import datetime as dt, timedelta as td
-from typing import Optional
 
 import numpy as np
 import pytz
@@ -62,7 +61,7 @@ def hotwords() -> str:
         from app.analysis import entities
         names = [n for n, _ in sorted(entities.all_names().items(), key=lambda kv: -kv[1])
                  if n[:1].isupper()][:HOTWORD_NAMES]
-    except Exception:  # noqa: the fixed terms alone will do
+    except Exception:  # noqa: BLE001 - the fixed terms alone will do
         names = []
     return ', '.join(dict.fromkeys(TERMS + names))
 
@@ -108,7 +107,7 @@ def free_gpu(wait: float = 30) -> bool:
     while True:
         try:
             loaded = rq.get(f'{OLLAMA}/api/ps', timeout=5).json().get('models', [])
-        except Exception:  # noqa: no Ollama running means nothing to free
+        except Exception:  # noqa: BLE001 - no Ollama running means nothing to free
             return True
         if not loaded:
             return True
@@ -153,7 +152,7 @@ def trim_ads(segments: list[dict], window: float = 45) -> list[dict]:
     return segments[start:end]
 
 
-def download(url: str, folder: str) -> Optional[str]:
+def download(url: str, folder: str) -> str | None:
     path = os.path.join(folder, 'audio')
     with rq.get(url, headers={'User-Agent': USER_AGENT}, timeout=Config.timeout, stream=True) as response:
         response.raise_for_status()
@@ -216,7 +215,7 @@ def transcribe_pending(budget: float = 600) -> int:
                              for s in segments])
             save(item.id, kept, len(audio) / 16000)
             done += 1
-        except Exception as e:  # noqa: one bad file mustn't stop the rest
+        except Exception as e:  # noqa: BLE001 - one bad file mustn't stop the rest
             if permanent(e):
                 logger.warning("Transcribe: %s failed for good (%s)", item.title, e)
                 save(item.id, [], 0, model=f'failed: {type(e).__name__}'[:64])  # recorded, not retried every hour

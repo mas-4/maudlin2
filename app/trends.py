@@ -10,7 +10,7 @@ scrape. Every trend carries a `match_text` the homepage uses to find the news st
 import hashlib
 import re
 from datetime import datetime as dt, timedelta as td
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import pytz
 import requests as rq

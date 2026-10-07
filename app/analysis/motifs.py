@@ -11,9 +11,7 @@ was built from folktales, myths and legends, so many modern claims honestly have
 The labelers used to name a motif in their own words, and copied the examples in their prompt (Oct 4: 34 of 94
 fact-checks "the false flag"). An entry from the index can't be invented."""
 import hashlib
-import json
 import os
-import re
 
 import numpy as np
 import pandas as pd
@@ -63,7 +61,7 @@ def index() -> tuple[pd.DataFrame, np.ndarray]:
         df = table()
         stamp = hashlib.sha1('\n'.join(df['code'] + df['text']).encode()).hexdigest()[:12]
         meta = VECTORS + '.json'
-        if os.path.exists(VECTORS) and os.path.exists(meta) and json.load(open(meta)).get('stamp') == stamp:
+        if os.path.exists(VECTORS) and os.path.exists(meta) and read_json(meta, {}).get('stamp') == stamp:
             v = np.load(VECTORS).astype(np.float32)
         else:
             from app.analysis.clustering import ollama_embed

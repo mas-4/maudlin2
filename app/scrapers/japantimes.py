@@ -3,7 +3,7 @@ from datetime import datetime as dt
 from bs4 import BeautifulSoup as Soup
 
 from app.scraper import Scraper
-from app.utils.constants import Bias, Credibility, Country, Constants
+from app.utils.constants import Country, Constants
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

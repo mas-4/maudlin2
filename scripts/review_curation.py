@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -38,16 +39,16 @@ def main():
     ap.add_argument('--all', action='store_true')
     ap.add_argument('--keep', action='store_true')
     args = ap.parse_args()
-    since = '' if args.all else (open(MARK).read().strip() if os.path.exists(MARK) else '')
+    since = '' if args.all or not os.path.exists(MARK) else Path(MARK).read_text().strip()
     index = mi.load()
     entries = index['entries']
-    rows = [json.loads(line) for line in open(LOG)]
+    rows = [json.loads(line) for line in Path(LOG).read_text().splitlines() if line.strip()]
     rows = [r for r in rows if not r.get('reconstructed') and r['at'] > since]
     mine = [r for r in rows if not r.get('by')]  # the person's own; 'by' marks changes others made with approval
     print(f'{len(mine)} change(s) by the person since {since or "the start"} ({len(rows) - len(mine)} by others)\n')
     for r in mine:
         a, before = r['action'], r.get('before') or {}
-        name_was = lambda k: (before.get(k) or {}).get('name') if isinstance(before.get(k), dict) else None  # noqa: E731
+        name_was = lambda k: (before.get(k) or {}).get('name') if isinstance(before.get(k), dict) else None  # noqa: E731, B023 - used in this iteration only
         now = lambda i: entries.get(i, {}).get('name') if i in entries else None  # noqa: E731
         parts = []
         for k in ('id', 'source', 'target', 'a', 'b', 'child', 'parent'):

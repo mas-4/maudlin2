@@ -1,4 +1,3 @@
-from typing import Optional
 
 import pandas as pd
 from afinn import Afinn
@@ -15,7 +14,7 @@ logger = get_logger(__name__)
 SID = SentimentIntensityAnalyzer()
 AFINN = Afinn()
 
-topics: Optional[list[Topic]] = None
+topics: list[Topic] | None = None
 
 
 def apply_topic_scoring(headline: Headline):
@@ -41,7 +40,7 @@ def apply_afinn(headline: Headline):
     headline.afinn = AFINN.score(headline.processed) / max(len(headline.processed.split()), 1)
 
 
-def apply(headline: Headline, s: Optional[Session] = None):
+def apply(headline: Headline, s: Session | None = None):
     global topics
     commit = False
 

@@ -1,5 +1,5 @@
 """app/analysis/sagas.link_sagas: sagas kept across days, against an in-memory database and a fake embedding."""
-from datetime import datetime as dt, timedelta as td, timezone
+from datetime import datetime as dt, timedelta as td, UTC
 
 import numpy as np
 import pandas as pd
@@ -37,7 +37,7 @@ def db(monkeypatch, tmp_path):
 
 
 def saved_story(session, titles, hours_ago, saga_id=None):
-    now = dt.now(timezone.utc).replace(tzinfo=None) - td(hours=hours_ago)
+    now = dt.now(UTC).replace(tzinfo=None) - td(hours=hours_ago)
     with session() as s:
         agency = s.query(Agency).first() or Agency(name='AP', url='x', _bias=0, _credibility=0, _country=0)
         story = Story(label=titles[0], first_seen=now, last_seen=now, saga_id=saga_id)
@@ -82,7 +82,7 @@ def test_yesterdays_parts_stay_in_todays_saga(db):
 
 def test_saved_saga_never_loses_a_part_and_keeps_its_id(db):
     with db() as s:
-        saga = Saga(name='Cornell case', named_with=2, first_seen=dt.now(timezone.utc).replace(tzinfo=None), last_seen=dt.now(timezone.utc).replace(tzinfo=None))
+        saga = Saga(name='Cornell case', named_with=2, first_seen=dt.now(UTC).replace(tzinfo=None), last_seen=dt.now(UTC).replace(tzinfo=None))
         s.add(saga)
         s.commit()
         saga_id = saga.id
@@ -180,7 +180,7 @@ def test_history_lists_parts_by_when_they_broke_with_outlets_by_lean(db):
 
 
 def test_recheck_detaches_a_part_that_is_no_other_parts_story_and_ends_a_saga_left_alone(db, monkeypatch):
-    now = dt.now(timezone.utc).replace(tzinfo=None)
+    now = dt.now(UTC).replace(tzinfo=None)
     with db() as s:
         s.add_all([Saga(id=1, name='Supreme Court climate cases', first_seen=now, last_seen=now),
                    Saga(id=2, name='Cornell case', first_seen=now, last_seen=now)])
@@ -191,7 +191,7 @@ def test_recheck_detaches_a_part_that_is_no_other_parts_story_and_ends_a_saga_le
     probe = saved_story(db, ['Attorney general takes over Cornell case'], 10, saga_id=2)
     vote = saved_story(db, ['Faculty vote no confidence over the case'], 5, saga_id=2)  # one story with the probe only
     monkeypatch.setattr(sg, 'saga_verdict', lambda a, b: {a[0], b[0]} != {'Supreme Court hears climate case', 'Supreme Court begins new term'}
-                        and not ({a[0], b[0]} == {'Cornell student alleges assault', 'Faculty vote no confidence over the case'}))
+                        and ({a[0], b[0]} != {'Cornell student alleges assault', 'Faculty vote no confidence over the case'}))
     gone = sg.recheck()
     assert sorted(d['story'] for d in gone) == sorted([climate, term])  # a two-part saga that isn't one story ends
     with db() as s:

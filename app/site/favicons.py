@@ -7,7 +7,6 @@ import re
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 from urllib.parse import urljoin
 
 import requests as rq
@@ -49,7 +48,7 @@ def _candidates(home: str) -> list[str]:
     return [url for _, url in found if not url.endswith('.svg')] + [urljoin(home, '/favicon.ico')]
 
 
-def _fetch(home: str) -> Optional[Image.Image]:
+def _fetch(home: str) -> Image.Image | None:
     for url in _candidates(home):
         try:
             response = rq.get(url, headers=Constants.Headers.firefox, timeout=TIMEOUT)

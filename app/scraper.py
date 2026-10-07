@@ -20,7 +20,7 @@ from app import scraper_health
 from app.analysis import abtests, metrics, newsfilter
 from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
-from app.utils import Config, Credibility, Bias, Country, Constants, get_logger
+from app.utils import Config, Country, Constants, get_logger
 
 logger = get_logger(__name__)
 

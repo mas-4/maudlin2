@@ -8,7 +8,6 @@ import csv
 import os
 import time
 from datetime import datetime as dt, timedelta as td
-from typing import Optional
 
 import pytz
 import requests as rq
@@ -138,7 +137,7 @@ def refresh(force: bool = False) -> None:
     logger.info("Outlet wiki: %d of %d outlets", len(outlets), len(titles))
 
 
-def info(name: str) -> Optional[dict]:
+def info(name: str) -> dict | None:
     """The cached background for one outlet, or None."""
     return _load().get('outlets', {}).get(name)
 

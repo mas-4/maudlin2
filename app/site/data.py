@@ -2,7 +2,6 @@ import sys
 import time
 from datetime import timedelta as td
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -29,7 +28,7 @@ class DataTypes(Enum):
 
 
 class DataHandler:
-    def __init__(self, types: Optional[list[DataTypes]] = None):
+    def __init__(self, types: list[DataTypes] | None = None):
         logger.info("Initializing DataHandler...")
         t = time.time()
         if types is None:
@@ -87,7 +86,7 @@ class DataHandler:
         df['PAI'] = df['Afinn'] * df['Bias']
         cols = ['Vader', 'Afinn', 'PVI', 'PAI']
         agg = df.set_index('Date').groupby(pd.Grouper(freq='D')) \
-            .agg({col: 'mean' for col in cols}).dropna().reset_index()
+            .agg(dict.fromkeys(cols, 'mean')).dropna().reset_index()
         # moving averages for vader and afinn
         agg['Vader MA'] = agg['Vader'].rolling(window=7, min_periods=1).mean()
         agg['Afinn MA'] = agg['Afinn'].rolling(window=7, min_periods=1).mean()

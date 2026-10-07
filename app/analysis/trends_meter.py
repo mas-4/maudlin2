@@ -2,7 +2,6 @@
 far its lean and mood have moved over the last TREND_HOURS, more arrows for more movement. Lean arrows point the way
 coverage is shifting (◀ more left-leaning outlets, ▶ more right); mood arrows ▲ brighter, ▼ grimmer."""
 from datetime import datetime as dt, timedelta as td
-from typing import Optional
 
 import pytz
 
@@ -18,7 +17,7 @@ LEAN_STEPS = (0.15, 0.35, 0.6)  # lean, relative to the day's outlets (about -2 
 MOOD_STEPS = (0.1, 0.25, 0.45)  # mood, -1 grim to 1 upbeat
 
 
-def save(meters: dict[int, dict], now: Optional[dt] = None):
+def save(meters: dict[int, dict], now: dt | None = None):
     """meters: story id -> {'lean', 'mood', 'outlets'}, one row each for this run."""
     now = now or dt.now(pytz.UTC).replace(tzinfo=None)
     with Session() as s, SqlLock:
@@ -32,7 +31,7 @@ def arrows(change: float, steps: tuple, up: str, down: str) -> str:
     return (up if change > 0 else down) * n
 
 
-def trends(story_ids: list[int], now: Optional[dt] = None) -> dict[int, dict]:
+def trends(story_ids: list[int], now: dt | None = None) -> dict[int, dict]:
     """story id -> {'lean': {'arrows', 'tip'}, 'mood': {...}} for stories with at least MIN_HOURS of history."""
     now = now or dt.now(pytz.UTC).replace(tzinfo=None)
     since = now - td(hours=TREND_HOURS)

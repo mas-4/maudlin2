@@ -29,7 +29,7 @@ def test_template_write(s):
     test.write({'test': s})
 
     # Read back exactly what was written: text mode would turn '\r\n' into '\n'
-    with open(test.path, 'rt', encoding='utf-8', newline='') as f_in:
+    with open(test.path, encoding='utf-8', newline='') as f_in:
         assert f_in.read() == s
 
 

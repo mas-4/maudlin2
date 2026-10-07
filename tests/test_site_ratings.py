@@ -115,7 +115,7 @@ def scratch_db(monkeypatch):
     session = sessionmaker(bind=engine)
     monkeypatch.setattr(ratings, 'Session', session)
     with session() as s:
-        for i, name in enumerate(['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon']):
+        for name in ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon']:
             s.add(Agency(name=name, url=f'https://{name.lower()}.example', _bias=3, _credibility=0, _country=0,
                          lean_rated=True, reliability='stale', reliability_note='stale'))
         s.commit()

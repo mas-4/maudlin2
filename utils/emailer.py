@@ -1,4 +1,5 @@
 import smtplib
+from pathlib import Path
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -40,7 +41,7 @@ class SMTPWrapper(smtplib.SMTP_SSL):
         if attachments:
             for attachment in attachments:
                 prt = MIMEBase('application', "octet-stream")
-                prt.set_payload(open(attachment, "rb").read())
+                prt.set_payload(Path(attachment).read_bytes())
                 encoders.encode_base64(prt)
                 prt.add_header('Content-Disposition', 'attachment; filename="%s"' % attachment.replace('"', ''))
                 msg_root.attach(prt)

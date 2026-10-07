@@ -2,7 +2,7 @@ import os
 import string
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -188,7 +188,7 @@ def mood_emoji(mood: float, outlets: int) -> str:
     return next(emoji for bound, emoji in MOOD_EMOJI if mood < bound)
 
 
-def cloud_words(df: pd.DataFrame, pipeline: Optional[list[Callable]] = None) -> list[dict]:
+def cloud_words(df: pd.DataFrame, pipeline: list[Callable] | None = None) -> list[dict]:
     """The terms for the homepage's interactive cloud: size, color, emoji and a tooltip for each."""
     terms = absorb_fragments(term_outlets(df, pipeline or PIPELINE)).sort_values('outlets', ascending=False)
     terms = terms.head(CLOUD_WORDS)
@@ -237,7 +237,7 @@ def samples(headlines: pd.DataFrame) -> list[dict]:
             for r in one_each.itertuples()]
 
 
-def generate_wordcloud(df: pd.DataFrame, path: str, pipeline: Optional[list[Callable]] = None):
+def generate_wordcloud(df: pd.DataFrame, path: str, pipeline: list[Callable] | None = None):
     """Draw the terms the most outlets are using: size is how many outlets used a term, color is which side
     used it more (blue left, red right, gray both), relative to the outlets in `df` (title, agency, bias)."""
     if pipeline is None:

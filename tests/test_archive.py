@@ -1,6 +1,5 @@
 """app/site/archive.py: dated editions of the front page, in temp folders only."""
 import json
-import os
 
 import pytest
 

@@ -1,5 +1,5 @@
 from app.scraper import FeedScraper
-from app.utils.constants import Bias, Credibility, Country
+from app.utils.constants import Country
 
 
 class SkyNews(FeedScraper):
