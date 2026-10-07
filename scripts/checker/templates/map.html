@@ -12,7 +12,8 @@ main { flex: 1; display: flex; min-height: 0; }
 #tree li > span { cursor: pointer; border-radius: 4px; padding: 0 3px; } #tree li > span:hover, #tree li > span.on { background: #c8f7c5; }
 #tree .meta, .meta { color: #666; font-size: .85em; }
 #graph { flex: 1; position: relative; min-width: 0; } svg#net { width: 100%; height: 100%; display: block; cursor: grab; }
-.node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
+.node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node.broad circle { stroke-width: 4.5px; } .node.sub circle { stroke-dasharray: 3 2; stroke-width: 2.2px; }
+.node.gdim { opacity: .15; } .map-genre { cursor: pointer; white-space: nowrap; font-size: .8em; padding: 0 7px; } .map-genre.on { background: var(--g); color: #fff; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
 .node.dim, .link.dim { opacity: .12; } .node text.minor { display: none; } .node:hover text.minor, .node.hit text.minor { display: inline; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
 .link.kind { stroke: #0a8f7e; stroke-width: 2px; } .link.related { stroke: #ff4fa3; stroke-width: 1.8px; stroke-dasharray: 5 4; } .link.shared { stroke: #9aa0a6; opacity: .45; }
 #info { position: absolute; right: 10px; top: 66px; width: 360px; max-height: calc(100% - 76px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
@@ -67,6 +68,9 @@ h3[data-id] .grip { cursor: grab; }
   <span class="meta" id="count"></span>
   <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
   <span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
+  <span class="key" title="a dot's outline: its place in the kinds"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="3.5"/></svg> broad kind
+    <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> a kind of one · fill: its genre</span>
+  <span class="key" id="genre-chips" title="a dot's color is its genre: click one to pick out its motifs; drag a motif onto one to give it that genre"></span>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
 <datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -77,7 +81,7 @@ const $ = (s) => document.querySelector(s);
 let data, byId, nodes = [], links = [], sim, focus = null;
 const kept = new Map();  // positions kept across redraws
 async function act(body) {
-  const r = await fetch('/motif-board', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const r = await fetch('/workbench', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   if (!r.ok) { alert('Failed: ' + await r.text()); return false; }
   if (window.refreshUndo) refreshUndo();
   await load();
@@ -137,7 +141,11 @@ function draw() {
     .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
   link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'kind of' : 'related');
   const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'node');
-  node.append('circle').attr('r', r).attr('fill', (n) => n.e.parents.length ? '#9ee6da' : data.entries.some((x) => x.parents.includes(n.id)) ? '#ffd166' : '#fff');
+  // fill: its genre (white for none); outline: its place in the kinds (thick: a broad kind with kinds of its own;
+  // dashed: a kind of a broader one; both: in the middle of a chain)
+  node.classed('broad', (n) => data.entries.some((x) => x.parents.includes(n.id))).classed('sub', (n) => n.e.parents.length > 0);
+  node.append('circle').attr('r', r).attr('fill', (n) => genreOf(n.e) ? genreColor(genreOf(n.e)) : '#fff');
+  markGenre();
   // Names on the dots that matter at a glance (2+ claims, or in the kinds); the rest on hover and when found
   node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name)
     .attr('class', (n) => n.e.claims.length > 1 || n.e.parents.length || data.entries.some((x) => x.parents.includes(n.id)) ? '' : 'minor');
@@ -185,6 +193,23 @@ const crossing = (l) => {
 };
 const GROUP_COLORS = ['#ff4fa3', '#3a86ff', '#ff6b1a', '#8a5cff', '#00a896', '#e0a800'];
 const groupColor = (gid) => GROUP_COLORS[Math.max(0, data.groups.findIndex((g) => g.id === gid)) % GROUP_COLORS.length];
+// Genres: a color each (the workbench shelf's colors, in the same order), chips to pick one out or drop a motif on
+const GENRE_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff', '#2bb673', '#e0102e', '#a0522d', '#00a6d6', '#c2185b', '#6b8e23', '#ff8fab', '#5c6bc0'];
+const genres = () => (data.facets || {}).genre || [];
+const genreOf = (e) => (e.facets || {}).genre || '';
+const genreColor = (v) => GENRE_COLORS[Math.max(0, genres().indexOf(v)) % GENRE_COLORS.length];
+let pickedGenre = null;
+function markGenre() { d3.selectAll('.node').classed('gdim', (n) => pickedGenre !== null && genreOf(n.e) !== pickedGenre); }
+function genreChips() {
+  const count = (v) => data.entries.filter((e) => genreOf(e) === v).length;
+  $('#genre-chips').innerHTML = '🎭 ' + genres().map((v) => `<span class="map-gchip map-genre${pickedGenre === v ? ' on' : ''}" data-genre="${esc(v)}" style="--g: ${genreColor(v)}">${esc(v)} <span class="meta">${count(v)}</span></span>`).join(' ')
+    + ` <span class="map-gchip map-genre${pickedGenre === '' ? ' on' : ''}" data-genre="" style="--g: #bbb">no genre <span class="meta">${count('')}</span></span>`;
+}
+$('#genre-chips').addEventListener('click', (ev) => {
+  const c = ev.target.closest('.map-genre'); if (!c) return;
+  pickedGenre = pickedGenre === c.dataset.genre ? null : c.dataset.genre;
+  genreChips(); markGenre();
+});
 function groupChips() {
   $('#group-chips').innerHTML = data.groups.map((g) => `<span class="map-gchip${hiddenGroups.has(g.id) ? ' off' : ''}" data-g="${g.id}" style="--g: ${groupColor(g.id)}">📁 ${esc(g.name)} <span class="meta">${data.entries.filter((e) => (e.groups || []).includes(g.id)).length}</span></span>`).join(' ')
     + ' <span class="map-gchip map-gnew" style="--g: #8a8f98" title="click to make a new group, or drop a motif here to start one with it">＋ new group</span>';
@@ -337,14 +362,20 @@ function center(id, again) {
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
 dragZones({
   handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim], #desk h3[data-id], #desk li[data-claim]',
-  target: '.node, #tree span[data-id], .map-drop, .map-gchip, #desk-drop, #desk h3[data-id]', minWidth: 300,
+  target: '.node, #tree span[data-id], .map-drop, .map-gchip, .map-genre, #desk-drop, #desk h3[data-id]', minWidth: 300,
   item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: h.closest('[data-motif]')?.dataset.motif || focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
   label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
-  name: (t) => t.classList.contains('map-drop') || t.id === 'desk-drop' || t.classList.contains('map-gnew') ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
+  name: (t) => t.classList.contains('map-genre') ? 'onto the genre ' + (t.dataset.genre || 'none') : t.classList.contains('map-drop') || t.id === 'desk-drop' || t.classList.contains('map-gnew') ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
   zones: (item, t) => {
     if (t.id === 'desk-drop') {
       const id = item.type === 'motif' ? item.id : item.from;
       return byId[id] ? [{label: '📌 open on the desk', say: `${q(byId[id].name)} stays open on the right while you work.`, run: () => pin(id)}] : [];
+    }
+    if (t.classList.contains('map-genre')) {
+      const id = item.type === 'motif' ? item.id : item.from, v = t.dataset.genre;
+      if (!byId[id] || genreOf(byId[id]) === v) return [];
+      return [{label: v ? '🎭 genre: ' + v : '🎭 no genre', say: `${q(byId[id].name)} is a ${v || 'motif of no genre yet'}.`,
+               run: () => act({action: 'facet', id, facet: 'genre', value: v || null})}];
     }
     if (t.classList.contains('map-gnew')) {
       const id = item.type === 'motif' ? item.id : item.from;
@@ -435,7 +466,7 @@ async function load() {
   // a card field being typed in keeps its place and what's typed across the redraw (saving the name reloads the cards)
   const a = document.activeElement, keep = a && a.matches && a.matches('.cname, .cnote')
     ? {sel: `${a.closest('#desk') ? '#desk' : '#info'} [data-${a.dataset.note ? 'note' : 'rename'}="${a.dataset.note || a.dataset.rename}"]`, value: a.value, at: a.selectionStart} : null;
-  groupChips(); tree(); filterTree(); draw(); if (focus) show(focus); renderDesk();
+  groupChips(); genreChips(); tree(); filterTree(); draw(); if (focus) show(focus); renderDesk();
   const back = keep && document.querySelector(keep.sel);
   if (back) { back.value = keep.value; back.focus(); back.setSelectionRange(keep.at, keep.at); }
 }

@@ -682,9 +682,8 @@ def group_member(eid: str, gid: str, on: bool = True):
 # Facets: ways of sorting motifs that cut across the kinds tree, one value per motif in each. Genre first, its
 # starting values the genres the narrative labeler uses; a person adds more. (Later, perhaps: Barkun's conspiracy scope,
 # a frame from the Media Frames codebook.)
-FACETS = {'genre': ['rumor', 'contemporary legend', 'conspiracy theory', 'folk belief', 'prophecy or prediction',
-                    'cautionary tale', 'atrocity story', 'trickster tale', 'joke formula or meme', 'proverb or catchphrase',
-                    'personal testimony', 'moral panic', 'political attack line']}
+# A motif's genre: only the ones the person makes (the 13 starting ones were dropped on their word, Oct 7)
+FACETS = {'genre': []}
 
 
 def facet_values(index: dict | None = None) -> dict[str, list[str]]:
@@ -729,7 +728,8 @@ def facet_remove(facet: str, value: str):
             e['facets'].pop(facet)
             if not e['facets']:
                 e.pop('facets')
-    index.setdefault('facet_values', {})[facet] = [v for v in index['facet_values'].get(facet, []) if v != value]
+    values = index.setdefault('facet_values', {})  # (made here: the right side ran first and found none, Oct 7)
+    values[facet] = [v for v in values.get(facet, []) if v != value]
     if value in FACETS[facet]:
         index.setdefault('facet_hidden', {}).setdefault(facet, []).append(value)
     save(index)
@@ -827,7 +827,7 @@ def board() -> dict:
                             **({'variants': [v['claim'] for v in c['variants']]} if c.get('variants') else {})}
                            for c in e['claims']]}
                for e in live(index)]
-    return {'groups': list(index.get('groups', {}).values()), 'entries': entries}
+    return {'groups': list(index.get('groups', {}).values()), 'entries': entries, 'facets': facet_values(index)}
 
 
 @exclusive
