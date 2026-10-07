@@ -10,8 +10,12 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
 
 Approving runs the same action the person would (logged, undoable); a decision is kept, so a rejected proposal never
 comes back. Candidates are found cheaply (motifs close in meaning, motifs sharing a claim, motifs near a group's
-members) and only those are put to the model, a few dozen calls a run, outside the hourly run
-(scripts/propose_motif_fixes.py)."""
+members) and only those are put to the model. It runs nightly (nightly(), from the hourly run once the morning's
+report and its first filings are in), a few minutes at most; or by hand (scripts/propose_motif_fixes.py).
+
+The model's own "no" (two motifs unrelated, a motif not in a group) and its typo reading are kept with a mark of the
+motifs as they were (name, note, about how many claims): when a motif changes, it's asked about again. A person's
+decision is never asked again."""
 import difflib
 import hashlib
 import json
@@ -28,6 +32,8 @@ from app.utils.store import read_json, write_json
 logger = get_logger(__name__)
 
 PROPOSALS = os.path.join(Config.data, 'motif_proposals.json')  # {id: proposal}, decided ones kept for good
+RUNS = os.path.join(Config.data, 'motif_proposals_runs.json')  # {'done': last day finished, 'typos': {motif: mark}}
+NIGHT_BUDGET = 480  # seconds the nightly run may spend; what's left waits for the next hour's run
 MODEL = 'gemma4:26b'
 TYPO_BATCH = 12  # motifs read in one call for typos
 LINK_NEIGHBORS = 5  # each motif's closest motifs considered for a link
@@ -39,6 +45,16 @@ TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo,
 MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
 # that merely shared a claim: "Watermelon" and "Trojan horse")
 SHARED_FLOOR = 0.6  # motifs sharing a single claim are asked about only if this alike; two or more shared, always
+
+
+def mark(e: dict) -> str:
+    """A motif as the model last saw it: its name, note and about how many claims (doubling counts as a change)"""
+    import math
+    return hashlib.sha1(json.dumps([e['name'], e.get('note', ''), int(math.log2(len(e['claims']) + 1))]).encode()).hexdigest()[:8]
+
+
+class Spent(Exception):
+    """The run's time is up"""
 
 
 def pid(kind: str, args: dict) -> str:
@@ -125,10 +141,16 @@ def small_fix(old: str, new: str) -> bool:
     return bool(old) and bool(new) and new != old and difflib.SequenceMatcher(None, old, new).ratio() >= TYPO_SIMILARITY
 
 
-def typos(store: dict, index: dict) -> int:
+def typos(store: dict, index: dict, runs: dict | None = None, deadline: float | None = None) -> int:
+    """Typos in the motifs not read since they last changed"""
+    import time
     made = 0
-    entries = mi.live(index)
+    runs = runs if runs is not None else {}
+    read = runs.setdefault('typos', {})
+    entries = [e for e in mi.live(index) if read.get(e['id']) != mark(e)]
     for start in range(0, len(entries), TYPO_BATCH):
+        if deadline and time.time() > deadline:
+            raise Spent
         batch = entries[start:start + TYPO_BATCH]
         listing = '\n'.join(f'{n}. name: {e["name"]}' + (f'\n   note: {e["note"]}' if e.get('note') else '')
                             for n, e in enumerate(batch, 1))
@@ -143,6 +165,9 @@ def typos(store: dict, index: dict) -> int:
             note = ' '.join((fix.get('note') or '').split())
             if e.get('note') and small_fix(e['note'], note):
                 made += add(store, 'note', {'id': e['id'], 'from': e['note'], 'to': note}, 'a typo in its note')
+        if answer is not None:
+            for e in batch:
+                read[e['id']] = mark(e)
     return made
 
 
@@ -188,7 +213,8 @@ def linked(index: dict, a: str, b: str) -> bool:
     return b in mi.parents_of(ea) or a in mi.parents_of(eb) or sorted([a, b]) in index.get('related', [])
 
 
-def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> int:
+def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadline: float | None = None) -> int:
+    import time
     ids = [e['id'] for e in entries]
     sims = vecs @ vecs.T
     pairs = {}
@@ -209,12 +235,20 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> in
     for (x, y), n in together.items():
         if n >= 2 or sims[x, y] >= SHARED_FLOOR:
             pairs.setdefault((x, y), float(sims[x, y]))
-    asked = {json.dumps(sorted([p['args'].get('a') or p['args'].get('id'), p['args'].get('b') or p['args'].get('parent')]))
-             for p in store.values() if p['kind'] in ('parent', 'relate', 'merge') or p.get('kind') == 'unrelated'}
+    marks = {e['id']: mark(e) for e in entries}
+    asked = set()
+    for p in store.values():
+        a = p['args']
+        x, y = a.get('a') or a.get('id'), a.get('b') or a.get('parent')
+        if p['kind'] in ('parent', 'relate', 'merge') or (
+                p['kind'] == 'unrelated' and a.get('marks') == sorted([marks.get(x, ''), marks.get(y, '')])):
+            asked.add(json.dumps(sorted([x, y])))
     made = 0
     todo = [(s, i, j) for (i, j), s in pairs.items() if not linked(index, ids[i], ids[j])
             and json.dumps(sorted([ids[i], ids[j]])) not in asked]
     for s, i, j in sorted(todo, reverse=True)[:MAX_PAIRS]:
+        if deadline and time.time() > deadline:
+            raise Spent
         a, b = entries[i], entries[j]
         answer = llm.complete_json(LINK_PROMPT.format(a=shown(a, b), b=shown(b, a)), LINK_SCHEMA, max_tokens=500, model=MODEL)
         if not answer:
@@ -229,11 +263,10 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> in
             made += add(store, 'merge', {'a': small['id'], 'b': big['id']}, why)
         elif rel in ('related', 'the same motif'):
             made += add(store, 'relate', {'a': a['id'], 'b': b['id']}, why)
-        else:  # remembered, so the pair isn't asked again
-            store[pid('unrelated', {'a': a['id'], 'b': b['id']})] = {
-                'id': pid('unrelated', {'a': a['id'], 'b': b['id']}), 'kind': 'unrelated',
-                'args': {'a': a['id'], 'b': b['id']}, 'reason': why, 'model': MODEL,
-                'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
+        else:  # remembered with both motifs' marks: asked again only once either changes
+            i2 = pid('unrelated', {'a': a['id'], 'b': b['id']})
+            store[i2] = {'id': i2, 'kind': 'unrelated', 'args': {'a': a['id'], 'b': b['id'], 'marks': sorted([mark(a), mark(b)])},
+                         'reason': why, 'model': MODEL, 'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
     return made
 
 
@@ -250,7 +283,8 @@ GROUP_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "m
                                                  "belongs": {"type": "boolean"}}, "required": ["reason", "belongs"]}
 
 
-def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> int:
+def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadline: float | None = None) -> int:
+    import time
     made = 0
     for gid, g in index.get('groups', {}).items():
         members = [i for i, e in enumerate(entries) if gid in mi.groups_of(e)]
@@ -261,8 +295,11 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> i
         listing = '\n'.join(f'- {mi.described(entries[i])}' for i in members)
         for i in [int(i) for i in np.argsort(-sims) if int(i) not in members and sims[i] >= GROUP_FLOOR][:GROUP_CANDIDATES]:
             e = entries[i]
-            if pid('group', {'id': e['id'], 'group': gid}) in store or pid('not_group', {'id': e['id'], 'group': gid}) in store:
+            no = store.get(pid('not_group', {'id': e['id'], 'group': gid}))
+            if pid('group', {'id': e['id'], 'group': gid}) in store or (no and no['args'].get('mark') == mark(e)):
                 continue
+            if deadline and time.time() > deadline:
+                raise Spent
             answer = llm.complete_json(GROUP_PROMPT.format(group=g['name'], members=listing, motif=shown(e)),
                                        GROUP_SCHEMA, max_tokens=400, model=MODEL)
             if not answer:
@@ -271,28 +308,49 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> i
                 made += add(store, 'group', {'id': e['id'], 'group': gid}, answer.get('reason', ''))
             else:
                 i2 = pid('not_group', {'id': e['id'], 'group': gid})
-                store[i2] = {'id': i2, 'kind': 'not_group', 'args': {'id': e['id'], 'group': gid},
+                store[i2] = {'id': i2, 'kind': 'not_group', 'args': {'id': e['id'], 'group': gid, 'mark': mark(e)},
                              'reason': answer.get('reason', ''), 'model': MODEL,
                              'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
     return made
 
 
-def propose(kinds=('typos', 'links', 'groups')) -> dict:
-    """One run: new proposals of each kind, saved after each kind. Returns how many of each"""
+def propose(kinds=('typos', 'links', 'groups'), budget: float | None = None) -> dict:
+    """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
+    got through everything before the budget (seconds) ran out"""
+    import time
+    deadline = time.time() + budget if budget else None
     index = mi.load()
-    store = load()
+    store, runs = load(), read_json(RUNS, {})
     entries = mi.live(index)
-    counts = {}
-    if 'typos' in kinds:
-        counts['typos'] = typos(store, index)
+    counts = {'finished': False}
+    try:
+        if 'typos' in kinds:
+            counts['typos'] = typos(store, index, runs, deadline)
+        if {'links', 'groups'} & set(kinds):
+            vecs = vectors(entries)
+            if 'links' in kinds:
+                counts['links'] = links(store, index, vecs, entries, deadline)
+            if 'groups' in kinds:
+                counts['groups'] = groups(store, index, vecs, entries, deadline)
+        counts['finished'] = True
+    except Spent:
+        pass
+    finally:
         write_json(PROPOSALS, store)
-    if {'links', 'groups'} & set(kinds):
-        vecs = vectors(entries)
-        if 'links' in kinds:
-            counts['links'] = links(store, index, vecs, entries)
-            write_json(PROPOSALS, store)
-        if 'groups' in kinds:
-            counts['groups'] = groups(store, index, vecs, entries)
-            write_json(PROPOSALS, store)
-    logger.info("Motif proposals: %s new", counts)
+        write_json(RUNS, runs)
+    logger.info("Motif proposals: %s", counts)
     return counts
+
+
+def nightly(budget: float = NIGHT_BUDGET):
+    """Once a day, after the morning's report and its first filings: new proposals for what changed. A run cut short
+    by its budget goes on in the next hour's run"""
+    from datetime import date
+    runs = read_json(RUNS, {})
+    today = date.today().isoformat()
+    if runs.get('done') == today:
+        return
+    if propose(budget=budget).get('finished'):
+        runs = read_json(RUNS, {})
+        runs['done'] = today
+        write_json(RUNS, runs)

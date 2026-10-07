@@ -26,6 +26,7 @@ FOCUS_BUDGET = 180  # seconds a run spends reading new Focus Group episodes (one
 RUNNING_BUDGET = 120  # seconds a run spends splitting the radio newscasts into their stories (two an hour)
 CHYRON_BUDGET = 180  # seconds a run spends cleaning TV chyron OCR (about 45 minutes of work a day)
 MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
+PROPOSAL_HOUR = 5  # the motif proposer's nightly run: after the 4 AM report and its first filings
 QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
 
@@ -182,7 +183,9 @@ def main(args: argparse.Namespace):
         # Once a night, the day's narratives (research only, #142): the GPU has nothing else to do at 4 AM. If that
         # run was missed (Oct 5: the machine hung in sleep from 3 to 7), the next run after 4 AM makes up for it
         from app import narratives
+        reported = False
         if dt.now().hour >= NARRATIVE_HOUR and not narratives.made_today():
+            reported = True
             from app.analysis import circulation
             narratives.report(hours=24)
             from app.analysis import narrative_threads
@@ -202,6 +205,10 @@ def main(args: argparse.Namespace):
         chyrons.match_recent()
         from app.analysis import motif_index
         motif_index.nightly(budget=MOTIF_BUDGET)
+        # Fixes for a person to approve in the workbench (typos, links, groups), once a day after the new filings
+        if dt.now().hour >= PROPOSAL_HOUR and not reported:  # never in the report's run: it nears the 45-minute limit
+            from app.analysis import motif_proposals
+            motif_proposals.nightly()
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 

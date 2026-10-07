@@ -15,7 +15,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   small edit counts, not a rewrite), one motif a kind of another, two related, two the same motif (merge), a motif
   into one of the person's groups. Candidates are found cheaply first (motifs alike in meaning, motifs sharing a claim,
   motifs near a group's members) and only those put to the model. Approving runs the person's own action (logged,
-  undoable); a decision is kept, so a rejected proposal never comes back, and one overtaken by hand drops out.
+  undoable); a decision is kept, so a rejected proposal never comes back, and one overtaken by hand drops out. It runs
+  once a day from the 5 AM hourly run on (never in the run that makes the narrative report, which nears its
+  45-minute limit), at most eight minutes, going on in the next run if cut short. The model's own "no" and its typo
+  reading are kept with a mark of the motifs as they were (name, note, about how many claims), so a motif that
+  changes is looked at again.
 - **No more villain.** The folklore labeller named who each narrative casts as the villain (Propp's part), and its
   picks were too often wrong to show. It no longer asks, and the Folklore page, the checker and the reports leave the
   part out, old reports included; the victim and the hero stay. Fact-checks' labels still carry a villain field,

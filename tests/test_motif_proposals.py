@@ -1,6 +1,8 @@
 """The correction proposer (app/analysis/motif_proposals.py): proposals are atomic, never made twice, dropped once the
 change is made or overtaken, approved through the workbench's own actions, and a rejection sticks."""
 import importlib.util
+
+import numpy as np
 import os
 
 from app.analysis import llm
@@ -83,3 +85,32 @@ def test_a_claim_checked_after_done_counts_as_seen():
     assert mi.is_done(e) == 'new'  # the model's filing and the unsure one still wait
     e['claims'] = e['claims'][:2]
     assert mi.is_done(e) == 'done'
+
+
+def test_the_models_no_is_asked_again_once_a_motif_changes(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
+    asked = []
+
+    def judge(prompt, schema, **k):
+        asked.append(prompt)
+        if 'relation' in schema['properties']:
+            return {'reason': 'different stories', 'relation': 'unrelated'}
+        return {'fixes': []}
+    monkeypatch.setattr(llm, 'complete_json', judge)
+    monkeypatch.setattr(mp, 'vectors', lambda entries: np.eye(len(entries)) * 0 + 0.9)  # every pair alike
+    assert mp.propose(budget=60)['finished']
+    first = len(asked)
+    assert first > 0 and mp.propose()['finished'] and len(asked) == first  # nothing changed: nothing asked
+    mi.set_note('M002', 'A politician with nothing behind the image')
+    mp.propose()
+    assert len(asked) > first  # its pairs and its typo reading come back
+
+
+def test_nightly_once_a_day(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
+    runs = []
+    monkeypatch.setattr(mp, 'propose', lambda budget=None: runs.append(1) or {'finished': len(runs) > 1})
+    mp.nightly(); mp.nightly(); mp.nightly()
+    assert len(runs) == 2  # cut short once, finished the second time, then done for the day
