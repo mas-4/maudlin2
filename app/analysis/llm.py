@@ -75,7 +75,7 @@ def complete_json(prompt: str, schema: dict, max_tokens: int = 1024, model: str 
             return _ollama(prompt, schema, max_tokens, model)
         if which == 'anthropic':
             return _anthropic(prompt, schema, max_tokens)
-    except Exception as e:  # noqa: an llm hiccup should never take down a scrape or build
+    except Exception as e:  # noqa: BLE001 - an llm hiccup should never take down a scrape or build
         logger.error("llm call failed: %s", e)
     return None
 

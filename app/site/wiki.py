@@ -124,7 +124,7 @@ def refresh(force: bool = False) -> None:
     try:
         found = openings(sorted(set(titles.values())))
         known = facts(sorted({p['qid'] for p in found.values() if p['qid']}))
-    except Exception as e:  # noqa: background info must never take down a run
+    except Exception as e:  # noqa: BLE001 - background info must never take down a run
         logger.warning("Outlet wiki refresh failed (%s); keeping the last copy", e)
         return
     outlets = {}

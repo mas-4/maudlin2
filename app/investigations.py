@@ -105,7 +105,7 @@ def fetch_investigations():
                 continue
             response.raise_for_status()
             items = parse(response.text)
-        except Exception as e:  # noqa: one source failing mustn't stop the run
+        except Exception as e:  # noqa: BLE001 - one source failing mustn't stop the run
             logger.warning("Investigations: %s failed (%s); keeping its last items", source['name'], e)
             continue
         cache[source['key']] = {'items': items, 'etag': response.headers.get('ETag'),

@@ -277,7 +277,7 @@ def claim_detail(claim: str) -> dict:
                    quote=said.get('quote'), side=said.get('side'), at=said.get('at'))
         try:  # the transcript around the quote, to read it in
             out['context'] = focus_group.context(filed.get('ref', ''), said.get('quote', ''))
-        except Exception:  # noqa: the detail stands without it
+        except Exception:  # noqa: BLE001 - the detail stands without it
             out['context'] = None
         return out
     if filed.get('source') and filed['source'] != 'narrative':
@@ -407,7 +407,7 @@ def workbench_queue(kind: str):
     if kind == 'pairs':
         try:
             similar, note = [{'a': a, 'b': b, 'score': round(sim, 2)} for a, b, sim in mi.suggestions(40)], None
-        except Exception as e:  # noqa: the embeddings need Ollama
+        except Exception as e:  # noqa: BLE001 - the embeddings need Ollama
             similar, note = [], f'similar names unavailable: {type(e).__name__}'
         return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
     if kind == 'proposals':  # the correction proposer's open proposals, each with the action that carries it out

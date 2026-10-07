@@ -167,7 +167,7 @@ class Screen:
         if name not in self.named:
             try:
                 self.named[name] = headlines_naming(name)
-            except Exception as e:  # noqa: no database: the model's word stands
+            except Exception as e:  # noqa: BLE001 - no database: the model's word stands
                 logger.warning("Accusations: couldn't count headlines naming %s (%s)", name, e)
                 self.named[name] = 0
         return self.named[name] >= IN_THE_NEWS

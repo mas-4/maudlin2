@@ -32,6 +32,7 @@ USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 REFRESH = td(hours=2)
 BIG_FEED = td(hours=6)  # feeds of many megabytes (thousands of items) are read less often
 HOST_PAUSE = 5  # seconds between requests to one host (several shows share megaphone, substack, youtube)
+HOST_WORKERS = 8  # hosts read at once (each host still one request at a time)
 NEWEST = 40  # items parsed per feed (some podcast feeds hold thousands)
 YOUTUBE = 'https://www.youtube.com/feeds/videos.xml?channel_id='
 
@@ -264,8 +265,37 @@ def save(source: str, items: list[dict], now: dt) -> int:
     return new
 
 
+def _fetch_host(host_sources: list[dict], state: dict) -> list[tuple[dict, dict, list[dict] | None]]:
+    """One host's sources in turn, HOST_PAUSE apart: (source, its new state entry, items or None if unchanged or
+    failed). Fetching only; the items are saved by the caller, one source at a time."""
+    out = []
+    for i, src in enumerate(host_sources):
+        if i:
+            time.sleep(HOST_PAUSE)
+        entry = dict(state.get(src['key'], {}))
+        headers = {'User-Agent': USER_AGENT}
+        if entry.get('etag'):
+            headers['If-None-Match'] = entry['etag']
+        if entry.get('modified'):
+            headers['If-Modified-Since'] = entry['modified']
+        items = None
+        try:
+            response = rq.get(src['url'], headers=headers, timeout=Config.timeout)
+            if response.status_code != 304:
+                response.raise_for_status()
+                items = parse(response.text)
+                entry = {'etag': response.headers.get('ETag'), 'modified': response.headers.get('Last-Modified')}
+        except Exception as e:  # noqa: BLE001 - one source failing mustn't stop the run; it waits for its next turn
+            logger.warning("Side feeds: %s failed (%s)", src['name'], e)
+        out.append((src, entry, items))
+    return out
+
+
 def fetch_sidefeeds(force: bool = False):
-    """Read every source that's due, host by host with a pause between requests to the same host."""
+    """Read every source that's due: the hosts side by side (HOST_WORKERS at once), each host's sources in turn with a
+    pause between requests to it, so no host is asked faster than before. Read one after another, the 50 hosts took
+    about 5 minutes a run (Oct 7), mostly waiting on YouTube's and Megaphone's two dozen feeds each."""
+    from concurrent.futures import ThreadPoolExecutor
     state = _load_state()
     now = dt.now(pytz.UTC)
     due = [src for src in SOURCES if force or not state.get(src['key'], {}).get('fetched')
@@ -274,26 +304,13 @@ def fetch_sidefeeds(force: bool = False):
     for src in due:
         by_host['.'.join(urlparse(src['url']).hostname.split('.')[-2:])].append(src)
     total = 0
-    for host_sources in by_host.values():
-        for i, src in enumerate(host_sources):
-            if i:
-                time.sleep(HOST_PAUSE)
-            entry = state.get(src['key'], {})
-            headers = {'User-Agent': USER_AGENT}
-            if entry.get('etag'):
-                headers['If-None-Match'] = entry['etag']
-            if entry.get('modified'):
-                headers['If-Modified-Since'] = entry['modified']
-            try:
-                response = rq.get(src['url'], headers=headers, timeout=Config.timeout)
-                if response.status_code != 304:
-                    response.raise_for_status()
-                    total += save(src['key'], parse(response.text), now.replace(tzinfo=None))
-                    entry = {'etag': response.headers.get('ETag'), 'modified': response.headers.get('Last-Modified')}
-            except Exception as e:  # noqa: one source failing mustn't stop the run; it waits for its next turn
-                logger.warning("Side feeds: %s failed (%s)", src['name'], e)
-            entry['fetched'] = now.isoformat()
-            state[src['key']] = entry
+    with ThreadPoolExecutor(max_workers=HOST_WORKERS) as pool:
+        for fetched in pool.map(lambda sources: _fetch_host(sources, state), by_host.values()):
+            for src, entry, items in fetched:
+                if items is not None:
+                    total += save(src['key'], items, now.replace(tzinfo=None))
+                entry['fetched'] = now.isoformat()
+                state[src['key']] = entry
     write_json(STATE, state)
     logger.info("Side feeds: read %d sources, %d new items", len(due), total)
 

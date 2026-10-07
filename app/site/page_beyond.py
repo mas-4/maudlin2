@@ -40,7 +40,7 @@ class BeyondPage:
             items = [{**i, 'kind_emoji': KIND.get(i['kind'], ('🎙️', ''))[0],
                       'color': GROUP_INK.get(i['group'], '#b8b8c8')}
                      for i in sidefeeds.recent(days=3, limit=300, per_source=6)]
-        except Exception as e:  # noqa: e.g. no side_item table on a database that hasn't migrated
+        except Exception as e:  # noqa: BLE001 - e.g. no side_item table on a database that hasn't migrated
             logger.warning("Beyond: shows: %s", e)
             items = []
         items += [{**p, 'kind': 'investigation', 'kind_emoji': '🕵️'}

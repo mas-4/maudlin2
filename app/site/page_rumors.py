@@ -24,7 +24,7 @@ class RumorsPage:
         try:
             items = factchecks._items(DAYS)
             labels = factchecks.label_all(items)
-        except Exception as e:  # noqa: e.g. no side_item table on a database that hasn't migrated
+        except Exception as e:  # noqa: BLE001 - e.g. no side_item table on a database that hasn't migrated
             logger.warning("Rumors: %s", e)
             items, labels = [], {}
         looked = circulation.load()

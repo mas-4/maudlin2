@@ -104,7 +104,7 @@ def wikipedia() -> list[dict]:
             summary = _get('https://en.wikipedia.org/api/rest_v1/page/summary/'
                            + rq.utils.quote(article['article'], safe='')).json()
             description = summary.get('description')
-        except Exception:  # noqa: a missing summary just means less to match on
+        except Exception:  # noqa: BLE001 - a missing summary just means less to match on
             description = None
         trends.append({
             'topic': _topic('wikipedia', article['article']),

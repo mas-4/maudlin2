@@ -135,3 +135,29 @@ def test_sources_have_a_refresh_interval():
     assert all(s['refresh'] <= sf.REFRESH or s['refresh'] == sf.BIG_FEED for s in sf.SOURCES)
     assert all(sf.BY_KEY[k]['refresh'] == sf.BIG_FEED for k in ('jessekelly', 'claybuck', 'michaelberry'))  # iHeart's 10 MB feeds
     assert sf.BY_KEY['nprnewsnow']['refresh'] < sf.REFRESH and not sf.BY_KEY['nprnewsnow']['publish']
+
+
+def test_hosts_are_read_side_by_side_but_each_host_one_request_at_a_time(db, monkeypatch, tmp_path):
+    import threading
+    import time
+    monkeypatch.setattr(sf, 'STATE', str(tmp_path / 'state.json'))
+    monkeypatch.setattr(sf, 'HOST_PAUSE', 0.2)
+    monkeypatch.setattr(sf, 'SOURCES', [sf._source(k, k, 'podcast', 'left', f'https://{host}/{k}', True)
+                                         for k, host in (('a', 'feeds.megaphone.fm'), ('b', 'feeds.megaphone.fm'),
+                                                         ('c', 'www.youtube.com'), ('d', 'www.youtube.com'))])
+    spans, lock = [], threading.Lock()
+
+    def get(url, headers, timeout):
+        start = time.monotonic()
+        time.sleep(0.2)
+        with lock:
+            spans.append((url.split('/')[2], start, time.monotonic()))
+        return FakeResponse(304)
+    monkeypatch.setattr(sf.rq, 'get', get)
+    began = time.monotonic()
+    sf.fetch_sidefeeds()
+    took = time.monotonic() - began
+    for host in ('feeds.megaphone.fm', 'www.youtube.com'):
+        (_, s1, e1), (_, s2, _) = sorted(s for s in spans if s[0] == host)[:2]
+        assert s2 >= e1 + 0.19  # the same host: one at a time, the pause between
+    assert took < 0.9  # the two hosts at once (one after the other: 1.2 s)

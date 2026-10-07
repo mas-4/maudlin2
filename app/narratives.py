@@ -522,7 +522,7 @@ def report(hours: float = 6) -> dict:
             from app.analysis import factchecks
             checked = factchecks.for_narratives({n: g['label']['narrative'] for n, g in enumerate(narratives)
                                                  if g['label'].get('narrative')})
-        except Exception as e:  # noqa: fact-checks are extra; the report stands without them
+        except Exception as e:  # noqa: BLE001 - fact-checks are extra; the report stands without them
             logger.warning("Narratives: fact-checks failed (%s)", e)
             checked = {}
         for n, g in enumerate(narratives):
