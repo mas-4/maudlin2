@@ -145,15 +145,20 @@ function draw() {
   node.on('click', (ev, n) => { ev.stopPropagation(); show(n.id); });
   svg.on('click', () => show(null));
   sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => l.kind === 'shared' ? 0.15 : 0.6))
+    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => (l.kind === 'shared' ? 0.15 : 0.6) * (crossing(l) ? 0.2 : 1)))
     .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
     .force('collide', d3.forceCollide().radius((n) => r(n) + 4)).force('x', d3.forceX(W / 2).strength(0.03)).force('y', d3.forceY(H / 2).strength(0.04))
-    .force('group', (alpha) => {  // a group's motifs drift toward each other, so its area stays compact
-      shown.forEach((g) => {
-        const ms = members(g);
-        if (ms.length < 2) return;
-        const cx = d3.mean(ms, (n) => n.x), cy = d3.mean(ms, (n) => n.y);
-        ms.forEach((n) => { n.vx += (cx - n.x) * GROUP_PULL * alpha; n.vy += (cy - n.y) * GROUP_PULL * alpha; });
+    .force('group', (alpha) => {
+      // Each group has a home of its own, spaced evenly on a ring around the middle, and its motifs are drawn there; a
+      // motif in two groups settles between their homes, one in none stays free in the middle. Pulling each group to
+      // its own center and pushing groups apart lost to the links (every pair of 8 groups still overlapped, Oct 7)
+      const homes = new Map(), ring = 0.42 * Math.min(W, H);
+      shown.forEach((g, k) => { const t = 2 * Math.PI * k / Math.max(1, shown.length) - Math.PI / 2; homes.set(g.id, [W / 2 + 1.5 * ring * Math.cos(t), H / 2 + ring * Math.sin(t)]); });
+      nodes.forEach((n) => {
+        const hs = (n.e.groups || []).map((g) => homes.get(g)).filter(Boolean);
+        if (!hs.length) return;
+        const tx = d3.mean(hs, (h) => h[0]), ty = d3.mean(hs, (h) => h[1]);
+        n.vx += (tx - n.x) * GROUP_PULL * alpha; n.vy += (ty - n.y) * GROUP_PULL * alpha;
       });
     })
     .on('tick', () => {
@@ -171,7 +176,13 @@ function draw() {
 }
 let zoomer;
 const hiddenGroups = new Set(JSON.parse(localStorage.getItem('map-hidden-groups') || '[]'));
-const GROUP_PULL = 0.4;  // how hard a group's motifs drift together (links pull them toward their neighbours elsewhere)
+const GROUP_PULL = 0.9;  // how hard a group's motifs are drawn to its home (links pull them toward their neighbours elsewhere)
+// A link from a motif in a group to one outside all its groups pulls a fifth as hard, so groups keep to their homes
+const crossing = (l) => {
+  const shown = (n) => (n.e.groups || []).filter((g) => !hiddenGroups.has(g));
+  const a = shown(l.source), b = shown(l.target);
+  return (a.length || b.length) && !a.some((g) => b.includes(g));
+};
 const GROUP_COLORS = ['#ff4fa3', '#3a86ff', '#ff6b1a', '#8a5cff', '#00a896', '#e0a800'];
 const groupColor = (gid) => GROUP_COLORS[Math.max(0, data.groups.findIndex((g) => g.id === gid)) % GROUP_COLORS.length];
 function groupChips() {
