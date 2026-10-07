@@ -1508,6 +1508,23 @@
     bar.addEventListener('lostpointercapture', done, {once: true});
   }));
   $$('.wb-split').forEach((bar) => bar.addEventListener('dblclick', () => { cols = null; store.set('cols', null); main.style.removeProperty('--left'); main.style.removeProperty('--right'); }));
+  // The shelf's height: drag the bar under it (remembered; capped to the window, so the panes below keep some room)
+  const shelf = $('.wb-shelf'), shelfBar = $('.wb-hsplit');
+  const setShelf = (h) => h ? shelf.style.setProperty('--shelf-h', `min(${h}px, 60vh)`) : shelf.style.removeProperty('--shelf-h');
+  setShelf(store.get('shelf', null));
+  shelfBar.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    const start = ev.clientY, was = Math.max(...$$('.wb-shelfbox').map((b) => b.getBoundingClientRect().height));
+    let h = was;
+    try { shelfBar.setPointerCapture(ev.pointerId); } catch (e) { /* a synthetic or ended pointer */ }
+    document.body.classList.add('resizing-shelf');
+    const moveTo = (e) => { h = Math.round(Math.min(innerHeight * 0.6, Math.max(40, was + e.clientY - start))); setShelf(h); };
+    const done = () => { shelfBar.removeEventListener('pointermove', moveTo); document.body.classList.remove('resizing-shelf'); store.set('shelf', h); };
+    shelfBar.addEventListener('pointermove', moveTo);
+    shelfBar.addEventListener('pointerup', done, {once: true});
+    shelfBar.addEventListener('lostpointercapture', done, {once: true});
+  });
+  shelfBar.addEventListener('dblclick', () => { store.set('shelf', null); setShelf(null); });
 
   // ---------- toast ----------
   let toastTimer = null;

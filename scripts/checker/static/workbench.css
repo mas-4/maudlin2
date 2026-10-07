@@ -289,7 +289,12 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 /* The shelf: groups and genres side by side above the three panes; each chip filters the list and takes dropped motifs */
 .wb-shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 6px 12px 8px; }
 .wb-shelfbox { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 12px;
-  background: var(--paper); max-height: 6.4em; overflow-y: auto; }
+  background: var(--paper); max-height: var(--shelf-h, 6.4em); overflow-y: auto; }
+/* the bar under the shelf: drag it down for a taller shelf (both boxes), up for a shorter one */
+.wb-hsplit { grid-column: 1 / -1; height: 10px; margin: -4px 0 -6px; cursor: row-resize; position: relative; touch-action: none; }
+.wb-hsplit::after { content: ''; position: absolute; top: 3px; left: 40%; right: 40%; height: 4px; border-radius: 4px; background: #d6cfe8; }
+.wb-hsplit:hover::after, body.resizing-shelf .wb-hsplit::after { background: var(--ink); }
+body.resizing-shelf, body.resizing-shelf * { cursor: row-resize !important; user-select: none; }
 .wb-shelfhead { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; margin-right: 4px; }
 .wb-schip { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; border: 2px solid var(--g); border-radius: 999px; padding: 1px 4px 1px 9px;
   background: color-mix(in srgb, var(--g) 14%, white); cursor: pointer; white-space: nowrap; user-select: none; }
