@@ -10,7 +10,7 @@
     get(k, d) { try { const v = localStorage.getItem('wb-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('wb-' + k, JSON.stringify(v)); } catch (e) { /* private window */ } },
   };
-  const SOURCE = {narrative: 'online', 'focus-group': 'focus group'};
+  const SOURCE = {narrative: 'online', 'focus-group': 'focus group', shows: 'radio & podcasts'};
 
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),

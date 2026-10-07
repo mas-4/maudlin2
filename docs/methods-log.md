@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **Claims from the shows we transcribe.** What people post (Bluesky and Mastodon) leans left, so the folklore page
+  heard little of what's told on the right. Every podcast, call-in show and video show we transcribe (about 400
+  episodes a week: 157 right, 132 center, 105 left) is now read for the claims told on it, by the same model and
+  checks as the focus groups: each claim's quote must be in the transcript and support it, and each says who told it
+  (host, guest, caller, a played clip). A claim reaches the motif index only once it's told on two shows or by two
+  callers: one host's take isn't folklore; told again elsewhere, it is. Quotes and callers stay off the site.
 - **A better shortlist for filing claims.** Filing a claim, the model chooses among the motifs most like it; when the
   motif a person would have chosen wasn't among them, they added it by hand (over 200 times). The shortlist was the
   8 closest by one measure. Now several measures of likeness (the motif's description, its nearest claim, the center

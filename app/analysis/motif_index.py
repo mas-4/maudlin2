@@ -428,6 +428,8 @@ def nightly(budget: float | None = None):
                            'date': item['published'][:10]})
     from app.analysis import focus_group  # what voters say in focus groups: a source of its own
     claims += [{**c, 'claim': corrected(c['claim'], index)} for c in focus_group.claims()]
+    from app.analysis import show_claims  # what's retold across the shows we transcribe
+    claims += [{**c, 'claim': corrected(c['claim'], index)} for c in show_claims.claims()]
     import time
     started = time.time()
     index = file_claims(claims, budget=budget)
@@ -1193,6 +1195,10 @@ def searchable_claims() -> list[dict]:
             out.setdefault(key(text), {'claim': text, 'source': it['source'], 'ref': it['url'], 'motifs': []})
     from app.analysis import focus_group
     for c in focus_group.claims():
+        text = corrected(c['claim'], index)
+        out.setdefault(key(text), {'claim': text, 'source': c['source'], 'ref': c['ref'], 'motifs': []})
+    from app.analysis import show_claims
+    for c in show_claims.claims():
         text = corrected(c['claim'], index)
         out.setdefault(key(text), {'claim': text, 'source': c['source'], 'ref': c['ref'], 'motifs': []})
     return list(out.values())

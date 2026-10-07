@@ -145,12 +145,12 @@ def checked(claims: list[dict], text: str) -> tuple[list[dict], list[dict]]:
 
 
 SUPPORT_MODEL = 'gemma4:26b'
-SUPPORT_PROMPT = """A voter in a focus group said:
+SUPPORT_PROMPT = """{who} said:
 "{quote}"
 
-Someone summed up what the voter believes as this claim: {claim}
+Someone summed up what the {noun} believes as this claim: {claim}
 
-Is the quote evidence for the claim: does the voter say the claim, or a central part of it, even in other words? The \
+Is the quote evidence for the claim: does the {noun} say the claim, or a central part of it, even in other words? The \
 claim may add a little context from the conversation. Answer "unrelated" only when the quote is about something \
 else, or says the opposite.
 
@@ -161,11 +161,11 @@ SUPPORT_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", 
                   "required": ["reason", "verdict"]}
 
 
-def supported(claim: str, quote: str) -> bool | None:
+def supported(claim: str, quote: str, who: str = 'A voter in a focus group', noun: str = 'voter') -> bool | None:
     """Whether the voter's words support the claim as worded, by the model; None without an answer. The quote
     checks catch made-up and reused quotes, not a real quote under the wrong claim (Oct 6: 'Politicians cheat on their
     spouses but still get elected' over a voter saying politicians tell you what you want to hear)."""
-    answer = llm.complete_json(SUPPORT_PROMPT.format(quote=quote, claim=claim), SUPPORT_SCHEMA, max_tokens=400,
+    answer = llm.complete_json(SUPPORT_PROMPT.format(quote=quote, claim=claim, who=who, noun=noun), SUPPORT_SCHEMA, max_tokens=400,
                                model=SUPPORT_MODEL)
     if not answer or answer.get('verdict') not in ('evidence', 'unrelated'):
         return None

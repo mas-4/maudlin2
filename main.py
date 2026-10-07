@@ -22,6 +22,7 @@ import threading
 
 logger = get_logger(__name__)
 NARRATIVE_HOUR = 4  # the run that writes the day's narrative report
+SHOW_BUDGET = 420  # seconds a run spends reading the shows' transcripts for claims (about 280 parts a day at ~35 s)
 FOCUS_BUDGET = 180  # seconds a run spends reading new Focus Group episodes (one a week, about a minute and a half)
 RUNNING_BUDGET = 120  # seconds a run spends splitting the radio newscasts into their stories (two an hour)
 CHYRON_BUDGET = 180  # seconds a run spends cleaning TV chyron OCR (about 45 minutes of work a day)
@@ -196,6 +197,11 @@ def main(args: argparse.Namespace):
         # What voters say in The Focus Group's episodes (#164), read once per episode with the bigger model
         from app.analysis import focus_group
         focus_group.extract(budget=FOCUS_BUDGET)
+        # What's told on every show we transcribe, right, left and center (talk radio, call-ins, podcasts), never in
+        # the report's run: it nears the 45-minute limit
+        if not reported:
+            from app.analysis import show_claims
+            show_claims.extract(budget=SHOW_BUDGET)
         # The hourly radio newscasts' running order beside the front pages' (#159)
         from app.analysis import running_order
         running_order.read(budget=RUNNING_BUDGET)

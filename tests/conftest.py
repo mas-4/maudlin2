@@ -52,6 +52,9 @@ def pytest_sessionstart(session):
     from app.analysis import motif_retriever
     motif_retriever.WEIGHTS = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-retriever-'), 'motif_retriever.json')
     motif_retriever.MIN_FILINGS = 10 ** 6
+    # What's read from the shows' transcripts lives there too
+    from app.analysis import show_claims
+    show_claims.STORE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-shows-'), 'show_claims.json')
 
 
 @pytest.fixture(scope='session')
