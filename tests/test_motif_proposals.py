@@ -188,3 +188,58 @@ def test_a_motif_a_person_made_and_noted_is_done(tmp_path, monkeypatch):
     mi.mark_done('M001', False)  # unmarked by hand: a later note doesn't mark it done again
     mi.set_note('M001', 'Reworded')
     assert 'done' not in mi.load()['entries']['M001']
+
+
+def test_a_runs_save_keeps_decisions_made_meanwhile(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    store = {}
+    mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'cousins')
+    write_json(mp.PROPOSALS, store)
+    run = mp.load()  # a run reads the store, then works for a while
+    i = next(iter(run))
+    mp.decide(i, 'rejected')  # meanwhile the person rejects it in the checker
+    run[i]['judge'] = {'score': 2, 'reason': 'a stretch', 'model': 'm'}
+    mp.add(run, 'relate', {'a': 'M002', 'b': 'M003'}, 'new one')
+    mp.save(run)
+    disk = mp.load()
+    assert disk[i]['status'] == 'rejected' and disk[i]['judge']['score'] == 2 and len(disk) == 2
+
+
+def test_best_fit_sorts_the_links_and_folds_the_unlikely(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
+    monkeypatch.setattr(mp, 'FIT_MIN', 4)
+    vec = {'M001': [1, 0, 0], 'M002': [0.9, 0.44, 0], 'M003': [0, 0, 1]}
+    import app.narratives
+    monkeypatch.setattr(app.narratives, 'embed', lambda texts: np.array(
+        [vec[next(k for k, n in (('M001', 'Poltiicians'), ('M002', 'Empty suit'), ('M003', 'Rigged')) if n in t)]
+         if any(n in t for n in ('Poltiicians', 'Empty suit', 'Rigged')) else [0, 1, 0] for t in texts], dtype=float))
+    store = {}
+    # decided: high judge scores approved, low rejected
+    for n, (score, status) in enumerate([(9, 'approved'), (8, 'approved'), (2, 'rejected'), (1, 'rejected'), (9, 'approved'), (2, 'rejected')]):
+        i = f'd{n}'
+        store[i] = {'id': i, 'kind': 'relate', 'args': {'a': 'M001', 'b': 'M003'}, 'status': status, 'made': '1',
+                    'judge': {'score': score}}
+    mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'good')
+    mp.add(store, 'parent', {'id': 'M003', 'parent': 'M002'}, 'bad')
+    mp.add(store, 'rename', {'id': 'M001', 'from': "Poltiicians' empty promises", 'to': "Politicians' empty promises"}, 'typo')
+    good, bad = (next(p for p in store.values() if p.get('reason') == r) for r in ('good', 'bad'))
+    good['judge'], bad['judge'] = {'score': 9}, {'score': 1}
+    info = mp.best_fit(store, mi.load())
+    assert info['trained_on'] == 6 and good['fit'] > bad['fit']
+    mp.save(store)
+    order = mp.open_proposals()
+    assert [p['kind'] for p in order] == ['rename', 'relate', 'parent']  # typo fixes first, then best fit first
+    assert not order[1]['unlikely'] and order[2]['unlikely']
+
+
+def test_the_judge_scores_open_links_and_is_shown_the_persons_decisions(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    store = {}
+    mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'cousins')
+    store['old'] = {'id': 'old', 'kind': 'relate', 'args': {'a': 'M001', 'b': 'M003'}, 'status': 'rejected', 'made': '1'}
+    prompts = []
+    monkeypatch.setattr(llm, 'complete_json', lambda prompt, *a, **k: prompts.append(prompt) or {'reason': 'ok', 'score': 7})
+    assert mp.judge(store, mi.load()) == 2  # the open one, then the decided one (to train on)
+    assert 'REJECTED' in prompts[0] and 'Rigged votes' in prompts[0]  # the person's decision shown
+    assert all(p['judge']['score'] == 7 for p in store.values())

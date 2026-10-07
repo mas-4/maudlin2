@@ -17,7 +17,14 @@ report and its first filings are in), a few minutes at most; or by hand (scripts
 
 The model's own "no" (two motifs unrelated, a motif not in a group) and its typo reading are kept with a mark of the
 motifs as they were (name, note, about how many claims): when a motif changes, it's asked about again. A person's
-decision is never asked again."""
+decision is never asked again.
+
+Best fit (Oct 7): a second read of each kind-of and related proposal by the same model, shown some of the person's own
+decisions on such links, scores it 0-10 (judge()); a small model trained on the person's decisions (best_fit()) weighs
+that score with plain facts about the two motifs (how alike their descriptions and claims are, claims and genre
+shared, groups apart) into a best fit, by which the checklist is sorted. Those least likely to be approved are folded
+away at the bottom, nothing hidden. On the person's first 144 decisions, held out: folding the lowest put 29 of 65
+rejected ones there and 8 of 79 approved (the judge alone did worse: it scored most of both 2 or 3)."""
 import difflib
 import hashlib
 import json
@@ -47,6 +54,10 @@ TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo,
 MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
 # that merely shared a claim: "Watermelon" and "Trojan horse")
 SHARED_FLOOR = 0.6  # motifs sharing a single claim are asked about only if this alike; two or more shared, always
+JUDGED = ('relate', 'parent')  # the kinds the judge scores and best fit sorts
+JUDGE_EXAMPLES = 8  # of the person's past decisions on that kind of link, shown to the judge: this many kept, this many rejected
+FIT_MIN = 30  # decisions needed before best fit is trained
+FIT_KEEP = 0.9  # the fold: below the best fit that keeps this share of the person's approved proposals above it
 
 
 def mark(e: dict) -> str:
@@ -65,6 +76,18 @@ def pid(kind: str, args: dict) -> str:
 
 def load() -> dict:
     return read_json(PROPOSALS, {})
+
+
+def save(store: dict):
+    """A run's store written back over what's on disk now: a person's decisions made meanwhile (in the checker) stay;
+    the run adds its new proposals and its scores"""
+    disk = load()
+    for i, p in store.items():
+        if i in disk and disk[i].get('status') in ('approved', 'rejected'):
+            disk[i] = {**p, 'status': disk[i]['status'], 'decided': disk[i].get('decided')}
+        else:
+            disk[i] = p
+    write_json(PROPOSALS, disk)
 
 
 def add(store: dict, kind: str, args: dict, reason: str) -> bool:
@@ -106,9 +129,18 @@ KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 
 
 
 def open_proposals() -> list[dict]:
+    """The checklist: typo fixes, merges and link removals first (in KINDS order), then the kind-of and related
+    proposals together, best fit first; each of those below the fold's cut marked 'unlikely'"""
     index = mi.load()
-    return sorted((p for p in load().values() if p['status'] == 'open' and still_holds(p, index)),
-                  key=lambda p: (KINDS.index(p['kind']), p['made']))
+    cut = (read_json(RUNS, {}).get('fit') or {}).get('cut')
+    out = []
+    for p in load().values():
+        if p['status'] == 'open' and still_holds(p, index):
+            fit = p.get('fit') if p['kind'] in JUDGED else None
+            out.append({**p, 'unlikely': fit is not None and cut is not None and fit < cut})
+    first = len([k for k in KINDS if k not in JUDGED])
+    return sorted(out, key=lambda p: (KINDS.index(p['kind']) if p['kind'] not in JUDGED else first,
+                                      -(p.get('fit') if p.get('fit') is not None else -1), p['made']))
 
 
 def decide(proposal_id: str, decision: str):
@@ -359,7 +391,137 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], dead
     return made
 
 
-def propose(kinds=('typos', 'links', 'review', 'groups'), budget: float | None = None) -> dict:
+# ---------- best fit: the judge's score and the person's own decisions ----------
+JUDGE_PROMPT = """You check suggestions for our index of recurring rumor and narrative shapes (motifs) before a person \
+sees them. The person links two motifs when the link is plain and useful to someone browsing the index, and rejects \
+links that only hold at a stretch.
+
+A. {a}
+
+B. {b}
+
+The suggestion: {link}
+The suggester's reason: {reason}
+{examples}
+How likely is the person to accept this link? A good link: {test}. A weak one: the two only share a topic, a \
+mood, a cause and effect, or the same people or events.
+
+reason: a sentence
+score: 0 (surely rejected) to 10 (surely accepted)"""
+JUDGE_TESTS = {'relate': 'the same kind of story told from another side, or a close cousin that is often told with it',
+               'parent': 'every story of the narrower one is plainly also a story of the broader one'}
+JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
+                                                 "score": {"type": "integer", "minimum": 0, "maximum": 10}},
+                "required": ["reason", "score"]}
+
+
+def pair(p: dict) -> tuple[str, str]:
+    a = p['args']
+    return (a['a'], a['b']) if p['kind'] == 'relate' else (a['id'], a['parent'])
+
+
+def _live_pair(p: dict, index: dict) -> bool:
+    return all(i in index['entries'] and not index['entries'][i].get('merged_into') for i in pair(p))
+
+
+def _examples(p: dict, decided: list[dict], index: dict) -> str:
+    """Some of the person's decisions on this kind of link (never this one), as names and notes"""
+    import random
+    same = [d for d in decided if d['kind'] == p['kind'] and d['id'] != p['id']]
+    rnd = random.Random(p['id'])
+    rows = []
+    for status in ('approved', 'rejected'):
+        mine = [d for d in same if d['status'] == status]
+        rows += rnd.sample(mine, min(JUDGE_EXAMPLES, len(mine)))
+    if not rows:
+        return ''
+    rnd.shuffle(rows)
+    short = lambda i: f'{index["entries"][i]["name"]} ({(index["entries"][i].get("note") or "no note")[:120]})'  # noqa: E731
+    lines = []
+    for d in rows:
+        x, y = pair(d)
+        link = f'{short(x)} — related to — {short(y)}' if d['kind'] == 'relate' else f'{short(x)} — a kind of — {short(y)}'
+        lines.append(f'- {"ACCEPTED" if d["status"] == "approved" else "REJECTED"}: {link}')
+    return "\nSome of the person's past decisions on links like this:\n" + '\n'.join(lines) + '\n'
+
+
+def judge(store: dict, index: dict, deadline: float | None = None) -> int:
+    """The judge's score on each kind-of and related proposal not scored yet: open ones first, then decided ones
+    (more to train best fit on)"""
+    import time
+    decided = [p for p in store.values() if p['kind'] in JUDGED and p['status'] in ('approved', 'rejected') and _live_pair(p, index)]
+    todo = [p for p in store.values() if p['kind'] in JUDGED and 'judge' not in p and _live_pair(p, index)
+            and (p['status'] in ('approved', 'rejected') or still_holds(p, index))]
+    made = 0
+    for p in sorted(todo, key=lambda p: p['status'] != 'open'):
+        if deadline and time.time() > deadline:
+            raise Spent
+        x, y = pair(p)
+        a, b = index['entries'][x], index['entries'][y]
+        name = lambda e: f'“{e["name"]}”'  # noqa: E731
+        link = f'{name(a)} and {name(b)} are related' if p['kind'] == 'relate' else f'{name(a)} is a kind of {name(b)}'
+        answer = llm.complete_json(JUDGE_PROMPT.format(a=shown(a, b), b=shown(b, a), link=link, reason=p.get('reason', ''),
+                                                       examples=_examples(p, decided, index), test=JUDGE_TESTS[p['kind']]),
+                                   JUDGE_SCHEMA, max_tokens=500, model=MODEL)
+        if not answer or not isinstance(answer.get('score'), int):
+            continue
+        p['judge'] = {'score': answer['score'], 'reason': answer.get('reason', ''), 'model': MODEL}
+        made += 1
+        if made % 10 == 0:
+            save(store)  # a run cut short keeps its scores
+    return made
+
+
+FIT_FACTS = ['descriptions alike', 'claims alike', 'claims shared', 'same group', 'same genre', 'groups apart',
+             'a kind-of link', 'judge']
+
+
+def fit_facts(ps: list[dict], index: dict) -> np.ndarray:
+    """For each proposal, the facts best fit weighs (FIT_FACTS)"""
+    from app.narratives import embed
+    ids = sorted({i for p in ps for i in pair(p)})
+    es = {i: index['entries'][i] for i in ids}
+    dv = dict(zip(ids, embed([mi.described(es[i]) for i in ids])))
+    cv = dict(zip(ids, embed(['; '.join(c['claim'][:150] for c in es[i]['claims'][-5:]) or es[i]['name'] for i in ids])))
+    rows = []
+    for p in ps:
+        a, b = pair(p)
+        ea, eb = es[a], es[b]
+        ka, kb = ({mi.key(c['claim']) for c in e['claims']} for e in (ea, eb))
+        ga, gb = set(mi.groups_of(ea)), set(mi.groups_of(eb))
+        fa, fb = ((e.get('facets') or {}).get('genre') for e in (ea, eb))
+        rows.append([float(dv[a] @ dv[b]), float(cv[a] @ cv[b]), np.log1p(len(ka & kb)), float(bool(ga & gb)),
+                     float(bool(fa and fa == fb)), float(bool(ga and gb and not ga & gb)), float(p['kind'] == 'parent'),
+                     p['judge']['score'] / 10])
+    return np.array(rows)
+
+
+def best_fit(store: dict, index: dict) -> dict | None:
+    """Trains best fit on the person's decisions (scored by the judge) and gives each open kind-of and related
+    proposal its chance of approval ('fit'); the fold's cut is kept in RUNS. None until FIT_MIN decisions"""
+    from sklearn.linear_model import LogisticRegression
+    scored = [p for p in store.values() if p['kind'] in JUDGED and 'judge' in p and _live_pair(p, index)]
+    decided = [p for p in scored if p['status'] in ('approved', 'rejected')]
+    todo = [p for p in scored if p['status'] == 'open' and still_holds(p, index)]
+    if len(decided) < FIT_MIN or len({p['status'] for p in decided}) < 2:
+        return None
+    X = fit_facts(decided + todo, index)
+    y = np.array([p['status'] == 'approved' for p in decided])
+    mu, sd = X[:len(decided)].mean(0), X[:len(decided)].std(0) + 1e-9
+    model = LogisticRegression(max_iter=1000).fit((X[:len(decided)] - mu) / sd, y)
+    chance = model.predict_proba((X - mu) / sd)[:, 1]
+    for p, c in zip(todo, chance[len(decided):]):
+        p['fit'] = round(float(c), 3)
+    cut = float(np.quantile(chance[:len(decided)][y], 1 - FIT_KEEP))
+    info = {'cut': round(cut, 3), 'trained_on': len(decided), 'approved': int(y.sum()), 'at': dt.now().isoformat(timespec='seconds'),
+            'weights': dict(zip(FIT_FACTS, [round(float(w), 2) for w in model.coef_[0]]))}
+    runs = read_json(RUNS, {})
+    runs['fit'] = info
+    write_json(RUNS, runs)
+    return info
+
+
+def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
     got through everything before the budget (seconds) ran out"""
     import time
@@ -379,12 +541,20 @@ def propose(kinds=('typos', 'links', 'review', 'groups'), budget: float | None =
                 counts['groups'] = groups(store, index, vecs, entries, deadline)
         if 'review' in kinds:
             counts['review'] = review(store, index, deadline)
+        if 'judge' in kinds:
+            counts['judge'] = judge(store, index, deadline)
         counts['finished'] = True
     except Spent:
         pass
     finally:
-        write_json(PROPOSALS, store)
+        save(store)
         write_json(RUNS, runs)
+    if 'judge' in kinds:  # best fit on whatever was scored, even in a run cut short
+        try:
+            counts['fit'] = best_fit(store, index)
+            save(store)
+        except Exception as e:  # noqa: BLE001 — sorting is a nicety; the proposals stand without it
+            logger.warning("Best fit failed: %s", e)
     logger.info("Motif proposals: %s", counts)
     return counts
 

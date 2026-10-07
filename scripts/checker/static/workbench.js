@@ -446,12 +446,20 @@
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
       const items = q.filter((p) => Object.values(p.do).every((v) => typeof v !== 'string' || !/^M\d+$/.test(v) || S.by[v]));
       S.proposals = Object.fromEntries(items.map((p) => [p.id, p]));
-      box.innerHTML = items.length ? `<p class="wb-faint">💡 The model's suggestions, each one change. ✓ does it (undoable, like doing it by hand); ✕ and it won't suggest it again.</p>
+      // each proposal one card; a kind-of or related one with its best fit (how likely you are to approve it, learned
+      // from your own decisions), the list sorted by it, the least likely folded at the bottom
+      const card = (p) => `<div class="wb-card wb-prop"><label class="wb-propline"><input type="checkbox" data-propsel="${p.id}"> ${proposalText(p)}</label>
+          ${p.fit != null ? `<b class="wb-fit" style="--fit: ${Math.round(p.fit * 100)}%" title="best fit: how likely you are to approve it, learned from your decisions${p.judge ? `; the judge's ${p.judge.score}/10: ${esc(p.judge.reason)}` : ''}">🎯 ${Math.round(p.fit * 100)}%</b>` : ''}
+          <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
+          ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
+      const likely = items.filter((p) => !p.unlikely), unlikely = items.filter((p) => p.unlikely);
+      box.innerHTML = items.length ? `<p class="wb-faint">💡 The model's suggestions, each one change. ✓ does it (undoable, like doing it by hand); ✕ and it won't suggest it again. 🎯 is the best fit: how likely you are to approve it, learned from your decisions (best first).</p>
         <div class="wb-sbtns wb-propbar"><label><input type="checkbox" id="prop-all"> all</label>
           <button class="wb-btn" data-propmany="yes">✓ approve ticked</button><button class="wb-btn no" data-propmany="no">✕ reject ticked</button></div>
-        ${items.map((p) => `<div class="wb-card wb-prop"><label class="wb-propline"><input type="checkbox" data-propsel="${p.id}"> ${proposalText(p)}</label>
-          <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
-          ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`).join('')}`
+        ${likely.map(card).join('')}
+        ${unlikely.length ? `<details class="wb-propfold"><summary>🤖 probably not: ${unlikely.length} you'd likely reject</summary>
+          <p class="wb-faint">Most like these you've rejected. Skim them, untick any worth keeping, then <button class="wb-btn no" data-propfold="1">✕ reject the ticked</button></p>
+          ${unlikely.map((p) => card(p).replace('data-propsel="', 'checked data-propsel="')).join('')}</details>` : ''}`
         : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>No proposals waiting. The proposer runs from <code>scripts/propose_motif_fixes.py</code>.</p></div>';
     } else if (tab === 'singles') {
       const q = await queue('singles');
@@ -1026,8 +1034,10 @@
       if (x) return batch(x.motifs.map((id) => ({action: 'check', claim: v, id, answer: 'yes'})), `✓ all ${x.motifs.length} fit`);
     }
     if ((v = d('ckopen'))) { S.claim = {claim: v, src: null, from: null}; S.tab = 'claim'; store.set('tab', 'claim'); renderTabs(); return renderInbox(); }
-    if ((v = d('propmany'))) return decideProposals($$('[data-propsel]:checked').map((c) => c.dataset.propsel), v === 'yes');
-    if (t.id === 'prop-all') { $$('[data-propsel]').forEach((c) => { c.checked = t.checked; }); return; }
+    // the ticked ones above the fold (the fold's own button decides those in it)
+    if ((v = d('propmany'))) return decideProposals($$('[data-propsel]:checked').filter((c) => !c.closest('.wb-propfold')).map((c) => c.dataset.propsel), v === 'yes');
+    if (d('propfold')) return decideProposals($$('.wb-propfold [data-propsel]:checked').map((c) => c.dataset.propsel), false);
+    if (t.id === 'prop-all') { $$('[data-propsel]').filter((c) => !c.closest('.wb-propfold')).forEach((c) => { c.checked = t.checked; }); return; }
     if ((v = d('fold'))) { S.folded.has(v) ? S.folded.delete(v) : S.folded.add(v); store.set('folded', [...S.folded]); return renderTree(); }
     if ((v = d('open2'))) return openMotif(v, true);
     if (t.closest('[data-close]')) return closePanel(+d('close'));

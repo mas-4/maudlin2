@@ -4,6 +4,7 @@ for a quiet moment (not during the hourly run or its first 15 minutes).
 
     .venv/bin/python scripts/propose_motif_fixes.py                # all kinds
     .venv/bin/python scripts/propose_motif_fixes.py typos links    # some of them
+    .venv/bin/python scripts/propose_motif_fixes.py judge          # score kind-of and related proposals, then best fit
 """
 import argparse
 import os
@@ -28,7 +29,8 @@ def quiet():
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('kinds', nargs='*', choices=['typos', 'links', 'review', 'groups'], default=['typos', 'links', 'review', 'groups'])
+    ap.add_argument('kinds', nargs='*', choices=['typos', 'links', 'review', 'groups', 'judge'],
+                    default=['typos', 'links', 'review', 'groups', 'judge'])
     args = ap.parse_args()
     for kind in args.kinds:  # one kind at a time, each in a quiet stretch
         quiet()
