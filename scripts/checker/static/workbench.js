@@ -1091,7 +1091,15 @@
       return;
     }
     if (t.id === 'help-btn') return $('#help').showModal();
-    if ((v = d('cl'))) { const [kind, id] = v.split('|'); return claimAction(kind, id); }
+    if ((v = d('cl'))) {
+      const [kind, id] = v.split('|');
+      if (kind === 'add') {  // added: the search box empties for the next one
+        S.claimQ = '';
+        const q = $('#cl-q');
+        if (q) { q.value = ''; $('#cl-results').innerHTML = ''; }
+      }
+      return claimAction(kind, id);
+    }
     if (t.closest('[data-editclaim]') || (t.closest('.wb-bigtext') && !t.closest('textarea'))) return editClaim();
     // claim buttons
     const li = t.closest('.wb-claim');
@@ -1264,6 +1272,7 @@
     if (p.kind === 'merge') return `⤵ ${chip(a.a)} is the same motif as ${chip(a.b)}: merge it in`;
     if (p.kind === 'unrelate') return `✂️ ${chip(a.a)} and ${chip(a.b)} aren't related: take the link away`;
     if (p.kind === 'unparent') return `✂️ ${chip(a.id)} isn't a kind of ${chip(a.parent)}: take the link away`;
+    if (p.kind === 'genre') return `🎭 ${chip(a.id)} is ${esc(a.genre)}`;
     if (p.kind === 'group') return `📁 put ${chip(a.id)} in ${esc((S.data.groups.find((g) => g.id === a.group) || {name: a.group}).name)}`;
     return esc(p.kind);
   }
