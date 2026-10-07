@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **Proposals sorted by how likely they're approved.** About half the model's kind-of and related proposals were
+  rejected. A second read by the same model, asked how likely the person was to accept each one, was little help
+  alone: it gave most approved and rejected proposals the same 2 or 3 (and a first prompt that called the person
+  strict rejected nearly everything). Weighed together with plain facts about the two motifs by a small model trained
+  on the person's 144 decisions, it does better: tested on decisions it hadn't seen, the least likely tenth of the
+  approved marked a line below which fell 29 of 65 rejected. The checklist is sorted by that chance, and those below
+  the line are folded at the bottom, ticked, for the person to skim and reject at once; nothing is hidden.
 - **The public motif map looks like the working one.** The site's map was drawn once (Oct 6) and missed a day of
   layout work on the checker's map. Both now draw through one script (static/motif-map-layout.js): each group placed
   on a ring of its own, links out of a group pulling weakly, a group drawn as a blob around its members with
