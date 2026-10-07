@@ -757,10 +757,11 @@
       const ids = item.ids, n = `${ids.length} motifs`, done = (msg) => { S.msel.clear(); return msg; };
       if (drop === 'motif') {
         const b = t.dataset.id, B = S.by[b], rest = ids.filter((i) => i !== b);
+        const kin = rest.filter((i) => !genresClash(S.by[i], B));
         if (!B || !rest.length) return [];
         return [
           {label: `⤵ merge all ${rest.length} into it`, say: `merge all ${rest.length} into “${B.name}”`, run: () => sure(t, `Merge ${rest.length} motifs into “${B.name}”?`, '⤵ merge them').then((ok) => ok && batch(rest.map((i) => ({action: 'merge', source: i, target: b})), done(`⤵ merged ${rest.length} into “${B.name}”`)))},
-          {label: '⊂ all kinds of it', say: `make each of the ${rest.length} a kind of “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'parent', id: i, parent: b})), done(`⊂ ${rest.length} kinds of “${B.name}”`))},
+          ...kin.length ? [{label: '⊂ all kinds of it', say: `make each of the ${kin.length} a kind of “${B.name}”`, run: () => batch(kin.map((i) => ({action: 'parent', id: i, parent: b})), done(`⊂ ${kin.length} kinds of “${B.name}”`))}] : [],  // only those of its genre (or none)
           {label: '↔ all related to it', say: `relate each of the ${rest.length} to “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'relate', a: i, b})), done(`↔ ${rest.length} related to “${B.name}”`))},
         ];
       }
@@ -789,8 +790,8 @@
       if (!B || a === b) return [];
       return [
         {label: '⤵ merge into it', say: `merge “${A.name}” into “${B.name}”`, run: () => act({action: 'merge', source: a, target: b}, `⤵ merged “${A.name}” into “${B.name}”`)},
-        {label: '⊂ a kind of it', say: `make “${A.name}” a kind of “${B.name}”`, run: () => act({action: 'parent', id: a, parent: b}, `⊂ “${A.name}” is a kind of “${B.name}”`)},
-        {label: '⊃ it’s a kind of this', say: `make “${B.name}” a kind of “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `⊃ “${B.name}” is a kind of “${A.name}”`)},
+        ...genresClash(A, B) ? [] : [{label: '⊂ a kind of it', say: `make “${A.name}” a kind of “${B.name}”`, run: () => act({action: 'parent', id: a, parent: b}, `⊂ “${A.name}” is a kind of “${B.name}”`)},
+        {label: '⊃ it’s a kind of this', say: `make “${B.name}” a kind of “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `⊃ “${B.name}” is a kind of “${A.name}”`)}],  // a kind of stays within its genre
         {label: '↔ related', say: `relate “${A.name}” and “${B.name}”: related, but different`, run: () => act({action: 'relate', a, b}, `↔ related “${A.name}” and “${B.name}”`)},
         {label: '≠ not the same', say: `“${A.name}” and “${B.name}” are different: stop suggesting them as a pair`, run: () => act({action: 'not_same', a, b}, `≠ “${A.name}” and “${B.name}” are different`)},
       ];
@@ -852,6 +853,11 @@
     if (!z.say) return z.label;
     const sign = z.label.split(' ')[0];
     return /[\p{L}\p{N}]/u.test(sign) ? z.say : `${sign} ${z.say}`;
+  }
+  // A kind of stays within its genre (the checker refuses it otherwise): two motifs with different genres
+  function genresClash(x, y) {
+    const g = (e) => (e.facets || {}).genre;
+    return Boolean(g(x) && g(y) && g(x) !== g(y));
   }
   function showMenu(t, list, pin, px, py) {
     menu.innerHTML = `<div class="dz-title">${pin ? 'drop it as…' : 'let go on a choice'}</div>` + list.map((z, k) => `<button class="dz-zone" data-zone="${k}" title="${esc(z.label)}">${esc(zoneText(z))}</button>`).join('')

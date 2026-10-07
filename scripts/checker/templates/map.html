@@ -217,6 +217,8 @@ const groupColor = (gid) => MotifMap.groupColor(data.groups.findIndex((g) => g.i
 const genres = () => (data.facets || {}).genre || [];
 const genreOf = (e) => (e.facets || {}).genre || '';
 const genreColor = (v) => MotifMap.genreColor(genres(), v);
+// A kind of stays within its genre (the checker refuses it otherwise): two motifs with different genres
+const genresClash = (x, y) => Boolean(genreOf(x) && genreOf(y) && genreOf(x) !== genreOf(y));
 let pickedGenre = null;
 function markGenre() { d3.selectAll('.node').classed('gdim', (n) => pickedGenre !== null && genreOf(n.e) !== pickedGenre); }
 function genreChips() {
@@ -407,8 +409,9 @@ function manyZones(ids, t) {
   if (t.dataset.drop) return [];
   const m = byId[motifOf(t)], rest = m ? ids.filter((id) => id !== m.id) : [];
   if (!m || !rest.length) return [];
+  const kin = rest.filter((id) => !genresClash(byId[id], m));  // a kind of stays within its genre
   return [{label: `⤵ merge all ${rest.length} into it`, say: `they go; their claims join ${q(m.name)}.`, run: () => sureMenu(`⤵ Merge ${rest.length} motifs into “${esc(m.name)}”?`, '⤵ merge them').then((ok) => ok && all(rest.map((id) => ({action: 'merge', source: id, target: m.id})))())},
-          {label: '⊂ all kinds of it', say: `each a kind of ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'parent', id, parent: m.id})))},
+          ...(kin.length ? [{label: '⊂ all kinds of it', say: `${kin.length === rest.length ? 'each' : kin.length + ' of them (its genre)'} a kind of ${q(m.name)}.`, run: all(kin.map((id) => ({action: 'parent', id, parent: m.id})))}] : []),
           {label: '↔ all related to it', say: `each related to ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'relate', a: id, b: m.id})))}];
 }
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
@@ -466,8 +469,8 @@ dragZones({
     const a = byId[item.id], under = a.parents.includes(m.id), over = m.parents.includes(a.id), rel = a.related.includes(m.id);
     return [{label: '⤵ merge into it', say: `${q(a.name)} goes; its claims join ${q(m.name)}.`, run: () => act({action: 'merge', source: a.id, target: m.id})},
             under ? {label: '✕ not under it', say: `${q(a.name)} is no longer a kind of ${q(m.name)}.`, run: () => act({action: 'parent', id: a.id, parent: m.id, on: false})}
-                  : {label: '⊂ under it', say: `${q(a.name)} becomes a kind of ${q(m.name)}: both stay.`, run: () => act({action: 'parent', id: a.id, parent: m.id})},
-            over ? null : {label: '⊃ over it', say: `${q(m.name)} becomes a kind of ${q(a.name)}: both stay.`, run: () => act({action: 'parent', id: m.id, parent: a.id})},
+                  : genresClash(a, m) ? null : {label: '⊂ under it', say: `${q(a.name)} becomes a kind of ${q(m.name)}: both stay.`, run: () => act({action: 'parent', id: a.id, parent: m.id})},
+            over || genresClash(a, m) ? null : {label: '⊃ over it', say: `${q(m.name)} becomes a kind of ${q(a.name)}: both stay.`, run: () => act({action: 'parent', id: m.id, parent: a.id})},
             rel ? {label: '✕ unrelate', say: 'No longer linked as related.', run: () => act({action: 'unrelate', a: a.id, b: m.id})}
                 : {label: '↔ related', say: 'Near each other, different stories: both stay, linked.', run: () => act({action: 'relate', a: a.id, b: m.id})}];
   },

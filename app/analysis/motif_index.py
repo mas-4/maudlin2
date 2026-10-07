@@ -501,7 +501,9 @@ def merge(source: str, target: str):
         if not more:
             break
         below |= more
-    ups = [p for p in parents_of(dst) + parents_of(src) if p != source and p not in below]
+    genre = genre_of(dst) or genre_of(src)  # the merged motif's genre: its broader motifs must share it
+    ups = [p for p in parents_of(dst) + parents_of(src) if p != source and p not in below
+           and not (genre and genre_of(index['entries'].get(p, {})) not in (None, genre))]
     if ups or 'parents' in dst or 'parent' in dst:
         dst.pop('parent', None)
         dst['parents'] = list(dict.fromkeys(ups))
@@ -754,6 +756,13 @@ def set_facet(eid: str, facet: str, value: str | None):
     index = load()
     entry = index['entries'][eid]
     value = ' '.join((value or '').split())
+    if value and facet == 'genre':  # its kind-of links stay within one genre (genres_clash)
+        linked = [index['entries'][p] for p in parents_of(entry) if p in index['entries']] + [
+            e for e in live(index) if eid in parents_of(e)]
+        clash = [e['name'] for e in linked if genre_of(e) and genre_of(e) != value]
+        if clash:
+            raise ValueError(f'“{entry["name"]}” is linked as a kind to {", ".join(f"“{n}”" for n in clash)} of another '
+                             f'genre: take that link away first, or give them the same genre')
     if value:
         entry.setdefault('facets', {})[facet] = value
     else:
@@ -974,15 +983,28 @@ def parents_of(entry: dict) -> list[str]:
     return list(entry.get('parents') or ([entry['parent']] if entry.get('parent') else []))
 
 
+def genre_of(entry: dict) -> str | None:
+    return (entry.get('facets') or {}).get('genre') or None
+
+
+def genres_clash(a: dict, b: dict) -> bool:
+    """Both have a genre and they differ: then neither can be a kind of the other (a kind of stays within its genre;
+    the person's rule, Oct 7). A motif with no genre yet can be a kind of anything"""
+    return bool(genre_of(a) and genre_of(b) and genre_of(a) != genre_of(b))
+
+
 @exclusive
 def set_parent(eid: str, parent: str, on: bool = True):
-    """`eid` is (on) or isn't (off) a kind of `parent`. Refuses a loop."""
+    """`eid` is (on) or isn't (off) a kind of `parent`. Refuses a loop, and two genres (genres_clash)."""
     index = load()
     entries = index['entries']
     parents = parents_of(entries[eid])
     if on:
         if parent not in entries or entries[parent].get('merged_into') or parent == eid:
             raise ValueError(f'no such motif: {parent}')
+        if genres_clash(entries[eid], entries[parent]):
+            raise ValueError(f'“{entries[eid]["name"]}” is {genre_of(entries[eid])} and “{entries[parent]["name"]}” '
+                             f'is {genre_of(entries[parent])}: a kind of stays within its genre')
         todo, seen = [parent], set()
         while todo:  # everything above the new parent must not include eid
             p = todo.pop()

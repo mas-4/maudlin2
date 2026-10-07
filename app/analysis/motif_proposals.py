@@ -111,7 +111,7 @@ def still_holds(p: dict, index: dict) -> bool:
         return live(a['id']) and (entries[a['id']].get('note') or '') == a['from'] and a['to'] != a['from']
     if k == 'parent':
         return live(a['id']) and live(a['parent']) and a['parent'] not in mi.parents_of(entries[a['id']]) \
-            and a['id'] not in mi.parents_of(entries[a['parent']])
+            and a['id'] not in mi.parents_of(entries[a['parent']]) and not mi.genres_clash(entries[a['id']], entries[a['parent']])
     if k in ('relate', 'merge'):
         pair = sorted([a['a'], a['b']])
         return live(a['a']) and live(a['b']) and pair not in index.get('related', []) \
@@ -265,19 +265,8 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadl
         for j in np.argsort(-sims[i])[1:LINK_NEIGHBORS + 1]:
             if sims[i, j] >= LINK_FLOOR:
                 pairs[tuple(sorted((i, int(j))))] = float(sims[i, j])
-    holders = {}
-    for i, e in enumerate(entries):
-        for c in e['claims']:
-            holders.setdefault(c['claim'], set()).add(i)
-    together = {}
-    for hs in holders.values():  # motifs sharing a claim
-        hs = sorted(hs)
-        for x in range(len(hs)):
-            for y in range(x + 1, len(hs)):
-                together[(hs[x], hs[y])] = together.get((hs[x], hs[y]), 0) + 1
-    for (x, y), n in together.items():
-        if n >= 2 or sims[x, y] >= SHARED_FLOOR:
-            pairs.setdefault((x, y), float(sims[x, y]))
+    # (no longer motifs that share claims, Oct 7: one claim often tells several shapes at once, one per layer of the
+    # story, so motifs filed together co-occur without being related, as the person put it)
     marks = {e['id']: mark(e) for e in entries}
     asked = set()
     for p in store.values():
@@ -297,7 +286,9 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadl
         if not answer:
             continue
         rel, why = answer.get('relation'), answer.get('reason', '')
-        if rel == RELATIONS[0]:
+        if rel in RELATIONS[:2] and mi.genres_clash(a, b):
+            pass  # a kind of stays within its genre
+        elif rel == RELATIONS[0]:
             made += add(store, 'parent', {'id': a['id'], 'parent': b['id']}, why)
         elif rel == RELATIONS[1]:
             made += add(store, 'parent', {'id': b['id'], 'parent': a['id']}, why)
@@ -521,6 +512,18 @@ def best_fit(store: dict, index: dict) -> dict | None:
     return info
 
 
+def genre_clashes(store: dict, index: dict) -> int:
+    """Kind-of links between motifs of two genres, made before the rule that a kind of stays within its genre: each
+    proposed for removal (no model needed)"""
+    made = 0
+    for e in mi.live(index):
+        for p in mi.parents_of(e):
+            if p in index['entries'] and mi.genres_clash(e, index['entries'][p]):
+                made += add(store, 'unparent', {'id': e['id'], 'parent': p},
+                            f'{mi.genre_of(e)} and {mi.genre_of(index["entries"][p])}: a kind of stays within its genre')
+    return made
+
+
 def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
     got through everything before the budget (seconds) ran out"""
@@ -529,7 +532,7 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float
     index = mi.load()
     store, runs = load(), read_json(RUNS, {})
     entries = mi.live(index)
-    counts = {'finished': False}
+    counts = {'finished': False, 'genre clashes': genre_clashes(store, index)}
     try:
         if 'typos' in kinds:
             counts['typos'] = typos(store, index, runs, deadline)

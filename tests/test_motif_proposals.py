@@ -244,3 +244,46 @@ def test_the_judge_scores_open_links_and_is_shown_the_persons_decisions(tmp_path
     assert mp.judge(store, mi.load()) == 2  # the open one, then the decided one (to train on)
     assert 'REJECTED' in prompts[0] and 'Rigged votes' in prompts[0]  # the person's decision shown
     assert all(p['judge']['score'] == 7 for p in store.values())
+
+
+def test_a_kind_of_stays_within_its_genre(tmp_path, monkeypatch):
+    import pytest
+    index_with(tmp_path, monkeypatch)
+    mi.set_facet('M001', 'genre', 'Archetypes')
+    mi.set_facet('M002', 'genre', 'Theories')
+    with pytest.raises(ValueError, match='within its genre'):
+        mi.set_parent('M002', 'M001')
+    mi.set_parent('M003', 'M001')  # no genre yet: allowed
+    with pytest.raises(ValueError, match='take that link away first'):
+        mi.set_facet('M003', 'genre', 'Plots')  # would put a kind of across two genres
+    mi.set_facet('M003', 'genre', 'Archetypes')
+    assert mi.parents_of(mi.load()['entries']['M003']) == ['M001']
+    with pytest.raises(ValueError):  # through the checker too
+        validate.workbench_action({'action': 'parent', 'id': 'M002', 'parent': 'M001'})
+
+
+def test_a_merge_drops_a_broader_motif_of_another_genre(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    mi.set_parent('M002', 'M001')  # Empty suit a kind of Politicians' empty promises, no genres yet
+    mi.set_facet('M001', 'genre', 'Theories')
+    mi.set_facet('M003', 'genre', 'Plots')
+    mi.merge('M002', 'M003')  # into a Plot: its broader motif, a Theory, doesn't come along
+    assert mi.parents_of(mi.load()['entries']['M003']) == []
+
+
+def test_old_links_across_genres_come_up_for_removal_and_none_are_proposed(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    mi.set_parent('M002', 'M001')
+    index = mi.load()
+    index['entries']['M001']['facets'] = {'genre': 'Theories'}  # made before the rule
+    index['entries']['M002']['facets'] = {'genre': 'Archetypes'}
+    mi.save(index)
+    store = {}
+    assert mp.genre_clashes(store, mi.load()) == 1
+    p = next(iter(store.values()))
+    assert p['kind'] == 'unparent' and p['args'] == {'id': 'M002', 'parent': 'M001'}
+    mp.add(store, 'parent', {'id': 'M003', 'parent': 'M002'}, 'x')
+    index = mi.load()
+    index['entries']['M003']['facets'] = {'genre': 'Plots'}
+    mi.save(index)
+    assert not mp.still_holds(store[mp.pid('parent', {'id': 'M003', 'parent': 'M002'})], mi.load())
