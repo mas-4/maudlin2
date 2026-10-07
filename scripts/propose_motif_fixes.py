@@ -29,8 +29,8 @@ def quiet():
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('kinds', nargs='*', choices=['typos', 'links', 'review', 'groups', 'judge'],
-                    default=['typos', 'links', 'review', 'groups', 'judge'])
+    ap.add_argument('kinds', nargs='*', choices=['typos', 'links', 'review', 'groups', 'genres', 'judge'],
+                    default=['typos', 'links', 'review', 'groups', 'genres', 'judge'])
     args = ap.parse_args()
     for kind in args.kinds:  # one kind at a time, each in a quiet stretch
         quiet()

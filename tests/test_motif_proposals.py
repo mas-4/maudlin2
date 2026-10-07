@@ -287,3 +287,23 @@ def test_old_links_across_genres_come_up_for_removal_and_none_are_proposed(tmp_p
     index['entries']['M003']['facets'] = {'genre': 'Plots'}
     mi.save(index)
     assert not mp.still_holds(store[mp.pid('parent', {'id': 'M003', 'parent': 'M002'})], mi.load())
+
+
+def test_genres_are_proposed_from_the_persons_examples(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    index = mi.load()
+    for i, g in (('M001', 'Theories'), ('M002', 'Archetypes')):
+        index['entries'][i]['facets'] = {'genre': g}
+    index['entries']['M003']['done'] = [mi.key('c')]  # verified, no genre
+    mi.save(index)
+    prompts = []
+    monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, **k: prompts.append((prompt, schema)) or {'reason': 'a plot', 'genre': 'Archetypes'})
+    store = {}
+    assert mp.genres(store, mi.load()) == 1
+    p = next(x for x in store.values() if x['kind'] == 'genre')
+    assert p['args'] == {'id': 'M003', 'genre': 'Archetypes'} and 'Empty suit' in prompts[0][0]
+    assert prompts[0][1]['properties']['genre']['enum'] == ['Archetypes', 'Theories', 'none']
+    assert mp.genres(store, mi.load()) == 0  # never asked twice
+    assert mp.action(p) == {'action': 'facet', 'id': 'M003', 'facet': 'genre', 'value': 'Archetypes'}
+    mi.set_parent('M003', 'M001')  # now a kind of a Theory: Archetypes would put that link across two genres
+    assert not mp.still_holds(p, mi.load())

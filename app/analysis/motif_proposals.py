@@ -7,6 +7,8 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
   relate   two motifs are related (told together, close cousins)
   merge    two motifs are the same one
   group    a motif belongs in one of the person's groups
+  genre    a motif with no genre yet is of one of the person's genres (one layer of a story: a character type, a plot,
+           a theory...), judged against examples of each genre from the person's own motifs
   unrelate two motifs linked as related aren't (a review of the links already made)
   unparent a motif linked as a kind of another isn't
 
@@ -118,6 +120,11 @@ def still_holds(p: dict, index: dict) -> bool:
             and not (k == 'merge' and pair in index.get('not_same', []))
     if k == 'group':
         return live(a['id']) and a['group'] in index.get('groups', {}) and a['group'] not in mi.groups_of(entries[a['id']])
+    if k == 'genre':  # still without a genre, the genre still there, and no kind-of link it would put across two
+        e = entries.get(a['id'], {})
+        linked = [entries[p] for p in mi.parents_of(e) if p in entries] + [x for x in mi.live(index) if a['id'] in mi.parents_of(x)]
+        return live(a['id']) and not mi.genre_of(e) and a['genre'] in mi.facet_values(index).get('genre', []) \
+            and not any(mi.genre_of(x) not in (None, a['genre']) for x in linked)
     if k == 'unrelate':
         return live(a['a']) and live(a['b']) and sorted([a['a'], a['b']]) in index.get('related', [])
     if k == 'unparent':
@@ -125,7 +132,7 @@ def still_holds(p: dict, index: dict) -> bool:
     return False
 
 
-KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'group']  # the checklist's order
+KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'group', 'genre']  # the checklist's order
 
 
 def open_proposals() -> list[dict]:
@@ -151,6 +158,18 @@ def decide(proposal_id: str, decision: str):
     write_json(PROPOSALS, store)
 
 
+def reopen(ids: list[str]) -> list[str]:
+    """Decisions taken back (the checker's undo): each proposal open again, as before the person decided it"""
+    store = load()
+    done = [i for i in ids if i in store and store[i]['status'] in ('approved', 'rejected')]
+    for i in done:
+        store[i]['status'] = 'open'
+        store[i].pop('decided', None)
+    if done:
+        write_json(PROPOSALS, store)
+    return done
+
+
 def action(p: dict) -> dict:
     """The workbench action that carries out a proposal"""
     a = p['args']
@@ -160,6 +179,7 @@ def action(p: dict) -> dict:
             'relate': {'action': 'relate', 'a': a.get('a'), 'b': a.get('b')},
             'merge': {'action': 'merge', 'source': a.get('a'), 'target': a.get('b')},
             'group': {'action': 'group_member', 'id': a.get('id'), 'group': a.get('group'), 'on': True},
+            'genre': {'action': 'facet', 'id': a.get('id'), 'facet': 'genre', 'value': a.get('genre')},
             'unrelate': {'action': 'unrelate', 'a': a.get('a'), 'b': a.get('b')},
             'unparent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': False}}[p['kind']]
 
@@ -382,6 +402,74 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], dead
     return made
 
 
+# ---------- genres ----------
+GENRE_EXAMPLES = 5  # of each genre's motifs, shown to the model (the most claims first; never the motif asked about)
+GENRE_PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: which layer \
+of a story it is. The genres, each with some of the motifs a person put in it:
+{genres}
+
+A motif with no genre yet:
+{motif}
+
+Which genre is it, judging by what kind of thing it is (a character type, a sequence of events, a hidden cause, a way \
+of arguing, something believed or valued or urged...) as the examples show, not by its topic? If none fits clearly, \
+say none.
+
+reason: a sentence
+genre: one of the genres, or none"""
+
+
+def genre_examples(index: dict, leave_out: str | None = None) -> dict[str, list[dict]]:
+    """Each genre's example motifs: the person's own, the most claims first"""
+    out = {}
+    for g in mi.facet_values(index).get('genre', []):
+        es = [e for e in mi.live(index) if mi.genre_of(e) == g and e['id'] != leave_out]
+        out[g] = sorted(es, key=lambda e: -len(e['claims']))[:GENRE_EXAMPLES]
+    return {g: es for g, es in out.items() if es}
+
+
+def ask_genre(e: dict, examples: dict[str, list[dict]]) -> tuple[str | None, str] | None:
+    """(the genre or None, the reason), or None if the model didn't answer"""
+    listing = '\n'.join(f'{g}:\n' + '\n'.join(f'  - {mi.described(x)[:200]}' for x in es) for g, es in examples.items())
+    schema = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
+                                               "genre": {"type": "string", "enum": list(examples) + ['none']}},
+              "required": ["reason", "genre"]}
+    answer = llm.complete_json(GENRE_PROMPT.format(genres=listing, motif=shown(e)), schema, max_tokens=400, model=MODEL)
+    if not answer:
+        return None
+    return (answer['genre'] if answer.get('genre') in examples else None), answer.get('reason', '')
+
+
+def genres(store: dict, index: dict, deadline: float | None = None) -> int:
+    """A genre proposed for each motif a person has verified that has none; the model's 'none' kept with the motif's
+    mark (asked again once it changes)"""
+    import time
+    examples = genre_examples(index)
+    if len(examples) < 2:
+        return 0
+    made = 0
+    for e in sorted(mi.live(index), key=lambda e: -len(e['claims'])):
+        if mi.genre_of(e) or not mi.public(e) or any(p['kind'] == 'genre' and p['args']['id'] == e['id'] for p in store.values()):
+            continue
+        no = store.get(pid('not_genre', {'id': e['id']}))
+        if no and no['args'].get('mark') == mark(e):
+            continue
+        if deadline and time.time() > deadline:
+            raise Spent
+        got = ask_genre(e, examples)
+        if got is None:
+            continue
+        g, why = got
+        p = {'id': e['id'], 'genre': g}
+        if g and still_holds({'kind': 'genre', 'args': p}, index):
+            made += add(store, 'genre', p, why)
+        else:
+            i2 = pid('not_genre', {'id': e['id']})
+            store[i2] = {'id': i2, 'kind': 'not_genre', 'args': {'id': e['id'], 'mark': mark(e)}, 'reason': why,
+                         'model': MODEL, 'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
+    return made
+
+
 # ---------- best fit: the judge's score and the person's own decisions ----------
 JUDGE_PROMPT = """You check suggestions for our index of recurring rumor and narrative shapes (motifs) before a person \
 sees them. The person links two motifs when the link is plain and useful to someone browsing the index, and rejects \
@@ -524,6 +612,7 @@ def genre_clashes(store: dict, index: dict) -> int:
     return made
 
 
+# 'genres' left out of the nightly run until it's been tried on the person's own genres (scripts/propose_motif_fixes.py genres)
 def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
     got through everything before the budget (seconds) ran out"""
@@ -544,6 +633,8 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float
                 counts['groups'] = groups(store, index, vecs, entries, deadline)
         if 'review' in kinds:
             counts['review'] = review(store, index, deadline)
+        if 'genres' in kinds:
+            counts['genres'] = genres(store, index, deadline)
         if 'judge' in kinds:
             counts['judge'] = judge(store, index, deadline)
         counts['finished'] = True

@@ -1,6 +1,7 @@
 """An MCP server for working with the project's data from Claude Code, read-only: the site's database (SQLite, opened
 in read-only mode, so nothing can be written even by mistake) and the motif index (through app/analysis/motif_index.py,
-the code the checker uses). Changes to the index still go through the checker's actions, logged and undoable.
+the code the checker uses); and changes to the index, only through the checker's own actions (checker_action), so
+each is validated, logged in the curation log marked by Claude, and undoable.
 
 Registered in .mcp.json; runs over stdio:
     .venv/bin/python scripts/maudlin_mcp.py
@@ -45,7 +46,9 @@ server = MCPServer('maudlin', instructions=(
     "Read-only access to bignews.day's data. db_schema and db_query read the site's SQLite database (headlines, "
     "articles, agencies, stories, side feeds and their transcripts...). The motif_* tools read the motif index: motifs "
     "(rumor and narrative shapes) with their claims, genre (a layer of story: Archetypes, Plots, Theories...), groups "
-    "(a separate axis), kind-of links (the only hierarchy, within one genre) and related links. Nothing here writes."))
+    "(a separate axis), kind-of links (the only hierarchy, within one genre) and related links. checker_action makes a "
+    "change the person asked for through the checker (logged, undoable, marked by Claude); checker_undo takes back "
+    "Claude's own last change only."))
 
 
 def _connect() -> sqlite3.Connection:
@@ -207,6 +210,72 @@ def motif_proposals(kind: str = '', limit: int = 50) -> str:
         out.append({'id': p['id'], 'kind': p['kind'], 'args': args, 'reason': p.get('reason'), 'fit': p.get('fit'),
                     'unlikely': p.get('unlikely'), 'judge': (p.get('judge') or {}).get('score')})
     return json.dumps({'open': len(out), 'proposals': out[:max(1, min(limit, 300))]}, ensure_ascii=False)
+
+
+# ---------- changes, through the checker (logged, undoable, marked by Claude) ----------
+CHECKER = 'http://localhost:8766'
+
+
+def _post(path: str, body: dict) -> tuple[int, str]:
+    import urllib.error
+    import urllib.request
+    req = urllib.request.Request(CHECKER + path, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()[:500]
+    except OSError as e:
+        return 0, f'the checker (port 8766) isn\'t running: {e}'
+
+
+@server.tool()
+def checker_action(action: dict) -> str:
+    """Make one change to the motif index through the checker, exactly as the person's clicks do: validated, written
+    to the curation log marked by Claude, and on the undo stack labelled "(by Claude)". Only when the person asked for
+    the change. An action is a dict with "action" and its fields, e.g.:
+      rename {id, name} · note {id, note} · done {id} (mark done / unmark) · delete {id}
+      merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (a kind of; same genre)
+      relate / unrelate {a, b} · not_same {a, b}
+      group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}
+      facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value}
+      also {claim, source, target} (file it there too) · move {claim, source, target} · unfile {claim, id}
+      check {claim, id, answer: yes|no|unsure} · no_motif {claim} · new_with {name, claims: [{claim, source?}]}
+      batch {steps: [actions]} (one undo step)
+    Motifs by id (M123), groups by id (G01; motif_overview and motif have names). Returns the checker's answer."""
+    if not isinstance(action, dict) or not action.get('action'):
+        return 'an action is a dict with "action"'
+    status, text = _post('/workbench', {**action, 'by': 'claude'})
+    if status == 200:
+        return f'done: {action["action"]} (logged and undoable, by Claude)'
+    return f'refused ({status}): {text}'
+
+
+_V = None
+
+
+def _validate():
+    """The checker's own code (scripts/validate.py), for reading its undo stack"""
+    global _V
+    if _V is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('validate', os.path.join(os.path.dirname(__file__), 'validate.py'))
+        _V = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_V)
+    return _V
+
+
+@server.tool()
+def checker_undo() -> str:
+    """Undo Claude's own last change, only if it's the newest one on the undo stack (never the person's)."""
+    found = _validate().last_undo()
+    if not found:
+        return 'nothing to undo'
+    what = found[1].get('what', '')
+    if not what.endswith('(by Claude)'):
+        return f'the newest change is the person\'s, not Claude\'s ({what}): not undoing it'
+    status, text = _post('/undo', {})
+    return f'undid: {what}' if status == 200 else f'refused ({status}): {text}'
 
 
 if __name__ == '__main__':

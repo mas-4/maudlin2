@@ -172,10 +172,14 @@ def motif_context(data: dict) -> dict:
     return out
 
 
-def log_curation(page: str, data: dict, before: dict):
+BY = {'claude'}  # who besides the person may act through the checker (by MCP, scripts/maudlin_mcp.py), marked as theirs
+
+
+def log_curation(page: str, data: dict, before: dict, by: str | None = None):
     os.makedirs(FOLDER, exist_ok=True)
     with open(CURATION_LOG, 'a') as f:
-        f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'page': page, 'action': data, 'before': before}) + '\n')
+        f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'page': page, 'action': data, 'before': before,
+                            **({'by': by} if by else {})}) + '\n')
 
 
 # Undo: each change on the organizer pages snapshots the file it touched (the motif index, or the name aliases) so the
@@ -203,6 +207,10 @@ def describe(data: dict, before: dict) -> str:
     """'merge “Government deception” into “False flag operation”' and the like, for the undo button"""
     name = lambda k: (before.get(k) or {}).get('name') or data.get(k)  # noqa: E731
     act = data.get('action') or ('motif check: ' + str(data.get('answer')))
+    if act == 'proposal_reject':
+        act = 'reject a proposal'
+    elif data.get('proposal'):
+        act = 'approve a proposal: ' + act
     parts = [act] + [f'“{name(k)}”' for k in ('source', 'id', 'a', 'child') if data.get(k)]
     parts += [f'→ “{name(k)}”' for k in ('target', 'b', 'parent') if data.get(k)]
     if data.get('name'):
@@ -212,15 +220,17 @@ def describe(data: dict, before: dict) -> str:
     return ' '.join(parts)[:160]
 
 
-def push_undo(path: str, before_text: str | None, what: str):
+def push_undo(path: str, before_text: str | None, what: str, proposals: list[str] | None = None):
+    """A step to undo: the file as it was, and the proposals the step decided (reopened on undo; a rejection changes
+    no file but is a step all the same; until Oct 7 undo skipped it, and undoing an approval left it decided)"""
     after = read_text(path)
-    if after == before_text:
+    if after == before_text and not proposals:
         return
     os.makedirs(UNDO, exist_ok=True)
     stamp = dt.now().strftime('%Y%m%d-%H%M%S-%f')
     with open(os.path.join(UNDO, stamp + '.json'), 'w') as f:
         json.dump({'path': path, 'before': before_text, 'after_sha': hashlib.sha1((after or '').encode()).hexdigest(),
-                   'what': what, 'at': stamp}, f)
+                   'what': what, 'at': stamp, **({'proposals': proposals} if proposals else {})}, f)
     for old in sorted(os.listdir(UNDO))[:-UNDO_KEEP]:
         os.remove(os.path.join(UNDO, old))
 
@@ -257,6 +267,9 @@ def undo() -> str:
             f.write(snap['before'] or '')
         os.replace(snap['path'] + '.tmp', snap['path'])
     os.remove(snap_path)
+    if snap.get('proposals'):
+        from app.analysis import motif_proposals
+        motif_proposals.reopen(snap['proposals'])
     log_curation('undo', {'action': 'undo', 'undid': snap['what']}, {})
     return snap['what']
 
@@ -642,9 +655,10 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def remember(self, data: dict, before: dict):
+    def remember(self, data: dict, before: dict, by: str | None = None, proposals: list[str] | None = None):
         if getattr(self, '_undo', None):
-            push_undo(self._undo[0], self._undo[1], describe(data, before))
+            push_undo(self._undo[0], self._undo[1], describe(data, before) + (f' (by {by.capitalize()})' if by else ''),
+                      proposals)
 
     def send_json(self, value):
         body = json.dumps(value).encode()
@@ -675,14 +689,18 @@ class Handler(BaseHTTPRequestHandler):
         undo_path = undo_paths().get(self.path)
         self._undo = (undo_path, read_text(undo_path)) if undo_path else None
         if self.path == '/workbench':
+            by = data.pop('by', None)  # an action someone else made at the person's request (claude, by MCP)
+            by = by if by in BY else None
             try:
                 before = motif_context(data if data.get('action') != 'batch' else (data.get('steps') or [{}])[0])
                 workbench_action(data)
-                log_curation('motif workbench', data, before)
+                log_curation('motif workbench', data, before, by)
+                steps = data['steps'] if data.get('action') == 'batch' else [data]
                 self.remember(data if data.get('action') != 'batch' else
-                              {'action': f"{len(data['steps'])} changes: {data['steps'][0].get('action')}…"}, before)
+                              {'action': f"{len(data['steps'])} changes: {data['steps'][0].get('action')}…"}, before, by,
+                              [x['proposal'] for x in steps if isinstance(x, dict) and x.get('proposal')])
             except (ValueError, KeyError) as e:
-                self.remember({'action': 'part of a change that failed'}, {})  # a batch stopped midway: still undoable
+                self.remember({'action': 'part of a change that failed'}, {}, by)  # a batch stopped midway: still undoable
                 return self.send_json_error(400, str(e))
             return self.send_json(workbench_state())
         if self.path == '/motif-board':
