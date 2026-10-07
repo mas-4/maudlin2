@@ -26,7 +26,7 @@
         </ol>
     {% endif %}
 
-    <section class="story-stage">
+    <section class="story-stage" id="spread">
         {{ banner('📰', 'Spread', 'the front pages that ran it, hour by hour', '#00c2a8') }}
         {% if by_lean %}
             <figure class="story-chart-figure">
@@ -72,7 +72,7 @@
         </details>
     </section>
 
-    <section class="story-stage">
+    <section class="story-stage" id="broadcast">
         {{ banner('📡', 'Broadcast', 'TV, radio, and the shows that talked about it', '#ff6b1a') }}
         {% if tv or radio or extras.shows or extras.investigations or extras.satire %}
             <div class="story-page-grid">
@@ -103,7 +103,7 @@
         {% endif %}
     </section>
 
-    <section class="story-stage">
+    <section class="story-stage" id="retelling">
         {{ banner('🧶', 'Retelling', 'what people online made of it', '#8a5cff') }}
             {% if folklore %}
                 <div class="saga-card story-page-card" style="--saga: #8a5cff">
@@ -128,7 +128,7 @@
             {% if names %}<p class="stage-notes">🗣️ names in it: {% for n in names %}<span class="show-chip tv-chip" style="--chip: #00c2a8">{{ n|e }}</span> {% endfor %}</p>{% endif %}
     </section>
 
-    <section class="story-stage">
+    <section class="story-stage" id="checking">
         {{ banner('🔎', 'Checking', 'what the fact-checkers looked into', '#ffc400') }}
         {% if extras.factchecks %}
             <div class="saga-card story-page-card" style="--saga: #f5b700">
@@ -139,7 +139,7 @@
         {% endif %}
     </section>
 
-    <section class="story-stage">
+    <section class="story-stage" id="persistence">
         {{ banner('🧵', 'Persistence', 'the running story it belongs to', '#ff4fa3') }}
         {% if story.saga %}
             <div class="saga-card story-page-card" style="--saga: #7a5cff">

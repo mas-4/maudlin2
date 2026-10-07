@@ -573,22 +573,25 @@ class HeadlinesPage:
                 q = c['quotes'][0]
                 contrast = {'text': f'quoted: “{q["phrase"]}”', 'emoji': '💬', 'n': q.get('count', 1), 'tip': 'the phrase outlets quote most'}
             signal = None
+            # each to the story's own page where there is one: its broadcast or retelling part, not the whole TV page
+            sid = self.story_of.get(k)
+            page = f'story-{sid}.html' if sid else None
             if tv.get(k):
-                signal = {'emoji': '📺', 'href': 'tv.html',
+                signal = {'emoji': '📺', 'href': f'{page}#broadcast' if page else 'tv.html',
                           'text': 'on TV: ' + ', '.join(f"{t['name']} {t['time']}" for t in tv[k][:2])}
             elif radio.get(k):
                 led = sum(r.get('led') or 0 for r in radio[k])
                 casts = sum(r.get('casts') or 0 for r in radio[k])
-                signal = {'emoji': '📻', 'href': 'radio.html',
+                signal = {'emoji': '📻', 'href': f'{page}#broadcast' if page else 'radio.html',
                           'text': f"in {casts} radio newscast{'' if casts == 1 else 's'}" + (f', the lead in {led}' if led else '')}
             elif retold.get(k):
-                signal = {'emoji': '🧶', 'href': 'folklore.html', 'text': f"retold online by {retold[k]['people']} people"}
+                signal = {'emoji': '🧶', 'href': f'{page}#retelling' if page else 'folklore.html',
+                          'text': f"retold online by {retold[k]['people']} people"}
             elif checks.get(k):
                 signal = {'emoji': '🔎', 'href': checks[k][0]['url'], 'text': f"fact-checked by {checks[k][0]['source']}"}
-            sid = self.story_of.get(k)
             out.append({'title': item['title'], 'now': item['now'], 'outlets': item['outlets'], 'saga': item['saga'],
                         'color': item['color'], 'anchor': self.context['anchor_of'].get(k, f'story-{k}'),
-                        'page': f'story-{sid}.html' if sid else None,
+                        'page': page,
                         'spread': [(side, n, round(100 * n / total)) for side, n in spread.items() if n],
                         'contrast': contrast, 'signal': signal, 'feelings': c.get('feelings', [])[:2]})
         self.context['top_stories'] = out
