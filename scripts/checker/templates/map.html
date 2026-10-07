@@ -42,6 +42,11 @@ body.dragging #desk-drop { background: #fff6cc; transform: scale(1.12); }
 .desk-card h3 { margin: .1em 0; font-size: 1em; padding: 2px 4px; } .desk-card ul { padding-left: 1.1em; margin: .2em 0 .4em; } .desk-card .x { float: right; cursor: pointer; border: 0; background: none; font-size: 1.05em; }
 .desk-card.closed ul, .desk-card.closed .more { display: none; } .desk-card .fold { cursor: pointer; border: 0; background: none; float: right; }
 body.desk-open #info { right: 352px; }
+.cname { font: 700 1em system-ui, sans-serif; border: 1.5px solid transparent; border-radius: 6px; padding: 1px 4px; width: calc(100% - 7em); background: transparent; }
+.cname:hover, .cname:focus { border-color: #1f1f2e; background: #fff; outline: none; }
+.cnote { display: block; width: 100%; box-sizing: border-box; font: italic .95em system-ui, sans-serif; color: #444; border: 1.5px dashed #ccc; border-radius: 6px; padding: 3px 6px; margin: 3px 0; resize: vertical; background: #fffdf6; }
+.cnote:focus { border: 1.5px solid #1f1f2e; outline: none; background: #fff; }
+h3[data-id] .grip { cursor: grab; }
 .unlink { border: 0; background: none; cursor: pointer; color: #c0392b; font-size: .8em; padding: 0 2px; } .unlink:hover { background: #ffe3e7; border-radius: 4px; }
 </style>{% endblock %}
 {% block body %}
@@ -202,8 +207,8 @@ function names(ids, id, unlink) {
 function cardHTML(id) {
   const e = byId[id], kinds = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
   const shared = links.filter((l) => l.kind === 'shared' && (l.source.id === id || l.target.id === id)).map((l) => l.source.id === id ? l.target.id : l.source.id);
-  return `<h3 data-id="${e.id}" title="drag onto a dot, a name or the 📌">🧩 ${esc(e.name)} <span class="meta">${e.id}</span></h3>
-    ${e.note ? `<p class="meta">${esc(e.note)}</p>` : ''}
+  return `<h3 data-id="${e.id}" title="drag by the 🧩 onto a dot, a name or the 📌"><span class="grip">🧩</span><input class="cname" data-rename="${e.id}" value="${esc(e.name)}" title="its name: edit, then Enter"> <span class="meta">${e.id}</span></h3>
+    <textarea class="cnote" data-note="${e.id}" rows="2" placeholder="a scope note: what kind of story it covers" title="its scope note: saved when you click away">${esc(e.note || '')}</textarea>
     ${e.parents.length ? `<p><b>a kind of</b> ${names(e.parents, id, 'up')}</p>` : ''}
     ${kinds.length ? `<p><b>its kinds</b> ${names(kinds, id, 'down')}</p>` : ''}
     ${e.related.length ? `<p><b>related</b> ${names(e.related, id, 'rel')}</p>` : ''}
@@ -214,7 +219,7 @@ function show(id) {
   focus = id; applyFocus();
   const box = $('#info');
   if (!id) { box.style.display = 'none'; return; }
-  box.innerHTML = `<button class="x" title="close">✕</button>${cardHTML(id)}<p><a href="/motif-board" target="_blank">open the board</a></p>`;
+  box.innerHTML = `<button class="x" title="close">✕</button>${cardHTML(id)}`;
   box.style.display = 'block';
 }
 // The desk: motifs kept open as cards, in the order they were pinned (remembered in this browser)
@@ -246,6 +251,27 @@ function onCardClick(ev) {
 }
 $('#info').addEventListener('click', onCardClick);
 $('#desk').addEventListener('click', onCardClick);
+// A card's name and note edit in place: the name saves on Enter or on leaving it, the note on leaving it (Escape puts
+// either back as it was)
+for (const box of [$('#info'), $('#desk')]) {
+  box.addEventListener('keydown', (ev) => {
+    const t = ev.target;
+    if (!t.matches('.cname, .cnote')) return;
+    if (ev.key === 'Escape') { t.value = t.matches('.cname') ? byId[t.dataset.rename].name : (byId[t.dataset.note].note || ''); t.blur(); ev.stopPropagation(); }
+    if (ev.key === 'Enter' && t.matches('.cname')) { ev.preventDefault(); t.blur(); }
+  });
+  box.addEventListener('focusout', (ev) => {
+    const t = ev.target;
+    if (t.matches('.cname')) {
+      const e = byId[t.dataset.rename], v = t.value.trim();
+      if (e && v && v !== e.name) act({action: 'rename', id: e.id, name: v});
+      else if (e && !v) t.value = e.name;
+    } else if (t.matches('.cnote')) {
+      const e = byId[t.dataset.note], v = t.value.trim();
+      if (e && v !== (e.note || '')) act({action: 'note', id: e.id, note: v});
+    }
+  });
+}
 function center(id, again) {
   const n = nodes.find((x) => x.id === id);
   show(id);
@@ -355,7 +381,12 @@ async function load() {
   data = await (await fetch('/motif-board.json')).json();
   byId = Object.fromEntries(data.entries.map((e) => [e.id, e]));
   if (focus && !byId[focus]) focus = null;
+  // a card field being typed in keeps its place and what's typed across the redraw (saving the name reloads the cards)
+  const a = document.activeElement, keep = a && a.matches && a.matches('.cname, .cnote')
+    ? {sel: `${a.closest('#desk') ? '#desk' : '#info'} [data-${a.dataset.note ? 'note' : 'rename'}="${a.dataset.note || a.dataset.rename}"]`, value: a.value, at: a.selectionStart} : null;
   groupChips(); tree(); filterTree(); draw(); if (focus) show(focus); renderDesk();
+  const back = keep && document.querySelector(keep.sel);
+  if (back) { back.value = keep.value; back.focus(); back.setSelectionRange(keep.at, keep.at); }
 }
 ['#show-kind', '#show-related', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
 $('#q').addEventListener('input', () => { applyFocus(); filterTree(); });
@@ -380,7 +411,7 @@ function filterTree() {
 }
 $('#fit').addEventListener('click', fit);
 $('#q').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const t = ev.target.value.trim().toLowerCase(); const n = nodes.find((x) => x.e.name.toLowerCase().includes(t)); if (n) center(n.id); } });
-addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { $('#menu').style.display = 'none'; show(null); } });
+addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !ev.target.matches('input, textarea')) { $('#menu').style.display = 'none'; show(null); } });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 200); });
 load();
 </script>

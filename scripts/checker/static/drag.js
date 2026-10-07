@@ -75,7 +75,7 @@ function dragZones(o) {
     if (h.zone) h.zone.run();
   }
   document.addEventListener('pointerdown', (ev) => {
-    if (ev.button !== 0 || ev.target.closest('button, input, select, a, dialog')) return;
+    if (ev.button !== 0 || ev.target.closest('button, input, textarea, select, a, dialog')) return;
     const handle = ev.target.closest(o.handle); if (!handle) return;
     const item = o.item(handle); if (!item) return;
     drag = {item, el: handle, x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, on: false, touch: ev.pointerType === 'touch'};
