@@ -8,7 +8,7 @@
 {{ navbar(nav, here, undo) }}
 <header class="wb-bar">
   <h1>🧰 Motif workbench</h1>
-  <label class="wb-search">🔎 <input id="q" type="search" placeholder="find a motif, M-number, claim or #id  (press /)" autocomplete="off"></label>
+  <label class="wb-search">🔎 <input id="q" type="search" placeholder="find a motif by name, note or M-number  (press /)" autocomplete="off"></label>
   <span id="stats" class="wb-stats"></span>
   <span class="wb-drops" aria-label="Drop here">
     <span class="wb-drop" data-drop="newmotif" title="drop claims here to start a new motif">✨ new motif</span>
@@ -85,7 +85,8 @@
     to see its note and claims.</p>
   <p><b>📦 Export</b> downloads the index: only verified motifs (what the site shows) or everything, as a readable
     catalog, a spreadsheet (a row per claim), JSON, or SKOS for linking to other catalogs.</p>
-  <p><b>Keys:</b> <kbd>/</kbd> search · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Esc</kbd> cancel a drag or close a
+  <p><b>Searching:</b> the box at the top finds motifs (name, note, M-number); claims have their own search, the 🔎 claims tab on the right.</p>
+  <p><b>Keys:</b> <kbd>/</kbd> search motifs · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Esc</kbd> cancel a drag or close a
     menu.</p>
   <form method="dialog"><button class="wb-btn">got it 👍</button></form>
 </dialog>

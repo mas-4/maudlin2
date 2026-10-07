@@ -93,7 +93,7 @@
   };
   function matches(e, words) {
     if (!words.length) return true;
-    const hay = (e.id + ' ' + e.name + ' ' + (e.note || '') + ' ' + e.claims.map((c) => c.claim + ' #' + c.id).join(' ')).toLowerCase();
+    const hay = (e.id + ' ' + e.name + ' ' + (e.note || '')).toLowerCase();  // motifs only: claims have their own search (🔎 claims)
     return words.every((w) => hay.includes(w.replace(/^m(\d+)$/, 'm$1')));
   }
   const qWords = () => S.q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -153,7 +153,6 @@
       : by === 'genre' ? [...(S.data.facets.genre || []).map((v) => ({id: v, name: v})), {id: '', name: 'no genre yet'}]
       : [...S.data.groups, {id: '', name: 'Ungrouped'}];
     let html = '';
-    if (words.length) html += claimHitsHTML(words);
     if (flat) {
       const only = S.shelf ? ` ${S.shelf.kind === 'group' ? '📁 ' + esc((S.data.groups.find((g) => g.id === S.shelf.id) || {name: 'in no group'}).name) : '🎭 ' + esc(S.shelf.id || 'no genre yet')} <button class="wb-mini" data-shelf="${S.shelf.kind}|${esc(S.shelf.id)}" title="show every motif">✕</button>` : '';
       html += `<div class="wb-group"><div class="wb-ghead">${shown.length} motif${shown.length === 1 ? '' : 's'}${only}</div>${shown.map((e) => row(e, 0, false)).join('')}</div>`;
@@ -202,17 +201,28 @@
     const other = (e.groups || []).filter((g) => g !== gid).map((g) => (S.data.groups.find((x) => x.id === g) || {}).name).filter(Boolean);
     return other.length ? `<span class="wb-also" title="also in ${esc(other.join(', '))}">📁${other.length > 1 ? other.length : ''}</span>` : '';
   }
+  // The claims search (inbox, 🔎 claims): each claim once, with every motif it's in; claims not filed yet after them
   function claimHitsHTML(words) {
-    const local = [];
+    const by = new Map();
     for (const e of motifs()) for (const c of e.claims) {
       const hay = (c.claim + ' #' + c.id).toLowerCase();
-      if (words.every((w) => hay.includes(w))) local.push([c, e]);
+      if (!words.every((w) => hay.includes(w))) continue;
+      const x = by.get(c.claim) || {c, ids: []};
+      x.ids.push(e.id);
+      by.set(c.claim, x);
     }
-    const unfiled = S.claimHits.filter((c) => !c.motifs.length);
-    if (!local.length && !unfiled.length) return '';
-    const items = local.slice(0, 30).map(([c, e]) => `<li class="wb-claim mini" ${claimData(c, e.id)}><span class="wb-ctext">${esc(c.claim)}</span> <span class="wb-meta">#${c.id} · in ${chip(e.id)}</span></li>`).join('')
+    const local = [...by.values()], unfiled = S.claimHits.filter((c) => !c.motifs.length);
+    if (!local.length && !unfiled.length) return '<p class="wb-faint">🦗 no claim has all those words</p>';
+    const items = local.slice(0, 40).map(({c, ids}) => `<li class="wb-claim mini" ${claimData(c, ids[0])}><span class="wb-ctext">${esc(c.claim)}</span> <span class="wb-meta">#${c.id} · in ${ids.map((i) => chip(i)).join(' ')}</span></li>`).join('')
       + unfiled.slice(0, 20).map((c) => `<li class="wb-claim mini unfiled" ${claimData(c, '')}><span class="wb-ctext">${esc(c.claim)}</span> <span class="wb-meta">📥 not filed · ${esc(SOURCE[c.source] || c.source)}</span></li>`).join('');
-    return `<div class="wb-group hits"><div class="wb-ghead">💬 claims that match <i>${local.length + unfiled.length}</i></div><ul class="wb-claims">${items}</ul></div>`;
+    return `<p class="wb-faint">${local.length} filed${unfiled.length ? `, ${unfiled.length} not filed yet` : ''} · click one to open it, or drag it onto a motif</p><ul class="wb-claims">${items}</ul>`;
+  }
+  let findTimer = null;
+  function findClaims() {  // the claims search's results, the box itself left alone (so typing keeps going)
+    const out = $('#find-hits');
+    if (!out) return;
+    const words = (S.findQ || '').toLowerCase().split(/\s+/).filter(Boolean);
+    out.innerHTML = words.length ? claimHitsHTML(words) : '<p class="wb-faint">🔎 Type words from a claim, or its #id: every claim that has them, filed or not, each once with the motifs it\'s in.</p>';
   }
 
   // ---------- the open motifs ----------
@@ -337,7 +347,7 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['stats', '📊'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
     const counts = {check: S.data.to_check, unchecked: unchecked().length, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
@@ -405,6 +415,21 @@
       box.innerHTML = `${q.note ? `<p class="wb-faint">${esc(q.note)}</p>` : ''}
         <h3>🤝 filed together <i>${shared.length}</i></h3>${shared.map((p) => pairCard(p.a, p.b, `${p.shared.length} shared claim${p.shared.length === 1 ? '' : 's'}`, p.shared[0])).join('') || '<p class="wb-faint">🦗 none</p>'}
         <h3>👯 similar names <i>${similar.length}</i></h3>${similar.map((p) => pairCard(p.a, p.b, 'alike ' + p.score)).join('') || '<p class="wb-faint">🦗 none</p>'}`;
+    } else if (tab === 'find') {
+      box.innerHTML = `<label class="wb-addsearch">🔎 <input type="search" id="find-q" placeholder="words from a claim, or its #id" value="${esc(S.findQ || '')}" autocomplete="off"></label><div id="find-hits"></div>`;
+      findClaims();
+      const f = $('#find-q');
+      f.focus();
+      f.addEventListener('input', () => {
+        S.findQ = f.value;
+        findClaims();
+        clearTimeout(findTimer);
+        findTimer = setTimeout(async () => {  // claims not filed yet come from the server
+          const words = S.findQ.toLowerCase().split(/\s+/).filter((w) => w && !w.startsWith('#'));
+          S.claimHits = words.length && S.findQ.length > 2 ? await getJSON('/claims.json?q=' + encodeURIComponent(words.join(' '))).catch(() => []) : [];
+          findClaims();
+        }, 200);
+      });
     } else if (tab === 'unchecked') {
       const items = unchecked();
       box.innerHTML = items.length ? `<p class="wb-faint">🤖 ${items.length} claim${items.length === 1 ? '' : 's'} the model filed that you haven't checked, ${items.reduce((n, x) => n + x.motifs.length, 0)} filings. ✓ it fits, ✕ it doesn't (out of that motif for good); 🔍 opens the claim.</p>
@@ -1235,11 +1260,6 @@
   $('#q').addEventListener('input', (ev) => {
     S.q = ev.target.value;
     clearTimeout(qTimer);
-    qTimer = setTimeout(async () => {
-      const words = qWords();
-      S.claimHits = words.length && S.q.length > 2 ? await getJSON('/claims.json?q=' + encodeURIComponent(words.filter((w) => !w.startsWith('#')).join(' '))).catch(() => []) : [];
-      renderTree();
-    }, 180);
     renderTree();
   });
   $('.wb-shelf').addEventListener('keydown', (ev) => {  // ＋ new group / genre: type it, Enter
@@ -1252,7 +1272,7 @@
   });
   $('#q').addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') { const first = $('#tree .wb-row'); if (first) openMotif(first.dataset.id, ev.shiftKey); }
-    if (ev.key === 'Escape') { ev.target.value = ''; S.q = ''; S.claimHits = []; renderTree(); }
+    if (ev.key === 'Escape') { ev.target.value = ''; S.q = ''; renderTree(); }
   });
   $('#sort').addEventListener('change', (ev) => { S.sort = ev.target.value; store.set('sort', S.sort); renderTree(); });
   document.addEventListener('input', (ev) => {
