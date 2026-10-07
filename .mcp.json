@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "maudlin": {
+      "command": "/home/mas/Repos/maudlin2/.venv/bin/python",
+      "args": ["/home/mas/Repos/maudlin2/scripts/maudlin_mcp.py"]
+    }
+  }
+}

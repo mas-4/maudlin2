@@ -1,0 +1,2 @@
+# Tools for working on the project, not needed to run it (prod installs requirements.txt only)
+mcp==2.3.0  # scripts/maudlin_mcp.py, the read-only database and motif index server in .mcp.json
