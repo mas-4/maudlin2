@@ -77,7 +77,8 @@
     ['all', '🗂️ all', () => true],
     ['singles', '1️⃣ singles', isSingle],
     ['nonote', '📝 no note', (e) => noteState(e) === 'none'],
-    ['drafts', '🤖 draft notes', (e) => noteState(e) === 'draft'],
+    ['drafts', '🗒️ draft notes', (e) => noteState(e) === 'draft'],
+    ['model', '🤖 model-made', (e) => !e.curated && e.done !== 'done'],  // made and named by the model, not reviewed yet
     ['todo', '⏳ not done', (e) => e.done !== 'done'],
     ['new', '🆕 new claims', (e) => e.done === 'new'],
     ['unchecked', '❔ unchecked', (e) => e.claims.some((c) => !c.checked)],
