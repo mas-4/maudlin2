@@ -293,3 +293,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 body.dragging .wb-schip { border-style: dashed; }
 .wb-shelfnew { font: 12px system-ui; border: 1.5px dashed var(--ink); border-radius: 999px; padding: 2px 8px; width: 11em; }
 @media (max-width: 900px) { .wb-shelf { grid-template-columns: 1fr; } }
+
+/* motifs selected in the list (shift-click a range, ctrl/cmd-click one more): dragged together */
+.wb-row.msel { background: color-mix(in srgb, var(--yellow) 45%, white); box-shadow: inset 3px 0 0 var(--ink); }

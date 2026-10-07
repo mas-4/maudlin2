@@ -14,7 +14,7 @@
 
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
-    q: '', sel: [], last: [], active: 0, tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
+    q: '', sel: [], last: [], msel: new Set(), mlast: null, active: 0, tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
     checkAt: 0, extra: {}, claimHits: [], groupBy: store.get('groupby', 'group'),
   };
 
@@ -173,7 +173,8 @@
           ${folded ? '' : roots.map((e) => branch(e, 0, g.id, new Set())).join('')}</div>`;
       }
     }
-    $('#tree').innerHTML = html || '<p class="wb-empty">🦗 nothing here</p>';
+    const sel = S.msel.size ? `<div class="wb-selbar">☑️ <b>${S.msel.size}</b> selected · drag any of them to move them all <button class="wb-mini" data-clearsel="1">✕ clear</button></div>` : '';
+    $('#tree').innerHTML = sel + (html || '<p class="wb-empty">🦗 nothing here</p>');
   }
   const sectionsOf = (e) => (S.groupBy === 'genre' ? [(e.facets || {}).genre || ''] : (e.groups || []).length ? e.groups : ['']);
   let shownIds = new Set();
@@ -190,7 +191,7 @@
       ns === 'none' ? '<b title="no note yet" class="b-faint">📝</b>' : ns === 'draft' ? '<b title="the note is a draft">🤖</b>' : '',
       e.stands_alone ? '<b title="stands alone">🧍</b>' : ''].join('');
     const open = S.open.indexOf(e.id);
-    return `<div class="wb-row${open >= 0 ? ' open o' + (open % COLORS) : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
+    return `<div class="wb-row${open >= 0 ? ' open o' + (open % COLORS) : ''}${S.msel.has(e.id) ? ' msel' : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
       ${fold ? `<button class="wb-fold" data-fold="m:${e.id}">${fold}</button>` : '<span class="wb-fold-sp"></span>'}
       <span class="wb-rname">${esc(e.name)}</span>${gid !== undefined && S.groupBy !== 'genre' ? elsewhere(e, gid) : ''}<span class="wb-badges">${badges}</span><i class="wb-n">${e.claims.length}</i>
       <button class="wb-mini wb-side" data-open2="${e.id}" title="open it too, under the others (compare)">⧉</button></div>`;
@@ -219,14 +220,14 @@
     if (!S.open.length) {
       $('#work-head').innerHTML = '';
       box.innerHTML = `<div class="wb-welcome"><div class="wb-big">👈 pick a motif</div>
-        <p>Click one on the left to open it here; <b>Shift-click</b> or ⧉ opens another under it.</p>
+        <p>Click one on the left to open it here; ⧉ opens another under it. <b>Shift-click</b> in the list selects a run of motifs, <b>Ctrl-click</b> one more, to drag together.</p>
         <p>Then drag: claims onto motifs, motifs onto motifs, motifs onto groups. Hover a target to see your choices. 🫳</p>
         <p class="wb-faint">The inbox on the right has decisions waiting: ✅ checks, 🔗 pairs, 1️⃣ singles, 📥 unfiled claims.</p></div>`;
       return;
     }
     box.dataset.count = S.open.length;
-    $('#work-head').innerHTML = S.open.length > 1 ? `<b>${S.open.length}</b> open, one under another · a click opens in the outlined one; <b>Shift-click</b> or ⧉ adds another <button class="wb-mini" id="close-all">✕ close all</button>`
-      : 'Shift-click a motif (or ⧉) to open another under this one, as many as you like';
+    $('#work-head').innerHTML = S.open.length > 1 ? `<b>${S.open.length}</b> open, one under another · a click opens in the outlined one; ⧉ adds another <button class="wb-mini" id="close-all">✕ close all</button>`
+      : '⧉ beside a motif opens another under this one, as many as you like · Shift-click in the list selects several';
     // A note being written survives a re-render (any action anywhere redraws the panels; Oct 6 notes were lost so)
     const drafts = {};
     document.querySelectorAll('textarea[data-note]').forEach((t) => {
@@ -708,6 +709,34 @@
       }
       return [];
     }
+    if (item.kind === 'motifs') {  // several motifs selected in the list (shift- or ctrl-click), dropped together
+      const ids = item.ids, n = `${ids.length} motifs`, done = (msg) => { S.msel.clear(); return msg; };
+      if (drop === 'motif') {
+        const b = t.dataset.id, B = S.by[b], rest = ids.filter((i) => i !== b);
+        if (!B || !rest.length) return [];
+        return [
+          {label: `⤵ merge all ${rest.length} into it`, say: `merge them into “${B.name}”`, run: () => sure(t, `Merge ${rest.length} motifs into “${B.name}”?`, '⤵ merge them').then((ok) => ok && batch(rest.map((i) => ({action: 'merge', source: i, target: b})), done(`⤵ merged ${rest.length} into “${B.name}”`)))},
+          {label: '⊂ all kinds of it', say: `each a kind of “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'parent', id: i, parent: b})), done(`⊂ ${rest.length} kinds of “${B.name}”`))},
+          {label: '↔ all related to it', say: `each related to “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'relate', a: i, b})), done(`↔ ${rest.length} related to “${B.name}”`))},
+        ];
+      }
+      if (drop === 'facet') {
+        const value = t.dataset.g || null;
+        return [{label: value ? `🎭 all: ${value}` : '🎭 all: no genre', say: `${n}: ${value || 'no genre'}`,
+          run: () => batch(ids.map((i) => ({action: 'facet', id: i, facet: 'genre', value})), done(`🎭 ${n}: ${value || 'no genre'}`))}];
+      }
+      if (drop === 'group') {
+        const g = t.dataset.g || null, name = (S.data.groups.find((x) => x.id === g) || {}).name;
+        if (!g) return [{label: '🗃️ all out of every group', say: `${n} in no group`, run: () => batch(ids.map((i) => ({action: 'group_assign', id: i, group: null})), done(`🗃️ ${n}: no group`))}];
+        return [{label: '📁 all into this group', say: `${n} in ${name}, staying in their others`, run: () => batch(ids.filter((i) => !(S.by[i].groups || []).includes(g)).map((i) => ({action: 'group_member', id: i, group: g})), done(`📁 ${n} in ${name}`))},
+          {label: '⇢ all only this group', say: `${n} move to ${name}, out of their others`, run: () => batch(ids.map((i) => ({action: 'group_assign', id: i, group: g})), done(`📁 ${n} → ${name}`))}];
+      }
+      if (drop === 'trash') {
+        return [{label: `🗑️ delete all ${ids.length}`, say: 'delete the motifs (their claims aren’t filed again)', run: () =>
+          sure(t, `Delete ${n}? Their claims won't be filed again.`, '🗑️ delete them').then((ok) => ok && batch(ids.map((i) => ({action: 'delete', id: i})), done(`🗑️ deleted ${n}`)))}];
+      }
+      return [];
+    }
     // a motif
     const a = item.id, A = S.by[a];
     if (!A) return [];
@@ -758,6 +787,7 @@
   const menu = $('#dz-menu'), ghost = $('#ghost');
   let drag = null, pinned = null;
   function itemOf(el) {
+    if (el.dataset.drag === 'motif' && S.msel.size > 1 && S.msel.has(el.dataset.id)) return {kind: 'motifs', ids: [...S.msel].filter((i) => S.by[i])};
     if (el.dataset.drag === 'motif') return {kind: 'motif', id: el.dataset.id};
     const one = {claim: el.dataset.claim, source: el.dataset.source, src: el.dataset.src, ref: el.dataset.ref};
     const p = el.closest('[data-panel]');
@@ -768,7 +798,7 @@
     }
     return {kind: 'claim', claims: [one]};
   }
-  function label(item) { return item.kind === 'motif' ? '🧩 ' + (S.by[item.id] || {}).name : '💬 ' + claimsName(item); }
+  function label(item) { return item.kind === 'motifs' ? `🧩 ${item.ids.length} motifs` : item.kind === 'motif' ? '🧩 ' + (S.by[item.id] || {}).name : '💬 ' + claimsName(item); }
   function showMenu(t, list, pin, px, py) {
     menu.innerHTML = `<div class="dz-title">${pin ? 'drop it as…' : 'let go on a choice'}</div>` + list.map((z, k) => `<button class="dz-zone" data-zone="${k}" title="${esc(z.say || '')}">${esc(z.label)}</button>`).join('')
       + (pin ? '<button class="dz-zone dz-cancel" data-zone="cancel">cancel</button>' : '');
@@ -1018,7 +1048,20 @@
       S.last[i] = k;
       return renderPanels();
     }
-    if ((v = d('open'))) return openMotif(v, ev.shiftKey || ev.metaKey || ev.ctrlKey);
+    const treeRow = t.closest('#tree .wb-row');
+    if (treeRow && (ev.shiftKey || ev.ctrlKey || ev.metaKey) && !t.closest('button')) {  // selecting motifs in the list
+      const id = treeRow.dataset.id;
+      if (ev.shiftKey && S.mlast) {
+        const order = [...new Set($$('#tree .wb-row').map((r) => r.dataset.id))], i = order.indexOf(S.mlast), j = order.indexOf(id);
+        if (i >= 0 && j >= 0) order.slice(Math.min(i, j), Math.max(i, j) + 1).forEach((x) => S.msel.add(x));
+        else S.msel.add(id);
+      } else S.msel.has(id) ? S.msel.delete(id) : S.msel.add(id);
+      S.mlast = id;
+      return renderTree();
+    }
+    if (treeRow && S.msel.size) { S.msel.clear(); S.mlast = null; renderTree(); }
+    if ((v = d('clearsel'))) { S.msel.clear(); S.mlast = null; return renderTree(); }
+    if ((v = d('open'))) return openMotif(v, !treeRow && (ev.shiftKey || ev.metaKey || ev.ctrlKey));
   });
   function bulk(kind, i) {
     i = +i;
