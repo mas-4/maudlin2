@@ -301,7 +301,7 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['stats', '📊'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
     const counts = {check: S.data.to_check, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
@@ -357,6 +357,19 @@
       box.innerHTML = `${q.note ? `<p class="wb-faint">${esc(q.note)}</p>` : ''}
         <h3>🤝 filed together <i>${shared.length}</i></h3>${shared.map((p) => pairCard(p.a, p.b, `${p.shared.length} shared claim${p.shared.length === 1 ? '' : 's'}`, p.shared[0])).join('') || '<p class="wb-faint">🦗 none</p>'}
         <h3>👯 similar names <i>${similar.length}</i></h3>${similar.map((p) => pairCard(p.a, p.b, 'alike ' + p.score)).join('') || '<p class="wb-faint">🦗 none</p>'}`;
+    } else if (tab === 'proposals') {
+      const q = await queue('proposals');
+      if (S.tab !== tab) return;
+      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
+      const items = q.filter((p) => Object.values(p.do).every((v) => typeof v !== 'string' || !/^M\d+$/.test(v) || S.by[v]));
+      S.proposals = Object.fromEntries(items.map((p) => [p.id, p]));
+      box.innerHTML = items.length ? `<p class="wb-faint">💡 The model's suggestions, each one change. ✓ does it (undoable, like doing it by hand); ✕ and it won't suggest it again.</p>
+        <div class="wb-sbtns wb-propbar"><label><input type="checkbox" id="prop-all"> all</label>
+          <button class="wb-btn" data-propmany="yes">✓ approve ticked</button><button class="wb-btn no" data-propmany="no">✕ reject ticked</button></div>
+        ${items.map((p) => `<div class="wb-card wb-prop"><label class="wb-propline"><input type="checkbox" data-propsel="${p.id}"> ${proposalText(p)}</label>
+          <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
+          ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`).join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>No proposals waiting. The proposer runs from <code>scripts/propose_motif_fixes.py</code>.</p></div>';
     } else if (tab === 'singles') {
       const q = await queue('singles');
       if (S.tab !== tab) return;
@@ -847,6 +860,9 @@
     let v;
     if ((v = d('view'))) { S.view = v; store.set('view', v); return render(); }
     if ((v = d('tab'))) { S.tab = v; store.set('tab', v); renderTabs(); return renderInbox(); }
+    if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], yes === 'yes'); }
+    if ((v = d('propmany'))) return decideProposals($$('[data-propsel]:checked').map((c) => c.dataset.propsel), v === 'yes');
+    if (t.id === 'prop-all') { $$('[data-propsel]').forEach((c) => { c.checked = t.checked; }); return; }
     if ((v = d('fold'))) { S.folded.has(v) ? S.folded.delete(v) : S.folded.add(v); store.set('folded', [...S.folded]); return renderTree(); }
     if ((v = d('open2'))) return openMotif(v, true);
     if (t.closest('[data-close]')) return closePanel(+d('close'));
@@ -987,6 +1003,39 @@
       ['genre', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${esc(lab[k])}`).join(' · '),
       (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `the model's words: ${w.map((m) => '“' + esc(m) + '”').join(' · ')}` : ''; })(),
     ].filter(Boolean).map((s) => `<div>${s}</div>`).join('');
+  }
+  // A proposal as a sentence; a typo fix shows the words it changes
+  function wordDiff(a, b) {
+    const x = a.split(/(\s+)/), y = b.split(/(\s+)/);
+    const L = x.map(() => new Array(y.length + 1).fill(0));
+    L.push(new Array(y.length + 1).fill(0));
+    for (let i = x.length - 1; i >= 0; i--) for (let j = y.length - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    let i = 0, j = 0, out = '';
+    while (j < y.length) {
+      if (i < x.length && x[i] === y[j]) { out += esc(y[j]); i++; j++; }
+      else if (i < x.length && L[i + 1][j] >= L[i][j + 1]) { out += `<del>${esc(x[i])}</del>`; i++; }
+      else { out += `<mark>${esc(y[j])}</mark>`; j++; }
+    }
+    while (i < x.length) out += `<del>${esc(x[i++])}</del>`;
+    return out;
+  }
+  function proposalText(p) {
+    const a = p.args;
+    if (p.kind === 'rename') return `✏️ rename ${chip(a.id)} to “${wordDiff(a.from, a.to)}”`;
+    if (p.kind === 'note') return `📝 fix the note of ${chip(a.id)}: “${wordDiff(a.from, a.to)}”`;
+    if (p.kind === 'parent') return `⊂ ${chip(a.id)} is a kind of ${chip(a.parent)}`;
+    if (p.kind === 'relate') return `↔ ${chip(a.a)} and ${chip(a.b)} are related`;
+    if (p.kind === 'merge') return `⤵ ${chip(a.a)} is the same motif as ${chip(a.b)}: merge it in`;
+    if (p.kind === 'group') return `📁 put ${chip(a.id)} in ${esc((S.data.groups.find((g) => g.id === a.group) || {name: a.group}).name)}`;
+    return esc(p.kind);
+  }
+  async function decideProposals(ids, yes) {
+    const ps = ids.map((id) => S.proposals[id]).filter(Boolean);
+    if (!ps.length) return;
+    const steps = ps.map((p) => yes ? {...p.do, proposal: p.id} : {action: 'proposal_reject', proposal: p.id});
+    S.queues.proposals = null;
+    await act(steps.length === 1 ? steps[0] : {action: 'batch', steps}, `${yes ? '✓ approved' : '✕ rejected'} ${ps.length} proposal${ps.length === 1 ? '' : 's'}`);
+    if (S.tab === 'proposals') renderInbox();
   }
   async function verdict(answer) {
     const x = JSON.parse($('#inbox').dataset.check || 'null');

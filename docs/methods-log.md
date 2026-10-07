@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **A correction proposer for the motif index.** gemma4:26b reads over the motifs and proposes small fixes, each one
+  change a person approves or rejects in the workbench's 💡 proposals checklist: a typo in a name or scope note (only a
+  small edit counts, not a rewrite), one motif a kind of another, two related, two the same motif (merge), a motif
+  into one of the person's groups. Candidates are found cheaply first (motifs alike in meaning, motifs sharing a claim,
+  motifs near a group's members) and only those put to the model. Approving runs the person's own action (logged,
+  undoable); a decision is kept, so a rejected proposal never comes back, and one overtaken by hand drops out.
 - **No more villain.** The folklore labeller named who each narrative casts as the villain (Propp's part), and its
   picks were too often wrong to show. It no longer asks, and the Folklore page, the checker and the reports leave the
   part out, old reports included; the victim and the hero stay. Fact-checks' labels still carry a villain field,

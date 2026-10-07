@@ -419,6 +419,9 @@ def workbench_queue(kind: str):
         except Exception as e:  # noqa: the embeddings need Ollama
             similar, note = [], f'similar names unavailable: {type(e).__name__}'
         return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
+    if kind == 'proposals':  # the correction proposer's open proposals, each with the action that carries it out
+        from app.analysis import motif_proposals as mp
+        return [{**p, 'do': mp.action(p)} for p in mp.open_proposals()]
     raise ValueError(f'no such queue: {kind}')
 
 
@@ -432,6 +435,12 @@ def record_check(data: dict):
 def workbench_action(data: dict):
     from app.analysis import motif_index as mi
     act = data.get('action')
+    if data.get('proposal'):  # a proposal approved (its own action, carried out as usual) or rejected
+        from app.analysis import motif_proposals as mp
+        if act != 'proposal_reject':
+            workbench_action({k: v for k, v in data.items() if k != 'proposal'})
+        mp.decide(data['proposal'], 'rejected' if act == 'proposal_reject' else 'approved')
+        return
     if act == 'batch':
         steps = data.get('steps')
         if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) or x.get('action') == 'batch' for x in steps):
