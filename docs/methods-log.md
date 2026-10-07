@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **A motif a person made and wrote a note for is done.** Marking it done was a second step after writing the note,
+  and 92 motifs the person had made (or renamed) and described sat unmarked, off the site. Now saving a note of
+  theirs (or keeping the model's draft) on such a motif marks it done, with the claims it holds then; one they unmark
+  stays unmarked. The 92 were marked done: 332 motifs on the site, 741 claims (each claim still read for named
+  accusations first). A model's motif with no person's name on it still waits for a person.
 - **A merge keeps everything.** Merging one motif into another moved its claims, related links and kinds, but lost its
   own broader motifs, its groups, its genre, its note and the person's "not the same" verdicts, and its claims seen
   when it was marked done showed as new again. Now all of it comes along (a broader motif only where it can't make the

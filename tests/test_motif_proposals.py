@@ -170,3 +170,21 @@ def test_links_the_model_thinks_wrong_come_up_for_removal(tmp_path, monkeypatch)
     n = len(calls)
     mp.review(mp.load(), mi.load())
     assert len(calls) == n  # the kept link isn't read again while neither motif changes
+
+
+def test_a_motif_a_person_made_and_noted_is_done(tmp_path, monkeypatch):
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    claim = lambda t: {'claim': t, 'source': 'narrative', 'checked': 'yes'}  # noqa: E731
+    mi.save({'next': 3, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'mine', 'curated': True, 'claims': [claim('a')]},
+        'M002': {'id': 'M002', 'name': 'the model\'s', 'claims': [claim('b')]}}})
+    mi.set_note('M001', 'What it covers')
+    mi.set_note('M002', 'A note on a motif the model named')
+    e = mi.load()['entries']
+    assert mi.is_done(e['M001']) == 'done' and mi.public(e['M001'])
+    assert 'done' not in e['M002']  # the model's motif: not until a person names it or marks it
+    mi.rename('M002', 'Now mine')
+    assert mi.is_done(mi.load()['entries']['M002']) == 'done'
+    mi.mark_done('M001', False)  # unmarked by hand: a later note doesn't mark it done again
+    mi.set_note('M001', 'Reworded')
+    assert 'done' not in mi.load()['entries']['M001']

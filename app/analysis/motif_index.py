@@ -454,6 +454,7 @@ SUGGESTED = 15
 def rename(eid: str, name: str):
     index = load()
     index['entries'][eid].update(name=clean(name), curated=True)
+    done_by_note(index['entries'][eid])
     save(index)
 
 
@@ -856,9 +857,22 @@ def mark_done(eid: str, done: bool = True):
     entry = index['entries'][eid]
     if done:
         entry['done'] = sorted(key(c['claim']) for c in entry['claims'])
+        entry.pop('not_done', None)
     else:
         entry.pop('done', None)
+        entry['not_done'] = True  # unmarked by hand: a note saved later doesn't mark it done again
     save(index)
+
+
+def done_by_note(entry: dict) -> bool:
+    """A motif a person made (or renamed) with a note of theirs is done: writing the note was the looking over (Oct 7:
+    'if I create a motif and give it a note it's done'). Marks it done, with the claims it holds now, unless it's done
+    already or they unmarked it; True if it did."""
+    if 'done' in entry or entry.get('not_done') or not entry.get('curated') or not entry.get('note') \
+            or entry.get('note_by') in DRAFTS:
+        return False
+    entry['done'] = sorted(key(c['claim']) for c in entry['claims'])
+    return True
 
 
 @exclusive
@@ -1225,6 +1239,7 @@ def set_note(eid: str, note: str):
     entry = index['entries'][eid]
     if note:
         entry['note'], entry['note_by'] = note, 'person'
+        done_by_note(entry)
     else:
         entry.pop('note', None)
         entry.pop('note_by', None)
@@ -1236,6 +1251,7 @@ def keep_note(eid: str):
     index = load()
     if index['entries'][eid].get('note'):
         index['entries'][eid]['note_by'] = 'person'
+        done_by_note(index['entries'][eid])
         save(index)
 
 
