@@ -42,6 +42,10 @@ def pytest_sessionstart(session):
     # Nor the accusations screen's model (its cache is in the shared data folder too): no one accused
     from app.analysis import accusations
     accusations.read = lambda claim: {'accused': []}
+    # Stories' return verdicts and merges live in the shared data folder too
+    from app.analysis import stories
+    scratch = tempfile.mkdtemp(prefix='maudlin-test-stories-')
+    stories.RETURNS, stories.MERGES = os.path.join(scratch, 'story_returns.json'), os.path.join(scratch, 'story_merges.json')
     accusations.PER_BUILD = 10 ** 6  # the suite shares one screen: no budget to run out of
     accusations.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-accuse-'), 'accusations.json')
 

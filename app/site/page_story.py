@@ -12,6 +12,7 @@ import pytz
 
 from app import bluesky_examples, chyrons
 from app.analysis import entities, running_order
+from app.analysis.stories import merges as story_merges
 from app.site import page_tv, story_charts
 from app.site.common import TemplateHandler, chip_style, outlet_icon, short_name
 from app.site.page_sagas import EASTERN, eastern
@@ -20,6 +21,11 @@ from app.utils import Config, get_logger
 logger = get_logger(__name__)
 DAYS = 7  # stories seen this recently get a page
 LEAN_WORD = {-2: 'left', -1: 'leans left', 0: 'center', 1: 'leans right', 2: 'right'}
+
+
+REDIRECT = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Moved</title>'
+            '<link rel="canonical" href="{to}"><meta http-equiv="refresh" content="0; url={to}"></head>'
+            '<body><p>This story is now part of <a href="{to}">this one</a>.</p></body></html>')
 
 
 def page_name(story_id: int) -> str:
@@ -77,6 +83,7 @@ def tv_by_story() -> dict:
     """story id -> {'channels': [(name, ink, time)], 'captions': [the longest-running captions]}, over every day read"""
     seconds, captions = defaultdict(lambda: defaultdict(int)), defaultdict(lambda: defaultdict(int))
     first, spots = {}, defaultdict(list)
+    merged = story_merges()  # a story merged into another: its captions count for that one
     for path in glob.glob(os.path.join(chyrons.FOLDER, 'matched-*.json')):
         try:
             caps = json.load(open(path))
@@ -84,6 +91,7 @@ def tv_by_story() -> dict:
             continue
         for c in caps:
             if c.get('story'):
+                c = {**c, 'story': merged.get(c['story'], c['story'])}
                 at = datetime.fromisoformat(c['at'])
                 if c['story'] not in first or at < first[c['story']][0]:
                     first[c['story']] = (at, chyrons.CHANNELS[c['channel']])
@@ -106,10 +114,11 @@ def tv_by_story() -> dict:
 
 def radio_by_story() -> dict:
     """story id -> the newscasts that carried it: show, when (ET) and its place in the running order"""
-    out = defaultdict(list)
+    out, merged = defaultdict(list), story_merges()
     for cast in running_order.load().values():
         for n, item in enumerate(cast['items'], 1):
             if item.get('story'):
+                item = {**item, 'story': merged.get(item['story'], item['story'])}
                 when = pytz.UTC.localize(datetime.fromisoformat(cast['published'])).astimezone(EASTERN)
                 out[item['story']].append({'show': cast['show'], 'when': when.strftime('%b %-d, %-I:%M %p'),
                                            'at': when, 'place': n, 'of': len(cast['items']), 'title': item['title']})
@@ -160,8 +169,9 @@ def story_of(link: dict, stories: list[dict], at: datetime | None) -> int | None
     which may have been reworded since: the same label, or else the story around then whose label shares the most
     words with it (at least SAME_LABEL of them)"""
     ids = {st['id'] for st in stories}
-    if link.get('id') in ids:
-        return link['id']
+    link_id = story_merges().get(link.get('id'), link.get('id'))  # a story merged into another since
+    if link_id in ids:
+        return link_id
     label = link.get('label') or ''
     same = [st for st in stories if st['label'] == label]
     if same:
@@ -409,4 +419,10 @@ class StoryPages:
                 'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
             }, os.path.join(Config.build, page_name(st['id'])))
+        # A story merged into another (its return under new headlines): its old address goes to the one kept
+        have = {st['id'] for st in stories}
+        for gone, kept in story_merges().items():
+            if kept in have and gone not in have:
+                with open(os.path.join(Config.build, page_name(gone)), 'w', encoding='utf-8') as f:
+                    f.write(REDIRECT.format(to=page_name(kept)))
         logger.info("...%d story pages", len(stories))

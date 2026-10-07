@@ -5,6 +5,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **A story back on the front pages stays one story.** A news cluster continues the saved story that holds most of its
+  headlines; one that left the front pages and came back hours later under fresh headlines shared none, and became a
+  new story. The physics Nobel was on one noon run on Oct 6, gone, and back at 5 PM as a second story: a saga of two
+  near-identical parts. Now a cluster that continues no story is compared with the stories that left the front pages
+  in the last 48 hours; one sharing two of its frequent words is put to gemma4:26b: the same news event told again,
+  or a different one (the next game of a series, a new ruling, an arrest after a crime)? The same event continues
+  the old story. On the 42 pairs the rule would have asked about in the week before, it joined only the Nobel pair
+  (the first wording refused it over one stray headline about the medicine prize; it now goes by most headlines).
+  The two Nobel stories were merged by hand; a merged story's page redirects to the one kept, and TV, radio and
+  narrative links to it follow.
 - **Narratives linked to news stories by the bigger model.** Which front-page story a retold narrative is about (its
   card on Folklore, and where it shows on story and saga pages) was asked of qwen3:8b, which put "Jacob Geller is a
   rapist…" on the Cornell rape case and the threats against the Cornell accuser on a different part of the saga. Asked
