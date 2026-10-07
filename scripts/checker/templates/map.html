@@ -13,7 +13,7 @@ main { flex: 1; display: flex; min-height: 0; }
 #tree .meta, .meta { color: #666; font-size: .85em; }
 #graph { flex: 1; position: relative; min-width: 0; } svg#net { width: 100%; height: 100%; display: block; cursor: grab; }
 .node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node.broad circle { stroke-width: 4.5px; } .node.sub circle { stroke-dasharray: 3 2; stroke-width: 2.2px; }
-.node.gdim { opacity: .15; } .map-genre { cursor: pointer; white-space: nowrap; font-size: .8em; padding: 0 7px; } .map-genre.on { background: var(--g); color: #fff; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
+.node.gdim { opacity: .15; } .map-genre.on { background: var(--g); color: #fff; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
 .node.dim, .link.dim { opacity: .12; } .node text.minor { display: none; } .node:hover text.minor, .node.hit text.minor { display: inline; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
 .link.kind { stroke: #0a8f7e; stroke-width: 2px; } .link.related { stroke: #ff4fa3; stroke-width: 1.8px; stroke-dasharray: 5 4; } .link.shared { stroke: #9aa0a6; opacity: .45; }
 #info { position: absolute; right: 10px; top: 66px; width: 360px; max-height: calc(100% - 76px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
@@ -34,8 +34,12 @@ body.dragging .map-drop { background: #eef9f7; }
 .map-box { fill: rgba(255, 79, 163, .08); stroke: #ff4fa3; stroke-dasharray: 4 3; pointer-events: none; }
 .map-blob { opacity: .16; pointer-events: none; } .map-blob circle { stroke: none; } .map-blob line { stroke-linecap: round; }
 .map-glabel { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 4px; }
-.map-gchip { border: 2px solid var(--g); border-radius: 999px; padding: 1px 10px; background: color-mix(in srgb, var(--g) 15%, white); font-weight: 600; cursor: pointer; user-select: none; }
-.map-gchip.off { opacity: .45; text-decoration: line-through; } body.dragging .map-gchip { border-style: dashed; }
+/* groups and genres: small one-line pills in a wrapping row, like the workbench shelf's */
+#group-chips, #genre-chips { flex-wrap: wrap; gap: 4px 5px; }
+.map-gchip { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; white-space: nowrap; border: 2px solid var(--g); border-radius: 999px; padding: 1px 9px;
+  background: color-mix(in srgb, var(--g) 14%, white); cursor: pointer; user-select: none; }
+.map-gchip .meta { font-size: 11px; }
+.map-gchip.off { opacity: .45; border-style: dashed; background: white; } body.dragging .map-gchip { border-style: dashed; }
 .node.dz-target circle { stroke-dasharray: 3 2; } #info li[data-claim] { padding: 1px 3px; } #info h3[data-id] { padding: 2px 4px; }
 /* The desk: a circle at the top right to drop motifs on; each stays open as a card in a stack down the right */
 #desk-drop { position: absolute; right: 14px; top: 10px; width: 46px; height: 46px; border-radius: 50%; border: 2.5px dashed #1f1f2e;
@@ -226,7 +230,7 @@ $('#genre-chips').addEventListener('click', (ev) => {
   genreChips(); markGenre();
 });
 function groupChips() {
-  $('#group-chips').innerHTML = data.groups.map((g) => `<span class="map-gchip${hiddenGroups.has(g.id) ? ' off' : ''}" data-g="${g.id}" style="--g: ${groupColor(g.id)}">📁 ${esc(g.name)} <span class="meta">${data.entries.filter((e) => (e.groups || []).includes(g.id)).length}</span></span>`).join(' ')
+  $('#group-chips').innerHTML = '📁 ' + data.groups.map((g) => `<span class="map-gchip${hiddenGroups.has(g.id) ? ' off' : ''}" data-g="${g.id}" style="--g: ${groupColor(g.id)}">${esc(g.name)} <span class="meta">${data.entries.filter((e) => (e.groups || []).includes(g.id)).length}</span></span>`).join(' ')
     + ' <span class="map-gchip map-gnew" style="--g: #8a8f98" title="click to make a new group, or drop a motif here to start one with it">＋ new group</span>';
 }
 $('#group-chips').addEventListener('click', (ev) => {
