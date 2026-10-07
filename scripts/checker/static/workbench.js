@@ -274,6 +274,7 @@
             : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ Not done yet</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked over its claims: it can go on the site">mark as done</button>`}
           <span class="wb-pbar-end">
             <button class="wb-mini" data-rename="${e.id}" title="rename">✎ rename</button>
+            <button class="wb-mini" data-copymotif="${e.id}" title="copy everything about it: name, note, groups, genre, kinds, related (with their notes) and every claim">📋 copy</button>
             ${isSingle(e) || e.stands_alone ? `<button class="wb-mini${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
             <button class="wb-mini" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
           </span>
@@ -1145,6 +1146,28 @@
       posts.length ? `Posts (${posts.length}):\n${posts.join('\n')}` : '',
     ].filter(Boolean).join('\n');
   }
+  // A motif as plain text, for the panel's 📋 copy: as the panel shows it, the motifs it's linked to with their notes
+  function motifText(e) {
+    const named = (id) => { const o = S.by[id]; return o ? `- ${o.name} (${id})${o.note ? ': ' + o.note : ': no note yet'}` : ''; };
+    const list = (label, ids) => ids.length ? `${label} (${ids.length}):\n` + ids.map(named).filter(Boolean).join('\n') : `${label}: none`;
+    const shared = {};
+    for (const c of e.claims) for (const o of motifs()) if (o.id !== e.id && o.claims.some((x) => x.claim === c.claim)) shared[o.id] = (shared[o.id] || 0) + 1;
+    const groups = (e.groups || []).map((g) => (S.data.groups.find((x) => x.id === g) || {}).name || g);
+    return [
+      `Motif: ${e.name} (${e.id})`,
+      [`${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}`, e.done === 'done' ? 'done' : e.done === 'new' ? `done, ${newCount(e)} new since` : 'not done',
+       e.curated ? 'made by hand' : 'made by the model', e.first_seen ? 'since ' + e.first_seen.slice(0, 10) : ''].filter(Boolean).join(' · '),
+      `Note: ${e.note || 'none yet'}`,
+      `Groups: ${groups.join(', ') || 'none'}`,
+      `Genre: ${(e.facets || {}).genre || 'none'}`,
+      list('A kind of', e.parents),
+      list('Its kinds', S.kids[e.id] || []),
+      list('Related', e.related),
+      Object.keys(shared).length ? `Shares claims with (${Object.keys(shared).length}): ` + Object.keys(shared).sort((a, b) => shared[b] - shared[a])
+        .map((o) => `${(S.by[o] || {}).name || o} (${shared[o]})`).join(', ') : '',
+      `Claims (${e.claims.length}):\n` + e.claims.map((c) => `- ${c.checked === 'yes' ? '✓ ' : ''}${c.claim} [#${c.id}, ${SOURCE[c.source] || c.source || 'unknown'}]`).join('\n'),
+    ].filter(Boolean).join('\n');
+  }
   function copyText(text) {
     // the clipboard API only works on https or localhost (the checker is opened over the LAN too) and can be refused:
     // then the old way, a hidden text box selected and copied
@@ -1162,10 +1185,10 @@
     return navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(text).catch(old) : old();
   }
   document.addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-copy]');
+    const b = ev.target.closest('[data-copy], [data-copymotif]');
     if (!b) return;
     ev.stopPropagation();
-    copyText(b.dataset.copy).then(() => toast('📋 copied'), () => toast('😬 couldn’t copy', true));
+    copyText(b.dataset.copymotif ? motifText(S.by[b.dataset.copymotif]) : b.dataset.copy).then(() => toast('📋 copied'), () => toast('😬 couldn’t copy', true));
   }, true);
   function detailHTML(x, claim) {
     const lab = x.label || {};
