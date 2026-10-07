@@ -100,7 +100,7 @@ def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
     monkeypatch.setattr(validate, 'batch', lambda n=12: [{'headline_id': 1, 'title': "It's <a> headline", 'agency': 'AP',
                                                           'mood': 0, 'spice': 1, 'feelings': ['fear'], 'url': ''}])
     monkeypatch.setattr(validate, 'VERDICTS', str(tmp_path / 'verdicts.jsonl'))
-    pages = {'label check': validate.page(), 'organizer': validate.organizer_page(), 'motif check': validate.motif_page(),
+    pages = {'label check': validate.page(), 'motif check': validate.motif_page(),
              'names': validate.entities_page()}
     pages.update({f: validate.render(f, '/x') for f in validate.STATIC_PAGES.values()})
     scripts = [(name, js) for name, html in pages.items() for js in re.findall(r'<script>(.*?)</script>', html, re.S)]

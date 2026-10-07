@@ -73,3 +73,13 @@ def test_a_proposal_overtaken_by_hand_drops_out(tmp_path, monkeypatch):
     mi.relate('M002', 'M003')
     mi.set_note('M001', 'Rewritten by hand')
     assert mp.open_proposals() == []
+
+
+def test_a_claim_checked_after_done_counts_as_seen():
+    claim = lambda t, **k: {'claim': t, 'source': 'narrative', **k}  # noqa: E731
+    e = {'id': 'M001', 'name': 'x', 'done': [mi.key('old')],
+         'claims': [claim('old'), claim('checked since', checked='yes'), claim('unsure', checked='unsure'), claim('model')]}
+    assert [c['claim'] for c in mi.public_claims(e)] == ['old', 'checked since']
+    assert mi.is_done(e) == 'new'  # the model's filing and the unsure one still wait
+    e['claims'] = e['claims'][:2]
+    assert mi.is_done(e) == 'done'

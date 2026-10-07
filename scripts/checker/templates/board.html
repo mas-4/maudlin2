@@ -58,7 +58,7 @@ dialog h2 { font-size: 1.05em; margin: .2em 2em .5em 0; } dialog .x { position: 
 @media (max-width: 700px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
 </style>{% endblock %}
 {% block page %}<header>
-{{ navbar(nav, here, undo) }}<h1>🧩 Motif board</h1><span id="stats"></span> <a href="/motif-empty" id="empty-link"></a> · <a href="/motif-singles">single motifs</a> · <a href="/motif-map">motif map</a> · <a href="/motif-notes">notes</a>
+{{ navbar(nav, here, undo) }}<h1>🧩 Motif board</h1><span id="stats"></span> <a href="/motif-empty" id="empty-link"></a> · <a href="/motif-map">motif map</a> · <a href="/motif-notes">notes</a>
 <div class="tools">
   <input type="search" id="q" placeholder="search motifs and claims">
   <select id="sort"><option value="size">most claims</option><option value="few">fewest claims</option><option value="new">newest</option><option value="old">oldest</option><option value="az">A–Z</option></select>

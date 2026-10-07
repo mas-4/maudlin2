@@ -27,11 +27,11 @@ from app.utils import Config  # noqa: E402
 # The pages: Jinja templates in checker/templates (one base with the shared nav and undo), shared scripts and styles
 # in checker/static (the drag-with-drop-zones and undo code), served at /checker/static/
 CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
-# The nav: the workbench first (everything in one place), then the older single-purpose motif pages, then the other
-# tools. (path, label, section)
-NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'),
-       ('/motifs', '✅ check', 'motifs'), ('/motif-board', '📋 board', 'motifs'), ('/motif-index', '🗂️ organizer', 'motifs'),
-       ('/motif-singles', '1️⃣ singles', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'), ('/motif-map', '🕸️ map', 'motifs'),
+# The nav: the workbench and the map first (the two the person works in), then the older single-purpose motif pages,
+# then the other tools. The organizer and the singles page were dropped Oct 7 (the workbench does both). (path, label,
+# section)
+NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '🕸️ Motif map', 'main'),
+       ('/motifs', '✅ check', 'motifs'), ('/motif-board', '📋 board', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
        ('/motif-notes', '📝 notes', 'motifs'),
        ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
 _templates = None
@@ -47,7 +47,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
     return _templates.get_template(template).render(nav=NAV, here=here, undo=undo, **context)
 
 
-STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-singles': 'singles.html', '/motif-empty': 'empty.html',
+STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-empty': 'empty.html',
                 '/motif-board': 'board.html', '/motif-notes': 'notes.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
@@ -147,22 +147,6 @@ def motif_page() -> str:
     """The motif check: is each claim filed in our motif index an instance of its motif? Answers apply at once."""
     from app.analysis import motif_index
     return render('motif_check.html', '/motifs', todo=motif_index.to_check(), batch=MOTIF_BATCH)
-
-
-def organizer_page() -> str:
-    """The motif organizer: suggested merges first, then every entry to rename, merge, delete, or move claims out of."""
-    from app.analysis import motif_index
-    index = motif_index.load()
-    entries = sorted(motif_index.live(index), key=lambda e: (-len(e['claims']), e['id']))
-    by_id = {e['id']: e for e in entries}
-    try:
-        pairs, note = motif_index.suggestions(), ''
-    except Exception as e:  # noqa: Ollama down: no suggestions, the rest still works
-        pairs, note = [], str(e)
-    return render('organizer.html', '/motif-index', entries=entries, by_id=by_id, note=note,
-                  claim_count=sum(len(e['claims']) for e in entries),
-                  pairs=[(a, b, sim) for a, b, sim in pairs if a in by_id and b in by_id],
-                  shared=[p for p in motif_index.shared_pairs() if p['a'] in by_id and p['b'] in by_id])
 
 
 CURATION_LOG = os.path.join(FOLDER, 'curation_log.jsonl')  # every correction, with what the model had proposed
@@ -563,12 +547,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith('/undo.json'):
             found = last_undo()
             return self.send_json({'what': found[1]['what'] if found else None})
-        if self.path.startswith('/motif-singles.json'):
-            from app.analysis import motif_index
-            index = motif_index.load()
-            return self.send_json({'singles': motif_index.single_suggestions(),
-                                   'motifs': sorted(({'id': e['id'], 'name': e['name'], 'size': len(e['claims'])}
-                                                     for e in motif_index.live(index)), key=lambda m: m['name'].lower())})
         if self.path.startswith('/claims.json'):
             from urllib.parse import urlparse, parse_qs
             from app.analysis import motif_index
@@ -637,8 +615,12 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         page_of = next((f for prefix, f in STATIC_PAGES.items() if path.startswith(prefix)), None)
-        body = (render(page_of, path) if page_of else organizer_page() if path.startswith('/motif-index')
-                else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
+        if path.startswith(('/motif-index', '/motif-singles')):  # dropped pages: to the workbench, which does their work
+            self.send_response(302)
+            self.send_header('Location', '/motif-workbench')
+            self.end_headers()
+            return
+        body = (render(page_of, path) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
                 else page())
         body = body.encode()
         self.send_response(200)

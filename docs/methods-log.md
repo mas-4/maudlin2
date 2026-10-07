@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **A claim a person checked counts as seen.** A motif reaches the site once a person marks it done, with the claims it
+  held then; claims filed since waited, marked new, until it was marked done again, even ones the person had checked
+  ✓ one by one in the meantime. A claim checked ✓ or filed by hand now counts as seen: no longer new, and shown with
+  its motif. The model's own filings since still wait. 554 claims show on the site instead of 431; motifs marked new
+  went from 99 to 34. (The checker's organizer and singles pages were dropped too; the workbench does their work.)
 - **A correction proposer for the motif index.** gemma4:26b reads over the motifs and proposes small fixes, each one
   change a person approves or rejects in the workbench's 💡 proposals checklist: a typo in a name or scope note (only a
   small edit counts, not a rewrite), one motif a kind of another, two related, two the same motif (merge), a motif

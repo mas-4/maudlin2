@@ -761,7 +761,7 @@ def board() -> dict:
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
                             'id': key(c['claim'])[:6],  # shown as #3f9a2b, to name a claim in a screenshot or a search
-                            'checked': c.get('checked'), 'new': 'done' in e and key(c['claim']) not in e['done'],
+                            'checked': c.get('checked'), 'new': 'done' in e and not seen(e, c),
                             **({'variants': [v['claim'] for v in c['variants']]} if c.get('variants') else {})}
                            for c in e['claims']]}
                for e in live(index)]
@@ -806,11 +806,18 @@ def reset_done():
     save(index)
 
 
+def seen(entry: dict, claim: dict) -> bool:
+    """Whether a person has seen a claim in this motif: it was there when they marked the motif done, or they checked
+    it ✓ or filed it by hand since (until Oct 7 only the first counted, so a claim checked after the motif was done
+    still showed as new and stayed off the site)"""
+    return key(claim['claim']) in set(entry.get('done') or []) or claim.get('checked') == 'yes'
+
+
 def is_done(entry: dict) -> str | None:
-    """'done', 'new' (marked done, then a claim came in), or None"""
+    """'done', 'new' (marked done, then a claim came in that nobody has checked), or None"""
     if 'done' not in entry:
         return None
-    return 'done' if {key(c['claim']) for c in entry['claims']} <= set(entry['done']) else 'new'
+    return 'done' if all(seen(entry, c) for c in entry['claims']) else 'new'
 
 
 def similar(eid: str, n: int = 15) -> list[dict]:
@@ -1179,10 +1186,9 @@ def public(entry: dict) -> bool:
 
 
 def public_claims(entry: dict) -> list[dict]:
-    """The claims of a verified motif the site shows: those it held when a person marked it done. Claims filed since
-    wait until they mark it done again."""
-    seen = set(entry.get('done') or [])
-    return [c for c in entry['claims'] if key(c['claim']) in seen]
+    """The claims of a verified motif the site shows: those it held when a person marked it done, and those a person
+    has checked ✓ or filed by hand since. The model's filings since wait for a check or for done again."""
+    return [c for c in entry['claims'] if seen(entry, c)]
 
 
 def public_note(entry: dict) -> str:
