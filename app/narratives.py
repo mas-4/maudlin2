@@ -269,6 +269,10 @@ def about(group: dict, claim: str, cache: dict) -> float:
 
 
 CANDIDATES = 3  # nearest stories or passages the model is asked about
+# Oct 7: on the 346 story links the small model had made, gemma4:26b differed on 42; read by hand, it was right on
+# about 25 to the small model's 11, joined 5 wrongly to its 7 (the small model put "Jacob Geller is a rapist" on the
+# Cornell case, Will Smith's slap on Rick Ross's arrest) and missed 3 to its ~20 (the Nobel, the Gulf storm)
+STORY_MODEL = 'gemma4:26b'
 STORY_PROMPT = """People online are retelling this: {claim}
 For example: {example}
 
@@ -300,14 +304,15 @@ CONFIRM_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string"},
                   "required": ["reason", "same"]}
 
 
-def ask(prompt: str, schema: dict, group: dict, other: str, cache: dict, limit: int = 600) -> dict | None:
+def ask(prompt: str, schema: dict, group: dict, other: str, cache: dict, limit: int = 600, model: str | None = None,
+        max_tokens: int = 120) -> dict | None:
     """The model's answer about a cross-check candidate (cached by the question and what it's shown), or None."""
     from app.analysis import llm
     claim = group['label']['narrative'] or group['examples'][0]
-    key = hashlib.sha1(json.dumps([prompt, claim, other]).encode()).hexdigest()
+    key = hashlib.sha1(json.dumps([prompt, claim, other] + ([model] if model else [])).encode()).hexdigest()  # a new model asks afresh
     if key not in cache:
         answer = llm.complete_json(prompt.format(claim=claim, example=group['examples'][0][:280],
-                                                 other=other[:limit]), schema, max_tokens=120)
+                                                 other=other[:limit]), schema, max_tokens=max_tokens, model=model)
         if not answer:
             return None
         cache[key] = {**answer, 'claim': claim, 'other': other[:200]}
@@ -344,7 +349,7 @@ def story_link(group: dict, candidates: list[str], cache: dict) -> dict | None:
     schema = {"type": "object", "properties": {"reason": {"type": "string"},
                                                "link": {"type": "string", "enum": links}},
               "required": ["reason", "link"]}
-    answer = ask(STORY_PROMPT, schema, group, options, cache, limit=2000)
+    answer = ask(STORY_PROMPT, schema, group, options, cache, limit=2000, model=STORY_MODEL, max_tokens=500)
     link = (answer or {}).get('link', 'none')
     if link == 'none':
         return None

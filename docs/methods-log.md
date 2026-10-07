@@ -4,6 +4,14 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-07
+- **Narratives linked to news stories by the bigger model.** Which front-page story a retold narrative is about (its
+  card on Folklore, and where it shows on story and saga pages) was asked of qwen3:8b, which put "Jacob Geller is a
+  rapist…" on the Cornell rape case and the threats against the Cornell accuser on a different part of the saga. Asked
+  again of gemma4:26b, the 346 links it had made differed on 42; read by hand, Gemma was right on about 25 of them and
+  the small model on about 11, and Gemma joined fewer wrongly (5 to 7) and missed far fewer (3 to about 20). From
+  tonight's report on; earlier reports keep their links.
+
 ## 2026-10-06
 - **Named people accused of crimes.** An outside reader found the motif index, a story page and a saga page showing
   "Jacob Geller is a rapist who has avoided accountability…", retold by eight people online: an unverified accusation of
