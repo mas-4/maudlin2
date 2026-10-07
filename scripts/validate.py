@@ -394,6 +394,8 @@ def workbench_state() -> dict:
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
     state['facets'] = mi.facet_values(index)
+    from app.analysis import motif_proposals as mp
+    state['proposals'] = len(mp.open_proposals())  # the 💡 tab's count
     return state
 
 
