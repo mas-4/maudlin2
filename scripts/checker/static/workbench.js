@@ -259,22 +259,30 @@
         <div class="wb-titlerow"><h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="click to rename · drag onto another motif or a group">${esc(e.name)}</h2>
           <button class="wb-btn wb-close" data-close="${i}" title="close this motif">✕</button></div>
         <span class="wb-pid">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.curated ? ' · ✋ by hand' : ''}${e.first_seen ? ' · since ' + esc(e.first_seen.slice(0, 10)) : ''}</span>
-        <span class="wb-ptools">
-          <button class="wb-btn" data-rename="${e.id}" title="rename">✎ rename</button>
+        <div class="wb-pbar">
           ${e.done === 'done' ? `<span class="wb-state done" title="you've looked over its claims; it can appear on the site">✅ Done</span><button class="wb-mini" data-done="${e.id}" title="it goes back to not done, and off the site">unmark done</button>`
             : e.done === 'new' ? `<span class="wb-state new" title="marked done, but claims came in since; the site shows only the ones you saw">🆕 Done, ${newCount(e)} new since</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked at the new claims too">mark done again</button>`
             : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ Not done yet</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked over its claims: it can go on the site">mark as done</button>`}
-          ${tags}${groups ? `<select data-group="${e.id}" title="put it in a group as well (a motif can be in several)"><option value="">📁 ＋ group…</option>${groups}</select>` : ''}
-          <select data-genre="${e.id}" title="its genre"><option value="">🎭 no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
-          ${isSingle(e) || e.stands_alone ? `<button class="wb-btn${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
-          <button class="wb-btn" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
-        </span>
+          <span class="wb-pbar-end">
+            <button class="wb-mini" data-rename="${e.id}" title="rename">✎ rename</button>
+            ${isSingle(e) || e.stands_alone ? `<button class="wb-mini${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
+            <button class="wb-mini" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
+          </span>
+        </div>
       </header>
       <div class="wb-rels">
-        <div><span class="wb-rlabel">↳ a kind of</span> ${e.parents.map((p) => chip(p, `<button class="wb-x" data-unparent="${e.id}|${p}" title="not a kind of it">✕</button>`)).join(' ') || '<span class="wb-faint">—</span>'}</div>
-        <div><span class="wb-rlabel">⤷ its kinds</span> ${kids.map((k) => chip(k, `<button class="wb-x" data-unparent="${k}|${e.id}" title="not a kind of this">✕</button>`)).join(' ') || '<span class="wb-faint">—</span>'}</div>
-        <div><span class="wb-rlabel">↔ related</span> ${e.related.map((r) => chip(r, `<button class="wb-x" data-unrelate="${e.id}|${r}" title="not related">✕</button>`)).join(' ') || '<span class="wb-faint">—</span>'}</div>
-        ${sharedIds.length ? `<div><span class="wb-rlabel">🤝 shares claims with</span> ${sharedIds.slice(0, 8).map((o) => chip(o, `<b class="wb-shared">${shared[o]}</b>`)).join(' ')}</div>` : ''}
+        <span class="wb-rlabel">📁 groups</span>
+        <div class="wb-rchips">${tags}${groups ? `<select data-group="${e.id}" title="put it in a group as well (a motif can be in several)"><option value="">＋ group…</option>${groups}</select>` : ''}</div>
+        <span class="wb-rlabel">🎭 genre</span>
+        <div class="wb-rchips"><select data-genre="${e.id}" title="its genre"><option value="">no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
+        <span class="wb-rlabel">↳ a kind of</span>
+        <div class="wb-rchips">${e.parents.map((p) => chip(p, `<button class="wb-x" data-unparent="${e.id}|${p}" title="not a kind of it">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
+        <span class="wb-rlabel">⤷ its kinds</span>
+        <div class="wb-rchips">${kids.map((k) => chip(k, `<button class="wb-x" data-unparent="${k}|${e.id}" title="not a kind of this">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
+        <span class="wb-rlabel">↔ related</span>
+        <div class="wb-rchips">${e.related.map((r) => chip(r, `<button class="wb-x" data-unrelate="${e.id}|${r}" title="not related">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
+        ${sharedIds.length ? `<span class="wb-rlabel">🤝 shares claims</span>
+        <details class="wb-rchips wb-sharedfold"><summary>with ${sharedIds.length} motif${sharedIds.length === 1 ? '' : 's'}</summary>${sharedIds.map((o) => chip(o, `<b class="wb-shared">${shared[o]}</b>`)).join('')}</details>` : ''}
       </div>
       <div class="wb-note ${ns}">
         <label>📝 note <span class="wb-ntag">${ns === 'none' ? 'none yet' : ns === 'draft' ? '🤖 draft by ' + (e.note_by === 'claude' ? 'Claude' : 'the model') : 'yours'}</span></label>
