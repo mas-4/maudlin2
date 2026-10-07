@@ -15,7 +15,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
 .node.dim, .link.dim { opacity: .12; } .node text.minor { display: none; } .node:hover text.minor, .node.hit text.minor { display: inline; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
 .link.kind { stroke: #0a8f7e; stroke-width: 2px; } .link.related { stroke: #ff4fa3; stroke-width: 1.8px; stroke-dasharray: 5 4; } .link.shared { stroke: #9aa0a6; opacity: .45; }
-#info { position: absolute; right: 10px; top: 10px; width: 330px; max-height: calc(100% - 20px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
+#info { position: absolute; right: 10px; top: 66px; width: 360px; max-height: calc(100% - 76px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
   border-radius: 12px; box-shadow: 4px 4px 0 #00c2a8; padding: 8px 12px; font-size: .88em; display: none; }
 #info h3 { margin: .2em 0; } #info ul { padding-left: 1.2em; margin: .2em 0 .5em; } #info .x { float: right; cursor: pointer; border: 0; background: none; font-size: 1.1em; }
 #info a.go { cursor: pointer; color: #0a6d61; text-decoration: underline; }
@@ -36,15 +36,21 @@ body.dragging .map-drop { background: #eef9f7; }
   background: #fff; display: grid; place-items: center; font-size: 1.3em; z-index: 3; box-shadow: 3px 3px 0 #ffc400; cursor: default; }
 body.dragging #desk-drop { background: #fff6cc; transform: scale(1.12); }
 #desk-drop i { position: absolute; right: -4px; bottom: -4px; font: 700 11px system-ui; font-style: normal; background: #1f1f2e; color: #fff; border-radius: 999px; padding: 0 5px; }
-#desk { position: absolute; right: 10px; top: 66px; bottom: 10px; width: 330px; overflow: auto; display: none; flex-direction: column; gap: 10px; z-index: 2; padding: 2px 6px 6px 2px; }
+#desk { position: absolute; right: 10px; top: 66px; bottom: 10px; width: 360px; overflow: auto; display: none; flex-direction: column; gap: 10px; z-index: 2; padding: 2px 6px 6px 2px; }
 #desk.on { display: flex; }
 .desk-card { background: #fff; border: 2px solid #1f1f2e; border-radius: 12px; box-shadow: 4px 4px 0 #ffc400; padding: 6px 10px; font-size: .85em; flex: none; }
 .desk-card h3 { margin: .1em 0; font-size: 1em; padding: 2px 4px; } .desk-card ul { padding-left: 1.1em; margin: .2em 0 .4em; } .desk-card .x { float: right; cursor: pointer; border: 0; background: none; font-size: 1.05em; }
 .desk-card.closed ul, .desk-card.closed .more { display: none; } .desk-card .fold { cursor: pointer; border: 0; background: none; float: right; }
-body.desk-open #info { right: 352px; }
-.cname { font: 700 1em system-ui, sans-serif; border: 1.5px solid transparent; border-radius: 6px; padding: 1px 4px; width: calc(100% - 7em); background: transparent; }
+body.desk-open #info { right: 382px; }
+.cname { font: 700 1em system-ui, sans-serif; border: 1.5px solid transparent; border-radius: 6px; padding: 1px 4px; width: calc(100% - 2.2em); background: transparent; resize: none; overflow: hidden; vertical-align: top; }
+.cfacts { color: #555; font-size: .85em; margin: 2px 0 4px; display: flex; flex-wrap: wrap; gap: 3px 8px; }
+.cfacts .gtag { border: 1.5px solid var(--g); border-radius: 999px; padding: 0 6px; background: color-mix(in srgb, var(--g) 15%, white); }
+h3[data-id] { display: flex; align-items: flex-start; gap: 4px; }
+.crow { margin: 3px 0; } .addlink { border: 1.5px dashed #1f1f2e; border-radius: 999px; background: #fff; cursor: pointer; font-size: .8em; padding: 0 6px; }
+.linkname { font: inherit; border: 2px solid #1f1f2e; border-radius: 999px; padding: 1px 8px; width: 15em; }
+.csrc { color: #777; font-size: .85em; white-space: nowrap; }
 .cname:hover, .cname:focus { border-color: #1f1f2e; background: #fff; outline: none; }
-.cnote { display: block; width: 100%; box-sizing: border-box; font: italic .95em system-ui, sans-serif; color: #444; border: 1.5px dashed #ccc; border-radius: 6px; padding: 3px 6px; margin: 3px 0; resize: vertical; background: #fffdf6; }
+.cnote { display: block; width: 100%; box-sizing: border-box; font: italic .95em system-ui, sans-serif; color: #444; border: 1.5px dashed #ccc; border-radius: 6px; padding: 3px 6px; margin: 3px 0; resize: none; overflow: hidden; background: #fffdf6; }
 .cnote:focus { border: 1.5px solid #1f1f2e; outline: none; background: #fff; }
 h3[data-id] .grip { cursor: grab; }
 .unlink { border: 0; background: none; cursor: pointer; color: #c0392b; font-size: .8em; padding: 0 2px; } .unlink:hover { background: #ffe3e7; border-radius: 4px; }
@@ -62,7 +68,7 @@ h3[data-id] .grip { cursor: grab; }
   <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
   <span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
-<main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
+<datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -206,21 +212,34 @@ function names(ids, id, unlink) {
 // A motif's card, for the box that follows the focus and for the desk
 function cardHTML(id) {
   const e = byId[id], kinds = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
-  const shared = links.filter((l) => l.kind === 'shared' && (l.source.id === id || l.target.id === id)).map((l) => l.source.id === id ? l.target.id : l.source.id);
-  return `<h3 data-id="${e.id}" title="drag by the 🧩 onto a dot, a name or the 📌"><span class="grip">🧩</span><input class="cname" data-rename="${e.id}" value="${esc(e.name)}" title="its name: edit, then Enter"> <span class="meta">${e.id}</span></h3>
-    <textarea class="cnote" data-note="${e.id}" rows="2" placeholder="a scope note: what kind of story it covers" title="its scope note: saved when you click away">${esc(e.note || '')}</textarea>
-    ${e.parents.length ? `<p><b>a kind of</b> ${names(e.parents, id, 'up')}</p>` : ''}
-    ${kinds.length ? `<p><b>its kinds</b> ${names(kinds, id, 'down')}</p>` : ''}
-    ${e.related.length ? `<p><b>related</b> ${names(e.related, id, 'rel')}</p>` : ''}
-    ${shared.length ? `<p class="more"><b>shares claims with</b> ${names(shared)}</p>` : ''}
-    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b></p><ul data-motif="${e.id}">${e.claims.map((c) => `<li data-claim="${esc(c.claim)}" title="drag onto a dot or a name to file it there">${esc(c.claim)}</li>`).join('')}</ul>`;
+  // every motif holding one of its claims, whatever the map's grey-line setting
+  const mine = new Set(e.claims.map((c) => c.claim));
+  const shared = data.entries.filter((x) => x.id !== id && x.claims.some((c) => mine.has(c.claim))).map((x) => x.id);
+  const row = (label, ids, unlink, add) => `<p class="crow"><b>${label}</b> ${ids.length ? names(ids, id, unlink) : '<span class="meta">—</span>'}${add ? ` <button class="addlink" data-addlink="${add}|${id}" title="add one">＋</button>` : ''}</p>`;
+  const src = (c) => c.source === 'narrative' ? 'online' : c.source || '';
+  const facts = [`${e.id}`, e.done === 'done' ? '✅ done' : e.done === 'new' ? '🆕 done, new claims since' : '⏳ not done',
+    e.first_seen ? 'since ' + esc(e.first_seen) : '', e.curated ? '✋ named by hand' : '🤖 named by the model',
+    (e.facets || {}).genre ? '🎭 ' + esc(e.facets.genre) : '',
+    ...(e.groups || []).map((g) => `<span class="gtag" style="--g: ${groupColor(g)}">📁 ${esc((data.groups.find((x) => x.id === g) || {name: g}).name)}</span>`)].filter(Boolean);
+  return `<h3 data-id="${e.id}" title="drag by the 🧩 onto a dot, a name or the 📌"><span class="grip">🧩</span><textarea class="cname" data-rename="${e.id}" rows="1" title="its name: edit, then Enter">${esc(e.name)}</textarea></h3>
+    <div class="cfacts">${facts.map((f) => `<span>${f}</span>`).join('')}</div>
+    <textarea class="cnote" data-note="${e.id}" rows="1" placeholder="a scope note: what kind of story it covers" title="its scope note: saved when you click away">${esc(e.note || '')}</textarea>
+    ${row('↳ a kind of', e.parents, 'up', 'up')}
+    ${row('⤷ its kinds', kinds, 'down', 'down')}
+    ${row('↔ related', e.related, 'rel', 'rel')}
+    ${row('🤝 shares claims with', shared)}
+    <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b> <span class="meta">✓ you checked it · 🆕 filed since you marked it done</span></p><ul data-motif="${e.id}">${e.claims.map((c) => `<li data-claim="${esc(c.claim)}" title="drag onto a dot or a name to file it there">${c.checked === 'yes' ? '✓ ' : ''}${c.new ? '🆕 ' : ''}${esc(c.claim)} <span class="csrc">${c.ref && /^https?:/.test(c.ref) ? `<a href="${esc(c.ref)}" target="_blank" rel="noopener">${esc(src(c))}</a>` : esc(src(c))}</span></li>`).join('')}</ul>`;
 }
+function grow(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }  // a card's text box shows all its text
+function growAll(box) { box.querySelectorAll('.cname, .cnote').forEach(grow); }
+document.addEventListener('input', (ev) => { if (ev.target.matches('.cname, .cnote')) grow(ev.target); });
 function show(id) {
   focus = id; applyFocus();
   const box = $('#info');
   if (!id) { box.style.display = 'none'; return; }
   box.innerHTML = `<button class="x" title="close">✕</button>${cardHTML(id)}`;
   box.style.display = 'block';
+  growAll(box);
 }
 // The desk: motifs kept open as cards, in the order they were pinned (remembered in this browser)
 let desk = (() => { try { return JSON.parse(localStorage.getItem('map-desk') || '[]'); } catch (e) { return []; } })();
@@ -233,6 +252,7 @@ function renderDesk() {
   box.classList.toggle('on', desk.length > 0);
   document.body.classList.toggle('desk-open', desk.length > 0);
   $('#desk-drop').innerHTML = '📌' + (desk.length ? `<i>${desk.length}</i>` : '');
+  growAll(box);
 }
 function pin(id) { desk = [id, ...desk.filter((x) => x !== id)]; renderDesk(); }
 function onCardClick(ev) {
@@ -246,6 +266,25 @@ function onCardClick(ev) {
     if (how === 'rel') return act({action: 'unrelate', a: id, b: other});
     if (how === 'up') return act({action: 'parent', id, parent: other, on: false});
     return act({action: 'parent', id: other, parent: id, on: false});
+  }
+  const add = t.closest('[data-addlink]');
+  if (add) {
+    const [how, id] = add.dataset.addlink.split('|');
+    const field = document.createElement('span');
+    field.innerHTML = `<input class="linkname" list="motif-names" placeholder="${how === 'up' ? 'a broader motif' : how === 'down' ? 'a narrower motif' : 'a related motif'}, then Enter">`;
+    add.replaceWith(field);
+    const input = field.querySelector('input');
+    input.focus();
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { renderDesk(); if (focus) show(focus); return; }
+      if (ev.key !== 'Enter') return;
+      const v = input.value.trim().toLowerCase(), other = data.entries.find((x) => x.name.toLowerCase() === v || x.id.toLowerCase() === v);
+      if (!other || other.id === id) { input.style.borderColor = '#c0392b'; return; }
+      if (how === 'rel') act({action: 'relate', a: id, b: other.id});
+      else if (how === 'up') act({action: 'parent', id, parent: other.id});
+      else act({action: 'parent', id: other.id, parent: id});
+    });
+    return;
   }
   const a = t.closest('a.go'); if (a) center(a.dataset.id);
 }
@@ -380,6 +419,7 @@ $('#tree').addEventListener('click', (ev) => { const s = ev.target.closest('span
 async function load() {
   data = await (await fetch('/motif-board.json')).json();
   byId = Object.fromEntries(data.entries.map((e) => [e.id, e]));
+  $('#motif-names').innerHTML = data.entries.map((e) => `<option value="${esc(e.name)}">${e.id}</option>`).join('');
   if (focus && !byId[focus]) focus = null;
   // a card field being typed in keeps its place and what's typed across the redraw (saving the name reloads the cards)
   const a = document.activeElement, keep = a && a.matches && a.matches('.cname, .cnote')
