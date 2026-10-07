@@ -194,7 +194,7 @@
     return `<div class="wb-row${open >= 0 ? ' open o' + (open % COLORS) : ''}${S.msel.has(e.id) ? ' msel' : ''}" style="--depth:${depth}" data-drag="motif" data-drop="motif" data-id="${e.id}" data-open="${e.id}">
       ${fold ? `<button class="wb-fold" data-fold="m:${e.id}">${fold}</button>` : '<span class="wb-fold-sp"></span>'}
       <span class="wb-rname">${esc(e.name)}</span>${gid !== undefined && S.groupBy !== 'genre' ? elsewhere(e, gid) : ''}<span class="wb-badges">${badges}</span><i class="wb-n">${e.claims.length}</i>
-      <button class="wb-mini wb-side" data-open2="${e.id}" title="open it too, under the others (compare)">⧉</button></div>`;
+      ${gid && S.groupBy === 'group' && (e.groups || []).includes(gid) ? `<button class="wb-mini wb-side" data-ungroup="${e.id}|${gid}" title="take it out of this group">✕</button>` : ''}<button class="wb-mini wb-side" data-open2="${e.id}" title="open it too, under the others (compare)">⧉</button></div>`;
   }
   // The other groups a motif is in, beside it in the tree (it shows in each, and under its broader motif)
   function elsewhere(e, gid) {
