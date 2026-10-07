@@ -36,6 +36,9 @@ MAX_PAIRS = 120  # pairs put to the model in one run, the most alike first
 GROUP_CANDIDATES = 12  # motifs near a group's members asked about, per group
 GROUP_FLOOR = 0.6
 TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo, not a rewrite
+MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
+# that merely shared a claim: "Watermelon" and "Trojan horse")
+SHARED_FLOOR = 0.6  # motifs sharing a single claim are asked about only if this alike; two or more shared, always
 
 
 def pid(kind: str, args: dict) -> str:
@@ -150,7 +153,9 @@ A. {a}
 
 B. {b}
 
-How are they related, judging by what each motif's claims have in common?
+How are they related, judging by each motif's name, note and claims: what kind of story each one is? A claim can be \
+filed under several motifs at once (one story can carry several shapes), so two motifs holding the same claim are not \
+the same motif for that.
 - "A is a kind of B": every A story is also a B story, a narrower version of it
 - "B is a kind of A": the other way round
 - "the same motif": two names for one kind of story
@@ -165,8 +170,12 @@ LINK_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "ma
                "required": ["reason", "relation"]}
 
 
-def shown(e: dict) -> str:
-    return mi.described(e) + ''.join(f'\n   - {c["claim"][:150]}' for c in e['claims'][-3:])
+def shown(e: dict, other: dict | None = None) -> str:
+    """A motif for the model: its name, note and three of its claims, not ones it shares with `other` (shown the same
+    claim under both, the model took them for the same motif)"""
+    theirs = {c['claim'] for c in (other or {}).get('claims', [])}
+    own = [c for c in e['claims'] if c['claim'] not in theirs][-3:]
+    return mi.described(e) + ''.join(f'\n   - {c["claim"][:150]}' for c in own)
 
 
 def vectors(entries: list[dict]) -> np.ndarray:
@@ -191,11 +200,15 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> in
     for i, e in enumerate(entries):
         for c in e['claims']:
             holders.setdefault(c['claim'], set()).add(i)
+    together = {}
     for hs in holders.values():  # motifs sharing a claim
         hs = sorted(hs)
         for x in range(len(hs)):
             for y in range(x + 1, len(hs)):
-                pairs.setdefault((hs[x], hs[y]), float(sims[hs[x], hs[y]]))
+                together[(hs[x], hs[y])] = together.get((hs[x], hs[y]), 0) + 1
+    for (x, y), n in together.items():
+        if n >= 2 or sims[x, y] >= SHARED_FLOOR:
+            pairs.setdefault((x, y), float(sims[x, y]))
     asked = {json.dumps(sorted([p['args'].get('a') or p['args'].get('id'), p['args'].get('b') or p['args'].get('parent')]))
              for p in store.values() if p['kind'] in ('parent', 'relate', 'merge') or p.get('kind') == 'unrelated'}
     made = 0
@@ -203,7 +216,7 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> in
             and json.dumps(sorted([ids[i], ids[j]])) not in asked]
     for s, i, j in sorted(todo, reverse=True)[:MAX_PAIRS]:
         a, b = entries[i], entries[j]
-        answer = llm.complete_json(LINK_PROMPT.format(a=shown(a), b=shown(b)), LINK_SCHEMA, max_tokens=500, model=MODEL)
+        answer = llm.complete_json(LINK_PROMPT.format(a=shown(a, b), b=shown(b, a)), LINK_SCHEMA, max_tokens=500, model=MODEL)
         if not answer:
             continue
         rel, why = answer.get('relation'), answer.get('reason', '')
@@ -211,7 +224,7 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict]) -> in
             made += add(store, 'parent', {'id': a['id'], 'parent': b['id']}, why)
         elif rel == RELATIONS[1]:
             made += add(store, 'parent', {'id': b['id'], 'parent': a['id']}, why)
-        elif rel == 'the same motif' and sorted([a['id'], b['id']]) not in index.get('not_same', []):
+        elif rel == 'the same motif' and s >= MERGE_FLOOR and sorted([a['id'], b['id']]) not in index.get('not_same', []):
             small, big = sorted((a, b), key=lambda e: len(e['claims']))  # the smaller folds into the bigger
             made += add(store, 'merge', {'a': small['id'], 'b': big['id']}, why)
         elif rel in ('related', 'the same motif'):
