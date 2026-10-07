@@ -28,10 +28,10 @@ from app.utils import Config  # noqa: E402
 # in checker/static (the drag-with-drop-zones and undo code), served at /checker/static/
 CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
 # The nav: the workbench and the map first (the two the person works in), then the older single-purpose motif pages,
-# then the other tools. The organizer and the singles page were dropped Oct 7 (the workbench does both). (path, label,
-# section)
+# then the other tools. The organizer, the singles page and the board were dropped Oct 7 (the workbench does their
+# work; the board's /motif-board.json and POST /motif-board stay, for the map and the other pages). (path, label, section)
 NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '🕸️ Motif map', 'main'),
-       ('/motifs', '✅ check', 'motifs'), ('/motif-board', '📋 board', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
+       ('/motifs', '✅ check', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
        ('/motif-notes', '📝 notes', 'motifs'),
        ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
 _templates = None
@@ -48,7 +48,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
 
 
 STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-empty': 'empty.html',
-                '/motif-board': 'board.html', '/motif-notes': 'notes.html'}
+                '/motif-notes': 'notes.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
 
@@ -615,7 +615,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         page_of = next((f for prefix, f in STATIC_PAGES.items() if path.startswith(prefix)), None)
-        if path.startswith(('/motif-index', '/motif-singles')):  # dropped pages: to the workbench, which does their work
+        if path.startswith(('/motif-index', '/motif-singles')) or path == '/motif-board':  # dropped pages: to the workbench
             self.send_response(302)
             self.send_header('Location', '/motif-workbench')
             self.end_headers()

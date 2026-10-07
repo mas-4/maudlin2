@@ -301,10 +301,22 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['stats', '📊'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {check: S.data.to_check, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {check: S.data.to_check, unchecked: unchecked().length, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
+  }
+  // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
+  function unchecked() {
+    const by = new Map();
+    for (const e of motifs()) e.claims.forEach((c, i) => {
+      if (c.checked) return;
+      const x = by.get(c.claim) || {claim: c.claim, source: c.source, ref: c.ref, id: c.id, motifs: [], at: 0};
+      x.motifs.push(e.id);
+      x.at = Math.max(x.at, i / Math.max(1, e.claims.length));
+      by.set(c.claim, x);
+    });
+    return [...by.values()].reverse();
   }
   async function queue(kind) {
     if (!S.queues[kind]) {
@@ -357,6 +369,16 @@
       box.innerHTML = `${q.note ? `<p class="wb-faint">${esc(q.note)}</p>` : ''}
         <h3>🤝 filed together <i>${shared.length}</i></h3>${shared.map((p) => pairCard(p.a, p.b, `${p.shared.length} shared claim${p.shared.length === 1 ? '' : 's'}`, p.shared[0])).join('') || '<p class="wb-faint">🦗 none</p>'}
         <h3>👯 similar names <i>${similar.length}</i></h3>${similar.map((p) => pairCard(p.a, p.b, 'alike ' + p.score)).join('') || '<p class="wb-faint">🦗 none</p>'}`;
+    } else if (tab === 'unchecked') {
+      const items = unchecked();
+      box.innerHTML = items.length ? `<p class="wb-faint">🤖 ${items.length} claim${items.length === 1 ? '' : 's'} the model filed that you haven't checked, ${items.reduce((n, x) => n + x.motifs.length, 0)} filings. ✓ it fits, ✕ it doesn't (out of that motif for good); 🔍 opens the claim.</p>
+        ${items.map((x) => `<div class="wb-card wb-unck">
+          <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source, ref: x.ref}, x.motifs[0])}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(x.source || '')}${x.id ? ' #' + esc(x.id) : ''}</span>
+            <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
+          ${x.motifs.map((id) => `<div class="wb-sug">${chip(id)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${id}" data-ckc="${esc(x.claim)}" title="it fits">✓</button><button class="wb-mini" data-ck="no|${id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕</button></span></div>`).join('')}
+          ${x.motifs.length > 1 ? `<button class="wb-mini" data-ckall="${esc(x.claim)}">✓ all fit</button>` : ''}
+        </div>`).join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>You\'ve checked every claim the model filed.</p></div>';
     } else if (tab === 'proposals') {
       const q = await queue('proposals');
       if (S.tab !== tab) return;
@@ -861,6 +883,15 @@
     if ((v = d('view'))) { S.view = v; store.set('view', v); return render(); }
     if ((v = d('tab'))) { S.tab = v; store.set('tab', v); renderTabs(); return renderInbox(); }
     if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], yes === 'yes'); }
+    if ((v = d('ck'))) {
+      const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
+      return act({action: 'check', claim, id, answer}, answer === 'yes' ? '✓ fits' : '✕ out of that motif');
+    }
+    if ((v = d('ckall'))) {
+      const x = unchecked().find((u) => u.claim === v);
+      if (x) return batch(x.motifs.map((id) => ({action: 'check', claim: v, id, answer: 'yes'})), `✓ all ${x.motifs.length} fit`);
+    }
+    if ((v = d('ckopen'))) { S.claim = {claim: v, src: null, from: null}; S.tab = 'claim'; store.set('tab', 'claim'); renderTabs(); return renderInbox(); }
     if ((v = d('propmany'))) return decideProposals($$('[data-propsel]:checked').map((c) => c.dataset.propsel), v === 'yes');
     if (t.id === 'prop-all') { $$('[data-propsel]').forEach((c) => { c.checked = t.checked; }); return; }
     if ((v = d('fold'))) { S.folded.has(v) ? S.folded.delete(v) : S.folded.add(v); store.set('folded', [...S.folded]); return renderTree(); }
