@@ -1,3 +1,4 @@
+import functools
 import string
 
 import nltk
@@ -53,11 +54,27 @@ CONTRACTION_EXPANSION_FROM_TOKEN: dict[str, str] = {
 
 
 def prepare(text, pipeline=None):
-    if pipeline is None:
-        pipeline = default_pipeline
-    for transform in pipeline:
+    """The text through each step of the pipeline. The same headline goes through the same pipeline several times in
+    a build (the cloud, the outlets' word lists, the front page's scores), and the tagging and lemmatizing steps are
+    slow, so results are remembered (a list result is handed out as a fresh copy)"""
+    steps = tuple(default_pipeline if pipeline is None else pipeline)
+    try:
+        out = _prepared(text, steps)
+    except TypeError:  # a step that can't be a cache key
+        out = _run(text, steps)
+    return list(out) if isinstance(out, tuple) else out
+
+
+def _run(text, steps):
+    for transform in steps:
         text = transform(text)
     return text
+
+
+@functools.lru_cache(maxsize=200_000)
+def _prepared(text, steps):
+    out = _run(text, steps)
+    return tuple(out) if isinstance(out, list) else out
 
 
 class Pipelines:

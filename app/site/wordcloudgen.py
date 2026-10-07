@@ -95,7 +95,9 @@ def term_outlets(df: pd.DataFrame, pipeline: list[Callable]) -> pd.DataFrame:
     terms = pd.DataFrame(rows, columns=['term', 'agency', 'bias', 'rated', 'mood', 'ranks', 'row'])
     # "State" and "state" are one term, shown in whichever spelling outlets use most
     terms['key'] = terms['term'].str.lower()
-    spelling = terms.groupby('key')['term'].agg(lambda t: t.value_counts().index[0])
+    # (counted in one pass: a value_counts per term took 18 s a build)
+    counts = terms.groupby(['key', 'term'], sort=False).size().rename('n').reset_index()
+    spelling = counts.sort_values('n', ascending=False, kind='stable').drop_duplicates('key').set_index('key')['term']
     one_vote = terms.drop_duplicates(['key', 'agency'])  # each outlet counts once toward reach and lean
     merged = one_vote.groupby('key').agg(outlets=('agency', 'nunique'), bias=('bias', 'mean'))
     merged['mood'] = terms.groupby('key')['mood'].mean()
@@ -121,7 +123,7 @@ def term_outlets(df: pd.DataFrame, pipeline: list[Callable]) -> pd.DataFrame:
     merged['rows'] = terms.groupby('key')['row'].agg(list)  # which headlines used each term, for samples
     # Spice: how loaded the wording of the term's headlines is on average (0 plain to 2 heavily loaded)
     if 'loaded_score' in df:
-        merged['spice'] = merged['rows'].apply(lambda rows: df.loc[rows, 'loaded_score'].mean())
+        merged['spice'] = terms['row'].map(df['loaded_score']).groupby(terms['key']).mean()
     # The term's feeling, ranked-choice style: average each headline's split vote (emotion_weights) across the term's
     # headlines, then take the strongest emotion other than neutral and its share of the whole (neutral included, so
     # a mostly-plain term gets a low share)

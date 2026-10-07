@@ -10,6 +10,7 @@ Every article url can collect several headlines over time. Most pairs aren't edi
 - the wording really changed. Changes that only touch case or punctuation, add or drop a kicker ("WEEKEND:",
   "Exclusive —"), or where one version contains the other (truncation, or a change in how we scrape the page)
   are kept apart as minor."""
+import itertools
 import difflib
 import html
 import hashlib
@@ -107,8 +108,13 @@ def find_edits(days: int = WINDOW_DAYS) -> tuple[pd.DataFrame, pd.DataFrame]:
         return empty, empty
 
     edits, minor = [], []
-    for _, group in df.sort_values('first').groupby('article_id'):
-        records = group.to_dict('records')
+    # Each article's headlines in the order first seen; the table turned into records once (one to_dict per article
+    # took 28 of a build's 112 seconds, Oct 7)
+    # (sorted by time as before, then by article keeping that order: versions first seen in the same scrape stay in
+    # the order they always had)
+    ordered = df.sort_values('first').sort_values('article_id', kind='stable').to_dict('records')
+    for _, group in itertools.groupby(ordered, key=lambda r: r['article_id']):
+        records = list(group)
         for old, new in zip(records, records[1:]):
             if old['title'].strip() == new['title'].strip() or old['last'] >= new['first']:
                 continue  # same words, or both on the page at once
