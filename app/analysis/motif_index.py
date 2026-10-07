@@ -268,6 +268,9 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     import time
     started = time.time()
     outcomes = Counter()  # for the metrics: each claim matched to motifs already there, given a new one, or none
+    # The shortlist the judge chooses from: the learned one (motif_retriever), or the closest 8 without its weights
+    from app.analysis import motif_retriever
+    weights, vectors = motif_retriever.weights(), motif_retriever.Vectors()
     for c in todo:
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
@@ -277,7 +280,14 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             index = load()
             if key(c['claim']) in index['claims']:
                 continue
-            shown = closest(index, c['claim'])
+            shown = None
+            if weights:
+                try:
+                    shown = motif_retriever.shortlist(index, c['claim'], vectors, weights)
+                except Exception as e:  # noqa: BLE001 - the closest 8 will do
+                    logger.warning("Motif retriever failed (%s); the closest motifs instead", e)
+            if shown is None:
+                shown = closest(index, c['claim'])
             named = name_claim(c['claim'], shown)
             if not named:
                 continue

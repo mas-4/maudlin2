@@ -5,6 +5,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **A better shortlist for filing claims.** Filing a claim, the model chooses among the motifs most like it; when the
+  motif a person would have chosen wasn't among them, they added it by hand (over 200 times). The shortlist was the
+  8 closest by one measure. Now several measures of likeness (the motif's description, its nearest claim, the center
+  of its claims, its size, its neighbours in the kind-of tree) are weighed by a small model trained each day on the
+  person's own confirmed filings, and a shortlisted motif brings its broader motif and its kinds along (about 12
+  shown). Re-filing all 372 confirmed claims, each kept out of what it was tested against: the model found 375 of the
+  763 motifs the person had them in (322 before), 47 of the 206 they had added by hand (33), with no more picks the
+  person had taken out (16 both ways).
 - **Proposals sorted by how likely they're approved.** About half the model's kind-of and related proposals were
   rejected. A second read by the same model, asked how likely the person was to accept each one, was little help
   alone: it gave most approved and rejected proposals the same 2 or 3 (and a first prompt that called the person

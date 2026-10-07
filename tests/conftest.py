@@ -48,6 +48,10 @@ def pytest_sessionstart(session):
     stories.RETURNS, stories.MERGES = os.path.join(scratch, 'story_returns.json'), os.path.join(scratch, 'story_merges.json')
     accusations.PER_BUILD = 10 ** 6  # the suite shares one screen: no budget to run out of
     accusations.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-accuse-'), 'accusations.json')
+    # The motif retriever's weights live there too; filing in tests uses the closest motifs unless a test trains it
+    from app.analysis import motif_retriever
+    motif_retriever.WEIGHTS = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-retriever-'), 'motif_retriever.json')
+    motif_retriever.MIN_FILINGS = 10 ** 6
 
 
 @pytest.fixture(scope='session')
