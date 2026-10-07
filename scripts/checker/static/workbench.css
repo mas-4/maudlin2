@@ -125,6 +125,7 @@ html, body.wb { max-width: 100vw; overflow-x: hidden; }
 /* the open motif's title drags too (a click renames it): a grip says so */
 .wb-pname[data-drag]::before { content: '⠿ '; color: #bbb; font-size: .7em; vertical-align: middle; cursor: grab; }
 .wb-pname[data-drag]:hover::before { color: var(--ink); }
+.wb-pname:has(input)::before { display: none; }  /* not while renaming: it pushed the name field onto a line of its own */
 .wb-claim:hover { border-color: #999; }
 .wb-claim.sel { background: #fff4c2; border-color: var(--ink); box-shadow: 2px 2px 0 var(--yellow); }
 .wb-claim.unfiled { border-style: dashed; }
