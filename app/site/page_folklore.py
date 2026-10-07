@@ -14,7 +14,7 @@ from datetime import date
 
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app import bluesky_examples
-from app.analysis import motif_index, narrative_threads
+from app.analysis import accusations, motif_index, narrative_threads
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
 from app.utils.store import read_json
@@ -129,6 +129,7 @@ class FolklorePage:
         pulled = withheld()
         index = motif_index.load()
         threads = narrative_threads.load()
+        screen = accusations.screen()  # claims accusing a named private person of a crime: name swapped out, or held
         floor = max(MIN_PEOPLE, round(report['authors'] / PEOPLE_SHARE)) if report else MIN_PEOPLE
         if report:
             for g in report['found']:
@@ -138,13 +139,19 @@ class FolklorePage:
                 if label.get('retold') and g['authors'] < floor:
                     fewer += 1
                 elif label.get('retold'):
+                    claim = motif_index.corrected(label.get('narrative') or '', index)
+                    shown = screen.shown(claim)
+                    if not shown:
+                        continue
+                    named = shown == claim  # else its cast, posts and earlier tellings may name the person too
                     cards.append({
-                        'claim': motif_index.corrected(label.get('narrative') or '', index), 'people': g['authors'], 'posts': g['posts'],
+                        'claim': shown, 'people': g['authors'], 'posts': g['posts'],
                         'variety': g['variety'], 'variety_pct': round(100 * g['variety']),
                         'genre': label.get('genre', ''), 'genre_emoji': GENRE_EMOJI.get(label.get('genre'), '🧶'),
                         'chapter': '' if label.get('motif_chapter') in (None, '', 'none') else label['motif_chapter'],
                         'motif': label.get('motif', ''),
-                        'villain': label.get('villain'), 'victim': label.get('victim'), 'hero': label.get('hero'),
+                        'villain': label.get('villain') if named else None,
+                        'victim': label.get('victim') if named else None, 'hero': label.get('hero') if named else None,
                         'politics': bool(label.get('politics')),
                         # Shown on the site only from evidence (the lean of the outlets its posts share); the
                         # model's guess, unchecked, only in previews
@@ -158,9 +165,10 @@ class FolklorePage:
                         'story': g.get('story'), 'articles': g.get('articles') or [],
                         'factchecks': g.get('factchecks') or [],
                         'motifs': motif_cards(index, motif_index.corrected(label.get('narrative') or '', index)),
-                        'examples': g['examples'][:4] if Config.debug else [],
-                        'bluesky': bluesky_examples.examples(g.get('uris'), bsky),
-                        'told_before': told_before(threads, report.get('file', ''), label.get('narrative') or '', index),
+                        'examples': g['examples'][:4] if Config.debug and named else [],
+                        'bluesky': bluesky_examples.examples(g.get('uris'), bsky) if named else [],
+                        'told_before': [{**b, 'claim': c} for b in told_before(threads, report.get('file', ''), label.get('narrative') or '', index)
+                                        if (c := screen.shown(b['claim']))],
                     })
                 elif g['kind'] == 'copypasta':
                     copies.append({'people': g['authors'], 'posts': g['posts'],
@@ -170,11 +178,12 @@ class FolklorePage:
         from app.analysis import focus_group
         voters = []
         for url, ep in sorted(focus_group.load().items(), key=lambda kv: kv[1].get('date', ''), reverse=True)[:FOCUS_EPISODES]:
-            said = [{'claim': motif_index.corrected(c['claim'], index), 'side': c.get('side') or ''} for c in ep.get('claims', [])]
-            for c in said:
-                c['motifs'] = motif_cards(index, c['claim'])
+            said = [{'claim': shown, 'side': c.get('side') or '', 'motifs': motif_cards(index, told)}
+                    for c in ep.get('claims', []) if (told := motif_index.corrected(c['claim'], index))
+                    and (shown := screen.shown(told, 'Focus Group'))]
             if said:
                 voters.append({'title': ep['title'], 'date': ep['date'], 'url': url, 'claims': said})
+        screen.save()
         self.template.write({
             'title': 'Folklore', 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
             'report': report, 'cards': cards, 'copies': copies, 'voters': voters,

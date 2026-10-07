@@ -5,6 +5,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-06
+- **Named people accused of crimes.** An outside reader found the motif index, a story page and a saga page showing
+  "Jacob Geller is a rapist who has avoided accountability…", retold by eight people online: an unverified accusation of
+  a serious crime against someone named who holds no public office. Now every claim the site shows from people online
+  or from voters (motifs, folklore, story and saga pages) is first read by gemma4:26b: does it say a person it names
+  committed a crime or abuse? Officials, candidates and household names stay named, and so does anyone our outlets'
+  front-page headlines have named in three or more articles (the model didn't know Howard Lutnick is in the cabinet).
+  Anyone else is replaced by who they are ("A YouTuber is a rapist…"), and their posts, cast and earlier tellings
+  aren't shown with it; a claim whose name can't be swapped out cleanly, or that hasn't been read yet, isn't shown.
+  Fact-checkers' claims are shown as written. Two hand-kept lists override the model: names never shown
+  (`never_named.json`) and names always shown (`always_named.json`). Story and saga pages also show a claim found
+  twice in one night's report, in nearly the same words, once.
 - **A lighter front page.** The front page had become a dashboard, a corpus and a reader at once (an outside reader
   counted 36 links on one story card). The story cards, every outlet's headline on each, moved to their own page,
   Every story (stories.html). The front page keeps the cloud and puts the nine hottest stories (ranked as before) in

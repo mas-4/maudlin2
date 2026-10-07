@@ -39,6 +39,11 @@ def pytest_sessionstart(session):
     from app import bluesky_examples
     bluesky_examples.prepared = lambda: {}
     bluesky_examples.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-bsky-'), 'bluesky_examples.json')
+    # Nor the accusations screen's model (its cache is in the shared data folder too): no one accused
+    from app.analysis import accusations
+    accusations.read = lambda claim: {'accused': []}
+    accusations.PER_BUILD = 10 ** 6  # the suite shares one screen: no budget to run out of
+    accusations.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-accuse-'), 'accusations.json')
 
 
 @pytest.fixture(scope='session')

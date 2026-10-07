@@ -178,14 +178,23 @@ def story_of(link: dict, stories: list[dict], at: datetime | None) -> int | None
     return best
 
 
+SAME_CLAIM = 0.6  # share of words two claims in one report share to be one claim found twice
+
+
+def alike(a: str, b: str) -> bool:
+    x, y = set(WORDS.findall(a.lower())), set(WORDS.findall(b.lower()))
+    return len(x & y) / max(1, len(x | y)) >= SAME_CLAIM
+
+
 def folklore_by_story(stories: list[dict]) -> dict:
     """story id -> the narratives people retold about it over the last week, newest day first: each day's report (not
     only the latest), each narrative with the motifs it's filed under, the earlier days it was told (narrative
     threads) and the focus group episodes where voters voiced it. A narrative told on several days shows once, on its
     latest day."""
-    from app.analysis import focus_group, motif_index, narrative_threads
-    from app.site.page_folklore import motif_cards, told_before
+    from app.analysis import accusations, focus_group, motif_index, narrative_threads
+    from app.site.page_folklore import motif_cards, told_before, withheld
     index, threads = motif_index.load(), narrative_threads.load()
+    screen, pulled = accusations.screen(), withheld()
     episodes = focus_group.load()
     bsky = bluesky_examples.prepared()
     out, seen = defaultdict(list), defaultdict(set)
@@ -198,9 +207,16 @@ def folklore_by_story(stories: list[dict]) -> dict:
                 continue
             sid = story_of(link, stories, day)
             claim = motif_index.corrected(label.get('narrative', ''), index)
-            if sid is None or not claim:
+            if sid is None or not claim or label.get('narrative') in pulled:
                 continue
             before = told_before(threads, report.get('file', ''), claim, index)
+            shown = screen.shown(claim)  # a named private person accused of a crime: swapped out, or held back
+            if not shown:
+                continue
+            twin = next((f for f in out[sid] if f['day'] == day and alike(f['claim'], shown)), None)
+            if twin:  # the same claim found twice in one report, in nearly the same words: one line, both groups' people
+                twin['people'] += g['authors']
+                continue
             same = {motif_index.key(claim)}
             if same & seen[sid]:
                 continue
@@ -209,10 +225,13 @@ def folklore_by_story(stories: list[dict]) -> dict:
             for v in g.get('voters') or []:  # where voters said it: the episode only (we never quote them)
                 url = next((u for u, ep in episodes.items() if ep.get('title') == v.get('episode')), None)
                 voters.append({'title': v.get('episode', ''), 'url': url, 'date': v.get('date', '')})
-            out[sid].append({'claim': claim, 'people': g['authors'], 'relation': link.get('relation', ''), 'day': day,
+            out[sid].append({'claim': shown, 'people': g['authors'], 'relation': link.get('relation', ''), 'day': day,
                              'when': pytz.UTC.localize(day).astimezone(EASTERN).strftime('%b %-d') if day else '',
-                             'motifs': motif_cards(index, claim), 'before': before, 'voters': voters,
-                             'bluesky': bluesky_examples.examples(g.get('uris'), bsky)})
+                             'motifs': motif_cards(index, claim), 'voters': voters,
+                             'before': [{**b, 'claim': c} for b in before if (c := screen.shown(b['claim']))],
+                             # its posts name the person too
+                             'bluesky': [] if shown != claim else bluesky_examples.examples(g.get('uris'), bsky)})
+    screen.save()
     return dict(out)
 
 
@@ -222,7 +241,7 @@ VOTER_CLAIMS = 6
 def voters_by_motif(folklore: list[dict], index: dict | None = None) -> list[dict]:
     """What voters in The Focus Group's episodes told that's filed under the same verified motifs as the story's
     retellings (in our words, as on the motifs page): the same shape, told by ordinary voters, often months before"""
-    from app.analysis import focus_group, motif_index
+    from app.analysis import accusations, focus_group, motif_index
     index = index or motif_index.load()
     episodes = focus_group.load()
     out, have = [], set()
@@ -235,8 +254,11 @@ def voters_by_motif(folklore: list[dict], index: dict | None = None) -> list[dic
                 if c.get('source') != 'Focus Group' or c['claim'] in have:
                     continue
                 have.add(c['claim'])
+                shown = accusations.shown(motif_index.corrected(c['claim'], index), c['source'])
+                if not shown:
+                    continue
                 ep = episodes.get(c.get('ref', ''), {})
-                out.append({'claim': motif_index.corrected(c['claim'], index), 'motif': m, 'url': c.get('ref', ''),
+                out.append({'claim': shown, 'motif': m, 'url': c.get('ref', ''),
                             'episode': ep.get('title', 'The Focus Group'), 'date': c.get('date', '')})
     return sorted(out, key=lambda v: v['date'], reverse=True)[:VOTER_CLAIMS]
 
