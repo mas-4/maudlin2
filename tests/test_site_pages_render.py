@@ -546,8 +546,8 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
         assert 'href="motifs.html#M007"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
         assert 'a model guess nobody checked' not in html  # only motifs a person verified reach the site
-        assert '🦹' not in html and 'role-villain' not in html  # the villain was dropped Oct 7, even from old reports
-        assert '🫂 victim</b> the president' in html
+        # the story's cast (villain, victim, hero) was dropped Oct 7, even from old reports that still carry it
+        assert '🦹' not in html and '🫂' not in html and 'the president' not in html and 'role-' not in html
         assert '🧵 Told on 2 days' in html and '<b>Oct 4</b>, by 7 people: Doctors &lt;keep&gt; him alive' in html
         assert ('A &lt;secret&gt; post' in html) is shows_posts and ('Pasted &lt;words&gt;' in html) is shows_posts
 

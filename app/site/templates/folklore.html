@@ -5,8 +5,7 @@
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>
         <p>Everything on this page is <b>what people are saying</b>, summarized by a language model, not what is true.
-            A claim appearing here does not mean it's true, and many are false. Its genre, motif and cast (victim,
-            hero) describe <b>the shape of the story as its tellers tell it</b>, the way a folklorist
+            A claim appearing here does not mean it's true, and many are false. Its genre and motif describe <b>the shape of the story as its tellers tell it</b>, the way a folklorist
             classifies a legend: they are not truth claims, and they're the same whether people tell the story or
             argue against it. Where a fact-checker has examined a claim, the check is linked (🔎).</p>
     </div>
@@ -27,7 +26,7 @@
                 bots and accounts posting many times an hour are left out.</p>
             <p class="poll-note">For each big group, our local language model reads a few versions and says what they
                 share, whether it's retold or just a shared topic, its genre, the recurring motif it's an instance of (in
-                <a href="motifs.html">our own motif index</a>), and who it casts as victim and hero. When the posts share
+                <a href="motifs.html">our own motif index</a>). When the posts share
                 articles from outlets we follow, those articles are shown (an exact link to the story); otherwise a
                 link to the day's news appears only when the model, choosing among the closest stories with "none" on
                 offer, picks one. When a fact-checker (PolitiFact, Snopes, FactCheck.org, Lead Stories, Full Fact, NewsGuard,
@@ -64,12 +63,6 @@
                 <li><b>Subject</b>: a broad family (crime and danger, health, celebrities, government…), our own list,
                     after the way urban-legend collections such as Jan Harold Brunvand's sort legends into chapters.</li>
             </ul>
-            <h3>The story's cast</h3>
-            <p class="poll-note">Vladimir Propp's <i>Morphology of the Folktale</i> (1928) found that folktales cast
-                their characters in a few fixed parts, whatever the plot. Two of them fit a great deal of political
-                storytelling: 🫂 the <b>victim</b> who suffers harm, and 🦸 the <b>hero</b> who fights back or sets
-                things right. (We asked for the villain too, until Oct 7: the model's picks were too often wrong.) The names in each part are the model's words for
-                who the posts cast there, and a part is left out when the posts don't fill it.</p>
             <h3>Wording and tellers</h3>
             <p class="poll-note"><b>Told by</b> counts different accounts, not posts. <b>How they say it</b> runs from 📋
                 copied (the same words, pasted) to 🗣️ each in their own words; folklore is retold in people's own
@@ -133,13 +126,6 @@
                         <ul class="story-checks" title="Fact-checkers who examined this claim">
                             {% for p in c.factchecks %}<li><a href="{{ p.url|e }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
                         </ul></div>
-                    {% endif %}
-                    {% if c.story_shape and (c.victim or c.hero) %}
-                        <div class="card-section"><p class="section-label">🎭 The story's cast</p>
-                        <p class="narrative-roles" title="Who the story casts in each part, in the model's words">
-                            {% if c.victim %}<span class="role role-victim"><b class="role-name">🫂 victim</b> {{ c.victim|e }}</span>{% endif %}
-                            {% if c.hero %}<span class="role role-hero"><b class="role-name">🦸 hero</b> {{ c.hero|e }}</span>{% endif %}
-                        </p></div>
                     {% endif %}
                     {% if c.articles %}
                         <div class="card-section"><p class="section-label">📎 What they're sharing</p>

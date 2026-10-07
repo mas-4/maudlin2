@@ -34,28 +34,6 @@
     margin: 0.35em 0;
 }
 
-.narrative-roles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin: 0.4em 0;
-}
-
-.role {
-    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
-    padding: 1px 9px;
-    border: 1.5px solid #1f1f2e;
-    border-radius: 999px;
-    max-width: 100%;
-}
-
-.role-name {
-    font-size: 0.85em;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-right: 3px;
-}
-
 .roles-lead {
     width: 100%;
     font-size: 0.85em;
@@ -152,5 +130,3 @@
 
 .narrative-motif a { text-decoration: none; }
 
-.role-victim { background: #e3ebff; }
-.role-hero { background: #d9f7f2; }

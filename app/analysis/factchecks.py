@@ -82,8 +82,6 @@ genre: what kind of story the claim is, one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index the claim fits best, one of {chapters}
 motif: the specific motif in a few words of your own, describing this claim, or ""
 {shapes}
-villain: who the claim casts as the villain, or ""
-victim: who the claim casts as the victim, or ""
 politics: true if it is about politics or public life"""
 
 
@@ -93,10 +91,9 @@ def label_schema() -> dict:
     return {"type": "object", "properties": {
         "claim": {"type": "string", "maxLength": 240},
         "genre": {"type": "string", "enum": GENRES}, "motif_chapter": {"type": "string", "enum": MOTIF_CHAPTERS},
-        "motif": {"type": "string", "maxLength": 80}, "villain": {"type": "string", "maxLength": 120},
-        "victim": {"type": "string", "maxLength": 120}, "politics": {"type": "boolean"},
+        "motif": {"type": "string", "maxLength": 80}, "politics": {"type": "boolean"},
         **SCHEMA_FIELDS},
-        "required": ["claim", *SCHEMA_FIELDS, "genre", "motif_chapter", "motif", "villain", "victim", "politics"]}
+        "required": ["claim", *SCHEMA_FIELDS, "genre", "motif_chapter", "motif", "politics"]}
 
 
 def load_labels() -> dict:
