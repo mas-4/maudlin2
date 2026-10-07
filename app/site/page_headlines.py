@@ -21,8 +21,7 @@ from app.analysis.wording import side_phrases
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
-from app.analysis import textnorm
-from app.analysis.pipelines import Pipelines, prepare
+from app.analysis.pipelines import default_pipeline, prepare
 from app.site.common import SHARED, calculate_xkeyscore, chip_style, copy_assets, outlet_icon, short_name, TemplateHandler
 from app.models import Session, Headline
 from app.site.data import DataHandler, DataTypes
@@ -244,19 +243,7 @@ def match_trends_to_stories(df, trends) -> dict[str, int]:
             matches[trend.topic] = clusters[row.argmax()]
     return matches
 
-pipeline = [
-    textnorm.hyphenated_words,
-    textnorm.quotation_marks,
-    textnorm.normalize_unicode,
-    textnorm.whitespace,
-    textnorm.accents,
-    textnorm.brackets,
-    textnorm.punctuation,
-    str.lower,
-    Pipelines.tokenize,
-    Pipelines.decontract,
-    ' '.join
-]
+pipeline = [*default_pipeline, ' '.join]
 
 
 def pack_table(rows: list[dict]) -> dict:

@@ -8,9 +8,8 @@ import numpy as np
 import pandas as pd
 from wordcloud import WordCloud
 
-from app.analysis import textnorm
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
-from app.analysis.pipelines import Pipelines, STOPWORDS, prepare
+from app.analysis.pipelines import NORMALIZE, STOPWORDS, Pipelines, prepare
 from app.utils import Config
 from app.utils.logger import get_logger
 from app.utils.store import read_json, write_json
@@ -47,13 +46,7 @@ STOPWORDS.extend(list(string.punctuation))
 STOPWORDS = [word.lower() for word in STOPWORDS]
 
 PIPELINE = [
-    textnorm.hyphenated_words,
-    textnorm.quotation_marks,
-    textnorm.normalize_unicode,
-    textnorm.whitespace,
-    textnorm.accents,
-    textnorm.brackets,
-    textnorm.punctuation,
+    *NORMALIZE,
     Pipelines.tokenize,
     Pipelines.expand_contractions,
     partial(Pipelines.remove_stop, stopwords=STOPWORDS),

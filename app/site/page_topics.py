@@ -1,8 +1,7 @@
 import os
 from functools import partial
 
-from app.analysis import textnorm
-from app.analysis.pipelines import Pipelines, STOPWORDS
+from app.analysis.pipelines import NORMALIZE, STOPWORDS, Pipelines
 from app.models import Topic
 from app.site.graphing import Plots
 from app.site.common import copy_assets, TemplateHandler
@@ -14,13 +13,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 stopwords = list(STOPWORDS) + ['ago']
 PIPELINE = [
-    textnorm.hyphenated_words,
-    textnorm.quotation_marks,
-    textnorm.normalize_unicode,
-    textnorm.whitespace,
-    textnorm.accents,
-    textnorm.brackets,
-    textnorm.punctuation,
+    *NORMALIZE,
     Pipelines.tokenize,
     Pipelines.expand_contractions,
     partial(Pipelines.remove_stop, stopwords=stopwords),

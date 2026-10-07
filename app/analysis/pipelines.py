@@ -109,7 +109,9 @@ class Pipelines:
         return [CONTRACTION_EXPANSION_FROM_TOKEN.get(tok, tok) for tok in tokens]
 
 
-default_pipeline = [
+# The text clean-up every pipeline starts with (headline tables, topics, the word cloud): hyphens, quotes, unicode,
+# spacing, accents, brackets and punctuation
+NORMALIZE = [
     textnorm.hyphenated_words,
     textnorm.quotation_marks,
     textnorm.normalize_unicode,
@@ -117,6 +119,10 @@ default_pipeline = [
     textnorm.accents,
     textnorm.brackets,
     textnorm.punctuation,
+]
+
+default_pipeline = [
+    *NORMALIZE,
     str.lower,
     Pipelines.tokenize,
     Pipelines.decontract,
