@@ -864,6 +864,15 @@
     menu.style.top = y + 'px';
     menu._zones = list;
     menu._target = t;
+    menu._from = {x: px, y: py};  // where the pointer was: the way from there to the menu keeps it open (onTheWay)
+  }
+  // Between the spot the menu opened at and the menu itself: crossing a gap or another target on the way to a choice
+  // mustn't close the menu or swap it for that target's (it did, with the menu beyond a pane's edge)
+  function onTheWay(x, y) {
+    if (menu.hidden || !menu._from) return false;
+    const r = menu.getBoundingClientRect(), pad = 14;
+    return x >= Math.min(r.left, menu._from.x) - pad && x <= Math.max(r.right, menu._from.x) + pad
+      && y >= Math.min(r.top, menu._from.y) - pad && y <= Math.max(r.bottom, menu._from.y) + pad;
   }
   function hideMenu() { menu.hidden = true; menu._zones = null; menu._target = null; pinned = null; }
   function scrollerOf(el) { return el && el.closest('[data-scroll]'); }
@@ -905,7 +914,7 @@
     if (z) {
       z.classList.add('hot');
       // the choice already says what it does; the ghost keeps naming what is carried
-    } else {
+    } else if (!onTheWay(ev.clientX, ev.clientY) || (el && el.closest('[data-drop]') === menu._target)) {
       const t = el && el.closest('[data-drop]');
       if (t && t !== menu._target) {
         $$('.dz-target').forEach((x) => x.classList.remove('dz-target'));
