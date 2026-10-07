@@ -255,7 +255,8 @@
   function panel(e, i) {
     const kids = S.kids[e.id] || [];
     const mine = e.groups || [];
-    const groups = S.data.groups.filter((g) => !mine.includes(g.id)).map((g) => `<option value="${g.id}">📁 ${esc(g.name)}</option>`).join('');
+    // groups it isn't in, for the type-to-find box (A to Z, as everywhere)
+    const groups = S.data.groups.filter((g) => !mine.includes(g.id)).map((g) => `<option value="${esc(g.name)}"></option>`).join('');
     const tags = mine.map((g) => `<span class="wb-gtag">📁 ${esc((S.data.groups.find((x) => x.id === g) || {}).name || g)}<button class="wb-x" data-ungroup="${e.id}|${g}" title="out of this group">✕</button></span>`).join('');
     const ns = noteState(e);
     const shared = {};
@@ -282,7 +283,8 @@
       </header>
       <div class="wb-rels">
         <span class="wb-rlabel">📁 groups</span>
-        <div class="wb-rchips">${tags}${groups ? `<select data-group="${e.id}" title="put it in a group as well (a motif can be in several)"><option value="">＋ group…</option>${groups}</select>` : ''}</div>
+        <div class="wb-rchips">${tags}<input class="wb-gadd" data-groupadd="${e.id}" list="gl-${e.id}" placeholder="＋ group… type to find" autocomplete="off"
+          title="type to find a group and pick it to put it in as well (a motif can be in several); a new name and Enter makes a new group with it in"><datalist id="gl-${e.id}">${groups}</datalist></div>
         <span class="wb-rlabel">🎭 genre</span>
         <div class="wb-rchips"><select data-genre="${e.id}" title="its genre"><option value="">no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
         <span class="wb-rlabel">↳ a kind of</span>
@@ -1337,15 +1339,33 @@
     }
   });
   document.addEventListener('keydown', (ev) => {
+    if (ev.target.dataset && ev.target.dataset.groupadd !== undefined && ev.key === 'Enter') { ev.preventDefault(); addToGroup(ev.target, true); return; }
     if (ev.target.id === 'cl-q' && ev.key === 'Enter') {
       ev.preventDefault();
       const make = $('#cl-new');
       if (make) make.focus();
     }
   });
+  // The group box: a group picked (or typed in full) puts the motif in it; Enter on a name no group has makes a new one
+  function addToGroup(input, enter) {
+    const name = input.value.trim(), id = input.dataset.groupadd;
+    if (!name) return;
+    const g = S.data.groups.find((x) => x.name.toLowerCase() === name.toLowerCase());
+    if (g) {
+      input.value = '';
+      if (!(S.by[id].groups || []).includes(g.id)) act({action: 'group_member', id, group: g.id}, `📁 in ${g.name} too`);
+    } else if (enter) {
+      input.value = '';
+      act({action: 'group_new', name, id}, `📁 new group ${name}, with it in`);
+    }
+  }
+  // picked from the suggestions (the browser fills the box with the whole name)
+  document.addEventListener('input', (ev) => {
+    if (ev.target.dataset && ev.target.dataset.groupadd !== undefined && ev.inputType === 'insertReplacementText') addToGroup(ev.target, false);
+  });
   document.addEventListener('change', (ev) => {
     const t = ev.target;
-    if (t.dataset.group !== undefined && t.value) act({action: 'group_member', id: t.dataset.group, group: t.value}, '📁 in the group too');
+    if (t.dataset.groupadd !== undefined) addToGroup(t, false);
     if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
     if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); renderTree(); }
   });
