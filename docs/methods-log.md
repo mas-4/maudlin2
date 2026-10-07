@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-07
+- **No more villain.** The folklore labeller named who each narrative casts as the villain (Propp's part), and its
+  picks were too often wrong to show. It no longer asks, and the Folklore page, the checker and the reports leave the
+  part out, old reports included; the victim and the hero stay. Fact-checks' labels still carry a villain field,
+  unused and never shown (rewording that prompt would relabel every fact-check and the claims filed from them).
 - **A story back on the front pages stays one story.** A news cluster continues the saved story that holds most of its
   headlines; one that left the front pages and came back hours later under fresh headlines shared none, and became a
   new story. The physics Nobel was on one noon run on Oct 6, gone, and back at 5 PM as a second story: a saga of two

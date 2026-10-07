@@ -184,7 +184,7 @@ function openPicker(claim, from) { pick = {claim, from}; detailHtml = ''; $('#pi
 async function loadDetail(claim) {
   const d = await (await fetch('/claim-detail.json?claim=' + encodeURIComponent(claim))).json();
   const lab = d.label || {};
-  const labels = ['genre', 'rumor_class', 'family', 'villain', 'victim', 'hero'].filter((k) => lab[k] && lab[k] !== 'none')
+  const labels = ['genre', 'rumor_class', 'family', 'victim', 'hero'].filter((k) => lab[k] && lab[k] !== 'none')
     .map((k) => `<span class="lab">${k.replace('_', ' ')}: ${esc(lab[k])}</span>`).join(' ');
   if (d.kind === 'fact-check') {
     detailHtml = `<p><b>${esc(d.title || 'Fact-check')}</b> <span class="meta">${esc(d.source)} · ${esc(d.published || '')}</span>

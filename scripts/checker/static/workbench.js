@@ -945,7 +945,7 @@
       x.context ? `Quote: ${x.context.before}${x.context.quote}${x.context.after}` : x.quote ? `Quote: “${x.quote}”` : '',
       x.people ? `Told by ${x.people} people` : '',
       x.summary || '',
-      ['genre', 'villain', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${lab[k]}`).join(' · '),
+      ['genre', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${lab[k]}`).join(' · '),
       posts.length ? `Posts (${posts.length}):\n${posts.join('\n')}` : '',
     ].filter(Boolean).join('\n');
   }
@@ -984,7 +984,7 @@
           + x.all_posts.map((p) => `<q>${esc(p.text)}${p.n > 1 ? ` <b class="wb-faint">×${p.n}</b>` : ''}${p.reply ? ' <span class="wb-faint">↩ reply</span>' : ''}${p.source === 'mastodon' ? ' <span class="wb-faint">🐘</span>' : ''}</q>`).join('') + '</details>'
         : (x.examples || []).map((t) => `<q>${esc(t)}</q>`).join('') + (x.posts > (x.examples || []).length ? `<span class="wb-faint">${(x.examples || []).length} of ${x.posts} posts: the report kept only a sample</span>` : ''),
       x.summary ? esc(x.summary) : '',
-      ['genre', 'villain', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${esc(lab[k])}`).join(' · '),
+      ['genre', 'victim', 'hero'].filter((k) => lab[k]).map((k) => `${k}: ${esc(lab[k])}`).join(' · '),
       (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `the model's words: ${w.map((m) => '“' + esc(m) + '”').join(' · ')}` : ''; })(),
     ].filter(Boolean).map((s) => `<div>${s}</div>`).join('');
   }

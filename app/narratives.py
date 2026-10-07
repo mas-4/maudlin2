@@ -10,7 +10,8 @@ words. Copypasta and coordinated posting travel as the same words from few hands
    from a few: copypasta, listed apart.
 3. The local language model reads up to SAMPLE versions of each big candidate and says what claim they share, whether
    it's a retold narrative (a story, rumor or saying people repeat) or just a shared topic, its genre, its chapter
-   of Thompson's Motif-Index and a specific motif, who is cast as villain, victim, hero and helper (Propp's roles),
+   of Thompson's Motif-Index and a specific motif, who is cast as victim and hero (Propp's roles; the villain was
+   dropped Oct 7: the model's picks were too often wrong to show),
    and whether it's about politics, from which side. Answers are cached by the versions shown.
 4. Cross-checks: today's news stories (which story it rides on, if any) and the Focus Group transcripts (research
    only: they rarely overlap a day of social posts, and a yes-or-no check matched nearly anything, so the voters'
@@ -76,9 +77,7 @@ motif_chapter: the chapter of Thompson's Motif-Index it fits best, one of {chapt
 motif: the specific motif in a few words of your own, describing these posts, or ""
 {shapes}
 For the parts below, take the point of view of the people telling the narrative: how THEY cast it, whether or not
-it's true. Many stories have no villain, no victim or no hero; say so rather than filling a part.
-has_villain: does the story, as its tellers tell it, cast someone as the villain who does harm?
-villain: who, or "" if not
+it's true. Many stories have no victim or no hero; say so rather than filling a part.
 has_victim: does it cast someone as the victim who suffers harm?
 victim: who, or "" if not
 has_hero: does it cast someone as the hero or rescuer who sets things right?
@@ -90,12 +89,11 @@ from app.analysis.rumor_shapes import SCHEMA_FIELDS as SHAPE_FIELDS, prompt_fiel
 SCHEMA = {"type": "object", "properties": {
     "narrative": {"type": "string"}, "retold": {"type": "boolean"}, "genre": {"type": "string", "enum": GENRES},
     "motif_chapter": {"type": "string", "enum": MOTIF_CHAPTERS}, "motif": {"type": "string"},
-    "has_villain": {"type": "boolean"}, "villain": {"type": "string"},
     "has_victim": {"type": "boolean"}, "victim": {"type": "string"},
     "has_hero": {"type": "boolean"}, "hero": {"type": "string"},
     "politics": {"type": "boolean"}, "side": {"type": "string", "enum": ['left', 'right', 'both', 'none']},
     **SHAPE_FIELDS},
-    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", *SHAPE_FIELDS, "has_villain", "villain", "has_victim",
+    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", *SHAPE_FIELDS, "has_victim",
                  "victim", "has_hero", "hero", "politics", "side"]}
 # A narrative counts only if at least this share of its sampled posts are about its claim (telling it or arguing
 # over it alike). Oct 4: a group of trans people talking about their own gender was labeled with an anti-trans claim
@@ -245,7 +243,7 @@ def label(group: dict, cache: dict) -> dict | None:
         if not answer:
             return None
         settle(answer)  # a conspiracy scope only when a secret plot is claimed
-        for part in ('villain', 'victim', 'hero'):  # a part the model says the story lacks stays empty
+        for part in ('victim', 'hero'):  # a part the model says the story lacks stays empty
             if not answer.get(f'has_{part}'):
                 answer[part] = ''
         cache[key] = {**answer, 'model': llm.model()}
@@ -554,7 +552,7 @@ def markdown(out: dict) -> str:
     lines += ['## Retold narratives', '']
     for g in told:
         lab = g['label']
-        roles = ', '.join(f'{r}: {lab[r]}' for r in ('villain', 'victim', 'hero') if lab.get(r))
+        roles = ', '.join(f'{r}: {lab[r]}' for r in ('victim', 'hero') if lab.get(r))
         lines.append(f"### {lab['narrative']}")
         lines.append(f"{g['authors']} people, {g['posts']} posts, wording variety {g['variety']} ({g['kind']}); "
                      f"{lab['genre']}; motif {lab['motif_chapter']}: {lab['motif'] or '-'}; "

@@ -1,6 +1,6 @@
 """Folklore (work in progress, #142): the folklore-shaped narratives in what people say on Bluesky and Mastodon, from the
 latest nightly report (app/narratives.py). A card per retold narrative: the claim in the model's words, how many
-people tell it and how varied their wording is, its genre and Motif-Index motif, who it casts as villain, victim and
+people tell it and how varied their wording is, its genre and Motif-Index motif, who it casts as victim and
 hero, and the news story it rides on.
 
 People's own posts are never shown on the published site, only the model's summary of what they share: even without
@@ -150,7 +150,6 @@ class FolklorePage:
                         'genre': label.get('genre', ''), 'genre_emoji': GENRE_EMOJI.get(label.get('genre'), '🧶'),
                         'chapter': '' if label.get('motif_chapter') in (None, '', 'none') else label['motif_chapter'],
                         'motif': label.get('motif', ''),
-                        'villain': label.get('villain') if named else None,
                         'victim': label.get('victim') if named else None, 'hero': label.get('hero') if named else None,
                         'politics': bool(label.get('politics')),
                         # Shown on the site only from evidence (the lean of the outlets its posts share); the
