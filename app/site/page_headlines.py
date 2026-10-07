@@ -296,6 +296,21 @@ def unpack_table(data: dict) -> list[dict]:
     return rows
 
 
+FOLD_RUN = 3  # this many parts in a row off the front pages fold into one line on the front page's saga cards
+
+
+def part_runs(parts: list[dict]) -> list[dict]:
+    """A saga's parts as runs for its front-page card, numbered from 1: [{fold, parts: [(n, part)]}]. Parts on the
+    front pages stand on their own; FOLD_RUN or more in a row that have left them fold away"""
+    runs = []
+    for n, part in enumerate(parts, start=1):
+        if runs and not part['now'] and not runs[-1]['now']:
+            runs[-1]['parts'].append((n, part))
+        else:
+            runs.append({'now': part['now'], 'parts': [(n, part)]})
+    return [{'fold': not r['now'] and len(r['parts']) >= FOLD_RUN, 'parts': r['parts']} for r in runs]
+
+
 class HeadlinesPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
@@ -514,6 +529,7 @@ class HeadlinesPage:
                                           'age': age_text((now - part['first_seen']).total_seconds() / 3600),
                                           'feelings': []})
             saga['started'] = saga['parts'][0]['age']
+            saga['runs'] = part_runs(saga['parts'])
         self.context['saga_list'] = sorted(sagas.values(), key=lambda s: -s['outlets'])
         df['group'] = df['cluster'].map(lambda k: saga_of.get(k, k))
         self.curators(df, clusters_list)
