@@ -27,7 +27,12 @@ main { flex: 1; display: flex; min-height: 0; }
 .map-drops { display: inline-flex; gap: 6px; margin-left: auto; }
 .map-drop { border: 2px dashed #1f1f2e; border-radius: 999px; padding: 1px 10px; background: #fff; font-weight: 600; }
 body.dragging .map-drop { background: #eef9f7; }
-.map-hull { stroke-width: 1.5px; stroke-linejoin: round; fill-opacity: .13; stroke-opacity: .55; pointer-events: none; }
+.node.map-msel circle { stroke: #ff4fa3; stroke-width: 4.5px; stroke-dasharray: none; }
+#map-selbar { position: absolute; left: 50%; transform: translateX(-50%); top: 6px; z-index: 6; background: #fff4c2; border: 2px solid #1f1f2e;
+  border-radius: 999px; padding: 2px 12px; font-size: .88em; box-shadow: 2px 2px 0 #1f1f2e; }
+#map-selbar button { font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; cursor: pointer; padding: 0 8px; }
+.map-box { fill: rgba(255, 79, 163, .08); stroke: #ff4fa3; stroke-dasharray: 4 3; pointer-events: none; }
+.map-blob { opacity: .16; pointer-events: none; } .map-blob circle { stroke: none; } .map-blob line { stroke-linecap: round; }
 .map-glabel { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 4px; }
 .map-gchip { border: 2px solid var(--g); border-radius: 999px; padding: 1px 10px; background: color-mix(in srgb, var(--g) 15%, white); font-weight: 600; cursor: pointer; user-select: none; }
 .map-gchip.off { opacity: .45; text-decoration: line-through; } body.dragging .map-gchip { border-style: dashed; }
@@ -72,13 +77,20 @@ h3[data-id] .grip { cursor: grab; }
     <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> a kind of one · fill: its genre</span>
   <span class="key" id="genre-chips" title="a dot's color is its genre: click one to pick out its motifs; drag a motif onto one to give it that genre"></span>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
-<datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
+<datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="map-selbar" hidden></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const q = (t) => '“' + t + '”';
 const $ = (s) => document.querySelector(s);
 let data, byId, nodes = [], links = [], sim, focus = null;
+const picked = new Set();  // motifs selected on the map (ctrl/shift-click a dot, or shift-drag a box): dragged together
+function markPicked() {
+  d3.selectAll('.node').classed('map-msel', (n) => picked.has(n.id));
+  const bar = $('#map-selbar');
+  bar.hidden = !picked.size;
+  bar.innerHTML = picked.size ? `☑️ <b>${picked.size}</b> selected · drag any of them to move them all <button id="clear-picked">✕ clear</button>` : '';
+}
 const kept = new Map();  // positions kept across redraws
 async function act(body) {
   const r = await fetch('/workbench', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -118,23 +130,37 @@ function draw() {
   svg.append('defs').append('marker').attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 10).attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
     .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#0a8f7e');
   const root = svg.append('g');
-  zoomer = d3.zoom().scaleExtent([0.15, 5]).filter((ev) => ev.type === 'wheel' || (!ev.target.closest('.node') && !ev.ctrlKey && !ev.button))
+  zoomer = d3.zoom().scaleExtent([0.15, 5]).filter((ev) => ev.type === 'wheel' || (!ev.target.closest('.node') && !ev.ctrlKey && !ev.shiftKey && !ev.button))
     .on('zoom', (ev) => { root.attr('transform', ev.transform); $('#menu').style.display = 'none'; });
   svg.call(zoomer);
   const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
   // Groups: a soft area around each group's motifs, with its name (drawn first, under everything)
   const shown = data.groups.filter((g) => !hiddenGroups.has(g.id));
   const hulls = root.append('g').selectAll('g').data(shown, (g) => g.id).join('g');
-  hulls.append('path').attr('class', 'map-hull').attr('fill', (g) => groupColor(g.id)).attr('stroke', (g) => groupColor(g.id));
+  hulls.append('g').attr('class', 'map-blob').attr('fill', (g) => groupColor(g.id)).attr('stroke', (g) => groupColor(g.id));
   hulls.append('text').attr('class', 'map-glabel').attr('fill', (g) => groupColor(g.id)).attr('text-anchor', 'middle').text((g) => '📁 ' + g.name);
   const members = (g) => nodes.filter((n) => (n.e.groups || []).includes(g.id));
+  // A group as a blob hugging its members (a bubble set): a bubble round each, joined by bands along the shortest links
+  // between them (a minimum spanning tree), a band longer than BLOB_GAP cut, so a far-off member is an island of its
+  // own. Until Oct 7 a convex hull round all of them took in every motif in between (non-members looked like members)
   function drawHulls() {
     hulls.each(function (g) {
-      const pts = [];
-      members(g).forEach((n) => { const pad = r(n) + 14; for (let a = 0; a < 12; a++) pts.push([n.x + pad * Math.cos(a * Math.PI / 6), n.y + pad * Math.sin(a * Math.PI / 6)]); });
-      const hull = pts.length >= 3 ? d3.polygonHull(pts) : null;
-      d3.select(this).select('path').attr('d', hull ? 'M' + hull.join('L') + 'Z' : null);
-      d3.select(this).select('text').attr('x', hull ? d3.mean(hull, (p) => p[0]) : -9999).attr('y', hull ? d3.min(hull, (p) => p[1]) - 4 : -9999);
+      const ms = members(g), pad = (n) => r(n) + 14, edges = [];
+      if (ms.length > 1) {
+        const inTree = new Set([0]), best = ms.map((n) => [Math.hypot(n.x - ms[0].x, n.y - ms[0].y), 0]);
+        while (inTree.size < ms.length) {
+          let k = -1;
+          ms.forEach((_, i) => { if (!inTree.has(i) && (k < 0 || best[i][0] < best[k][0])) k = i; });
+          inTree.add(k);
+          if (best[k][0] <= BLOB_GAP) edges.push([ms[best[k][1]], ms[k]]);
+          ms.forEach((n, i) => { if (!inTree.has(i)) { const d = Math.hypot(n.x - ms[k].x, n.y - ms[k].y); if (d < best[i][0]) best[i] = [d, k]; } });
+        }
+      }
+      const blob = d3.select(this).select('.map-blob');
+      blob.selectAll('circle').data(ms, (n) => n.id).join('circle').attr('cx', (n) => n.x).attr('cy', (n) => n.y).attr('r', pad);
+      blob.selectAll('line').data(edges).join('line').attr('x1', (e) => e[0].x).attr('y1', (e) => e[0].y).attr('x2', (e) => e[1].x).attr('y2', (e) => e[1].y)
+        .attr('stroke-width', (e) => 1.6 * Math.min(pad(e[0]), pad(e[1])));
+      d3.select(this).select('text').attr('x', ms.length ? d3.mean(ms, (n) => n.x) : -9999).attr('y', ms.length ? d3.min(ms, (n) => n.y - pad(n)) - 4 : -9999);
     });
   }
   const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
@@ -150,8 +176,36 @@ function draw() {
   node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name)
     .attr('class', (n) => n.e.claims.length > 1 || n.e.parents.length || data.entries.some((x) => x.parents.includes(n.id)) ? '' : 'minor');
   node.append('title').text((n) => `${n.e.name} (${n.e.claims.length} claim${n.e.claims.length === 1 ? '' : 's'})${n.e.note ? '\n' + n.e.note : ''}`);
-  node.on('click', (ev, n) => { ev.stopPropagation(); show(n.id); });
-  svg.on('click', () => show(null));
+  node.on('click', (ev, n) => {
+    ev.stopPropagation();
+    if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { picked.has(n.id) ? picked.delete(n.id) : picked.add(n.id); return markPicked(); }
+    show(n.id);
+  });
+  svg.on('click', (ev) => { if (boxed) { boxed = false; return; } show(null); if (picked.size && !ev.shiftKey) { picked.clear(); markPicked(); } });
+  // shift-drag across the background: a box, and every dot in it selected (added to what's selected)
+  let box = null, boxed = false;
+  svg.on('pointerdown.box', (ev) => {
+    if (!ev.shiftKey || ev.button || ev.target.closest('.node')) return;
+    const [x, y] = d3.pointer(ev, root.node());
+    box = {x, y, el: root.append('rect').attr('class', 'map-box').attr('x', x).attr('y', y)};
+    svg.node().setPointerCapture(ev.pointerId);
+  }).on('pointermove.box', (ev) => {
+    if (!box) return;
+    const [x, y] = d3.pointer(ev, root.node());
+    box.el.attr('x', Math.min(x, box.x)).attr('y', Math.min(y, box.y)).attr('width', Math.abs(x - box.x)).attr('height', Math.abs(y - box.y));
+    box.to = [x, y];
+  }).on('pointerup.box', () => {
+    if (!box) return;
+    if (box.to) {
+      const [x0, x1] = [box.x, box.to[0]].sort((a, b) => a - b), [y0, y1] = [box.y, box.to[1]].sort((a, b) => a - b);
+      nodes.forEach((n) => { if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1) picked.add(n.id); });
+      markPicked();
+      boxed = true;
+    }
+    box.el.remove();
+    box = null;
+  });
+  markPicked();
   sim = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => (l.kind === 'shared' ? 0.15 : 0.6) * (crossing(l) ? 0.2 : 1)))
     .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
@@ -162,6 +216,18 @@ function draw() {
       // its own center and pushing groups apart lost to the links (every pair of 8 groups still overlapped, Oct 7)
       const homes = new Map(), ring = 0.42 * Math.min(W, H);
       shown.forEach((g, k) => { const t = 2 * Math.PI * k / Math.max(1, shown.length) - Math.PI / 2; homes.set(g.id, [W / 2 + 1.5 * ring * Math.cos(t), H / 2 + ring * Math.sin(t)]); });
+      // a motif not in a group is kept off that group's members, so it never sits inside the group's blob
+      shown.forEach((g) => {
+        const ms = members(g);
+        if (!ms.length) return;
+        nodes.forEach((n) => {
+          if ((n.e.groups || []).includes(g.id)) return;
+          ms.forEach((m) => {
+            const dx = n.x - m.x, dy = n.y - m.y, d = Math.hypot(dx, dy) || 1, room = r(m) + r(n) + 30;
+            if (d < room) { const f = (room - d) / d * 0.5 * alpha; n.vx += dx * f; n.vy += dy * f; }
+          });
+        });
+      });
       nodes.forEach((n) => {
         const hs = (n.e.groups || []).map((g) => homes.get(g)).filter(Boolean);
         if (!hs.length) return;
@@ -184,6 +250,7 @@ function draw() {
 }
 let zoomer;
 const hiddenGroups = new Set(JSON.parse(localStorage.getItem('map-hidden-groups') || '[]'));
+const BLOB_GAP = 180;  // members further apart than this aren't joined in their group's blob
 const GROUP_PULL = 0.9;  // how hard a group's motifs are drawn to its home (links pull them toward their neighbours elsewhere)
 // A link from a motif in a group to one outside all its groups pulls a fifth as hard, so groups keep to their homes
 const crossing = (l) => {
@@ -325,6 +392,7 @@ function onCardClick(ev) {
   const a = t.closest('a.go'); if (a) center(a.dataset.id);
 }
 $('#info').addEventListener('click', onCardClick);
+document.addEventListener('click', (ev) => { if (ev.target.id === 'clear-picked') { picked.clear(); markPicked(); } });
 $('#desk').addEventListener('click', onCardClick);
 // A card's name and note edit in place: the name saves on Enter or on leaving it, the note on leaving it (Escape puts
 // either back as it was)
@@ -359,14 +427,49 @@ function center(id, again) {
 }
 // Drag and drop, as on the workbench (drag.js): a dot, a name in the tree or the motif's box title is a motif; a claim
 // in the box is a claim. Over a dot or a name its choices pop up; let go on one.
+// Are you sure? asked on the page (no pop-up): a yes and a cancel in the little menu
+function sureMenu(text, ok) {
+  return new Promise((done) => {
+    const m = $('#menu');
+    m.innerHTML = `<p>${text}</p><button data-yes>${ok}</button><button data-no>cancel</button>`;
+    m.style.left = '40%'; m.style.top = '60px'; m.style.display = 'block';
+    m.onclick = (ev) => { if (ev.target.closest('[data-yes]')) { m.style.display = 'none'; done(true); } if (ev.target.closest('[data-no]')) { m.style.display = 'none'; done(false); } };
+  });
+}
+// Several selected motifs dropped together: the same choices as one, for all of them (one undo step)
+function manyZones(ids, t) {
+  const n = `${ids.length} motifs`, all = (steps, then) => () => act(steps.length === 1 ? steps[0] : {action: 'batch', steps}).then(() => { picked.clear(); markPicked(); if (then) then(); });
+  if (t.id === 'desk-drop') return [{label: `📌 all ${ids.length} on the desk`, say: 'each stays open on the right', run: () => { ids.forEach(pin); picked.clear(); markPicked(); }}];
+  if (t.classList.contains('map-genre')) {
+    const v = t.dataset.genre;
+    return [{label: v ? `🎭 all: ${v}` : '🎭 all: no genre', say: `${n} given ${v ? 'the genre ' + q(v) : 'no genre'}.`, run: all(ids.map((id) => ({action: 'facet', id, facet: 'genre', value: v || null})))}];
+  }
+  if (t.classList.contains('map-gnew')) return [];
+  if (t.classList.contains('map-gchip')) {
+    const g = data.groups.find((x) => x.id === t.dataset.g);
+    if (!g) return [];
+    const todo = ids.filter((id) => !(byId[id].groups || []).includes(g.id));
+    return todo.length ? [{label: `📁 all into ${g.name}`, say: `${todo.length} more motifs in ${q(g.name)}.`, run: all(todo.map((id) => ({action: 'group_member', id, group: g.id})))}] : [];
+  }
+  if (t.dataset.drop === 'trash') return [{label: `🗑️ delete all ${ids.length}`, say: 'their claims stay in their other motifs', run: () => sureMenu(`🗑️ Delete ${n}?`, '🗑️ delete them').then((ok) => ok && all(ids.map((id) => ({action: 'delete', id})))())}];
+  if (t.dataset.drop) return [];
+  const m = byId[motifOf(t)], rest = m ? ids.filter((id) => id !== m.id) : [];
+  if (!m || !rest.length) return [];
+  return [{label: `⤵ merge all ${rest.length} into it`, say: `they go; their claims join ${q(m.name)}.`, run: () => sureMenu(`⤵ Merge ${rest.length} motifs into “${esc(m.name)}”?`, '⤵ merge them').then((ok) => ok && all(rest.map((id) => ({action: 'merge', source: id, target: m.id})))())},
+          {label: '⊂ all kinds of it', say: `each a kind of ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'parent', id, parent: m.id})))},
+          {label: '↔ all related to it', say: `each related to ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'relate', a: id, b: m.id})))}];
+}
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
 dragZones({
   handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim], #desk h3[data-id], #desk li[data-claim]',
   target: '.node, #tree span[data-id], .map-drop, .map-gchip, .map-genre, #desk-drop, #desk h3[data-id]', minWidth: 300,
-  item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: h.closest('[data-motif]')?.dataset.motif || focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
-  label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
+  item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: h.closest('[data-motif]')?.dataset.motif || focus}
+    : picked.size > 1 && picked.has(motifOf(h)) ? {type: 'motifs', ids: [...picked].filter((i) => byId[i])}
+    : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
+  label: (item) => item.type === 'motifs' ? `🧩 ${item.ids.length} motifs` : '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
   name: (t) => t.classList.contains('map-genre') ? 'onto the genre ' + (t.dataset.genre || 'none') : t.classList.contains('map-drop') || t.id === 'desk-drop' || t.classList.contains('map-gnew') ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
   zones: (item, t) => {
+    if (item.type === 'motifs') return manyZones(item.ids, t);
     if (t.id === 'desk-drop') {
       const id = item.type === 'motif' ? item.id : item.from;
       return byId[id] ? [{label: '📌 open on the desk', say: `${q(byId[id].name)} stays open on the right while you work.`, run: () => pin(id)}] : [];

@@ -693,8 +693,8 @@ def facet_values(index: dict | None = None) -> dict[str, list[str]]:
     for facet, start in FACETS.items():
         used = [e.get('facets', {}).get(facet) for e in live(index)]
         hidden = set(index.get('facet_hidden', {}).get(facet, []))  # starting values a person renamed or removed
-        out[facet] = list(dict.fromkeys([v for v in start if v not in hidden] + index.get('facet_values', {}).get(facet, [])
-                                        + [u for u in used if u]))
+        out[facet] = sorted(dict.fromkeys([v for v in start if v not in hidden] + index.get('facet_values', {}).get(facet, [])
+                                          + [u for u in used if u]), key=str.lower)  # A to Z
     return out
 
 
@@ -827,7 +827,8 @@ def board() -> dict:
                             **({'variants': [v['claim'] for v in c['variants']]} if c.get('variants') else {})}
                            for c in e['claims']]}
                for e in live(index)]
-    return {'groups': list(index.get('groups', {}).values()), 'entries': entries, 'facets': facet_values(index)}
+    groups = sorted(index.get('groups', {}).values(), key=lambda g: g['name'].lower())  # A to Z wherever they're listed
+    return {'groups': groups, 'entries': entries, 'facets': facet_values(index)}
 
 
 @exclusive
