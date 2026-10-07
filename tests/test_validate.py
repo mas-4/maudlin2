@@ -217,6 +217,9 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
     validate.workbench_action({'action': 'batch', 'steps': [{'action': 'parent', 'id': 'M002', 'parent': 'M003'},
                                                              {'action': 'not_same', 'a': 'M001', 'b': 'M004'}]})
     assert mi.board()['entries'][1]['parents'] == ['M003'] and ['M001', 'M004'] in validate.workbench_state()['not_same']
+    validate.workbench_action({'action': 'group_new', 'name': 'Archetypes', 'id': 'M002'})  # the map's ＋ new group
+    gid = next(g['id'] for g in mi.board()['groups'] if g['name'] == 'Archetypes')
+    assert mi.groups_of(mi.load()['entries']['M002']) == [gid]
     validate.workbench_action({'action': 'check', 'claim': 'c', 'id': 'M002', 'answer': 'yes'})
     assert '"answer": "yes"' in open(tmp_path / 'v.jsonl').read()
     for bad in ({'action': 'batch', 'steps': [{'action': 'batch', 'steps': []}]}, {'action': 'check', 'claim': 'c', 'id': 'M002', 'answer': 'maybe'},

@@ -164,10 +164,11 @@ const GROUP_PULL = 0.4;  // how hard a group's motifs drift together (links pull
 const GROUP_COLORS = ['#ff4fa3', '#3a86ff', '#ff6b1a', '#8a5cff', '#00a896', '#e0a800'];
 const groupColor = (gid) => GROUP_COLORS[Math.max(0, data.groups.findIndex((g) => g.id === gid)) % GROUP_COLORS.length];
 function groupChips() {
-  $('#group-chips').innerHTML = data.groups.length ? data.groups.map((g) => `<span class="map-gchip${hiddenGroups.has(g.id) ? ' off' : ''}" data-g="${g.id}" style="--g: ${groupColor(g.id)}">📁 ${esc(g.name)} <span class="meta">${data.entries.filter((e) => (e.groups || []).includes(g.id)).length}</span></span>`).join(' ')
-    : '<span class="meta">no groups yet (make them on the workbench)</span>';
+  $('#group-chips').innerHTML = data.groups.map((g) => `<span class="map-gchip${hiddenGroups.has(g.id) ? ' off' : ''}" data-g="${g.id}" style="--g: ${groupColor(g.id)}">📁 ${esc(g.name)} <span class="meta">${data.entries.filter((e) => (e.groups || []).includes(g.id)).length}</span></span>`).join(' ')
+    + ' <span class="map-gchip map-gnew" style="--g: #8a8f98" title="click to make a new group, or drop a motif here to start one with it">＋ new group</span>';
 }
 $('#group-chips').addEventListener('click', (ev) => {
+  if (ev.target.closest('.map-gnew')) return newGroup(null);
   const c = ev.target.closest('.map-gchip'); if (!c) return;
   hiddenGroups.has(c.dataset.g) ? hiddenGroups.delete(c.dataset.g) : hiddenGroups.add(c.dataset.g);
   try { localStorage.setItem('map-hidden-groups', JSON.stringify([...hiddenGroups])); } catch (e) { /* private window */ }
@@ -263,11 +264,15 @@ dragZones({
   target: '.node, #tree span[data-id], .map-drop, .map-gchip, #desk-drop, #desk h3[data-id]', minWidth: 300,
   item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: h.closest('[data-motif]')?.dataset.motif || focus} : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
   label: (item) => '🧩 ' + (item.type === 'claim' ? item.claim.slice(0, 70) + (item.claim.length > 70 ? '…' : '') : byId[item.id].name),
-  name: (t) => t.classList.contains('map-drop') || t.id === 'desk-drop' ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
+  name: (t) => t.classList.contains('map-drop') || t.id === 'desk-drop' || t.classList.contains('map-gnew') ? '' : t.classList.contains('map-gchip') ? 'onto the group ' + t.textContent.trim() : 'onto 🧩 ' + byId[motifOf(t)].name,
   zones: (item, t) => {
     if (t.id === 'desk-drop') {
       const id = item.type === 'motif' ? item.id : item.from;
       return byId[id] ? [{label: '📌 open on the desk', say: `${q(byId[id].name)} stays open on the right while you work.`, run: () => pin(id)}] : [];
+    }
+    if (t.classList.contains('map-gnew')) {
+      const id = item.type === 'motif' ? item.id : item.from;
+      return byId[id] ? [{label: '📁 a new group with it', say: `Start a group with ${q(byId[id].name)} in it (name it next).`, run: () => newGroup(id)}] : [];
     }
     if (t.classList.contains('map-gchip')) {
       if (item.type !== 'motif') return [];
@@ -305,6 +310,16 @@ dragZones({
                 : {label: '↔ related', say: 'Near each other, different stories: both stay, linked.', run: () => act({action: 'relate', a: a.id, b: m.id})}];
   },
 });
+// A new group's name, typed on the page: Enter makes it (with the motif dropped on ＋ new group in it, if any)
+function newGroup(id) {
+  const m = $('#menu'), at = document.querySelector('.map-gnew').getBoundingClientRect(), box = $('#graph').getBoundingClientRect();
+  m.innerHTML = `<p>📁 A new group${id ? ` with <span class="say">${esc(byId[id].name)}</span>` : ''}</p><input id="group-name" placeholder="its name, then Enter"><button data-go>📁 make it</button><button data-cancel>cancel</button>`;
+  m.style.left = Math.max(10, Math.min(at.left - box.left, box.width - 320)) + 'px'; m.style.top = '10px'; m.style.display = 'block';
+  const input = $('#group-name'); input.focus();
+  const go = () => { const n = input.value.trim(); m.style.display = 'none'; if (n) act({action: 'group_new', name: n, ...(id ? {id} : {})}); };
+  input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); if (ev.key === 'Escape') m.style.display = 'none'; });
+  m.onclick = (ev) => { if (ev.target.closest('[data-go]')) go(); if (ev.target.closest('[data-cancel]')) m.style.display = 'none'; };
+}
 // A new motif's name, typed on the page (no pop-up): Enter makes it, Escape cancels
 function named(item) {
   const m = $('#menu'), at = document.querySelector('.map-drop[data-drop="newmotif"]').getBoundingClientRect(), box = $('#graph').getBoundingClientRect();
