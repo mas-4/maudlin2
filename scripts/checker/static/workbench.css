@@ -118,7 +118,10 @@ html, body.wb { max-width: 100vw; overflow-x: hidden; }
 .wb-nbtns { display: flex; gap: 6px; margin-top: 3px; }
 .wb-selbar { position: sticky; top: -8px; z-index: 2; background: #fff4c2; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; margin: 6px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .wb-claims { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.wb-claim { position: relative; padding: 5px 8px; border: 1.5px solid #e2e2ea; border-radius: 10px; background: white; cursor: grab; }
+.wb-claim { position: relative; padding: 5px 8px 5px 20px; border: 1.5px solid #e2e2ea; border-radius: 10px; background: white; cursor: grab; }
+/* a grip, so it's plain a claim can be picked up and dropped on a motif */
+.wb-claim::before { content: '⠿'; position: absolute; left: 6px; top: 5px; color: #bbb; font-size: 13px; line-height: 1.4; }
+.wb-claim:hover::before { color: var(--ink); }
 .wb-claim:hover { border-color: #999; }
 .wb-claim.sel { background: #fff4c2; border-color: var(--ink); box-shadow: 2px 2px 0 var(--yellow); }
 .wb-claim.unfiled { border-style: dashed; }

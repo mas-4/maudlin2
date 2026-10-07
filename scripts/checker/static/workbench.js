@@ -553,10 +553,10 @@
       const n = (S.claimQ || '').trim();
       if (!n) return;
       S.claimQ = '';
-      return act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`);
+      return makeNew(n, [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]);
     }
     if (kind === 'new') {
-      return ask(null, 'Name the new motif', (S.claimQ || '').trim() || c.claim.slice(0, 80)).then((n) => n && act({action: 'new_with', name: n, claims: [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]}, `✨ made “${n}”`));
+      return ask(null, 'Name the new motif', (S.claimQ || '').trim() || c.claim.slice(0, 80)).then((n) => n && makeNew(n, [{claim: c.claim, source: first ? first.id : '', src, ref, mode: 'also'}]));
     }
     if (kind === 'correct') {
       return ask(null, 'Correct the wording (our summary, not the source)', c.claim, true).then((text) => {
@@ -590,6 +590,14 @@
   // ---------- opening motifs ----------
   // A click opens a motif in the active panel (the last one you worked in); Shift-click or ⧉ adds a panel beside the
   // others. A motif already open is just brought into view.
+  // A new motif made with claims, then opened in the middle to work on (named it, now give it a note, kinds...)
+  async function makeNew(name, claims) {
+    const before = new Set(motifs().map((e) => e.id));
+    if (!await act({action: 'new_with', name, claims}, `✨ made “${name}”`)) return false;
+    const made = motifs().find((e) => !before.has(e.id));
+    if (made) openMotif(made.id, true);  // beside the ones open, so what you were working on stays
+    return true;
+  }
   function openMotif(id, beside) {
     if (!S.by[id]) return;
     const at = S.open.indexOf(id);
@@ -658,7 +666,7 @@
       }
       if (drop === 'newmotif') {
         const named = (mode) => () => ask(t, 'Name the new motif', cs.length === 1 ? cs[0].claim.slice(0, 80) : '')
-          .then((name) => name && act({action: 'new_with', name, claims: cs.map((c) => ({...c, mode}))}, `✨ made “${name}”`));
+          .then((name) => name && makeNew(name, cs.map((c) => ({...c, mode}))));
         return cs.some((c) => c.source)
           ? [{label: '⇢ move into a new motif', say: 'move them out into a motif of their own', run: named('move')},
             {label: '＋ copy into a new motif', say: 'start a new motif with them, keeping where they are', run: named('also')}]
