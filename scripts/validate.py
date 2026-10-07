@@ -450,6 +450,15 @@ def workbench_action(data: dict):
         if data.get('id') not in live or not isinstance(data.get('facet'), str):
             raise ValueError('facet: a motif and a facet')
         mi.set_facet(data['id'], data['facet'], data.get('value') or None)
+    elif act in ('facet_rename', 'facet_remove'):  # a genre renamed, or gone from every motif
+        if not (data.get('facet') in mi.FACETS and isinstance(data.get('value'), str) and data['value'].strip()):
+            raise ValueError(f'{act}: a facet and a value')
+        if act == 'facet_rename':
+            if not (isinstance(data.get('to'), str) and data['to'].strip()):
+                raise ValueError('facet_rename: the new name')
+            mi.facet_rename(data['facet'], data['value'], data['to'])
+        else:
+            mi.facet_remove(data['facet'], data['value'])
     elif act == 'facet_value':  # a new genre to sort by
         if not (isinstance(data.get('facet'), str) and isinstance(data.get('value'), str) and data['value'].strip()):
             raise ValueError('facet_value: a facet and a value')

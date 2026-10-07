@@ -111,18 +111,42 @@
     $('#stats').innerHTML = `<b>${es.length}</b> motifs · <b>${filings}</b> filings · <b>${es.filter((e) => e.claims.length > 1).length}</b> with 2+ · <b>${es.filter((e) => e.done !== 'done').length}</b> not done`;
     $('#views').innerHTML = VIEWS.map(([k, label, test]) => `<button class="wb-view${S.view === k ? ' on' : ''}" data-view="${k}">${label} <i>${es.filter(test).length}</i></button>`).join('');
     $('#sort').value = S.sort;
+    renderShelf();
     renderTree();
     renderPanels();
     renderTabs();
     renderInbox();
   }
 
+  // ---------- the shelf: groups and genres, side by side above everything ----------
+  // A chip each, with its count: click it to show only its motifs on the left (again to show all), drop a motif on it to
+  // put it in (a group as well as its others; a genre instead of its genre), ✎ renames, ✕ removes. Groups and genres
+  // are separate things: a motif can be in groups and have a genre
+  const GENRE_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff', '#2bb673', '#e0102e', '#a0522d', '#00a6d6', '#c2185b', '#6b8e23', '#ff8fab', '#5c6bc0'];
+  const genreColor = (v) => GENRE_COLORS[Math.max(0, (S.data.facets.genre || []).indexOf(v)) % GENRE_COLORS.length];
+  const inShelf = (e) => !S.shelf ? true : S.shelf.kind === 'group'
+    ? (S.shelf.id ? (e.groups || []).includes(S.shelf.id) : !(e.groups || []).length)
+    : ((e.facets || {}).genre || '') === S.shelf.id;
+  function renderShelf() {
+    const ms = motifs();
+    const sc = (kind, id, label, n, color, tools) => `<span class="wb-schip${S.shelf && S.shelf.kind === kind && S.shelf.id === id ? ' on' : ''}" data-drop="${kind === 'group' ? 'group' : 'facet'}" data-g="${esc(id)}" data-shelf="${kind}|${esc(id)}" style="--g: ${color}" title="click: show only these · drop a motif here">${label} <i>${n}</i>${tools
+      ? `<button class="wb-x" data-shelfedit="${kind}|${esc(id)}" title="rename">✎</button><button class="wb-x" data-shelfdel="${kind}|${esc(id)}" title="${kind === 'group' ? 'delete the group (its motifs stay)' : 'remove the genre (its motifs keep none)'}">✕</button>` : ''}</span>`;
+    $('#shelf-groups').innerHTML = '<b class="wb-shelfhead">📁 groups</b>'
+      + S.data.groups.map((g) => sc('group', g.id, '📁 ' + esc(g.name), ms.filter((e) => (e.groups || []).includes(g.id)).length, '#8a5cff', true)).join('')
+      + sc('group', '', '🗃️ in no group', ms.filter((e) => !(e.groups || []).length).length, '#bbb', false)
+      + '<input class="wb-shelfnew" data-shelfnew="group" placeholder="＋ new group, Enter">';
+    $('#shelf-genres').innerHTML = '<b class="wb-shelfhead">🎭 genres</b>'
+      + (S.data.facets.genre || []).map((v) => sc('genre', v, '🎭 ' + esc(v), ms.filter((e) => (e.facets || {}).genre === v).length, genreColor(v), true)).join('')
+      + sc('genre', '', '❔ no genre yet', ms.filter((e) => !(e.facets || {}).genre).length, '#bbb', false)
+      + '<input class="wb-shelfnew" data-shelfnew="genre" placeholder="＋ new genre, Enter">';
+  }
+
   // ---------- the tree ----------
   function renderTree() {
     const words = qWords();
     const test = (VIEWS.find((v) => v[0] === S.view) || VIEWS[0])[2];
-    const shown = motifs().filter((e) => test(e) && matches(e, words)).sort(SORTS[S.sort]);
-    const flat = S.view !== 'all' || words.length;
+    const shown = motifs().filter((e) => test(e) && inShelf(e) && matches(e, words)).sort(SORTS[S.sort]);
+    const flat = S.view !== 'all' || words.length || S.shelf;
     // Sections: the person's groups, or a facet's values (genre)
     const by = S.groupBy;
     const groups = by === 'genre' ? [...(S.data.facets.genre || []).map((v) => ({id: v, name: v})), {id: '', name: 'no genre yet'}]
@@ -130,7 +154,8 @@
     let html = '';
     if (words.length) html += claimHitsHTML(words);
     if (flat) {
-      html += `<div class="wb-group"><div class="wb-ghead">${shown.length} motif${shown.length === 1 ? '' : 's'}</div>${shown.map((e) => row(e, 0, false)).join('')}</div>`;
+      const only = S.shelf ? ` ${S.shelf.kind === 'group' ? '📁 ' + esc((S.data.groups.find((g) => g.id === S.shelf.id) || {name: 'in no group'}).name) : '🎭 ' + esc(S.shelf.id || 'no genre yet')} <button class="wb-mini" data-shelf="${S.shelf.kind}|${esc(S.shelf.id)}" title="show every motif">✕</button>` : '';
+      html += `<div class="wb-group"><div class="wb-ghead">${shown.length} motif${shown.length === 1 ? '' : 's'}${only}</div>${shown.map((e) => row(e, 0, false)).join('')}</div>`;
     } else {
       const ids = new Set(shown.map((e) => e.id));
       shownIds = ids;
@@ -891,6 +916,30 @@
     let v;
     if ((v = d('view'))) { S.view = v; store.set('view', v); return render(); }
     if ((v = d('tab'))) { S.tab = v; store.set('tab', v); renderTabs(); return renderInbox(); }
+    if ((v = d('shelfedit'))) {
+      const [kind, id] = v.split(/\|(.*)/s);
+      const now = kind === 'group' ? (S.data.groups.find((g) => g.id === id) || {}).name : id;
+      return ask(t, kind === 'group' ? 'Rename the group' : 'Rename the genre (on every motif that has it)', now).then((n) => {
+        if (!n || n === now) return;
+        if (kind === 'genre' && S.shelf && S.shelf.kind === 'genre' && S.shelf.id === id) S.shelf.id = n;
+        return act(kind === 'group' ? {action: 'group_rename', group: id, name: n} : {action: 'facet_rename', facet: 'genre', value: id, to: n}, `✎ renamed to “${n}”`);
+      });
+    }
+    if ((v = d('shelfdel'))) {
+      const [kind, id] = v.split(/\|(.*)/s);
+      const name = kind === 'group' ? (S.data.groups.find((g) => g.id === id) || {}).name : id;
+      return sure(t, kind === 'group' ? `Delete the group “${name}”? Its motifs stay.` : `Remove the genre “${name}”? Its motifs will have no genre.`, '✕ yes').then((ok) => {
+        if (!ok) return;
+        if (S.shelf && S.shelf.kind === kind && S.shelf.id === id) S.shelf = null;
+        return act(kind === 'group' ? {action: 'group_delete', group: id} : {action: 'facet_remove', facet: 'genre', value: id}, `✕ “${name}” gone`);
+      });
+    }
+    if ((v = d('shelf'))) {
+      const [kind, id] = v.split(/\|(.*)/s);
+      S.shelf = S.shelf && S.shelf.kind === kind && S.shelf.id === id ? null : {kind, id};
+      renderShelf();
+      return renderTree();
+    }
     if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], yes === 'yes'); }
     if ((v = d('ck'))) {
       const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
@@ -938,8 +987,6 @@
       if (await act({action: 'add', name}, `✨ made “${name}”`)) { const n = Object.keys(S.by).find((x) => !before.has(x)); if (n) openMotif(n); }
       return;
     }
-    if (t.id === 'add-group' && S.groupBy === 'genre') return ask(t, 'A new genre').then((value) => value && act({action: 'facet_value', facet: 'genre', value}, `🎭 added “${value}”`));
-    if (t.id === 'add-group') return ask(t, 'Name the new group').then((name) => name && act({action: 'group_add', name}, `📁 made “${name}”`));
     if (t.id === 'help-btn') return $('#help').showModal();
     if ((v = d('cl'))) { const [kind, id] = v.split('|'); return claimAction(kind, id); }
     if (t.closest('[data-editclaim]') || (t.closest('.wb-bigtext') && !t.closest('textarea'))) return editClaim();
@@ -1130,6 +1177,14 @@
     }, 180);
     renderTree();
   });
+  $('.wb-shelf').addEventListener('keydown', (ev) => {  // ＋ new group / genre: type it, Enter
+    const f = ev.target.closest('[data-shelfnew]');
+    if (!f || ev.key !== 'Enter' || !f.value.trim()) return;
+    const n = f.value.trim();
+    f.value = '';
+    act(f.dataset.shelfnew === 'group' ? {action: 'group_add', name: n} : {action: 'facet_value', facet: 'genre', value: n},
+      `${f.dataset.shelfnew === 'group' ? '📁' : '🎭'} made “${n}”`);
+  });
   $('#q').addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') { const first = $('#tree .wb-row'); if (first) openMotif(first.dataset.id, ev.shiftKey); }
     if (ev.key === 'Escape') { ev.target.value = ''; S.q = ''; S.claimHits = []; renderTree(); }
@@ -1160,7 +1215,7 @@
     const t = ev.target;
     if (t.dataset.group !== undefined && t.value) act({action: 'group_member', id: t.dataset.group, group: t.value}, '📁 in the group too');
     if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
-    if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group'; renderTree(); }
+    if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); renderTree(); }
   });
   // A note saves as you leave it, like a title (there's no save button to forget)
   document.addEventListener('focusout', (ev) => {
@@ -1355,7 +1410,6 @@
   }
 
   $('#groupby').value = S.groupBy;
-  $('#add-group').textContent = S.groupBy === 'genre' ? '＋ genre' : '＋ group';
   reload().catch((e) => { $('#panels').innerHTML = `<p class="wb-faint">😬 couldn’t load the index: ${esc(e.message)}</p>`; });
 })();
 

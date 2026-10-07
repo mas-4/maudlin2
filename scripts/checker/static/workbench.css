@@ -278,3 +278,18 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-posts { max-height: 22em; overflow: auto; border: 1.5px solid #ddd; border-radius: 8px; padding: 4px 8px; background: white; }
 .wb-posts summary { cursor: pointer; font-weight: 700; }
 .wb-posts q { display: block; margin: 4px 0; padding-bottom: 4px; border-bottom: 1px dashed #eee; }
+
+/* The shelf: groups and genres side by side above the three panes; each chip filters the list and takes dropped motifs */
+.wb-shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 6px 12px 8px; }
+.wb-shelfbox { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 12px;
+  background: var(--paper); max-height: 6.4em; overflow-y: auto; }
+.wb-shelfhead { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; margin-right: 4px; }
+.wb-schip { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; border: 2px solid var(--g); border-radius: 999px; padding: 1px 4px 1px 9px;
+  background: color-mix(in srgb, var(--g) 14%, white); cursor: pointer; white-space: nowrap; user-select: none; }
+.wb-schip i { font-style: normal; color: #666; font-size: 11px; }
+.wb-schip.on { background: var(--g); color: white; box-shadow: 2px 2px 0 var(--ink); } .wb-schip.on i { color: white; }
+.wb-schip .wb-x { opacity: .35; } .wb-schip:hover .wb-x { opacity: 1; }
+.wb-schip.dz-target { outline: 3px dashed var(--ink); }
+body.dragging .wb-schip { border-style: dashed; }
+.wb-shelfnew { font: 12px system-ui; border: 1.5px dashed var(--ink); border-radius: 999px; padding: 2px 8px; width: 11em; }
+@media (max-width: 900px) { .wb-shelf { grid-template-columns: 1fr; } }

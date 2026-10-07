@@ -693,8 +693,46 @@ def facet_values(index: dict | None = None) -> dict[str, list[str]]:
     out = {}
     for facet, start in FACETS.items():
         used = [e.get('facets', {}).get(facet) for e in live(index)]
-        out[facet] = list(dict.fromkeys(start + index.get('facet_values', {}).get(facet, []) + [u for u in used if u]))
+        hidden = set(index.get('facet_hidden', {}).get(facet, []))  # starting values a person renamed or removed
+        out[facet] = list(dict.fromkeys([v for v in start if v not in hidden] + index.get('facet_values', {}).get(facet, [])
+                                        + [u for u in used if u]))
     return out
+
+
+@exclusive
+def facet_rename(facet: str, old: str, new: str):
+    """A facet value renamed (a genre), on every motif that has it"""
+    if facet not in FACETS:
+        raise ValueError(f'no such facet: {facet}')
+    new = ' '.join(new.split())
+    if not new or new == old:
+        return
+    index = load()
+    for e in live(index):
+        if (e.get('facets') or {}).get(facet) == old:
+            e['facets'][facet] = new
+    values = index.setdefault('facet_values', {}).setdefault(facet, [])
+    index['facet_values'][facet] = [new if v == old else v for v in values] if old in values else values + [new]
+    if old in FACETS[facet]:
+        index.setdefault('facet_hidden', {}).setdefault(facet, []).append(old)
+    save(index)
+
+
+@exclusive
+def facet_remove(facet: str, value: str):
+    """A facet value gone (a genre): the motifs that had it have none"""
+    if facet not in FACETS:
+        raise ValueError(f'no such facet: {facet}')
+    index = load()
+    for e in live(index):
+        if (e.get('facets') or {}).get(facet) == value:
+            e['facets'].pop(facet)
+            if not e['facets']:
+                e.pop('facets')
+    index.setdefault('facet_values', {})[facet] = [v for v in index['facet_values'].get(facet, []) if v != value]
+    if value in FACETS[facet]:
+        index.setdefault('facet_hidden', {}).setdefault(facet, []).append(value)
+    save(index)
 
 
 @exclusive

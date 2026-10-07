@@ -217,6 +217,12 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
     validate.workbench_action({'action': 'batch', 'steps': [{'action': 'parent', 'id': 'M002', 'parent': 'M003'},
                                                              {'action': 'not_same', 'a': 'M001', 'b': 'M004'}]})
     assert mi.board()['entries'][1]['parents'] == ['M003'] and ['M001', 'M004'] in validate.workbench_state()['not_same']
+    validate.workbench_action({'action': 'facet', 'id': 'M002', 'facet': 'genre', 'value': 'rumor'})  # the shelf's genres
+    validate.workbench_action({'action': 'facet_rename', 'facet': 'genre', 'value': 'rumor', 'to': 'whisper'})
+    assert mi.load()['entries']['M002']['facets'] == {'genre': 'whisper'}
+    assert 'whisper' in mi.facet_values()['genre'] and 'rumor' not in mi.facet_values()['genre']
+    validate.workbench_action({'action': 'facet_remove', 'facet': 'genre', 'value': 'whisper'})
+    assert 'facets' not in mi.load()['entries']['M002'] and 'whisper' not in mi.facet_values()['genre']
     validate.workbench_action({'action': 'group_new', 'name': 'Archetypes', 'id': 'M002'})  # the map's ＋ new group
     gid = next(g['id'] for g in mi.board()['groups'] if g['name'] == 'Archetypes')
     assert mi.groups_of(mi.load()['entries']['M002']) == [gid]
