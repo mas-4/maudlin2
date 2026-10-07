@@ -23,7 +23,8 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   once a day from the 5 AM hourly run on (never in the run that makes the narrative report, which nears its
   45-minute limit), at most eight minutes, going on in the next run if cut short. The model's own "no" and its typo
   reading are kept with a mark of the motifs as they were (name, note, about how many claims), so a motif that
-  changes is looked at again.
+  changes is looked at again. It also reviews the links already made (related, kind of): one the model calls unrelated
+  comes up as a proposal to take it away, and one it keeps isn't read again until either motif changes.
 - **No more villain.** The folklore labeller named who each narrative casts as the villain (Propp's part), and its
   picks were too often wrong to show. It no longer asks, and the Folklore page, the checker and the reports leave the
   part out, old reports included; the victim and the hero stay. Fact-checks' labels still carry a villain field,

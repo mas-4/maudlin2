@@ -7,6 +7,8 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
   relate   two motifs are related (told together, close cousins)
   merge    two motifs are the same one
   group    a motif belongs in one of the person's groups
+  unrelate two motifs linked as related aren't (a review of the links already made)
+  unparent a motif linked as a kind of another isn't
 
 Approving runs the same action the person would (logged, undoable); a decision is kept, so a rejected proposal never
 comes back. Candidates are found cheaply (motifs close in meaning, motifs sharing a claim, motifs near a group's
@@ -93,13 +95,20 @@ def still_holds(p: dict, index: dict) -> bool:
             and not (k == 'merge' and pair in index.get('not_same', []))
     if k == 'group':
         return live(a['id']) and a['group'] in index.get('groups', {}) and a['group'] not in mi.groups_of(entries[a['id']])
+    if k == 'unrelate':
+        return live(a['a']) and live(a['b']) and sorted([a['a'], a['b']]) in index.get('related', [])
+    if k == 'unparent':
+        return live(a['id']) and live(a['parent']) and a['parent'] in mi.parents_of(entries[a['id']])
     return False
+
+
+KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'group']  # the checklist's order
 
 
 def open_proposals() -> list[dict]:
     index = mi.load()
     return sorted((p for p in load().values() if p['status'] == 'open' and still_holds(p, index)),
-                  key=lambda p: (['rename', 'note', 'merge', 'parent', 'relate', 'group'].index(p['kind']), p['made']))
+                  key=lambda p: (KINDS.index(p['kind']), p['made']))
 
 
 def decide(proposal_id: str, decision: str):
@@ -118,7 +127,9 @@ def action(p: dict) -> dict:
             'parent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': True},
             'relate': {'action': 'relate', 'a': a.get('a'), 'b': a.get('b')},
             'merge': {'action': 'merge', 'source': a.get('a'), 'target': a.get('b')},
-            'group': {'action': 'group_member', 'id': a.get('id'), 'group': a.get('group'), 'on': True}}[p['kind']]
+            'group': {'action': 'group_member', 'id': a.get('id'), 'group': a.get('group'), 'on': True},
+            'unrelate': {'action': 'unrelate', 'a': a.get('a'), 'b': a.get('b')},
+            'unparent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': False}}[p['kind']]
 
 
 # ---------- typos ----------
@@ -240,7 +251,7 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadl
     for p in store.values():
         a = p['args']
         x, y = a.get('a') or a.get('id'), a.get('b') or a.get('parent')
-        if p['kind'] in ('parent', 'relate', 'merge') or (
+        if p['kind'] in ('parent', 'relate', 'merge', 'unrelate', 'unparent') or (  # unlinked by a person: never proposed back
                 p['kind'] == 'unrelated' and a.get('marks') == sorted([marks.get(x, ''), marks.get(y, '')])):
             asked.add(json.dumps(sorted([x, y])))
     made = 0
@@ -267,6 +278,40 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadl
             i2 = pid('unrelated', {'a': a['id'], 'b': b['id']})
             store[i2] = {'id': i2, 'kind': 'unrelated', 'args': {'a': a['id'], 'b': b['id'], 'marks': sorted([mark(a), mark(b)])},
                          'reason': why, 'model': MODEL, 'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
+    return made
+
+
+# ---------- a review of the links already made ----------
+def review(store: dict, index: dict, deadline: float | None = None) -> int:
+    """Every related and kind-of link put to the same question as a new pair; one the model calls unrelated becomes a
+    proposal to take it away. A link it keeps is remembered with both motifs' marks, so it's read again only once
+    either changes; one a person decided on (kept or removed) never is"""
+    import time
+    entries = index['entries']
+    live = {e['id']: e for e in mi.live(index)}
+    links = [('unrelate', {'a': a, 'b': b}) for a, b in index.get('related', []) if a in live and b in live]
+    links += [('unparent', {'id': e['id'], 'parent': p}) for e in live.values() for p in mi.parents_of(e) if p in live]
+    made = 0
+    for kind, args in links:
+        x, y = (args.get('a') or args.get('id')), (args.get('b') or args.get('parent'))
+        marks = sorted([mark(entries[x]), mark(entries[y])])
+        if pid(kind, args) in store:  # proposed already (open or decided)
+            continue
+        ok = store.get(pid('link_ok', args))
+        if ok and ok['args'].get('marks') == marks:
+            continue
+        if deadline and time.time() > deadline:
+            raise Spent
+        a, b = entries[x], entries[y]
+        answer = llm.complete_json(LINK_PROMPT.format(a=shown(a, b), b=shown(b, a)), LINK_SCHEMA, max_tokens=500, model=MODEL)
+        if not answer:
+            continue
+        if answer.get('relation') == 'unrelated':
+            made += add(store, kind, args, answer.get('reason', ''))
+        else:
+            i = pid('link_ok', args)
+            store[i] = {'id': i, 'kind': 'link_ok', 'args': {**args, 'marks': marks}, 'reason': answer.get('reason', ''),
+                        'model': MODEL, 'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
     return made
 
 
@@ -314,7 +359,7 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], dead
     return made
 
 
-def propose(kinds=('typos', 'links', 'groups'), budget: float | None = None) -> dict:
+def propose(kinds=('typos', 'links', 'review', 'groups'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
     got through everything before the budget (seconds) ran out"""
     import time
@@ -332,6 +377,8 @@ def propose(kinds=('typos', 'links', 'groups'), budget: float | None = None) -> 
                 counts['links'] = links(store, index, vecs, entries, deadline)
             if 'groups' in kinds:
                 counts['groups'] = groups(store, index, vecs, entries, deadline)
+        if 'review' in kinds:
+            counts['review'] = review(store, index, deadline)
         counts['finished'] = True
     except Spent:
         pass

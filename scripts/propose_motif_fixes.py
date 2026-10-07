@@ -1,5 +1,5 @@
 """Propose fixes to the motif index (app/analysis/motif_proposals.py): typos, kind-of and related links, merges and
-group memberships, for a person to approve or reject in the workbench's 💡 proposals tab. Uses the GPU, so it waits
+group memberships, and links already made that look wrong, for a person to approve or reject in the workbench's 💡 proposals tab. Uses the GPU, so it waits
 for a quiet moment (not during the hourly run or its first 15 minutes).
 
     .venv/bin/python scripts/propose_motif_fixes.py                # all kinds
@@ -28,7 +28,7 @@ def quiet():
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('kinds', nargs='*', choices=['typos', 'links', 'groups'], default=['typos', 'links', 'groups'])
+    ap.add_argument('kinds', nargs='*', choices=['typos', 'links', 'review', 'groups'], default=['typos', 'links', 'review', 'groups'])
     args = ap.parse_args()
     for kind in args.kinds:  # one kind at a time, each in a quiet stretch
         quiet()

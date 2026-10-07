@@ -1070,6 +1070,8 @@
     if (p.kind === 'parent') return `⊂ ${chip(a.id)} is a kind of ${chip(a.parent)}`;
     if (p.kind === 'relate') return `↔ ${chip(a.a)} and ${chip(a.b)} are related`;
     if (p.kind === 'merge') return `⤵ ${chip(a.a)} is the same motif as ${chip(a.b)}: merge it in`;
+    if (p.kind === 'unrelate') return `✂️ ${chip(a.a)} and ${chip(a.b)} aren't related: take the link away`;
+    if (p.kind === 'unparent') return `✂️ ${chip(a.id)} isn't a kind of ${chip(a.parent)}: take the link away`;
     if (p.kind === 'group') return `📁 put ${chip(a.id)} in ${esc((S.data.groups.find((g) => g.id === a.group) || {name: a.group}).name)}`;
     return esc(p.kind);
   }

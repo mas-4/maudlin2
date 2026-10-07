@@ -147,3 +147,26 @@ def test_a_merge_never_makes_a_motif_a_kind_of_its_own_kind(tmp_path, monkeypatc
     mi.merge('M001', 'M002')
     entries = mi.load()['entries']
     assert mi.parents_of(entries['M002']) == [] and mi.parents_of(entries['M003']) == ['M002']
+
+
+def test_links_the_model_thinks_wrong_come_up_for_removal(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    mi.relate('M002', 'M003')
+    mi.set_parent('M002', 'M001')
+    calls = []
+
+    def judge(prompt, schema, **k):
+        calls.append(prompt)
+        return {'reason': 'different stories' if 'Rigged' in prompt else 'a narrower one',
+                'relation': 'unrelated' if 'Rigged' in prompt else 'A is a kind of B'}
+    monkeypatch.setattr(llm, 'complete_json', judge)
+    store = {}
+    assert mp.review(store, mi.load()) == 1
+    write_json(mp.PROPOSALS, store)
+    queue = validate.workbench_queue('proposals')
+    assert [p['kind'] for p in queue] == ['unrelate']
+    validate.workbench_action({**queue[0]['do'], 'proposal': queue[0]['id']})
+    assert ['M002', 'M003'] not in mi.load().get('related', [])
+    n = len(calls)
+    mp.review(mp.load(), mi.load())
+    assert len(calls) == n  # the kept link isn't read again while neither motif changes
