@@ -48,7 +48,11 @@ class Vectors:
         from app.narratives import embed
         todo = [t for t in dict.fromkeys(texts) if t not in self.seen]
         if todo:
-            for t, v in zip(todo, embed(todo)):
+            got = embed(todo)
+            if self.seen and got.shape[1] != len(next(iter(self.seen.values()))):
+                # embed() falls back to a smaller static model when Ollama fails: never mix the two in one run
+                raise RuntimeError('embeddings from two different models in one run (Ollama failed meanwhile?)')
+            for t, v in zip(todo, got):
                 self.seen[t] = v
         return np.array([self.seen[t] for t in texts])
 
