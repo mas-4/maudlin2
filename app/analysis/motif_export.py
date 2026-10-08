@@ -75,7 +75,8 @@ def as_markdown(found: list[dict], scope: str) -> str:
     names = {m['id']: m['name'] for m in found}
     lines = ['# 🧩 BND Motif Index', '',
              f"{len(found)} motifs ({'verified by a person' if scope == 'verified' else 'all, verified or not'}), "
-             f"{sum(len(m['claims']) for m in found)} claims; exported {date.today().isoformat()} from bignews.day.", '']
+             f"{sum(len(m['claims']) for m in found)} claims; exported {date.today().isoformat()} from bignews.day. "
+             "Licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), with credit to bignews.day.", '']
     # By group, a motif in several groups under each, then the ungrouped
     sections = sorted({g for m in found for g in m['groups']}, key=str.lower)
     for section in sections + [None]:
@@ -119,6 +120,7 @@ def as_turtle(found: list[dict], scope: str) -> str:
              'bnd:index a skos:ConceptScheme ;',
              f'    skos:prefLabel {_lit("BND Motif Index")} ;',
              f'    dct:description {_lit(f"Recurring rumor and narrative shapes in US political talk, built bottom-up on bignews.day ({scope} motifs).")} ;',
+             '    dct:license <https://creativecommons.org/licenses/by/4.0/> ;',
              f'    dct:modified "{date.today().isoformat()}"']
     tops = [f"bnd:{m['id']}" for m in found if not m['parents']]
     lines[-1] += (' ;\n    skos:hasTopConcept ' + ', '.join(tops) if tops else '') + ' .'
