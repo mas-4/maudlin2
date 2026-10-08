@@ -28,6 +28,12 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
 .dash-sick { border-color: var(--berry); background: #fff3ef; }
 .dash-mono { font: 12px ui-monospace, monospace; white-space: pre-wrap; max-height: 260px; overflow: auto; background: #f6f6fb; padding: 8px; border-radius: 8px; }
 .dash-err { color: var(--berry); font-size: 13px; }
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dash-table th { text-align: left; font-weight: 700; color: #555; border-bottom: 2px solid var(--ink); padding: 4px 6px; }
+.dash-table td { padding: 4px 6px; border-bottom: 1px dotted #ccc; vertical-align: middle; }
+.dash-lean { display: inline-flex; width: 110px; height: 12px; border: 1px solid var(--ink); border-radius: 6px; overflow: hidden; vertical-align: middle; }
+.dash-lean i { display: block; height: 100%; }
+@media (max-width: 500px) { .dash-table th:nth-child(5), .dash-table td:nth-child(5) { display: none; } .dash-lean { width: 70px; } }
 .dash-refresh { font: inherit; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--sun); cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
 @media (max-width: 500px) { .dash-grid { grid-template-columns: 1fr; } .dash-tile b { font-size: 22px; } }
 </style>{% endblock %}
@@ -158,6 +164,21 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
     const F = d['fact-checks'] || {};
     html += card('🔎 Fact-checks, last 30 days', err(F) + `<div class="dash-tiles">${tile('🔎', num(F['last 30 days']), 'pieces')}${tile('📄', num(F['read from the piece']), 'claims read from the piece itself')}${tile('🗒️', num(F['with a claim']), 'with a claim')}</div>` + list(Object.entries(F['by checker'] || {})) + `<p class="dash-sub">text from: ${Object.entries(F['text from'] || {}).map(([k, v]) => esc(k) + ' ' + v).join(' · ')}</p>`);
     html += card('🧵 New stories a day', one(days, A.stories || {}, 'stories'));
+    html += '</div>';
+
+    const S = d.sagas || {}, sdays = Object.keys(S['parts a day'] || {});
+    const sNames = [...new Set(sdays.flatMap((x) => Object.keys(S['parts a day'][x])))];
+    const leanBar = (l) => `<span class="dash-lean" title="left ${l.left}% · center ${l.center}% · right ${l.right}%"><i style="width:${l.left}%;background:#3a86ff"></i><i style="width:${l.center}%;background:#b8b8c8"></i><i style="width:${l.right}%;background:#ff4d6d"></i></span>`;
+    const sagaRows = (rows) => `<table class="dash-table"><tr><th>saga</th><th>parts</th><th>outlets</th><th>who carries it</th><th>since</th></tr>${rows.map((g) => `<tr><td>${g.now ? '🟢 ' : ''}${esc(g.name)}</td><td>${g.parts}${g['parts now'] ? ` <span class="dash-sub">(${g['parts now']} up)</span>` : ''}</td><td>${g.outlets}</td><td>${leanBar(g.lean)}</td><td>${esc(g.first.slice(5, 10).replace('-', '/'))}</td></tr>`).join('')}</table>`;
+    html += `<h2>🧵 Sagas</h2><div class="dash-grid">`;
+    html += card('At a glance', err(S) + `<div class="dash-tiles">
+      ${tile('🧵', num(S.sagas), 'sagas so far')}${tile('🟢', num(S.now), 'on the front pages now')}
+      ${tile('🧩', num(S.parts), 'stories that are parts of one')}
+      ${tile('📊', S.stories ? Math.round(100 * S['stories in a saga'] / S.stories) + '%' : '—', `of the last two weeks' ${num(S.stories)} stories are in a saga`)}
+    </div>`, 'wide');
+    html += card('🟢 On the front pages now', sagaRows(S.active || []) + '<p class="dash-sub">who carries it: the outlets on any of its parts, by lean (blue left, grey center, red right)</p>', 'wide');
+    html += card('🧩 New saga parts a day', plot(bars, sdays, Object.fromEntries(sNames.map((n) => [n, Object.fromEntries(sdays.map((x) => [x, S['parts a day'][x][n] || 0]))]))));
+    html += card('🏔️ Biggest sagas', sagaRows(S.biggest || []));
     html += '</div>';
 
     html += `<h2>⚙️ What was made of it</h2><div class="dash-grid">`;

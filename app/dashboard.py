@@ -1,6 +1,6 @@
 """Everything at a glance, for the checker's 📈 dashboard (Oct 8, the person: "a huge visibility dashboard"): is the
 machine keeping up (the hourly runs, problems, the card's heat and load, models loaded again and again), what came in
-(headlines, outlets, the side feeds, fact-checks and their pieces, transcripts), what was made of it (claims filed,
+(headlines, outlets, the side feeds, fact-checks and their pieces, transcripts), the sagas, what was made of it (claims filed,
 waiting, weak, proposals), the motif index, the models' own tests, and the person's curation. Read live from the
 database, the data folder and the system's logs, each part again once it's a minute old (the model loads: 15
 minutes), in the background (gather())."""
@@ -197,6 +197,37 @@ def motifs() -> dict:
             'newest': [(e['name'], e.get('first_seen', '')) for e in sorted(live, key=lambda e: e.get('first_seen') or '')[-10:]][::-1]}
 
 
+def sagas() -> dict:
+    """The sagas (loose clusters of stories over days): how many, which are on the front pages now, the parts a day"""
+    from app.analysis import sagas as sg
+    found = sg.history()
+    days = _days()
+    top = [g['id'] for g in sorted(found, key=lambda g: -len(g['parts']))[:7]]
+    name = {g['id']: g['name'] or f'saga {g["id"]}' for g in found}
+    per = defaultdict(Counter)
+    for g in found:
+        for p in g['parts']:
+            day = p['first'].date().isoformat()
+            if day >= days[0]:
+                per[day][name[g['id']] if g['id'] in top else 'other sagas'] += 1
+    con = _db()
+    try:
+        stories = con.execute('SELECT count(*), sum(saga_id IS NOT NULL) FROM story WHERE first_seen >= ?', (days[0],)).fetchone()
+    finally:
+        con.close()
+
+    def row(g):
+        rated = g['left'] + g['center'] + g['right']
+        return {'name': name[g['id']], 'parts': len(g['parts']), 'now': g['now'], 'outlets': g['outlets'],
+                'first': g['first'].isoformat(timespec='minutes'), 'last': g['last'].isoformat(timespec='minutes'),
+                'lean': {k: round(100 * g[k] / rated) if rated else 0 for k in ('left', 'center', 'right')},
+                'parts now': sum(p['now'] for p in g['parts'])}
+    return {'sagas': len(found), 'now': sum(g['now'] for g in found), 'parts': sum(len(g['parts']) for g in found),
+            'stories in a saga': stories[1] or 0, 'stories': stories[0] or 0,
+            'parts a day': {d: dict(per[d]) for d in days},
+            'active': [row(g) for g in found if g['now']], 'biggest': [row(g) for g in sorted(found, key=lambda g: -len(g['parts']))[:10]]}
+
+
 def models() -> dict:
     from app.analysis import filing_confidence as fc, motif_retriever as mr, reranker_teach
     m = read_json(fc.MODEL, None) or {}
@@ -265,6 +296,7 @@ def _acquisition():
 
 
 PARTS = {'runs': runs, 'model loads': model_loads, 'gpu': gpu, 'acquisition': _acquisition, 'fact-checks': factchecks,
+         'sagas': sagas,
          'processing': processing, 'motifs': motifs, 'models': models, 'curation': curation, 'machine': machine}
 
 
