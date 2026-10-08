@@ -124,7 +124,9 @@ def report(label, X, y, g):
     t.pop('p')
     at95 = max((r['of kept'] for r in t['thresholds'] if r['precision'] and r['precision'] >= 0.95 and r['passes'] >= 20),
                default=0)
-    print(f"{label}: AUC {t['auc']}; kept passable at 95% precision {at95:.0%}", flush=True)
+    line = f"{label}: AUC {t['auc']}; kept passable at 95% precision {at95:.0%}"
+    print(line, flush=True)
+    harness.note(line)
 
 
 def simulate(X, y, g, start=50, step=25, reps=5):
@@ -151,7 +153,9 @@ def simulate(X, y, g, start=50, step=25, reps=5):
     for order, cs in curves.items():
         n = min(len(c) for c in cs)
         pts = [(cs[0][i][0], np.mean([c[i][1] for c in cs])) for i in range(0, n, 4)]
-        print(f'E6 {order}: ' + ', '.join(f'{k}: {a:.3f}' for k, a in pts), flush=True)
+        line = f'E6 {order}: ' + ', '.join(f'{k}: {a:.3f}' for k, a in pts)
+        print(line, flush=True)
+        harness.note(line)
 
 
 if __name__ == '__main__':

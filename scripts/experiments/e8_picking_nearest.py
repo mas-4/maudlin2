@@ -10,6 +10,7 @@ from datetime import datetime
 import numpy as np
 
 sys.path.insert(0, '/home/mas/Repos/maudlin2/scripts/experiments')
+import harness  # noqa: E402
 from notes_test import OUT, truth_sets  # noqa: E402
 
 sys.path.insert(0, '/home/mas/Repos/maudlin2')
@@ -61,6 +62,8 @@ if __name__ == '__main__':
     for label in ('latest', 'nearest'):
         found = sum(len(set(r[f'{label}_ids']) & set(r['truth_ids'])) for r in done)
         picks = sum(len(r[f'{label}_ids']) for r in done)
-        print(f"E8 {label} 3 claims: found {found} of {reach} of the person's motifs in the shortlist ({found / max(reach, 1):.0%}); "
-              f"{picks - found} of {picks} picks not theirs ({(picks - found) / max(picks, 1):.0%})", flush=True)
+        line = (f"E8 {label} 3 claims: found {found} of {reach} of the person's motifs in the shortlist ({found / max(reach, 1):.0%}); "
+                f"{picks - found} of {picks} picks not theirs ({(picks - found) / max(picks, 1):.0%})")
+        print(line, flush=True)
+        harness.note(line)
     print('DONE', flush=True)

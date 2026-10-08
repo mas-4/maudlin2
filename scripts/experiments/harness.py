@@ -122,10 +122,18 @@ def evaluate(data: dict, extra: dict | None = None, feats: list[str] | None = No
     mb, mn = misses(data, base), misses(data, new)
     out = {'label': label, 'base': b, 'with': n, 'misses before': len(mb), 'misses after': len(mn),
            'brought back': len(mb - mn), 'newly missed': len(mn - mb)}
-    print(f"{label or 'experiment'}: top-12 {b[12]:.1%} -> {n[12]:.1%}; top-8 {b[8]:.1%} -> {n[8]:.1%}; "
-          f"top-40 {b[40]:.1%} -> {n[40]:.1%}; misses {len(mb)} -> {len(mn)} (back {len(mb - mn)}, new {len(mn - mb)})",
-          flush=True)
+    line = (f"{label or 'experiment'}: top-12 {b[12]:.1%} -> {n[12]:.1%}; top-8 {b[8]:.1%} -> {n[8]:.1%}; "
+            f"top-40 {b[40]:.1%} -> {n[40]:.1%}; misses {len(mb)} -> {len(mn)} (back {len(mb - mn)}, new {len(mn - mb)})")
+    print(line, flush=True)
+    note(line)
     return out
+
+
+def note(line: str):
+    """A result kept in the experiments' own log too (results.log), whatever happens to the runner's output"""
+    from datetime import datetime
+    with open(os.path.join(EXP, 'results.log'), 'a') as f:
+        f.write(f"{datetime.now().isoformat(timespec='seconds')} {line}\n")
 
 
 if __name__ == '__main__':
