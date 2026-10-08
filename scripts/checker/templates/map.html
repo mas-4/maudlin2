@@ -14,7 +14,7 @@ main { flex: 1; display: flex; min-height: 0; }
 #graph { flex: 1; position: relative; min-width: 0; } svg#net { width: 100%; height: 100%; display: block; cursor: grab; }
 .node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node.broad circle { stroke-width: 4.5px; } .node.sub circle { stroke-dasharray: 3 2; stroke-width: 2.2px; }
 .node.gdim { opacity: .15; } .map-genre.on { background: var(--g); color: #fff; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
-.node.dim, .link.dim { opacity: .12; } .node text.minor { display: none; } .node:hover text.minor, .node.hit text.minor { display: inline; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
+.node.dim, .link.dim { opacity: .12; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
 .link.kind { stroke: #0a8f7e; stroke-width: 2px; } .link.related { stroke: #ff4fa3; stroke-width: 1.8px; stroke-dasharray: 5 4; } .link.shared { stroke: #9aa0a6; opacity: .45; }
 #info { position: absolute; right: 10px; top: 66px; width: 360px; max-height: calc(100% - 76px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
   border-radius: 12px; box-shadow: 4px 4px 0 #00c2a8; padding: 8px 12px; font-size: .88em; display: none; }
@@ -25,6 +25,17 @@ main { flex: 1; display: flex; min-height: 0; }
 #menu button:hover { background: #c8f7c5; } #menu .say { color: #555; font-weight: 400; font-size: .9em; }
 #menu input { font: inherit; width: 100%; box-sizing: border-box; padding: 3px 8px; border: 2px solid #1f1f2e; border-radius: 8px; margin: 2px 0 4px; }
 .map-drops { display: inline-flex; gap: 6px; margin-left: auto; }
+/* a quieter map (Oct 8, the person: "it's so busy now it's hard to work with"): one slim bar; the chips and the key fold away */
+.map-btn { font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; background: #fff; padding: 1px 10px; cursor: pointer; }
+.map-btn.on { background: #c8f7c5; }
+.bar select { font: inherit; border: 1.5px solid #1f1f2e; border-radius: 999px; padding: 0 6px; background: #fff; }
+.map-chips { border-bottom: 1.5px dashed #1f1f2e; padding-top: 4px; padding-bottom: 4px; }
+.map-chips.folded { display: none; } body.dragging .map-chips.folded { display: flex; }
+.map-key { border-bottom: 1.5px dashed #1f1f2e; } .map-key[hidden] { display: none; }
+body.related-focus .link.related { display: none; } body.related-focus .link.related.near { display: inline; }
+.node text.lbl-off { display: none; } .node:hover text.lbl-off, .node.hit text.lbl-off, .node.near-focus text.lbl-off { display: inline; }
+.node.far { opacity: .07; } .link.far { opacity: .04; }
+body.focusing .map-blob { opacity: .05; } body.focusing .map-glabel { opacity: .25; }
 .map-drop { border: 2px dashed #1f1f2e; border-radius: 999px; padding: 1px 10px; background: #fff; font-weight: 600; }
 body.dragging .map-drop { background: #eef9f7; }
 .node.map-msel circle { stroke: #ff4fa3; stroke-width: 4.5px; stroke-dasharray: none; }
@@ -67,20 +78,23 @@ h3[data-id] .grip { cursor: grab; }
 </style>{% endblock %}
 {% block body %}
 <div class="bar"><input type="search" id="q" placeholder="🔎 find a motif">
-  <span class="key"><svg width="34" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="#0a8f7e" stroke-width="2"/><path d="M26,1 L34,5 L26,9 z" fill="#0a8f7e"/></svg> rests on (points to what it rests on)</span>
-  <label class="key"><input type="checkbox" id="show-kind" checked></label>
-  <span class="key"><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#ff4fa3" stroke-width="2" stroke-dasharray="5 4"/></svg> related</span>
-  <label class="key"><input type="checkbox" id="show-related" checked></label>
-  <span class="key"><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#9aa0a6" stroke-width="2"/></svg> hold</span>
-  <select id="shared-min" title="grey lines between motifs holding at least this many of the same claims"><option value="0">none of</option><option value="1">1+ of</option><option value="2" selected>2+ of</option><option value="3">3+ of</option></select> the same claims
-  <label class="key"><input type="checkbox" id="only-linked" checked> only motifs with a link</label> <button id="fit" style="font:inherit;border:1.5px solid #1f1f2e;border-radius:999px;background:#fff;padding:1px 10px;cursor:pointer">⤢ fit</button>
+  <button id="fit" class="map-btn" title="the whole map in view">⤢ fit</button>
   <span class="meta" id="count"></span>
-  <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
-  <span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
-  <span class="key" title="a dot's outline: its place in the rests-on links"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="3.5"/></svg> rested on
-    <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> rests on one · fill: its genre</span>
-  <span class="key" id="genre-chips" title="a dot's color is its genre: click one to pick out its motifs; drag a motif onto one to give it that genre"></span>
+  <label class="key" title="the rests-on lines: the map's structure"><input type="checkbox" id="show-kind" checked> <svg width="26" height="10"><line x1="0" y1="5" x2="18" y2="5" stroke="#0a8f7e" stroke-width="2"/><path d="M18,1 L26,5 L18,9 z" fill="#0a8f7e"/></svg> rests on</label>
+  <label class="key" title="related lines: drawn for the motif you pick or point at (they still shape the map), for every motif, or not at all"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#ff4fa3" stroke-width="2" stroke-dasharray="5 4"/></svg> related:
+    <select id="related-mode"><option value="focus" selected>the picked one's</option><option value="all">all</option><option value="none">none</option></select></label>
+  <label class="key" title="grey lines between motifs holding at least this many of the same claims (told together; not a sign they're related)"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#9aa0a6" stroke-width="2"/></svg>
+    <select id="shared-min"><option value="0" selected>no shared-claim lines</option><option value="1">sharing 1+ claims</option><option value="2">sharing 2+</option><option value="3">sharing 3+</option></select></label>
+  <label class="key"><input type="checkbox" id="only-linked" checked> only linked motifs</label>
+  <button id="chips-btn" class="map-btn" title="show or hide the group and genre chips (they open by themselves while you drag)">📁🎭 chips</button>
+  <button id="key-btn" class="map-btn" title="what the dots and lines mean, and how to work the map">ℹ️ key</button>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
+<div class="bar map-chips" id="chips-row"><span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
+  <span class="key" id="genre-chips" title="a dot's color is its genre: click one to pick out its motifs; drag a motif onto one to give it that genre"></span></div>
+<div class="bar map-key" id="key-row" hidden>
+  <span class="key" title="a dot's outline: its place in the rests-on links"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="3.5"/></svg> others rest on it
+    <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> rests on one · fill: its genre · size: its claims</span>
+  <span class="meta">Click a dot to pick it: its neighbourhood stays, the rest fades, and the map zooms to it; Esc or a click on the background brings it all back. Names show where they fit; zoom in for more, point at a dot for its name. Scroll to zoom, drag the background to pan, shift-drag to select. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span></div>
 <datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="map-selbar" hidden></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
@@ -106,7 +120,7 @@ async function act(body) {
 function buildLinks() {
   const out = [];
   if ($('#show-kind').checked) data.entries.forEach((e) => e.parents.forEach((p) => byId[p] && out.push({source: e.id, target: p, kind: 'kind'})));
-  if ($('#show-related').checked) {
+  if ($('#related-mode').value !== 'none') {  // drawn per the setting (CSS); they still shape the layout
     const seen = new Set();
     data.entries.forEach((e) => e.related.forEach((r) => { const k = [e.id, r].sort().join(); if (byId[r] && !seen.has(k)) { seen.add(k); out.push({source: e.id, target: r, kind: 'related'}); } }));
   }
@@ -135,7 +149,7 @@ function draw() {
     .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#0a8f7e');
   const root = svg.append('g');
   zoomer = d3.zoom().scaleExtent([0.15, 5]).filter((ev) => ev.type === 'wheel' || (!ev.target.closest('.node') && !ev.ctrlKey && !ev.shiftKey && !ev.button))
-    .on('zoom', (ev) => { root.attr('transform', ev.transform); $('#menu').style.display = 'none'; });
+    .on('zoom', (ev) => { root.attr('transform', ev.transform); $('#menu').style.display = 'none'; clearTimeout(lt); lt = setTimeout(placeLabels, 120); });
   svg.call(zoomer);
   const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
   // Groups: a soft area around each group's motifs, with its name (drawn first, under everything)
@@ -156,14 +170,15 @@ function draw() {
   node.append('circle').attr('r', r).attr('fill', (n) => genreOf(n.e) ? genreColor(genreOf(n.e)) : '#fff');
   markGenre();
   // Names on the dots that matter at a glance (2+ claims, or linked by rests on); the rest on hover and when found
-  node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name)
-    .attr('class', (n) => n.e.claims.length > 1 || n.e.parents.length || data.entries.some((x) => x.parents.includes(n.id)) ? '' : 'minor');
+  node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name);  // which show: placeLabels()
   node.append('title').text((n) => `${n.e.name} (${n.e.claims.length} claim${n.e.claims.length === 1 ? '' : 's'})${n.e.note ? '\n' + n.e.note : ''}`);
   node.on('click', (ev, n) => {
     ev.stopPropagation();
     if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { picked.has(n.id) ? picked.delete(n.id) : picked.add(n.id); return markPicked(); }
-    show(n.id);
+    show(n.id, true);
   });
+  // pointing at a dot: its related lines and its neighbours' names, without picking it
+  node.on('mouseenter', (ev, n) => { hover = n.id; markNear(); }).on('mouseleave', () => { hover = null; markNear(); });
   svg.on('click', (ev) => { if (boxed) { boxed = false; return; } show(null); if (picked.size && !ev.shiftKey) { picked.clear(); markPicked(); } });
   // shift-drag across the background: a box, and every dot in it selected (added to what's selected)
   let box = null, boxed = false;
@@ -202,11 +217,102 @@ function draw() {
         d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
       });
       node.attr('transform', (n) => `translate(${n.x},${n.y})`);
-      nodes.forEach((n) => kept.set(n.id, {x: n.x, y: n.y}));
+      nodes.forEach((n) => { if (!gathered.has(n.id)) kept.set(n.id, {x: n.x, y: n.y}); });  // a gathered one goes back
     });
   if (kept.size) sim.alpha(0.3);
   else sim.on('end.fit', () => { sim.on('end.fit', null); fit(); });
+  sim.on('end.labels', placeLabels);
   applyFocus();
+}
+// Names where they fit: the most telling first (claims, others resting on it), each kept only if it overlaps none
+// already placed, on screen; the picked motif's neighbourhood, search hits and the dot pointed at always named
+let lt, hover = null;
+function placeLabels() {
+  const t = d3.zoomTransform($('#net')), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
+  const rests = new Set(data.entries.flatMap((x) => x.parents));
+  const prio = (n) => n.e.claims.length * 2 + (rests.has(n.id) ? 4 : 0) + (n.e.parents.length ? 1 : 0);
+  const placed = [];
+  const fits = (b) => !placed.some((p) => b.x0 < p.x1 && b.x1 > p.x0 && b.y0 < p.y1 && b.y1 > p.y0);
+  const order = [...nodes].sort((a, b) => prio(b) - prio(a));
+  const shown = new Set();
+  for (const n of order) {
+    if (n.x === undefined) continue;
+    const rad = (5 + 3 * Math.sqrt(n.e.claims.length)) * t.k, x = n.x * t.k + t.x, y = n.y * t.k + t.y;
+    const b = {x0: x + rad, x1: x + rad + n.e.name.length * 6.1 * t.k + 4, y0: y - 8 * t.k, y1: y + 6 * t.k};
+    if (b.x1 < 0 || b.x0 > W || b.y1 < 0 || b.y0 > H) continue;  // off screen
+    if (fits(b)) { placed.push(b); shown.add(n.id); }
+  }
+  d3.selectAll('.node text').classed('lbl-off', (n) => !shown.has(n.id));
+}
+// A motif's neighbourhood: what it rests on and what rests on it, two steps along those; its related motifs, one
+function neighbourhood(id) {
+  const s = new Set([id]);
+  let edge = [id];
+  for (let step = 0; step < 2; step++) {
+    const next = [];
+    edge.forEach((x) => {
+      (byId[x]?.parents || []).forEach((p) => { if (!s.has(p)) { s.add(p); next.push(p); } });
+      data.entries.forEach((e) => { if (e.parents.includes(x) && !s.has(e.id)) { s.add(e.id); next.push(e.id); } });
+    });
+    edge = next;
+  }
+  (byId[id]?.related || []).forEach((r) => s.add(r));
+  return s;
+}
+// related lines drawn for the motif picked or pointed at (with "the picked one's")
+function markNear() {
+  const at = new Set([focus, hover].filter(Boolean));
+  d3.selectAll('.link').classed('near', (l) => at.has(l.source.id) || at.has(l.target.id));
+  const around = hover ? neighbourhood(hover) : new Set();
+  d3.selectAll('.node').classed('near-focus', (n) => around.has(n.id) || (focus && near && near.has(n.id)));
+}
+let near = null;
+// Picked: its neighbourhood gathered round it as a small diagram (what it rests on above, what rests on it below,
+// related to the sides; a second step further out), the rest left where it was, faded; let go, they spring back
+const gathered = new Map();  // id -> where it was
+function gather(id) {
+  scatter();
+  const c = nodes.find((n) => n.id === id);
+  if (!c || c.x === undefined) return;
+  const e = byId[id], up1 = e.parents.filter((p) => byId[p]), down1 = data.entries.filter((x) => x.parents.includes(id)).map((x) => x.id);
+  const up2 = [...new Set(up1.flatMap((p) => byId[p].parents))].filter((x) => x !== id && !up1.includes(x));
+  const down2 = [...new Set(down1.flatMap((d) => data.entries.filter((x) => x.parents.includes(d)).map((x) => x.id)))].filter((x) => x !== id && !down1.includes(x));
+  const rel = (e.related || []).filter((r) => byId[r] && !up1.includes(r) && !down1.includes(r));
+  const ROW = 5;  // at most this many side by side; more go in further rows
+  const place = (ids, dy, spread) => ids.forEach((x, i) => {
+    const n = nodes.find((m) => m.id === x);
+    if (!n || gathered.has(x)) return;
+    gathered.set(x, {x: n.x, y: n.y});
+    const row = Math.floor(i / ROW), inRow = Math.min(ROW, ids.length - row * ROW), col = i % ROW;
+    n.fx = c.x + (col - (inRow - 1) / 2) * spread; n.fy = c.y + dy + Math.sign(dy) * row * 60;
+  });
+  gathered.set(id, {x: c.x, y: c.y}); c.fx = c.x; c.fy = c.y;
+  const rows = (ids) => Math.max(0, Math.ceil(ids.length / ROW) - 1) * 60;
+  place(up1, -120, 140); place(up2, -230 - rows(up1), 125); place(down1, 120, 140); place(down2, 230 + rows(down1), 125);
+  rel.forEach((x, i) => {  // the related ones in a column each side
+    const n = nodes.find((m) => m.id === x);
+    if (!n || gathered.has(x)) return;
+    gathered.set(x, {x: n.x, y: n.y});
+    const side = i % 2 ? 1 : -1, row = Math.floor(i / 2);
+    n.fx = c.x + side * 260; n.fy = c.y + (row - (Math.ceil(rel.length / 2) - 1) / 2) * 60;
+  });
+  sim.alpha(0.25).restart();
+}
+function scatter() {  // the gathered ones back where they were
+  if (!gathered.size) return;
+  gathered.forEach((was, id) => { const n = nodes.find((m) => m.id === id); if (n) { n.fx = null; n.fy = null; n.x = was.x; n.y = was.y; } });
+  gathered.clear();
+  sim.alpha(0.15).restart();
+}
+function fitTo(ids) {  // the given motifs in view, left of the details box
+  const ns = nodes.filter((n) => ids.has(n.id) && n.x !== undefined);
+  if (!ns.length) return;
+  // where they're going (a gathered one is pinned there), not where they are mid-move
+  const full = $('#graph').clientWidth, W = full > 1000 ? full - 380 : full, H = $('#graph').clientHeight;  // room for the box when wide
+  const xs = ns.map((n) => n.fx ?? n.x), ys = ns.map((n) => n.fy ?? n.y);
+  const x0 = Math.min(...xs) - 60, x1 = Math.max(...xs) + 180, y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
+  const k = Math.max(0.4, Math.min(2.2, 0.9 * Math.min(W / (x1 - x0), H / (y1 - y0))));
+  d3.select('#net').transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
 }
 let zoomer;
 const hiddenGroups = new Set(JSON.parse(localStorage.getItem('map-hidden-groups') || '[]'));
@@ -247,17 +353,14 @@ function fit() {  // the whole map in view
   const k = Math.min(2, 0.95 * Math.min(W / (x1 - x0), H / (y1 - y0)));
   d3.select('#net').transition().duration(600).call(zoomer.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
 }
-function neighbours(id) {
-  const s = new Set([id]);
-  links.forEach((l) => { if (l.source.id === id) s.add(l.target.id); if (l.target.id === id) s.add(l.source.id); });
-  return s;
-}
 function applyFocus() {
   const term = $('#q').value.trim().toLowerCase();
-  const near = focus ? neighbours(focus) : null;
-  d3.selectAll('.node').classed('dim', (n) => near ? !near.has(n.id) : false).classed('hit', (n) => (term && n.e.name.toLowerCase().includes(term)) || n.id === focus);
-  d3.selectAll('.link').classed('dim', (l) => near ? !(l.source.id === focus || l.target.id === focus) : false);
+  near = focus ? neighbourhood(focus) : null;  // picked: its neighbourhood stays, the rest fades almost away
+  d3.selectAll('.node').classed('far', (n) => near ? !near.has(n.id) : false).classed('hit', (n) => (term && n.e.name.toLowerCase().includes(term)) || n.id === focus);
+  d3.selectAll('.link').classed('far', (l) => near ? !(near.has(l.source.id) && near.has(l.target.id)) : false);
   document.querySelectorAll('#tree span[data-id]').forEach((s) => s.classList.toggle('on', s.dataset.id === focus));
+  markNear();
+  placeLabels();
 }
 // Linked motifs, each with an ✕ that takes the link away (unlink: 'rel', 'up' = it rests on that one, 'down' = that one rests on it)
 function names(ids, id, unlink) {
@@ -288,8 +391,12 @@ function cardHTML(id) {
 function grow(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }  // a card's text box shows all its text
 function growAll(box) { box.querySelectorAll('.cname, .cnote').forEach(grow); }
 document.addEventListener('input', (ev) => { if (ev.target.matches('.cname, .cnote')) grow(ev.target); });
-function show(id) {
-  focus = id; applyFocus();
+function show(id, zoom) {
+  focus = id;
+  if (id) gather(id); else scatter();
+  document.body.classList.toggle('focusing', Boolean(id));
+  applyFocus();
+  if (id && (zoom || gathered.size)) fitTo(near);
   const box = $('#info');
   if (!id) { box.style.display = 'none'; return; }
   box.innerHTML = `<button class="x" title="close">✕</button>${cardHTML(id)}`;
@@ -525,7 +632,17 @@ async function load() {
   const back = keep && document.querySelector(keep.sel);
   if (back) { back.value = keep.value; back.focus(); back.setSelectionRange(keep.at, keep.at); }
 }
-['#show-kind', '#show-related', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
+['#show-kind', '#related-mode', '#shared-min', '#only-linked'].forEach((s) => $(s).addEventListener('change', draw));
+const relatedMode = () => document.body.classList.toggle('related-focus', $('#related-mode').value === 'focus');
+$('#related-mode').addEventListener('change', relatedMode);
+relatedMode();
+// the chips row and the key fold away (remembered in this browser); the chips open by themselves while dragging
+const remember = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private window */ } };
+const recall = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+function chipsFolded(on) { $('#chips-row').classList.toggle('folded', on); $('#chips-btn').classList.toggle('on', !on); remember('map-chips-folded', on ? '1' : ''); }
+chipsFolded(recall('map-chips-folded') === '1');
+$('#chips-btn').addEventListener('click', () => chipsFolded(!$('#chips-row').classList.contains('folded')));
+$('#key-btn').addEventListener('click', () => { const k = $('#key-row'); k.hidden = !k.hidden; $('#key-btn').classList.toggle('on', !k.hidden); });
 $('#q').addEventListener('input', () => { applyFocus(); filterTree(); });
 // The list on the left narrowed to what the search finds (a match's broader motifs and group stay, to show where it is)
 function filterTree() {
