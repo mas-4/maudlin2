@@ -35,6 +35,8 @@ main { flex: 1; display: flex; min-height: 0; }
 body.related-focus .link.related { display: none; } body.related-focus .link.related.near { display: inline; }
 .node text.lbl-off { display: none; } .node:hover text.lbl-off, .node.hit text.lbl-off, .node.near-focus text.lbl-off { display: inline; }
 .node.far { opacity: .07; } .link.far { opacity: .04; }
+body.tree-mode .node.tree-off, body.tree-mode .link.tree-off { display: none; } body.tree-mode .map-blob, body.tree-mode .map-glabel { display: none; }
+body.tree-mode .node text.lbl-off { display: inline; }
 body.focusing .map-blob { opacity: .05; } body.focusing .map-glabel { opacity: .25; }
 .map-drop { border: 2px dashed #1f1f2e; border-radius: 999px; padding: 1px 10px; background: #fff; font-weight: 600; }
 body.dragging .map-drop { background: #eef9f7; }
@@ -86,6 +88,7 @@ h3[data-id] .grip { cursor: grab; }
   <label class="key" title="grey lines between motifs holding at least this many of the same claims (told together; not a sign they're related)"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#9aa0a6" stroke-width="2"/></svg>
     <select id="shared-min"><option value="0" selected>no shared-claim lines</option><option value="1">sharing 1+ claims</option><option value="2">sharing 2+</option><option value="3">sharing 3+</option></select></label>
   <label class="key"><input type="checkbox" id="only-linked" checked> only linked motifs</label>
+  <button id="tree-btn" class="map-btn" title="the rests-on links as a tree: what rests on nothing at the top, each motif a row below the deepest one it rests on (motifs outside them hidden)">🌳 tree</button>
   <button id="chips-btn" class="map-btn" title="show or hide the group and genre chips (they open by themselves while you drag)">📁🎭 chips</button>
   <button id="key-btn" class="map-btn" title="what the dots and lines mean, and how to work the map">ℹ️ key</button>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
@@ -217,13 +220,98 @@ function draw() {
         d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
       });
       node.attr('transform', (n) => `translate(${n.x},${n.y})`);
-      nodes.forEach((n) => { if (!gathered.has(n.id)) kept.set(n.id, {x: n.x, y: n.y}); });  // a gathered one goes back
+      nodes.forEach((n) => { if (!gathered.has(n.id) && !treeMode) kept.set(n.id, {x: n.x, y: n.y}); });  // a gathered one goes back; so does the tree
     });
   if (kept.size) sim.alpha(0.3);
   else sim.on('end.fit', () => { sim.on('end.fit', null); fit(); });
   sim.on('end.labels', placeLabels);
+  if (treeMode) layTree();
   applyFocus();
 }
+// The tree (🌳): the rests-on links laid out top down. Rows by depth (a motif one row below the deepest motif it rests
+// on), each row ordered by where its neighbours are (barycenters, down and up a few times) so lines cross less; each
+// family (a connected set) side by side. The same dots, pinned there; toggled off they go back where they were
+let treeMode = false;
+function layTree() {
+  const on = new Set(nodes.map((n) => n.id));
+  const ups = (id) => (byId[id]?.parents || []).filter((p) => on.has(p));
+  const downs = new Map();
+  nodes.forEach((n) => ups(n.id).forEach((p) => { if (!downs.has(p)) downs.set(p, []); downs.get(p).push(n.id); }));
+  const inTree = new Set(nodes.filter((n) => ups(n.id).length || downs.has(n.id)).map((n) => n.id));
+  const depth = new Map();
+  const deep = (id, seen = new Set()) => {  // the longest way up to a motif resting on nothing
+    if (depth.has(id)) return depth.get(id);
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    const d = Math.max(-1, ...ups(id).map((p) => deep(p, seen))) + 1;
+    depth.set(id, d);
+    return d;
+  };
+  inTree.forEach((id) => deep(id));
+  // families: the connected sets, biggest first
+  const family = new Map();
+  let fam = 0;
+  inTree.forEach((id) => {
+    if (family.has(id)) return;
+    const todo = [id];
+    while (todo.length) {
+      const x = todo.pop();
+      if (family.has(x)) continue;
+      family.set(x, fam);
+      todo.push(...ups(x), ...(downs.get(x) || []));
+    }
+    fam++;
+  });
+  const fams = [...Array(fam).keys()].map((f) => [...inTree].filter((id) => family.get(id) === f)).sort((a, b) => b.length - a.length);
+  const DX = 175, DY = 120, SHELF = 2600;  // families packed on shelves this wide, biggest first, like words in lines
+  let x0 = 0, y0 = 0, shelfH = 0;
+  const pos = new Map();
+  fams.forEach((members) => {
+    const rows = [];
+    members.forEach((id) => { const d = depth.get(id); (rows[d] = rows[d] || []).push(id); });
+    rows.forEach((row) => row.sort((a, b) => byId[a].name.localeCompare(byId[b].name)));
+    const at = new Map();
+    const index = () => rows.forEach((row) => row.forEach((id, i) => at.set(id, i)));
+    index();
+    const mean = (ids) => ids.length ? ids.reduce((t, i) => t + at.get(i), 0) / ids.length : null;
+    for (let pass = 0; pass < 6; pass++) {  // down by what each rests on, up by what rests on each
+      const order = pass % 2 ? [...rows.keys()].reverse() : [...rows.keys()];
+      order.forEach((d) => {
+        const row = rows[d];
+        if (!row) return;
+        const key = new Map(row.map((id) => [id, mean(pass % 2 ? (downs.get(id) || []).filter((x) => family.get(x) === family.get(id)) : ups(id)) ?? at.get(id)]));
+        row.sort((a, b) => key.get(a) - key.get(b));
+        row.forEach((id, i) => at.set(id, i));
+      });
+    }
+    const width = Math.max(...rows.filter(Boolean).map((r) => r.length));
+    if (x0 && x0 + width * DX > SHELF) { x0 = 0; y0 += shelfH + DY; shelfH = 0; }  // a new shelf
+    rows.forEach((row, d) => row && row.forEach((id, i) => pos.set(id, {x: x0 + (i + (width - row.length) / 2) * DX, y: y0 + d * DY})));
+    x0 += (width + 1) * DX;
+    shelfH = Math.max(shelfH, (rows.length - 1) * DY);
+  });
+  nodes.forEach((n) => {
+    const p = pos.get(n.id);
+    if (p) { n.fx = p.x; n.fy = p.y; } else { n.fx = null; n.fy = null; }
+  });
+  d3.selectAll('.node').classed('tree-off', (n) => !pos.has(n.id));
+  d3.selectAll('.link').classed('tree-off', (l) => !(pos.has(l.source.id) && pos.has(l.target.id)));
+  sim.alpha(0.3).restart();
+  setTimeout(() => fitTo(new Set(pos.keys()), 0.15), 50);  // the whole tree: as far out as it takes
+}
+function leaveTree() {
+  nodes.forEach((n) => { const k = kept.get(n.id); n.fx = null; n.fy = null; if (k) { n.x = k.x; n.y = k.y; } });
+  d3.selectAll('.tree-off').classed('tree-off', false);
+  sim.alpha(0.2).restart();
+  setTimeout(fit, 400);
+}
+$('#tree-btn').addEventListener('click', () => {
+  treeMode = !treeMode;
+  document.body.classList.toggle('tree-mode', treeMode);
+  $('#tree-btn').classList.toggle('on', treeMode);
+  if (focus) { scatter(); }
+  if (treeMode) layTree(); else leaveTree();
+});
 // Names where they fit: the most telling first (claims, others resting on it), each kept only if it overlaps none
 // already placed, on screen; the picked motif's neighbourhood, search hits and the dot pointed at always named
 let lt, hover = null;
@@ -304,14 +392,14 @@ function scatter() {  // the gathered ones back where they were
   gathered.clear();
   sim.alpha(0.15).restart();
 }
-function fitTo(ids) {  // the given motifs in view, left of the details box
+function fitTo(ids, least = 0.4) {  // the given motifs in view, left of the details box, zoomed out no further than `least`
   const ns = nodes.filter((n) => ids.has(n.id) && n.x !== undefined);
   if (!ns.length) return;
   // where they're going (a gathered one is pinned there), not where they are mid-move
   const full = $('#graph').clientWidth, W = full > 1000 ? full - 380 : full, H = $('#graph').clientHeight;  // room for the box when wide
   const xs = ns.map((n) => n.fx ?? n.x), ys = ns.map((n) => n.fy ?? n.y);
   const x0 = Math.min(...xs) - 60, x1 = Math.max(...xs) + 180, y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
-  const k = Math.max(0.4, Math.min(2.2, 0.9 * Math.min(W / (x1 - x0), H / (y1 - y0))));
+  const k = Math.max(least, Math.min(2.2, 0.9 * Math.min(W / (x1 - x0), H / (y1 - y0))));
   d3.select('#net').transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
 }
 let zoomer;
@@ -393,7 +481,7 @@ function growAll(box) { box.querySelectorAll('.cname, .cnote').forEach(grow); }
 document.addEventListener('input', (ev) => { if (ev.target.matches('.cname, .cnote')) grow(ev.target); });
 function show(id, zoom) {
   focus = id;
-  if (id) gather(id); else scatter();
+  if (id && !treeMode) gather(id); else scatter();  // in the tree the neighbourhood is already in place: just picked out
   document.body.classList.toggle('focusing', Boolean(id));
   applyFocus();
   if (id && (zoom || gathered.size)) fitTo(near);
@@ -665,7 +753,7 @@ function filterTree() {
 }
 $('#fit').addEventListener('click', fit);
 $('#q').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const t = ev.target.value.trim().toLowerCase(); const n = nodes.find((x) => x.e.name.toLowerCase().includes(t)); if (n) center(n.id); } });
-addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !ev.target.matches('input, textarea')) { $('#menu').style.display = 'none'; show(null); } });
+addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !(ev.target.matches && ev.target.matches('input, textarea'))) { $('#menu').style.display = 'none'; show(null); } });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 200); });
 load();
 </script>
