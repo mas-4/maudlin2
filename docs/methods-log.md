@@ -43,6 +43,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **The public motif map, readable on a phone.** On a phone the map came after a screen and a half of explanation and
+  filters, and then drew all 350 names at once, an unreadable heap. Now the explainer and the key fold away on small
+  screens (open on wide ones), so the map comes first; names show only where they fit at the current zoom, the most
+  telling first (the most claims, what others rest on), the picked motif and its neighbours always, more as you zoom
+  in, the groups' names placed first; related lines stay faint until their motif is picked; and lines between motifs
+  that only share a claim are off unless asked for (told together isn't related).
 - **🎯 Today's most useful decisions.** The person can't confirm motifs for hours a day, and needn't: the confidence
   model learned nearly as well from half their decisions as from all of them. What teaches it most per minute is
   a few decisions of the right kind, so the workbench's 🎯 today tab gathers about twenty: the filings it's torn on

@@ -223,12 +223,55 @@
     pointer-events: none;
 }
 
-.mm-node text.mm-minor {
+/* a name that doesn't fit where it is at this zoom (placeLabels): shown when its dot is pointed at, picked or found */
+.mm-node text.mm-lbl-off {
     opacity: 0;
 }
 
-.mm-node:hover text.mm-minor, .mm-node.mm-picked text, .mm-node.mm-hit text, .mm-node:focus-visible text {
+.mm-node:hover text.mm-lbl-off, .mm-node.mm-picked text, .mm-node.mm-hit text, .mm-node:focus-visible text {
     opacity: 1;
+}
+
+.mm-hull text.mm-lbl-off {
+    opacity: 0;
+}
+
+/* related lines faint until their motif is picked: drawn in full, all of them buried the map (the checker's map
+   draws them only for the motif picked) */
+.mm-link.mm-related {
+    opacity: 0.12;
+}
+
+.mm-link.mm-related.mm-near {
+    opacity: 1;
+}
+
+/* the explainer and the key fold away (folded from the start on phones: the map first) */
+.mm-about, .mm-more {
+    margin: 0.8em 0;
+}
+
+.mm-about summary, .mm-more summary {
+    cursor: pointer;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.mm-about p {
+    margin: 0.5em 0 0;
+}
+
+.mm-more summary {
+    display: inline-block;
+    padding: 0.3em 0.9em;
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #8a5cff;
+}
+
+.mm-more[open] summary {
+    margin-bottom: 0.2em;
 }
 
 .mm-node.mm-broad circle {
@@ -358,5 +401,8 @@
 
     .mm-search {
         flex: 1 1 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.4em;
     }
 }

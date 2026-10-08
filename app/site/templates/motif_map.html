@@ -7,20 +7,23 @@
         <p>Each motif is <b>the shape of a story as people tell it</b>, not a claim that it's true: many of the claims
             filed under them are false, some are true.</p>
     </div>
-    <p class="wip-banner">🚧 <b>Work in progress.</b> The <a href="motifs.html">motif index</a> drawn as a map: {{ motifs }}
+    <details class="mm-about wip-banner" open><summary>🚧 <b>Work in progress:</b> how to read the map</summary><p>The <a href="motifs.html">motif index</a> drawn as a map: {{ motifs }}
         motifs a person has checked, each a dot that grows with its claims. Lines join a motif to the ones it rests on
         (it only makes sense given them: a kind of them, or a case, argument or figure that tells them), to motifs a person marked related, and to motifs that share a claim{% if groups %}; the colored areas
         are groups a person made of motifs that go together{% endif %}{% if genres %}, and a dot's color is its genre{% endif %}. Pick a dot to read its claims; drag to look
-        around, scroll or pinch to zoom.</p>
+        around, scroll or pinch to zoom; more names show as you zoom in.</p></details>
 
     <div class="mm-bar">
         <label class="mm-search">🔎 <input type="search" id="mm-search" placeholder="find a motif" list="mm-names" autocomplete="off"></label>
         <datalist id="mm-names"></datalist>
+    </div>
+    <details class="mm-more" open><summary>🎛️ key{% if groups or genres %}, groups and genres{% endif %}</summary>
+    <div class="mm-bar">
         <span class="mm-key"><i class="mm-dot mm-broad"></i> others rest on it</span>
         <span class="mm-key"><i class="mm-dot mm-sub"></i> rests on one</span>
         <span class="mm-key"><i class="mm-line"></i> rests on</span>
         <span class="mm-key"><i class="mm-line mm-related"></i> related</span>
-        <span class="mm-key"><i class="mm-line mm-shared"></i> share a claim</span>
+        <label class="mm-key" title="told together isn't the same as related: off unless you want them"><input type="checkbox" id="mm-shared"> <i class="mm-line mm-shared"></i> share a claim</label>
         <label class="mm-key"><input type="checkbox" id="mm-lonely"> show motifs with no links</label>
         <label class="mm-key mm-size">⚪ dot size <input type="range" id="mm-size" min="0.6" max="3" step="0.1" value="1.6"></label>
     </div>
@@ -30,6 +33,7 @@
         {% if genres %}<span class="mm-key" title="a dot's color is its genre: click one to pick out its motifs">🎭 genres</span>
         {% for g in genres %}<button type="button" class="mm-genre" data-genre="{{ g.name|e }}" data-k="{{ g.k }}" aria-pressed="false">{{ g.name|e }} · {{ g.size }}</button>{% endfor %}{% endif %}
     </div>{% endif %}
+    </details>
 
     <div class="mm-wrap">
         <div class="mm-map" id="mm-map">
@@ -54,6 +58,8 @@
     <script>
     (function () {
         // The window's width without its scrollbar, for the edge-to-edge map (as the front page's cloud does)
+        // On a phone the map comes first: the explainer and the key start folded
+        if (window.matchMedia('(max-width: 800px)').matches) document.querySelectorAll('.mm-about, .mm-more').forEach((d) => d.removeAttribute('open'));
         const setPageWidth = () => document.documentElement.style.setProperty('--page-width', document.documentElement.clientWidth + 'px');
         setPageWidth();
         new ResizeObserver(setPageWidth).observe(document.body);
@@ -87,7 +93,8 @@
             nodes = data.motifs.filter((m) => lonely || deg.get(m.id) || m.groups.some((g) => data.groups.some((x) => x.id === g)))
                 .map((m) => Object.assign({id: m.id, m}, kept.has(m.id) ? {x: kept.get(m.id).x, y: kept.get(m.id).y} : {}));
             const ids = new Set(nodes.map((n) => n.id));
-            links = data.links.filter((l) => ids.has(l.source.id || l.source) && ids.has(l.target.id || l.target))
+            const shared = $('#mm-shared').checked;
+            links = data.links.filter((l) => (shared || l.kind !== 'shared') && ids.has(l.source.id || l.source) && ids.has(l.target.id || l.target))
                 .map((l) => ({...l, source: l.source.id || l.source, target: l.target.id || l.target}));
             svg.selectAll('*').remove();
             svg.attr('viewBox', [0, 0, W, H]);
@@ -101,6 +108,7 @@
                 root.selectAll('.mm-node text').style('font-size', `${12 / k}px`).style('stroke-width', `${4 / k}px`)
                     .attr('x', (n) => r(n.m) + 4 / k).attr('y', 4 / k);
                 root.selectAll('.mm-hull text').style('font-size', `${11 / k}px`).style('stroke-width', `${5 / k}px`);
+                queueLabels();
             });
             svg.call(zoomer).on('dblclick.zoom', null);
             const groups = data.groups.filter((g) => !hidden.has(g.id));
@@ -115,8 +123,7 @@
                 .classed('mm-broad', (n) => n.m.broad).classed('mm-sub', (n) => n.m.sub)
                 .attr('tabindex', 0).attr('role', 'button').attr('aria-label', (n) => `${n.m.name}, ${n.m.count} claims`);
             node.append('circle').attr('r', (n) => r(n.m)).attr('fill', (n) => fill(n.m));
-            node.append('text').attr('x', (n) => r(n.m) + 4).attr('y', 4).text((n) => n.m.name)
-                .attr('class', (n) => n.m.count > 1 || n.m.broad || n.m.sub ? '' : 'mm-minor');
+            node.append('text').attr('x', (n) => r(n.m) + 4).attr('y', 4).text((n) => n.m.name);  // which show: placeLabels()
             node.on('click', (ev, n) => { ev.stopPropagation(); pick(n.id); })
                 .on('keydown', (ev, n) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(n.id); } });
             node.call(d3.drag().on('start', (ev, n) => { if (!ev.active) sim.alphaTarget(0.2).restart(); n.fx = n.x; n.fy = n.y; })
@@ -141,11 +148,47 @@
                         d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
                     });
                     node.attr('transform', (n) => `translate(${n.x},${n.y})`);
+                    queueLabels();
                 })
                 .on('end', () => { if (!fitted) { fitted = true; fit(); } });
             mark();
             markGenre();
         }
+
+        // Names only where they fit on screen, the most telling first (the most claims; what others rest on), the picked
+        // motif and its neighbours always: all 350 at once were an unreadable heap, on a phone above all. More fit as
+        // you zoom in.
+        let labelTimer = 0;
+        function placeLabels() {
+            if (!nodes) return;
+            const t = d3.zoomTransform($('#mm-svg')), box = $('#mm-map'), W = box.clientWidth, H = box.clientHeight;
+            const keep = picked ? neighbors(picked) : new Set();
+            const prio = (n) => (keep.has(n.id) ? 1e6 : 0) + n.m.count * 2 + (n.m.broad ? 4 : 0) + (n.m.sub ? 1 : 0);
+            const placed = [], shown = new Set();
+            // the groups' names first, the biggest groups first; one that would sit on another waits for a closer zoom
+            const at = $('#mm-svg').getBoundingClientRect();
+            const hulls = root.selectAll('.mm-hull text').nodes().map((el) => ({el, size: (d3.select(el).datum().size || 0)}));
+            hulls.sort((a, b) => b.size - a.size).forEach(({el}) => {
+                el.classList.remove('mm-lbl-off');
+                const q = el.getBoundingClientRect();
+                const b = {x0: q.left - at.left - 4, x1: q.right - at.left + 4, y0: q.top - at.top - 2, y1: q.bottom - at.top + 2};
+                const free = q.width && !placed.some((p) => b.x0 < p.x1 && b.x1 > p.x0 && b.y0 < p.y1 && b.y1 > p.y0);
+                el.classList.toggle('mm-lbl-off', !free);
+                if (free) placed.push(b);
+            });
+            for (const n of [...nodes].sort((a, b) => prio(b) - prio(a))) {
+                if (n.x == null) continue;
+                const rad = r(n.m) * t.k, x = n.x * t.k + t.x, y = n.y * t.k + t.y;
+                const b = {x0: x + rad, x1: x + rad + 6 + n.m.name.length * 6.4, y0: y - 9, y1: y + 7};
+                if (!keep.has(n.id) && (b.x0 < 0 || b.x1 > W || b.y0 < 0 || b.y1 > H)) continue;  // off screen, or cut by its edge
+                if (keep.has(n.id) || !placed.some((p) => b.x0 < p.x1 && b.x1 > p.x0 && b.y0 < p.y1 && b.y1 > p.y0)) {
+                    placed.push(b);
+                    shown.add(n.id);
+                }
+            }
+            d3.selectAll('.mm-node text').classed('mm-lbl-off', (n) => !shown.has(n.id));
+        }
+        const queueLabels = () => { if (!labelTimer) labelTimer = setTimeout(() => { labelTimer = 0; placeLabels(); }, 80); };
 
         function markGenre() {
             d3.selectAll('.mm-node').classed('mm-gdim', (n) => genre !== null && n.m.genre !== genre);
@@ -176,12 +219,14 @@
         function mark() {
             const near = picked ? neighbors(picked) : null;
             d3.selectAll('.mm-node').classed('mm-dim', (n) => near ? !near.has(n.id) : false).classed('mm-picked', (n) => n.id === picked);
-            d3.selectAll('.mm-link').classed('mm-dim', (l) => near ? !(l.source.id === picked || l.target.id === picked) : false);
+            d3.selectAll('.mm-link').classed('mm-dim', (l) => near ? !(l.source.id === picked || l.target.id === picked) : false)
+                .classed('mm-near', (l) => picked !== null && (l.source.id === picked || l.target.id === picked));
         }
 
         function pick(id) {
             picked = id;
             mark();
+            placeLabels();
             const card = $('#mm-card');
             if (!id) { card.innerHTML = '<p class="mm-hint">👆 Pick a dot to see its motif: what kind of story it is and the claims filed under it.</p>'; return; }
             const m = byId.get(id);
@@ -227,6 +272,7 @@
             d3.selectAll('.mm-node').classed('mm-hit', (n) => q.length > 1 && n.m.name.toLowerCase().includes(q));
         });
         $('#mm-lonely').addEventListener('change', () => { fitted = false; draw(); });
+        $('#mm-shared').addEventListener('change', () => draw());
         $('#mm-size').addEventListener('input', (ev) => {
             size = +ev.target.value;
             d3.selectAll('.mm-node circle').attr('r', (n) => r(n.m));
