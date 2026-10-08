@@ -61,3 +61,5 @@ def test_weak_filings_are_found_and_their_alternatives_skip_where_the_claim_alre
     # filed in M3 since: only M2 is still a suggestion
     assert fc.better(index, 'weak and confirmed') == [{'id': 'M2', 'name': 'Two', 'fit': 0.5}]
     assert fc.better(index, 'strong') == []
+    index['entries']['M2']['not_claims'] = [mi.key('weak and confirmed')]  # ✕: not this one
+    assert fc.better(index, 'weak and confirmed') == []

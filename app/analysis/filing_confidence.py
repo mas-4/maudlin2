@@ -380,7 +380,8 @@ def better(index: dict, claim: str) -> list[dict]:
     entries = index['entries']
     return [{'id': eid, 'name': entries[eid]['name'], 'fit': fit} for eid, fit in x['motifs']
             if eid in entries and not entries[eid].get('merged_into')
-            and k not in {mi.key(c['claim']) for c in entries[eid]['claims']}]
+            and k not in {mi.key(c['claim']) for c in entries[eid]['claims']}
+            and k not in entries[eid].get('not_claims', [])]  # a person said it isn't this one (✕): gone at once
 
 
 def refresh(budget: float | None = None) -> int:
