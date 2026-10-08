@@ -33,6 +33,7 @@ SHARED_STATIC = {'motif-map-layout.js': os.path.join(os.path.dirname(CHECKER), '
 # then the other tools. The organizer, the singles page and the board were dropped Oct 7 (the workbench does their
 # work; the board's /motif-board.json and POST /motif-board stay, for the map and the other pages). (path, label, section)
 NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '🕸️ Motif map', 'main'),
+       ('/dashboard', '📈 Dashboard', 'main'),
        ('/motifs', '✅ check', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
        ('/motif-notes', '📝 notes', 'motifs'),
        ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
@@ -50,7 +51,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
 
 
 STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-empty': 'empty.html',
-                '/motif-notes': 'notes.html'}
+                '/motif-notes': 'notes.html', '/dashboard': 'dashboard.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
 
@@ -749,6 +750,9 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.startswith('/dashboard.json'):  # 📈 everything at a glance (app/dashboard.py)
+            from app import dashboard
+            return self.send_json(dashboard.gather(fresh='fresh=1' in self.path))
         if self.path.startswith('/workbench-metrics.json'):
             from app.analysis import motif_index
             from app import health
@@ -787,7 +791,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Location', '/motif-workbench')
             self.end_headers()
             return
-        body = (render(page_of, path) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
+        body = (render(page_of, path, undo=page_of != 'dashboard.html') if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
                 else page())
         body = body.encode()
         self.send_response(200)

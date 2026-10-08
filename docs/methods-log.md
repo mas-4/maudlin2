@@ -43,6 +43,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **A dashboard of everything** (the checker's 📈 Dashboard, app/dashboard.py): whether the machine keeps up (each
+  hourly run's minutes against the 45-minute limit, feeds or outlets not coming in, the card's heat and load, models
+  loaded into memory each hour), what came in each day (headlines, outlets, side-feed items by kind, transcripts and
+  hours of audio, fact-checks and whether their pieces were read), what was made of it (claims filed, what waits for
+  the person, proposals, episodes by kind), the motif index's shape and growth, the models' own held-out tests and the
+  latest experiments, and the person's curation by day and kind. Read live, each part again once it's a minute old,
+  in the background.
 - **The hourly run keeps to its time.** The 3 PM run was stopped by its 45-minute limit before it filed any claims, and
   the 5 PM run took 44 minutes: the day's additions and the backlog of podcast episodes newly let in added up. Each step
   after the site is published now gets what's left of 40 minutes at most, ten of them kept back for filing claims and

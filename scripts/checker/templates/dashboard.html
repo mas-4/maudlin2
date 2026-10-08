@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}📈 Dashboard{% endblock %}
+{% block head %}<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root { --ink: #1f1f2e; --paper: #fffdf5; --sun: #ffc400; --mint: #00c2a8; --sky: #3a86ff; --berry: #ff4d6d; --grape: #8a5cff; --leaf: #2ec27e; --muted: #777; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system-ui, sans-serif; }
+.dash { max-width: 1400px; margin: 0 auto; padding: 4px 16px 60px; }
+.dash h1 { font: 700 30px 'Comic Neue', 'Comic Sans MS', cursive; margin: 8px 0 2px; }
+.dash-sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+.dash h2 { font: 700 21px 'Comic Neue', 'Comic Sans MS', cursive; margin: 26px 0 10px; padding-bottom: 4px; border-bottom: 3px dashed var(--ink); }
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.dash-card { background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); padding: 12px 14px; min-width: 0; }
+.dash-card h3 { margin: 0 0 8px; font: 700 16px 'Comic Neue', 'Comic Sans MS', cursive; }
+.dash-card.wide { grid-column: 1 / -1; }
+.dash-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.dash-tile { border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; background: var(--tint, #f6f6fb); }
+.dash-tile b { display: block; font: 700 26px 'Comic Neue', 'Comic Sans MS', cursive; line-height: 1.1; }
+.dash-tile span { font-size: 12px; color: #444; }
+.dash-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.dash-chart text { font: 10px system-ui, sans-serif; fill: #555; }
+.dash-key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; margin-top: 6px; }
+.dash-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--ink); }
+.dash-list { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.dash-list li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dotted #ccc; }
+.dash-list li b { font-variant-numeric: tabular-nums; }
+.dash-ok { color: var(--leaf); font-weight: 700; } .dash-bad { color: var(--berry); font-weight: 700; }
+.dash-sick { border-color: var(--berry); background: #fff3ef; }
+.dash-mono { font: 12px ui-monospace, monospace; white-space: pre-wrap; max-height: 260px; overflow: auto; background: #f6f6fb; padding: 8px; border-radius: 8px; }
+.dash-err { color: var(--berry); font-size: 13px; }
+.dash-refresh { font: inherit; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--sun); cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+@media (max-width: 500px) { .dash-grid { grid-template-columns: 1fr; } .dash-tile b { font-size: 22px; } }
+</style>{% endblock %}
+{% block body %}
+<main class="dash">
+  <h1>📈 Everything at a glance</h1>
+  <div class="dash-sub"><span id="dash-at">⏳ gathering (the first time takes half a minute)…</span> · <button class="dash-refresh" id="dash-reload">🔄 refresh</button></div>
+  <div id="dash-body"></div>
+</main>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const num = (n) => n == null ? '—' : typeof n === 'number' ? n.toLocaleString() : esc(n);
+  const pct = (x) => x == null ? '—' : Math.round(x * 100) + '%';
+  const PALETTE = ['#3a86ff', '#ffc400', '#00c2a8', '#ff4d6d', '#8a5cff', '#2ec27e', '#ff8c42', '#7a7a8c', '#00a6fb', '#c77dff'];
+  const short = (d) => d.slice(5).replace('-', '/');
+  const err = (x) => x && x.error ? `<p class="dash-err">😬 ${esc(x.error)}</p>` : '';
+
+  // Stacked bars, one per label: series = {name: {label: n}}
+  function bars(labels, series, opts = {}) {
+    const names = Object.keys(series), W = 640, H = opts.h || 150, pad = 22, bw = (W - pad) / labels.length;
+    const totals = labels.map((l) => names.reduce((t, n) => t + (series[n][l] || 0), 0));
+    const peak = Math.max(1, opts.max || 0, ...totals);
+    let svg = `<svg class="dash-chart" viewBox="0 0 ${W} ${H + 18}">`;
+    if (opts.line != null) { const y = H - (opts.line / peak) * (H - 10); svg += `<line x1="${pad}" x2="${W}" y1="${y}" y2="${y}" stroke="#ff4d6d" stroke-dasharray="4 3"/><text x="${W - 2}" y="${y - 3}" text-anchor="end">${esc(opts.lineLabel || '')}</text>`; }
+    labels.forEach((l, i) => {
+      let y = H;
+      names.forEach((n, k) => {
+        const v = series[n][l] || 0, h = (v / peak) * (H - 10);
+        if (v) svg += `<rect x="${pad + i * bw + 1}" y="${y - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="2" fill="${(opts.colors || {})[n] || PALETTE[k % PALETTE.length]}"><title>${esc(l)} · ${esc(n)}: ${v.toLocaleString()}</title></rect>`;
+        y -= h;
+      });
+      const every = Math.ceil(labels.length / (opts.ticks || 14));
+      if (i % every === 0) svg += `<text x="${pad + i * bw + bw / 2}" y="${H + 13}" text-anchor="middle">${esc(opts.fmt ? opts.fmt(l) : short(l))}</text>`;
+    });
+    svg += `<text x="0" y="10">${peak.toLocaleString()}</text><line x1="${pad}" x2="${W}" y1="${H}" y2="${H}" stroke="#1f1f2e"/></svg>`;
+    const key = names.length > 1 || opts.key ? `<div class="dash-key">${names.map((n, k) => `<span><i style="background:${(opts.colors || {})[n] || PALETTE[k % PALETTE.length]}"></i>${esc(n)}</span>`).join('')}</div>` : '';
+    return svg + key;
+  }
+  const one = (labels, obj, name) => bars(labels, {[name]: obj});
+  // A line over time: points = [{at, value}]
+  function line(points, lines, opts = {}) {
+    if (!points.length) return '<p class="dash-sub">no readings yet</p>';
+    const W = 640, H = 120, n = points.length;
+    let svg = `<svg class="dash-chart" viewBox="0 0 ${W} ${H + 18}">`;
+    lines.forEach(([key, max, color]) => {
+      const d = points.map((p, i) => `${i ? 'L' : 'M'}${(i / Math.max(1, n - 1)) * W},${H - (p[key] / max) * (H - 6)}`).join('');
+      svg += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2"/>`;
+    });
+    if (opts.danger) { const y = H - (opts.danger[0] / opts.danger[1]) * (H - 6); svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#ff4d6d" stroke-dasharray="4 3"/><text x="${W - 2}" y="${y - 3}" text-anchor="end">${esc(opts.danger[2])}</text>`; }
+    [0, Math.floor(n / 2), n - 1].forEach((i) => { svg += `<text x="${(i / Math.max(1, n - 1)) * W}" y="${H + 13}" text-anchor="${i ? (i === n - 1 ? 'end' : 'middle') : 'start'}">${esc(points[i].at.slice(5).replace('T', ' '))}</text>`; });
+    return svg + `</svg><div class="dash-key">${lines.map(([k, , c]) => `<span><i style="background:${c}"></i>${esc(k)}</span>`).join('')}</div>`;
+  }
+  const tile = (emoji, big, small, tint) => `<div class="dash-tile" style="--tint:${tint || '#f6f6fb'}"><b>${emoji} ${big}</b><span>${small}</span></div>`;
+  const list = (rows) => `<ul class="dash-list">${rows.map(([a, b]) => `<li><span>${esc(a)}</span><b>${num(b)}</b></li>`).join('') || '<li>—</li>'}</ul>`;
+  const KIND = {relate: '↔ related', parent: '↳ rests on', merge: '⤵ merge', rename: '✏️ rename', note: '📝 note typo',
+    group: '📁 into a group', genre: '🎭 genre', unrelate: '✂️ not related', unparent: '✂️ doesn\'t rest on',
+    new_group: '🫧 new group', new_motif: '✨ new motif'};
+  const card = (title, body, cls = '') => `<section class="dash-card ${cls}"><h3>${title}</h3>${body}</section>`;
+
+  function render(d) {
+    const A = d.acquisition || {}, P = d.processing || {}, M = d.motifs || {}, X = d.models || {}, C = d.curation || {}, H = d.machine || {};
+    const days = A.days || [];
+    const runs = Array.isArray(d.runs) ? d.runs : [];
+    const last = runs[runs.length - 1] || {};
+    const health = H.health || {}, problems = health.problems || [];
+    const loads = d['model loads'] || {};
+    const loadHours = Object.keys(loads).filter((k) => k !== 'error');
+    const modelsSeen = [...new Set(loadHours.flatMap((h) => Object.keys(loads[h])))];
+    const loadSeries = Object.fromEntries(modelsSeen.map((m) => [m, Object.fromEntries(loadHours.map((h) => [h, loads[h][m] || 0]))]));
+    const today = new Date().toLocaleDateString('en-CA');  // the hours are the machine's own time
+    const reloadsToday = loadHours.filter((h) => h.slice(0, 10) === today).reduce((t, h) => t + Object.values(loads[h]).reduce((a, b) => a + b, 0), 0);
+    const gpu = Array.isArray(d.gpu) ? d.gpu : [];
+    const hot = gpu.length ? Math.max(...gpu.map((p) => p.temp)) : null;
+    const runMinutes = runs.filter((r) => r.ok !== null).map((r) => r.minutes);
+    const sideKinds = [...new Set(days.flatMap((x) => Object.keys((A.side || {})[x] || {})))];
+    const sideSeries = Object.fromEntries(sideKinds.map((k) => [k, Object.fromEntries(days.map((x) => [x, ((A.side || {})[x] || {})[k] || 0]))]));
+    const trKinds = ['whisper', 'from the show', 'failed or skipped'];
+    const trSeries = Object.fromEntries(trKinds.map((k) => [k, Object.fromEntries(days.map((x) => [x, ((A.transcripts || {})[x] || {})[k] || 0]))]));
+    const mdays = (M.days || []).map((x) => x.day);
+    const filed = (k) => Object.fromEntries((M.days || []).map((x) => [x.day, x[k] || 0]));
+    const cur = C['per day'] || {}, cdays = Object.keys(cur);
+    const now = M.now || {};
+    const fc = X.confidence || {}, sl = X.shortlist || {}, rr = X.reranker || {};
+    const props = P['open proposals'] || {};
+    let html = '';
+
+    html += `<h2>🩺 Is it keeping up?</h2><div class="dash-grid">`;
+    html += card('At a glance', `<div class="dash-tiles">
+      ${tile(last.ok === null ? '⏳' : last.ok ? '✅' : '❌', last.minutes != null ? last.minutes + ' min' : '—', `last hourly run (${esc((last.start || '').slice(11, 16))}${last.ok === null ? ', going now' : ''}); the limit is 45`, last.minutes > 40 ? '#fff3ef' : '#effbf6')}
+      ${tile('⏱️', runMinutes.length ? Math.round(runMinutes.reduce((a, b) => a + b, 0) / runMinutes.length) + ' min' : '—', `average of ${runMinutes.length} runs in 48 h; ${runs.filter((r) => r.ok === false).length} failed`)}
+      ${tile(problems.length ? '🚨' : '💚', problems.length, problems.length ? 'feeds or outlets not coming in' : 'every feed and outlet coming in', problems.length ? '#fff3ef' : '#effbf6')}
+      ${tile('🌡️', hot != null ? hot + '°C' : '—', 'hottest the card got in 24 h')}
+      ${tile('🔁', reloadsToday, 'models loaded into memory today (fewer is better)')}
+      ${tile('💽', num(H['disk free GB']) + ' GB', `free on the data disk (${num(H['disk used %'])}% used)`)}
+    </div>`, 'wide');
+    html += card('⏱️ Hourly runs, last 48 h (minutes)', err(d.runs) + bars(runs.map((r) => r.start), {'ran': Object.fromEntries(runs.filter((r) => r.ok).map((r) => [r.start, r.minutes])), 'failed': Object.fromEntries(runs.filter((r) => r.ok === false).map((r) => [r.start, r.minutes])), 'going now': Object.fromEntries(runs.filter((r) => r.ok === null).map((r) => [r.start, r.minutes]))}, {colors: {ran: '#2ec27e', failed: '#ff4d6d', 'going now': '#ffc400'}, line: 45, lineLabel: '45-minute limit', max: 50, fmt: (l) => l.slice(11, 13) + 'h', ticks: 16}));
+    html += card(problems.length ? '🚨 Not coming in' : '💚 Feeds and outlets', problems.length ? list(problems.map((p) => [p.outlet || p.feed, p.problem]).map(([a, b]) => [a + ': ' + b, ''])) : '<p>Every outlet seen on its front page lately, every regular feed on its usual rhythm.</p>' + `<p class="dash-sub">checked ${esc((health.at || '').replace('T', ' '))} UTC</p>`, problems.length ? 'dash-sick' : '');
+    html += card('🎛️ The card, last 24 h', err(d.gpu) + line(gpu, [['temp', 100, '#ff4d6d'], ['load', 100, '#3a86ff']], {danger: [83, 100, '83°C: slows itself']}) + '<p class="dash-sub">temperature (°C) and load (%), every ten minutes</p>');
+    html += card('🔁 Models loaded into memory, per hour', err(loads) + bars(loadHours, loadSeries, {fmt: (h) => h.slice(11, 13) + 'h', ticks: 12}) + '<p class="dash-sub">each load is the card waiting: two models taking turns load each other again and again</p>', 'wide');
+    html += '</div>';
+
+    html += `<h2>📥 What came in</h2><div class="dash-grid">`;
+    html += card('At a glance', err(A) + `<div class="dash-tiles">
+      ${tile('📰', num((A.headlines || {})[days[days.length - 1]]), 'headlines new today')}
+      ${tile('🏢', num((A.outlets || {})[days[days.length - 1]]) + ' / ' + num(A['outlets in all']), 'outlets seen today')}
+      ${tile('📡', num(A['feeds in all']), 'side feeds followed')}
+      ${tile('🎙️', num((A['audio hours'] || {})[days[days.length - 1]]) + ' h', 'of shows transcribed today')}
+      ${tile('⏳', num(A['transcription backlog']), 'episodes waiting to be transcribed')}
+      ${tile('🧵', num((A.stories || {})[days[days.length - 1]]), 'new stories today')}
+    </div>`, 'wide');
+    html += card('📰 Headlines a day', one(days, A.headlines || {}, 'headlines'));
+    html += card('🏢 Outlets seen a day', one(days, A.outlets || {}, 'outlets'));
+    html += card('📡 Side-feed items a day, by kind', bars(days, sideSeries));
+    html += card('🎙️ Transcripts a day', bars(days, trSeries, {colors: {whisper: '#3a86ff', 'from the show': '#2ec27e', 'failed or skipped': '#ff4d6d'}}) + `<p class="dash-sub">audio transcribed: ${days.slice(-3).map((x) => short(x) + ' ' + ((A['audio hours'] || {})[x] || 0) + ' h').join(' · ')}</p>`);
+    const F = d['fact-checks'] || {};
+    html += card('🔎 Fact-checks, last 30 days', err(F) + `<div class="dash-tiles">${tile('🔎', num(F['last 30 days']), 'pieces')}${tile('📄', num(F['read from the piece']), 'claims read from the piece itself')}${tile('🗒️', num(F['with a claim']), 'with a claim')}</div>` + list(Object.entries(F['by checker'] || {})) + `<p class="dash-sub">text from: ${Object.entries(F['text from'] || {}).map(([k, v]) => esc(k) + ' ' + v).join(' · ')}</p>`);
+    html += card('🧵 New stories a day', one(days, A.stories || {}, 'stories'));
+    html += '</div>';
+
+    html += `<h2>⚙️ What was made of it</h2><div class="dash-grid">`;
+    html += card('Waiting for you', err(P) + `<div class="dash-tiles">
+      ${tile('✅', num(P['unchecked in your motifs']), 'filings to check in your motifs', '#fff8db')}
+      ${tile('🔁', num(P['weak, up for a second look']), 'confirmed ones the model doubts (second look)')}
+      ${tile('🤖', num(P['weak claims with suggestions']), 'weak claims with a better motif suggested')}
+      ${tile('📥', num(P['claims with no motif']), 'claims with no motif')}
+      ${tile('💡', Object.values(props).reduce((a, b) => a + b, 0), 'open proposals')}
+      ${tile('🗣️', num(P['retold on the shows']), 'claims retold across the shows')}
+    </div>`, 'wide');
+    html += card('🗂️ Claims filed a day', bars(mdays, {'into a motif already there': filed('filed_matched'), 'a new motif made': filed('filed_new'), 'no motif': filed('filed_none')}, {colors: {'into a motif already there': '#2ec27e', 'a new motif made': '#ffc400', 'no motif': '#7a7a8c'}}));
+    html += card('💡 Open proposals by kind', list(Object.entries(props).sort((a, b) => b[1] - a[1]).map(([k, n]) => [KIND[k] || k, n])) + '<p class="dash-sub"><a href="/motif-workbench">to the 💡 tab</a></p>');
+    html += card('📻 Episodes: news or evergreen', Object.keys(P.episodes || {}).length ? list(Object.entries(P.episodes)) : '<p class="dash-sub">labels start with the next hourly run</p>');
+    html += '</div>';
+
+    html += `<h2>🧩 The motif index</h2><div class="dash-grid">`;
+    html += card('At a glance', err(M) + `<div class="dash-tiles">
+      ${tile('🧩', num(now.motifs), 'motifs')}${tile('💬', num(now.claims), `claims (${num(now.filings)} filings)`)}
+      ${tile('✅', (now.done ?? '—') + '%', 'marked done by you')}${tile('📝', (now.your_notes ?? '—') + '%', 'with your note')}
+      ${tile('🎭', (now.with_genre ?? '—') + '%', 'with a genre')}${tile('📁', (now.in_group ?? '—') + '%', 'in a group')}
+      ${tile('🌳', (now.in_tree ?? '—') + '%', 'in a rests-on tree')}${tile('☝️', (now.singles ?? '—') + '%', 'with one claim only')}
+    </div>`, 'wide');
+    html += card('✨ New motifs and your checks a day', bars(mdays, {'new motifs': Object.fromEntries((M.days || []).map((x) => [x.day, x.new_motifs || 0])), 'your ✓': Object.fromEntries((M.days || []).map((x) => [x.day, x.checks_yes || 0])), 'your ✕': Object.fromEntries((M.days || []).map((x) => [x.day, x.checks_no || 0]))}, {colors: {'new motifs': '#ffc400', 'your ✓': '#2ec27e', 'your ✕': '#ff4d6d'}}));
+    html += card('🎭 By genre', list(Object.entries(M['by genre'] || {})));
+    html += card('📁 By group', list(Object.entries(M['by group'] || {})));
+    html += card('🔥 Growing this week (new claims)', list((M['growing this week'] || []).filter(([, n]) => n)));
+    html += card('🏔️ Biggest', list(M.biggest || []));
+    html += card('🐣 Newest', list((M.newest || []).map(([n, d]) => [n, d.slice(5, 10).replace('-', '/')])));
+    html += '</div>';
+
+    html += `<h2>🧠 The models, by their own tests</h2><div class="dash-grid">`;
+    html += card('🎯 Filing confidence', err(X) + list([['held-out AUC', fc.auc], ['sure from', pct(fc['sure at'])], ['right when sure', pct(fc['precision when sure'])], ['of your kept filings passable when sure', pct(fc['kept passable when sure'])], ['decisions learned from', fc.decisions], ['reranker', fc.reranker], ['trained', (fc.at || '').replace('T', ' ')]]));
+    html += card('📋 Shortlist (your motifs in the top 12, held out)', list([['plain weights', pct(sl['plain top 12'])], ['every signal weighed', pct(sl['learned top 12'])], ['learned from claims', sl.claims], ['trained', (sl.at || '').replace('T', ' ')]]));
+    html += card('🧑‍🏫 Reranker taught your decisions', list([['taught', (rr.at || '').replace('T', ' ')], ['examples', rr.examples], ['your decisions', rr.decisions]]));
+    html += card('🧪 Latest experiment results', `<div class="dash-mono">${(X.experiments || []).map(esc).join('\n') || 'none yet'}</div>`, 'wide');
+    html += '</div>';
+
+    html += `<h2>🖐️ Your curation</h2><div class="dash-grid">`;
+    html += card('Changes a day: you and Claude', err(C) + bars(cdays, {you: Object.fromEntries(cdays.map((x) => [x, cur[x].you || 0])), claude: Object.fromEntries(cdays.map((x) => [x, cur[x].claude || 0]))}, {colors: {you: '#8a5cff', claude: '#00c2a8'}}));
+    html += card('This week, by kind of change', list(Object.entries(C['this week by kind'] || {})));
+    html += card('💾 Files', list(Object.entries(H['files MB'] || {}).map(([k, v]) => [k, v + ' MB'])));
+    html += '</div>';
+    $('#dash-body').innerHTML = html;
+    $('#dash-at').textContent = `figures as of ${d.at.replace('T', ' ')} (each part refreshes in the background as you reload)`;
+  }
+
+  async function load(fresh) {
+    $('#dash-at').textContent = '⏳ gathering…';
+    try {
+      const r = await fetch('/dashboard.json' + (fresh ? '?fresh=1' : ''));
+      render(await r.json());
+    } catch (e) { $('#dash-at').textContent = '😬 ' + e.message; }
+  }
+  $('#dash-reload').addEventListener('click', () => load(false));
+  load(false);
+  setInterval(() => load(false), 120000);
+})();
+</script>
+{% endblock %}
