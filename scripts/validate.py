@@ -434,8 +434,9 @@ def board_action(data: dict):
         mi.group_add(data['name'])
     elif act == 'group_new' and text('name'):  # a new group, with a first motif in it if one is given (one undo step)
         gid = mi.group_add(data['name'])
-        if data.get('id') in live:
-            mi.group_member(data['id'], gid)
+        for eid in [data.get('id')] + list(data.get('ids') or []):  # its first motif, or a proposed family's
+            if eid in live:
+                mi.group_member(eid, gid)
     elif act == 'group_rename' and data.get('group') in index.get('groups', {}) and text('name'):
         mi.group_rename(data['group'], data['name'])
     elif act == 'group_delete' and data.get('group') in index.get('groups', {}):

@@ -326,3 +326,37 @@ def test_a_new_motif_is_asked_about_the_groups_nearest_it(monkeypatch):
     new = {'id': 'M9', 'name': 'Tax cut for the few', 'claims': [{'claim': 'x'}]}
     assert mp.ask_groups(new, index) == ['G1'] and asked == ['Taxes']  # Wars too far to ask about
     assert mi.person_groups(entries['M1']) == ['G1']
+
+
+def test_a_family_of_motifs_no_group_holds_is_proposed_as_a_new_group(monkeypatch):
+    import numpy as np
+
+    from app import narratives
+    from app.analysis import llm, motif_index as mi
+    from app.analysis import motif_proposals as mp
+    m = lambda i, name, g=None: {'id': i, 'name': name, 'done': ['x'], 'claims': [{'claim': i}],  # noqa: E731
+                                 **({'groups': [g]} if g else {})}
+    entries = {x['id']: x for x in [m('M1', 'Graft'), m('M2', 'Pay to play'), m('M3', 'Hatch Act'),
+                                    m('M4', 'Bad war one', 'G1'), m('M5', 'Bad war two', 'G1'), m('M6', 'Bad war three', 'G1'),
+                                    m('M7', 'Lonely motif')]}
+    index = {'groups': {'G1': {'name': 'War motifs'}}, 'entries': entries, 'related': []}
+    monkeypatch.setattr(narratives, 'embed', lambda ts: np.array(
+        [[1.0, 0, 0] if any(w in t for w in ('Graft', 'Pay', 'Hatch')) else [0, 1.0, 0] if 'war' in t else [0, 0, 1.0]
+         for t in ts]))
+    asked = []
+
+    def answer(prompt, schema, **k):
+        asked.append(prompt)
+        return {'reason': 'office for gain', 'family': True, 'name': 'Corruption', 'members': [1, 2, 3]}
+    monkeypatch.setattr(llm, 'complete_json', answer)
+    store = {}
+    assert mp.new_groups(store, index, list(entries.values())) == 1
+    assert len(asked) == 1 and '- War motifs' in asked[0]  # the war family is a group already: not asked about
+    p = next(p for p in store.values() if p['kind'] == 'new_group')
+    assert p['args'] == {'name': 'Corruption', 'members': ['M1', 'M2', 'M3']} and mp.still_holds(p, index)
+    assert mp.action(p) == {'action': 'group_new', 'name': 'Corruption', 'ids': ['M1', 'M2', 'M3']}
+    assert mp.new_groups(store, index, list(entries.values())) == 0 and len(asked) == 1  # not again
+    for i in ('M1', 'M2'):
+        entries[i]['groups'] = ['G1']
+    assert not mp.still_holds(p, index)  # a group holds most of them now
+    assert mi.person_groups(entries['M1']) == ['G1']

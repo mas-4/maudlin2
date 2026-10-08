@@ -8,6 +8,11 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
   relate   two motifs are related (told together, close cousins)
   merge    two motifs are the same one
   group    a motif belongs in one of the person's groups
+  new_group a family of the person's motifs none of their groups holds yet, named (Oct 8, the person: "can your
+           proposals page also propose groupings? like it can run cluster analysis?"): their done motifs clustered by
+           what each covers (name and note, not the claims: those pull toward the week's topics), the tight clusters
+           of 3 to 12 that no group already mostly holds put to the model, which names the family the way their
+           groups are named and leaves out what doesn't belong
   genre    a motif with no genre yet is of one of the person's genres (one layer of a story: a character type, a plot,
            a theory...), judged against examples of each genre from the person's own motifs
   unrelate two motifs linked as related aren't (a review of the links already made)
@@ -53,6 +58,10 @@ LINK_FLOOR = 0.7  # ...at least this alike (mxbai, over name, note and claims)
 MAX_PAIRS = 120  # pairs put to the model in one run, the most alike first
 GROUP_CANDIDATES = 12  # motifs near a group's members asked about, per group
 GROUP_FLOOR = 0.6
+CLUSTER_DISTANCE = 0.35  # cosine distance (average linkage) under which motifs cluster, for new groups
+CLUSTER_SIZES = (3, 12)
+CLUSTER_HELD = 0.5  # a cluster this much inside one group already isn't a new group
+NEW_GROUPS = 8  # clusters put to the model in one run
 TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo, not a rewrite
 MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
 # that merely shared a claim: "Watermelon" and "Trojan horse")
@@ -122,6 +131,10 @@ def still_holds(p: dict, index: dict) -> bool:
             and not (k == 'relate' and mi.resting(entries, a['a'], a['b']))  # a rests-on link covers related
     if k == 'group':
         return live(a['id']) and a['group'] in index.get('groups', {}) and a['group'] not in mi.groups_of(entries[a['id']])
+    if k == 'new_group':  # its motifs still live, and no group already holds most of them
+        alive = [m for m in a['members'] if live(m)]
+        held = max((sum(g in mi.groups_of(entries[m]) for m in alive) for g in index.get('groups', {})), default=0)
+        return len(alive) >= CLUSTER_SIZES[0] and held < CLUSTER_HELD * len(alive)
     if k == 'genre':  # still without a genre, and the genre still there
         e = entries.get(a['id'], {})
         return live(a['id']) and not mi.genre_of(e) and a['genre'] in mi.facet_values(index).get('genre', [])
@@ -132,7 +145,7 @@ def still_holds(p: dict, index: dict) -> bool:
     return False
 
 
-KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'group', 'genre']  # the checklist's order
+KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'new_group', 'group', 'genre']  # the checklist's order
 
 
 def open_proposals() -> list[dict]:
@@ -179,6 +192,7 @@ def action(p: dict) -> dict:
             'relate': {'action': 'relate', 'a': a.get('a'), 'b': a.get('b')},
             'merge': {'action': 'merge', 'source': a.get('a'), 'target': a.get('b')},
             'group': {'action': 'group_member', 'id': a.get('id'), 'group': a.get('group'), 'on': True},
+            'new_group': {'action': 'group_new', 'name': a.get('name'), 'ids': a.get('members', [])},
             'genre': {'action': 'facet', 'id': a.get('id'), 'facet': 'genre', 'value': a.get('genre')},
             'unrelate': {'action': 'unrelate', 'a': a.get('a'), 'b': a.get('b')},
             'unparent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': False}}[p['kind']]
@@ -433,6 +447,90 @@ def ask_groups(e: dict, index: dict) -> list[str]:
     return out
 
 
+# ---------- new groups ----------
+NEW_GROUP_PROMPT = """A person sorts the motifs of our index of recurring story shapes (rumors and narratives about politics and \
+public life) into groups: families of stories that go together. Their groups now:
+{groups}
+
+These motifs of theirs are alike and none of their groups holds them yet:
+{motifs}
+
+Are they a family of stories the way the person's groups are: told for the same reason, about the same kind of \
+thing, one family whatever the topic of the week? If so, name the family in one to four words the way their groups \
+are named, and say which of these belong in it (leave out any that don't). If they're alike only in topic or wording, \
+or don't make a family, say so.
+
+reason: a sentence
+family: true or false
+name: the group's name, or ""
+members: the numbers of the motifs that belong"""
+
+
+def clusters(index: dict, entries: list[dict]) -> list[list[str]]:
+    """Families of the person's done motifs no group holds yet, by what each covers: tightest first"""
+    from sklearn.cluster import AgglomerativeClustering
+
+    from app.narratives import embed
+    mine = [e for e in entries if e.get('done') and e['claims']]
+    if len(mine) < CLUSTER_SIZES[0]:
+        return []
+    V = embed([mi.described(e) for e in mine])
+    labels = AgglomerativeClustering(n_clusters=None, metric='cosine', linkage='average',
+                                     distance_threshold=CLUSTER_DISTANCE).fit_predict(V)
+    out = []
+    for k in set(labels):
+        rows = np.flatnonzero(labels == k)
+        if not CLUSTER_SIZES[0] <= len(rows) <= CLUSTER_SIZES[1]:
+            continue
+        ids = [mine[i]['id'] for i in rows]
+        held = max((sum(g in mi.person_groups(mine[i]) for i in rows) for g in index.get('groups', {})), default=0)
+        if held >= CLUSTER_HELD * len(rows):
+            continue
+        c = V[rows].mean(0)
+        out.append((float((V[rows] @ c).mean() / (np.linalg.norm(c) + 1e-9)), ids))
+    return [ids for _, ids in sorted(out, reverse=True)]
+
+
+def new_groups(store: dict, index: dict, entries: list[dict], deadline: float | None = None) -> int:
+    """A new group proposed for each family of motifs the model names (the model's 'no' kept, by the motifs' marks)"""
+    import time
+    names = '\n'.join(f"- {g['name']}" for g in index.get('groups', {}).values()) or '(none yet)'
+    made = asked = 0
+    for ids in clusters(index, entries):
+        if asked >= NEW_GROUPS:
+            break
+        es = [index['entries'][i] for i in ids]
+        no = store.get(pid('not_new_group', {'members': sorted(ids)}))
+        if no and no['args'].get('mark') == [mark(e) for e in es]:
+            continue
+        if any(p['kind'] == 'new_group' and len(set(p['args']['members']) & set(ids)) * 2 > len(ids) for p in store.values()):
+            continue  # proposed before (open or decided): not again for nearly the same motifs
+        if deadline and time.time() > deadline:
+            raise Spent
+        asked += 1
+        listing = '\n'.join(f'{n}. {shown(e)}' for n, e in enumerate(es, 1))
+        schema = {"type": "object", "properties": {
+            "reason": {"type": "string", "maxLength": 600}, "family": {"type": "boolean"},
+            "name": {"type": "string", "maxLength": 40},
+            "members": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": len(es)}}},
+            "required": ["reason", "family", "name", "members"]}
+        answer = llm.complete_json(NEW_GROUP_PROMPT.format(groups=names, motifs=listing), schema, max_tokens=600,
+                                   model=MODEL)
+        if not answer:
+            continue
+        members = sorted({es[n - 1]['id'] for n in answer.get('members', []) if isinstance(n, int) and 1 <= n <= len(es)})
+        name = ' '.join((answer.get('name') or '').split())
+        taken = {g['name'].lower() for g in index.get('groups', {}).values()}
+        if answer.get('family') and name and name.lower() not in taken and len(members) >= CLUSTER_SIZES[0]:
+            made += add(store, 'new_group', {'name': name, 'members': members}, answer.get('reason', ''))
+        else:
+            i2 = pid('not_new_group', {'members': sorted(ids)})
+            store[i2] = {'id': i2, 'kind': 'not_new_group', 'args': {'members': sorted(ids), 'mark': [mark(e) for e in es]},
+                         'reason': answer.get('reason', ''), 'model': MODEL,
+                         'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
+    return made
+
+
 # ---------- genres ----------
 GENRE_EXAMPLES = 5  # of each genre's motifs, shown to the model (the most claims first; never the motif asked about)
 GENRE_PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: which layer \
@@ -633,7 +731,7 @@ def best_fit(store: dict, index: dict) -> dict | None:
 
 
 # 'genres' left out of the nightly run until it's been tried on the person's own genres (scripts/propose_motif_fixes.py genres)
-def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float | None = None) -> dict:
+def propose(kinds=('typos', 'links', 'review', 'groups', 'clusters', 'judge'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
     got through everything before the budget (seconds) ran out"""
     import time
@@ -651,6 +749,8 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float
                 counts['links'] = links(store, index, vecs, entries, deadline)
             if 'groups' in kinds:
                 counts['groups'] = groups(store, index, vecs, entries, deadline)
+        if 'clusters' in kinds:
+            counts['new groups'] = new_groups(store, index, entries, deadline)
         if 'review' in kinds:
             counts['review'] = review(store, index, deadline)
         if 'genres' in kinds:

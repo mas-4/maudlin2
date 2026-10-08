@@ -43,6 +43,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **The proposer suggests new groups.** On the person's ask ("can it run cluster analysis?"), the nightly proposer
+  clusters their done motifs by what each covers (name and scope note: with their claims, motifs clustered by the
+  week's topics, a plane scare with a Reddit sleuthing motif), keeps the tight clusters of 3 to 12 that no group
+  already mostly holds, and asks the model whether each is a family of stories the way their groups are; if so it
+  names it in their groups' style and leaves out what doesn't belong. One 💡 proposal per family; approving it makes
+  the group with its motifs in one undoable step. A family the model turns down is asked again only once its motifs
+  change.
 - **Fact-check claims read from the piece, not the headline.** The person often opened a fact-check to see what was
   actually claimed, so their filing rested on more than the one line the models saw. Each fact-check's own text is now
   kept (app/analysis/factcheck_text.py): from the feed where it carries the whole piece (PolitiFact, FactCheck.org,
