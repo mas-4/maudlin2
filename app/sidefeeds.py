@@ -170,6 +170,13 @@ SOURCES = [
     _source('pod_pbd', 'PBD Podcast (podcast)', 'podcast', 'right', 'https://anchor.fm/s/2fa50a94/podcast/rss'),
     _source('pod_rogan', 'The Joe Rogan Experience (podcast)', 'podcast', 'crossover',
             'https://feeds.megaphone.fm/GLT1412515089'),
+    # Oct 8, the person: Ted Cruz, Charlie Sykes and David Frum (their official feeds, from Apple's directory)
+    _source('pod_cruz', 'Verdict with Ted Cruz', 'podcast', 'right',
+            'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
+            '2bee9419-43de-46ce-8996-af2a01167517/84cf551f-a33b-41d8-b112-af2a01167541/podcast.rss', refresh=BIG_FEED),
+    _source('pod_sykes', 'To the Contrary with Charlie Sykes', 'podcast', 'left',
+            'https://feeds.acast.com/public/shows/67a407e5340a5590cd2953ad'),
+    _source('pod_frum', 'The David Frum Show', 'podcast', 'left', 'https://feeds.megaphone.fm/thedavidfrumshow'),
     _source('pod_theo', 'This Past Weekend w/ Theo Von', 'podcast', 'crossover',
             'https://feeds.megaphone.fm/thispastweekend'),
     _source('pod_flagrant', 'Flagrant (podcast)', 'podcast', 'crossover', 'https://feeds.megaphone.fm/APPI6857213837'),
