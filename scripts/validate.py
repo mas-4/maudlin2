@@ -536,31 +536,78 @@ def second_look() -> list[dict]:
 # (nearest 50%: a decision there moves it most), the confirmed ones it now doubts with a better motif ready, the
 # motifs the model made that nobody has shaped yet (their drafted note, genre and groups to keep or change), and the
 # likeliest proposals for new motifs and groups.
-TODAY = {'doubted': 4, 'torn': 10, 'new motifs': 3, 'proposals': 3}
+TODAY = {'doubted': 4, 'torn': 10, 'new motifs': 3, 'proposals': 3}  # a day's set: twenty
 TORN = (0.25, 0.75)  # a fit in this range: the model can't tell
+TODAY_FILE = os.path.join(FOLDER, 'today.json')  # {'date', 'keys'}: the day's set, picked the first time it's asked for
 
 
-def todays_decisions() -> list[dict]:
+def _today_candidates() -> dict[str, list[dict]]:
+    """Every decision of each kind worth making now, the most useful first, each with its key"""
     from app.analysis import filing_confidence as fc, motif_index as mi, motif_proposals as mp
     index = mi.load()
     live = mi.live(index)
-    doubted = [{**r, 'kind': 'doubted'} for r in second_look() if r.get('better')][:TODAY['doubted']]
-    seen = {r['claim'] for r in doubted}
-    torn = []
+    doubted = [{**r, 'kind': 'doubted', 'key': f"d|{r['claim']}|{r['id']}"} for r in second_look() if r.get('better')]
+    torn, seen = [], set()
     for x in sorted(({'kind': 'torn', 'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''),
                       'fit': c['fit']} for e in live if fc.yours(e) for c in e['claims']
                      if not c.get('checked') and c.get('fit') is not None and TORN[0] <= c['fit'] <= TORN[1]),
                     key=lambda x: abs(x['fit'] - 0.5)):
-        if x['claim'] not in seen and len(torn) < TODAY['torn']:  # one filing per claim: the most torn
+        if x['claim'] not in seen:  # one filing per claim: the most torn
             seen.add(x['claim'])
-            torn.append({**x, 'better': fc.better(index, x['claim'])})
+            torn.append({**x, 'key': f"t|{x['claim']}|{x['id']}", 'better': fc.better(index, x['claim'])})
     unshaped = sorted((e for e in live if e['claims'] and not e.get('curated') and 'done' not in e),
-                      key=lambda e: -len(e['claims']))[:TODAY['new motifs']]
-    new = [{'kind': 'new motif', 'id': e['id'], 'name': e['name'], 'claims': len(e['claims'])} for e in unshaped]
+                      key=lambda e: -len(e['claims']))
+    new = [{'kind': 'new motif', 'id': e['id'], 'name': e['name'], 'claims': len(e['claims']), 'key': f"n|{e['id']}"}
+           for e in unshaped]
     first = {'new_motif': 0, 'new_group': 1}
-    props = sorted(mp.open_proposals(), key=lambda p: (first.get(p['kind'], 2), -(p.get('fit') or 0)))[:TODAY['proposals']]
-    proposals = [{'kind': 'proposal', 'proposal': {**p, 'do': mp.action(p)}} for p in props]
-    return doubted + torn + new + proposals
+    props = sorted(mp.open_proposals(), key=lambda p: (first.get(p['kind'], 2), -(p.get('fit') or 0)))
+    proposals = [{'kind': 'proposal', 'proposal': {**p, 'do': mp.action(p)}, 'key': f"p|{p['id']}"} for p in props]
+    return {'doubted': doubted, 'torn': torn, 'new motifs': new, 'proposals': proposals}
+
+
+def _still(key: str, waiting: dict) -> dict | None:
+    """A picked decision as it stands now, or None once it's made (the filing checked or gone, the motif done, the
+    proposal decided)"""
+    from app.analysis import filing_confidence as fc, motif_index as mi, motif_proposals as mp
+    kind, rest = key.split('|', 1)
+    if kind in ('t', 'd'):
+        claim, eid = rest.rsplit('|', 1)
+        e = mi.load()['entries'].get(eid)
+        c = next((c for c in (e or {}).get('claims', []) if c['claim'] == claim), None)
+        if not c or (kind == 't' and c.get('checked')) or (kind == 'd' and (c.get('checked') != 'yes' or c.get('rechecked'))):
+            return None
+        return waiting.get(key) or {'kind': 'torn' if kind == 't' else 'doubted', 'id': eid, 'name': e['name'], 'claim': claim,
+                                    'source': c.get('source', ''), 'fit': c.get('fit'), 'key': key,
+                                    'better': fc.better(mi.load(), claim)}
+    if kind == 'n':
+        e = mi.load()['entries'].get(rest)
+        return waiting.get(key) if e and not e.get('merged_into') and 'done' not in e and e.get('claims') else None
+    if kind == 'p':
+        return waiting.get(key) if any(p['id'] == rest for p in mp.open_proposals()) else None
+    return None
+
+
+def todays_decisions(more: bool = False) -> dict:
+    """The day's set of the most useful decisions: picked the first time it's asked for each day (twenty: TODAY), kept
+    for the day so it runs out as the person decides (it used to fill up again to twenty at every look); `more` adds
+    another twenty. {'items': those still waiting, 'picked', 'done'}"""
+    from datetime import date
+    from app.utils.store import read_json, write_json
+    today = date.today().isoformat()
+    kept = read_json(TODAY_FILE, {})
+    keys = kept.get('keys', []) if kept.get('date') == today else []
+    pools = _today_candidates()
+    waiting = {x['key']: x for pool in pools.values() for x in pool}
+    if not keys or more:
+        taken = set(keys)
+        for kind, n in TODAY.items():
+            keys += [x['key'] for x in pools[kind] if x['key'] not in taken][:n]
+        write_json(TODAY_FILE, {'date': today, 'keys': keys})
+    items = [x for x in (_still(k, waiting) for k in keys) if x]
+    order = list(TODAY)
+    items.sort(key=lambda x: order.index({'doubted': 'doubted', 'torn': 'torn', 'new motif': 'new motifs',
+                                          'proposal': 'proposals'}[x['kind']]))
+    return {'items': items, 'picked': len(keys), 'done': len(keys) - len(items)}
 
 
 def hand_made() -> set:
@@ -578,6 +625,8 @@ def workbench_queue(kind: str):
         return second_look()
     if kind == 'today':
         return todays_decisions()
+    if kind == 'today-more':
+        return todays_decisions(more=True)
     if kind == 'singles':
         return mi.single_suggestions()
     if kind == 'pairs':

@@ -259,22 +259,30 @@ def test_a_claim_told_on_the_shows_says_which_shows_and_episodes(monkeypatch):
     assert told[0]['title'] == 'Deleted tweets' and told[0]['at'] == 845 and told[0]['context']['quote'] == 'I am a capitalist'
 
 
-def test_todays_decisions_are_the_torn_the_doubted_the_unshaped_and_the_likeliest_proposals(monkeypatch):
+def test_todays_set_is_picked_once_a_day_runs_out_as_decided_and_more_can_be_asked_for(monkeypatch, tmp_path):
     from app.analysis import filing_confidence as fc, motif_index as mi, motif_proposals as mp
     c = lambda t, **k: {'claim': t, 'source': 'narrative', **k}  # noqa: E731
     index = {'entries': {
         'M1': {'id': 'M1', 'name': 'Mine', 'done': ['x'], 'curated': True,
-               'claims': [c('torn a', fit=0.52), c('torn b', fit=0.30), c('sure', fit=0.95), c('checked', fit=0.5, checked='yes')]},
+               'claims': [c('torn a', fit=0.52), c('torn b', fit=0.30), c('sure', fit=0.95), c('checked', fit=0.5, checked='yes'),
+                          c('doubted', fit=0.2, checked='yes')]},
         'M2': {'id': 'M2', 'name': 'Also mine', 'done': ['x'], 'curated': True, 'claims': [c('torn a', fit=0.45)]},
         'M3': {'id': 'M3', 'name': 'Made by the model', 'claims': [c('m'), c('n')]}}}
     monkeypatch.setattr(mi, 'load', lambda: index)
-    monkeypatch.setattr(validate, 'second_look', lambda: [{'claim': 'doubted', 'id': 'M1', 'fit': 0.2, 'better': [{'id': 'M2'}]},
-                                                          {'claim': 'no fix', 'id': 'M1', 'fit': 0.1, 'better': []}])
+    monkeypatch.setattr(validate, 'TODAY_FILE', str(tmp_path / 'today.json'))
+    monkeypatch.setattr(validate, 'TODAY', {'doubted': 4, 'torn': 1, 'new motifs': 3, 'proposals': 3})
+    monkeypatch.setattr(validate, 'second_look', lambda: [{'claim': 'doubted', 'id': 'M1', 'fit': 0.2, 'better': [{'id': 'M2'}]}])
     monkeypatch.setattr(fc, 'better', lambda ix, claim: [])
     props = [{'id': 'p1', 'kind': 'relate', 'args': {'a': 'M1', 'b': 'M2'}, 'fit': 0.9},
              {'id': 'p2', 'kind': 'new_motif', 'args': {'name': 'New', 'note': '', 'genre': None, 'claims': []}}]
     monkeypatch.setattr(mp, 'open_proposals', lambda: props)
     got = validate.todays_decisions()
-    assert [(x['kind'], x.get('claim') or x.get('id') or x['proposal']['id']) for x in got] == [
-        ('doubted', 'doubted'), ('torn', 'torn a'), ('torn', 'torn b'), ('new motif', 'M3'), ('proposal', 'p2'), ('proposal', 'p1')]
-    assert next(x for x in got if x.get('claim') == 'torn a')['fit'] == 0.52  # its most torn filing (nearest 50%)
+    assert [x['key'] for x in got['items']] == ['d|doubted|M1', 't|torn a|M1', 'n|M3', 'p|p2', 'p|p1']
+    assert (got['picked'], got['done']) == (5, 0)
+    index['entries']['M1']['claims'][0]['checked'] = 'yes'  # the torn one decided
+    index['entries']['M1']['claims'][4]['rechecked'] = True  # the doubted one kept
+    props.pop(0)
+    got = validate.todays_decisions()
+    assert [x['key'] for x in got['items']] == ['n|M3', 'p|p2'] and got['done'] == 3  # not filled up again
+    more = validate.todays_decisions(more=True)
+    assert 't|torn a|M2' in [x['key'] for x in more['items']] and more['picked'] == 6  # the claim's other filing, torn too

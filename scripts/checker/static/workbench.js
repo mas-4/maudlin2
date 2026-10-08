@@ -507,9 +507,10 @@
       const q = await queue('today');
       if (S.tab !== tab) return;
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
-      S.proposals = Object.assign(S.proposals || {}, Object.fromEntries(q.filter((x) => x.kind === 'proposal').map((x) => [x.proposal.id, x.proposal])));
+      const list = q.items || [];
+      S.proposals = Object.assign(S.proposals || {}, Object.fromEntries(list.filter((x) => x.kind === 'proposal').map((x) => [x.proposal.id, x.proposal])));
       const why = {torn: '🤔 the model can’t tell: is it this motif?', doubted: '🧐 you said yes; the model now doubts it (a better motif below?)'};
-      const cards = q.map((x) => {
+      const cards = list.map((x) => {
         if (x.kind === 'torn' || x.kind === 'doubted') {
           const rec = S.by[x.id] && S.by[x.id].claims.find((c) => c.claim === x.claim);
           if (!rec || (x.kind === 'torn' && rec.checked) || S.decided.has(x.claim + '|' + x.id)) return '';
@@ -541,8 +542,10 @@
         }
         return '';
       }).filter(Boolean);
-      box.innerHTML = cards.length ? `<p class="wb-faint">🎯 The decisions that teach the models most per minute of your time, not the whole queue: the filings the model is torn on, the ones it now doubts with a fix ready, new motifs nobody has shaped, the likeliest proposals. ${cards.length} left today; the list fills again as the models learn.</p>${cards.join('')}`
-        : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing left for today: every decision that would teach the models most is made.</p></div>';
+      const done = q.picked - cards.length;
+      box.innerHTML = cards.length ? `<p class="wb-faint">🎯 Today's set: the decisions that teach the models most per minute of your time, not the whole queue (the filings the model is torn on, the ones it now doubts with a fix ready, new motifs nobody has shaped, the likeliest proposals). <b>${done} of ${q.picked} done today.</b> A new set tomorrow, once the models have learned from these.</p>${cards.join('')}`
+        : `<div class="wb-welcome"><div class="wb-big">🎉</div><p>Done for today: all ${q.picked} of today's most useful decisions are made. The models learn from them tonight; a new set tomorrow.</p>
+          <p><button class="wb-btn" data-todaymore="1" title="another twenty of the most useful decisions, if you'd like to keep going">🎯 20 more</button></p></div>`;
     } else if (tab === 'second') {
       // Your own confirmed filings the confidence model finds least likely: an honest slip is easy in 1,000 judgments
       const q = await queue('second');
@@ -1239,6 +1242,7 @@
       if (x) return batch(x.motifs.map((id) => ({action: 'check', claim: v, id, answer: 'yes'})), `✓ all ${x.motifs.length} fit`);
     }
     if ((v = d('ckopen'))) return openClaim(v);
+    if (d('todaymore')) { S.queues.today = null; $('#inbox').innerHTML = '<p class="wb-faint">⏳ picking twenty more…</p>'; S.queues.today = await getJSON('/workbench-queue.json?kind=today-more'); return renderInbox(); }
     if (d('back')) return history.state && history.state.wb === 'claim' ? history.back() : goBack();
     // the ticked ones above the fold (the fold's own button decides those in it)
     if ((v = d('propmany'))) return decideProposals($$('[data-propsel]:checked').filter((c) => !c.closest('.wb-propfold')).map((c) => c.dataset.propsel), v === 'yes');
