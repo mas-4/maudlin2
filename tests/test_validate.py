@@ -257,3 +257,24 @@ def test_a_claim_told_on_the_shows_says_which_shows_and_episodes(monkeypatch):
     assert [t['show'] for t in told] == ['Ruthless', 'Fox News Rundown']  # newest first
     assert told[0]['url'] is None and told[1]['url'] == 'https://fox.example/ep2'  # a feed's guid isn't a link
     assert told[0]['title'] == 'Deleted tweets' and told[0]['at'] == 845 and told[0]['context']['quote'] == 'I am a capitalist'
+
+
+def test_todays_decisions_are_the_torn_the_doubted_the_unshaped_and_the_likeliest_proposals(monkeypatch):
+    from app.analysis import filing_confidence as fc, motif_index as mi, motif_proposals as mp
+    c = lambda t, **k: {'claim': t, 'source': 'narrative', **k}  # noqa: E731
+    index = {'entries': {
+        'M1': {'id': 'M1', 'name': 'Mine', 'done': ['x'], 'curated': True,
+               'claims': [c('torn a', fit=0.52), c('torn b', fit=0.30), c('sure', fit=0.95), c('checked', fit=0.5, checked='yes')]},
+        'M2': {'id': 'M2', 'name': 'Also mine', 'done': ['x'], 'curated': True, 'claims': [c('torn a', fit=0.45)]},
+        'M3': {'id': 'M3', 'name': 'Made by the model', 'claims': [c('m'), c('n')]}}}
+    monkeypatch.setattr(mi, 'load', lambda: index)
+    monkeypatch.setattr(validate, 'second_look', lambda: [{'claim': 'doubted', 'id': 'M1', 'fit': 0.2, 'better': [{'id': 'M2'}]},
+                                                          {'claim': 'no fix', 'id': 'M1', 'fit': 0.1, 'better': []}])
+    monkeypatch.setattr(fc, 'better', lambda ix, claim: [])
+    props = [{'id': 'p1', 'kind': 'relate', 'args': {'a': 'M1', 'b': 'M2'}, 'fit': 0.9},
+             {'id': 'p2', 'kind': 'new_motif', 'args': {'name': 'New', 'note': '', 'genre': None, 'claims': []}}]
+    monkeypatch.setattr(mp, 'open_proposals', lambda: props)
+    got = validate.todays_decisions()
+    assert [(x['kind'], x.get('claim') or x.get('id') or x['proposal']['id']) for x in got] == [
+        ('doubted', 'doubted'), ('torn', 'torn a'), ('torn', 'torn b'), ('new motif', 'M3'), ('proposal', 'p2'), ('proposal', 'p1')]
+    assert next(x for x in got if x.get('claim') == 'torn a')['fit'] == 0.52  # its most torn filing (nearest 50%)

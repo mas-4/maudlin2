@@ -531,6 +531,38 @@ def second_look() -> list[dict]:
     return rows
 
 
+# Today's most useful decisions (Oct 8, the person: they can't confirm motifs eight hours a day): a short list that
+# teaches the models most per minute of their time, not the whole queue. The filings the confidence model is torn on
+# (nearest 50%: a decision there moves it most), the confirmed ones it now doubts with a better motif ready, the
+# motifs the model made that nobody has shaped yet (their drafted note, genre and groups to keep or change), and the
+# likeliest proposals for new motifs and groups.
+TODAY = {'doubted': 4, 'torn': 10, 'new motifs': 3, 'proposals': 3}
+TORN = (0.25, 0.75)  # a fit in this range: the model can't tell
+
+
+def todays_decisions() -> list[dict]:
+    from app.analysis import filing_confidence as fc, motif_index as mi, motif_proposals as mp
+    index = mi.load()
+    live = mi.live(index)
+    doubted = [{**r, 'kind': 'doubted'} for r in second_look() if r.get('better')][:TODAY['doubted']]
+    seen = {r['claim'] for r in doubted}
+    torn = []
+    for x in sorted(({'kind': 'torn', 'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''),
+                      'fit': c['fit']} for e in live if fc.yours(e) for c in e['claims']
+                     if not c.get('checked') and c.get('fit') is not None and TORN[0] <= c['fit'] <= TORN[1]),
+                    key=lambda x: abs(x['fit'] - 0.5)):
+        if x['claim'] not in seen and len(torn) < TODAY['torn']:  # one filing per claim: the most torn
+            seen.add(x['claim'])
+            torn.append({**x, 'better': fc.better(index, x['claim'])})
+    unshaped = sorted((e for e in live if e['claims'] and not e.get('curated') and 'done' not in e),
+                      key=lambda e: -len(e['claims']))[:TODAY['new motifs']]
+    new = [{'kind': 'new motif', 'id': e['id'], 'name': e['name'], 'claims': len(e['claims'])} for e in unshaped]
+    first = {'new_motif': 0, 'new_group': 1}
+    props = sorted(mp.open_proposals(), key=lambda p: (first.get(p['kind'], 2), -(p.get('fit') or 0)))[:TODAY['proposals']]
+    proposals = [{'kind': 'proposal', 'proposal': {**p, 'do': mp.action(p)}} for p in props]
+    return doubted + torn + new + proposals
+
+
 def hand_made() -> set:
     """(claim key, motif id) of the filings the person made themselves: the second look leaves them out (they score
     low because they're the structural links the model misses, not because they're slips; Oct 8)"""
@@ -544,6 +576,8 @@ def workbench_queue(kind: str):
         return check_queue()
     if kind == 'second':
         return second_look()
+    if kind == 'today':
+        return todays_decisions()
     if kind == 'singles':
         return mi.single_suggestions()
     if kind == 'pairs':

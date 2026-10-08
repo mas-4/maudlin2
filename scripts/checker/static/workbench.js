@@ -37,7 +37,7 @@
     const out = await r.json().catch(() => ({error: r.statusText}));
     if (!r.ok) { toast('😬 ' + (out.error || 'that didn’t work'), true); await reload(); return false; }
     setData(out);
-    S.queues.pairs = S.queues.singles = null;  // suggestions change after most moves
+    S.queues.pairs = S.queues.singles = S.queues.today = null;  // suggestions change after most moves
     render();
     await refreshUndo();
     if (done) toast(done, false, true);
@@ -404,7 +404,7 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['stats', '📊'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['second', '🔁 second look'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['today', '🎯 today'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['second', '🔁 second look'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
     const counts = {check: S.data.to_check, second: S.data.second_look, unchecked: unchecked().length, proposals: S.data.proposals, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
@@ -501,6 +501,46 @@
           ${x.motifs.length > 1 ? `<button class="wb-mini" data-ckall="${esc(x.claim)}">✓ all fit</button>` : ''}
         </div>`).join('')}`
         : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>You\'ve checked every claim the model filed.</p></div>';
+    } else if (tab === 'today') {
+      // Today's most useful decisions: a short list that teaches the models most per minute, not the whole queue
+      const q = await queue('today');
+      if (S.tab !== tab) return;
+      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
+      S.proposals = Object.assign(S.proposals || {}, Object.fromEntries(q.filter((x) => x.kind === 'proposal').map((x) => [x.proposal.id, x.proposal])));
+      const why = {torn: '🤔 the model can’t tell: is it this motif?', doubted: '🧐 you said yes; the model now doubts it (a better motif below?)'};
+      const cards = q.map((x) => {
+        if (x.kind === 'torn' || x.kind === 'doubted') {
+          const rec = S.by[x.id] && S.by[x.id].claims.find((c) => c.claim === x.claim);
+          if (!rec || (x.kind === 'torn' && rec.checked)) return '';
+          const better = (x.better || []).filter((b) => S.by[b.id] && !motifsOf(x.claim).some((e) => e.id === b.id));
+          return `<div class="wb-card wb-unck"><div class="wb-today-why">${why[x.kind]}</div>
+            <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
+              <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
+            <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" data-ckc="${esc(x.claim)}" title="it belongs here">✓ ${x.kind === 'torn' ? 'fits' : 'still fits'}</button><button class="wb-mini" data-ck="no|${x.id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕ take out</button></span></div>
+            ${S.by[x.id].note ? `<div class="wb-faint">${esc(S.by[x.id].note)}</div>` : ''}
+            ${better.length ? `<div class="wb-faint">🤖 might fit better:</div>${better.map((b) => betterRow(b, x.claim)).join('')}` : ''}</div>`;
+        }
+        if (x.kind === 'new motif') {
+          const e = S.by[x.id];
+          if (!e || e.done) return '';
+          const bm = e.by_model || {};
+          const groups = (e.groups || []).map((g) => (S.data.groups.find((y) => y.id === g) || {name: g}).name);
+          return `<div class="wb-card wb-unck"><div class="wb-today-why">✨ the model made this motif and nobody has shaped it yet</div>
+            <div class="wb-sug">${chip(e.id)} <span class="wb-faint">${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</span>
+              <span class="wb-sbtns"><button class="wb-btn yes" data-done="${e.id}" title="it's a good motif as it stands: keep its note, genre and groups">✅ keep it as it is</button></span></div>
+            <div class="wb-faint">${e.note ? '📝 ' + esc(e.note) : 'no note yet'}${(e.facets || {}).genre ? ` · 🎭 ${esc(e.facets.genre)}${bm.genre ? ' 🤖' : ''}` : ''}${groups.length ? ' · 📁 ' + groups.map(esc).join(', ') : ''}</div>
+            <div class="wb-faint">or click it to open it: rename it, change the note, fold it into another, or delete it</div></div>`;
+        }
+        if (x.kind === 'proposal') {
+          const p = x.proposal;
+          return `<div class="wb-card wb-prop"><div class="wb-today-why">💡 the model proposes</div><span class="wb-propline">${proposalText(p)}</span>
+            <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
+            ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
+        }
+        return '';
+      }).filter(Boolean);
+      box.innerHTML = cards.length ? `<p class="wb-faint">🎯 The decisions that teach the models most per minute of your time, not the whole queue: the filings the model is torn on, the ones it now doubts with a fix ready, new motifs nobody has shaped, the likeliest proposals. ${cards.length} left today; the list fills again as the models learn.</p>${cards.join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing left for today: every decision that would teach the models most is made.</p></div>';
     } else if (tab === 'second') {
       // Your own confirmed filings the confidence model finds least likely: an honest slip is easy in 1,000 judgments
       const q = await queue('second');

@@ -43,6 +43,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **🎯 Today's most useful decisions.** The person can't confirm motifs for hours a day, and needn't: the confidence
+  model learned nearly as well from half their decisions as from all of them. What teaches it most per minute is
+  a few decisions of the right kind, so the workbench's 🎯 today tab gathers about twenty: the filings it's torn on
+  (a fit nearest 50%, one per claim), the confirmed filings it now doubts that have a better motif to offer, the
+  motifs it made that nobody has shaped yet (keep as drafted, or open and change), and the likeliest proposals for new
+  motifs and groups. The rest still gets filed and scored; the public site shows only what they've checked.
 - **A dashboard of everything** (the checker's 📈 Dashboard, app/dashboard.py): whether the machine keeps up (each
   hourly run's minutes against the 45-minute limit, feeds or outlets not coming in, the card's heat and load, models
   loaded into memory each hour), what came in each day (headlines, outlets, side-feed items by kind, transcripts and
