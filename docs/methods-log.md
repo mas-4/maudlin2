@@ -5,6 +5,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-08
+- **How sure a filing is.** Each claim the model files under a motif now gets a fit: the chance the person keeps it,
+  from a small model trained on their own decisions (723 so far: 572 filings kept, 151 taken out). It weighs how
+  alike the claim and motif are (the filing shortlist's measures, the claim held out), how the motif ranks among all
+  motifs for the claim, how many motifs the claim is in, where it came from, and whether the person has curated the
+  motif. Tested with each claim held out: AUC 0.83 (the shortlist's score alone: 0.74); at a fit of 85% or more it
+  passes 64% of the filings the person kept, and 95% of what it passes they kept. The check list goes likeliest
+  first, and the filings over that line can be passed in one step, except a filing in a motif made for that claim
+  alone, or from a source with fewer than 30 of the person's decisions (the shows, for now). Not used on the public
+  site: what's public is still only what the person has checked.
 - **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
   own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
   of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead

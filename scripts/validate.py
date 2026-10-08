@@ -434,13 +434,59 @@ def workbench_state() -> dict:
     state['facets'] = mi.facet_values(index)
     from app.analysis import motif_proposals as mp
     state['proposals'] = len(mp.open_proposals())  # the 💡 tab's count
+    from app.analysis import filing_confidence as fc
+    from app.utils.store import read_json
+    m = read_json(fc.MODEL, None)  # how sure 'sure' is, as tested held out
+    sure = m and m['test'].get('sure_at')
+    state['confidence'] = {'sure_at': sure, 'auc': m['test']['auc'],
+                           'at_sure': next((t for t in m['test']['thresholds'] if t['at'] == sure), None)} if sure else None
     return state
+
+
+_fits = {'stamp': None, 'fits': {}}
+
+
+def filing_fits() -> dict:
+    """Each unchecked filing's chance of being kept (app/analysis/filing_confidence.py), worked out again only when
+    the motif index file changes"""
+    from app.analysis import filing_confidence as fc, motif_index as mi
+    try:
+        stamp = os.path.getmtime(mi.INDEX)
+    except OSError:
+        stamp = None
+    if stamp != _fits['stamp']:
+        try:
+            _fits['fits'] = {f'{k}|{eid}': p for (k, eid), p in fc.score().items()}
+        except Exception as e:  # noqa: BLE001 - the check list keeps its old order
+            print(f'filing confidence unavailable: {type(e).__name__}: {e}')
+            _fits['fits'] = {}
+        _fits['stamp'] = stamp
+    return _fits['fits']
+
+
+def check_queue() -> list[dict]:
+    """Every filing nobody has checked, each with its fit (the chance the person keeps it), the claims whose least
+    likely filing is likeliest first, so the sure ones come first and the doubtful ones last"""
+    from app.analysis import filing_confidence as fc, motif_index as mi
+    items = mi.to_check()
+    fits = filing_fits()
+    index = mi.load()
+    tested = fc.tested_sources(index) if fits else set()
+    for x in items:
+        x['fit'] = fits.get(f"{mi.key(x['claim'])}|{x['id']}")
+        x['can_be_sure'] = fc.can_be_sure(index, x['claim'], x['id'], x.get('source', ''), tested)
+    if not fits:
+        return items[:40]  # the old order: biggest motifs first
+    least = {}
+    for x in items:
+        least[x['claim']] = min(least.get(x['claim'], 1.0), x['fit'] if x['fit'] is not None else 0.0)
+    return sorted(items, key=lambda x: (-least[x['claim']], x['claim'], -(x['fit'] or 0)))
 
 
 def workbench_queue(kind: str):
     from app.analysis import motif_index as mi
     if kind == 'check':
-        return mi.to_check(40)
+        return check_queue()
     if kind == 'singles':
         return mi.single_suggestions()
     if kind == 'pairs':

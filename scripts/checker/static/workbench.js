@@ -384,6 +384,10 @@
       if (S.tab !== tab) return;
       // One claim at a time (the biggest motifs' first), with every motif it's in to tick or take away
       const seen = new Set(), items = [];
+      // each filing's fit: the chance you keep it, learned from your own checks (sure ones first, doubtful last)
+      S.fits = Object.fromEntries((q.error ? [] : q).filter((x) => x.fit != null).map((x) => [x.claim + '|' + x.id, x.fit]));
+      // never passed as sure: a motif made for this claim alone, or a source too few of your checks have tested
+      S.unsure = new Set((q.error ? [] : q).filter((x) => !x.can_be_sure).map((x) => x.claim + '|' + x.id));
       for (const x of (q.error ? [] : q)) {
         if (seen.has(x.claim)) continue;
         seen.add(x.claim);
@@ -533,6 +537,17 @@
     renderTabs();
     renderInbox();
   }
+  // A filing's fit as a chip, as the proposals' best fit
+  const fitChip = (fit, unsure) => `<b class="wb-fit" style="--fit: ${Math.round(fit * 100)}%" title="fit: the chance you keep this filing, learned from your own checks${unsure ? '. Never passed as sure: its motif was made for this claim alone, or too few of your checks have tested claims from where it came from' : ''}">🎯 ${Math.round(fit * 100)}%${unsure ? ' ⚠️' : ''}</b>`;
+  // Unchecked filings the confidence model is sure of (at or over the threshold its held-out test set)
+  function sureFilings() {
+    const at = S.data.confidence && S.data.confidence.sure_at;
+    if (!at || !S.fits) return [];
+    return Object.entries(S.fits).filter(([k, f]) => f >= at && !(S.unsure && S.unsure.has(k))).map(([k]) => {
+      const i = k.lastIndexOf('|');
+      return {claim: k.slice(0, i), id: k.slice(i + 1)};
+    }).filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && !c.checked));
+  }
   function renderClaim(box, check, left) {
     const c = S.claim;
     if (!c) {
@@ -542,8 +557,10 @@
     const ins = motifsOf(c.claim);
     const first = ins[0], rec = first && first.claims.find((x) => x.claim === c.claim);
     const src = (rec && rec.source) || c.src || '';
+    const conf = S.data.confidence, sure = conf ? sureFilings() : [];
     const verdict = check ? `<div class="wb-checkbar">
-        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest</span>
+        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest${conf ? ' · 🎯 the likeliest first' : ''}</span>
+        ${sure.length ? `<button class="wb-btn yes" data-passsure="1" title="Tick every filing at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept. Undoable">🎯 pass the ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested)</span></button>` : ''}
         <span class="wb-checkbtns">
           <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
           <button class="wb-btn yes" data-verdict="allyes" title="every motif left fits: tick them all and go on">✓ all fit, next <kbd>Y</kbd></button>
@@ -557,7 +574,7 @@
       <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
       ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-motifrow${r.checked === 'yes' ? ' fits' : ''}">${chip(e.id)}
         ${e.note ? `<span class="wb-mnote">${esc(e.note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
-        <span class="wb-sbtns">${r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
+        <span class="wb-sbtns">${r.checked !== 'yes' && S.fits && S.fits[c.claim + '|' + e.id] != null ? fitChip(S.fits[c.claim + '|' + e.id], S.unsure && S.unsure.has(c.claim + '|' + e.id)) : ''}${r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
         <button class="wb-btn no" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
         || '<p class="wb-faint">📥 not in any motif</p>'}
       <h3>➕ add it to another motif</h3>
@@ -1079,6 +1096,12 @@
       return act(body, say);
     }
     if ((v = d('verdict'))) return verdict(v);
+    if (d('passsure')) {  // every filing the confidence model is sure of, ticked in one undoable step
+      const sure = sureFilings();
+      S.queues.check = null;
+      S.checkHere = null;
+      return batch(sure.map((x) => ({action: 'check', claim: x.claim, id: x.id, answer: 'yes'})), `🎯 passed ${sure.length} sure filing${sure.length === 1 ? '' : 's'}`);
+    }
     if ((v = d('similar'))) { const [id, i] = v.split('|'); S.extra[id] = {kind: 'similar', items: await getJSON('/motif-similar.json?id=' + id).catch(() => [])}; return fillExtra(id, +i); }
     if ((v = d('closeextra'))) { delete S.extra[v]; return renderPanels(); }
     if ((v = d('bulk'))) return bulk(...v.split('|'));
@@ -1176,15 +1199,18 @@
     return [
       `Claim: ${claim}`,
       x.kind ? `Source: ${x.kind}${x.title ? ', ' + x.title : ''}${x.url ? ' ' + x.url : ''}` : '',
-      x.context ? `Quote: ${x.context.before}${x.context.quote}${x.context.after}` : x.quote ? `Quote: “${x.quote}”` : '',
+      x.context ? `Transcript: ${x.context.before}${x.context.quote}${x.context.after}${x.side ? ` (the voter: ${x.side})` : ''}` : x.quote ? `Quote: “${x.quote}”${x.side ? " · " + x.side : ''}` : '',
       x.people ? `Told by ${x.people} people` : '',
       (x.tellings || []).length ? `Told on the shows (${x.tellings.length}):\n` + x.tellings.map((t) => `- ${t.show}${t.lean ? ' (' + t.lean + ')' : ''}, ${t.title || 'an episode'} ${t.date || ''}`
-        + `${t.at != null ? ', the part from ' + clock(t.at) : ''}${t.speaker ? ', ' + t.speaker : ''}${t.url ? ' ' + t.url : ''}${t.quote ? `: “${t.quote}”` : ''}`).join('\n') : '',
+        + `${t.at != null ? ', the part from ' + clock(t.at) : ''}${t.speaker ? ', ' + t.speaker : ''}${t.url ? ' ' + t.url : ''}`
+        + (t.claim && t.claim !== claim ? `\n  As read there: ${t.claim}` : '')
+        + (t.context ? `\n  Transcript: ${t.context.before}${t.context.quote}${t.context.after}` : t.quote ? `\n  Quote: “${t.quote}”` : '')).join('\n') : '',
       (() => {  // the motifs it's in now, each with its scope note
         const ms = motifsOf(claim);
         return ms.length ? `Motifs (${ms.length}):\n` + ms.map((e) => `- ${e.name} (${e.id})${e.note ? ': ' + e.note : ': no note yet'}`).join('\n') : 'Motifs: none yet';
       })(),
       x.summary || '',
+      (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `The model's words: ${w.map((m) => '“' + m + '”').join(' · ')}` : ''; })(),
       posts.length ? `Posts (${posts.length}):\n${posts.join('\n')}` : '',
     ].filter(Boolean).join('\n');
   }

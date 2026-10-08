@@ -56,6 +56,9 @@ def pytest_sessionstart(session):
     from app.analysis import show_claims
     shows = tempfile.mkdtemp(prefix='maudlin-test-shows-')
     show_claims.STORE, show_claims.RETOLD = os.path.join(shows, 'show_claims.json'), os.path.join(shows, 'show_claims_retold.json')
+    # The filing confidence model lives there too
+    from app.analysis import filing_confidence
+    filing_confidence.MODEL = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-confidence-'), 'filing_confidence.json')
     # Story pages kept for good, and where ended sagas point: in the shared data folder too
     from app.site import page_story
     page_story.ARCHIVE = tempfile.mkdtemp(prefix='maudlin-test-story-archive-')
