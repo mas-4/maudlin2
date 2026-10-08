@@ -43,6 +43,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **Embeddings on the CPU.** Ollama's log showed the card spending about nine minutes an hour loading models: each
+  embedding model (mxbai, nomic) loaded beside the filing model pushed it out of the card's memory, and it was loaded
+  again a moment later (242 times in six hours). Embeddings now run on the CPU (24 cores: 27 texts a second for mxbai,
+  61 for nomic), so the filing model stays on the card.
 - **Shows' own transcripts before Whisper.** Seven of the 66 podcast and call-in feeds publish a transcript of each
   episode in the feed itself (Podcasting 2.0's podcast:transcript: Breaking Points, Verdict with Ted Cruz, Clay Travis
   & Buck Sexton, the Jesse Kelly and Michael Berry shows, Bloomberg News Now, Jubilee's Surrounded; mostly iHeart's,

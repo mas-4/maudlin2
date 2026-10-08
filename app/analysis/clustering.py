@@ -125,6 +125,13 @@ def _story_cache(path: str = None):
     return con
 
 
+# Embeddings on the CPU (Oct 8): on the GPU, each embedding model loaded beside the filing model pushed it out of the
+# card's memory, and it was loaded again a moment later (in six hours that day, gemma4:26b 242 times, mxbai 236 and
+# nomic 130: about nine minutes an hour of loading). On the 24 cores, mxbai embeds 27 texts a second and nomic 61:
+# a run's new texts in well under a minute (most are cached anyway).
+EMBED_OPTIONS = {'num_gpu': 0}
+
+
 def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
                  keep_days: float = STORY_CACHE_DAYS) -> np.ndarray:
     """Unit vectors for `texts` from the local Ollama, cached by text and model (in `cache`, a SQLite file; the
@@ -143,8 +150,8 @@ def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
         missing = [i for i, k in enumerate(keys) if k not in found]
         for start in range(0, len(missing), 256):
             batch = missing[start:start + 256]
-            r = rq.post(f'{OLLAMA_URL}/api/embed', json={'model': model, 'input': [texts[i] for i in batch]},
-                        timeout=600)
+            r = rq.post(f'{OLLAMA_URL}/api/embed', json={'model': model, 'input': [texts[i] for i in batch],
+                                                          'options': EMBED_OPTIONS}, timeout=600)
             r.raise_for_status()
             for i, v in zip(batch, r.json()['embeddings']):
                 v = np.asarray(v, dtype=np.float32)
