@@ -265,7 +265,7 @@ class Signals:
         if getattr(self, '_groups', None) is None:
             self._groups = {}
             for n, e in enumerate(self.entries):
-                for g in mi.groups_of(e):
+                for g in mi.person_groups(e):  # the model's drafted groups aren't evidence
                     self._groups.setdefault(g, set()).add(n)
         k = mi.key(claim)
         q = self.vec([claim])[0]

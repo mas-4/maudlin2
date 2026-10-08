@@ -105,7 +105,9 @@ def db_query(sql: str, limit: int = 50) -> str:
 def _brief(e: dict, index: dict) -> dict:
     names = {gid: g['name'] for gid, g in index.get('groups', {}).items()}
     return {'id': e['id'], 'name': e['name'], 'claims': len(e['claims']), 'genre': mi.genre_of(e),
-            'groups': [names.get(g, g) for g in mi.groups_of(e)], 'done': mi.public(e), 'note': (e.get('note') or '')[:200]}
+            'groups': [names.get(g, g) for g in mi.groups_of(e)], 'done': mi.public(e), 'note': (e.get('note') or '')[:200],
+            **({'drafted by the model': {k: [names.get(g, g) for g in v] if k == 'groups' else v
+                                         for k, v in e['by_model'].items()}} if e.get('by_model') else {})}
 
 
 @server.tool()

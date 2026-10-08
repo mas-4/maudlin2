@@ -76,7 +76,7 @@ def motif_cards(index: dict, claim: str) -> list[dict]:
     motifs a person has verified, and only if they saw this claim in it (motif_index.public)."""
     k = motif_index.key(claim) if claim else None
     return [{'id': e['id'], 'name': e['name'], 'count': len(motif_index.public_claims(e)), 'note': motif_index.public_note(e),
-             'genre': motif_index.genre_of(e)}
+             'genre': motif_index.person_genre(e)}
             for e in (motif_index.entries_of(index, claim) if claim else [])
             if motif_index.public(e) and k in set(e.get('done') or [])]
 

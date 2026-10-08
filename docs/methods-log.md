@@ -36,6 +36,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   mostly topic (a country, a storm, a trial); projected away from both sides, what's left leans to how a story is told.
   Held out, it brought 1.3 points more of the person's motifs into the top 12, with nothing of their filings in it to
   leak. The directions are worked out once a day.
+- **New motifs come with the model's note, genre and groups.** A motif the model makes for a claim no motif fits used
+  to arrive bare: no note until it held three claims, no genre or group until the person gave one. Now the hourly run
+  drafts all three straight away: the note from its name (the claims only to see how it's told), the genre judged
+  against examples of the person's own motifs in each genre, and up to two groups, each the model's yes among the three
+  groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
+  person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
+  the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
 - **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
   own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
   of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead

@@ -307,3 +307,22 @@ def test_a_rests_on_link_needs_no_related_one(tmp_path, monkeypatch):
     store = {}
     mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'x')
     assert not mp.still_holds(next(iter(store.values())), mi.load())
+
+
+def test_a_new_motif_is_asked_about_the_groups_nearest_it(monkeypatch):
+    import numpy as np
+
+    from app import narratives
+    from app.analysis import llm, motif_index as mi
+    from app.analysis import motif_proposals as mp
+    m = lambda i, g, name: {'id': i, 'name': name, 'groups': [g] if g else [], 'claims': [{'claim': i}]}  # noqa: E731
+    entries = {x['id']: x for x in [m('M1', 'G1', 'tax a'), m('M2', 'G1', 'tax b'), m('M3', 'G1', 'tax c'),
+                                    m('M4', 'G2', 'war a'), m('M5', 'G2', 'war b'), m('M6', 'G2', 'war c'),
+                                    m('M7', 'G3', 'tax d'), m('M8', 'G3', 'tax e')]}  # G3: too few to judge by
+    index = {'groups': {'G1': {'name': 'Taxes'}, 'G2': {'name': 'Wars'}, 'G3': {'name': 'Small'}}, 'entries': entries}
+    monkeypatch.setattr(narratives, 'embed', lambda ts: np.array([[1.0, 0] if 'tax' in t.lower() else [0, 1.0] for t in ts]))
+    asked = []
+    monkeypatch.setattr(llm, 'complete_json', lambda p, s, **k: asked.append(p.split('"')[1]) or {'reason': '', 'belongs': True})
+    new = {'id': 'M9', 'name': 'Tax cut for the few', 'claims': [{'claim': 'x'}]}
+    assert mp.ask_groups(new, index) == ['G1'] and asked == ['Taxes']  # Wars too far to ask about
+    assert mi.person_groups(entries['M1']) == ['G1']

@@ -443,6 +443,10 @@ def nightly(budget: float | None = None):
         logger.warning("Motif metrics: %s", e)
     # New motifs get the model's draft of a scope note (shown on the board to keep or edit; used in matching at once)
     gloss_missing(budget=None if budget is None else max(30, budget - (time.time() - started)))
+    try:
+        draft_missing(budget=None if budget is None else max(60, budget - (time.time() - started)))
+    except Exception as e:  # noqa: BLE001 - drafts are extra; the next run tries again
+        logger.warning("Motif drafts: %s", e)
     return index
 
 
@@ -511,9 +515,10 @@ def merge(source: str, target: str):
     if ups or 'parents' in dst or 'parent' in dst:
         dst.pop('parent', None)
         dst['parents'] = list(dict.fromkeys(ups))
-    _set_groups(dst, list(dict.fromkeys(groups_of(dst) + groups_of(src))))
+    _set_groups(dst, list(dict.fromkeys(groups_of(dst) + person_groups(src))))
     for k, v in (src.get('facets') or {}).items():
-        dst.setdefault('facets', {}).setdefault(k, v)
+        if not (k == 'genre' and person_genre(src) is None):  # the model's draft stays behind
+            dst.setdefault('facets', {}).setdefault(k, v)
     if src.get('note') and not dst.get('note'):
         dst['note'], dst['note_by'] = src['note'], src.get('note_by', 'person')
     if 'done' in src and 'done' in dst:  # both looked over: what was seen in either stays seen
@@ -661,6 +666,40 @@ def _set_groups(entry: dict, gids: list[str]):
         entry['groups'] = list(dict.fromkeys(gids))
     else:
         entry.pop('groups', None)
+    drafted = [g for g in (entry.get('by_model') or {}).get('groups', []) if g in (gids or [])]
+    _drafts(entry, groups=drafted)
+
+
+# Drafts at birth (Oct 8, the person: "when the model generates new motifs can it also try to generate notes and a
+# genre and groups?"): a motif the model makes gets the model's note, genre and groups straight away, the genre and
+# groups marked as the model's in entry['by_model'] ({'genre': value, 'groups': [ids]}; the note by note_by, as before).
+# Marking the motif done makes them the person's; so does setting its genre or putting it in a group by hand. Until
+# then nothing learns from them: genre examples, group centers and the group signal read the person's own only.
+
+def _drafts(entry: dict, **fields):
+    """Set (or with a falsy value, drop) fields of the model's drafts; drops by_model once empty"""
+    d = dict(entry.get('by_model') or {})
+    for k, v in fields.items():
+        if v:
+            d[k] = v
+        else:
+            d.pop(k, None)
+    if d:
+        entry['by_model'] = d
+    else:
+        entry.pop('by_model', None)
+
+
+def person_genre(entry: dict) -> str | None:
+    """Its genre, unless the model's draft"""
+    g = genre_of(entry)
+    return None if g and (entry.get('by_model') or {}).get('genre') == g else g
+
+
+def person_groups(entry: dict) -> list[str]:
+    """Its groups, but those the model drafted"""
+    drafted = set((entry.get('by_model') or {}).get('groups', []))
+    return [g for g in groups_of(entry) if g not in drafted]
 
 @exclusive
 def group_add(name: str) -> str:
@@ -697,6 +736,7 @@ def group_assign(eid: str, gid: str | None):
     if gid and gid not in index.get('groups', {}):
         raise ValueError(f'no such group: {gid}')
     _set_groups(index['entries'][eid], [gid] if gid else [])
+    _drafts(index['entries'][eid], groups=None)
     save(index)
 
 
@@ -708,6 +748,8 @@ def group_member(eid: str, gid: str, on: bool = True):
         raise ValueError(f'no such group: {gid}')
     entry = index['entries'][eid]
     _set_groups(entry, groups_of(entry) + [gid] if on else [g for g in groups_of(entry) if g != gid])
+    if on:
+        _drafts(entry, groups=[g for g in (entry.get('by_model') or {}).get('groups', []) if g != gid])
     save(index)
 
 
@@ -775,6 +817,8 @@ def set_facet(eid: str, facet: str, value: str | None):
     index = load()
     entry = index['entries'][eid]
     value = ' '.join((value or '').split())
+    if facet == 'genre':
+        _drafts(entry, genre=None)
     if value:
         entry.setdefault('facets', {})[facet] = value
     else:
@@ -851,7 +895,7 @@ def board() -> dict:
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
                                    if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
-                'facets': e.get('facets', {}),
+                'facets': e.get('facets', {}), 'by_model': e.get('by_model', {}),
                 # In a motif marked done, the claims that came in since (the ones to look at)
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
                             'id': key(c['claim'])[:6],  # shown as #3f9a2b, to name a claim in a screenshot or a search
@@ -889,6 +933,7 @@ def mark_done(eid: str, done: bool = True):
     if done:
         entry['done'] = sorted(key(c['claim']) for c in entry['claims'])
         entry.pop('not_done', None)
+        entry.pop('by_model', None)  # looked over: its genre and groups are the person's now
     else:
         entry.pop('done', None)
         entry['not_done'] = True  # unmarked by hand: a note saved later doesn't mark it done again
@@ -1405,6 +1450,55 @@ def needs_gloss(entry: dict) -> bool:
     if not entry.get('note'):
         return True
     return entry.get('note_by') == 'model' and n >= 2 * entry.get('note_claims', n)
+
+
+def needs_drafts(entry: dict) -> bool:
+    """A motif the model made that nobody has looked over and the model hasn't drafted for yet"""
+    return bool(entry['claims']) and not entry.get('curated') and 'done' not in entry and not entry.get('drafted')
+
+
+def draft_missing(budget: float | None = None) -> int:
+    """The model's note, genre and groups for each motif it made since the last run (needs_drafts), for at most
+    `budget` seconds, each only where the motif has none; how many motifs got drafts"""
+    import time
+
+    from app.analysis import motif_proposals as mp
+    started, done = time.time(), 0
+    index = load()
+    todo = [e['id'] for e in live(index) if needs_drafts(e)]
+    if not todo:
+        return 0
+    examples = mp.genre_examples(index)
+    for eid in todo:
+        if budget is not None and time.time() - started > budget:
+            break
+        entry = load()['entries'][eid]
+        note = None if entry.get('note') else gloss(entry)
+        drafted = dict(entry, note=note or entry.get('note', ''))
+        genre = None
+        if not genre_of(entry) and len(examples) >= 2:
+            got = mp.ask_genre(drafted, examples)
+            genre = got and got[0]
+        groups = [] if groups_of(entry) else mp.ask_groups(drafted, index)
+        with locked():
+            index = load()
+            e = index['entries'].get(eid)
+            if not e or not needs_drafts(e):
+                continue  # a person got there first
+            if note and not e.get('note'):
+                e['note'], e['note_by'], e['note_claims'] = note, 'model', len(e['claims'])
+            if genre and not genre_of(e):
+                e.setdefault('facets', {})['genre'] = genre
+                _drafts(e, genre=genre)
+            if groups and not groups_of(e):
+                _set_groups(e, groups)
+                _drafts(e, groups=groups)
+            e['drafted'] = dt.now().strftime('%Y-%m-%d')
+            save(index)
+            done += 1
+    if done:
+        logger.info("Motif index: drafted note, genre and groups for %d new motifs", done)
+    return done
 
 
 def gloss_missing(budget: float | None = None) -> int:

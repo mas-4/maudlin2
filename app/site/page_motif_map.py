@@ -36,8 +36,8 @@ def graph(index: dict | None = None, screen: accusations.Screen | None = None) -
         claims.sort(key=lambda c: c.get('date', ''), reverse=True)
         motifs[e['id']] = {
             'id': e['id'], 'name': e['name'], 'note': motif_index.public_note(e), 'count': len(claims),
-            'first': e.get('first_seen', ''), 'groups': motif_index.groups_of(e),
-            'genre': (e.get('facets') or {}).get('genre', ''),
+            'first': e.get('first_seen', ''), 'groups': motif_index.person_groups(e),
+            'genre': motif_index.person_genre(e) or '',
             'claims': [{'claim': c['claim'], 'source': 'people online' if c['source'] == 'narrative' else c['source'],
                         'url': c.get('ref', '') if c['source'] not in ('narrative',) and str(c.get('ref', '')).startswith('http') else ''}
                        for c in claims[:CLAIMS_SHOWN]]}

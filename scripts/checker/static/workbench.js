@@ -311,7 +311,8 @@
     const mine = e.groups || [];
     // groups it isn't in, for the type-to-find box (A to Z, as everywhere)
     const groups = S.data.groups.filter((g) => !mine.includes(g.id)).map((g) => `<option value="${esc(g.name)}"></option>`).join('');
-    const tags = mine.map((g) => `<span class="wb-gtag">📁 ${esc((S.data.groups.find((x) => x.id === g) || {}).name || g)}<button class="wb-x" data-ungroup="${e.id}|${g}" title="out of this group">✕</button></span>`).join('');
+    const bm = e.by_model || {};  // the model's guesses for a motif it made (kept by marking it done)
+    const tags = mine.map((g) => `<span class="wb-gtag${(bm.groups || []).includes(g) ? ' wb-guess" title="the model\'s guess: mark the motif done to keep it, ✕ to drop it' : ''}">${(bm.groups || []).includes(g) ? '🤖' : '📁'} ${esc((S.data.groups.find((x) => x.id === g) || {}).name || g)}<button class="wb-x" data-ungroup="${e.id}|${g}" title="out of this group">✕</button></span>`).join('');
     const ns = noteState(e);
     const shared = {};
     for (const c of e.claims) for (const o of motifs()) if (o.id !== e.id && o.claims.some((x) => x.claim === c.claim)) shared[o.id] = (shared[o.id] || 0) + 1;
@@ -340,7 +341,7 @@
         <div class="wb-rchips">${tags}<input class="wb-gadd" data-groupadd="${e.id}" list="gl-${e.id}" placeholder="＋ group… type to find" autocomplete="off"
           title="type to find a group and pick it to put it in as well (a motif can be in several); a new name and Enter makes a new group with it in"><datalist id="gl-${e.id}">${groups}</datalist></div>
         <span class="wb-rlabel">🎭 genre</span>
-        <div class="wb-rchips"><select data-genre="${e.id}" title="its genre"><option value="">no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
+        <div class="wb-rchips"><select data-genre="${e.id}" title="its genre"><option value="">no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>${bm.genre && bm.genre === (e.facets || {}).genre ? '<span class="wb-ntag" title="mark the motif done to keep it, or pick another">🤖 the model\'s guess</span>' : ''}</div>
         <span class="wb-rlabel" title="it only makes sense given these: a kind of them, or a case, argument or figure that tells them">↳ rests on</span>
         <div class="wb-rchips">${e.parents.map((p) => chip(p, `<button class="wb-x" data-unparent="${e.id}|${p}" title="doesn't rest on it">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
         <span class="wb-rlabel">⤷ rest on it</span>

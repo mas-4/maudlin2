@@ -455,3 +455,45 @@ def test_metrics_say_how_the_catalog_is_shaped_and_keep_a_day_by_day_history(mon
         f.write('{"at": "2026-10-06T04:00:00", "matched": 3, "new": 1}\n')
     days = {d['day']: d for d in mi.metrics_history()['days']}
     assert days['2026-10-05']['new_motifs'] == 1 and days['2026-10-06']['filed_matched'] == 3
+
+
+def test_a_new_motif_gets_the_models_note_genre_and_groups_as_drafts(monkeypatch, tmp_path):
+    from app.analysis import motif_proposals as mp
+    fresh(monkeypatch, tmp_path)
+    c = lambda t: {'claim': t, 'source': 'narrative'}  # noqa: E731
+    mine = {f'M{i:03d}': {'id': f'M{i:03d}', 'name': f'Mine {i}', 'curated': True, 'done': [], 'groups': ['G01'],
+                          'facets': {'genre': 'Plots' if i % 2 else 'Theories'}, 'claims': [c(f'claim {i}')]}
+            for i in range(1, 5)}
+    new = {'id': 'M009', 'name': 'Tax cut for the few', 'curated': False, 'claims': [c('The cut helps only the rich')]}
+    mi.save({'next': 10, 'claims': {}, 'groups': {'G01': {'name': 'Who rules'}}, 'entries': {**mine, 'M009': new}})
+    monkeypatch.setattr(mi, 'gloss', lambda e: 'A party cuts a tax that only the wealthy pay.')
+    asked = {}
+    monkeypatch.setattr(mp, 'ask_genre', lambda e, ex: asked.setdefault('genre', (e['note'], sorted(ex))) and ('Plots', 'why'))
+    monkeypatch.setattr(mp, 'ask_groups', lambda e, ix: ['G01'])
+    assert mi.draft_missing() == 1
+    e = mi.load()['entries']['M009']
+    assert asked['genre'] == ('A party cuts a tax that only the wealthy pay.', ['Plots', 'Theories'])  # asked with the note
+    assert (e['note_by'], mi.genre_of(e), mi.groups_of(e)) == ('model', 'Plots', ['G01'])
+    assert e['by_model'] == {'genre': 'Plots', 'groups': ['G01']}
+    assert mi.person_genre(e) is None and mi.person_groups(e) == []  # nothing learns from them yet
+    assert mi.draft_missing() == 0  # drafted once
+    assert [x['id'] for x in mp.genre_examples(mi.load())['Plots']] == ['M001', 'M003']  # the person's own only
+    mi.set_facet('M009', 'genre', 'Plots')  # picked by hand: theirs now
+    e = mi.load()['entries']['M009']
+    assert mi.person_genre(e) == 'Plots' and e['by_model'] == {'groups': ['G01']}
+    mi.mark_done('M009')  # looked over: all of it theirs
+    e = mi.load()['entries']['M009']
+    assert 'by_model' not in e and mi.person_groups(e) == ['G01']
+
+
+def test_the_models_drafts_stay_behind_in_a_merge_and_go_with_a_group_change(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 3, 'claims': {}, 'groups': {'G01': {'name': 'A'}, 'G02': {'name': 'B'}}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Kept', 'curated': True, 'claims': [{'claim': 'one', 'source': 'narrative'}]},
+        'M002': {'id': 'M002', 'name': 'Made', 'curated': False, 'claims': [{'claim': 'two', 'source': 'narrative'}],
+                 'groups': ['G01', 'G02'], 'facets': {'genre': 'Plots'}, 'by_model': {'genre': 'Plots', 'groups': ['G01', 'G02']}}}})
+    mi.group_member('M002', 'G02', True)  # put in by hand: that one's theirs
+    assert mi.load()['entries']['M002']['by_model'] == {'genre': 'Plots', 'groups': ['G01']}
+    mi.merge('M002', 'M001')
+    e = mi.load()['entries']['M001']
+    assert mi.groups_of(e) == ['G02'] and mi.genre_of(e) is None

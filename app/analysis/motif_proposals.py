@@ -374,7 +374,7 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], dead
     import time
     made = 0
     for gid, g in index.get('groups', {}).items():
-        members = [i for i, e in enumerate(entries) if gid in mi.groups_of(e)]
+        members = [i for i, e in enumerate(entries) if gid in mi.person_groups(e)]
         if len(members) < 3:
             continue
         center = vecs[members].mean(axis=0)
@@ -401,6 +401,38 @@ def groups(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], dead
     return made
 
 
+BIRTH_GROUPS = 2  # groups at most drafted for a new motif (Oct 8)
+BIRTH_ASKED = 3  # the groups nearest a new motif the model is asked about
+
+
+def ask_groups(e: dict, index: dict) -> list[str]:
+    """The groups (ids) the model would put a new motif in: the BIRTH_ASKED groups whose motifs (the person's members
+    only) are nearest it, each asked as the proposer asks; at most BIRTH_GROUPS"""
+    entries = [x for x in mi.live(index) if x['claims']]
+    members = {gid: [x for x in entries if gid in mi.person_groups(x)] for gid in index.get('groups', {})}
+    members = {gid: xs for gid, xs in members.items() if len(xs) >= 3}
+    if not members:
+        return []
+    from app.narratives import embed
+    v = embed([mi.described(e)] + [mi.described(x) for xs in members.values() for x in xs])
+    q, rest = v[0], v[1:]
+    near, at = {}, 0
+    for gid, xs in members.items():
+        c = rest[at:at + len(xs)].mean(0)
+        at += len(xs)
+        near[gid] = float(c @ q / (np.linalg.norm(c) + 1e-9))
+    out = []
+    for gid in sorted(near, key=lambda g: -near[g])[:BIRTH_ASKED]:
+        if near[gid] < GROUP_FLOOR or len(out) >= BIRTH_GROUPS:
+            continue
+        listing = '\n'.join(f'- {mi.described(x)}' for x in members[gid])
+        answer = llm.complete_json(GROUP_PROMPT.format(group=index['groups'][gid]['name'], members=listing, motif=shown(e)),
+                                   GROUP_SCHEMA, max_tokens=400, model=MODEL)
+        if answer and answer.get('belongs'):
+            out.append(gid)
+    return out
+
+
 # ---------- genres ----------
 GENRE_EXAMPLES = 5  # of each genre's motifs, shown to the model (the most claims first; never the motif asked about)
 GENRE_PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: which layer \
@@ -422,7 +454,7 @@ def genre_examples(index: dict, leave_out: str | None = None) -> dict[str, list[
     """Each genre's example motifs: the person's own, the most claims first"""
     out = {}
     for g in mi.facet_values(index).get('genre', []):
-        es = [e for e in mi.live(index) if mi.genre_of(e) == g and e['id'] != leave_out]
+        es = [e for e in mi.live(index) if mi.person_genre(e) == g and e['id'] != leave_out]
         out[g] = sorted(es, key=lambda e: -len(e['claims']))[:GENRE_EXAMPLES]
     return {g: es for g, es in out.items() if es}
 
@@ -567,7 +599,7 @@ def fit_facts(ps: list[dict], index: dict) -> np.ndarray:
         a, b = pair(p)
         ea, eb = es[a], es[b]
         ka, kb = ({mi.key(c['claim']) for c in e['claims']} for e in (ea, eb))
-        ga, gb = set(mi.groups_of(ea)), set(mi.groups_of(eb))
+        ga, gb = set(mi.person_groups(ea)), set(mi.person_groups(eb))
         fa, fb = ((e.get('facets') or {}).get('genre') for e in (ea, eb))
         rows.append([float(dv[a] @ dv[b]), float(cv[a] @ cv[b]), np.log1p(len(ka & kb)), float(bool(ga & gb)),
                      float(bool(fa and fa == fb)), float(bool(ga and gb and not ga & gb)), float(p['kind'] == 'parent'),
