@@ -68,3 +68,23 @@ def test_news_signal_holds_the_claim_out_of_its_motif():
     flat = ms.Signals(index(), Vectors())
     flat._news = False
     assert not flat.news(own, False)[0].any()
+
+
+def test_a_claims_layers_meet_each_motifs_note_and_the_layer_of_its_genre():
+    class Vectors:
+        def __call__(self, texts):
+            return np.array([[1.0, 0] if 'campaign' in t.lower() else [0, 1.0] for t in texts])
+    ix = index()
+    ix['entries']['M1']['facets'] = {'genre': 'Plots'}
+    sig = ms.Signals(ix, Vectors())
+    sig.layered[mi_key('A claim')] = {'character': 'none', 'plot': 'An official campaigns from office', 'theory': 'none',
+                                      'argument': 'none', 'value': 'none'}
+    best, of_genre = sig.layers('A claim', ask=False)
+    assert best[sig.at['M1']] == 1.0 and of_genre[sig.at['M1']] == 1.0  # its plot meets the Plots motif's note
+    assert of_genre[sig.at['M2']] == -1.0  # no genre: no layer of its genre
+    assert sig.layers('Unread claim', ask=False)[0].tolist() == [-1.0, -1.0]
+
+
+def mi_key(text):
+    from app.analysis import motif_index
+    return motif_index.key(text)

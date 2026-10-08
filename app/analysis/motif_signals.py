@@ -13,6 +13,10 @@ that one way of seeing missed, nothing else caught it. Each signal here reads a 
   news out   the claim against each note and each motif's nearest claim with the day's news taken out: the main
              directions the latest headlines vary along (mostly topic: Iran, Texas, a storm) projected away, so what's
              left leans to framing (experiment E1, Oct 8: +1.3 points of the person's motifs in the top 12)
+  layers     the claim described by the filing model layer by layer in generic words (a character type, a plot, a
+             theory, an argument, a value at stake), each layer against every motif's note: the best layer, and the
+             layer that goes with the motif's genre (experiment E7, Oct 8: +1.4 points of the person's motifs in the
+             top 12, 17 of 76 hard misses back; it reads a claim the way the person does)
   group      the claim against the person's groups (each the center of its motifs' claims), a motif scored by its best
              group: a group pools many small motifs' evidence (Oct 8, the person: route through groups; one route among
              the others, not a tree: an ungrouped motif scores nothing here and is found the other ways)
@@ -40,7 +44,8 @@ logger = get_logger(__name__)
 FOLDER = os.path.join(Config.data, 'motifs')
 SHAPES = os.path.join(FOLDER, 'claim_shapes.json')  # claim key -> its bare shape, by the filing model
 RERANKS = os.path.join(FOLDER, 'rerank_cache.json')  # pair hash -> the reranker's P(yes)
-JUDGED = os.path.join(FOLDER, 'pair_judge_cache.json')  # pair hash -> the filing model's P(yes)
+JUDGED = os.path.join(FOLDER, 'pair_judge_cache.json')
+LAYERED = os.path.join(FOLDER, 'claim_layers.json')  # claim key -> {layer: its generic sentence or 'none'}  # pair hash -> the filing model's P(yes)
 NOMIC = 'nomic-embed-text'
 RERANKER = 'Qwen/Qwen3-Reranker-0.6B'
 JUDGE_MODEL = 'gemma4:26b'
@@ -57,7 +62,8 @@ STOP = {'a', 'an', 'the', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at'
         'just', 'should', 'now', 'says', 'said', 'say', 'about', 'into', 'over', 'after', 'before', 'also', 'has',
         'have', 'had', 'do', 'does', 'did', 'would', 'could', 'may', 'might', 'must', 'one', 'two', 'new', 'people'}
 WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
-CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group', 'news out note', 'news out near']
+CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group', 'news out note', 'news out near',
+         'layers best', 'layer of its genre']
 
 SHAPE_PROMPT = """A claim people are telling or arguing over:
 {claim}
@@ -65,6 +71,21 @@ SHAPE_PROMPT = """A claim people are telling or arguing over:
 Restate it as the bare shape of the story it tells, in one plain sentence: what its tellers say is true, with kinds of \
 people, places and things in place of particular ones ("a party leader", "immigrants", "a foreign power"), and no \
 names or dates. Keep what makes it this story and not another."""
+LAYERS_PROMPT = """A claim people are telling or arguing over:
+{claim}
+
+Describe the story it tells layer by layer, each in one plain generic sentence with kinds of people, places and things \
+instead of names and dates, or "none" if it doesn't have that layer:
+character: the type of person or group at the center, as its tellers see them
+plot: the sequence of events it says happened or will happen
+theory: the hidden cause or belief about how things work that it rests on
+argument: the case it makes, or the move it makes against the other side
+value: the value it says is at stake or betrayed"""
+LAYER_NAMES = ['character', 'plot', 'theory', 'argument', 'value']
+LAYERS_SCHEMA = {"type": "object", "properties": {n: {"type": "string", "maxLength": 240} for n in LAYER_NAMES},
+                 "required": LAYER_NAMES}
+GENRE_LAYER = {'Archetypes': 'character', 'Plots': 'plot', 'Theories': 'theory', 'Beliefs': 'theory',
+               'Arguments': 'argument', 'Values': 'value', 'Exhortations': 'value'}
 SHAPE_SCHEMA = {"type": "object", "properties": {"shape": {"type": "string", "maxLength": 300}}, "required": ["shape"]}
 
 JUDGE_PROMPT = """Our motif index files claims people make about politics and public life under motifs: recurring shapes of \
@@ -177,6 +198,7 @@ class Signals:
         self._filed_v = None
         self._note_v = None
         self.shapes = read_json(SHAPES, {})
+        self.layered = read_json(LAYERED, {})
         self.reranks = read_json(RERANKS, {})
         self.judged = read_json(JUDGED, {})
         self._reranker = None
@@ -224,6 +246,30 @@ class Signals:
     def shape(self, claim: str, ask: bool = True) -> np.ndarray:
         s = self.shape_of(claim, ask)
         return self.note_vectors() @ self.vec([s])[0] if s else np.zeros(len(self.entries))
+
+    def layers_of(self, claim: str, ask: bool = True) -> dict:
+        """The claim's layers (LAYER_NAMES), each a generic sentence, those it lacks left out"""
+        k = mi.key(claim)
+        if k not in self.layered and ask:
+            from app.analysis import llm
+            a = llm.complete_json(LAYERS_PROMPT.format(claim=claim), LAYERS_SCHEMA, max_tokens=600, model=JUDGE_MODEL)
+            if a:
+                self.layered[k] = {n: ' '.join(str(a.get(n) or 'none').split()) for n in LAYER_NAMES}
+        return {n: t for n, t in (self.layered.get(k) or {}).items() if t and t.strip().lower().rstrip('.') != 'none'}
+
+    def layers(self, claim: str, ask: bool = True) -> tuple[np.ndarray, np.ndarray]:
+        """Against every motif's note: the claim's best layer, and the layer that goes with the motif's genre (-1
+        where it has none)"""
+        n = len(self.entries)
+        ls = self.layers_of(claim, ask)
+        if not ls:
+            return np.full(n, -1.0), np.full(n, -1.0)
+        sims = dict(zip(ls, self.vec(list(ls.values())) @ self.note_vectors().T))
+        best = np.max(np.stack(list(sims.values())), 0)
+        if getattr(self, '_genre_layer', None) is None:
+            self._genre_layer = [GENRE_LAYER.get(mi.genre_of(e) or '') for e in self.entries]
+        of_genre = np.array([sims[g][i] if g in sims else -1.0 for i, g in enumerate(self._genre_layer)])
+        return best, of_genre
 
     def votes(self, claim: str, leave_out: bool) -> np.ndarray:
         if self._filed_v is None:
@@ -312,9 +358,11 @@ class Signals:
         if ask:
             for c in claims:
                 self.shape_of(c, True)
+                self.layers_of(c, True)
             self.save()
         shapes = [self.shapes[mi.key(c)] for c in claims if mi.key(c) in self.shapes]
-        self.vec(list(dict.fromkeys(list(claims) + shapes)))
+        layers = [t for c in claims for t in self.layers_of(c, False).values()]
+        self.vec(list(dict.fromkeys(list(claims) + shapes + layers)))
         self.note_vectors()
         if self._filed_v is None:
             self._filed_v = self.vec([self.filed[k][0] for k in self.filed_keys])
@@ -327,7 +375,8 @@ class Signals:
         """Every cheap signal against every motif"""
         desc, near = self.nomic(claim, leave_out)
         news_note, news_near = self.news(claim, leave_out)
-        return {'news out note': news_note, 'news out near': news_near,'keywords': self.keywords(claim, leave_out), 'note': self.note(claim), 'shape': self.shape(claim, ask),
+        best, of_genre = self.layers(claim, ask)
+        return {'news out note': news_note, 'news out near': news_near, 'layers best': best, 'layer of its genre': of_genre,'keywords': self.keywords(claim, leave_out), 'note': self.note(claim), 'shape': self.shape(claim, ask),
                 'votes': self.votes(claim, leave_out), 'nomic desc': desc, 'nomic near': near,
                 'group': self.group(claim, leave_out)}
 
@@ -412,6 +461,7 @@ class Signals:
     def save(self):
         """The costly answers, kept for the next run"""
         write_json(SHAPES, self.shapes)
+        write_json(LAYERED, self.layered)
         write_json(RERANKS, self.reranks)
         write_json(JUDGED, self.judged)
 
