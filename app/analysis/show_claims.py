@@ -24,7 +24,8 @@ STORE = os.path.join(Config.data, 'show_claims.json')  # episode url -> its clai
 MODEL = 'gemma4:26b'
 CHUNK = 6000  # characters of transcript a call
 DAYS = 7  # episodes published this recently
-SKIP = {'focusgroup', 'nprnewsnow', 'abcupdate'}  # read elsewhere (focus_group.py, running_order.py)
+SKIP = {'focusgroup', 'nprnewsnow', 'abcupdate', 'bloombergnow'}  # read elsewhere (focus_group.py, running_order.py), or
+# an hourly news bulletin: what it reports is the news, not what people tell
 KINDS = {'call-in': 'a call-in radio show', 'podcast': 'a podcast', 'video': 'a video show'}
 SPEAKERS = ['host', 'guest', 'caller', 'clip']
 PROMPT = """This is part of an episode of {show}, {kind} ("{title}"). The transcript has no speaker names and may \
