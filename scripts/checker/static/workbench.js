@@ -1311,6 +1311,9 @@
         return ms.length ? `Motifs (${ms.length}):\n` + ms.map((e) => `- ${e.name} (${e.id})${e.note ? ': ' + e.note : ': no note yet'}`).join('\n') : 'Motifs: none yet';
       })(),
       x.summary || '',
+      (x.label || {}).context ? `What the piece shows: ${x.label.context}` : '',
+      (x.label || {})['claim from the piece'] && x.label['claim from the piece'] !== claim ? `As the piece tells it: ${x.label['claim from the piece']}` : '',
+      x.piece ? `The piece's opening:\n${x.piece}` : '',
       (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `The model's words: ${w.map((m) => '“' + m + '”').join(' · ')}` : ''; })(),
       posts.length ? `Posts (${posts.length}):\n${posts.join('\n')}` : '',
     ].filter(Boolean).join('\n');
@@ -1380,6 +1383,10 @@
           + x.all_posts.map((p) => `<q>${esc(p.text)}${p.n > 1 ? ` <b class="wb-faint">×${p.n}</b>` : ''}${p.reply ? ' <span class="wb-faint">↩ reply</span>' : ''}${p.source === 'mastodon' ? ' <span class="wb-faint">🐘</span>' : ''}</q>`).join('') + '</details>'
         : (x.examples || []).map((t) => `<q>${esc(t)}</q>`).join('') + (x.posts > (x.examples || []).length ? `<span class="wb-faint">${(x.examples || []).length} of ${x.posts} posts: the report kept only a sample</span>` : ''),
       x.summary ? esc(x.summary) : '',
+      // a fact-check read from the piece itself: what it shows was claimed, and the claim as the piece tells it
+      lab.context ? `📰 ${esc(lab.context)}` : '',
+      lab['claim from the piece'] && lab['claim from the piece'] !== claim ? `<span class="wb-faint">as the piece tells it:</span> “${esc(lab['claim from the piece'])}”` : '',
+      x.piece ? `<details class="wb-posts"><summary>📄 the piece's opening</summary><div class="wb-piece">${esc(x.piece)}</div></details>` : '',
       (() => { const w = [].concat(x.model_words || []).filter((m) => m && m !== claim); return w.length ? `the model's words: ${w.map((m) => '“' + esc(m) + '”').join(' · ')}` : ''; })(),
     ].filter(Boolean).map((s) => `<div>${s}</div>`).join('');
   }

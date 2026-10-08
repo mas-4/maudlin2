@@ -357,8 +357,10 @@ def claim_detail(claim: str) -> dict:
                 label = json.load(f).get(url, {})
         except (OSError, ValueError):
             label = {}
+        from app.analysis import factcheck_text
         out.update(kind='fact-check', url=url, title=item.get('title'), summary=item.get('summary'),
-                   published=(item.get('published') or '')[:10], label=label)
+                   published=(item.get('published') or '')[:10], label=label,
+                   piece=factcheck_text.text_of(url)[:2500])  # the piece's own opening, read by the hourly run
         return out
     # The narrative report the claim came from (its ref is the report's time), else the latest, else any that has it
     import glob

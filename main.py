@@ -171,6 +171,12 @@ def main(args: argparse.Namespace):
             fetch_investigations()
             wiki.refresh()  # weekly: each outlet's Wikipedia opening and Wikidata facts
             fetch_sidefeeds()  # newsletters, podcasts and political video channels, each at most every 2 hours
+            try:  # fact-checks' own text, for reading their claims from the piece, not the headline
+                from app import sidefeeds as sf
+                from app.analysis import factcheck_text, factchecks
+                factcheck_text.gather(factchecks._items(factchecks.LABEL_DAYS), sf.SOURCES, budget=300)
+            except Exception as e:  # noqa: BLE001 - labels fall back to the feed's blurb
+                logger.warning("Fact-check texts failed: %s", e)
             try:
                 from app import health
                 health.check()  # every outlet and regular feed still coming in (warnings in the log, health.json)

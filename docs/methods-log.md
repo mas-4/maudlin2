@@ -43,6 +43,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **Fact-check claims read from the piece, not the headline.** The person often opened a fact-check to see what was
+  actually claimed, so their filing rested on more than the one line the models saw. Each fact-check's own text is now
+  kept (app/analysis/factcheck_text.py): from the feed where it carries the whole piece (PolitiFact, FactCheck.org,
+  Lead Stories, NewsGuard), otherwise read from the page, 20 seconds apart per site, at most 24 pages a run, robots.txt
+  obeyed (read under our own name: the sites block named AI crawlers, not readers like us). The labeler reads the
+  piece's opening and gives the claim as its tellers state it, who says it and where, plus two or three sentences of
+  what the piece shows; the person's own corrections of claims (46 so far) are shown to it as examples. A claim
+  already filed keeps its wording (the reading from the piece is kept beside it), so nothing filed changes under the
+  person. The checker's 'where it came from' shows the piece's reading and its opening.
 - **Five podcasts' episodes were being dropped since Oct 4; six video channels had moved.** A health check of the
   side feeds found The Daily, the Brian Lehrer Show, the Megyn Kelly Show, WSJ What's News and NBC's Top Story with
   nothing new in four days: their feeds had begun giving every episode the show's own page as its link, so each new
