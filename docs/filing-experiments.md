@@ -112,6 +112,10 @@ The best gain of the day, but it may be partly the links echoing claims already 
 proposer suggested links from shared claims): kept only to links made before each claim, it vanishes. That test is
 weak (the claims date from Oct 2–7, nearly all 330 links were made Oct 5–8, so most claims see almost none), so the
 verdict waits for a forward test: what it would suggest for new claims, scored against the person's checks.
+Forward test from Oct 8 afternoon (`e5_forward.py`): each new claim nobody has said yes to yet is ranked against
+every motif twice, by the learned weighting with and without the spread (the links as they stand then, the claim held
+out of the motifs the model put it in), the top 40 of each logged; `score` compares them on the claims the person has
+checked since. Logged in each GPU window as claims come in.
 
 ### E1 Subtract the news (Oct 8) — kept: in production
 `scripts/experiments/e1_news.py`. The 6,000 most recent headlines embedded (mxbai); their top principal components
