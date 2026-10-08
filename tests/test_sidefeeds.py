@@ -161,3 +161,13 @@ def test_hosts_are_read_side_by_side_but_each_host_one_request_at_a_time(db, mon
         (_, s1, e1), (_, s2, _) = sorted(s for s in spans if s[0] == host)[:2]
         assert s2 >= e1 + 0.19  # the same host: one at a time, the pause between
     assert took < 0.9  # the two hosts at once (one after the other: 1.2 s)
+
+
+def test_episodes_sharing_the_shows_link_are_told_apart_by_guid():
+    xml = '''<rss><channel>
+      <item><title>Monday</title><link>https://show.example/the-daily</link><guid>abc-1</guid></item>
+      <item><title>Tuesday</title><link>https://show.example/the-daily</link><guid>abc-2</guid></item>
+      <item><title>Special</title><link>https://show.example/special</link><guid>abc-3</guid></item>
+    </channel></rss>'''
+    assert [i['url'] for i in sf.parse(xml)] == [
+        'https://show.example/the-daily#abc-1', 'https://show.example/the-daily#abc-2', 'https://show.example/special']

@@ -43,6 +43,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **Five podcasts' episodes were being dropped since Oct 4; six video channels had moved.** A health check of the
+  side feeds found The Daily, the Brian Lehrer Show, the Megyn Kelly Show, WSJ What's News and NBC's Top Story with
+  nothing new in four days: their feeds had begun giving every episode the show's own page as its link, so each new
+  episode looked already stored. An episode whose link another shares is now told apart by its guid. The YouTube feeds
+  of the Young Turks, Timcast IRL, Benny Johnson, Matt Walsh, Candace Owens and Destiny pointed at channels gone quiet
+  (some for a year); each now follows the channel its handle names. Dan Bongino's and Flagrant's channels have posted
+  nothing since 2025 and early 2024: dropped, their podcasts carry them. The 145 outlets' front pages and every hourly
+  run of the last day were fine.
 - **Weak fits come with where else they might go.** The person's time is better spent correcting weak filings than
   hunting for motifs: for each claim with a filing the confidence model gives under 50% (one nobody has checked, or one
   they confirmed that's up for a second look), the hourly run scores the twelve of their motifs the shortlist ranks

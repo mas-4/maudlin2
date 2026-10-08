@@ -11,7 +11,7 @@ unchanged feed sends nothing back), requests to the same host a few seconds apar
 A feed that fails just waits for its next turn."""
 import os
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime as dt, timedelta as td
 from urllib.parse import urlparse
 
@@ -62,20 +62,21 @@ SOURCES = [
     _source('erickson', 'Erick Erickson', 'newsletter', 'right', 'https://ewerickson.substack.com/feed', True),
     _source('foxrundown', 'Fox News Rundown', 'podcast', 'right', 'https://feeds.megaphone.fm/FOXM1880458659', True),
     _source('yt_hasan', 'Hasan Piker', 'video', 'left', YOUTUBE + 'UCnI_h3e6b5jGLfly2SY57SA', True),
-    _source('yt_destiny', 'Destiny', 'video', 'left', YOUTUBE + 'UCLOPC6bOBuiSBAJ16JXLAHg', True),
+    # YouTube channel ids checked Oct 8 against each channel's handle page (six had gone quiet: moved channels)
+    _source('yt_destiny', 'Destiny', 'video', 'left', YOUTUBE + 'UC554eY5jNUfDq3yDOJYirOQ', True),
     _source('yt_vaush', 'Vaush', 'video', 'left', YOUTUBE + 'UCdUD6racxisHiSX9iWFcuug', True),
     _source('yt_majority', 'The Majority Report', 'video', 'left', YOUTUBE + 'UC-3jIAlnQmbbVMV6gR7K8aQ', True),
     _source('yt_pakman', 'David Pakman Show', 'video', 'left', YOUTUBE + 'UCvixJtaXuNdMPUGdOPcY8Ag', True),
     _source('yt_secular', 'Secular Talk', 'video', 'left', YOUTUBE + 'UCldfgbzNILYZA4dmDt4Cd6A', True),
     _source('yt_btc', 'Brian Tyler Cohen', 'video', 'left', YOUTUBE + 'UCR6fEDtZ7_McUwc1fI8_xKw', True),
     _source('yt_meidas', 'MeidasTouch', 'video', 'left', YOUTUBE + 'UCJgZJZZbnLFPr5GJdCuIwpA', True),
-    _source('yt_tyt', 'The Young Turks', 'video', 'left', YOUTUBE + 'UC8Ap0a-VRZALdStTdipHGuA', True),
+    _source('yt_tyt', 'The Young Turks', 'video', 'left', YOUTUBE + 'UC1yBKRuGpC1tSM73A0ZjYjQ', True),
     _source('yt_mockler', 'Adam Mockler', 'video', 'left', YOUTUBE + 'UC8DA4o0SyaGfyVaBLbF5EXg', True),
-    _source('yt_timcast', 'Timcast IRL', 'video', 'right', YOUTUBE + 'UCgNngs0_WKadTmP_gsyEsAQ', True),
-    _source('yt_benny', 'Benny Johnson', 'video', 'right', YOUTUBE + 'UC4c9dTJByint_q1wbYcDgGg', True),
+    _source('yt_timcast', 'Timcast IRL', 'video', 'right', YOUTUBE + 'UCLwNTXWEjVd2qIHLcXxQWxA', True),
+    _source('yt_benny', 'Benny Johnson', 'video', 'right', YOUTUBE + 'UCLdP3jmBYe9lAZQbY6OSYjw', True),
     _source('yt_shapiro', 'Ben Shapiro', 'video', 'right', YOUTUBE + 'UCxUQLGMbb2cI8CqiwZ0WhAQ', True),
-    _source('yt_bongino', 'Dan Bongino', 'video', 'right', YOUTUBE + 'UCKFsY0GX1h9uXgJ57elPMbQ', True),
-    _source('yt_walsh', 'Matt Walsh', 'video', 'right', YOUTUBE + 'UCRr5uJtsqLVkqzxbg7Dnw3w', True),
+    # (Dan Bongino's channel retired Oct 8: no uploads since June 2025; The Dan Bongino Show podcast carries him)
+    _source('yt_walsh', 'Matt Walsh', 'video', 'right', YOUTUBE + 'UCO01ytfzgXYy4glnPJm4PPQ', True),
     # News outlets' own daily news podcasts (feeds found through Apple's podcast directory, Oct 3)
     _source('reutersworld', 'Reuters World News', 'podcast', 'center', 'https://feeds.megaphone.fm/reutersworldnews', True),
     _source('bbcglobal', 'BBC Global News Podcast', 'podcast', 'center', 'https://podcasts.files.bbci.co.uk/p02nq0gn.rss',
@@ -129,10 +130,10 @@ SOURCES = [
     _source('yt_psa', 'Pod Save America (YouTube)', 'video', 'left', YOUTUBE + 'UC0jYTMDGoHT_Q6HQ7SFtGXg'),
     _source('yt_pbd', 'PBD Podcast', 'video', 'right', YOUTUBE + 'UCIHdDJ0tjn_3j-FS7s_X1kQ'),
     _source('yt_crowder', 'Steven Crowder', 'video', 'right', YOUTUBE + 'UCMAtX9eFBpwc4LtgvbqsOpQ'),
-    _source('yt_candace', 'Candace Owens', 'video', 'right', YOUTUBE + 'UCkY4fdKOFk3Kiq7g5LLKYLw'),
+    _source('yt_candace', 'Candace Owens', 'video', 'right', YOUTUBE + 'UCL0u5uz7KZ9q-pe-VC8TY-w'),
     _source('yt_rogan', 'Joe Rogan Experience', 'video', 'crossover', YOUTUBE + 'UCzQUP1qoWDoEbmsQxvdjxgQ'),
     _source('yt_theo', 'Theo Von', 'video', 'crossover', YOUTUBE + 'UC5AQEUAwCh1sGDvkQtkDWUQ'),
-    _source('yt_flagrant', 'Flagrant', 'video', 'crossover', YOUTUBE + 'UCvYrhzKs1c8LajTP687ifEA'),
+    # (Flagrant's channel retired Oct 8: no uploads since January 2024; Flagrant (podcast) carries it)
     _source('yt_dore', 'The Jimmy Dore Show', 'video', 'crossover', YOUTUBE + 'UC3M7l8ved_rYQ45AVzS0RGA'),
     # NPR's 5-minute newscast at the top of every hour: titles are only timestamps and the feed holds the last four,
     # so it's read hourly and archived (its audio links) for transcription later, not shown
@@ -234,9 +235,19 @@ def parse(xml: str) -> list[dict]:
             continue
         enclosure = item.find('enclosure')
         audio = enclosure.get('url') if enclosure is not None and 'audio' in (enclosure.get('type') or 'audio') else None
+        guid = item.find('guid') or item.find('id')
         items.append({'title': title.get_text(strip=True), 'url': url[:500], 'audio': (audio or '')[:500] or None,
                       'published': _date(when.get_text() if when else None),
-                      'summary': _summary(summary.get_text() if summary else '', 400)})
+                      'summary': _summary(summary.get_text() if summary else '', 400),
+                      'guid': (guid.get_text(strip=True) if guid is not None else '') or audio or ''})
+    # Some podcast feeds give every episode the show's page as its link (Simplecast, NBC and Dow Jones did from Oct 4:
+    # each new episode looked already stored and was dropped, The Daily and the Brian Lehrer Show among them). An item
+    # whose link another item shares is told apart by its guid (or audio file), after a # so the link still opens.
+    links = Counter(i['url'] for i in items)
+    for i in items:
+        if links[i['url']] > 1 and i['guid']:
+            i['url'] = f"{i['url'].split('#')[0]}#{i['guid']}"[:500]
+        del i['guid']
     return items
 
 
