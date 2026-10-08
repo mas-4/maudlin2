@@ -243,7 +243,7 @@ def test_built_stylesheet_is_the_joined_partials(built_css):
 
 
 @pytest.mark.parametrize('name, selector', [
-    ('index.html', '.navbar'), ('index.html', '.top-story'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
+    ('index.html', '.navbar'), ('index.html', '.top-story-cards'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
     ('agencies.html', '.outlet-card'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
     ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
     ('radio.html', '.radio-stats')])
@@ -483,9 +483,12 @@ def test_story_outlet_chips_stay_in_their_box(cards):
 
 
 def test_the_front_page_has_a_short_list_and_sends_readers_to_every_story(front, cards, site):
-    top = front.select('.top-story')
-    assert top and len(top) <= 9 and not front.select('div.stories > div.story')
-    assert all(t.select_one('.spread-bar') and t.select_one('.top-more a')['href'].startswith('stories.html#') for t in top)
+    # the top stories are the stories page's own cards (Oct 8), each with its lean bar: far left to far right
+    top = front.select('.top-story-cards > div.story')
+    assert top and len(top) <= 9 and len(front.select('div.stories > div.story')) == len(top)
+    assert all(t.select_one('.spread-bar') and t.select_one('.story-outlets') for t in top)
+    bands = {span['class'][0] for t in top for span in t.select('.spread-bar span')}
+    assert bands <= {'spread-left', 'spread-lean-left', 'spread-center', 'spread-lean-right', 'spread-right', 'spread-unrated'}
     assert front.select_one('a[href="stories.html"]') and cards.select('div.stories > div.story')
 
 

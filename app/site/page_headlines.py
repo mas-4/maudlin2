@@ -541,59 +541,28 @@ class HeadlinesPage:
 
     TOP_STORIES = 9
 
+    # The lean bands of the top stories' bar, left to right as the scale runs (an outlet's lean is -2 to 2)
+    LEAN_BANDS = [('left', -2, 'left'), ('lean-left', -1, 'leans left'), ('center', 0, 'center'),
+                  ('lean-right', 1, 'leans right'), ('right', 2, 'right')]
+
     def top_stories(self):
-        """The front page's short list (the story cards themselves are on stories.html): the hottest stories now, as
-        trending in the news ranks them, each carrying three things only, after an outside reader's advice: how its
-        coverage spreads across the lean scale, one framing contrast (a phrase only one side uses, or a quoted phrase),
-        and one sign from beyond the front pages (TV, radio, people retelling it, a fact-check)."""
+        """The front page's short list: the hottest stories now, as trending in the news ranks them, each as its card
+        from stories.html (Oct 8: the person found the lighter cards boring) with a bar of who carries it by lean,
+        far left to far right, apart from the rated center."""
         by_id = {c['cluster']: c for c in self.context.get('clusters', [])}
-        tv, radio, retold = (self.context.get(k, {}) for k in ('tv_of', 'radio_of', 'retold_of'))
-        checks = self.context.get('factchecks_of', {})
         out = []
         for item in self.context.get('news_trends', [])[:self.TOP_STORIES]:
             c = by_id.get(item['cluster'])
             if not c:
                 continue
-            k = c['cluster']
             rated = [a['bias'] for a in c['data'] if a.get('rated', True)]
-            spread = {'left': sum(b < 0 for b in rated), 'center': sum(b == 0 for b in rated),
-                      'right': sum(b > 0 for b in rated), 'unrated': len(c['data']) - len(rated)}
-            total = max(1, sum(spread.values()))
-            contrast = None
-            wording = c.get('wording') or {}
-            in_title = set(re.findall(r"[a-z']+", item['title'].lower()))
-            for side, emoji in (('right', '🐘'), ('left', '🫏')):
-                # a phrase made only of the story's own title words ("bakker dies") says nothing about framing
-                framing = [p for p in wording.get(side, []) if not set(re.findall(r"[a-z']+", p['phrase'].lower())) <= in_title]
-                if framing and (contrast is None or len(framing[0]['outlets']) > contrast['n']):
-                    p = framing[0]
-                    contrast = {'text': f'only the {side} says “{p["phrase"]}”', 'emoji': emoji, 'n': len(p['outlets']),
-                                'tip': f'{side.capitalize()}-leaning outlets alone: ' + ', '.join(p['outlets'])}
-            if contrast is None and c.get('quotes'):
-                q = c['quotes'][0]
-                contrast = {'text': f'quoted: “{q["phrase"]}”', 'emoji': '💬', 'n': q.get('count', 1), 'tip': 'the phrase outlets quote most'}
-            signal = None
-            # each to the story's own page where there is one: its broadcast or retelling part, not the whole TV page
-            sid = self.story_of.get(k)
-            page = f'story-{sid}.html' if sid else None
-            if tv.get(k):
-                signal = {'emoji': '📺', 'href': f'{page}#broadcast' if page else 'tv.html',
-                          'text': 'on TV: ' + ', '.join(f"{t['name']} {t['time']}" for t in tv[k][:2])}
-            elif radio.get(k):
-                led = sum(r.get('led') or 0 for r in radio[k])
-                casts = sum(r.get('casts') or 0 for r in radio[k])
-                signal = {'emoji': '📻', 'href': f'{page}#broadcast' if page else 'radio.html',
-                          'text': f"in {casts} radio newscast{'' if casts == 1 else 's'}" + (f', the lead in {led}' if led else '')}
-            elif retold.get(k):
-                signal = {'emoji': '🧶', 'href': f'{page}#retelling' if page else 'folklore.html',
-                          'text': f"retold online by {retold[k]['people']} people"}
-            elif checks.get(k):
-                signal = {'emoji': '🔎', 'href': checks[k][0]['url'], 'text': f"fact-checked by {checks[k][0]['source']}"}
-            out.append({'title': item['title'], 'now': item['now'], 'outlets': item['outlets'], 'saga': item['saga'],
-                        'color': item['color'], 'anchor': self.context['anchor_of'].get(k, f'story-{k}'),
-                        'page': page,
-                        'spread': [(side, n, round(100 * n / total)) for side, n in spread.items() if n],
-                        'contrast': contrast, 'signal': signal, 'feelings': c.get('feelings', [])[:2]})
+            counts = [(key, label, sum(b == v for b in rated), bias_colors[v + 3], bias_ink[v + 3])
+                      for key, v, label in self.LEAN_BANDS]
+            counts.append(('unrated', 'unrated', len(c['data']) - len(rated), '#ffffff', '#555555'))
+            total = max(1, sum(n for _, _, n, _, _ in counts))
+            out.append({'cluster': c, 'now': item['now'], 'outlets': item['outlets'],
+                        'spread': [{'key': key, 'label': label, 'n': n, 'pct': round(100 * n / total), 'color': color, 'ink': ink}
+                                   for key, label, n, color, ink in counts if n]})
         self.context['top_stories'] = out
 
     def trending_in_the_news(self, df):

@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-08
+- **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
+  own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
+  of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead
+  of three, so a story carried by the far left reads apart from one carried by the center-left.
 - **Folklore and Rumors are one page.** Folklore and rumors (folklore.html) is now one catalog of what's told, from
   three places, each marked on its card and filterable: retold online (Bluesky and Mastodon, as before), told on the
   shows (a claim told on two or more of the shows we transcribe, or by two or more callers: which shows, how many

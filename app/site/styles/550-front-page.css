@@ -1,57 +1,18 @@
-/* The lighter front page: top stories (spread by lean, one framing contrast, one cross-media sign), sagas as masonry */
-/* (Oct 6; the full story cards are on stories.html; see docs/style-book.md) */
-.top-stories {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(19em, 1fr));
-    gap: 1.1em;
+/* The front page: top stories as the stories page's cards with a lean bar and its key, sagas as masonry */
+/* (Oct 8: the top stories had lighter cards of their own until then; see docs/style-book.md) */
+.top-story-cards {
     margin: 0.4em 0 1em;
 }
 
-.top-story {
-    background: white;
-    border: 3px solid #1f1f2e;
-    border-radius: 14px;
-    box-shadow: 6px 6px 0 var(--pop, #ff4fa3);
-    padding: 0.6em 0.9em 0.7em;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35em;
-    transition: transform 0.15s, box-shadow 0.15s;
-}
-
-.top-story:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 8px 8px 0 var(--pop, #ff4fa3);
-}
-
-.top-story h3 {
-    font: 700 1.2em/1.2 'Comic Neue', 'Comic Sans MS', cursive;
-    margin: 0;
-    color: #1f1f2e;
-}
-
-.top-story h3 a {
-    color: inherit;
-    text-decoration: none;
-}
-
-.top-story h3 a:hover {
-    text-decoration: underline wavy var(--pop, #ff4fa3);
-}
-
-.top-story .saga-tag {
-    align-self: flex-start;
-    margin: 0;
-}
-
-/* Who carries it: one bar, left to right as the lean scale runs */
+/* Who carries it: one bar, left to right as the lean scale runs, in the lean colors (set on each band) */
 .spread-bar {
     display: flex;
-    height: 1.1em;
+    height: 1.2em;
     border: 2px solid #1f1f2e;
     border-radius: 999px;
     overflow: hidden;
-    font: 700 0.72em/1.1em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.35em 0 0.15em;
+    font: 700 0.72em/1.2em 'Comic Neue', 'Comic Sans MS', cursive;
 }
 
 .spread-bar span {
@@ -60,24 +21,43 @@
     min-width: 3px;
 }
 
-.spread-left { background: #3b4cc0; color: white; }
-.spread-center { background: #c9c9d4; color: #1f1f2e; }
-.spread-right { background: #b40426; color: white; }
-.spread-unrated { background: repeating-linear-gradient(45deg, #fff, #fff 3px, #e4e4ea 3px, #e4e4ea 6px); color: #555; }
-
-.top-facts, .top-line, .top-more {
-    margin: 0;
-    font-size: 0.88em;
+.spread-bar span + span {
+    border-left: 1px solid rgba(31, 31, 46, 0.35);
 }
 
-.top-facts {
-    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+.spread-unrated { background: repeating-linear-gradient(45deg, #fff, #fff 3px, #e4e4ea 3px, #e4e4ea 6px); color: #555; }
+
+.spread-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15em 0.7em;
+    margin: 0 0 0.3em;
+    font: 700 0.7em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #555;
 }
 
-.top-more {
-    margin-top: auto;
+.spread-key span {
+    white-space: nowrap;
+}
+
+.spread-key i {
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    border: 1px solid #1f1f2e;
+    border-radius: 2px;
+    margin-right: 0.25em;
+    vertical-align: -0.1em;
+}
+
+.spread-key .key-unrated {
+    background: repeating-linear-gradient(45deg, #fff, #fff 2px, #c9c9d4 2px, #c9c9d4 4px);
+}
+
+.top-facts {
+    margin: 0 0 0.2em;
     font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
 }
 
 /* Sagas as masonry: cards of different heights stack in columns without gaps */
