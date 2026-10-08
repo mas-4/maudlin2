@@ -43,6 +43,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **The reranker taught the person's taste, in production.** Experiment E9 (docs/filing-experiments.md) found the
+  cross-encoder, its top six layers trained on the person's decisions, judged held-out claims better (AUC 0.765 to
+  0.796). Weekly at night it is taught again on the CPU, in a process of its own: three models that each leave a third
+  of the claims out give every decision an honest score for training the confidence model (a reranker that learned
+  those very decisions would look better on them than it is), then one model learns from them all and scores new
+  filings. The confidence model retrains whenever a newly taught reranker appears; each reranker's scores are kept
+  apart.
 - **Embeddings on the CPU.** Ollama's log showed the card spending about nine minutes an hour loading models: each
   embedding model (mxbai, nomic) loaded beside the filing model pushed it out of the card's memory, and it was loaded
   again a moment later (242 times in six hours). Embeddings now run on the CPU (24 cores: 27 texts a second for mxbai,

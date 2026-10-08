@@ -1,4 +1,6 @@
 import argparse
+import os
+import sys
 from datetime import datetime as dt
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -29,6 +31,13 @@ CHYRON_BUDGET = 180  # seconds a run spends cleaning TV chyron OCR (about 45 min
 MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
 FIT_BUDGET = 240  # seconds a run spends scoring new filings (reranker and a yes/no from the filing model per filing)
 PROPOSAL_HOUR = 5  # the motif proposer's nightly run: after the 4 AM report and its first filings
+TEACH_HOUR = 1  # the weekly reranker teaching starts in this hour's run (done by the 4 AM report)
+
+
+def teaching() -> bool:
+    """Whether a reranker teaching is still running (one at a time)"""
+    import subprocess
+    return subprocess.run(['pgrep', '-f', '[a]pp.analysis.reranker_teach'], capture_output=True).returncode == 0
 QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
 
@@ -230,6 +239,19 @@ def main(args: argparse.Namespace):
                 filing_confidence.refresh(budget=FIT_BUDGET)
             except Exception as e:  # noqa: BLE001 - the fits wait for the next run
                 logger.warning("Filing confidence failed: %s", e)
+            # Weekly at night: the reranker taught the person's latest decisions, on the CPU in a process of its own
+            # (about two and a half hours at low priority; the next runs carry on beside it)
+            if dt.now().hour == TEACH_HOUR:
+                try:
+                    from app.analysis import reranker_teach
+                    if reranker_teach.due() and not teaching():
+                        import subprocess
+                        subprocess.Popen(['nice', '-n', '19', sys.executable, '-m', 'app.analysis.reranker_teach'],
+                                         cwd=os.path.dirname(os.path.abspath(__file__)), start_new_session=True,
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        logger.info("Reranker teaching started")
+                except Exception as e:  # noqa: BLE001 - next week
+                    logger.warning("Reranker teaching didn't start: %s", e)
         # Fixes for a person to approve in the workbench (typos, links, groups), once a day after the new filings
         if dt.now().hour >= PROPOSAL_HOUR and not reported:  # never in the report's run: it nears the 45-minute limit
             from app.analysis import motif_proposals

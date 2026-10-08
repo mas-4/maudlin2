@@ -149,7 +149,7 @@ the directions come from 120 headlines from each day since the earliest claim, b
 today's snapshot, 40 and 80 directions out. Production (motif_signals.latest_headlines) has the same snapshot and
 follows the verdict.
 
-### E9 The reranker taught the person's taste (Oct 8) — a modest gain; worth putting in production
+### E9 The reranker taught the person's taste (Oct 8) — in production (app/analysis/reranker_teach.py)
 `scripts/experiments/e9_reranker_tune.py`. Qwen3-Reranker-0.6B's top 6 of 28 layers (94M of 596M weights) trained on
 2,311 pairs: the person's 752 decisions on the model's filings (591 kept, 161 removed), their confirmed claims' other
 motifs (314), and for each confirmed claim the 3 motifs today's shortlist ranks highest that aren't theirs (1,245 hard

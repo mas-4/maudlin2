@@ -223,12 +223,22 @@ def train(index: dict | None = None) -> dict | None:
         groups.extend([mi.key(claim)] * len(items))
     scorer.signals.save()
     X, y = np.array(X), np.array(y, dtype=bool)
+    # A taught reranker learned these very decisions: its scores on them would look better than they are, so the model
+    # learns from scores by rerankers that never saw each claim (reranker_teach.held_out)
+    from app.analysis import reranker_teach
+    tag = scorer.signals.rerank_tag
+    if tag != 'base':
+        held, col = reranker_teach.held_out(), FEATURES.index('rerank')
+        keys = [f'{mi.key(c)}|{e}' for (c, _), items in by_claim.items() for e, _ in items]
+        for i, k in enumerate(keys):
+            if k in held:
+                X[i, col] = logit(np.array([held[k]]))[0]
     test = evaluate(X, y, groups)
     test.pop('p')
     model, mu, sd = _fit(X, y)
     coef = model.coef_[0] / sd
     out = {'weights': dict(zip(FEATURES, coef.round(5).tolist())), 'bias': round(float(model.intercept_[0] - mu @ coef), 5),
-           'test': test, 'retriever_at': w['at'], 'at': dt.now().isoformat(timespec='seconds')}
+           'test': test, 'retriever_at': w['at'], 'reranker': tag, 'at': dt.now().isoformat(timespec='seconds')}
     write_json(MODEL, out, indent=1)
     logger.info("Filing confidence trained on %d filings (%d kept): AUC %.3f held out, sure from %s", test['filings'],
                 test['kept'], test['auc'], test['sure_at'])
@@ -241,6 +251,10 @@ def model(retrain: bool = False) -> dict | None:
     m = read_json(MODEL, None)
     if m and set(m['weights']) != set(FEATURES):
         m = None  # trained on other signals
+    if retrain and m:
+        from app.analysis import reranker_teach
+        if m.get('reranker', 'base') != reranker_teach.tag():
+            m = None  # a newly taught reranker: learn how far to trust it
     if retrain and (not m or dt.now() - dt.fromisoformat(m['at']) > RETRAIN):
         try:
             m = train() or m

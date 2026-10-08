@@ -180,6 +180,8 @@ class Signals:
         self.reranks = read_json(RERANKS, {})
         self.judged = read_json(JUDGED, {})
         self._reranker = None
+        from app.analysis import reranker_teach
+        self.rerank_tag = reranker_teach.tag()  # its scores are cached per reranker: base, or the taught one's date
         self._news = None  # (center, directions), or False when there's none
 
     # ---- cheap signals, against every motif ----
@@ -348,7 +350,7 @@ class Signals:
         todo, keys = [], []
         for n in ns:
             doc = self._document(n, self.nearest_claims(claim, n, leave_out, 2))
-            h = pair_hash(claim, doc)
+            h = pair_hash(claim, doc) if self.rerank_tag == 'base' else pair_hash(self.rerank_tag, claim, doc)
             keys.append(h)
             if h not in self.reranks:
                 todo.append((h, doc))
@@ -364,9 +366,11 @@ class Signals:
             free = torch.cuda.mem_get_info()[0] if torch.cuda.is_available() else 0
             device = os.environ.get('MOTIF_RERANK_DEVICE') or ('cuda' if free > 3e9 else 'cpu')  # Gemma may hold the GPU
             tok = AutoTokenizer.from_pretrained(RERANKER, padding_side='left')
-            model = AutoModelForCausalLM.from_pretrained(RERANKER, dtype=torch.float16 if device == 'cuda' else torch.float32).to(device).eval()
+            from app.analysis import reranker_teach  # the layers taught the person's taste, if taught yet
+            model = AutoModelForCausalLM.from_pretrained(RERANKER, dtype=torch.float16 if device == 'cuda' else torch.float32)
+            model = reranker_teach.load_into(model).to(device).eval()
             self._reranker = (tok, model, device, tok.convert_tokens_to_ids('yes'), tok.convert_tokens_to_ids('no'))
-            logger.info("Reranker on %s", device)
+            logger.info("Reranker (%s) on %s", self.rerank_tag, device)
         tok, model, device, yes, no = self._reranker
         out = []
         for i in range(0, len(docs), 8):
