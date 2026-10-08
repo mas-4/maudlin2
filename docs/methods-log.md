@@ -43,6 +43,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **Shows' own transcripts before Whisper.** Seven of the 66 podcast and call-in feeds publish a transcript of each
+  episode in the feed itself (Podcasting 2.0's podcast:transcript: Breaking Points, Verdict with Ted Cruz, Clay Travis
+  & Buck Sexton, the Jesse Kelly and Michael Berry shows, Bloomberg News Now, Jubilee's Surrounded; mostly iHeart's,
+  timed WebVTT with speakers). Those episodes are now taken from the show: their cues joined into each speaker's
+  sentences, the speaker kept, sponsor reads trimmed as before. No GPU, so they come in even when the model holds it,
+  and Whisper's ten minutes an hour go to the shows that publish nothing.
 - **The proposer suggests new motifs.** The person expects to need many more motifs and wants the model to propose
   them. Claims that fit nowhere (no motif, but those the person said tell no story; or filed weakly with nothing better
   on offer) are each read as the bare shape of its story; where shapes cluster, two or more claims telling one story,

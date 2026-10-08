@@ -171,3 +171,13 @@ def test_episodes_sharing_the_shows_link_are_told_apart_by_guid():
     </channel></rss>'''
     assert [i['url'] for i in sf.parse(xml)] == [
         'https://show.example/the-daily#abc-1', 'https://show.example/the-daily#abc-2', 'https://show.example/special']
+
+
+def test_a_transcript_the_show_publishes_is_noted_timed_first():
+    xml = '''<rss xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><item><title>Ep</title><link>https://s.example/1</link>
+      <podcast:transcript url="https://t.example/1.txt" type="text/plain"/>
+      <podcast:transcript url="https://t.example/1.vtt" type="text/vtt"/></item>
+      <item><title>Plain only</title><link>https://s.example/2</link><podcast:transcript url="https://t.example/2.txt" type="text/plain"/></item>
+    </channel></rss>'''
+    items = sf.parse(xml)
+    assert items[0]['transcript'] == 'https://t.example/1.vtt' and 'transcript' not in items[1]  # untimed: Whisper's

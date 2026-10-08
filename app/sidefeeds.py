@@ -230,6 +230,11 @@ SOURCES = [
 BY_KEY = {s['key']: s for s in SOURCES}
 
 
+TRANSCRIPTS = os.path.join(Config.data, 'feed_transcripts.json')  # item url -> the transcript its show publishes
+TRANSCRIPT_TYPES = ['text/vtt', 'application/x-subrip', 'application/srt']  # timed ones only: the shows' claims are
+# read part by part, by time
+
+
 def parse(xml: str) -> list[dict]:
     """The newest items of an RSS or Atom feed (podcast and YouTube feeds included): title, url, published, summary."""
     soup = Soup(xml, 'xml')
@@ -249,10 +254,14 @@ def parse(xml: str) -> list[dict]:
         enclosure = item.find('enclosure')
         audio = enclosure.get('url') if enclosure is not None and 'audio' in (enclosure.get('type') or 'audio') else None
         guid = item.find('guid') or item.find('id')
+        # A transcript the show publishes itself (Podcasting 2.0's podcast:transcript), timed if there's one with times
+        offered = {t.get('type'): t.get('url') for t in item.find_all('transcript') if t.get('url')}
+        transcript = next((offered[k] for k in TRANSCRIPT_TYPES if offered.get(k)), None)
         items.append({'title': title.get_text(strip=True), 'url': url[:500], 'audio': (audio or '')[:500] or None,
                       'published': _date(when.get_text() if when else None),
                       'summary': _summary(summary.get_text() if summary else '', 400),
-                      'guid': (guid.get_text(strip=True) if guid is not None else '') or audio or ''})
+                      'guid': (guid.get_text(strip=True) if guid is not None else '') or audio or '',
+                      **({'transcript': transcript} if transcript else {})})
     # Some podcast feeds give every episode the show's page as its link (Simplecast, NBC and Dow Jones did from Oct 4:
     # each new episode looked already stored and was dropped, The Daily and the Brian Lehrer Show among them). An item
     # whose link another item shares is told apart by its guid (or audio file), after a # so the link still opens.
@@ -328,14 +337,17 @@ def fetch_sidefeeds(force: bool = False):
     for src in due:
         by_host['.'.join(urlparse(src['url']).hostname.split('.')[-2:])].append(src)
     total = 0
+    published = read_json(TRANSCRIPTS, {})
     with ThreadPoolExecutor(max_workers=HOST_WORKERS) as pool:
         for fetched in pool.map(lambda sources: _fetch_host(sources, state), by_host.values()):
             for src, entry, items in fetched:
                 if items is not None:
                     total += save(src['key'], items, now.replace(tzinfo=None))
+                    published.update({i['url']: i['transcript'] for i in items if i.get('transcript')})
                 entry['fetched'] = now.isoformat()
                 state[src['key']] = entry
     write_json(STATE, state)
+    write_json(TRANSCRIPTS, dict(list(published.items())[-3000:]))  # the newest: transcribing looks back days only
     logger.info("Side feeds: read %d sources, %d new items", len(due), total)
 
 

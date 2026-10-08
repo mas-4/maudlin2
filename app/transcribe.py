@@ -189,9 +189,73 @@ def pending(limit: int = 50) -> list[SideItem]:
     return sorted(rows, key=rank)[:limit]
 
 
+CUE = re.compile(r'(\d+):(\d\d):(\d\d)[.,](\d+)\s*-->\s*(\d+):(\d\d):(\d\d)[.,](\d+)')
+SPEAKER = re.compile(r'<v\s+([^>]*)>')
+SENTENCE_SECONDS = 30  # a published transcript's cues joined into segments of a speaker's sentence, this long at most
+
+
+def parse_timed(text: str) -> list[dict]:
+    """A WebVTT or SRT transcript as segments like Whisper's ({start, end, text}, plus the speaker if it's named): its
+    cues (a few words each) joined per speaker into sentences"""
+    def secs(h, m, s, frac):
+        return int(h) * 3600 + int(m) * 60 + int(s) + int(frac) / 10 ** len(frac)
+    cues = []
+    for block in re.split(r'\n\s*\n', text.replace('\r', '')):
+        lines = [x for x in block.strip().split('\n') if x.strip()]
+        at = next((i for i, x in enumerate(lines) if CUE.search(x)), None)
+        if at is None:
+            continue
+        t = CUE.search(lines[at]).groups()
+        words = ' '.join(lines[at + 1:])
+        who = SPEAKER.search(words)
+        words = ' '.join(re.sub(r'<[^>]+>', '', words).split())
+        if words:
+            cues.append({'start': secs(*t[:4]), 'end': secs(*t[4:]), 'text': words, 'speaker': who.group(1).strip() if who else ''})
+    out = []
+    for c in cues:
+        last = out[-1] if out else None
+        if last and last['speaker'] == c['speaker'] and last['text'][-1] not in '.?!' \
+                and c['end'] - last['start'] <= SENTENCE_SECONDS:
+            last['text'] += ' ' + c['text']
+            last['end'] = c['end']
+        else:
+            out.append(dict(c))
+    return [{'start': round(c['start'], 1), 'end': round(c['end'], 1), 'text': fix_text(c['text']),
+             **({'speaker': c['speaker']} if c['speaker'] else {})} for c in out]
+
+
+def published_transcripts(items: list) -> int:
+    """The pending items whose shows publish their own transcript (sidefeeds.TRANSCRIPTS): taken from the show, not
+    Whisper (no GPU, and the show's own speaker names); how many"""
+    from app import sidefeeds
+    from app.utils.store import read_json
+    links = read_json(sidefeeds.TRANSCRIPTS, {})
+    done = 0
+    for item in items:
+        url = links.get(item.url)
+        if not url:
+            continue
+        try:
+            r = rq.get(url, timeout=Config.timeout, headers={'User-Agent': USER_AGENT})
+            r.raise_for_status()
+            segments = trim_ads(parse_timed(r.text))
+        except rq.RequestException as e:
+            logger.info("Transcribe: the published transcript of %s unread (%s); Whisper instead", item.title, e)
+            continue
+        if segments:
+            save(item.id, segments, segments[-1]['end'], model='published by the show')
+            done += 1
+        time.sleep(PAUSE)
+    if done:
+        logger.info("Transcribe: %d published transcripts taken from the shows", done)
+    return done
+
+
 def transcribe_pending(budget: float = 600) -> int:
     """Transcribe pending items until the time budget (seconds) runs out; returns how many were done."""
     items = pending()
+    if items and published_transcripts(items):
+        items = pending()  # what's left needs Whisper
     if not items:
         return 0
     if not free_gpu():
