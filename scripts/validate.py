@@ -496,7 +496,7 @@ def check_queue() -> list[dict]:
         x['fit'] = fits.get(f"{mi.key(x['claim'])}|{x['id']}")
         x['can_be_sure'] = fc.can_be_sure(index, x['claim'], x['id'], x.get('source', ''), tested)
     if not fits:
-        return items[:40]  # the old order: biggest motifs first
+        return items  # the old order: biggest motifs first (all of them: capped at 40, the rest went unseen)
     # a claim's place: its least likely filing in your motifs; one only in the model's own motifs (no fit) goes last
     least = {}
     for x in items:
