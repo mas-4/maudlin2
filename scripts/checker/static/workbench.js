@@ -692,7 +692,8 @@
           <button class="wb-btn" data-verdict="next" title="leave it for now">next ▶ <kbd>→</kbd></button>
         </span></div>` : '';
     box.classList.toggle('checking', !!check);
-    box.innerHTML = verdict + `<div class="wb-inspect" data-drop="claim">
+    const backTo = !check && S.back ? (TABS.find(([k]) => k === S.back.tab) || [, 'the list'])[1] : null;
+    box.innerHTML = (backTo ? `<button class="wb-btn wb-back" data-back="1" title="back to the list, where you were (or your browser's back)">← back to ${esc(backTo)}</button>` : '') + verdict + `<div class="wb-inspect" data-drop="claim">
       <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}><span class="wb-bigtext" title="click to correct the wording">${esc(c.claim)}</span>
         <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif · <button class="wb-mini" data-editclaim="1" title="correct the wording (our summary, not the source)">✎ correct wording</button></span></blockquote>
       ${rec && rec.variants && rec.variants.length ? `<p class="wb-faint">≡ also told as: ${rec.variants.map((v) => '“' + esc(v) + '”').join(' · ')}</p>` : ''}
@@ -729,6 +730,28 @@
   const betterRow = (b, claim) => `<div class="wb-motifrow wb-better">${chip(b.id)}
       ${S.by[b.id] && S.by[b.id].note ? `<span class="wb-mnote">${esc(S.by[b.id].note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
       <span class="wb-sbtns">${fitChip(b.fit)}<button class="wb-btn yes" data-alt="add|${b.id}" data-altc="${esc(claim)}" title="file it here too (then ✕ the weak one if it doesn't belong there)">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" data-altc="${esc(claim)}" title="not this motif: don't suggest it again">✕</button></span></div>`;
+  // A claim opened from a list (🎯 today, second look, unchecked): the list and where you were in it kept, to go back
+  // to with ← back or the browser's own back
+  function openClaim(claim) {
+    S.back = {tab: S.tab, scroll: $('#inbox').scrollTop};
+    history.pushState({wb: 'claim'}, '');
+    S.claim = {claim, src: null, from: null};
+    S.tab = 'claim';
+    store.set('tab', 'claim');
+    renderTabs();
+    return renderInbox();
+  }
+  async function goBack() {
+    const b = S.back;
+    if (!b) return;
+    S.back = null;
+    S.tab = b.tab;
+    store.set('tab', b.tab);
+    renderTabs();
+    await renderInbox();
+    $('#inbox').scrollTop = b.scroll;
+  }
+  window.addEventListener('popstate', () => { if (S.back) goBack(); });
   // a suggestion still worth showing: a motif that's there, the claim not in it yet, not ✕'d
   const stillBetter = (claim) => (b) => S.by[b.id] && !motifsOf(claim).some((e) => e.id === b.id) && !S.rejected.has(claim + '|' + b.id);
   async function loadBetter(claim) {
@@ -1173,7 +1196,7 @@
     const d = (k) => { const el = t.closest('[data-' + k + ']'); return el && el.dataset[k.replace(/-(\w)/g, (m, c) => c.toUpperCase())]; };
     let v;
     if ((v = d('view'))) { S.view = v; store.set('view', v); return render(); }
-    if ((v = d('tab'))) { S.tab = v; store.set('tab', v); S.queues[v] = null; renderTabs(); return renderInbox(); }  // fresh when opened
+    if ((v = d('tab'))) { S.back = null; S.tab = v; store.set('tab', v); S.queues[v] = null; renderTabs(); return renderInbox(); }  // fresh when opened
     if ((v = d('shelfedit'))) {
       const [kind, id] = v.split(/\|(.*)/s);
       const now = kind === 'group' ? (S.data.groups.find((g) => g.id === id) || {}).name : id;
@@ -1215,7 +1238,8 @@
       const x = unchecked().find((u) => u.claim === v);
       if (x) return batch(x.motifs.map((id) => ({action: 'check', claim: v, id, answer: 'yes'})), `✓ all ${x.motifs.length} fit`);
     }
-    if ((v = d('ckopen'))) { S.claim = {claim: v, src: null, from: null}; S.tab = 'claim'; store.set('tab', 'claim'); renderTabs(); return renderInbox(); }
+    if ((v = d('ckopen'))) return openClaim(v);
+    if (d('back')) return history.state && history.state.wb === 'claim' ? history.back() : goBack();
     // the ticked ones above the fold (the fold's own button decides those in it)
     if ((v = d('propmany'))) return decideProposals($$('[data-propsel]:checked').filter((c) => !c.closest('.wb-propfold')).map((c) => c.dataset.propsel), v === 'yes');
     if (d('propfold')) return decideProposals($$('.wb-propfold [data-propsel]:checked').map((c) => c.dataset.propsel), false);
