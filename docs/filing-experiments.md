@@ -140,6 +140,15 @@ filings passable at 95% precision either way. So it helps find the person's moti
 judge a filing once found: its gain waits for the learned shortlist in production. (The 76% of the morning fell to
 66% with the day's new decisions and edits, not the signal: the 95% line is a coarse step.)
 
+### E1b The news of the claims' own time (Oct 8) — queued
+`scripts/experiments/e1b_news_span.py`. The person asked whether the old claims had been de-newsed too. They had (E1
+takes the directions out of both sides), but with the wrong news: "the latest 6,000 headlines" by last_accessed are a
+single snapshot of today's front pages (all 6,000 from the last three minutes; a headline's last_accessed moves while
+it stays up), while the claims filed go back to July (17 in July, 94 in August, 134 in September, 735 in October). Here
+the directions come from 120 headlines from each day since the earliest claim, by the day each was first seen, against
+today's snapshot, 40 and 80 directions out. Production (motif_signals.latest_headlines) has the same snapshot and
+follows the verdict.
+
 ### E9 The reranker taught the person's taste (Oct 8) — running
 `scripts/experiments/e9_reranker_tune.py`. Qwen3-Reranker-0.6B's top 6 of 28 layers (94M of 596M weights) trained on
 2,311 pairs: the person's 752 decisions on the model's filings (591 kept, 161 removed), their confirmed claims' other
