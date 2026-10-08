@@ -48,7 +48,8 @@ server = MCPServer('maudlin', instructions=(
     "(rumor and narrative shapes) with their claims, genre (a layer of story: Archetypes, Plots, Theories...), groups "
     "(a separate axis), rests-on links (the only hierarchy: a motif only makes sense given the one it rests on, a kind of it or a case, argument or figure that tells it; across genres too) and related links. checker_action makes a "
     "change the person asked for through the checker (logged, undoable, marked by Claude); checker_undo takes back "
-    "Claude's own last change only."))
+    "Claude's own last change only. check_queue, second_look, unfiled_claims and claim_detail show the person's "
+    "work queues and where a claim came from."))
 
 
 def _connect() -> sqlite3.Connection:
@@ -174,6 +175,52 @@ def motif_claims(query: str, limit: int = 30) -> str:
                 f['motifs'].append(f"{e['name']} ({e['id']}){' ✓' if c.get('checked') == 'yes' else ''}")
     rows = list(found.values())
     return json.dumps({'found': len(rows), 'claims': rows[:max(1, min(limit, 200))]}, ensure_ascii=False)
+
+
+@server.tool()
+def check_queue(limit: int = 30) -> str:
+    """The filings waiting for the person's check, as the workbench's ✅ check tab shows them: claim by claim, the
+    likeliest first, each motif with its note and fit (the chance the person keeps it, from the confidence model;
+    none until the hourly run has scored it). Verdicts go through checker_action ({'action': 'check', 'claim', 'id',
+    'answer': 'yes'|'no'}), and only when the person asks."""
+    V = _validate()
+    index = mi.load()
+    claims = {}
+    for x in V.check_queue():
+        c = claims.setdefault(x['claim'], {'claim': x['claim'], 'source': x.get('source'), 'motifs': []})
+        e = index['entries'].get(x['id'], {})
+        c['motifs'].append({'id': x['id'], 'name': x['name'], 'note': e.get('note'), 'fit': x.get('fit'),
+                            'can_be_sure': x.get('can_be_sure')})
+    rows = list(claims.values())
+    return json.dumps({'claims waiting': len(rows), 'filings': sum(len(r['motifs']) for r in rows),
+                       'claims': rows[:max(1, min(limit, 200))]}, ensure_ascii=False)
+
+
+@server.tool()
+def second_look() -> str:
+    """The person's confirmed filings the confidence model finds least likely (the workbench's 🔁 second look):
+    possible honest slips, the least likely first, each with its motif's note."""
+    V = _validate()
+    index = mi.load()
+    return json.dumps([{**r, 'note': index['entries'].get(r['id'], {}).get('note')} for r in V.second_look()],
+                      ensure_ascii=False)
+
+
+@server.tool()
+def unfiled_claims(query: str = '', limit: int = 30) -> str:
+    """Claims waiting with no motif (from the latest folklore report, recent fact-checks, the shows and focus groups),
+    with every word of `query` if given: what the person might file by hand."""
+    words = query.lower().split()
+    rows = [c for c in mi.searchable_claims() if not c.get('motifs') and all(w in c['claim'].lower() for w in words)]
+    return json.dumps({'found': len(rows), 'claims': [{'claim': c['claim'], 'source': c.get('source'), 'ref': c.get('ref')}
+                                                      for c in rows[:max(1, min(limit, 200))]]}, ensure_ascii=False)
+
+
+@server.tool()
+def claim_detail(claim: str) -> str:
+    """Where a claim came from, as the workbench's 'where it came from' shows it: the fact-check, the posts that told
+    it, the focus group, or every telling on the shows (show, episode, speaker, transcript). The claim's exact words."""
+    return json.dumps(_validate().claim_detail(claim), ensure_ascii=False, default=str)
 
 
 @server.tool()

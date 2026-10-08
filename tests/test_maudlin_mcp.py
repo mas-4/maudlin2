@@ -94,3 +94,18 @@ def test_undo_takes_back_a_proposal_decision_too(tmp_path, monkeypatch):
         assert mi.load().get('related', []) == [] and {p['id'] for p in mp.open_proposals()} == {good, bad}
     finally:
         httpd.shutdown()
+
+
+def test_the_check_queue_shows_claims_with_their_motifs_notes_and_fits(tmp_path, monkeypatch):
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    claim = lambda t, **k: {'claim': t, 'source': 'narrative', **k}  # noqa: E731
+    mi.save({'next': 3, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Empty suit', 'note': 'A politician with nothing behind the image', 'done': ['x'],
+                 'claims': [claim('a', fit=0.9), claim('b', checked='yes')]},
+        'M002': {'id': 'M002', 'name': 'Rigged votes', 'claims': [claim('a')]}}})
+    q = json.loads(server.check_queue())
+    assert q['claims waiting'] == 1 and q['filings'] == 2
+    motifs = {m['id']: m for m in q['claims'][0]['motifs']}
+    assert motifs['M001']['note'].startswith('A politician') and motifs['M001']['fit'] == 0.9
+    assert motifs['M002']['fit'] is None  # a motif the person hasn't shaped: no fit
