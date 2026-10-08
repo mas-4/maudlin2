@@ -548,6 +548,8 @@
       return {claim: k.slice(0, i), id: k.slice(i + 1)};
     }).filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && !c.checked));
   }
+  // the sure fold stays open across re-renders once you open it
+  document.addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('wb-sure')) S.sureOpen = ev.target.open; }, true);
   function renderClaim(box, check, left) {
     const c = S.claim;
     if (!c) {
@@ -560,7 +562,11 @@
     const conf = S.data.confidence, sure = conf ? sureFilings() : [];
     const verdict = check ? `<div class="wb-checkbar">
         <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest${conf ? ' · 🎯 the likeliest first' : ''}</span>
-        ${sure.length ? `<button class="wb-btn yes" data-passsure="1" title="Tick every filing at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept. Undoable">🎯 pass the ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested)</span></button>` : ''}
+        ${sure.length ? `<details class="wb-sure"${S.sureOpen ? ' open' : ''}><summary title="Filings at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept">🎯 ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested): look them over</span></summary>
+          <p class="wb-faint">Untick any that don't fit, then pass the rest (one undoable step). An unticked one stays to check.</p>
+          ${sure.map((x) => `<label class="wb-sureline"><input type="checkbox" checked data-suresel="${esc(x.claim + '|' + x.id)}">
+            ${fitChip(S.fits[x.claim + '|' + x.id])} ${chip(x.id)} <span>${esc(x.claim)}</span></label>`).join('')}
+          <button class="wb-btn yes" data-passsure="1">✓ pass the ticked</button></details>` : ''}
         <span class="wb-checkbtns">
           <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
           <button class="wb-btn yes" data-verdict="allyes" title="every motif left fits: tick them all and go on">✓ all fit, next <kbd>Y</kbd></button>
@@ -1090,8 +1096,10 @@
       return act(body, say);
     }
     if ((v = d('verdict'))) return verdict(v);
-    if (d('passsure')) {  // every filing the confidence model is sure of, ticked in one undoable step
-      const sure = sureFilings();
+    if (d('passsure')) {  // the sure filings still ticked in the fold, passed in one undoable step
+      const ticked = new Set([...document.querySelectorAll('[data-suresel]:checked')].map((b) => b.dataset.suresel));
+      const sure = sureFilings().filter((x) => ticked.has(x.claim + '|' + x.id));
+      if (!sure.length) { toast('nothing ticked'); return; }
       S.queues.check = null;
       S.checkHere = null;
       return batch(sure.map((x) => ({action: 'check', claim: x.claim, id: x.id, answer: 'yes'})), `🎯 passed ${sure.length} sure filing${sure.length === 1 ? '' : 's'}`);

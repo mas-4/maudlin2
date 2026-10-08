@@ -321,3 +321,26 @@ body.dragging .wb-schip { border-style: dashed; }
     padding: 0.4em 0 0;
     border-top: 1px dashed #c9c9d4;
 }
+
+/* The check list's sure filings, folded: each with a tick to pass it or keep it for checking */
+.wb-sure {
+    margin: 0.3em 0;
+    padding: 0.3em 0.6em;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    background: #eafbe6;
+}
+
+.wb-sure summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.wb-sureline {
+    display: flex;
+    gap: 0.4em;
+    align-items: baseline;
+    flex-wrap: wrap;
+    padding: 0.3em 0;
+    border-top: 1px dashed #c9c9d4;
+}

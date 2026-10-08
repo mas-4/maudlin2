@@ -215,8 +215,9 @@ def can_be_sure(index: dict, claim: str, eid: str, source: str, tested: set[str]
     return bool(others) and kind(source) in tested
 
 
-def score(index: dict | None = None, m: dict | None = None) -> dict[tuple[str, str], float]:
-    """(claim key, motif id) -> the chance a person keeps it, for every filing nobody has checked"""
+def score(index: dict | None = None, m: dict | None = None, skip: set | None = None) -> dict[tuple[str, str], float]:
+    """(claim key, motif id) -> the chance a person keeps it, for every filing nobody has checked (but those in
+    `skip`, already scored)"""
     index = index if index is not None else mi.load()
     m = m or model()
     w = mr.weights()
@@ -229,7 +230,7 @@ def score(index: dict | None = None, m: dict | None = None) -> dict[tuple[str, s
         if not yours(e):
             continue
         for c in e['claims']:
-            if not c.get('checked'):
+            if not c.get('checked') and (mi.key(c['claim']), e['id']) not in (skip or ()):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
     out = {}
     for (claim, source), ids in todo.items():
