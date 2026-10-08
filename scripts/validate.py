@@ -627,6 +627,10 @@ def workbench_action(data: dict):
                 mi.also_file(text, source, eid)
             else:
                 mi.file_by_hand({'claim': text, 'source': c.get('src', ''), 'ref': c.get('ref', '')}, eid)
+        if (data.get('note') or '').strip():  # a 💡 proposed motif comes with its note and genre
+            mi.set_note(eid, data['note'])
+        if data.get('genre'):
+            mi.set_facet(eid, 'genre', data['genre'])
     else:
         board_action(data)
 

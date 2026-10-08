@@ -43,6 +43,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **The proposer suggests new motifs.** The person expects to need many more motifs and wants the model to propose
+  them. Claims that fit nowhere (no motif, but those the person said tell no story; or filed weakly with nothing better
+  on offer) are each read as the bare shape of its story; where shapes cluster, two or more claims telling one story,
+  the model sees them with the five nearest motifs and, reading as a folklorist would, either names a new motif (a
+  terse label, a scope note in the tellers' terms, its genre, the claims that are of it) or says a motif covers them
+  already. One 💡 proposal per new motif; approving makes it with its note and genre and files its claims, in one
+  undoable step. A single claim isn't a story told again, so it isn't proposed (the nightly filing still names those).
 - **The proposer suggests new groups.** On the person's ask ("can it run cluster analysis?"), the nightly proposer
   clusters their done motifs by what each covers (name and scope note: with their claims, motifs clustered by the
   week's topics, a plane scare with a Reddit sleuthing motif), keeps the tight clusters of 3 to 12 that no group

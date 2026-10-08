@@ -99,6 +99,7 @@ def test_the_models_no_is_asked_again_once_a_motif_changes(tmp_path, monkeypatch
         return {'fixes': []}
     monkeypatch.setattr(llm, 'complete_json', judge)
     monkeypatch.setattr(mp, 'vectors', lambda entries: np.eye(len(entries)) * 0 + 0.9)  # every pair alike
+    monkeypatch.setattr(mp, 'misfits', lambda index: [])  # no claims without a motif here
     assert mp.propose(budget=60)['finished']
     first = len(asked)
     assert first > 0 and mp.propose()['finished'] and len(asked) == first  # nothing changed: nothing asked
@@ -360,3 +361,46 @@ def test_a_family_of_motifs_no_group_holds_is_proposed_as_a_new_group(monkeypatc
         entries[i]['groups'] = ['G1']
     assert not mp.still_holds(p, index)  # a group holds most of them now
     assert mi.person_groups(entries['M1']) == ['G1']
+
+
+def test_claims_that_fit_nowhere_and_tell_one_story_are_proposed_as_a_new_motif(monkeypatch):
+    import numpy as np
+
+    from app import narratives
+    from app.analysis import llm, motif_index as mi, motif_signals as ms
+    from app.analysis import motif_proposals as mp
+    pool = [{'claim': f'Dam {i} was sabotaged', 'source': 'narrative', 'ref': '', 'in': ''} for i in range(3)] + \
+        [{'claim': 'A lone odd claim', 'source': 'Snopes', 'ref': 'u', 'in': 'M1'}]
+    monkeypatch.setattr(mp, 'misfits', lambda index: pool)
+
+    class Sig:
+        def __init__(self, index):
+            pass
+
+        def prepare(self, claims):
+            pass
+
+        def shape_of(self, claim, ask=False):
+            return 'infrastructure secretly sabotaged' if 'Dam' in claim else 'something else entirely'
+    monkeypatch.setattr(ms, 'Signals', Sig)
+    monkeypatch.setattr(narratives, 'embed', lambda ts: np.array([[1.0, 0] if 'sabotaged' in t or 'Sabotage' in t else [0, 1.0]
+                                                                   for t in ts]))
+    index = {'entries': {'M1': {'id': 'M1', 'name': 'Sabotage', 'claims': [{'claim': 'x'}]}}, 'claims': {},
+             'facets': {'genre': ['Plots', 'Theories']}}
+    monkeypatch.setattr(mi, 'facet_values', lambda ix=None: {'genre': ['Plots', 'Theories']})
+    asked = []
+
+    def answer(prompt, schema, **k):
+        asked.append(prompt)
+        return {'reason': 'a hidden hand wrecks what we rely on', 'new': True, 'name': 'Sabotaged infrastructure',
+                'note': 'Dams, grids or bridges fail because someone wrecked them on purpose.', 'genre': 'Theories',
+                'claims': [1, 2, 3]}
+    monkeypatch.setattr(llm, 'complete_json', answer)
+    store = {}
+    assert mp.new_motifs(store, index) == 1
+    assert len(asked) == 1 and 'A lone odd claim' not in asked[0] and '- Sabotage' in asked[0]  # alone: not a story told again
+    p = next(p for p in store.values() if p['kind'] == 'new_motif')
+    assert p['args']['name'] == 'Sabotaged infrastructure' and p['args']['genre'] == 'Theories' and mp.still_holds(p, index)
+    act = mp.action(p)
+    assert act['action'] == 'new_with' and act['note'].startswith('Dams') and len(act['claims']) == 3
+    assert mp.new_motifs(store, index) == 0  # not again for the same claims

@@ -229,6 +229,10 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
     gid = next(g['id'] for g in mi.board()['groups'] if g['name'] == 'Archetypes')
     assert mi.groups_of(mi.load()['entries']['M002']) == [gid]
     validate.workbench_action({'action': 'group_new', 'name': 'Family', 'ids': ['M001', 'M003', 'nope']})  # a 💡 new group
+    validate.workbench_action({'action': 'new_with', 'name': 'Proposed one', 'note': 'Posts say a thing.', 'genre': 'Plots',
+                               'claims': [{'claim': 'a fresh claim', 'src': 'narrative'}]})  # a 💡 proposed motif
+    made = next(e for e in mi.live(mi.load()) if e['name'] == 'Proposed one')
+    assert (made['note'], mi.genre_of(made), [c['claim'] for c in made['claims']]) == ('Posts say a thing.', 'Plots', ['a fresh claim'])
     fam = next(g['id'] for g in mi.board()['groups'] if g['name'] == 'Family')
     assert [e['id'] for e in mi.live(mi.load()) if fam in mi.groups_of(e)] == ['M001', 'M003']
     validate.workbench_action({'action': 'check', 'claim': 'c', 'id': 'M002', 'answer': 'yes'})

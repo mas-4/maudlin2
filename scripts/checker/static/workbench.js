@@ -1415,6 +1415,7 @@
     if (p.kind === 'unrelate') return `✂️ ${chip(a.a)} and ${chip(a.b)} aren't related: take the link away`;
     if (p.kind === 'unparent') return `✂️ ${chip(a.id)} doesn't rest on ${chip(a.parent)}: take the link away`;
     if (p.kind === 'genre') return `🎭 ${chip(a.id)} is ${esc(a.genre)}`;
+    if (p.kind === 'new_motif') return `✨ a new motif “${esc(a.name)}”${a.genre ? ` 🎭 ${esc(a.genre)}` : ''}: ${esc(a.note || '')}<ul class="wb-propclaims">${a.claims.map((c) => `<li>${esc(c.claim)}${c.in ? ` <span class="wb-faint">(now in ${chip(c.in)})</span>` : ''}</li>`).join('')}</ul>`;
     if (p.kind === 'new_group') return `🫧 a new group “${esc(a.name)}”: ${a.members.map((m) => chip(m)).join(' ')}`;
     if (p.kind === 'group') return `📁 put ${chip(a.id)} in ${esc((S.data.groups.find((g) => g.id === a.group) || {name: a.group}).name)}`;
     return esc(p.kind);

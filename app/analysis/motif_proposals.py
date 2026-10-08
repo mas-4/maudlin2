@@ -13,6 +13,12 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
            what each covers (name and note, not the claims: those pull toward the week's topics), the tight clusters
            of 3 to 12 that no group already mostly holds put to the model, which names the family the way their
            groups are named and leaves out what doesn't belong
+  new_motif a motif for claims that fit nowhere (Oct 8, the person: "I'm going to need more motifs and the AI can
+           propose them"): claims with no motif (but those the person said tell no story) and claims whose filings are
+           weak with nothing better to offer, each read as the bare shape of its story; claims whose shapes cluster
+           (two or more: a story told again) put to the model with the nearest motifs, which names the shape as a
+           folklorist would, notes it, gives its genre, and says which claims are of it, or that a motif already
+           covers them
   genre    a motif with no genre yet is of one of the person's genres (one layer of a story: a character type, a plot,
            a theory...), judged against examples of each genre from the person's own motifs
   unrelate two motifs linked as related aren't (a review of the links already made)
@@ -62,6 +68,9 @@ CLUSTER_DISTANCE = 0.35  # cosine distance (average linkage) under which motifs 
 CLUSTER_SIZES = (3, 12)
 CLUSTER_HELD = 0.5  # a cluster this much inside one group already isn't a new group
 NEW_GROUPS = 8  # clusters put to the model in one run
+SHAPE_DISTANCE = 0.3  # cosine distance under which claims' shapes cluster, for new motifs
+NEW_MOTIFS = 10  # clusters of claims put to the model in one run
+MOTIF_CLUSTER_MAX = 8
 TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo, not a rewrite
 MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
 # that merely shared a claim: "Watermelon" and "Trojan horse")
@@ -135,6 +144,9 @@ def still_holds(p: dict, index: dict) -> bool:
         alive = [m for m in a['members'] if live(m)]
         held = max((sum(g in mi.groups_of(entries[m]) for m in alive) for g in index.get('groups', {})), default=0)
         return len(alive) >= CLUSTER_SIZES[0] and held < CLUSTER_HELD * len(alive)
+    if k == 'new_motif':  # no motif of that name yet, and at least two of its claims still in no motif of that name
+        named = {e['name'].lower() for e in entries.values() if not e.get('merged_into')}
+        return a['name'].lower() not in named and len(a['claims']) >= 2
     if k == 'genre':  # still without a genre, and the genre still there
         e = entries.get(a['id'], {})
         return live(a['id']) and not mi.genre_of(e) and a['genre'] in mi.facet_values(index).get('genre', [])
@@ -145,7 +157,7 @@ def still_holds(p: dict, index: dict) -> bool:
     return False
 
 
-KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'new_group', 'group', 'genre']  # the checklist's order
+KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'new_motif', 'new_group', 'group', 'genre']  # the checklist's order
 
 
 def open_proposals() -> list[dict]:
@@ -193,6 +205,9 @@ def action(p: dict) -> dict:
             'merge': {'action': 'merge', 'source': a.get('a'), 'target': a.get('b')},
             'group': {'action': 'group_member', 'id': a.get('id'), 'group': a.get('group'), 'on': True},
             'new_group': {'action': 'group_new', 'name': a.get('name'), 'ids': a.get('members', [])},
+            'new_motif': {'action': 'new_with', 'name': a.get('name'), 'note': a.get('note', ''), 'genre': a.get('genre'),
+                          'claims': [{'claim': c['claim'], 'source': c.get('in', ''), 'src': c.get('source', ''),
+                                      'ref': c.get('ref', ''), 'mode': 'also'} for c in a.get('claims', [])]},
             'genre': {'action': 'facet', 'id': a.get('id'), 'facet': 'genre', 'value': a.get('genre')},
             'unrelate': {'action': 'unrelate', 'a': a.get('a'), 'b': a.get('b')},
             'unparent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': False}}[p['kind']]
@@ -531,6 +546,117 @@ def new_groups(store: dict, index: dict, entries: list[dict], deadline: float | 
     return made
 
 
+# ---------- new motifs ----------
+NEW_MOTIF_PROMPT = """Our index of recurring story shapes (motifs) in what people tell about politics and public life files each claim \
+people make under the motifs it's an instance of. These claims fit none well yet; each is followed by the bare shape \
+of its story:
+{claims}
+
+The motifs nearest them now:
+{near}
+
+Read them as a folklorist would. Do these claims tell one recurring story, the same kind of story that would be told \
+again about other people, places or years, that none of the motifs above covers? If one of those motifs covers them, \
+or they share only a topic, say so.
+
+If they do tell one: name the motif the way the index names them (three to seven words, terse like a folklorist's \
+label: a subject and what it does or is; no names of people, places or dates unless the story is about that one \
+figure), write its scope note (one plain sentence on what kind of story it covers, as its tellers tell it, never \
+judging it true or false), give its genre (the layer of story it is) from: {genres}, and say which of the claims are \
+of it.
+
+reason: a sentence
+new: true if they tell a recurring story no motif above covers
+name: the motif's name, or ""
+note: its scope note, or ""
+genre: its genre, or ""
+claims: the numbers of the claims that are of it"""
+
+
+def misfits(index: dict) -> list[dict]:
+    """Claims that fit nowhere: with no motif (but those a person said tell no story), and those weakly filed with no
+    better motif to offer (filing_confidence.alternatives); each {claim, source, ref, in: a motif it's in or ''}"""
+    from app.analysis import curation_db, filing_confidence as fc
+    said_none = {mi.key(a['action'].get('claim', '')) for a in curation_db.actions()
+                 if a.get('by') != 'claude' and (a['action'] or {}).get('action') == 'no_motif'}
+    out = {}
+    for c in mi.searchable_claims():
+        k = mi.key(c['claim'])
+        if not c.get('motifs') and k not in said_none:
+            out[k] = {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'in': ''}
+    alts = read_json(fc.ALTERNATIVES, {})
+    for e in mi.live(index):
+        for c in e['claims']:
+            k = mi.key(c['claim'])
+            x = alts.get(k)
+            if x is not None and k not in out and (not x['motifs'] or x['motifs'][0][1] < fc.WEAK):
+                out[k] = {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'in': e['id']}
+    return list(out.values())
+
+
+def new_motifs(store: dict, index: dict, deadline: float | None = None) -> int:
+    """A new motif proposed for each cluster of misfit claims the model reads as one recurring story"""
+    import time
+
+    from sklearn.cluster import AgglomerativeClustering
+
+    from app.analysis import motif_signals as ms
+    from app.narratives import embed
+    pool = misfits(index)
+    if len(pool) < 2:
+        return 0
+    sig = ms.Signals(index)
+    sig.prepare([c['claim'] for c in pool])  # the shapes (the filing model), once each, kept
+    shapes = [sig.shape_of(c['claim'], ask=False) or c['claim'] for c in pool]
+    V = embed(shapes)
+    labels = AgglomerativeClustering(n_clusters=None, metric='cosine', linkage='average',
+                                     distance_threshold=SHAPE_DISTANCE).fit_predict(V)
+    groups = sorted((np.flatnonzero(labels == k) for k in set(labels)), key=len, reverse=True)
+    groups = [g[:MOTIF_CLUSTER_MAX] for g in groups if len(g) >= 2]
+    genres = ', '.join(mi.facet_values(index).get('genre', [])) or 'none yet'
+    proposed = {mi.key(c['claim']) for p in store.values() if p['kind'] == 'new_motif' for c in p['args']['claims']}
+    entries = [e for e in mi.live(index) if e['claims']]
+    E = embed([mi.described(e) for e in entries]) if entries else np.zeros((0, V.shape[1]))
+    made = asked = 0
+    for g in groups:
+        if asked >= NEW_MOTIFS:
+            break
+        cs = [pool[i] for i in g]
+        if sum(mi.key(c['claim']) in proposed for c in cs) * 2 >= len(cs):
+            continue  # proposed before (open or decided)
+        ids = sorted(mi.key(c['claim']) for c in cs)
+        if pid('not_new_motif', {'claims': ids}) in store:
+            continue
+        if deadline and time.time() > deadline:
+            raise Spent
+        asked += 1
+        c = V[g].mean(0)
+        near = [entries[i] for i in np.argsort(-(E @ c))[:5]] if len(entries) else []
+        listing = '\n'.join(f'{n}. {x["claim"][:240]}\n   shape: {shapes[i][:200]}' for n, (i, x) in enumerate(zip(g, cs), 1))
+        schema = {"type": "object", "properties": {
+            "reason": {"type": "string", "maxLength": 600}, "new": {"type": "boolean"},
+            "name": {"type": "string", "maxLength": 60}, "note": {"type": "string", "maxLength": 320},
+            "genre": {"type": "string", "maxLength": 40},
+            "claims": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": len(cs)}}},
+            "required": ["reason", "new", "name", "note", "genre", "claims"]}
+        answer = llm.complete_json(NEW_MOTIF_PROMPT.format(claims=listing, near='\n'.join(f'- {shown(e)}' for e in near)
+                                                           or '(none)', genres=genres),
+                                   schema, max_tokens=900, model=MODEL)
+        if not answer:
+            continue
+        mine = [cs[n - 1] for n in dict.fromkeys(answer.get('claims', [])) if isinstance(n, int) and 1 <= n <= len(cs)]
+        name = mi.clean(answer.get('name') or '')
+        genre = answer.get('genre') if answer.get('genre') in mi.facet_values(index).get('genre', []) else None
+        if answer.get('new') and mi.fits_name(name) and len(mine) >= 2 and not mi.same_name(index, name):
+            made += add(store, 'new_motif', {'name': name, 'note': ' '.join((answer.get('note') or '').split()),
+                                             'genre': genre, 'claims': mine}, answer.get('reason', ''))
+        else:
+            i2 = pid('not_new_motif', {'claims': ids})
+            store[i2] = {'id': i2, 'kind': 'not_new_motif', 'args': {'claims': ids}, 'reason': answer.get('reason', ''),
+                         'model': MODEL, 'made': dt.now().isoformat(timespec='seconds'), 'status': 'none'}
+    return made
+
+
 # ---------- genres ----------
 GENRE_EXAMPLES = 5  # of each genre's motifs, shown to the model (the most claims first; never the motif asked about)
 GENRE_PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: which layer \
@@ -731,7 +857,7 @@ def best_fit(store: dict, index: dict) -> dict | None:
 
 
 # 'genres' left out of the nightly run until it's been tried on the person's own genres (scripts/propose_motif_fixes.py genres)
-def propose(kinds=('typos', 'links', 'review', 'groups', 'clusters', 'judge'), budget: float | None = None) -> dict:
+def propose(kinds=('typos', 'links', 'review', 'groups', 'clusters', 'motifs', 'judge'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
     got through everything before the budget (seconds) ran out"""
     import time
@@ -751,6 +877,8 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'clusters', 'judge'), b
                 counts['groups'] = groups(store, index, vecs, entries, deadline)
         if 'clusters' in kinds:
             counts['new groups'] = new_groups(store, index, entries, deadline)
+        if 'motifs' in kinds:
+            counts['new motifs'] = new_motifs(store, index, deadline)
         if 'review' in kinds:
             counts['review'] = review(store, index, deadline)
         if 'genres' in kinds:
