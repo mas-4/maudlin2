@@ -580,7 +580,12 @@
     // The shape over days, from the daily snapshots (they begin Oct 6)
     const shaped = days.filter((d) => d.shape);
     const line = (key, label) => shaped.length ? `<tr><td>${label}</td>${shaped.map((d) => `<td>${d.shape[key]}%</td>`).join('')}</tr>` : '';
+    // 🩺 whether the news is still coming in (app/health.py, after each hourly run's reading)
+    const h = m.health, hp = (h && h.problems) || [];
     box.innerHTML = `<div class="wb-stats-tab">
+      ${h ? `<div class="wb-health${hp.length ? ' sick' : ''}"><b>🩺 ${hp.length ? `${hp.length} feed${hp.length === 1 ? '' : 's'} or outlet${hp.length === 1 ? '' : 's'} not coming in` : 'every outlet and regular feed coming in'}</b>
+        <span class="wb-faint">checked ${esc(h.at.slice(0, 16).replace('T', ' '))} UTC</span>
+        ${hp.map((p) => `<div>· ${esc(p.outlet || p.feed)}: ${esc(p.problem)}</div>`).join('')}</div>` : ''}
       <h3>📊 the catalog now</h3>
       <ul class="story-stickers wb-stat-tiles">
         ${tile('🧩', n.motifs, 'motifs', '#00c2a8')}${tile('💬', n.claims, `claims (${n.filings} filings, ${n.per_motif} a motif)`, '#3a86ff')}

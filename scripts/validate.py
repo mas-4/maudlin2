@@ -744,7 +744,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith('/workbench-metrics.json'):
             from app.analysis import motif_index
-            return self.send_json(motif_index.metrics_history())
+            from app import health
+            from app.utils.store import read_json
+            return self.send_json({**motif_index.metrics_history(), 'health': read_json(health.HEALTH, None)})
         if self.path.startswith('/workbench.json'):
             return self.send_json(workbench_state())
         if self.path.startswith('/workbench-queue.json'):

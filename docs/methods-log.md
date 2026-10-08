@@ -51,6 +51,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   (some for a year); each now follows the channel its handle names. Dan Bongino's and Flagrant's channels have posted
   nothing since 2025 and early 2024: dropped, their podcasts carry them. The 145 outlets' front pages and every hourly
   run of the last day were fine.
+  So it doesn't happen silently again, each hourly run now checks that every outlet was seen on its front page in the
+  last six hours and that every feed that posts regularly has something new within four times its usual gap (three
+  days at least), and that no feed is stuck with a handful of items; what isn't is a warning in the log and a 🩺 box
+  on the checker's 📊 tab (app/health.py).
 - **Weak fits come with where else they might go.** The person's time is better spent correcting weak filings than
   hunting for motifs: for each claim with a filing the confidence model gives under 50% (one nobody has checked, or one
   they confirmed that's up for a second look), the hourly run scores the twelve of their motifs the shortlist ranks

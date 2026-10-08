@@ -171,6 +171,11 @@ def main(args: argparse.Namespace):
             fetch_investigations()
             wiki.refresh()  # weekly: each outlet's Wikipedia opening and Wikidata facts
             fetch_sidefeeds()  # newsletters, podcasts and political video channels, each at most every 2 hours
+            try:
+                from app import health
+                health.check()  # every outlet and regular feed still coming in (warnings in the log, health.json)
+            except Exception as e:  # noqa: BLE001 - the check is a lookout, never a reason to stop the run
+                logger.warning("Health check failed: %s", e)
             from app.chyrons import fetch_chyrons
             fetch_chyrons()  # TV news chyrons from the Internet Archive: one request a run (today so far, UTC)
             fetch_polls()

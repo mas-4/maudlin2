@@ -121,6 +121,8 @@ details.wb-rchips { display: block; } details.wb-rchips[open] { display: flex; }
 .wb-pbar-end { margin-left: auto; display: flex; gap: 4px; }
 .wb-note { margin: 8px 0; padding: 6px 8px; border-radius: 10px; border: 2px dashed #ccc; }
 .wb-note.draft { border-color: var(--purple); background: #f6f1ff; } .wb-note.yours { border-style: solid; border-color: #bde7df; }
+.wb-health { padding: 8px 12px; margin: 0 0 12px; border: 2px solid #9be3c9; border-radius: 12px; background: #effbf6; }
+.wb-health.sick { border-color: #ffb4a2; background: #fff3ef; }
 .wb-better { border-style: dashed; }
 .wb-gtag.wb-guess { border-style: dashed; opacity: .85; }
 .wb-note label { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; } .wb-ntag { color: #777; font-weight: 400; }
