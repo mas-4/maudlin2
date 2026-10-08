@@ -604,6 +604,19 @@ def to_check(limit: int | None = None) -> list[dict]:
 
 
 @exclusive
+def set_fits(fits: dict, model_at: str):
+    """Each filing's fit, (claim key, motif id) -> the chance the person keeps it (filing_confidence.py), kept on the
+    filing with the model that gave it"""
+    index = load()
+    for e in index['entries'].values():
+        for c in e.get('claims', []):
+            f = fits.get((key(c['claim']), e['id']))
+            if f is not None:
+                c['fit'], c['fit_model'] = f, model_at
+    save(index)
+
+
+@exclusive
 def check(claim: str, eid: str, answer: str):
     """A person's answer to 'is this claim an instance of this motif?', applied at once. Yes or not sure is noted on
     the filing. No takes the claim out of the motif and keeps it out; a motif the model made left with no claims goes

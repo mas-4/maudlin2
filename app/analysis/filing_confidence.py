@@ -19,6 +19,7 @@ import numpy as np
 
 from app.analysis import motif_index as mi
 from app.analysis import motif_retriever as mr
+from app.analysis import motif_signals as ms
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 
@@ -30,7 +31,7 @@ SOURCES = ['narrative', 'Focus Group']  # anything else is a fact-checker; what'
 # retold online (4 decisions on its own on Oct 8: a weight of its own learned 'always kept' from them)
 SAME_AS = {'shows': 'narrative'}
 FEATURES = mr.FACTS + ['score', 'rank', 'margin', 'motifs of the claim'] + \
-    [f'from {s}' for s in SOURCES]
+    [f'from {s}' for s in SOURCES] + ms.CHEAP + ['rerank', 'judge']  # the many signals (motif_signals.py), Oct 8
 # Never 'sure', whatever the fit: a filing in a motif the model made for this claim alone (alike by birth: whether
 # that motif should be is another question), and claims from a source with too few of the person's decisions to
 # have been tested (Oct 8: the shows, 4)
@@ -70,11 +71,18 @@ def decisions(path: str = CURATION_LOG) -> dict[tuple[str, str], bool]:
     return out
 
 
+def logit(p: np.ndarray) -> np.ndarray:
+    p = np.clip(np.asarray(p, dtype=float), 1e-4, 1 - 1e-4)
+    return np.log(p / (1 - p))
+
+
 class Scorer:
-    """Features of (claim, motif) pairs against one index, the shortlist's work done once per claim"""
+    """Features of (claim, motif) pairs against one index, the shortlist's work done once per claim; the costly
+    signals (the reranker, the filing model's yes or no) asked only of the pairs scored, and kept"""
 
     def __init__(self, index: dict, w: dict, vec: mr.Vectors | None = None):
         self.index, self.w, self.vec = index, w, vec or mr.Vectors()
+        self.signals = ms.Signals(index, self.vec)
         self.entries = [e for e in mi.live(index) if e['claims']]
         self.at = {e['id']: n for n, e in enumerate(self.entries)}
         self.weights = np.array([w['weights'][f] for f in mr.FACTS])
@@ -90,13 +98,18 @@ class Scorer:
         order = np.argsort(-score)
         rank = np.empty(len(order))
         rank[order] = np.arange(len(order))
+        cheap = self.signals.cheap(claim, leave_out=True)
+        at = [self.signals.at[eid] for eid in ids]
+        rerank = logit(self.signals.rerank(claim, at, leave_out=True))
+        judge = logit(self.signals.judge(claim, at, leave_out=True))
         out = []
-        for eid in ids:
+        for i, eid in enumerate(ids):
             n = self.at[eid]
             others = np.delete(score, n)
             out.append(list(F[n]) + [score[n], np.log1p(rank[n]), score[n] - (others.max() if len(others) else 0.0),
                                      len(self.motifs_of.get(mi.key(claim), ()))]
-                       + [float(SAME_AS.get(source, source) == s) for s in SOURCES])
+                       + [float(SAME_AS.get(source, source) == s) for s in SOURCES]
+                       + [float(cheap[c][at[i]]) for c in ms.CHEAP] + [rerank[i], judge[i]])
         return np.array(out)
 
 
@@ -167,6 +180,7 @@ def train(index: dict | None = None) -> dict | None:
         X.extend(scorer.rows(claim, [eid for eid, _ in items], source))
         y.extend(ok for _, ok in items)
         groups.extend([mi.key(claim)] * len(items))
+    scorer.signals.save()
     X, y = np.array(X), np.array(y, dtype=bool)
     test = evaluate(X, y, groups)
     test.pop('p')
@@ -180,10 +194,13 @@ def train(index: dict | None = None) -> dict | None:
     return out
 
 
-def model() -> dict | None:
-    """The current model, retrained when a day old (or missing)"""
+def model(retrain: bool = False) -> dict | None:
+    """The current model; retrained when a day old (or missing) only if `retrain` (the hourly run: training asks the
+    filing model about new decisions, so never from the checker)"""
     m = read_json(MODEL, None)
-    if not m or dt.now() - dt.fromisoformat(m['at']) > RETRAIN:
+    if m and set(m['weights']) != set(FEATURES):
+        m = None  # trained on other signals
+    if retrain and (not m or dt.now() - dt.fromisoformat(m['at']) > RETRAIN):
         try:
             m = train() or m
         except Exception as e:  # noqa: BLE001 - the old model, or none: the check list keeps its old order
@@ -215,14 +232,17 @@ def can_be_sure(index: dict, claim: str, eid: str, source: str, tested: set[str]
     return bool(others) and kind(source) in tested
 
 
-def score(index: dict | None = None, m: dict | None = None, skip: set | None = None) -> dict[tuple[str, str], float]:
-    """(claim key, motif id) -> the chance a person keeps it, for every filing nobody has checked (but those in
-    `skip`, already scored)"""
+def score(index: dict | None = None, m: dict | None = None, skip: set | None = None,
+          budget: float | None = None) -> dict[tuple[str, str], float]:
+    """(claim key, motif id) -> the chance a person keeps it, for every filing in the person's motifs nobody has
+    checked (but those in `skip`, already scored), for at most `budget` seconds"""
+    import time
     index = index if index is not None else mi.load()
     m = m or model()
     w = mr.weights()
     if not m or not w:
         return {}
+    started = time.time()
     scorer = Scorer(index, w)
     coef = np.array([m['weights'][f] for f in FEATURES])
     todo = defaultdict(list)
@@ -234,7 +254,27 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
     out = {}
     for (claim, source), ids in todo.items():
+        if budget is not None and time.time() - started > budget:
+            break
         z = scorer.rows(claim, ids, source) @ coef + m['bias']
         for eid, v in zip(ids, z):
             out[(mi.key(claim), eid)] = round(float(1 / (1 + np.exp(-v))), 3)
+    scorer.signals.save()
     return out
+
+
+def refresh(budget: float | None = None) -> int:
+    """The hourly run's part: retrain if a day old, then work out the fit of every unchecked filing in the person's
+    motifs that has none from this model yet, and keep it on the filing (motif_index.set_fits), for the checker to
+    read"""
+    m = model(retrain=True)
+    if not m:
+        return 0
+    index = mi.load()
+    have = {(mi.key(c['claim']), e['id']) for e in mi.live(index) for c in e['claims']
+            if c.get('fit_model') == m['at'] and c.get('fit') is not None}
+    fits = score(index, m, skip=have, budget=budget)
+    if fits:
+        mi.set_fits(fits, m['at'])
+    logger.info("Filing confidence: %d filings scored (model of %s, AUC %.3f held out)", len(fits), m['at'], m['test']['auc'])
+    return len(fits)

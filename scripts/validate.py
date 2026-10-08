@@ -443,29 +443,12 @@ def workbench_state() -> dict:
     return state
 
 
-_fits = {'stamp': None, 'model': None, 'fits': {}}
-
-
 def filing_fits() -> dict:
-    """Each unchecked filing's chance of being kept (app/analysis/filing_confidence.py). When the motif index
-    changes only filings not scored yet are worked out (each check changed the file, and scoring all of them again
-    took 16 s or more); all again when the model is retrained"""
-    from app.analysis import filing_confidence as fc, motif_index as mi
-    try:
-        stamp = os.path.getmtime(mi.INDEX)
-    except OSError:
-        stamp = None
-    if stamp != _fits['stamp']:
-        try:
-            m = fc.model()
-            if not m or m.get('at') != _fits['model']:
-                _fits['fits'], _fits['model'] = {}, m and m.get('at')
-            have = {tuple(k.rsplit('|', 1)) for k in _fits['fits']}
-            _fits['fits'].update({f'{k}|{eid}': p for (k, eid), p in fc.score(m=m, skip=have).items()})
-        except Exception as e:  # noqa: BLE001 - the check list keeps its old order
-            print(f'filing confidence unavailable: {type(e).__name__}: {e}')
-        _fits['stamp'] = stamp
-    return _fits['fits']
+    """Each unchecked filing's fit, as the hourly run left it on the filing (filing_confidence.refresh: the checker
+    never asks the models itself)"""
+    from app.analysis import motif_index as mi
+    return {f"{mi.key(c['claim'])}|{e['id']}": c['fit'] for e in mi.live(mi.load()) for c in e['claims']
+            if not c.get('checked') and c.get('fit') is not None}
 
 
 def check_queue() -> list[dict]:
