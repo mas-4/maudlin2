@@ -513,6 +513,8 @@
             <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
           <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" data-ckc="${esc(x.claim)}" title="it still fits: off this list">✓ still fits</button><button class="wb-mini" data-ck="no|${x.id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕ take out</button></span></div>
           ${S.by[x.id].note ? `<div class="wb-faint">${esc(S.by[x.id].note)}</div>` : ''}
+          ${(x.better || []).filter((b) => S.by[b.id] && !motifsOf(x.claim).some((e) => e.id === b.id)).length ? `<div class="wb-faint">🤖 might fit better:</div>
+            ${x.better.filter((b) => S.by[b.id] && !motifsOf(x.claim).some((e) => e.id === b.id)).map((b) => betterRow(b, x.claim)).join('')}` : ''}
         </div>`).join('')}`
         : '<div class="wb-welcome"><div class="wb-big">🔁</div><p>Nothing to look at again: the second look fills in once the hourly run has scored your confirmed filings.</p></div>';
     } else if (tab === 'proposals') {
@@ -652,6 +654,7 @@
         <span class="wb-sbtns">${r.checked !== 'yes' && S.fits && S.fits[c.claim + '|' + e.id] != null ? fitChip(S.fits[c.claim + '|' + e.id], S.unsure && S.unsure.has(c.claim + '|' + e.id)) : ''}${r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
         <button class="wb-btn no" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
         || '<p class="wb-faint">📥 not in any motif</p>'}
+      <div id="cl-better"></div>
       <h3>➕ add it to another motif</h3>
       <label class="wb-addsearch">🔎 <input type="search" id="cl-q" placeholder="find a motif" value="${esc(S.claimQ || '')}" autocomplete="off"></label>
       <div id="cl-results"></div>
@@ -669,6 +672,20 @@
       if (d) d.innerHTML = detailHTML(x, c.claim);
     }).catch(() => { const d = $('#cl-detail'); if (d) d.textContent = '😬 couldn’t load it'; });
     loadSimilarClaims(c.claim, ins.length > 0);
+    loadBetter(c.claim);
+  }
+  // Where a weakly filed claim might belong instead: the model's best fits among your motifs it isn't in (the hourly
+  // run works them out for claims with a filing under 50%)
+  const betterRow = (b, claim) => `<div class="wb-motifrow wb-better">${chip(b.id)}
+      ${S.by[b.id] && S.by[b.id].note ? `<span class="wb-mnote">${esc(S.by[b.id].note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
+      <span class="wb-sbtns">${fitChip(b.fit)}<button class="wb-btn yes" data-alt="add|${b.id}" data-altc="${esc(claim)}" title="file it here too (then ✕ the weak one if it doesn't belong there)">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" data-altc="${esc(claim)}" title="not this motif: don't suggest it again">✕</button></span></div>`;
+  async function loadBetter(claim) {
+    const items = await getJSON('/better.json?claim=' + encodeURIComponent(claim)).catch(() => []);
+    const box = $('#cl-better');
+    if (!box || !S.claim || S.claim.claim !== claim) return;
+    const shown = items.filter((b) => S.by[b.id] && !motifsOf(claim).some((e) => e.id === b.id));
+    box.innerHTML = shown.length ? `<h3>🤖 might fit better <span class="wb-faint">your motifs it isn't in, by fit: ＋ adds it there, then ✕ the weak one above</span></h3>
+      ${shown.map((b) => betterRow(b, claim)).join('')}` : '';
   }
   async function loadSimilarClaims(claim, filed) {
     const items = await getJSON('/claim-similar.json?claim=' + encodeURIComponent(claim)).catch(() => null);
@@ -1132,6 +1149,13 @@
       const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
       S.queues.second = null;  // the second look's list changes with it
       return act({action: 'check', claim, id, answer}, answer === 'yes' ? '✓ fits' : '✕ out of that motif');
+    }
+    if ((v = d('alt'))) {  // a suggested better motif: add the claim there too, or never suggest it again
+      const [kind, id] = v.split('|'), claim = t.closest('[data-altc]').dataset.altc;
+      const from = motifsOf(claim)[0];
+      S.queues.second = null;
+      if (kind === 'reject') return act({action: 'reject', claim, id}, `✕ won’t suggest “${S.by[id].name}” again`);
+      return act(from ? {action: 'also', claim, source: from.id, target: id} : {action: 'file', claim, id, source: ''}, `＋ filed in “${S.by[id].name}”`);
     }
     if ((v = d('ckall'))) {
       const x = unchecked().find((u) => u.claim === v);

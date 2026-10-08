@@ -519,7 +519,12 @@ def second_look() -> list[dict]:
             for e in mi.live(mi.load()) if e.get('done') for c in e['claims']
             if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
             and (mi.key(c['claim']), e['id']) not in hand]
-    return sorted(rows, key=lambda r: r['fit'])[:SECOND_LOOK]
+    rows = sorted(rows, key=lambda r: r['fit'])[:SECOND_LOOK]
+    from app.analysis import filing_confidence as fc
+    index = mi.load()
+    for r in rows:
+        r['better'] = fc.better(index, r['claim'])  # where it might belong instead
+    return rows
 
 
 def hand_made() -> set:
@@ -701,6 +706,11 @@ class Handler(BaseHTTPRequestHandler):
             q = parse_qs(urlparse(self.path).query).get('q', [''])[0].lower().split()
             found = [c for c in motif_index.searchable_claims() if all(w in c['claim'].lower() for w in q)]
             return self.send_json(sorted(found, key=lambda c: (bool(c['motifs']), c['claim']))[:60])
+        if self.path.startswith('/better.json'):  # where a weakly filed claim might belong instead
+            from urllib.parse import urlparse, parse_qs
+            from app.analysis import filing_confidence as fc, motif_index
+            claim = parse_qs(urlparse(self.path).query).get('claim', [''])[0]
+            return self.send_json(fc.better(motif_index.load(), claim))
         if self.path.startswith('/claim-detail.json'):
             from urllib.parse import urlparse, parse_qs
             return self.send_json(claim_detail(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))

@@ -42,3 +42,22 @@ def test_the_held_out_test_finds_a_sure_threshold_only_where_precision_holds():
     assert test['auc'] > 0.9 and test['sure_at'] is not None
     at = next(t for t in test['thresholds'] if t['at'] == test['sure_at'])
     assert at['precision'] >= fc.SURE and at['passes'] >= 20
+
+
+def test_weak_filings_are_found_and_their_alternatives_skip_where_the_claim_already_is(monkeypatch, tmp_path):
+    m = {'at': 'T1'}
+    c = lambda t, **k: {'claim': t, 'source': 'narrative', 'fit_model': 'T1', **k}  # noqa: E731
+    index = {'entries': {
+        'M1': {'id': 'M1', 'name': 'One', 'done': ['x'], 'claims': [c('weak and new', fit=0.2), c('strong', fit=0.9),
+                                                                c('weak but seen again', fit=0.1, checked='yes', rechecked=True),
+                                                                c('weak and confirmed', fit=0.3, checked='yes'),
+                                                                c('old model', fit=0.1, fit_model='T0')]},
+        'M2': {'id': 'M2', 'name': 'Two', 'claims': [c('in a model motif', fit=0.1)]},  # not the person's
+        'M3': {'id': 'M3', 'name': 'Three', 'done': ['x'], 'claims': [{'claim': 'weak and confirmed'}]}}}
+    monkeypatch.setattr(fc, 'decisions', lambda *a, **k: {})
+    assert set(fc.weak_claims(index, m)) == {mi.key('weak and new'), mi.key('weak and confirmed')}
+    monkeypatch.setattr(fc, 'ALTERNATIVES', str(tmp_path / 'alt.json'))
+    (tmp_path / 'alt.json').write_text(json.dumps({mi.key('weak and confirmed'): {'model': 'T1', 'motifs': [['M3', 0.8], ['M2', 0.5]]}}))
+    # filed in M3 since: only M2 is still a suggestion
+    assert fc.better(index, 'weak and confirmed') == [{'id': 'M2', 'name': 'Two', 'fit': 0.5}]
+    assert fc.better(index, 'strong') == []

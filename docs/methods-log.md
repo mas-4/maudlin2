@@ -43,6 +43,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **Weak fits come with where else they might go.** The person's time is better spent correcting weak filings than
+  hunting for motifs: for each claim with a filing the confidence model gives under 50% (one nobody has checked, or one
+  they confirmed that's up for a second look), the hourly run scores the twelve of their motifs the shortlist ranks
+  highest that the claim isn't in, and keeps the best three from 30% up. The checker shows them under the claim ("might
+  fit better") and under each second-look row: ＋ files it there too, ✕ says it isn't that motif (never suggested
+  again).
 - **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
   own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
   of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead

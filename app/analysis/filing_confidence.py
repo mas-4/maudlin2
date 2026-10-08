@@ -38,6 +38,15 @@ FEATURES = mr.FACTS + ['score', 'rank', 'margin', 'motifs of the claim'] + \
 MIN_TESTED = 30
 RETRAIN = td(days=1)
 MIN_EACH = 40  # kept and removed filings needed to train
+# Where a weakly filed claim might belong instead (Oct 8, the person: help them correct weak fits rather than look
+# for better motifs by hand): for each claim with a filing under WEAK in their motifs (unchecked, or confirmed and up
+# for a second look), the CANDIDATES motifs of theirs the shortlist ranks highest that it isn't in, each given a fit by
+# this model, the best BETTER_SHOWN kept from BETTER_MIN up
+ALTERNATIVES = os.path.join(Config.data, 'motifs', 'filing_alternatives.json')  # claim key -> {'model', 'motifs'}
+WEAK = 0.5
+CANDIDATES = 12
+BETTER_SHOWN = 3
+BETTER_MIN = 0.3
 SURE = 0.95  # precision the 'sure' threshold has to reach, held out
 
 
@@ -114,6 +123,16 @@ class Scorer:
         for e in self.entries:
             for c in e['claims']:
                 self.motifs_of[mi.key(c['claim'])].add(e['id'])
+
+    def candidates(self, claim: str, n: int = CANDIDATES) -> list[str]:
+        """The person's motifs (yours) the shortlist ranks highest for a claim, but those it's in or a person said it
+        isn't"""
+        k = mi.key(claim)
+        F = mr.facts(self.entries, claim, self.vec, leave_out=True)
+        score = F @ self.weights + self.w['bias']
+        return [self.entries[i]['id'] for i in np.argsort(-score)
+                if yours(self.entries[i]) and self.entries[i]['id'] not in self.motifs_of.get(k, ())
+                and k not in self.entries[i].get('not_claims', [])][:n]
 
     def rows(self, claim: str, ids: list[str], source: str = '') -> np.ndarray:
         """A row of FEATURES for each motif in `ids` against the claim (all of them in this index's live motifs)"""
@@ -288,6 +307,68 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
     return out
 
 
+def weak_claims(index: dict, m: dict) -> dict[str, tuple[str, str]]:
+    """Claim key -> (claim, source) for each claim with a filing in the person's motifs this model gives under WEAK:
+    unchecked, or confirmed but not looked at again (and not filed by the person's own hand)"""
+    hand = {k for k, ok in decisions(hand=True).items() if ok} - {k for k, ok in decisions().items() if ok}
+    out = {}
+    for e in mi.live(index):
+        if not yours(e):
+            continue
+        for c in e['claims']:
+            k = mi.key(c['claim'])
+            if c.get('fit_model') != m['at'] or c.get('fit') is None or c['fit'] >= WEAK:
+                continue
+            if not c.get('checked') or (c.get('checked') == 'yes' and not c.get('rechecked') and (k, e['id']) not in hand):
+                out.setdefault(k, (c['claim'], c.get('source', '')))
+    return out
+
+
+def alternatives(index: dict, m: dict, budget: float | None = None) -> int:
+    """Where each weakly filed claim might belong instead (see WEAK), kept in ALTERNATIVES for the checker; claims
+    already done by this model skipped, for at most `budget` seconds; how many claims were worked out"""
+    import time
+    started = time.time()
+    store = read_json(ALTERNATIVES, {})
+    weak = weak_claims(index, m)
+    store = {k: v for k, v in store.items() if k in weak}  # no longer weak: gone
+    todo = {k: v for k, v in weak.items() if store.get(k, {}).get('model') != m['at']}
+    if not todo:
+        write_json(ALTERNATIVES, store)
+        return 0
+    w = mr.weights()
+    scorer = Scorer(index, w)
+    coef = np.array([m['weights'][f] for f in FEATURES])
+    scorer.signals.prepare([c for c, _ in todo.values()])
+    done = 0
+    for k, (claim, source) in todo.items():
+        if budget is not None and time.time() - started > budget:
+            break
+        ids = scorer.candidates(claim)
+        if not ids:
+            continue
+        p = 1 / (1 + np.exp(-(scorer.rows(claim, ids, source) @ coef + m['bias'])))
+        best = sorted(((eid, round(float(v), 3)) for eid, v in zip(ids, p) if v >= BETTER_MIN), key=lambda x: -x[1])
+        store[k] = {'model': m['at'], 'motifs': [list(x) for x in best[:BETTER_SHOWN]]}
+        done += 1
+    scorer.signals.save()
+    write_json(ALTERNATIVES, store)
+    logger.info("Filing confidence: alternatives for %d weakly filed claims (%d left)", done, len(todo) - done)
+    return done
+
+
+def better(index: dict, claim: str) -> list[dict]:
+    """The motifs a weakly filed claim might belong in instead ({id, name, fit}), those it's in now left out"""
+    k = mi.key(claim)
+    x = read_json(ALTERNATIVES, {}).get(k)
+    if not x:
+        return []
+    entries = index['entries']
+    return [{'id': eid, 'name': entries[eid]['name'], 'fit': fit} for eid, fit in x['motifs']
+            if eid in entries and not entries[eid].get('merged_into')
+            and k not in {mi.key(c['claim']) for c in entries[eid]['claims']}]
+
+
 def refresh(budget: float | None = None) -> int:
     """The hourly run's part: retrain if a day old, then work out the fit of every unchecked filing in the person's
     motifs that has none from this model yet, and keep it on the filing (motif_index.set_fits), for the checker to
@@ -306,6 +387,12 @@ def refresh(budget: float | None = None) -> int:
     seconds = score(index, m, skip=have, budget=left, confirmed=True) if left is None or left > 10 else {}
     if fits or seconds:
         mi.set_fits({**fits, **seconds}, m['at'])
+    left = None if budget is None else max(0.0, budget - (time.time() - started))
+    if left is None or left > 20:
+        try:
+            alternatives(mi.load(), m, left)
+        except Exception as e:  # noqa: BLE001 - suggestions are extra; the next run tries again
+            logger.warning("Filing confidence: alternatives failed (%s)", e)
     logger.info("Filing confidence: %d new filings and %d confirmed scored (model of %s, AUC %.3f held out)", len(fits),
                 len(seconds), m['at'], m['test']['auc'])
     return len(fits) + len(seconds)
