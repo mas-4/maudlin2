@@ -14,6 +14,7 @@
 
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
+    decided: new Set(), rejected: new Set(), claimCache: {detail: {}, similar: {}, better: {}},  // this session's decisions ('claim|motif', 'p:proposal'; ✕'d suggestions)
     q: '', sel: [], last: [], msel: new Set(), mlast: null, active: 0, tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
     checkAt: 0, extra: {}, claimHits: [], groupBy: store.get('groupby', 'group'),
   };
@@ -37,7 +38,7 @@
     const out = await r.json().catch(() => ({error: r.statusText}));
     if (!r.ok) { toast('😬 ' + (out.error || 'that didn’t work'), true); await reload(); return false; }
     setData(out);
-    S.queues.pairs = S.queues.singles = S.queues.today = null;  // suggestions change after most moves
+    S.queues.pairs = S.queues.singles = null;  // suggestions change after most moves
     render();
     await refreshUndo();
     if (done) toast(done, false, true);
@@ -511,8 +512,8 @@
       const cards = q.map((x) => {
         if (x.kind === 'torn' || x.kind === 'doubted') {
           const rec = S.by[x.id] && S.by[x.id].claims.find((c) => c.claim === x.claim);
-          if (!rec || (x.kind === 'torn' && rec.checked)) return '';
-          const better = (x.better || []).filter((b) => S.by[b.id] && !motifsOf(x.claim).some((e) => e.id === b.id));
+          if (!rec || (x.kind === 'torn' && rec.checked) || S.decided.has(x.claim + '|' + x.id)) return '';
+          const better = (x.better || []).filter(stillBetter(x.claim));
           return `<div class="wb-card wb-unck"><div class="wb-today-why">${why[x.kind]}</div>
             <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
               <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
@@ -533,6 +534,7 @@
         }
         if (x.kind === 'proposal') {
           const p = x.proposal;
+          if (S.decided.has('p:' + p.id)) return '';
           return `<div class="wb-card wb-prop"><div class="wb-today-why">💡 the model proposes</div><span class="wb-propline">${proposalText(p)}</span>
             <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
             ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
@@ -546,22 +548,23 @@
       const q = await queue('second');
       if (S.tab !== tab) return;
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
-      const items = q.filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && c.checked === 'yes'));
+      const items = q.filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && c.checked === 'yes')
+        && !S.decided.has(x.claim + '|' + x.id));
       box.innerHTML = items.length ? `<p class="wb-faint">🔁 The model's filings you confirmed that it now finds least likely, the least first (yours made by hand aren't here: they score low because they're the links it misses). ✓ still fits takes one off this list (and counts as a fresh yes); ✕ takes the claim out of that motif. Most will be fine: these are just the ones worth a second glance.</p>
         ${items.map((x) => `<div class="wb-card wb-unck">
           <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
             <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
           <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" data-ckc="${esc(x.claim)}" title="it still fits: off this list">✓ still fits</button><button class="wb-mini" data-ck="no|${x.id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕ take out</button></span></div>
           ${S.by[x.id].note ? `<div class="wb-faint">${esc(S.by[x.id].note)}</div>` : ''}
-          ${(x.better || []).filter((b) => S.by[b.id] && !motifsOf(x.claim).some((e) => e.id === b.id)).length ? `<div class="wb-faint">🤖 might fit better:</div>
-            ${x.better.filter((b) => S.by[b.id] && !motifsOf(x.claim).some((e) => e.id === b.id)).map((b) => betterRow(b, x.claim)).join('')}` : ''}
+          ${(x.better || []).filter(stillBetter(x.claim)).length ? `<div class="wb-faint">🤖 might fit better:</div>
+            ${x.better.filter(stillBetter(x.claim)).map((b) => betterRow(b, x.claim)).join('')}` : ''}
         </div>`).join('')}`
         : '<div class="wb-welcome"><div class="wb-big">🔁</div><p>Nothing to look at again: the second look fills in once the hourly run has scored your confirmed filings.</p></div>';
     } else if (tab === 'proposals') {
       const q = await queue('proposals');
       if (S.tab !== tab) return;
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
-      const items = q.filter((p) => Object.values(p.do).every((v) => typeof v !== 'string' || !/^M\d+$/.test(v) || S.by[v]));
+      const items = q.filter((p) => !S.decided.has('p:' + p.id) && Object.values(p.do).every((v) => typeof v !== 'string' || !/^M\d+$/.test(v) || S.by[v]));
       S.proposals = Object.fromEntries(items.map((p) => [p.id, p]));
       // each proposal one card; a rests-on or related one with its best fit (how likely you are to approve it, learned
       // from your own decisions), the list sorted by it, the least likely folded at the bottom
@@ -712,10 +715,12 @@
       <ul class="wb-claims" id="cl-similar"><li class="wb-faint">⏳</li></ul>
     </div>`;
     claimResults();
-    getJSON('/claim-detail.json?claim=' + encodeURIComponent(c.claim)).then((x) => {
-      const d = $('#cl-detail');
-      if (d) d.innerHTML = detailHTML(x, c.claim);
-    }).catch(() => { const d = $('#cl-detail'); if (d) d.textContent = '😬 couldn’t load it'; });
+    // where it came from, claims like it and suggestions are kept per claim: a tick or a ✕ doesn't change them, and
+    // fetching them again after every click made the page flash and jump
+    const showDetail = (x) => { const d = $('#cl-detail'); if (d) d.innerHTML = detailHTML(x, c.claim); };
+    if (S.claimCache.detail[c.claim]) showDetail(S.claimCache.detail[c.claim]);
+    else getJSON('/claim-detail.json?claim=' + encodeURIComponent(c.claim)).then((x) => { S.claimCache.detail[c.claim] = x; showDetail(x); })
+      .catch(() => { const d = $('#cl-detail'); if (d) d.textContent = '😬 couldn’t load it'; });
     loadSimilarClaims(c.claim, ins.length > 0);
     loadBetter(c.claim);
   }
@@ -724,16 +729,20 @@
   const betterRow = (b, claim) => `<div class="wb-motifrow wb-better">${chip(b.id)}
       ${S.by[b.id] && S.by[b.id].note ? `<span class="wb-mnote">${esc(S.by[b.id].note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
       <span class="wb-sbtns">${fitChip(b.fit)}<button class="wb-btn yes" data-alt="add|${b.id}" data-altc="${esc(claim)}" title="file it here too (then ✕ the weak one if it doesn't belong there)">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" data-altc="${esc(claim)}" title="not this motif: don't suggest it again">✕</button></span></div>`;
+  // a suggestion still worth showing: a motif that's there, the claim not in it yet, not ✕'d
+  const stillBetter = (claim) => (b) => S.by[b.id] && !motifsOf(claim).some((e) => e.id === b.id) && !S.rejected.has(claim + '|' + b.id);
   async function loadBetter(claim) {
-    const items = await getJSON('/better.json?claim=' + encodeURIComponent(claim)).catch(() => []);
+    const items = S.claimCache.better[claim] || await getJSON('/better.json?claim=' + encodeURIComponent(claim)).catch(() => []);
+    S.claimCache.better[claim] = items;
     const box = $('#cl-better');
     if (!box || !S.claim || S.claim.claim !== claim) return;
-    const shown = items.filter((b) => S.by[b.id] && !motifsOf(claim).some((e) => e.id === b.id));
+    const shown = items.filter(stillBetter(claim));
     box.innerHTML = shown.length ? `<h3>🤖 might fit better <span class="wb-faint">your motifs it isn't in, by fit: ＋ adds it there, then ✕ the weak one above</span></h3>
       ${shown.map((b) => betterRow(b, claim)).join('')}` : '';
   }
   async function loadSimilarClaims(claim, filed) {
-    const items = await getJSON('/claim-similar.json?claim=' + encodeURIComponent(claim)).catch(() => null);
+    const items = S.claimCache.similar[claim] || await getJSON('/claim-similar.json?claim=' + encodeURIComponent(claim)).catch(() => null);
+    if (items) S.claimCache.similar[claim] = items;
     const box = $('#cl-similar');
     if (!box || !S.claim || S.claim.claim !== claim) return;
     if (!items) { box.innerHTML = '<li class="wb-faint">😬 couldn’t compare (are the embeddings up?)</li>'; return; }
@@ -1164,7 +1173,7 @@
     const d = (k) => { const el = t.closest('[data-' + k + ']'); return el && el.dataset[k.replace(/-(\w)/g, (m, c) => c.toUpperCase())]; };
     let v;
     if ((v = d('view'))) { S.view = v; store.set('view', v); return render(); }
-    if ((v = d('tab'))) { S.tab = v; store.set('tab', v); renderTabs(); return renderInbox(); }
+    if ((v = d('tab'))) { S.tab = v; store.set('tab', v); S.queues[v] = null; renderTabs(); return renderInbox(); }  // fresh when opened
     if ((v = d('shelfedit'))) {
       const [kind, id] = v.split(/\|(.*)/s);
       const now = kind === 'group' ? (S.data.groups.find((g) => g.id === id) || {}).name : id;
@@ -1192,13 +1201,13 @@
     if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], yes === 'yes'); }
     if ((v = d('ck'))) {
       const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
-      S.queues.second = null;  // the second look's list changes with it
+      S.decided.add(claim + '|' + id);  // off the lists in place (fetching them again made the page jump)
       return act({action: 'check', claim, id, answer}, answer === 'yes' ? '✓ fits' : '✕ out of that motif');
     }
     if ((v = d('alt'))) {  // a suggested better motif: add the claim there too, or never suggest it again
       const [kind, id] = v.split('|'), claim = t.closest('[data-altc]').dataset.altc;
       const from = motifsOf(claim)[0];
-      S.queues.second = null;
+      if (kind === 'reject') S.rejected.add(claim + '|' + id);
       if (kind === 'reject') return act({action: 'reject', claim, id}, `✕ won’t suggest “${S.by[id].name}” again`);
       return act(from ? {action: 'also', claim, source: from.id, target: id} : {action: 'file', claim, id, source: ''}, `＋ filed in “${S.by[id].name}”`);
     }
@@ -1276,6 +1285,7 @@
       if (b.dataset.nomotif) return sure(b, 'No motif: take it out of every motif, for good?').then((ok) => ok && act({action: 'no_motif', claim: c}, '∅ no motif'));
       if (b.dataset.correct) return ask(b, 'Correct the wording (our summary, not the source)', c, true).then((text) => text && text !== c && act({action: 'correct', claim: c, text}, '✎ corrected'));
       if (b.dataset.detail) return detail(li);
+      if (b.dataset.foldIn || b.dataset.foldTo) S.claimCache.similar = {};  // a claim folded away: the likenesses change
       if (b.dataset.foldIn && S.claim) return act({action: 'same_claim', variant: c, canonical: S.claim.claim}, '≡ folded into this claim');
       if (b.dataset.foldTo && S.claim) { const keep = c, old = S.claim.claim; return act({action: 'same_claim', variant: old, canonical: keep}, '≡ folded into the other claim').then((ok) => { if (ok) { S.claim.claim = keep; S.claim.from = null; renamed(old, keep); renderInbox(); } }); }
       if (b.dataset.addhere) { const to = b.dataset.addhere; const step = src ? {action: 'also', claim: c, source: src, target: to} : {action: 'file', claim: c, id: to, source: li.dataset.src, ref: li.dataset.ref}; await act(step, `＋ added to “${S.by[to].name}”`); const i = S.open.indexOf(to); if (S.extra[to] && i >= 0) { S.extra[to].items = S.extra[to].items.filter((x) => x.claim !== c); fillExtra(to, i); } return; }
@@ -1464,7 +1474,7 @@
     const ps = ids.map((id) => S.proposals[id]).filter(Boolean);
     if (!ps.length) return;
     const steps = ps.map((p) => yes ? {...p.do, proposal: p.id} : {action: 'proposal_reject', proposal: p.id});
-    S.queues.proposals = null;
+    ps.forEach((p) => S.decided.add('p:' + p.id));  // off the lists in place
     await act(steps.length === 1 ? steps[0] : {action: 'batch', steps}, `${yes ? '✓ approved' : '✕ rejected'} ${ps.length} proposal${ps.length === 1 ? '' : 's'}`);
     if (S.tab === 'proposals') renderInbox();
   }
