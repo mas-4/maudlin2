@@ -97,6 +97,14 @@ def pair_hash(*parts: str) -> str:
     return hashlib.sha1('\n'.join(parts).encode()).hexdigest()[:16]
 
 
+def rerank_text(claim: str, doc: str) -> str:
+    """The reranker's input for a pair (Qwen3-Reranker's own template)"""
+    return ('<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct '
+            'provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
+            f'<Instruct>: {RERANK_TASK}\n<Query>: {claim}\n<Document>: {doc}'
+            '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n')
+
+
 def latest_headlines(n: int = NEWS_HEADLINES) -> list[str]:
     import sqlite3
     con = sqlite3.connect(f'file:{Config.connection_string.removeprefix("sqlite:///")}?mode=ro', uri=True)
@@ -360,12 +368,9 @@ class Signals:
             self._reranker = (tok, model, device, tok.convert_tokens_to_ids('yes'), tok.convert_tokens_to_ids('no'))
             logger.info("Reranker on %s", device)
         tok, model, device, yes, no = self._reranker
-        pre = ('<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct '
-               'provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n')
-        post = '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n'
         out = []
         for i in range(0, len(docs), 8):
-            texts = [f'{pre}<Instruct>: {RERANK_TASK}\n<Query>: {claim}\n<Document>: {d}{post}' for d in docs[i:i + 8]]
+            texts = [rerank_text(claim, d) for d in docs[i:i + 8]]
             batch = tok(texts, padding=True, truncation=True, max_length=1024, return_tensors='pt').to(device)
             with torch.no_grad():
                 logits = model(**batch).logits[:, -1, :]

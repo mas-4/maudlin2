@@ -136,6 +136,14 @@ question of leakage (the headlines know nothing of the person's filings), and ch
 projection per comparison. In production the same afternoon (motif_signals.py, 'news out note' and 'news out near',
 40 directions), a signal of the filing confidence model from its next retrain.
 
+### E9 The reranker taught the person's taste (Oct 8) — running
+`scripts/experiments/e9_reranker_tune.py`. Qwen3-Reranker-0.6B's top 6 of 28 layers (94M of 596M weights) trained on
+2,311 pairs: the person's 752 decisions on the model's filings (591 kept, 161 removed), their confirmed claims' other
+motifs (314), and for each confirmed claim the 3 motifs today's shortlist ranks highest that aren't theirs (1,245 hard
+negatives). Three folds by claim, two passes each, on the CPU at low priority (the GPU is Gemma's: about 5 s a batch
+of 8, under 2 hours in all); each fold tested on the decisions of claims it never saw. Measured: the reranker's AUC
+alone on those decisions before and after, and the confidence model's with the taught one in its place.
+
 ## In progress and planned (Oct 8)
 
 Ideas for the hard misses (the person reads the structure under a claim; every finder reads its topic):
