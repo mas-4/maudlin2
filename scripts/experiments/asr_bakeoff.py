@@ -128,6 +128,7 @@ def main():
             time.sleep(2)
     results = {}
     for name, fn in MODELS.items():
+        transcribe.free_gpu()  # anything that loaded the language model again meanwhile
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
         fn(clips[0]['audio_np'][:16000 * 5])  # load the model (not timed)
