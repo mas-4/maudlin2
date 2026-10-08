@@ -403,9 +403,9 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['stats', '📊'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['second', '🔁 second look'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {check: S.data.to_check, unchecked: unchecked().length, proposals: S.data.proposals, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {check: S.data.to_check, second: S.data.second_look, unchecked: unchecked().length, proposals: S.data.proposals, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
   }
   // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
@@ -500,6 +500,20 @@
           ${x.motifs.length > 1 ? `<button class="wb-mini" data-ckall="${esc(x.claim)}">✓ all fit</button>` : ''}
         </div>`).join('')}`
         : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>You\'ve checked every claim the model filed.</p></div>';
+    } else if (tab === 'second') {
+      // Your own confirmed filings the confidence model finds least likely: an honest slip is easy in 1,000 judgments
+      const q = await queue('second');
+      if (S.tab !== tab) return;
+      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
+      const items = q.filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && c.checked === 'yes'));
+      box.innerHTML = items.length ? `<p class="wb-faint">🔁 Filings you confirmed that the model finds least likely, the least first. ✓ still fits takes one off this list (and counts as a fresh yes); ✕ takes the claim out of that motif. Most will be fine: these are just the ones worth a second glance.</p>
+        ${items.map((x) => `<div class="wb-card wb-unck">
+          <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
+            <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
+          <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" data-ckc="${esc(x.claim)}" title="it still fits: off this list">✓ still fits</button><button class="wb-mini" data-ck="no|${x.id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕ take out</button></span></div>
+          ${S.by[x.id].note ? `<div class="wb-faint">${esc(S.by[x.id].note)}</div>` : ''}
+        </div>`).join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">🔁</div><p>Nothing to look at again: the second look fills in once the hourly run has scored your confirmed filings.</p></div>';
     } else if (tab === 'proposals') {
       const q = await queue('proposals');
       if (S.tab !== tab) return;
@@ -1115,6 +1129,7 @@
     if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], yes === 'yes'); }
     if ((v = d('ck'))) {
       const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
+      S.queues.second = null;  // the second look's list changes with it
       return act({action: 'check', claim, id, answer}, answer === 'yes' ? '✓ fits' : '✕ out of that motif');
     }
     if ((v = d('ckall'))) {

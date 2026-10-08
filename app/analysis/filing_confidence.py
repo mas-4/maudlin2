@@ -255,9 +255,10 @@ def can_be_sure(index: dict, claim: str, eid: str, source: str, tested: set[str]
 
 
 def score(index: dict | None = None, m: dict | None = None, skip: set | None = None,
-          budget: float | None = None) -> dict[tuple[str, str], float]:
+          budget: float | None = None, confirmed: bool = False) -> dict[tuple[str, str], float]:
     """(claim key, motif id) -> the chance a person keeps it, for every filing in the person's motifs nobody has
-    checked (but those in `skip`, already scored), for at most `budget` seconds"""
+    checked (with `confirmed`, those they confirmed instead: the second look), but those in `skip` (already scored),
+    for at most `budget` seconds"""
     import time
     index = index if index is not None else mi.load()
     m = m or model()
@@ -272,7 +273,8 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
         if not yours(e):
             continue
         for c in e['claims']:
-            if not c.get('checked') and (mi.key(c['claim']), e['id']) not in (skip or ()):
+            wanted = c.get('checked') == 'yes' and not c.get('rechecked') if confirmed else not c.get('checked')
+            if wanted and (mi.key(c['claim']), e['id']) not in (skip or ()):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
     scorer.signals.prepare([c for c, _ in todo])
     out = {}
@@ -296,8 +298,14 @@ def refresh(budget: float | None = None) -> int:
     index = mi.load()
     have = {(mi.key(c['claim']), e['id']) for e in mi.live(index) for c in e['claims']
             if c.get('fit_model') == m['at'] and c.get('fit') is not None}
+    import time
+    started = time.time()
     fits = score(index, m, skip=have, budget=budget)
-    if fits:
-        mi.set_fits(fits, m['at'])
-    logger.info("Filing confidence: %d filings scored (model of %s, AUC %.3f held out)", len(fits), m['at'], m['test']['auc'])
-    return len(fits)
+    # then the person's confirmed filings, for the second look (most of their signals are cached from training)
+    left = None if budget is None else max(0.0, budget - (time.time() - started))
+    seconds = score(index, m, skip=have, budget=left, confirmed=True) if left is None or left > 10 else {}
+    if fits or seconds:
+        mi.set_fits({**fits, **seconds}, m['at'])
+    logger.info("Filing confidence: %d new filings and %d confirmed scored (model of %s, AUC %.3f held out)", len(fits),
+                len(seconds), m['at'], m['test']['auc'])
+    return len(fits) + len(seconds)

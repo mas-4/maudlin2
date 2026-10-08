@@ -57,3 +57,17 @@ def test_going_back_to_a_saved_state(tmp_path, monkeypatch):
     validate.go_back(first['id'])
     assert 'a' not in [c['claim'] for c in mi.load()['entries']['M001']['claims']]
     assert fc.decisions(validate.CURATION_LOG) == {(mi.key('a'), 'M001'): False}  # learned from again
+
+
+def test_a_second_look_keeps_or_takes_out_a_confirmed_filing(tmp_path, monkeypatch):
+    setup(tmp_path, monkeypatch)
+    index = mi.load()
+    for c in index['entries']['M001']['claims']:
+        c.update(checked='yes', fit=0.2 if c['claim'] == 'a' else 0.9)
+    index['entries']['M001']['done'] = [mi.key('a'), mi.key('b')]
+    mi.save(index)
+    assert [r['claim'] for r in validate.second_look()] == ['a', 'b']  # the least likely first
+    mi.check('a', 'M001', 'yes')  # still fits: off the list
+    assert [r['claim'] for r in validate.second_look()] == ['b']
+    mi.check('b', 'M001', 'no')  # taken out
+    assert validate.second_look() == []

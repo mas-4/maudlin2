@@ -631,6 +631,8 @@ def check(claim: str, eid: str, answer: str):
     if found is None or answer not in ('yes', 'no', 'unsure'):
         raise ValueError(f'no such filing or answer: {eid} {answer}')
     if answer != 'no':
+        if answer == 'yes' and found.get('checked') == 'yes':  # a second look: still fits (off that list)
+            found['rechecked'] = dt.now().strftime('%Y-%m-%d')
         found['checked'] = answer
     else:
         k = key(claim)

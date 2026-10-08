@@ -460,6 +460,9 @@ def workbench_state() -> dict:
         e['stands_alone'] = bool(entry.get('stands_alone'))
         e['phrases'] = (entry.get('phrases') or [])[:6]
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
+    state['second_look'] = sum(1 for e in mi.live(index) if e.get('done') for c in e['claims']
+                               if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
+                               and c['fit'] < SECOND_LINE)
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
     state['facets'] = mi.facet_values(index)
     from app.analysis import motif_proposals as mp
@@ -502,10 +505,26 @@ def check_queue() -> list[dict]:
     return sorted(items, key=lambda x: (-least.get(x['claim'], -1.0), x['claim'], -(x['fit'] or 0)))
 
 
+SECOND_LOOK = 25  # confirmed filings shown for a second look, the least likely first
+SECOND_LINE = 0.5  # ...those under this fit counted on the tab
+
+
+def second_look() -> list[dict]:
+    """The person's confirmed filings the confidence model finds least likely (an honest slip in 1,000 judgments
+    teaches the models wrong): each to keep (✓ still fits, then off the list) or take out"""
+    from app.analysis import motif_index as mi
+    rows = [{'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''), 'fit': c['fit']}
+            for e in mi.live(mi.load()) if e.get('done') for c in e['claims']
+            if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None]
+    return sorted(rows, key=lambda r: r['fit'])[:SECOND_LOOK]
+
+
 def workbench_queue(kind: str):
     from app.analysis import motif_index as mi
     if kind == 'check':
         return check_queue()
+    if kind == 'second':
+        return second_look()
     if kind == 'singles':
         return mi.single_suggestions()
     if kind == 'pairs':
