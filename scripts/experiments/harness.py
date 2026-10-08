@@ -65,9 +65,16 @@ def load(path: str = CACHE, rebuild: bool = False) -> dict:
         return pickle.load(f)
 
 
+_memo = {}
+
+
 def _matrix(data: dict, k: str, feats: list[str], extra: dict) -> np.ndarray:
     s = data['claims'][k]['signals']
-    cols = [s[n] for n in feats] + [fn(data, k) for fn in extra.values()]
+    cols = [s[n] for n in feats]
+    for fn in extra.values():  # each new signal worked out once per claim, not once per fold
+        if (fn, k) not in _memo:  # the function itself, not its id: an id is reused once it's gone
+            _memo[(fn, k)] = fn(data, k)
+        cols.append(_memo[(fn, k)])
     return np.column_stack(cols)
 
 
