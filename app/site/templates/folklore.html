@@ -1,78 +1,110 @@
 {% extends "page.html" %}
 
+{% macro shape(c) %}{% if c.rumor_class or c.conspiracy or c.family %}
+    <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
+        {% if c.rumor_class %}<span class="shape-chip" title="Rumor type, from Robert Knapp, “A Psychology of Rumor” (1944): wish, dread or wedge">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor <span class="chip-src">Knapp</span></span>{% endif %}
+        {% if c.conspiracy and preview %}<span class="shape-chip" title="Conspiracy type, from Michael Barkun, “A Culture of Conspiracy” (2003): event, systemic or superconspiracy">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy <span class="chip-src">Barkun</span></span>{% endif %}
+        {% if c.family %}<span class="shape-family" title="Subject: our own list, after the chapters of urban-legend collections"><span class="chip-src">subject</span> {{ c.family|e }}</span>{% endif %}
+    </p>
+{% endif %}{% endmacro %}
+
+{% macro motifs(c) %}{% if c.motifs %}
+    <div class="card-section"><p class="section-label" title="Recurring shapes this is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
+        {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.genre %} ({{ m.genre|e }}){% endif %}{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+    </div>
+{% endif %}{% endmacro %}
+
 {% block content %}
-    <h2>🧶 Folklore</h2>
+    <h2>🧶 Folklore and rumors</h2>
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>
         <p>Everything on this page is <b>what people are saying</b>, summarized by a language model, not what is true.
-            A claim appearing here does not mean it's true, and many are false. Its genre and motif describe <b>the shape of the story as its tellers tell it</b>, the way a folklorist
-            classifies a legend: they are not truth claims, and they're the same whether people tell the story or
-            argue against it. Where a fact-checker has examined a claim, the check is linked (🔎).</p>
+            A claim appearing here does not mean it's true, and many are false. Its motifs, genre and labels describe
+            <b>the shape of the story as its tellers tell it</b>, the way a folklorist classifies a legend: they are not
+            truth claims, and they're the same whether people tell the story or argue against it. Where a fact-checker
+            has examined a claim, <b>the verdict is the fact-checker's</b>: follow the link (🔎) to read it.</p>
     </div>
-    <p class="wip-banner">🚧 <b>Work in progress.</b> An experiment in finding the stories people retell in their own
-        words: rumors, legends, beliefs, jokes and sayings, not the news itself. Read from a sample of public Bluesky and
-        Mastodon posts; the labels are a small local language model's best guess and are often wrong.</p>
+    <p class="wip-banner">🚧 <b>Work in progress.</b> One catalog of the stories told about politics and public life,
+        from three places: what people retell in their own words on Bluesky and Mastodon (🧶), what's told on the
+        podcasts, call-in and video shows we follow (🎙️), and what fact-checkers examine (🔎). The labels are a small
+        local language model's best guess and are often wrong.</p>
     {% include "motif_note.html" %}
-    {% if report %}
-        <p class="poll-note">From {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
-            in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }}: {{ cards|length }} narratives told by
-            at least {{ floor }} people each in their own words ({{ fewer }} more told by fewer aren't shown), and {{ copies|length }} copypasta (the same words, pasted).</p>
-        <details class="how-it-works">
-            <summary>How this works</summary>
-            <p class="poll-note">Folklore travels as variants: one claim or story told by many unrelated people, each
-                in their own words. Copypasta and coordinated posting travel as the same words. So posts saying the
-                same thing in different words are grouped together (by meaning, with an embedding model), and each
-                group is measured by how many different people posted it and how varied their wording is. Feeds,
-                bots and accounts posting many times an hour are left out.</p>
-            <p class="poll-note">For each big group, our local language model reads a few versions and says what they
-                share, whether it's retold or just a shared topic, its genre, the recurring motif it's an instance of (in
-                <a href="motifs.html">our own motif index</a>). When the posts share
-                articles from outlets we follow, those articles are shown (an exact link to the story); otherwise a
-                link to the day's news appears only when the model, choosing among the closest stories with "none" on
-                offer, picks one. When a fact-checker (PolitiFact, Snopes, FactCheck.org, Lead Stories, Full Fact, NewsGuard,
-                Science Feedback) has examined the same claim in the last 30 days, the check is linked (🔎), chosen the
-                same way.</p>
-            <p class="poll-note">What's here is the model's summary of what people's posts share. A post is shown only if
-                it was already widely seen ({{ bsky_rule }}), and only embedded from Bluesky itself, so it disappears
-                here if its author deletes it; never from anyone who has asked Bluesky not to show their posts to
-                logged-out visitors, and never from Mastodon. Raw posts are kept 30 days for this research.</p>
-        </details>
-        <details class="how-it-works" id="labels">
-            <summary>What the labels mean</summary>
-            <h3>Genre</h3>
-            <p class="poll-note">The kind of folklore the model thinks it is, from folklorists' categories:</p>
-            <ul class="label-notes">{% for g, note in genre_notes.items() %}
-                <li>{{ genre_emoji.get(g, '') }} <b>{{ g }}</b>: {{ note }}</li>{% endfor %}
-            </ul>
-            <h3>🧩 Motif</h3>
-            <p class="poll-note">The recurring shape a story is an instance of, from <a href="motifs.html">our own
-                motif index</a>: a list we build as we go, the way Stith Thompson built his <i>Motif-Index of
-                Folk-Literature</i> from the folktales he read, but from today's political talk. Thompson's index
-                (built from folktales, myths and legends) fits modern political rumor poorly, so we don't use it.
-                Each motif is named as a reusable framing, without names or dates, so the same story told about
-                other people or another year lands in the same entry; the model files each claim, and a person
-                refines the entries by hand.</p>
-            <h3>Rumor, conspiracy and subject</h3>
-            <p class="poll-note">Three short label sets from the study of rumor, read by the model from each story as
-                its tellers tell it, never as a judgment of whether it's true:</p>
-            <ul class="label-notes">
-                <li><b>Rumor</b>, by what drives it (Robert Knapp, 1944; Nicholas DiFonzo and Prashant Bordia, 2007):
-                    {% for k, note in rumor_classes.items() if k != 'other' %}{{ shape_emoji.get(k, '') }} <b>{{ k }}</b>, {{ note }}{% if not loop.last %}; {% endif %}{% endfor %}.</li>
-                <li><b>Conspiracy</b>, by the scope of the secret plot it claims (Michael Barkun, 2003):
-                    {% for k, note in conspiracy_scopes.items() if k != 'not a conspiracy' %}{{ shape_emoji.get(k, '') }} <b>{{ k }}</b>, {{ note }}{% if not loop.last %}; {% endif %}{% endfor %}.</li>
-                <li><b>Subject</b>: a broad family (crime and danger, health, celebrities, government…), our own list,
-                    after the way urban-legend collections such as Jan Harold Brunvand's sort legends into chapters.</li>
-            </ul>
-            <h3>Wording and tellers</h3>
-            <p class="poll-note"><b>Told by</b> counts different accounts, not posts. <b>How they say it</b> runs from 📋
-                copied (the same words, pasted) to 🗣️ each in their own words; folklore is retold in people's own
-                words, while coordinated posting and copypasta are copied.</p>
-        </details>
+    <p class="poll-note">{% if report %}🧶 <b>{{ kinds.posts or 0 }}</b> retold online, each by at least {{ floor }} people
+        in their own words, from {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
+        in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }} ({{ fewer }} more told by fewer
+        aren't shown, and {{ copies|length }} copypasta, the same words pasted). {% endif %}🎙️ <b>{{ kinds.shows or 0 }}</b>
+        told on two or more shows this week. 🔎 <b>{{ kinds.checks or 0 }}</b> more fact-checked in the last {{ check_days }}
+        days{% if checkers %} ({{ checkers|join(', ') }}){% endif %}.</p>
+    <details class="how-it-works">
+        <summary>How this works</summary>
+        <p class="poll-note"><b>🧶 Retold online.</b> Folklore travels as variants: one claim or story told by many
+            unrelated people, each in their own words. Copypasta and coordinated posting travel as the same words. So
+            posts saying the same thing in different words are grouped together (by meaning, with an embedding model),
+            and each group is measured by how many different people posted it and how varied their wording is. Feeds,
+            bots and accounts posting many times an hour are left out. For each big group, our local language model reads
+            a few versions and says what they share and whether it's retold or just a shared topic. When the posts share
+            articles from outlets we follow, those articles are shown (an exact link to the story); otherwise a link to
+            the day's news appears only when the model, choosing among the closest stories with "none" on offer, picks
+            one.</p>
+        <p class="poll-note"><b>🎙️ On the shows.</b> Every podcast, call-in and video show we transcribe, right, left and
+            center, is read by our local language model for the claims told on it, and a claim is kept only if the words
+            it's drawn from are really in the transcript and support it. The same claim told on different shows is
+            grouped the way posts are. One host's take isn't folklore; a claim shows here once it's told on two or more
+            shows, or by two or more callers. What callers say is shown only in our words, never their own or who they
+            are.</p>
+        <p class="poll-note"><b>🔎 Fact-checked.</b> Rumors examined by PolitiFact, FactCheck.org, Snopes, Lead Stories,
+            Full Fact, NewsGuard and Science Feedback in the last {{ check_days }} days, the claim in the model's words.
+            When a narrative told online matches one, the check is linked from its card instead (chosen by the model
+            among the closest, with "none" on offer). "In our social sample" says whether people in the last few days of
+            posts are telling the claim or arguing against it.</p>
+        <p class="poll-note">What's here is the model's summary of what people say. A post is shown only if it was
+            already widely seen ({{ bsky_rule }}), and only embedded from Bluesky itself, so it disappears here if its
+            author deletes it; never from anyone who has asked Bluesky not to show their posts to logged-out visitors,
+            and never from Mastodon. Raw posts are kept 30 days for this research.</p>
+    </details>
+    <details class="how-it-works" id="labels">
+        <summary>What the labels mean</summary>
+        <h3>🧩 Motif</h3>
+        <p class="poll-note">The recurring shape a story is an instance of, from <a href="motifs.html">our own motif
+            index</a>: a list we build as we go, the way Stith Thompson built his <i>Motif-Index of Folk-Literature</i>
+            from the folktales he read, but from today's political talk. Each motif is named as a reusable framing,
+            without names or dates, so the same story told about other people or another year lands in the same entry;
+            the model files each claim, and a person refines the entries by hand. Only motifs a person has checked are
+            shown.</p>
+        <h3>Genre</h3>
+        <p class="poll-note">The kind of story a motif is, sorted by a person as the index grows{% if genre_counts %}
+            (so far: {% for g, n in genre_counts %}<b>{{ g|e }}</b>{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}.
+            A genre belongs to a motif, not to a claim, so a card's genres are those of its motifs, and a card with
+            no checked motif has none yet.</p>
+        <h3>Rumor, conspiracy and subject</h3>
+        <p class="poll-note">Three short label sets from the study of rumor, read by the model from each story as its
+            tellers tell it, never as a judgment of whether it's true (not yet for what's told on the shows):</p>
+        <ul class="label-notes">
+            <li><b>Rumor</b>, by what drives it (Robert Knapp, 1944; Nicholas DiFonzo and Prashant Bordia, 2007):
+                {% for k, note in rumor_classes.items() if k != 'other' %}{{ shape_emoji.get(k, '') }} <b>{{ k }}</b>, {{ note }}{% if not loop.last %}; {% endif %}{% endfor %}.</li>
+            <li><b>Conspiracy</b>, by the scope of the secret plot it claims (Michael Barkun, 2003):
+                {% for k, note in conspiracy_scopes.items() if k != 'not a conspiracy' %}{{ shape_emoji.get(k, '') }} <b>{{ k }}</b>, {{ note }}{% if not loop.last %}; {% endif %}{% endfor %}.</li>
+            <li><b>Subject</b>: a broad family (crime and danger, health, celebrities, government…), our own list,
+                after the way urban-legend collections such as Jan Harold Brunvand's sort legends into chapters.</li>
+        </ul>
+        <h3>Wording and tellers</h3>
+        <p class="poll-note"><b>Told by</b> counts different accounts, not posts. <b>How they say it</b> runs from 📋
+            copied (the same words, pasted) to 🗣️ each in their own words; folklore is retold in people's own
+            words, while coordinated posting and copypasta are copied.</p>
+    </details>
 
-        <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter narratives">
+    {% if cards %}
+        <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter the catalog">
+            <span class="bar-group"><span class="bar-label">heard:</span>
+                {% for k, n in source_counts %}<button type="button" data-sources="{{ k|e }}" title="{{ sources[k].about|e }}">{{ sources[k].emoji }} {{ sources[k].name }} <b>{{ n }}</b></button>{% endfor %}</span>
+            {% if genre_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">genre:</span>
+                {% for g, n in genre_counts %}<button type="button" data-genres="{{ g|e }}" title="Filed under a motif of this genre in our motif index">{{ g|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+            <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">only:</span>
                 <button type="button" data-filter="politics">🏛️ politics</button>
-                {% if with_motifs %}<button type="button" data-filter="motifs" title="Only stories filed under a motif in our motif index">🧩 has a motif <b>{{ with_motifs }}</b></button>{% endif %}</span>
+                {% if with_motifs %}<button type="button" data-filter="hasmotif" title="Only what's filed under a checked motif in our motif index">🧩 has a motif <b>{{ with_motifs }}</b></button>{% endif %}
+                {% if seen_count %}<button type="button" data-filter="seen" title="Fact-checked rumors people in our social sample are telling or arguing over">💬 circulating <b>{{ seen_count }}</b></button>{% endif %}</span>
             {% if motif_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">motif:</span>
                 {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id|e }}" title="{{ m.id|e }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
@@ -82,105 +114,96 @@
             {% if scope_counts and preview %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">conspiracy:</span>
                 {% for k, n in scope_counts %}<button type="button" data-scope="{{ k|e }}" title="{{ conspiracy_scopes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
-            <span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">genre:</span>
-                {% for genre, n in genres %}<button type="button" data-genre="{{ genre|e }}">{{ genre_emoji.get(genre, '🧶') }} {{ genre|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+            {% if family_counts %}<span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">subject:</span>
+                {% for k, n in family_counts %}<button type="button" data-family="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
         </div>
 
         <div class="court-cards narrative-cards">
             {% for c in cards %}
-                <div class="story court-story narrative" data-politics="{{ (1 if c.politics else '')|e }}" data-genre="{{ c.genre|e }}" data-rumor="{{ (c.rumor_class or '')|e }}" data-scope="{{ (c.conspiracy or '')|e }}" data-days="{{ c.told_before|length + 1 }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
-                    <h4>{{ c.claim|e }}</h4>
-                    <p class="court-stages">{{ c.genre_emoji }} {{ c.genre|e }}{% if c.politics %} · <span style="color: {{ c.side_ink|e }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span>{% endif %}</p>
-                    {% if c.story_shape and (c.rumor_class or c.conspiracy or c.family) %}
-                        <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
-                            {% if c.rumor_class %}<span class="shape-chip" title="Rumor type, from Robert Knapp, “A Psychology of Rumor” (1944): wish, dread or wedge">{{ shape_emoji.get(c.rumor_class, '') }} {{ c.rumor_class }} rumor <span class="chip-src">Knapp</span></span>{% endif %}
-                            {% if c.conspiracy and preview %}<span class="shape-chip" title="Conspiracy type, from Michael Barkun, “A Culture of Conspiracy” (2003): event, systemic or superconspiracy">{{ shape_emoji.get(c.conspiracy, '') }} {{ c.conspiracy }} conspiracy <span class="chip-src">Barkun</span></span>{% endif %}
-                            {% if c.family %}<span class="shape-family" title="Subject: our own list, after the chapters of urban-legend collections"><span class="chip-src">subject</span> {{ c.family|e }}</span>{% endif %}
-                        </p>
-                    {% endif %}
-                    <div class="meters">
-                        <div class="meter" title="{{ c.people|e }} different people, {{ c.posts|e }} posts">
-                            <span class="meter-label">told by {{ c.people }} people</span>
+                <div class="story court-story narrative folk-{{ c.kind }}" data-politics="{{ (1 if c.politics else '')|e }}" data-sources="|{{ c.sources|join('|')|e }}|" data-genres="|{{ c.genres|join('|')|e }}|" data-rumor="{{ (c.rumor_class or '')|e }}" data-scope="{{ (c.conspiracy or '')|e }}" data-family="{{ (c.family or '')|e }}" data-seen="{{ (1 if c.seen and c.seen.people else '')|e }}" data-hasmotif="{{ (1 if c.motifs else '')|e }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
+                    <p class="folk-sources">{% for s in c.sources %}<span class="folk-source folk-from-{{ s }}" title="{{ sources[s].about|e }}">{{ sources[s].emoji }} {{ sources[s].name }}</span>{% endfor %}{% for g in c.genres %}<span class="folk-genre" title="Genre of its motifs in our motif index, given by a person">{{ g|e }}</span>{% endfor %}{% if c.kind == 'checks' %} <span class="court-when">{{ c.checker|e }} · {{ c.date }}</span>{% elif c.kind == 'shows' %} <span class="court-when">latest {{ c.date }}</span>{% endif %}</p>
+                    {% if c.kind == 'checks' %}
+                        <h4><a href="{{ c.url|e }}">{{ c.title|e }}</a></h4>
+                        <p class="narrative-claim" title="The claim checked, in the model's words">“{{ c.claim|e }}”</p>
+                        {{ shape(c) }}
+                        {{ motifs(c) }}
+                        {% if c.seen is not none %}
+                            {% if c.seen.people %}
+                                <p class="rumor-seen" title="People in our Bluesky and Mastodon sample (last {{ c.looked_hours|int }} hours) whose posts take up this claim, out of the {{ c.seen.checked|e }} closest posts the model read">💬 in our social sample: {% if c.seen.telling %}<b>{{ c.seen.telling }}</b> telling it{% endif %}{% if c.seen.telling and c.seen.arguing %}, {% endif %}{% if c.seen.arguing %}<b>{{ c.seen.arguing }}</b> arguing against it{% endif %}</p>
+                            {% else %}
+                                <p class="rumor-seen rumor-unseen" title="No post in our Bluesky and Mastodon sample (last {{ c.looked_hours|int }} hours) takes up this claim">not seen in our social sample</p>
+                            {% endif %}
+                        {% endif %}
+                    {% elif c.kind == 'shows' %}
+                        <h4>{{ c.claim|e }}</h4>
+                        <div class="card-section"><p class="section-label" title="Shows on which our model found this claim told this week, in its words">🎙️ Told on {{ c.shows|length }} show{{ '' if c.shows|length == 1 else 's' }}{% if c.callers %}, by {{ c.callers }} caller{{ '' if c.callers == 1 else 's' }}{% endif %}</p>
+                            <p class="folk-show-names">{% for s in c.shows %}<span class="show-chip" style="--chip: {{ s.ink|e }}">{{ s.name|e }}</span> {% endfor %}</p>
+                            {% if c.leans %}<p class="court-when" title="How many times it was told on shows of each lean (the shows' own lean, as on Shows and newsletters)">{{ c.tellings }} tellings: {% for k, n in c.leans|dictsort %}{{ {'left': '🫏', 'right': '🐘', 'center': '⚖️'}.get(k, '') }} {{ n }} {{ k }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
                         </div>
-                        <div class="meter" title="How much their posts share the same words: on average {{ (100 - c.variety_pct)|e }}% of the words in one version are in another. Folklore is retold in people's own words; copypasta is pasted">
-                            <span class="meter-bar"><span class="meter-end" title="the same words, copied">📋</span><span class="meter-end-word">copied</span>
-                                <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct|e }}%"></span></span>
-                                <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
+                        {{ motifs(c) }}
+                    {% else %}
+                        <h4>{{ c.claim|e }}</h4>
+                        {% if c.politics %}<p class="court-stages"><span style="color: {{ c.side_ink|e }}" title="{% if c.side_from == 'shares' %}From the lean (AllSides) of the outlets whose articles these posts share{% else %}Preview only: the model's unchecked guess{% endif %}">🏛️ {% if c.side and c.side != 'none' %}{{ {'left': 'left-wing', 'right': 'right-wing', 'both': 'both sides', 'center': 'center'}.get(c.side) }}{% if c.side_from == 'shares' %} (by what it shares){% else %} (model's guess){% endif %}{% else %}politics{% endif %}</span></p>{% endif %}
+                        {% if c.story_shape %}{{ shape(c) }}{% endif %}
+                        <div class="meters">
+                            <div class="meter" title="{{ c.people|e }} different people, {{ c.posts|e }} posts">
+                                <span class="meter-label">told by {{ c.people }} people</span>
+                            </div>
+                            <div class="meter" title="How much their posts share the same words: on average {{ (100 - c.variety_pct)|e }}% of the words in one version are in another. Folklore is retold in people's own words; copypasta is pasted">
+                                <span class="meter-bar"><span class="meter-end" title="the same words, copied">📋</span><span class="meter-end-word">copied</span>
+                                    <span class="meter-track variety-track"><span class="meter-dot" style="left: {{ c.variety_pct|e }}%"></span></span>
+                                    <span class="meter-end-word">own words</span><span class="meter-end" title="each in their own words">🗣️</span></span>
+                            </div>
                         </div>
-                    </div>
-                    {% if c.told_before %}
-                        <div class="card-section"><p class="section-label" title="The same narrative found again on other days: a language model compared each day's narratives with the days before">🧵 Told on {{ c.told_before|length + 1 }} days</p>
-                            <ul class="told-before">
-                                {% for d in c.told_before %}<li><b>{{ d.day }}</b>, by {{ d.people }} people: {{ d.claim|e }}</li>{% endfor %}
+                        {% if c.told_before %}
+                            <div class="card-section"><p class="section-label" title="The same narrative found again on other days: a language model compared each day's narratives with the days before">🧵 Told on {{ c.told_before|length + 1 }} days</p>
+                                <ul class="told-before">
+                                    {% for d in c.told_before %}<li><b>{{ d.day }}</b>, by {{ d.people }} people: {{ d.claim|e }}</li>{% endfor %}
+                                </ul></div>
+                        {% endif %}
+                        {{ motifs(c) }}
+                        {% with shown = c.bluesky %}{% include "bluesky_posts.html" %}{% endwith %}
+                        {% if c.factchecks %}
+                            <div class="card-section"><p class="section-label">🔎 Fact-checked</p>
+                            <ul class="story-checks" title="Fact-checkers who examined this claim">
+                                {% for p in c.factchecks %}<li><a href="{{ p.url|e }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
                             </ul></div>
-                    {% endif %}
-                    {% if c.motifs %}
-                        <div class="card-section"><p class="section-label" title="Recurring shapes this story is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
-                            {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
-                        </div>
-                    {% endif %}
-                    {% with shown = c.bluesky %}{% include "bluesky_posts.html" %}{% endwith %}
-                    {% if c.factchecks %}
-                        <div class="card-section"><p class="section-label">🔎 Fact-checked</p>
-                        <ul class="story-checks" title="Fact-checkers who examined this claim">
-                            {% for p in c.factchecks %}<li><a href="{{ p.url|e }}"><b>{{ p.source }}</b>: {{ p.title|e }}</a></li>{% endfor %}
-                        </ul></div>
-                    {% endif %}
-                    {% if c.articles %}
-                        <div class="card-section"><p class="section-label">📎 What they're sharing</p>
-                        <ul class="shared-links">
-                            {% for a in c.articles %}<li><a href="{{ a.url|e }}">{{ a.title|e }}</a> <span class="court-when">{{ a.outlet|e }}{% if a.shares > 1 %} · shared {{ a.shares }}×{% endif %}{% if a.story %} · in the story “{{ a.story|e }}”{% endif %}</span></li>{% endfor %}
-                        </ul></div>
-                    {% endif %}
-                    {% if c.story %}
-                        <div class="card-section"><p class="section-label">{% if c.story.relation == 'same event' %}📰 In the news{% else %}🔗 Same issue as{% endif %}</p>
-                        <p class="narrative-link">{{ c.story.label|e }}</p></div>
-                    {% endif %}
-                    {% if preview and c.examples %}
-                        <details class="court-more"><summary>versions (preview only)</summary>
-                            <ul class="court-headlines">{% for e in c.examples %}<li>{{ e|e }}</li>{% endfor %}</ul>
-                        </details>
+                        {% endif %}
+                        {% if c.articles %}
+                            <div class="card-section"><p class="section-label">📎 What they're sharing</p>
+                            <ul class="shared-links">
+                                {% for a in c.articles %}<li><a href="{{ a.url|e }}">{{ a.title|e }}</a> <span class="court-when">{{ a.outlet|e }}{% if a.shares > 1 %} · shared {{ a.shares }}×{% endif %}{% if a.story %} · in the story “{{ a.story|e }}”{% endif %}</span></li>{% endfor %}
+                            </ul></div>
+                        {% endif %}
+                        {% if c.story %}
+                            <div class="card-section"><p class="section-label">{% if c.story.relation == 'same event' %}📰 In the news{% else %}🔗 Same issue as{% endif %}</p>
+                            <p class="narrative-link">{{ c.story.label|e }}</p></div>
+                        {% endif %}
+                        {% if preview and c.examples %}
+                            <details class="court-more"><summary>versions (preview only)</summary>
+                                <ul class="court-headlines">{% for e in c.examples %}<li>{{ e|e }}</li>{% endfor %}</ul>
+                            </details>
+                        {% endif %}
                     {% endif %}
                 </div>
             {% endfor %}
         </div>
-
-        {% if voters %}
-            <h3 id="focus-group">🎙️ What voters say in focus groups</h3>
-            <p class="poll-note">From <a href="https://www.thebulwark.com/s/focus-group">The Focus Group</a>, The Bulwark's
-                podcast that plays recorded focus groups of voters: the stories and beliefs the voters tell, in our words
-                (a local language model's reading of the episode, voters only, not the hosts), with the motifs each is filed
-                under in the BND Motif Index. A motif here that also turns up above is heard both online and in the room.</p>
-            {% for ep in voters %}
-                <details class="focus-episode"{% if loop.first %} open{% endif %}>
-                    <summary><b>{{ ep.title|e }}</b> <span class="court-when">{{ ep.date }} · {{ ep.claims|length }} claims</span></summary>
-                    <ul class="focus-claims">
-                        {% for c in ep.claims %}<li>{{ c.claim|e }}{% if c.side %} <span class="court-when">({{ c.side|e }})</span>{% endif %}
-                            {% for m in c.motifs %}<a class="motif-chip small" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
-                    </ul>
-                    <p class="court-when"><a href="{{ ep.url|e }}">Listen to the episode</a></p>
-                </details>
-            {% endfor %}
-        {% endif %}
-        {% if copies %}
-            <h3>Copypasta</h3>
-            <p class="poll-note">The same words posted by many accounts: {% for c in copies %}{{ c.people }} accounts{% if not loop.last %}, {% endif %}{% endfor %}.</p>
-            {% if preview %}<ul class="court-headlines">{% for c in copies %}<li>{{ c.people }} accounts: {{ c.example|e }}</li>{% endfor %}</ul>{% endif %}
-        {% endif %}
         <script>
-            // The motif line's link opens the label guide it points to
-            document.addEventListener('click', (ev) => {
-                if (ev.target.closest('.open-labels')) document.getElementById('labels').open = true;  // (kept for old links)
-            });
             (function () {
                 const box = document.querySelector('.narrative-cards');
                 const all = [...box.querySelectorAll('.narrative')];
-                const repack = packColumns(box, all, 360);
-                const only = new Set();  // 🏛️ politics, 🧩 has a motif
-                const pick = {genre: null, rumor: null, scope: null, motif: null};  // one choice per row, tapped again to clear
-                // A card holds several motifs ('|M004|M005|'): it matches a motif it holds; the other rows match exactly
-                const holds = (c, k, v) => k === 'motif' ? c.dataset.motif.includes(`|${v}|`) : c.dataset[k] === v;
+                const repack = packColumns(box, all, 340);
+                const only = new Set();  // 🏛️ politics, 🧩 has a motif, 💬 circulating
+                const pick = {sources: null, genres: null, motif: null, rumor: null, scope: null, family: null};  // one per row, tapped again to clear
+                // A card can have several sources, genres and motifs ('|M004|M005|'): it matches one it holds; the other rows match exactly
+                const holds = (c, k, v) => ['sources', 'genres', 'motif'].includes(k) ? c.dataset[k].includes(`|${v}|`) : c.dataset[k] === v;
+                const show = () => repack(all.filter((c) => [...only].every((k) => c.dataset[k])
+                    && Object.entries(pick).every(([k, v]) => !v || holds(c, k, v))));
+                const choose = (key, value) => {
+                    pick[key] = pick[key] === value ? null : value;
+                    document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
+                };
                 document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
                     const b = ev.target.closest('button');
                     if (!b) return;
@@ -189,16 +212,43 @@
                     }
                     else {
                         const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
-                        pick[key] = pick[key] === b.dataset[key] ? null : b.dataset[key];
-                        document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
+                        choose(key, b.dataset[key]);
                     }
-                    repack(all.filter((c) => (!only.has('politics') || c.dataset.politics) && (!only.has('motifs') || c.dataset.motif)
-                        && Object.entries(pick).every(([k, v]) => !v || holds(c, k, v))));
+                    show();
                 });
+                // folklore.html#checks, #shows or #posts opens on that source (the old Rumors page sends #checks)
+                const from = location.hash.slice(1);
+                if (['checks', 'shows', 'posts'].includes(from) && document.querySelector(`.narrative-tools button[data-sources="${from}"]`)) {
+                    choose('sources', from);
+                    show();
+                }
             })();
         </script>
     {% else %}
-        <p class="poll-note">No report yet: the first one is written overnight.</p>
+        <p class="stage-empty">🦗 Nothing to show yet: the first report is written overnight, and the shows and fact-checks are read every hour.</p>
+    {% endif %}
+
+    {% if voters %}
+        <h3 id="focus-group">🎙️ What voters say in focus groups</h3>
+        <p class="poll-note">From <a href="https://www.thebulwark.com/s/focus-group">The Focus Group</a>, The Bulwark's
+            podcast that plays recorded focus groups of voters: the stories and beliefs the voters tell, in our words
+            (a local language model's reading of the episode, voters only, not the hosts), with the motifs each is filed
+            under in the BND Motif Index. A motif here that also turns up above is heard both in the room and elsewhere.</p>
+        {% for ep in voters %}
+            <details class="focus-episode"{% if loop.first %} open{% endif %}>
+                <summary><b>{{ ep.title|e }}</b> <span class="court-when">{{ ep.date }} · {{ ep.claims|length }} claims</span></summary>
+                <ul class="focus-claims">
+                    {% for c in ep.claims %}<li>{{ c.claim|e }}{% if c.side %} <span class="court-when">({{ c.side|e }})</span>{% endif %}
+                        {% for m in c.motifs %}<a class="motif-chip small" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
+                </ul>
+                <p class="court-when"><a href="{{ ep.url|e }}">Listen to the episode</a></p>
+            </details>
+        {% endfor %}
+    {% endif %}
+    {% if copies %}
+        <h3>Copypasta</h3>
+        <p class="poll-note">The same words posted by many accounts: {% for c in copies %}{{ c.people }} accounts{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+        {% if preview %}<ul class="court-headlines">{% for c in copies %}<li>{{ c.people }} accounts: {{ c.example|e }}</li>{% endfor %}</ul>{% endif %}
     {% endif %}
 {% if cards|selectattr('bluesky')|list %}{{ bsky_script }}{% endif %}
 {% endblock %}

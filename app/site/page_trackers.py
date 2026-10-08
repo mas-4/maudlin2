@@ -31,10 +31,8 @@ ON_AIR = [
 
 # Online: what people retell and what fact-checkers examine, read for their shapes
 FOLKLORE = [
-    {'href': 'folklore.html', 'emoji': '🧶', 'name': 'Folklore',
-     'about': 'Rumors, legends and sayings people retell in their own words, from Bluesky and Mastodon.'},
-    {'href': 'rumors.html', 'emoji': '🔎', 'name': 'Rumors',
-     'about': "Rumors the fact-checkers examined, read for their shape: what drives them, what plot they claim."},
+    {'href': 'folklore.html', 'emoji': '🧶', 'name': 'Folklore and rumors',
+     'about': "What's told: retold online, told on the shows, and examined by fact-checkers, read for its shape."},
     {'href': 'motifs.html', 'emoji': '🧩', 'name': 'Motif index',
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
     {'href': 'motif-map.html', 'emoji': '🕸️', 'name': 'Motif map',

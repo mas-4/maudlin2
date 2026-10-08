@@ -37,7 +37,7 @@ PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emoti
          'sagas.html', 'names.html', 'radio.html', 'tv.html']
 NAV_LINKS = ['stories.html', 'sagas.html',
              'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
-             'tv.html', 'radio.html', 'beyond.html', 'folklore.html', 'rumors.html', 'motifs.html', 'motif-map.html',
+             'tv.html', 'radio.html', 'beyond.html', 'folklore.html', 'motifs.html', 'motif-map.html',
              'glossary.html', 'methods.html', 'feed.xml']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
@@ -596,8 +596,10 @@ def test_folklore_withheld_claims_never_show(monkeypatch, tmp_path):
     assert 'A misread claim' not in (tmp_path / 'folklore.html').read_text()
 
 
-def test_rumors_page_lists_labeled_fact_checks(monkeypatch, tmp_path):
-    from app.site import page_rumors as pr
+def test_folklore_page_lists_labeled_fact_checks(monkeypatch, tmp_path):
+    """The Rumors page was folded into Folklore and rumors (Oct 8): its fact-checks are cards there, and its address
+    sends people to them"""
+    from app.site import page_folklore as pn
     items = [{'url': 'https://snopes.example/1', 'title': 'Did a <bison> herd save a hiker?', 'source': 'Snopes',
               'published': '2026-10-03T12:00:00+00:00', 'summary': ''},
              {'url': 'https://snopes.example/2', 'title': 'Unlabeled', 'source': 'Snopes',
@@ -605,17 +607,57 @@ def test_rumors_page_lists_labeled_fact_checks(monkeypatch, tmp_path):
     labels = {'https://snopes.example/1': {'claim': 'A bison herd protected a hiker', 'genre': 'contemporary legend',
                                            'rumor_class': 'wish', 'conspiracy': 'not a conspiracy',
                                            'family': 'animals and nature'}}
-    monkeypatch.setattr(pr.factchecks, '_items', lambda days: items)
-    monkeypatch.setattr(pr.factchecks, 'label_all', lambda items: labels)
-    monkeypatch.setattr(pr.circulation, 'load', lambda: {'hours': 72, 'claims': {
+    monkeypatch.setattr(pn, 'latest_report', lambda: None)
+    monkeypatch.setattr(pn.factchecks, '_items', lambda days: items)
+    monkeypatch.setattr(pn.factchecks, 'label_all', lambda items: labels)
+    monkeypatch.setattr(pn.circulation, 'load', lambda: {'hours': 72, 'claims': {
         'https://snopes.example/1': {'telling': 3, 'arguing': 1, 'people': 4, 'checked': 9}}})
     monkeypatch.setattr(Config, 'build', str(tmp_path))
-    pr.RumorsPage().generate()
-    html = (tmp_path / 'rumors.html').read_text()
+    pn.FolklorePage().generate()
+    html = (tmp_path / 'folklore.html').read_text()
     assert 'Did a &lt;bison&gt; herd save a hiker?' in html and '🌈 wish rumor' in html
     assert 'conspiracy</span>' not in html and 'Unlabeled' not in html  # no plot claimed; not labeled yet
     assert '<b>3</b> telling it, <b>1</b> arguing against it' in html
-    assert 'These are rumors, not facts.' in html
+    assert 'These are rumors, not facts.' in html and 'data-sources="|checks|"' in html
+    assert 'contemporary legend' not in html  # the labeler's old built-in genre is gone; genres are the person's
+    assert 'url=folklore.html#checks' in (tmp_path / 'rumors.html').read_text()
+
+
+def test_folklore_page_shows_claims_told_on_the_shows_with_the_persons_genres(monkeypatch, tmp_path):
+    """What's told on two or more shows is a card, with which shows and how many callers, never the quotes; its
+    genres are those of its checked motifs. A fact-check a narrative's card links isn't a card of its own"""
+    from app.site import page_folklore as pn
+    from app.analysis import show_claims
+    monkeypatch.setattr(show_claims, 'RETOLD', str(tmp_path / 'retold.json'))
+    show_claims.write_json(show_claims.RETOLD, [{
+        'claim': 'Democrats <rig> mail ballots', 'shows': ['Clay Travis & Buck Sexton', 'The Benny Show'], 'tellings': 3,
+        'leans': {'right': 3}, 'speakers': {'host': 1, 'caller': 2}, 'date': '2026-10-07', 'ref': 'https://ep/1',
+        'told': [{'show': 'Clay Travis & Buck Sexton', 'url': 'https://ep/1', 'at': 0, 'speaker': 'caller',
+                  'claim': 'x', 'quote': 'SECRET CALLER WORDS'}]}])
+    claims = [{'claim': t} for t in ('Democrats <rig> mail ballots', 'b')]
+    seen = [pn.motif_index.key(c['claim']) for c in claims]
+    index = {'next': 9, 'claims': {seen[0]: ['M007']}, 'entries': {
+        'M007': {'id': 'M007', 'name': 'the stolen election', 'claims': claims, 'done': seen, 'facets': {'genre': 'Plots'}}}}
+    monkeypatch.setattr(pn.motif_index, 'load', lambda: index)
+    report = {'posts': 10, 'authors': 10, 'hours': 24, 'made': '2026-10-05T04:00', 'found': [
+        {'authors': 12, 'posts': 14, 'variety': 0.9, 'kind': 'told', 'examples': ['x'],
+         'label': {'retold': True, 'narrative': 'The pilot was a false flag'},
+         'factchecks': [{'source': 'NewsGuard', 'title': 'False flag', 'url': 'https://n.example/1'}]}]}
+    monkeypatch.setattr(pn, 'latest_report', lambda: report)
+    monkeypatch.setattr(pn.factchecks, '_items', lambda days: [
+        {'url': 'https://n.example/1', 'title': 'Was the pilot a false flag?', 'source': 'NewsGuard',
+         'published': '2026-10-03T12:00:00+00:00', 'summary': ''}])
+    monkeypatch.setattr(pn.factchecks, 'label_all', lambda items: {'https://n.example/1': {'claim': 'The pilot was a false flag'}})
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setattr(Config, 'debug', False)
+    pn.FolklorePage().generate()
+    html = (tmp_path / 'folklore.html').read_text()
+    assert 'Democrats &lt;rig&gt; mail ballots' in html and '🎙️ Told on 2 shows, by 2 callers' in html
+    assert 'The Benny Show</span>' in html and 'SECRET CALLER WORDS' not in html
+    assert 'data-genres="|Plots|"' in html and 'class="folk-genre"' in html and 'data-genres="Plots"' in html
+    assert 'data-sources="|posts|checks|"' in html  # the narrative, checked
+    assert 'Was the pilot a false flag?' not in html  # linked from the narrative's card, not a card again
+    assert '🔎 <b>0</b> more fact-checked' in html
 
 
 def test_beyond_page_tags_pieces_and_lists_every_source(monkeypatch, tmp_path):

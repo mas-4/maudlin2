@@ -98,3 +98,39 @@
     margin: 0 0 0 0.3em;
     box-shadow: 1px 1px 0 #1f1f2e;
 }
+
+/* Folklore and rumors, one catalog (Oct 8): where each card was heard, as its pop color and a chip on top (posts are
+   folklore purple, shows teal, fact-checks checking yellow, as in the style book), and the person's genres beside it */
+.court-cards .court-story.folk-posts { --pop: #8a5cff; }
+.court-cards .court-story.folk-shows { --pop: #00c2a8; }
+.court-cards .court-story.folk-checks { --pop: #ffc400; }
+
+.folk-sources {
+    margin: 0 0 0.35em;
+    line-height: 1.9;
+}
+
+.folk-source, .folk-genre {
+    display: inline-block;
+    white-space: nowrap;
+    font: 700 0.78em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.05em 0.6em;
+    margin: 0 0.3em 0 0;
+}
+
+.folk-from-posts { background: color-mix(in srgb, #8a5cff 18%, white); }
+.folk-from-shows { background: color-mix(in srgb, #00c2a8 18%, white); }
+.folk-from-checks { background: color-mix(in srgb, #ffc400 25%, white); }
+
+.folk-sources .folk-genre {
+    background: #fff;
+    border-style: dashed;
+}
+
+.folk-show-names {
+    margin: 0 0 0.3em;
+    line-height: 1.9;
+}

@@ -54,7 +54,8 @@ def pytest_sessionstart(session):
     motif_retriever.MIN_FILINGS = 10 ** 6
     # What's read from the shows' transcripts lives there too
     from app.analysis import show_claims
-    show_claims.STORE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-shows-'), 'show_claims.json')
+    shows = tempfile.mkdtemp(prefix='maudlin-test-shows-')
+    show_claims.STORE, show_claims.RETOLD = os.path.join(shows, 'show_claims.json'), os.path.join(shows, 'show_claims_retold.json')
     # Story pages kept for good, and where ended sagas point: in the shared data folder too
     from app.site import page_story
     page_story.ARCHIVE = tempfile.mkdtemp(prefix='maudlin-test-story-archive-')

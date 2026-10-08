@@ -4,6 +4,15 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-08
+- **Folklore and Rumors are one page.** Folklore and rumors (folklore.html) is now one catalog of what's told, from
+  three places, each marked on its card and filterable: retold online (Bluesky and Mastodon, as before), told on the
+  shows (a claim told on two or more of the shows we transcribe, or by two or more callers: which shows, how many
+  callers, the tellings by the shows' lean; never the quotes or who called), and fact-checked (the old Rumors page;
+  a check already linked from a narrative's card isn't repeated). The model's built-in genre (conspiracy theory,
+  contemporary legend…) is gone from the cards: a card's genres are now those a person gave the motifs it's filed
+  under. rumors.html sends visitors to the fact-checks.
+
 ## 2026-10-07
 - **Claims from the shows we transcribe.** What people post (Bluesky and Mastodon) leans left, so the folklore page
   heard little of what's told on the right. Every podcast, call-in show and video show we transcribe (about 400

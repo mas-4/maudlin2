@@ -1,7 +1,12 @@
-"""Folklore (work in progress, #142): the folklore-shaped narratives in what people say on Bluesky and Mastodon, from the
-latest nightly report (app/narratives.py). A card per retold narrative: the claim in the model's words, how many
-people tell it and how varied their wording is, its genre and Motif-Index motif, and the news story it rides
-on.
+"""Folklore and rumors (work in progress, #142, #153): one catalog of what's told, from three sources (Oct 8; until
+then Folklore and Rumors were two pages). A card per claim:
+- retold online: the folklore-shaped narratives in what people say on Bluesky and Mastodon, from the latest nightly
+  report (app/narratives.py), with how many people tell it, how varied their wording is, and the news it rides on;
+- told on the shows: claims told on two or more of the podcasts, call-in and video shows we transcribe
+  (app/analysis/show_claims.py), with which shows;
+- fact-checked: the rumors fact-checkers examined in the last few weeks (app/analysis/factchecks.py); the verdict
+  is always the fact-checker's own, behind its link. A check already linked from a narrative's card isn't repeated.
+Each card carries the motifs it's filed under in our motif index, and the person's genres of those motifs.
 
 People's own posts are never shown on the published site, only the model's summary of what they share: even without
 handles, a quoted post can be searched back to its author. Local preview builds (debug) show a few versions, so the
@@ -14,7 +19,7 @@ from datetime import date
 
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app import bluesky_examples
-from app.analysis import accusations, motif_index, narrative_threads
+from app.analysis import accusations, circulation, factchecks, motif_index, narrative_threads, show_claims
 from app.site.common import TemplateHandler
 from app.utils import Config, get_logger
 from app.utils.store import read_json
@@ -22,46 +27,10 @@ from app.utils.store import read_json
 logger = get_logger(__name__)
 
 FOLDER = os.path.join(Config.data, 'narratives')
-GENRE_EMOJI = {'rumor': '🗣️', 'contemporary legend': '🏙️', 'conspiracy theory': '🕸️', 'folk belief': '🔮',
-               'prophecy or prediction': '🔭', 'cautionary tale': '⚠️', 'atrocity story': '🩸', 'trickster tale': '🦊',
-               'joke formula or meme': '🤡', 'proverb or catchphrase': '📜', 'personal testimony': '🙋',
-               'news report or shared reaction': '📣'}
 # Fewer tellers than this aren't shown: at five to nine people (half of what the finder keeps) most groups are a
 # handful reacting to the same news, not a story people retell. The floor grows with the sample, 1 in PEOPLE_SHARE.
 MIN_PEOPLE = 10
 PEOPLE_SHARE = 2500
-# Plain glosses, in our words, of what each Motif-Index chapter covers (shown on hover and in "What the labels mean")
-CHAPTER_NOTES = {
-    'A': 'creators, gods, and how the world began or will end', 'B': 'talking, helpful or monstrous animals',
-    'C': 'forbidden acts and what happens to people who break the rule',
-    'D': 'transformations, enchantments, magic objects and powers', 'E': 'ghosts, the soul, returns from the dead',
-    'F': 'wonders, other worlds, extraordinary beings and places', 'G': 'monsters, witches and other menaces',
-    'H': 'trials of identity, wit, strength or worth', 'J': 'cleverness and stupidity, good and bad judgment',
-    'K': 'tricks, disguises, frauds, hidden plots and false appearances',
-    'L': 'the lowly raised up, the proud brought down', 'M': 'oaths, bargains, curses and prophecies',
-    'N': 'luck, accidents and fate', 'P': 'rulers, classes, families, trades and customs',
-    'Q': 'deeds paid back, rewarded or punished', 'R': 'captures, rescues and escapes',
-    'S': 'cruel relatives, murders, abandonment and sacrifice', 'T': 'love, marriage, seduction and birth',
-    'U': 'how life and the world work', 'V': 'worship, saints, religious belief and practice',
-    'W': 'virtues and vices', 'X': 'jokes about kinds of people, absurd lies',
-    'Z': 'formulas, symbols, numbers and other patterns',
-}
-GENRE_NOTES = {
-    'rumor': 'an unconfirmed claim passed along as news ("I heard that…")',
-    'contemporary legend': 'a story told as true and recent, often about a friend of a friend (the folklorists\' '
-                           'name for an "urban legend")',
-    'conspiracy theory': 'a hidden group said to be secretly behind events',
-    'folk belief': 'something held as known without evidence, often about health, luck or how the world works',
-    'prophecy or prediction': "what's going to happen",
-    'cautionary tale': 'a story told as a warning',
-    'atrocity story': "a story of shocking cruelty by the other side, told to show what they're like",
-    'trickster tale': 'a clever figure outwitting the powerful',
-    'joke formula or meme': 'a joke shape people refill with new content',
-    'proverb or catchphrase': 'a stock saying or slogan repeated as wisdom',
-    'personal testimony': 'many people telling the same kind of experience as their own',
-    'news report or shared reaction': 'many people passing on, or reacting to, the same news; not folklore in '
-                                      'itself, kept for comparison',
-}
 NOT_STORIES = {'news report or shared reaction', 'none: a shared topic, not a retold narrative'}  # no cast or motif
 SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#8a8f98'}
 
@@ -77,6 +46,15 @@ def withheld() -> set[str]:
 
 FOCUS_EPISODES = 4  # Focus Group episodes shown, the latest
 MOTIF_CHIPS = 12  # motif filters at most
+CHECK_DAYS = 30  # fact-checks this recent
+# Where a card's claim was heard: the source chips on each card and the filter row
+SOURCES = {'posts': {'emoji': '🧶', 'name': 'retold online', 'about': 'Told by many people in their own words on Bluesky and Mastodon'},
+           'shows': {'emoji': '🎙️', 'name': 'on the shows', 'about': 'Told on two or more of the podcasts, call-in and video shows we transcribe'},
+           'checks': {'emoji': '🔎', 'name': 'fact-checked', 'about': 'Examined by a fact-checker in the last 30 days'}}
+MOVED = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Moved</title>'
+         '<link rel="canonical" href="{to}"><meta http-equiv="refresh" content="0; url={to}"></head>'
+         '<body><p>Rumors are now part of <a href="{to}">Folklore and rumors</a>.</p></body></html>')
+SHOW_INK = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#b8b8c8'}  # as the front page's shows (page_headlines)
 
 
 def motif_counts(cards: list[dict]) -> list[tuple[dict, int]]:
@@ -94,9 +72,69 @@ def motif_cards(index: dict, claim: str) -> list[dict]:
     """The motif-index entries a claim is filed under, for its card: id, name and how many claims each holds. Only
     motifs a person has verified, and only if they saw this claim in it (motif_index.public)."""
     k = motif_index.key(claim) if claim else None
-    return [{'id': e['id'], 'name': e['name'], 'count': len(motif_index.public_claims(e)), 'note': motif_index.public_note(e)}
+    return [{'id': e['id'], 'name': e['name'], 'count': len(motif_index.public_claims(e)), 'note': motif_index.public_note(e),
+             'genre': motif_index.genre_of(e)}
             for e in (motif_index.entries_of(index, claim) if claim else [])
             if motif_index.public(e) and k in set(e.get('done') or [])]
+
+
+def genres(motifs: list[dict]) -> list[str]:
+    """A card's genres: those the person gave the motifs it's filed under (a genre belongs to a motif, not a claim)"""
+    return sorted({m['genre'] for m in motifs if m.get('genre')}, key=str.lower)
+
+
+def counted(cards: list[dict], key: str) -> list[tuple[str, int]]:
+    """(value, cards with it) for a filter row, most first; `key` a card's single value or its list of values"""
+    return Counter(v for c in cards for v in (c[key] if isinstance(c.get(key), list) else [c.get(key)]) if v).most_common()
+
+
+def checked_cards(index: dict, linked: set[str]) -> list[dict]:
+    """A card per fact-check from the last CHECK_DAYS that names a claim, newest first, except those already linked
+    from a narrative's card (`linked`, their urls): the claim in the model's words, its shape, and whether people in
+    our social sample are telling it (app/analysis/circulation.py)"""
+    try:
+        items = factchecks._items(CHECK_DAYS)
+        labels = factchecks.label_all(items)
+    except Exception as e:  # noqa: BLE001 - e.g. no side_item table on a database that hasn't migrated
+        logger.warning("Folklore: no fact-checks (%s)", e)
+        return []
+    looked = circulation.load()
+    seen = looked.get('claims', {})
+    cards = []
+    for item in items:
+        label = labels.get(item['url'])
+        if not label or not label.get('claim') or item['url'] in linked:
+            continue  # not labeled yet, a roundup that checks no single claim, or shown on its narrative's card
+        claim = motif_index.corrected(label['claim'], index)  # a person's correction of the summary, if any
+        motifs = motif_cards(index, claim)
+        cards.append({'kind': 'checks', 'sources': ['checks'], 'claim': claim, 'title': item['title'], 'url': item['url'],
+                      'checker': item['source'], 'date': item['published'][:10], 'politics': bool(label.get('politics')),
+                      'rumor_class': label.get('rumor_class') if label.get('rumor_class') != 'other' else None,
+                      'conspiracy': (label.get('conspiracy') if label.get('conspiracy') != 'not a conspiracy' else None),
+                      'family': label.get('family') if label.get('family') != 'none' else None,
+                      'seen': seen.get(item['url']) if looked else None, 'looked_hours': looked.get('hours') if looked else None,
+                      'motifs': motifs, 'genres': genres(motifs)})
+    return cards
+
+
+def show_cards(index: dict, screen) -> list[dict]:
+    """A card per claim told on two or more shows (or by two callers), as the hourly run last grouped them
+    (show_claims.kept_retold): the claim in our words, which shows told it, and how many callers; never the quotes
+    or who the callers were"""
+    cards = []
+    for r in show_claims.kept_retold():
+        told = motif_index.corrected(r['claim'], index)
+        shown = screen.shown(told, show_claims.SOURCE)
+        if not shown:
+            continue
+        leans = {s['show']: s.get('lean') for s in r.get('told', [])}
+        motifs = motif_cards(index, told)
+        cards.append({'kind': 'shows', 'sources': ['shows'], 'claim': shown, 'date': r['date'], 'politics': True,
+                      'shows': [{'name': s, 'ink': SHOW_INK.get(leans.get(s) or '', '#b8b8c8')} for s in r['shows']],
+                      'tellings': r['tellings'], 'callers': (r.get('speakers') or {}).get('caller', 0),
+                      'leans': {k: n for k, n in (r.get('leans') or {}).items() if k},
+                      'rumor_class': None, 'conspiracy': None, 'family': None, 'motifs': motifs, 'genres': genres(motifs)})
+    return cards
 
 
 def told_before(threads: dict, report: str, claim: str, index: dict) -> list[dict]:
@@ -144,12 +182,11 @@ class FolklorePage:
                     if not shown:
                         continue
                     named = shown == claim  # else its cast, posts and earlier tellings may name the person too
+                    motifs = motif_cards(index, claim)
                     cards.append({
+                        'kind': 'posts', 'sources': ['posts'] + (['checks'] if g.get('factchecks') else []),
                         'claim': shown, 'people': g['authors'], 'posts': g['posts'],
                         'variety': g['variety'], 'variety_pct': round(100 * g['variety']),
-                        'genre': label.get('genre', ''), 'genre_emoji': GENRE_EMOJI.get(label.get('genre'), '🧶'),
-                        'chapter': '' if label.get('motif_chapter') in (None, '', 'none') else label['motif_chapter'],
-                        'motif': label.get('motif', ''),
                         'politics': bool(label.get('politics')),
                         # Shown on the site only from evidence (the lean of the outlets its posts share); the
                         # model's guess, unchecked, only in previews
@@ -162,7 +199,7 @@ class FolklorePage:
                         'family': label.get('family') if label.get('family') != 'none' else None,
                         'story': g.get('story'), 'articles': g.get('articles') or [],
                         'factchecks': g.get('factchecks') or [],
-                        'motifs': motif_cards(index, motif_index.corrected(label.get('narrative') or '', index)),
+                        'motifs': motifs, 'genres': genres(motifs),
                         'examples': g['examples'][:4] if Config.debug and named else [],
                         'bluesky': bluesky_examples.examples(g.get('uris'), bsky) if named else [],
                         'told_before': [{**b, 'claim': c} for b in told_before(threads, report.get('file', ''), label.get('narrative') or '', index)
@@ -181,17 +218,25 @@ class FolklorePage:
                     and (shown := screen.shown(told, 'Focus Group'))]
             if said:
                 voters.append({'title': ep['title'], 'date': ep['date'], 'url': url, 'claims': said})
+        # Then what's told on the shows, and the fact-checks no narrative's card links already
+        cards += show_cards(index, screen)
+        cards += checked_cards(index, {p['url'] for c in cards for p in c.get('factchecks', [])})
         screen.save()
+        looked = circulation.load()
         self.template.write({
-            'title': 'Folklore', 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
-            'report': report, 'cards': cards, 'copies': copies, 'voters': voters,
-            'floor': floor, 'fewer': fewer, 'genres': Counter(c['genre'] for c in cards).most_common(), 'genre_emoji': GENRE_EMOJI,
-            'genre_notes': GENRE_NOTES, 'chapter_notes': CHAPTER_NOTES,
+            'title': 'Folklore and rumors', 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
+            'report': report, 'cards': cards, 'copies': copies, 'voters': voters, 'floor': floor, 'fewer': fewer,
+            'sources': SOURCES, 'source_counts': counted(cards, 'sources'), 'kinds': Counter(c['kind'] for c in cards),
+            'genre_counts': counted(cards, 'genres'), 'family_counts': counted(cards, 'family'),
+            'class_counts': counted(cards, 'rumor_class'), 'scope_counts': counted(cards, 'conspiracy'),
             'rumor_classes': RUMOR_CLASSES, 'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
-            'class_counts': Counter(c['rumor_class'] for c in cards if c['rumor_class']).most_common(),
-            'scope_counts': Counter(c['conspiracy'] for c in cards if c['conspiracy']).most_common(),
-            'chapters_seen': sorted({c['chapter'] for c in cards if c['chapter']}),
             'motif_counts': motif_counts(cards), 'with_motifs': sum(bool(c['motifs']) for c in cards),
+            'looked': looked, 'seen_count': sum(1 for c in cards if (c.get('seen') or {}).get('people')),
+            'check_days': CHECK_DAYS, 'checkers': sorted({c['checker'] for c in cards if c['kind'] == 'checks'}),
             'preview': Config.debug,
         })
-        logger.info("...%d narratives, %d copypasta groups", len(cards), len(copies))
+        # The Rumors page was folded in here (Oct 8): its address opens this one on the fact-checks
+        with open(os.path.join(Config.build, 'rumors.html'), 'w', encoding='utf-8') as f:
+            f.write(MOVED.format(to='folklore.html#checks'))
+        logger.info("...%d cards (%s), %d copypasta groups", len(cards),
+                    ', '.join(f'{n} {k}' for k, n in Counter(c['kind'] for c in cards).items()), len(copies))

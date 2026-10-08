@@ -21,6 +21,7 @@ from app.utils.store import read_json, write_json
 logger = get_logger(__name__)
 
 STORE = os.path.join(Config.data, 'show_claims.json')  # episode url -> its claims, filled chunk by chunk
+RETOLD = os.path.join(Config.data, 'show_claims_retold.json')  # retold(), kept each run for the folklore page
 MODEL = 'gemma4:26b'
 CHUNK = 6000  # characters of transcript a call
 DAYS = 7  # episodes published this recently
@@ -113,17 +114,24 @@ def read_part(ep: dict, chunk: dict) -> tuple[list[dict], list[dict]]:
 
 def extract(budget: float | None = None) -> dict:
     """Read the episodes not read yet, newest first, chunk by chunk, saving as it goes, for at most `budget` seconds
-    (the next run carries on)"""
+    (the next run carries on); then keep what's retold for the folklore page"""
     store = load()
     if llm.backend() is None:
         return store
+    calls = read_episodes(store, budget)
+    if calls or not os.path.exists(RETOLD):
+        write_json(RETOLD, retold(store))
+    return store
+
+
+def read_episodes(store: dict, budget: float | None) -> int:
     started, calls = time.time(), 0
     for ep in episodes():
         entry = store.setdefault(ep['url'], {k: ep[k] for k in ('source', 'show', 'lean', 'title', 'date')} | {'read': 0, 'claims': []})
         while entry['read'] < len(ep['chunks']):
             if budget is not None and time.time() - started > budget:
                 logger.info("Show claims: %d parts read this run; more next run", calls)
-                return store
+                return calls
             kept, dropped = read_part(ep, ep['chunks'][entry['read']])
             entry['claims'] += kept
             entry.setdefault('dropped', []).extend(dropped)
@@ -134,7 +142,12 @@ def extract(budget: float | None = None) -> dict:
     if calls:
         logger.info("Show claims: %d parts read; %d claims from %d episodes", calls,
                     sum(len(e['claims']) for e in store.values()), len(store))
-    return store
+    return calls
+
+
+def kept_retold() -> list[dict]:
+    """What the last run found retold (retold()), without embedding anything: for the site build"""
+    return read_json(RETOLD, [])
 
 
 MIN_SHOWS = 2  # a claim is retold once this many shows tell it (or this many callers, to any shows)
