@@ -48,10 +48,25 @@ def digests() -> dict[str, str]:
     return out
 
 
+def wait_for(deploy: dict, states: tuple, headers: dict, minutes: float, what: str) -> dict:
+    """Poll a Netlify deploy until it reaches one of `states`, for at most `minutes`"""
+    import time
+    deadline = time.time() + minutes * 60
+    while deploy.get('state') not in states:
+        if deploy.get('state') == 'error':
+            raise RuntimeError(f"netlify deploy failed: {deploy.get('error_message')}")
+        if time.time() >= deadline:
+            raise RuntimeError(f"netlify deploy not {what} after {minutes:g} minutes ({deploy.get('state')})")
+        time.sleep(2)
+        deploy = rq.get(f"{NETLIFY_API}/deploys/{deploy['id']}", headers=headers, timeout=60).json()
+    return deploy
+
+
 def digest_deploy(token: str) -> dict:
     """Netlify's file-digest deploy: the list of every file's SHA-1 goes up, and only the files Netlify doesn't have
     yet are uploaded (Oct 7: the zip deploy sent the whole site every hour; with story pages kept for good, it would
-    have grown past 100 MB a run). Raises on any failure."""
+    have grown past 100 MB a run). Preparing and finishing each get their own 5 minutes, so slow uploads don't eat
+    the wait after them (Oct 8 00:11: ~24 MB of uploads used up one shared 5 minutes). Raises on any failure."""
     import time
     from urllib.parse import quote
     headers = {'Authorization': f'Bearer {token}'}
@@ -59,18 +74,12 @@ def digest_deploy(token: str) -> dict:
     response = rq.post(f'{NETLIFY_API}/sites/{NETLIFY_SITE}/deploys', json={'files': files, 'async': True},
                        headers=headers, timeout=120)
     response.raise_for_status()
-    deploy = response.json()
-    deadline = time.time() + 300
-    while deploy.get('state') not in ('prepared', 'uploading', 'uploaded', 'ready') and time.time() < deadline:
-        if deploy.get('state') == 'error':
-            raise RuntimeError(f"netlify deploy failed: {deploy.get('error_message')}")
-        time.sleep(2)
-        deploy = rq.get(f"{NETLIFY_API}/deploys/{deploy['id']}", headers=headers, timeout=60).json()
+    deploy = wait_for(response.json(), ('prepared', 'uploading', 'uploaded', 'ready'), headers, 5, 'prepared')
     required = set(deploy.get('required') or [])
     by_sha = {}
     for path, sha in files.items():
         by_sha.setdefault(sha, path)  # one copy of each content is enough
-    sent = 0
+    sent, started = 0, time.time()
     for sha in required:
         path = by_sha[sha]
         with open(os.path.join(Config.build, path.lstrip('/')), 'rb') as f:
@@ -79,15 +88,10 @@ def digest_deploy(token: str) -> dict:
                    headers={**headers, 'Content-Type': 'application/octet-stream'})
         r.raise_for_status()
         sent += len(body)
-    while deploy.get('state') != 'ready' and time.time() < deadline:
-        if deploy.get('state') == 'error':
-            raise RuntimeError(f"netlify deploy failed: {deploy.get('error_message')}")
-        time.sleep(2)
-        deploy = rq.get(f"{NETLIFY_API}/deploys/{deploy['id']}", headers=headers, timeout=60).json()
-    if deploy.get('state') != 'ready':
-        raise RuntimeError(f"netlify deploy not ready after 5 minutes ({deploy.get('state')})")
-    logger.info("Deployed %s: %d files, %d new or changed (%.1f MB sent): %s", deploy.get('id'), len(files),
-                len(required), sent / 1e6, deploy.get('ssl_url') or deploy.get('url'))
+    uploading = time.time() - started
+    deploy = wait_for(deploy, ('ready',), headers, 5, 'ready')
+    logger.info("Deployed %s: %d files, %d new or changed (%.1f MB sent in %.0f s): %s", deploy.get('id'), len(files),
+                len(required), sent / 1e6, uploading, deploy.get('ssl_url') or deploy.get('url'))
     return deploy
 
 

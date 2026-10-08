@@ -50,3 +50,36 @@ def test_a_failed_digest_deploy_falls_back_to_the_zip(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy.rq, 'post', lambda url, data=None, timeout=None, headers=None: zipped.append(headers['Content-Type']) or Resp({'id': 'z'}))
     deploy.publish_to_netlify()
     assert zipped == ['application/zip']
+
+
+def test_slow_uploads_dont_use_up_the_wait_after_them(tmp_path, monkeypatch):
+    """Oct 8 00:11: uploads took most of one shared 5 minutes, so the deploy was given up while Netlify finished"""
+    site(tmp_path, monkeypatch)
+    clock = [0.0]
+    monkeypatch.setattr('time.time', lambda: clock[0])
+    states = iter(['processing', 'processing', 'ready'])
+
+    def put(url, data=None, timeout=None, headers=None):
+        clock[0] += 240  # each upload takes 4 minutes
+        return Resp()
+    monkeypatch.setattr(deploy.rq, 'post', lambda url, json=None, headers=None, timeout=None: Resp(
+        {'id': 'd1', 'state': 'prepared', 'required': [hashlib.sha1(b'front').hexdigest(),
+                                                       hashlib.sha1(b'old story').hexdigest()]}))
+    monkeypatch.setattr(deploy.rq, 'put', put)
+    monkeypatch.setattr(deploy.rq, 'get', lambda url, headers=None, timeout=None: Resp({'id': 'd1', 'state': next(states)}))
+    assert deploy.digest_deploy('token')['state'] == 'ready'
+
+
+def test_a_deploy_that_never_finishes_gives_up(tmp_path, monkeypatch):
+    site(tmp_path, monkeypatch)
+    clock = [0.0]
+    monkeypatch.setattr('time.time', lambda: clock[0])
+    monkeypatch.setattr('time.sleep', lambda s: clock.__setitem__(0, clock[0] + s))
+    monkeypatch.setattr(deploy.rq, 'post', lambda url, json=None, headers=None, timeout=None: Resp({'id': 'd1', 'state': 'prepared', 'required': []}))
+    monkeypatch.setattr(deploy.rq, 'get', lambda url, headers=None, timeout=None: Resp({'id': 'd1', 'state': 'processing'}))
+    try:
+        deploy.digest_deploy('token')
+    except RuntimeError as e:
+        assert 'not ready after 5 minutes' in str(e)
+    else:
+        raise AssertionError('should have given up')
