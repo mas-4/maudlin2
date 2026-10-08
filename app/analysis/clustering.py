@@ -120,7 +120,10 @@ OLLAMA_URL = 'http://localhost:11434'
 def _story_cache(path: str = None):
     import sqlite3
     from app.utils import Config
-    con = sqlite3.connect(path or os.path.join(Config.data, 'story_embeddings.sqlite'))
+    # Several processes embed at once (the hourly run, the reranker teaching, experiments): wait for another's write
+    # rather than fail, which sent embed() to its fallback model mid-run (Oct 8: vectors of two sizes in one run)
+    con = sqlite3.connect(path or os.path.join(Config.data, 'story_embeddings.sqlite'), timeout=120)
+    con.execute('PRAGMA journal_mode=WAL')
     con.execute('CREATE TABLE IF NOT EXISTS vec (key TEXT PRIMARY KEY, model TEXT, used REAL, v BLOB)')
     return con
 
