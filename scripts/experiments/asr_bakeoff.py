@@ -82,10 +82,11 @@ def parakeet(audio: np.ndarray) -> str:
     proc, model = _parakeet
     out = []
     for i in range(0, len(audio), CHUNK * 16000):
-        inputs = proc(audio[i:i + CHUNK * 16000], sampling_rate=16000, return_tensors='pt').to('cuda', torch.float16)
+        inputs = proc([audio[i:i + CHUNK * 16000]], sampling_rate=16000).to('cuda', dtype=torch.float16)
         with torch.no_grad():
-            ids = model.generate(**inputs)
-        out.append(proc.batch_decode(ids, skip_special_tokens=True)[0])
+            got = model.generate(**inputs, return_dict_in_generate=True)
+        text = proc.decode(got.sequences, skip_special_tokens=True)
+        out.append(text[0] if isinstance(text, list) else text)
     return ' '.join(out)
 
 
