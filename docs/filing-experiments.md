@@ -149,13 +149,20 @@ the directions come from 120 headlines from each day since the earliest claim, b
 today's snapshot, 40 and 80 directions out. Production (motif_signals.latest_headlines) has the same snapshot and
 follows the verdict.
 
-### E9 The reranker taught the person's taste (Oct 8) — running
+### E9 The reranker taught the person's taste (Oct 8) — a modest gain; worth putting in production
 `scripts/experiments/e9_reranker_tune.py`. Qwen3-Reranker-0.6B's top 6 of 28 layers (94M of 596M weights) trained on
 2,311 pairs: the person's 752 decisions on the model's filings (591 kept, 161 removed), their confirmed claims' other
 motifs (314), and for each confirmed claim the 3 motifs today's shortlist ranks highest that aren't theirs (1,245 hard
 negatives). Three folds by claim, two passes each, on the CPU at low priority (the GPU is Gemma's: about 5 s a batch
 of 8, under 2 hours in all); each fold tested on the decisions of claims it never saw. Measured: the reranker's AUC
 alone on those decisions before and after, and the confidence model's with the taught one in its place.
+
+Result (1 h 40 min on the CPU): the reranker alone, on the 752 decisions of claims each fold never saw, AUC 0.765 ->
+**0.796**. In the confidence model (the same 752 pairs, its own folds by claim): 0.887 -> 0.890, and the filings it
+can pass at 95% precision 66% -> 76% (the sure line 90% -> 85%); with both rerankers side by side, 0.889 and 66%. The
+AUC gain is small and the 95% line is a coarse step, so the 76% is fragile; but the reranker learned something of the
+person's reading that the other signals don't carry. To put it in production: train it once on all their decisions,
+keep the top layers it changed (94M weights), retrain weekly as decisions grow.
 
 ## In progress and planned (Oct 8)
 
