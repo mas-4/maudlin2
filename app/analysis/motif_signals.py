@@ -281,7 +281,7 @@ class Signals:
             free = torch.cuda.mem_get_info()[0] if torch.cuda.is_available() else 0
             device = os.environ.get('MOTIF_RERANK_DEVICE') or ('cuda' if free > 3e9 else 'cpu')  # Gemma may hold the GPU
             tok = AutoTokenizer.from_pretrained(RERANKER, padding_side='left')
-            model = AutoModelForCausalLM.from_pretrained(RERANKER, torch_dtype=torch.float16 if device == 'cuda' else torch.float32).to(device).eval()
+            model = AutoModelForCausalLM.from_pretrained(RERANKER, dtype=torch.float16 if device == 'cuda' else torch.float32).to(device).eval()
             self._reranker = (tok, model, device, tok.convert_tokens_to_ids('yes'), tok.convert_tokens_to_ids('no'))
             logger.info("Reranker on %s", device)
         tok, model, device, yes, no = self._reranker
