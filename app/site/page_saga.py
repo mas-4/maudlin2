@@ -42,7 +42,7 @@ class SagaPages:
         snaps = snapshots(ids)
         recent = page_story.recent_stories()
         tv, radio, folk = page_story.tv_by_story(), page_story.radio_by_story(), page_story.folklore_by_story(recent)
-        with_page = {st['id'] for st in recent}  # parts that have a story page of their own
+        with_page = {st['id'] for st in recent} | page_story.archived_ids()  # parts with a story page of their own
         for saga in found:
             parts = saga['parts']
             for i, p in enumerate(parts):
@@ -80,4 +80,15 @@ class SagaPages:
                 'channels': sorted({s['name'] for s in spots}),
                 'retellings': [{**f, 'part': p['label'], 'color': p['color']} for p in parts for f in p['folklore']],
             }, os.path.join(Config.build, page_name(saga['id'])))
+        # A saga that ended (absorbed into another, or left with one part) points on to where it went, so a shared
+        # link keeps working; one whose end wasn't recorded (before Oct 7) to the saga tracker
+        made = {saga['id'] for saga in found}
+        for sid, to in sagas.ended().items():
+            if sid in made:
+                continue
+            target = page_name(to['saga']) if to.get('saga') else page_story.page_name(to['story']) if to.get('story') else 'sagas.html'
+            with open(os.path.join(Config.build, page_name(sid)), 'w', encoding='utf-8') as f:
+                f.write(page_story.REDIRECT.format(to=target).replace(
+                    f'This story is now part of <a href="{target}">this one</a>',
+                    f'This saga has ended; it continues <a href="{target}">here</a>'))
         logger.info("...%d saga pages", len(found))

@@ -411,6 +411,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
                 for absorbed in known[1:]:
                     s.query(Story).filter(Story.saga_id == absorbed).update({'saga_id': saga.id})
                     s.query(Saga).filter(Saga.id == absorbed).delete()
+                    record_end(absorbed, {'saga': saga.id})
             else:
                 saga = Saga(first_seen=now, last_seen=now)
                 s.add(saga)
@@ -496,12 +497,29 @@ def recheck(dry_run: bool = False) -> list[dict]:
             s.flush()
             for saga_id in {d['saga'] for d in out}:
                 if s.query(Story).filter(Story.saga_id == saga_id).count() < 2:
+                    left = s.query(Story.id).filter(Story.saga_id == saga_id).scalar()
                     s.query(Story).filter(Story.saga_id == saga_id).update({'saga_id': None})
                     s.query(Saga).filter(Saga.id == saga_id).delete()
+                    record_end(saga_id, {'story': left} if left else {})
             s.commit()
     for d in out:
         logger.info("Saga recheck: '%s' loses story %s (%s)", d['name'], d['story'], d['titles'][0])
     return out
+
+
+ENDED = os.path.join(Config.data, 'sagas_ended.json')  # saga id -> where its page now points ({'saga': id} or {'story': id})
+
+
+def record_end(saga_id: int, to: dict):
+    """A saga gone (absorbed into another, or left with one part): its page redirects there (app/site/page_saga.py),
+    so a shared link keeps working"""
+    ended = read_json(ENDED, {})
+    ended[str(saga_id)] = to
+    write_json(ENDED, ended, indent=1)
+
+
+def ended() -> dict[int, dict]:
+    return {int(k): v for k, v in read_json(ENDED, {}).items()}
 
 
 def history() -> list[dict]:

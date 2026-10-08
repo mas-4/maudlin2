@@ -55,6 +55,11 @@ def pytest_sessionstart(session):
     # What's read from the shows' transcripts lives there too
     from app.analysis import show_claims
     show_claims.STORE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-shows-'), 'show_claims.json')
+    # Story pages kept for good, and where ended sagas point: in the shared data folder too
+    from app.site import page_story
+    page_story.ARCHIVE = tempfile.mkdtemp(prefix='maudlin-test-story-archive-')
+    from app.analysis import sagas
+    sagas.ENDED = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-sagas-'), 'sagas_ended.json')
 
 
 @pytest.fixture(scope='session')

@@ -758,3 +758,64 @@ def test_cards_say_when_people_retell_the_story(monkeypatch):
     retold = page.context['retold_of']
     assert list(retold) == [3] and retold[3]['people'] == 42
     assert [m['name'] for m in retold[3]['motifs']] == ['The sleeper agent', 'False flag operation']
+
+
+def test_story_pages_are_kept_and_old_ones_published_as_they_were(monkeypatch, tmp_path):
+    """A production build keeps each story page it makes; a later build, the story no longer recent, publishes the kept
+    page unchanged; a merged story's address still redirects (Oct 7: pages vanished a week after their story)"""
+    from app.site import page_story
+    build, archive = tmp_path / 'build', tmp_path / 'archive'
+    build.mkdir()
+    monkeypatch.setattr(Config, 'build', str(build))
+    monkeypatch.setattr(Config, 'debug', False)
+    monkeypatch.setattr(page_story, 'ARCHIVE', str(archive))
+    story = {'id': 70, 'label': 'Dubai flight attack', 'first': dt(2026, 10, 5, 12), 'last': dt(2026, 10, 5, 20), 'saga': None,
+             'headlines': [{'title': 'Co-pilot attacked captain', 'url': 'https://a.example/1', 'outlet': 'AP', 'bias': 0,
+                            'first': dt(2026, 10, 5, 12), 'last': dt(2026, 10, 5, 20)}],
+             'snapshots': [{'at': dt(2026, 10, 5, 12), 'outlets': 3}]}
+    for name, value in (('tv_by_story', dict), ('radio_by_story', dict), ('folklore_by_story', lambda stories: {}),
+                        ('voters_by_motif', lambda told: [])):
+        monkeypatch.setattr(page_story, name, value)
+    from app.analysis import factchecks
+    monkeypatch.setattr(factchecks, 'for_story_pages', lambda stories: {})
+    monkeypatch.setattr(page_story, 'recent_stories', lambda: [story])
+    monkeypatch.setattr(page_story, 'story_merges', dict)
+    page_story.StoryPages().generate()
+    first = (build / 'story-70.html').read_text()
+    assert (archive / 'story-70.html').read_text() == first
+    for f in build.iterdir():
+        f.unlink()  # the next build starts empty
+    monkeypatch.setattr(page_story, 'recent_stories', list)  # a week on: no longer recent
+    monkeypatch.setattr(page_story, 'story_merges', lambda: {71: 70})  # and an old story merged into it
+    page_story.StoryPages().generate()
+    assert (build / 'story-70.html').read_text() == first and 'url=story-70.html' in (build / 'story-71.html').read_text()
+
+
+def test_a_preview_never_keeps_story_pages(monkeypatch, tmp_path):
+    from app.site import page_story
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setattr(Config, 'debug', True)
+    monkeypatch.setattr(page_story, 'ARCHIVE', str(tmp_path / 'archive'))
+    monkeypatch.setattr(page_story, 'recent_stories', list)
+    for name, value in (('tv_by_story', dict), ('radio_by_story', dict), ('folklore_by_story', lambda stories: {})):
+        monkeypatch.setattr(page_story, name, value)
+    page_story.StoryPages().generate()
+    assert not (tmp_path / 'archive').exists()
+
+
+def test_an_ended_saga_points_on(monkeypatch, tmp_path):
+    from app.analysis import sagas
+    from app.site import page_saga, page_story
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setattr(sagas, 'ENDED', str(tmp_path / 'ended.json'))
+    monkeypatch.setattr(sagas, 'history', list)
+    monkeypatch.setattr(page_story, 'recent_stories', list)
+    for name, value in (('tv_by_story', dict), ('radio_by_story', dict), ('folklore_by_story', lambda stories: {})):
+        monkeypatch.setattr(page_story, name, value)
+    sagas.record_end(17, {'story': 136})
+    sagas.record_end(3, {'saga': 1})
+    sagas.record_end(2, {})
+    page_saga.SagaPages().generate()
+    assert 'url=story-136.html' in (tmp_path / 'saga-17.html').read_text()
+    assert 'url=saga-1.html' in (tmp_path / 'saga-3.html').read_text() and 'This saga has ended' in (tmp_path / 'saga-3.html').read_text()
+    assert 'url=sagas.html' in (tmp_path / 'saga-2.html').read_text()

@@ -3,6 +3,7 @@ place: every outlet's headline, how coverage grew and faded, the saga it belongs
 on TV, the radio newscasts that carried it, and the folklore told around it. The front page's cards link here."""
 import glob
 import os
+import shutil
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta as td
@@ -19,7 +20,18 @@ from app.utils import Config, get_logger
 from app.utils.store import read_json
 
 logger = get_logger(__name__)
-DAYS = 7  # stories seen this recently get a page
+DAYS = 7  # stories seen this recently get a page made fresh each build
+# ...and every page a production build makes is kept here, so a story's page stays at its address for good: once the
+# story is older than DAYS its last version is copied into each build instead of made again (Oct 7: pages vanished a
+# week after their story, and with them shared links and the daily editions' links)
+ARCHIVE = os.path.join(Config.data, 'archive', 'stories')
+
+
+def archived_ids() -> set[int]:
+    try:
+        return {int(n[6:-5]) for n in os.listdir(ARCHIVE) if n.startswith('story-') and n.endswith('.html')}
+    except OSError:
+        return set()
 LEAN_WORD = {-2: 'left', -1: 'leans left', 0: 'center', 1: 'leans right', 2: 'right'}
 
 
@@ -410,10 +422,20 @@ class StoryPages:
                 'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
             }, os.path.join(Config.build, page_name(st['id'])))
+            if not Config.debug:  # a preview's stale data never becomes a story's kept page
+                os.makedirs(ARCHIVE, exist_ok=True)
+                shutil.copyfile(os.path.join(Config.build, page_name(st['id'])), os.path.join(ARCHIVE, page_name(st['id'])))
         # A story merged into another (its return under new headlines): its old address goes to the one kept
-        have = {st['id'] for st in stories}
+        have, kept_pages = {st['id'] for st in stories}, archived_ids()
         for gone, kept in story_merges().items():
-            if kept in have and gone not in have:
+            if (kept in have or kept in kept_pages) and gone not in have:
                 with open(os.path.join(Config.build, page_name(gone)), 'w', encoding='utf-8') as f:
                     f.write(REDIRECT.format(to=page_name(kept)))
-        logger.info("...%d story pages", len(stories))
+        # Older stories: their kept pages, as they last were
+        old = 0
+        for sid in kept_pages:
+            path = os.path.join(Config.build, page_name(sid))
+            if not os.path.exists(path):
+                shutil.copyfile(os.path.join(ARCHIVE, page_name(sid)), path)
+                old += 1
+        logger.info("...%d story pages, %d older ones kept as they were", len(stories), old)

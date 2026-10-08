@@ -162,6 +162,8 @@ def merge_stories(keep: int, gone: int, why: str = ''):
             saga = a.saga_id
             a.saga_id = None
             s.query(Saga).filter(Saga.id == saga).delete()
+            from app.analysis.sagas import record_end
+            record_end(saga, {'story': keep})
         s.commit()
     done = read_json(MERGES, {})
     done[str(gone)] = record
