@@ -19,3 +19,4 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/**" = ["SIM115"]  # a test reading a file it just wrote
+"scripts/experiments/**" = ["SIM115", "B007"]  # one-off notebook scripts (docs/filing-experiments.md): quick reads and writes
