@@ -170,7 +170,7 @@ SOURCES = [
     _source('pod_pbd', 'PBD Podcast (podcast)', 'podcast', 'right', 'https://anchor.fm/s/2fa50a94/podcast/rss'),
     _source('pod_rogan', 'The Joe Rogan Experience (podcast)', 'podcast', 'crossover',
             'https://feeds.megaphone.fm/GLT1412515089'),
-    # Oct 8, the person: Ted Cruz, Charlie Sykes, David Frum, Tim Dillon, Danny Jones and Hasan Piker (their official
+    # Oct 8, the person: Ted Cruz, Charlie Sykes, David Frum, Tim Dillon, Danny Jones, Hasan Piker and Victor Davis Hanson (their official
     # feeds, from Apple's directory)
     _source('pod_cruz', 'Verdict with Ted Cruz', 'podcast', 'right',
             'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
@@ -181,6 +181,8 @@ SOURCES = [
     _source('pod_dillon', 'The Tim Dillon Show', 'podcast', 'crossover', 'https://audioboom.com/channels/5093219.rss'),
     _source('pod_dannyjones', 'Danny Jones Podcast', 'podcast', 'crossover', 'https://feeds.megaphone.fm/QCD2752074976'),
     _source('pod_hasan', 'HasanAbi (podcast)', 'podcast', 'left', 'https://anchor.fm/s/112e3ccdc/podcast/rss'),
+    _source('pod_vdh', 'Victor Davis Hanson: In His Own Words', 'podcast', 'right',
+            'https://feeds.megaphone.fm/THEDAILYSIGNAL2043100319'),  # The Victor Davis Hanson Show's own feed stopped Oct 2025
     _source('pod_theo', 'This Past Weekend w/ Theo Von', 'podcast', 'crossover',
             'https://feeds.megaphone.fm/thispastweekend'),
     _source('pod_flagrant', 'Flagrant (podcast)', 'podcast', 'crossover', 'https://feeds.megaphone.fm/APPI6857213837'),
