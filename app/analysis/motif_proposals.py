@@ -118,7 +118,8 @@ def still_holds(p: dict, index: dict) -> bool:
     if k in ('relate', 'merge'):
         pair = sorted([a['a'], a['b']])
         return live(a['a']) and live(a['b']) and pair not in index.get('related', []) \
-            and not (k == 'merge' and pair in index.get('not_same', []))
+            and not (k == 'merge' and pair in index.get('not_same', [])) \
+            and not (k == 'relate' and mi.resting(entries, a['a'], a['b']))  # a rests-on link covers related
     if k == 'group':
         return live(a['id']) and a['group'] in index.get('groups', {}) and a['group'] not in mi.groups_of(entries[a['id']])
     if k == 'genre':  # still without a genre, and the genre still there

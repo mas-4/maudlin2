@@ -124,6 +124,7 @@ def load() -> dict:
 
 
 def save(index: dict):
+    drop_related_resting(index)
     write_json(INDEX, index, indent=1)
     from app.analysis import curation_db  # every state kept, to go back to (Oct 8)
     with open(INDEX) as f:
@@ -994,6 +995,22 @@ def reject(claim: str, eid: str):
 def parents_of(entry: dict) -> list[str]:
     """Its parents (entries saved with a single 'parent' before Oct 5 afternoon read as a list of one)"""
     return list(entry.get('parents') or ([entry['parent']] if entry.get('parent') else []))
+
+
+def resting(entries: dict, a: str, b: str) -> bool:
+    """One of the two rests on the other"""
+    return b in parents_of(entries.get(a, {})) or a in parents_of(entries.get(b, {}))
+
+
+def drop_related_resting(index: dict) -> int:
+    """A rests-on link says they belong together: no related link besides it (the person, Oct 8: 'every rests on
+    shouldn't need a relate'). Kept so at every save, whatever made the pair (a new rests-on, a merge, a proposal)"""
+    entries = index.get('entries', {})
+    links = index.get('related', [])
+    kept = [p for p in links if not resting(entries, p[0], p[1])]
+    if len(kept) != len(links):
+        index['related'] = kept
+    return len(links) - len(kept)
 
 
 def genre_of(entry: dict) -> str | None:

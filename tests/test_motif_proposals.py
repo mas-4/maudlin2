@@ -291,3 +291,19 @@ def test_genres_are_proposed_from_the_persons_examples(tmp_path, monkeypatch):
     assert mp.still_holds(p, mi.load())
     mi.set_facet('M003', 'genre', 'Theories')  # given a genre meanwhile: no longer holds
     assert not mp.still_holds(p, mi.load())
+
+
+def test_a_rests_on_link_needs_no_related_one(tmp_path, monkeypatch):
+    """The person, Oct 8: every rests on shouldn't need a relate"""
+    index_with(tmp_path, monkeypatch)
+    mi.relate('M002', 'M001')
+    assert ['M001', 'M002'] in mi.load()['related']
+    mi.set_parent('M002', 'M001')  # Empty suit rests on Politicians' empty promises: the related link goes
+    assert ['M001', 'M002'] not in mi.load()['related']
+    mi.relate('M001', 'M002')  # relating them again adds nothing: the rests-on covers it
+    assert ['M001', 'M002'] not in mi.load()['related']
+    mi.relate('M003', 'M001')  # a pair without one is related as before
+    assert ['M001', 'M003'] in mi.load()['related']
+    store = {}
+    mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'x')
+    assert not mp.still_holds(next(iter(store.values())), mi.load())
