@@ -61,7 +61,7 @@ SOURCES = [
     _source('megyn', 'The Megyn Kelly Show', 'podcast', 'right', 'https://feeds.simplecast.com/RV1USAfC', True),
     _source('erickson', 'Erick Erickson', 'newsletter', 'right', 'https://ewerickson.substack.com/feed', True),
     _source('foxrundown', 'Fox News Rundown', 'podcast', 'right', 'https://feeds.megaphone.fm/FOXM1880458659', True),
-    _source('yt_hasan', 'Hasan Piker', 'video', 'left', YOUTUBE + 'UCnI_h3e6b5jGLfly2SY57SA', True),
+    _source('yt_hasan', 'Hasan Piker', 'video', 'left', YOUTUBE + 'UCtoaZpBnrd0lhycxYJ4MNOQ', True),
     # YouTube channel ids checked Oct 8 against each channel's handle page (six had gone quiet: moved channels)
     _source('yt_destiny', 'Destiny', 'video', 'left', YOUTUBE + 'UC554eY5jNUfDq3yDOJYirOQ', True),
     _source('yt_vaush', 'Vaush', 'video', 'left', YOUTUBE + 'UCdUD6racxisHiSX9iWFcuug', True),
@@ -170,13 +170,17 @@ SOURCES = [
     _source('pod_pbd', 'PBD Podcast (podcast)', 'podcast', 'right', 'https://anchor.fm/s/2fa50a94/podcast/rss'),
     _source('pod_rogan', 'The Joe Rogan Experience (podcast)', 'podcast', 'crossover',
             'https://feeds.megaphone.fm/GLT1412515089'),
-    # Oct 8, the person: Ted Cruz, Charlie Sykes and David Frum (their official feeds, from Apple's directory)
+    # Oct 8, the person: Ted Cruz, Charlie Sykes, David Frum, Tim Dillon, Danny Jones and Hasan Piker (their official
+    # feeds, from Apple's directory)
     _source('pod_cruz', 'Verdict with Ted Cruz', 'podcast', 'right',
             'https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/'
             '2bee9419-43de-46ce-8996-af2a01167517/84cf551f-a33b-41d8-b112-af2a01167541/podcast.rss', refresh=BIG_FEED),
     _source('pod_sykes', 'To the Contrary with Charlie Sykes', 'podcast', 'left',
             'https://feeds.acast.com/public/shows/67a407e5340a5590cd2953ad'),
     _source('pod_frum', 'The David Frum Show', 'podcast', 'left', 'https://feeds.megaphone.fm/thedavidfrumshow'),
+    _source('pod_dillon', 'The Tim Dillon Show', 'podcast', 'crossover', 'https://audioboom.com/channels/5093219.rss'),
+    _source('pod_dannyjones', 'Danny Jones Podcast', 'podcast', 'crossover', 'https://feeds.megaphone.fm/QCD2752074976'),
+    _source('pod_hasan', 'HasanAbi (podcast)', 'podcast', 'left', 'https://anchor.fm/s/112e3ccdc/podcast/rss'),
     _source('pod_theo', 'This Past Weekend w/ Theo Von', 'podcast', 'crossover',
             'https://feeds.megaphone.fm/thispastweekend'),
     _source('pod_flagrant', 'Flagrant (podcast)', 'podcast', 'crossover', 'https://feeds.megaphone.fm/APPI6857213837'),
