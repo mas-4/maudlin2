@@ -5,8 +5,10 @@ Trained on the person's own decisions in the curation log: a filing they ticked 
 (✕, unfile, moved to another motif, 'not this motif') is removed. Each (claim, motif) pair is described by the
 filing shortlist's likeness measures (motif_retriever.FACTS, the claim held out of its motif), the shortlist's score
 for the motif and how it ranks among all motifs for this claim, how many motifs the claim is in, where the claim
-came from, and whether a person has curated the motif. A logistic regression weighs them (train(), daily, seconds);
-score() gives each unchecked filing a chance it would be kept."""
+came from. A logistic regression weighs them (train(), daily, seconds); score() gives each unchecked filing a chance
+it would be kept. Only filings in the person's own motifs (those they've marked done) are scored or learned from: a
+motif the model made and nobody has shaped is no measure of anything (Oct 8: a claim scored 100% in the motif the
+model had just named from it)."""
 import json
 import os
 from collections import defaultdict
@@ -27,7 +29,7 @@ CURATION_LOG = os.path.join(Config.data, 'validation', 'curation_log.jsonl')
 SOURCES = ['narrative', 'Focus Group']  # anything else is a fact-checker; what's retold on the shows counts as what's
 # retold online (4 decisions on its own on Oct 8: a weight of its own learned 'always kept' from them)
 SAME_AS = {'shows': 'narrative'}
-FEATURES = mr.FACTS + ['score', 'rank', 'margin', 'motifs of the claim', 'curated motif'] + \
+FEATURES = mr.FACTS + ['score', 'rank', 'margin', 'motifs of the claim'] + \
     [f'from {s}' for s in SOURCES]
 # Never 'sure', whatever the fit: a filing in a motif the model made for this claim alone (alike by birth: whether
 # that motif should be is another question), and claims from a source with too few of the person's decisions to
@@ -91,10 +93,9 @@ class Scorer:
         out = []
         for eid in ids:
             n = self.at[eid]
-            e = self.entries[n]
             others = np.delete(score, n)
             out.append(list(F[n]) + [score[n], np.log1p(rank[n]), score[n] - (others.max() if len(others) else 0.0),
-                                     len(self.motifs_of.get(mi.key(claim), ())), float(bool(e.get('done')))]
+                                     len(self.motifs_of.get(mi.key(claim), ()))]
                        + [float(SAME_AS.get(source, source) == s) for s in SOURCES])
         return np.array(out)
 
@@ -117,7 +118,7 @@ def labeled(index: dict) -> list[tuple[str, str, str, bool]]:
                         text.setdefault(mi.key(step['claim']), step['claim'])
     except (OSError, ValueError):
         pass
-    live = {e['id'] for e in mi.live(index) if e['claims']}
+    live = {e['id'] for e in mi.live(index) if e['claims'] and yours(e)}
     return [(text[k], eid, source.get(k, ''), kept) for (k, eid), kept in decisions().items() if eid in live and k in text]
 
 
@@ -190,6 +191,11 @@ def model() -> dict | None:
     return m
 
 
+def yours(entry: dict) -> bool:
+    """A motif the person has shaped: marked done (every motif a person made is; the model's start out not done)"""
+    return bool(entry.get('done'))
+
+
 def tested_sources(index: dict) -> set[str]:
     """Sources (SOURCES, 'shows', or a fact-checker's name as 'checker') with MIN_TESTED decisions of the person's"""
     from collections import Counter
@@ -220,6 +226,8 @@ def score(index: dict | None = None, m: dict | None = None) -> dict[tuple[str, s
     coef = np.array([m['weights'][f] for f in FEATURES])
     todo = defaultdict(list)
     for e in scorer.entries:
+        if not yours(e):
+            continue
         for c in e['claims']:
             if not c.get('checked'):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])

@@ -14,6 +14,9 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   first, and the filings over that line can be passed in one step, except a filing in a motif made for that claim
   alone, or from a source with fewer than 30 of the person's decisions (the shows, for now). Not used on the public
   site: what's public is still only what the person has checked.
+  Later the same morning, on the person's word: only filings in their own motifs (marked done) get a fit or are
+  learned from; a motif the model made and nobody has shaped measures nothing (a claim had scored 100% in the motif
+  just named from it). Retrained so: AUC 0.82, sure from 95%, where 96% of passes were kept.
 - **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
   own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
   of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead

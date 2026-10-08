@@ -465,8 +465,8 @@ def filing_fits() -> dict:
 
 
 def check_queue() -> list[dict]:
-    """Every filing nobody has checked, each with its fit (the chance the person keeps it), the claims whose least
-    likely filing is likeliest first, so the sure ones come first and the doubtful ones last"""
+    """Every filing nobody has checked, each with its fit (the chance the person keeps it; only in their own motifs),
+    the claims whose least likely filing is likeliest first, so the sure ones come first and the doubtful ones last"""
     from app.analysis import filing_confidence as fc, motif_index as mi
     items = mi.to_check()
     fits = filing_fits()
@@ -477,10 +477,12 @@ def check_queue() -> list[dict]:
         x['can_be_sure'] = fc.can_be_sure(index, x['claim'], x['id'], x.get('source', ''), tested)
     if not fits:
         return items[:40]  # the old order: biggest motifs first
+    # a claim's place: its least likely filing in your motifs; one only in the model's own motifs (no fit) goes last
     least = {}
     for x in items:
-        least[x['claim']] = min(least.get(x['claim'], 1.0), x['fit'] if x['fit'] is not None else 0.0)
-    return sorted(items, key=lambda x: (-least[x['claim']], x['claim'], -(x['fit'] or 0)))
+        if x['fit'] is not None:
+            least[x['claim']] = min(least.get(x['claim'], 1.0), x['fit'])
+    return sorted(items, key=lambda x: (-least.get(x['claim'], -1.0), x['claim'], -(x['fit'] or 0)))
 
 
 def workbench_queue(kind: str):
