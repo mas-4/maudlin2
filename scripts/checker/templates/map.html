@@ -37,6 +37,12 @@ body.related-focus .link.related { display: none; } body.related-focus .link.rel
 .node.far { opacity: .07; } .link.far { opacity: .04; }
 body.tree-mode .node.tree-off, body.tree-mode .link.tree-off { display: none; } body.tree-mode .map-blob, body.tree-mode .map-glabel { display: none; }
 body.tree-mode .node text.lbl-off { display: inline; }
+/* group bubbles (🫧): a closed group as one bubble, its motifs hidden until it's opened */
+.node.in-bubble, .link.in-bubble { display: none; }
+.map-bubble { cursor: pointer; } .map-bubble circle { stroke-width: 3px; } .map-bubble.open circle { fill-opacity: .06; stroke-dasharray: 6 4; }
+.map-bubble text { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; paint-order: stroke; stroke: #fffdf6; stroke-width: 4px; pointer-events: none; }
+.map-bubble.dz-target circle { stroke-dasharray: 3 2; stroke-width: 5px; }
+.node.bubble-dim { opacity: .25; } .node.bubble-mate text.lbl-off { display: inline; }
 body.focusing .map-blob { opacity: .05; } body.focusing .map-glabel { opacity: .25; }
 .map-drop { border: 2px dashed #1f1f2e; border-radius: 999px; padding: 1px 10px; background: #fff; font-weight: 600; }
 body.dragging .map-drop { background: #eef9f7; }
@@ -88,6 +94,7 @@ h3[data-id] .grip { cursor: grab; }
   <label class="key" title="grey lines between motifs holding at least this many of the same claims (told together; not a sign they're related)"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#9aa0a6" stroke-width="2"/></svg>
     <select id="shared-min"><option value="0" selected>no shared-claim lines</option><option value="1">sharing 1+ claims</option><option value="2">sharing 2+</option><option value="3">sharing 3+</option></select></label>
   <label class="key"><input type="checkbox" id="only-linked" checked> only linked motifs</label>
+  <button id="bubble-btn" class="map-btn" title="each group as one bubble until you open it (click a bubble); drop a motif on one to put it in the group">🫧 groups</button>
   <button id="tree-btn" class="map-btn" title="the rests-on links as a tree: what rests on nothing at the top, each motif a row below the deepest one it rests on (motifs outside them hidden)">🌳 tree</button>
   <button id="chips-btn" class="map-btn" title="show or hide the group and genre chips (they open by themselves while you drag)">📁🎭 chips</button>
   <button id="key-btn" class="map-btn" title="what the dots and lines mean, and how to work the map">ℹ️ key</button>
@@ -154,6 +161,7 @@ function draw() {
   zoomer = d3.zoom().scaleExtent([0.15, 5]).filter((ev) => ev.type === 'wheel' || (!ev.target.closest('.node') && !ev.ctrlKey && !ev.shiftKey && !ev.button))
     .on('zoom', (ev) => { root.attr('transform', ev.transform); $('#menu').style.display = 'none'; clearTimeout(lt); lt = setTimeout(placeLabels, 120); });
   svg.call(zoomer);
+  root.attr('transform', d3.zoomTransform(svg.node()));  // a redraw keeps the view where it was (it jumped to the start)
   const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
   // Groups: a soft area around each group's motifs, with its name (drawn first, under everything)
   const shown = data.groups.filter((g) => !hiddenGroups.has(g.id));
@@ -163,6 +171,25 @@ function draw() {
   const members = (g) => nodes.filter((n) => (n.e.groups || []).includes(g.id));
   // a group as a blob hugging its members (motif-map-layout.js, shared with the site's map)
   const drawHulls = () => MotifMap.drawBlobs(hulls, members, (n) => r(n) + 14);
+  // Group bubbles (🫧): a closed group drawn as one bubble at the center of its motifs (they keep their places, hidden)
+  const bubbles = root.append('g').selectAll('g').data(bubbleMode ? shown : [], (g) => g.id).join('g')
+    .attr('class', (g) => 'map-bubble map-gchip' + (openGroups.has(g.id) ? ' open' : '')).attr('data-g', (g) => g.id);
+  bubbles.append('circle').attr('r', (g) => 18 + 9 * Math.sqrt(members(g).length)).attr('fill', (g) => groupColor(g.id))
+    .attr('fill-opacity', 0.28).attr('stroke', (g) => groupColor(g.id));
+  bubbles.append('text').attr('text-anchor', 'middle').attr('dy', 4).attr('fill', '#1f1f2e').text((g) => `📁 ${g.name} · ${members(g).length}`);
+  bubbles.append('title').text((g) => openGroups.has(g.id) ? `${g.name}: click to close` : `${g.name}: click to open (${members(g).map((n) => n.e.name).join(', ')})`);
+  bubbles.on('click', (ev, g) => {
+    ev.stopPropagation();
+    const opening = !openGroups.has(g.id);
+    opening ? openGroups.add(g.id) : openGroups.delete(g.id);
+    draw();
+    if (opening) setTimeout(() => fitTo(new Set(members(g).map((n) => n.id))), 60);  // to the group just opened
+  });
+  const placeBubbles = () => bubbles.attr('transform', (g) => {
+    const m = members(g);
+    if (!m.length) return 'translate(-9999,-9999)';
+    return `translate(${m.reduce((t, n) => t + n.x, 0) / m.length},${m.reduce((t, n) => t + n.y, 0) / m.length})`;
+  });
   const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
     .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
   link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'rests on' : 'related');
@@ -215,6 +242,7 @@ function draw() {
     .force('group', MotifMap.groupForce(nodes, shown.map((g) => g.id), shownGroups, r, W, H))
     .on('tick', () => {
       drawHulls();
+      placeBubbles();
       link.each(function (l) {  // arrows end at the circle's edge
         const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1, cut = l.kind === 'kind' ? r(l.target) + 2 : 0;
         d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
@@ -225,6 +253,15 @@ function draw() {
   if (kept.size) sim.alpha(0.3);
   else sim.on('end.fit', () => { sim.on('end.fit', null); fit(); });
   sim.on('end.labels', placeLabels);
+  if (bubbleMode) {  // a motif shows when one of its groups is open, or it's in none; links only between shown ones
+    const hidden = (n) => shownGroups(n).length > 0 && !shownGroups(n).some((g) => openGroups.has(g));
+    node.classed('in-bubble', hidden);
+    // an open group's motifs named and the rest dimmed, so its members stand out among the ungrouped ones
+    const mate = (n) => shownGroups(n).some((g) => openGroups.has(g));
+    node.classed('bubble-mate', mate).classed('bubble-dim', (n) => openGroups.size > 0 && !mate(n));
+    link.classed('in-bubble', (l) => hidden(l.source) || hidden(l.target));
+    hulls.style('display', (g) => openGroups.has(g.id) ? null : 'none');
+  }
   if (treeMode) layTree();
   applyFocus();
 }
@@ -232,6 +269,14 @@ function draw() {
 // on), each row ordered by where its neighbours are (barycenters, down and up a few times) so lines cross less; each
 // family (a connected set) side by side. The same dots, pinned there; toggled off they go back where they were
 let treeMode = false;
+let bubbleMode = false;
+const openGroups = new Set();
+$('#bubble-btn').addEventListener('click', () => {
+  bubbleMode = !bubbleMode;
+  $('#bubble-btn').classList.toggle('on', bubbleMode);
+  if (!bubbleMode) openGroups.clear();
+  draw();
+});
 function layTree() {
   const on = new Set(nodes.map((n) => n.id));
   const ups = (id) => (byId[id]?.parents || []).filter((p) => on.has(p));
@@ -396,7 +441,8 @@ function fitTo(ids, least = 0.4) {  // the given motifs in view, left of the det
   const ns = nodes.filter((n) => ids.has(n.id) && n.x !== undefined);
   if (!ns.length) return;
   // where they're going (a gathered one is pinned there), not where they are mid-move
-  const full = $('#graph').clientWidth, W = full > 1000 ? full - 380 : full, H = $('#graph').clientHeight;  // room for the box when wide
+  const boxOpen = $('#info').style.display === 'block';  // room for the details box only when it's open, and wide enough
+  const full = $('#graph').clientWidth, W = boxOpen && full > 1000 ? full - 380 : full, H = $('#graph').clientHeight;
   const xs = ns.map((n) => n.fx ?? n.x), ys = ns.map((n) => n.fy ?? n.y);
   const x0 = Math.min(...xs) - 60, x1 = Math.max(...xs) + 180, y0 = Math.min(...ys) - 50, y1 = Math.max(...ys) + 50;
   const k = Math.max(least, Math.min(2.2, 0.9 * Math.min(W / (x1 - x0), H / (y1 - y0))));
@@ -484,12 +530,12 @@ function show(id, zoom) {
   if (id && !treeMode) gather(id); else scatter();  // in the tree the neighbourhood is already in place: just picked out
   document.body.classList.toggle('focusing', Boolean(id));
   applyFocus();
-  if (id && (zoom || gathered.size)) fitTo(near);
   const box = $('#info');
   if (!id) { box.style.display = 'none'; return; }
   box.innerHTML = `<button class="x" title="close">✕</button>${cardHTML(id)}`;
   box.style.display = 'block';
   growAll(box);
+  if (zoom || gathered.size) fitTo(near);  // after the box is open, so the view leaves room for it
 }
 // The desk: motifs kept open as cards, in the order they were pinned (remembered in this browser)
 let desk = (() => { try { return JSON.parse(localStorage.getItem('map-desk') || '[]'); } catch (e) { return []; } })();
