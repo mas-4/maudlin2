@@ -162,7 +162,7 @@ each layer to motifs of that layer is how the person reads them. The imagined in
 notes they were written from. Next: E7's two signals into motif_signals (the layers asked of the filing model once per
 new claim, cached) and the combiner retrained.
 
-### E1b The news of the claims' own time (Oct 8) — queued
+### E1b The news of the claims' own time (Oct 8) — no better (on thin history)
 `scripts/experiments/e1b_news_span.py`. The person asked whether the old claims had been de-newsed too. They had (E1
 takes the directions out of both sides), but with the wrong news: "the latest 6,000 headlines" by last_accessed are a
 single snapshot of today's front pages (all 6,000 from the last three minutes; a headline's last_accessed moves while
@@ -170,6 +170,11 @@ it stays up), while the claims filed go back to July (17 in July, 94 in August, 
 the directions come from 120 headlines from each day since the earliest claim, by the day each was first seen, against
 today's snapshot, 40 and 80 directions out. Production (motif_signals.latest_headlines) has the same snapshot and
 follows the verdict.
+
+Result: no different. With 40 directions out, the snapshot 83.7% and the whole span 83.6% (hard misses 69 and 68);
+with 80, 83.7% and 83.2%. But the database gave only 840 headlines by the day they were first seen since July 18 (120
+a day on seven days), so the whole span was mostly this week anyway: the headline table keeps little history. Left as
+it is until there's more history to test on.
 
 ### E9 The reranker taught the person's taste (Oct 8) — in production (app/analysis/reranker_teach.py)
 `scripts/experiments/e9_reranker_tune.py`. Qwen3-Reranker-0.6B's top 6 of 28 layers (94M of 596M weights) trained on
