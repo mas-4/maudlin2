@@ -65,15 +65,31 @@ def decisions(path: str = CURATION_LOG, hand: bool = False) -> dict[tuple[str, s
             for step in a.get('steps') or []:
                 if isinstance(step, dict):
                     one(step)
+    for r in log_rows(path):
+        if isinstance(r.get('action'), dict) and r.get('by') != 'claude':
+            one(r['action'])
+    return out
+
+
+def log_rows(path: str = CURATION_LOG) -> list[dict]:
+    """The curation log, oldest first: from the curation database (without changes taken back by going back to a
+    checkpoint) when it's the log asked for and the database has it, else from the file"""
+    if path == CURATION_LOG:
+        from app.analysis import curation_db
+        try:
+            rows = curation_db.actions()
+            if rows:
+                return rows
+        except Exception as e:  # noqa: BLE001 - the file has it all too
+            logger.warning("Curation database unreadable (%s); reading the log file", e)
+    out = []
     try:
         with open(path) as f:
             for line in f:
                 try:
-                    r = json.loads(line)
+                    out.append(json.loads(line))
                 except ValueError:
                     continue
-                if isinstance(r.get('action'), dict) and r.get('by') != 'claude':
-                    one(r['action'])
     except OSError:
         pass
     return out
@@ -130,15 +146,11 @@ def labeled(index: dict, hand: bool = False) -> list[tuple[str, str, str, bool]]
             text[mi.key(c['claim'])] = c['claim']
             source[mi.key(c['claim'])] = c.get('source', '')
     # A removed claim may be in no motif now: its words from the log
-    try:
-        with open(CURATION_LOG) as f:
-            for line in f:
-                a = (json.loads(line) or {}).get('action')
-                for step in ([a] + (a.get('steps') or [])) if isinstance(a, dict) else []:
-                    if isinstance(step, dict) and isinstance(step.get('claim'), str):
-                        text.setdefault(mi.key(step['claim']), step['claim'])
-    except (OSError, ValueError):
-        pass
+    for r in log_rows():
+        a = r.get('action')
+        for step in ([a] + (a.get('steps') or [])) if isinstance(a, dict) else []:
+            if isinstance(step, dict) and isinstance(step.get('claim'), str):
+                text.setdefault(mi.key(step['claim']), step['claim'])
     live = {e['id'] for e in mi.live(index) if e['claims'] and yours(e)}
     return [(text[k], eid, source.get(k, ''), kept) for (k, eid), kept in decisions(hand=hand).items()
             if eid in live and k in text]

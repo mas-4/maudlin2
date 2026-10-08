@@ -18,7 +18,7 @@ if [ "${1:-}" = "run" ]; then
 else
     FILES="$DEST/files-$(date +%Y-%m-%d).tar.gz"
 fi
-RUN_KEEP="${MAUDLIN_RUN_BACKUPS:-5}"
+RUN_KEEP="${MAUDLIN_RUN_BACKUPS:-48}"  # two days of hourly copies (Oct 8; 5 until then)
 
 mkdir -p "$DEST"
 "$ROOT/.venv/bin/python" - "$SOURCE" "$TARGET" <<'PY'
@@ -43,6 +43,18 @@ DATA="$ROOT/data"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 EXTRA=()
+# The curation database (motif index versions, saved states, the curation log), every time, through SQLite's online
+# backup: tarred while the checker writes it, the file could be caught half-written
+if [ -f "$DATA/curation.sqlite" ]; then
+    "$ROOT/.venv/bin/python" - "$DATA/curation.sqlite" "$TMP/curation.sqlite" <<'PY'
+import sqlite3, sys
+src, dst = sqlite3.connect(sys.argv[1]), sqlite3.connect(sys.argv[2])
+with dst:
+    src.backup(dst)
+dst.close(); src.close()
+PY
+    EXTRA+=(-C "$TMP" curation.sqlite)
+fi
 if [ "${1:-}" != "run" ] && [ -f "$DATA/vernacular.sqlite" ]; then
     "$ROOT/.venv/bin/python" - "$DATA/vernacular.sqlite" "$TMP/vernacular.sqlite" <<'PY'
 import sqlite3, sys
@@ -51,9 +63,10 @@ with dst:
     src.backup(dst)
 dst.close(); src.close()
 PY
-    EXTRA=(-C "$TMP" vernacular.sqlite)
+    EXTRA+=(-C "$TMP" vernacular.sqlite)
 fi
-tar -czf "$FILES" -C "$DATA" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='*embeddings.sqlite' \
+tar -czf "$FILES" -C "$DATA" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
+    --exclude='*embeddings.sqlite' \
     --exclude=./motifs/vectors.npy --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}"
 if [ "${1:-}" = "run" ]; then
     ls -1t "$DEST"/files-*.tar.gz | tail -n +"$((RUN_KEEP + 1))" | xargs -r rm -f

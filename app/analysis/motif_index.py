@@ -125,6 +125,9 @@ def load() -> dict:
 
 def save(index: dict):
     write_json(INDEX, index, indent=1)
+    from app.analysis import curation_db  # every state kept, to go back to (Oct 8)
+    with open(INDEX) as f:
+        curation_db.record_version(f.read())
 
 
 def locked():

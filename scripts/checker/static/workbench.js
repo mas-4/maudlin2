@@ -67,6 +67,60 @@
   }
   if (undoBtn) undoBtn.addEventListener('click', undo);
 
+  // Saved states: save the motif index and proposals by name, and go back to a saved one later (a whole stretch of
+  // changes at once, where undo steps back one). Going back saves what's there first, so it can be gone back on too
+  const statesBtn = document.createElement('button');
+  statesBtn.id = 'states-btn';
+  statesBtn.textContent = '💾 states';
+  statesBtn.title = 'save the state of the motif index to come back to, or go back to a saved one';
+  if (undoBtn) undoBtn.parentNode.insertBefore(statesBtn, undoBtn);
+  const statesBox = document.createElement('div');
+  statesBox.className = 'wb-saved';
+  statesBox.hidden = true;
+  document.body.appendChild(statesBox);
+  async function renderStates() {
+    const list = await getJSON('/checkpoints.json').catch(() => []);
+    const when = (at) => new Date(at).toLocaleString([], {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+    statesBox.innerHTML = `<div class="wb-saved-head"><b>💾 Saved states</b><button class="wb-mini" data-states="close" title="close">✕</button></div>
+      <form class="wb-saved-form"><input type="text" id="state-name" placeholder="name this state, e.g. before the Plots sweep" maxlength="120" autocomplete="off">
+        <button class="wb-btn yes" type="submit">💾 save</button></form>
+      ${list.length ? list.map((c) => `<div class="wb-saved-row"><div><b>${esc(c.name)}</b> <span class="wb-faint">${when(c.at)}${c.kind !== 'manual' ? ' · ' + esc(c.kind) : ''} · ${c.changes_since} change${c.changes_since === 1 ? '' : 's'} since</span></div>
+        <span class="wb-sbtns" data-stateid="${c.id}"><button class="wb-mini" data-states="ask">↩ go back</button></span></div>`).join('')
+        : '<p class="wb-faint">Nothing saved yet. Save one before a big sweep, and you can go back to it in one step.</p>'}`;
+  }
+  statesBtn.addEventListener('click', async () => {
+    statesBox.hidden = !statesBox.hidden;
+    if (!statesBox.hidden) { await renderStates(); const f = $('#state-name'); if (f) f.focus(); }
+  });
+  statesBox.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('#state-name').value.trim();
+    const r = await fetch('/checkpoint', {method: 'POST', body: JSON.stringify({name})});
+    if (!r.ok) { toast('Couldn’t save: ' + (await r.text()).slice(0, 200), true); return; }
+    toast(`💾 saved “${name || 'saved state'}”`);
+    renderStates();
+  });
+  statesBox.addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-states]');
+    if (!b) return;
+    if (b.dataset.states === 'close') { statesBox.hidden = true; return; }
+    const holder = b.closest('[data-stateid]'), id = holder && holder.dataset.stateid;
+    if (b.dataset.states === 'ask') {  // asked right there, not in a pop-up
+      holder.innerHTML = '<span class="wb-faint">go back? what’s there now is saved first</span> <button class="wb-btn yes" data-states="yes">↩ yes, go back</button> <button class="wb-mini" data-states="no">no</button>';
+      return;
+    }
+    if (b.dataset.states === 'no') { renderStates(); return; }
+    if (b.dataset.states === 'yes') {
+      const r = await fetch('/checkpoint', {method: 'POST', body: JSON.stringify({action: 'go back', id: +id})});
+      if (!r.ok) { toast('Couldn’t go back: ' + (await r.text()).slice(0, 200), true); return; }
+      const d = await r.json();
+      S.queues = {};
+      setData(d.state); render(); refreshUndo();
+      toast(`↩ back to “${d.went_back.to.name}”: ${d.went_back.reverted} change${d.went_back.reverted === 1 ? '' : 's'} taken back (what was there is saved)`);
+      renderStates();
+    }
+  });
+
   // ---------- small helpers ----------
   const motifs = () => S.data.entries;
   const isSingle = (e) => e.claims.length === 1 && !e.stands_alone && !e.parents.length && !(S.kids[e.id] || []).length;

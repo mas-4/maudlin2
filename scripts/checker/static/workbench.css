@@ -344,3 +344,46 @@ body.dragging .wb-schip { border-style: dashed; }
     padding: 0.3em 0;
     border-top: 1px dashed #c9c9d4;
 }
+
+/* Saved states (💾 states, by undo): a panel to save the motif index by name and go back to a saved one */
+.wb-saved {
+    position: fixed;
+    top: 56px;
+    right: 16px;
+    z-index: 60;
+    width: min(440px, calc(100vw - 32px));
+    max-height: 70vh;
+    overflow-y: auto;
+    background: #fff;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #00c2a8;
+    padding: 10px 12px;
+}
+
+.wb-saved-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.wb-saved-form {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.wb-saved-form input {
+    flex: 1;
+    min-width: 0;
+}
+
+.wb-saved-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px dashed #c9c9d4;
+}

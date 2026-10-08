@@ -60,6 +60,9 @@ def pytest_sessionstart(session):
     from app.analysis import motif_signals
     sig = tempfile.mkdtemp(prefix='maudlin-test-signals-')
     motif_signals.SHAPES, motif_signals.RERANKS, motif_signals.JUDGED = (os.path.join(sig, n) for n in ('s.json', 'r.json', 'j.json'))
+    # The curation database (index versions, checkpoints, the log) too
+    from app.analysis import curation_db
+    curation_db.DB = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-curation-'), 'curation.sqlite')
     # The filing confidence model lives there too
     from app.analysis import filing_confidence
     filing_confidence.MODEL = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-confidence-'), 'filing_confidence.json')

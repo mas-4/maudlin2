@@ -177,9 +177,11 @@ BY = {'claude'}  # who besides the person may act through the checker (by MCP, s
 
 def log_curation(page: str, data: dict, before: dict, by: str | None = None):
     os.makedirs(FOLDER, exist_ok=True)
+    at = dt.now().isoformat(timespec='seconds')
     with open(CURATION_LOG, 'a') as f:
-        f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'page': page, 'action': data, 'before': before,
-                            **({'by': by} if by else {})}) + '\n')
+        f.write(json.dumps({'at': at, 'page': page, 'action': data, 'before': before, **({'by': by} if by else {})}) + '\n')
+    from app.analysis import curation_db  # and in the curation database (Oct 8)
+    curation_db.record_action(at, page, data, before, by)
 
 
 # Undo: each change on the organizer pages snapshots the file it touched (the motif index, or the name aliases) so the
@@ -294,6 +296,34 @@ def show_tellings(words: set[str]) -> list[dict]:
                     'url': t['url'] if t['url'].startswith('http') else None, 'speaker': t.get('speaker') or '',
                     'at': t.get('at'), 'claim': t.get('claim'), 'quote': t.get('quote'), 'context': around})
     return sorted(out, key=lambda t: (t['date'] or '', t['show']), reverse=True)
+
+
+def save_checkpoint(name: str, kind: str = 'manual') -> dict:
+    """The motif index and the proposals as they are now, saved by name in the curation database, to go back to"""
+    from app.analysis import curation_db, motif_index as mi, motif_proposals as mp
+    with mi.locked():
+        return curation_db.checkpoint(name, read_text(mi.INDEX) or '{}', read_text(mp.PROPOSALS), kind)
+
+
+def go_back(cid: int) -> dict:
+    """The motif index and proposals put back as checkpoint `cid` saved them. What's there now is saved first (a
+    checkpoint 'before going back'), so this can itself be gone back on, and it's one undo step too; the changes since
+    the checkpoint stay in the log, marked reverted, so the models stop learning from them"""
+    from app.analysis import curation_db, motif_index as mi, motif_proposals as mp
+    from app.utils.store import write_json
+    cp, index_text, proposals_text = curation_db.restore(cid)
+    with mi.locked():
+        now_index, now_proposals = read_text(mi.INDEX), read_text(mp.PROPOSALS)
+        before = curation_db.checkpoint(f'before going back to “{cp["name"]}”', now_index or '{}', now_proposals,
+                                        kind='before going back')
+        mi.save(json.loads(index_text))
+        if proposals_text is not None:
+            write_json(mp.PROPOSALS, json.loads(proposals_text))
+    undone = curation_db.set_reverted(cp)
+    push_undo(mi.INDEX, now_index, f'go back to “{cp["name"]}”')
+    log_curation('checkpoints', {'action': 'go back', 'to': cid, 'name': cp['name'], 'reverted': undone,
+                                 'saved_first': before['id']}, {})
+    return {'to': cp, 'reverted': undone, 'saved_first': before}
 
 
 def claim_detail(claim: str) -> dict:
@@ -630,6 +660,9 @@ def organizer_action(data: dict):
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith('/checkpoints.json'):
+            from app.analysis import curation_db
+            return self.send_json(curation_db.checkpoints())
         if self.path.startswith('/undo.json'):
             found = last_undo()
             return self.send_json({'what': found[1]['what'] if found else None})
@@ -747,6 +780,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(409, str(e)[:300])
                 return
             return self.send_json({'undid': what})
+        if self.path == '/checkpoint':  # save the state by name, or go back to a saved one
+            try:
+                if data.get('action') == 'go back':
+                    done = go_back(int(data['id']))
+                    return self.send_json({'went_back': done, 'state': workbench_state()})
+                return self.send_json({'saved': save_checkpoint(str(data.get('name') or '').strip() or 'saved state')})
+            except (ValueError, KeyError) as e:
+                return self.send_json_error(400, str(e))
         undo_path = undo_paths().get(self.path)
         self._undo = (undo_path, read_text(undo_path)) if undo_path else None
         if self.path == '/workbench':
