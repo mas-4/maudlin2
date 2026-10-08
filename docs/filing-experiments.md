@@ -134,7 +134,11 @@ weighting:
 A steady point at 12 whatever the number, and the most hard misses back at 40. Smaller than E5's gain but with no
 question of leakage (the headlines know nothing of the person's filings), and cheap: the components once a day, a
 projection per comparison. In production the same afternoon (motif_signals.py, 'news out note' and 'news out near',
-40 directions), a signal of the filing confidence model from its next retrain.
+40 directions), a signal of the filing confidence model from its next retrain. Retrained (14:32, 753 decisions): AUC
+0.882; with and without the two signals on the same pairs, 0.882 and 0.883, the same sure line (90%) and 66% of kept
+filings passable at 95% precision either way. So it helps find the person's motifs (the shortlist's recall), not
+judge a filing once found: its gain waits for the learned shortlist in production. (The 76% of the morning fell to
+66% with the day's new decisions and edits, not the signal: the 95% line is a coarse step.)
 
 ### E9 The reranker taught the person's taste (Oct 8) — running
 `scripts/experiments/e9_reranker_tune.py`. Qwen3-Reranker-0.6B's top 6 of 28 layers (94M of 596M weights) trained on
