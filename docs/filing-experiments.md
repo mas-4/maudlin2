@@ -113,6 +113,24 @@ proposer suggested links from shared claims): kept only to links made before eac
 weak (the claims date from Oct 2–7, nearly all 330 links were made Oct 5–8, so most claims see almost none), so the
 verdict waits for a forward test: what it would suggest for new claims, scored against the person's checks.
 
+### E1 Subtract the news (Oct 8) — kept as a candidate signal
+`scripts/experiments/e1_news.py`. The 6,000 most recent headlines embedded (mxbai); their top principal components
+(the directions the day's news varies along: mostly topic) projected out of the claim, the motif notes and the motifs'
+claims; then the claim against each note and its nearest claim (held out) in what's left, two signals added to the
+weighting:
+
+| topic directions out | top 8 | top 12 | top 40 | hard misses |
+|---|---|---|---|---|
+| none (baseline) | 77.7 | 82.3 | 91.5 | 76 |
+| 5 | 78.2 | 83.6 | 92.0 | 71 |
+| 10 | 77.8 | 83.1 | 92.1 | 70 |
+| 20 | 77.9 | 83.2 | 91.9 | 72 |
+| 40 | 78.0 | **83.6** | **92.4** | **68** (11 back, 3 new) |
+
+A steady point at 12 whatever the number, and the most hard misses back at 40. Smaller than E5's gain but with no
+question of leakage (the headlines know nothing of the person's filings), and cheap: the components once a day, a
+projection per comparison.
+
 ## In progress and planned (Oct 8)
 
 Ideas for the hard misses (the person reads the structure under a claim; every finder reads its topic):
