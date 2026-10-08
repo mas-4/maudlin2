@@ -27,3 +27,6 @@ faster-whisper==1.2.1
 nvidia-cublas-cu12==12.9.2.10
 nvidia-cudnn-cu12==9.27.0.42
 ruff==0.16.10  # lint, in the pre-commit hook (ruff.toml)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1+cpu  # the motif reranker (app/analysis/motif_signals.py), on the CPU: the filing model holds the GPU
+transformers==5.18.0
