@@ -43,6 +43,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **The hourly run keeps to its time.** The 3 PM run was stopped by its 45-minute limit before it filed any claims, and
+  the 5 PM run took 44 minutes: the day's additions and the backlog of podcast episodes newly let in added up. Each step
+  after the site is published now gets what's left of 40 minutes at most, ten of them kept back for filing claims and
+  their fits; a step with no time left waits for the next run and says so in the log.
 - **Episodes labeled news or evergreen.** Some shows spend an episode on history or a life story. Each new episode of
   the podcasts, call-ins and video channels is now read from its title and blurb as on the week's news, evergreen, or
   a mix (ten at a time, once each). A label, not a filter: evergreen episodes are still transcribed and their claims
