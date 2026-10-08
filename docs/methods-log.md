@@ -43,6 +43,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **Episodes labeled news or evergreen.** Some shows spend an episode on history or a life story. Each new episode of
+  the podcasts, call-ins and video channels is now read from its title and blurb as on the week's news, evergreen, or
+  a mix (ten at a time, once each). A label, not a filter: evergreen episodes are still transcribed and their claims
+  still read and filed (motifs live in history talk too), but the news goes first in the transcription queue, and a
+  claim counts as retold this week only when shows on the news tell it.
 - **The shortlist weighs every signal.** The motifs the filing model chooses among for a new claim were picked by six
   likenesses from one embedding model. They're now picked by every signal of the filing experiments (keywords, the
   note alone, the claim's bare shape and its layers, its nearest filed claims, a second embedding model, the person's

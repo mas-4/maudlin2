@@ -180,6 +180,11 @@ def main(args: argparse.Namespace):
             fetch_investigations()
             wiki.refresh()  # weekly: each outlet's Wikipedia opening and Wikidata facts
             fetch_sidefeeds()  # newsletters, podcasts and political video channels, each at most every 2 hours
+            try:  # the shows' new episodes: on the news, or evergreen (history, life stories)
+                from app import episode_kind
+                episode_kind.label_new()
+            except Exception as e:  # noqa: BLE001 - unlabeled episodes count as news
+                logger.warning("Episode labels failed: %s", e)
             try:  # fact-checks' own text, for reading their claims from the piece, not the headline
                 from app import sidefeeds as sf
                 from app.analysis import factcheck_text, factchecks

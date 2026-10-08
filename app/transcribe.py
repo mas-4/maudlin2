@@ -179,13 +179,15 @@ def pending(limit: int = 50) -> list[SideItem]:
         s.expunge_all()
 
     voices = {s['key'] for s in sidefeeds.SOURCES if s['kind'] == 'call-in'} | {'focusgroup', 'surrounded'}
+    from app import episode_kind
+    kinds = episode_kind.load()
 
     def rank(item):
         # Hourly newscasts, then shows on the site, then ordinary people's voices (call-ins, focus groups, Jubilee's
         # Surrounded), then the rest of the archive (long talk shows and streams)
         tier = (0 if item.source in PRIORITY else 1 if item.source in published else 2 if item.source in voices
                 else 3)
-        return tier, -item.published.timestamp()
+        return tier, episode_kind.evergreen(item.url, kinds), -item.published.timestamp()  # the news first
     return sorted(rows, key=rank)[:limit]
 
 

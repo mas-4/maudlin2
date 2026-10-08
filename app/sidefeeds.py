@@ -373,6 +373,16 @@ def recent(days: int = 3, limit: int = 12, per_source: int = 1) -> list[dict]:
     return picked
 
 
+def items_of(keys: list[str], days: int = 3) -> list[dict]:
+    """Every item of these sources (by key) from the last `days`, newest first: title, url, summary, source (its key)"""
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
+    with Session() as s:
+        rows = s.query(SideItem).filter(SideItem.source.in_(keys), SideItem.published >= since) \
+            .order_by(SideItem.published.desc()).all()
+        s.expunge_all()
+    return [{'title': r.title, 'url': r.url, 'summary': r.summary or '', 'source': r.source} for r in rows]
+
+
 def of_kind(kind: str, days: int = 3) -> list[dict]:
     """Every item from sources of this kind (satire, fact-check) from the last `days`, newest first."""
     since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)

@@ -163,20 +163,24 @@ def retold(store: dict | None = None) -> list[dict]:
     import numpy as np
 
     from app.narratives import embed, groups
+    from app import episode_kind
     store = store if store is not None else load()
-    rows = [dict(c, show=e['show'], url=url, date=e['date'], lean=e.get('lean')) for url, e in store.items() for c in e['claims']]
+    kinds = episode_kind.load()
+    rows = [dict(c, show=e['show'], url=url, date=e['date'], lean=e.get('lean'), evergreen=episode_kind.evergreen(url, kinds))
+            for url, e in store.items() for c in e['claims']]
     if len(rows) < 2:
         return []
     out = []
     for g in groups([{'text': r['claim']} for r in rows]):
         tellers = [rows[i] for i in g]
-        shows = {r['show'] for r in tellers}
-        callers = {(r['url'], r['at']) for r in tellers if r.get('speaker') == 'caller'}
+        # retold this week: told on the news, not only in history deep dives and other evergreen episodes
+        shows = {r['show'] for r in tellers if not r['evergreen']}
+        callers = {(r['url'], r['at']) for r in tellers if r.get('speaker') == 'caller' and not r['evergreen']}
         if len(shows) < MIN_SHOWS and len(callers) < MIN_SHOWS:
             continue
         v = embed([r['claim'] for r in tellers])
         lead = tellers[int(np.argmax(v @ v.mean(0)))]
-        out.append({'claim': lead['claim'], 'shows': sorted(shows), 'tellings': len(tellers),
+        out.append({'claim': lead['claim'], 'shows': sorted({r['show'] for r in tellers}), 'tellings': len(tellers),
                     'leans': dict(Counter(r['lean'] or '' for r in tellers)), 'speakers': dict(Counter(r['speaker'] or '' for r in tellers)),
                     'date': max(r['date'] for r in tellers), 'ref': lead['url'],
                     'told': [{'show': r['show'], 'url': r['url'], 'at': r['at'], 'speaker': r['speaker'], 'claim': r['claim'],
