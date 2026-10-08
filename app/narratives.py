@@ -29,6 +29,7 @@ import os
 import random
 import re
 import sqlite3
+import time
 from collections import Counter, defaultdict
 from datetime import datetime as dt, timedelta as td, UTC
 
@@ -111,16 +112,22 @@ def embed(texts: list[str]) -> np.ndarray:
     file of their own; the static model if Ollama can't."""
     from app.analysis.clustering import ollama_embed
     os.makedirs(FOLDER, exist_ok=True)
-    try:
-        return ollama_embed(list(texts), cache=os.path.join(FOLDER, 'embeddings.sqlite'), keep_days=4)
-    except Exception as e:
-        logger.warning("Narrative embeddings from Ollama failed (%s); using %s", type(e).__name__, EMBEDDER)
-        global _embedder
-        if _embedder is None:
-            from model2vec import StaticModel
-            _embedder = StaticModel.from_pretrained(EMBEDDER)
-        v = np.asarray(_embedder.encode(list(texts)), dtype=np.float32)
-        return v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-12)
+    error = None
+    for attempt in range(2):  # a moment's failure (Ollama loading a model, a busy cache) is tried again once: a fallback
+        try:  # mid-run gives one run vectors from two models (Oct 8)
+            return ollama_embed(list(texts), cache=os.path.join(FOLDER, 'embeddings.sqlite'), keep_days=4)
+        except Exception as e:  # noqa: BLE001 - whatever it was, the static model below
+            error = e
+            if not attempt:
+                logger.info("Narrative embeddings from Ollama failed once (%s: %s); trying again", type(e).__name__, e)
+                time.sleep(5)
+    logger.warning("Narrative embeddings from Ollama failed (%s: %s); using %s", type(error).__name__, error, EMBEDDER)
+    global _embedder
+    if _embedder is None:
+        from model2vec import StaticModel
+        _embedder = StaticModel.from_pretrained(EMBEDDER)
+    v = np.asarray(_embedder.encode(list(texts)), dtype=np.float32)
+    return v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-12)
 
 
 def words(text: str) -> set[str]:
