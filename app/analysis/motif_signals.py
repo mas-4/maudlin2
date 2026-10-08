@@ -10,6 +10,9 @@ that one way of seeing missed, nothing else caught it. Each signal here reads a 
   votes      the filed claims most like this one, each voting for its motifs (nearest neighbours)
   nomic      a second embedding model (nomic-embed-text) against the motif's description and its nearest claim, so
              two models' blind spots can cover each other
+  news out   the claim against each note and each motif's nearest claim with the day's news taken out: the main
+             directions the latest headlines vary along (mostly topic: Iran, Texas, a storm) projected away, so what's
+             left leans to framing (experiment E1, Oct 8: +1.3 points of the person's motifs in the top 12)
   group      the claim against the person's groups (each the center of its motifs' claims), a motif scored by its best
              group: a group pools many small motifs' evidence (Oct 8, the person: route through groups; one route among
              the others, not a tree: an ungrouped motif scores nothing here and is found the other ways)
@@ -42,6 +45,10 @@ NOMIC = 'nomic-embed-text'
 RERANKER = 'Qwen/Qwen3-Reranker-0.6B'
 JUDGE_MODEL = 'gemma4:26b'
 NEIGHBOURS = 15
+NEWS = os.path.join(FOLDER, 'news_directions.npz')  # the latest headlines' center and main directions, a day at a time
+NEWS_HEADLINES = 6000
+NEWS_DIRECTIONS = 40
+NEWS_EVERY = 86400  # seconds
 STOP = {'a', 'an', 'the', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as',
         'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'its', 'this', 'that', 'these', 'those', 'he',
         'she', 'they', 'them', 'his', 'her', 'their', 'we', 'our', 'you', 'your', 'i', 'me', 'my', 'not', 'no', 'so',
@@ -50,7 +57,7 @@ STOP = {'a', 'an', 'the', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at'
         'just', 'should', 'now', 'says', 'said', 'say', 'about', 'into', 'over', 'after', 'before', 'also', 'has',
         'have', 'had', 'do', 'does', 'did', 'would', 'could', 'may', 'might', 'must', 'one', 'two', 'new', 'people'}
 WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
-CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group']
+CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group', 'news out note', 'news out near']
 
 SHAPE_PROMPT = """A claim people are telling or arguing over:
 {claim}
@@ -90,6 +97,48 @@ def pair_hash(*parts: str) -> str:
     return hashlib.sha1('\n'.join(parts).encode()).hexdigest()[:16]
 
 
+def latest_headlines(n: int = NEWS_HEADLINES) -> list[str]:
+    import sqlite3
+    con = sqlite3.connect(f'file:{Config.connection_string.removeprefix("sqlite:///")}?mode=ro', uri=True)
+    try:
+        return [r[0] for r in con.execute('SELECT DISTINCT title FROM headline WHERE title IS NOT NULL '
+                                          'ORDER BY last_accessed DESC LIMIT ?', (n,))]
+    finally:
+        con.close()
+
+
+def news_directions(vec, headlines=latest_headlines, path: str = NEWS) -> tuple[np.ndarray, np.ndarray] | None:
+    """The latest headlines' center and their NEWS_DIRECTIONS main directions (principal components), kept a day;
+    None without headlines"""
+    import time
+    try:
+        if time.time() - os.path.getmtime(path) < NEWS_EVERY:
+            d = np.load(path)
+            return d['center'], d['directions']
+    except (OSError, ValueError, KeyError):
+        pass
+    try:
+        titles = headlines()
+    except Exception as e:  # noqa: BLE001 - no news out today: the signal stays flat
+        logger.warning("News directions: no headlines (%s)", e)
+        return None
+    if len(titles) <= NEWS_DIRECTIONS:
+        return None
+    H = np.asarray(vec(titles), dtype=np.float64)
+    center = H.mean(0)
+    directions = np.linalg.svd(H - center, full_matrices=False)[2][:NEWS_DIRECTIONS]
+    np.savez(path + '.tmp.npz', center=center, directions=directions)
+    os.replace(path + '.tmp.npz', path)
+    return center, directions
+
+
+def news_out(V: np.ndarray, basis: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    """Vectors with the news's main directions taken out, back to unit length"""
+    center, U = basis
+    W = (V - center) - ((V - center) @ U.T) @ U
+    return W / np.maximum(np.linalg.norm(W, axis=-1, keepdims=True), 1e-12)
+
+
 class Signals:
     """The signals for claims against one index's live motifs (those with claims). vec: motif_retriever.Vectors"""
 
@@ -123,6 +172,7 @@ class Signals:
         self.reranks = read_json(RERANKS, {})
         self.judged = read_json(JUDGED, {})
         self._reranker = None
+        self._news = None  # (center, directions), or False when there's none
 
     # ---- cheap signals, against every motif ----
 
@@ -222,6 +272,29 @@ class Signals:
                 best[n] = max(best[n], sim)
         return best
 
+    def news(self, claim: str, leave_out: bool) -> tuple[np.ndarray, np.ndarray]:
+        """The claim against each note and each motif's nearest claim (itself held out), the news taken out of all"""
+        n = len(self.entries)
+        if self._news is None:
+            self._news = news_directions(self.vec) or False
+        if self._news and getattr(self, '_news_filed', None) is None:
+            if self._filed_v is None:
+                self._filed_v = self.vec([self.filed[k][0] for k in self.filed_keys])
+            self._news_notes = news_out(self.note_vectors(), self._news)
+            self._news_filed = news_out(self._filed_v, self._news)
+            self._news_members = [[] for _ in self.entries]
+            for i, k in enumerate(self.filed_keys):
+                for m in self.filed[k][1]:
+                    self._news_members[m].append(i)
+        if not self._news:
+            return np.zeros(n), np.zeros(n)
+        q = news_out(self.vec([claim])[0], self._news)
+        sims = self._news_filed @ q
+        k = mi.key(claim)
+        skip = self.filed_keys.index(k) if leave_out and k in self.filed else -1
+        near = np.array([max((sims[i] for i in rows if i != skip), default=-1.0) for rows in self._news_members])
+        return self._news_notes @ q, near
+
     def prepare(self, claims: list[str], ask: bool = True):
         """Do the models' part for many claims at once, a model at a time: the shape rewrites (the filing model), then
         every embedding in two batches. Claim by claim, Ollama swapped three models through the GPU for each one
@@ -238,11 +311,13 @@ class Signals:
         if claims:
             self.nomic(claims[0], False)  # the motif side, once
             self._nomic(list(dict.fromkeys(claims)), 'search_query')
+            self.news(claims[0], False)  # the headlines, once
 
     def cheap(self, claim: str, leave_out: bool = False, ask: bool = True) -> dict[str, np.ndarray]:
         """Every cheap signal against every motif"""
         desc, near = self.nomic(claim, leave_out)
-        return {'keywords': self.keywords(claim, leave_out), 'note': self.note(claim), 'shape': self.shape(claim, ask),
+        news_note, news_near = self.news(claim, leave_out)
+        return {'news out note': news_note, 'news out near': news_near,'keywords': self.keywords(claim, leave_out), 'note': self.note(claim), 'shape': self.shape(claim, ask),
                 'votes': self.votes(claim, leave_out), 'nomic desc': desc, 'nomic near': near,
                 'group': self.group(claim, leave_out)}
 
@@ -337,4 +412,5 @@ def as_dict(arrays: dict, n: int) -> dict:
 
 
 def describe() -> str:
-    return json.dumps({'cheap': CHEAP, 'costly': ['rerank', 'judge'], 'reranker': RERANKER, 'second embedder': NOMIC})
+    return json.dumps({'cheap': CHEAP, 'costly': ['rerank', 'judge'], 'reranker': RERANKER, 'second embedder': NOMIC,
+                       'news out': f'{NEWS_DIRECTIONS} directions of the latest {NEWS_HEADLINES} headlines'})

@@ -31,6 +31,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   Boosted trees did no better than the plain weighting, and both level off by half the decisions: more checking alone
   won't move it much. Fits are worked out in the hourly run and kept on the filings. The person's confirmed filings get
   one too: the lowest of the model's own, a second look for a hurried yes.
+  In the afternoon, from the first experiments (docs/filing-experiments.md), one more: the claim against each motif's
+  note and nearest claim with the day's news taken out. The main directions the latest 6,000 headlines vary along are
+  mostly topic (a country, a storm, a trial); projected away from both sides, what's left leans to how a story is told.
+  Held out, it brought 1.3 points more of the person's motifs into the top 12, with nothing of their filings in it to
+  leak. The directions are worked out once a day.
 - **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
   own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
   of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead

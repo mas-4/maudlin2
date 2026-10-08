@@ -82,7 +82,9 @@ def ranks(data: dict, extra: dict | None = None, feats: list[str] | None = None,
     """Each claim's ranking of every motif by a weighting learned on the other claims: {claim key: rank array}"""
     from sklearn.linear_model import LogisticRegression
     extra = extra or {}
-    feats = BASE if feats is None else feats
+    if feats is None:  # signals added since the cache was built (rebuild to have them) left out
+        have = next(iter(data['claims'].values()))['signals']
+        feats = [f for f in BASE if f in have]
     keys = sorted(data['claims'])
     out = {}
     for f in range(folds):
