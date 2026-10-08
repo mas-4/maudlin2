@@ -27,6 +27,7 @@ FOCUS_BUDGET = 180  # seconds a run spends reading new Focus Group episodes (one
 RUNNING_BUDGET = 120  # seconds a run spends splitting the radio newscasts into their stories (two an hour)
 CHYRON_BUDGET = 180  # seconds a run spends cleaning TV chyron OCR (about 45 minutes of work a day)
 MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
+FIT_BUDGET = 240  # seconds a run spends scoring new filings (reranker and a yes/no from the filing model per filing)
 PROPOSAL_HOUR = 5  # the motif proposer's nightly run: after the 4 AM report and its first filings
 QUIET_MINUTES = 16  # a long job (a rescore) leaves the gpu to the hourly run for its first minutes
 
@@ -211,6 +212,13 @@ def main(args: argparse.Namespace):
         chyrons.match_recent()
         from app.analysis import motif_index
         motif_index.nightly(budget=MOTIF_BUDGET)
+        # How sure each new filing is (its fit: many signals weighed on the person's own decisions), for the checker
+        if not reported:  # never in the report's run: it nears the 45-minute limit
+            from app.analysis import filing_confidence
+            try:
+                filing_confidence.refresh(budget=FIT_BUDGET)
+            except Exception as e:  # noqa: BLE001 - the fits wait for the next run
+                logger.warning("Filing confidence failed: %s", e)
         # Fixes for a person to approve in the workbench (typos, links, groups), once a day after the new filings
         if dt.now().hour >= PROPOSAL_HOUR and not reported:  # never in the report's run: it nears the 45-minute limit
             from app.analysis import motif_proposals

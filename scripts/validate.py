@@ -460,9 +460,10 @@ def workbench_state() -> dict:
         e['stands_alone'] = bool(entry.get('stands_alone'))
         e['phrases'] = (entry.get('phrases') or [])[:6]
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
+    hand = hand_made()
     state['second_look'] = sum(1 for e in mi.live(index) if e.get('done') for c in e['claims']
                                if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
-                               and c['fit'] < SECOND_LINE)
+                               and c['fit'] < SECOND_LINE and (mi.key(c['claim']), e['id']) not in hand)
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
     state['facets'] = mi.facet_values(index)
     from app.analysis import motif_proposals as mp
@@ -513,10 +514,19 @@ def second_look() -> list[dict]:
     """The person's confirmed filings the confidence model finds least likely (an honest slip in 1,000 judgments
     teaches the models wrong): each to keep (✓ still fits, then off the list) or take out"""
     from app.analysis import motif_index as mi
+    hand = hand_made()
     rows = [{'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''), 'fit': c['fit']}
             for e in mi.live(mi.load()) if e.get('done') for c in e['claims']
-            if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None]
+            if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
+            and (mi.key(c['claim']), e['id']) not in hand]
     return sorted(rows, key=lambda r: r['fit'])[:SECOND_LOOK]
+
+
+def hand_made() -> set:
+    """(claim key, motif id) of the filings the person made themselves: the second look leaves them out (they score
+    low because they're the structural links the model misses, not because they're slips; Oct 8)"""
+    from app.analysis import filing_confidence as fc
+    return {k for k, ok in fc.decisions(hand=True).items() if ok} - {k for k, ok in fc.decisions().items() if ok}
 
 
 def workbench_queue(kind: str):

@@ -23,6 +23,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   Later the same morning, on the person's word: only filings in their own motifs (marked done) get a fit or are
   learned from; a motif the model made and nobody has shaped measures nothing (a claim had scored 100% in the motif
   just named from it). Retrained so: AUC 0.82, sure from 95%, where 96% of passes were kept.
+  By midday the fit weighs many more kinds of evidence (app/analysis/motif_signals.py): the motif's note alone, its
+  keywords, the claim rewritten as the bare shape of its story, the motifs of the most similar filed claims, a second
+  embedding model, the person's groups, a cross-encoder reranker (Qwen3-Reranker-0.6B) and the filing model's own yes or
+  no with its probability. Tested on 749 of the person's decisions held out by claim: AUC 0.885; at a fit of 85% or
+  more it passes 76% of the filings they kept, 95% of what it passes kept (29% at that precision the morning before).
+  Boosted trees did no better than the plain weighting, and both level off by half the decisions: more checking alone
+  won't move it much. Fits are worked out in the hourly run and kept on the filings. The person's confirmed filings get
+  one too: the lowest of the model's own, a second look for a hurried yes.
 - **Top stories as full cards again.** The front page's nine top stories (ranked as before) are the stories page's
   own cards again, every outlet's headline on each, the lighter cards of Oct 6 having read as boring. Each keeps a bar
   of who carries it by lean, now in five bands (left, leans left, center, leans right, right, plus unrated) instead

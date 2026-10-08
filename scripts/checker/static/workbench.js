@@ -506,7 +506,7 @@
       if (S.tab !== tab) return;
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
       const items = q.filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && c.checked === 'yes'));
-      box.innerHTML = items.length ? `<p class="wb-faint">🔁 Filings you confirmed that the model finds least likely, the least first. ✓ still fits takes one off this list (and counts as a fresh yes); ✕ takes the claim out of that motif. Most will be fine: these are just the ones worth a second glance.</p>
+      box.innerHTML = items.length ? `<p class="wb-faint">🔁 The model's filings you confirmed that it now finds least likely, the least first (yours made by hand aren't here: they score low because they're the links it misses). ✓ still fits takes one off this list (and counts as a fresh yes); ✕ takes the claim out of that motif. Most will be fine: these are just the ones worth a second glance.</p>
         ${items.map((x) => `<div class="wb-card wb-unck">
           <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
             <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
