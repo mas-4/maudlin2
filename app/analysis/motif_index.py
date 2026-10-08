@@ -275,6 +275,8 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     # The shortlist the judge chooses from: the learned one (motif_retriever), or the closest 8 without its weights
     from app.analysis import motif_retriever
     weights, vectors = motif_retriever.weights(), motif_retriever.Vectors()
+    learned = motif_retriever.learned() if weights else None  # every signal weighed, when it tests better
+    sig = None
     for c in todo:
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
@@ -287,7 +289,14 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             shown = None
             if weights:
                 try:
-                    shown = motif_retriever.shortlist(index, c['claim'], vectors, weights)
+                    if learned:
+                        ids = [e['id'] for e in live(index) if e['claims']]
+                        if sig is None or [e['id'] for e in sig.entries] != ids:  # a motif made or gone meanwhile
+                            from app.analysis import motif_signals
+                            sig = motif_signals.Signals(index, vectors)
+                        shown = motif_retriever.learned_shortlist(index, c['claim'], sig, weights, learned)
+                    else:
+                        shown = motif_retriever.shortlist(index, c['claim'], vectors, weights)
                 except Exception as e:  # noqa: BLE001 - the closest 8 will do
                     logger.warning("Motif retriever failed (%s); the closest motifs instead", e)
             if shown is None:
@@ -320,6 +329,8 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             made = sum(1 for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1)
             outcomes['none' if not filed else 'new' if made else 'matched'] += 1
             save(index)
+    if sig is not None:
+        sig.save()  # the new claims' shapes and layers, asked once
     if outcomes:
         os.makedirs(os.path.dirname(FILING_LOG), exist_ok=True)
         with open(FILING_LOG, 'a') as f:
@@ -436,7 +447,12 @@ def nightly(budget: float | None = None):
     claims += [{**c, 'claim': corrected(c['claim'], index)} for c in show_claims.claims()]
     import time
     started = time.time()
-    index = file_claims(claims, budget=budget)
+    try:  # the learned shortlist, retrained when a day old
+        from app.analysis import motif_retriever
+        motif_retriever.learned(retrain=True)
+    except Exception as e:  # noqa: BLE001 - filing goes on with the plain weights
+        logger.warning("Motif shortlist: %s", e)
+    index = file_claims(claims, budget=None if budget is None else max(60, budget - (time.time() - started)))
     try:
         snapshot_metrics()
     except Exception as e:  # noqa: BLE001 - the stats are extra

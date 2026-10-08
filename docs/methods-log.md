@@ -43,6 +43,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   groups whose motifs are nearest. The genre and groups are marked as the model's guesses (🤖 in the checker) until the
   person marks the motif done or sets them by hand; till then nothing learns from them (genre examples, group centers,
   the group signal of the filing model and the public pages read only the person's), and a merge leaves them behind.
+- **The shortlist weighs every signal.** The motifs the filing model chooses among for a new claim were picked by six
+  likenesses from one embedding model. They're now picked by every signal of the filing experiments (keywords, the
+  note alone, the claim's bare shape and its layers, its nearest filed claims, a second embedding model, the person's
+  groups, the news taken out), weighed on the person's confirmed claims and retrained daily. Held out, 83.9% of the
+  person's motifs are in the top 12, against 79.8% before: about one more of their motifs in every twenty reaches the
+  filing model. It's used only while its daily test beats the plain weighing. Each new claim costs two more questions
+  of the filing model (its bare shape, its layers), asked once and kept.
 - **The reranker taught the person's taste, in production.** Experiment E9 (docs/filing-experiments.md) found the
   cross-encoder, its top six layers trained on the person's decisions, judged held-out claims better (AUC 0.765 to
   0.796). Weekly at night it is taught again on the CPU, in a process of its own: three models that each leave a third

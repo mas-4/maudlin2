@@ -63,3 +63,40 @@ def test_filing_falls_back_to_the_closest_without_weights(tmp_path, monkeypatch)
     monkeypatch.setattr(llm, 'backend', lambda: 'test')
     mi.file_claims([{'claim': 'A brand new storm claim', 'source': 'narrative'}])
     assert seen == ['A brand new storm claim']
+
+
+def test_the_learned_shortlist_is_used_only_while_it_tests_better(monkeypatch, tmp_path):
+    import json
+
+    from app.analysis import motif_retriever as mr
+    monkeypatch.setattr(mr, 'LEARNED', str(tmp_path / 'learned.json'))
+    base = {'features': mr.learned_features(), 'coef': [0.0] * len(mr.learned_features()), 'bias': 0.0,
+            'mu': [0.0] * len(mr.learned_features()), 'sd': [1.0] * len(mr.learned_features()), 'at': '2026-10-08T00:00:00'}
+    (tmp_path / 'learned.json').write_text(json.dumps({**base, 'test': {'plain top 12': 0.80, 'learned top 12': 0.85}}))
+    assert mr.learned() is not None
+    (tmp_path / 'learned.json').write_text(json.dumps({**base, 'test': {'plain top 12': 0.80, 'learned top 12': 0.79}}))
+    assert mr.learned() is None  # no better held out: the plain weights
+    (tmp_path / 'learned.json').write_text(json.dumps({**base, 'features': ['today'], 'test': {'plain top 12': 0.8,
+                                                                                              'learned top 12': 0.9}}))
+    assert mr.learned() is None  # trained on other signals
+
+
+def test_the_learned_shortlist_ranks_by_its_weights_and_keeps_out_rejected_motifs(monkeypatch):
+    import numpy as np
+
+    from app.analysis import motif_index as mi, motif_retriever as mr
+    entries = [{'id': f'M{i}', 'name': f'm{i}', 'claims': [{'claim': 'x'}], 'not_claims': [mi.key('c')] if i == 2 else []}
+               for i in range(1, 5)]
+
+    class Sig:
+        pass
+    sig = Sig()
+    sig.entries = entries
+    n = len(mr.learned_features())
+    X = np.zeros((4, n))
+    X[:, -1] = [0.1, 0.9, 0.5, 0.3]  # the last signal decides
+    monkeypatch.setattr(mr, 'signal_rows', lambda s, claim, w, leave_out: (X, np.ones((4, 6))))
+    L = {'coef': [0.0] * (n - 1) + [1.0], 'bias': 0.0, 'mu': [0.0] * n, 'sd': [1.0] * n}
+    monkeypatch.setattr(mr, 'SHOWN', 2)
+    got = [e['id'] for e in mr.learned_shortlist({}, 'c', sig, {}, L)]
+    assert got == ['M3', 'M4']  # M2 scores highest, but the person said the claim isn't it

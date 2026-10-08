@@ -191,6 +191,12 @@ AUC gain is small and the 95% line is a coarse step, so the 76% is fragile; but 
 person's reading that the other signals don't carry. To put it in production: train it once on all their decisions,
 keep the top layers it changed (94M weights), retrain weekly as decisions grow.
 
+### The learned shortlist in production (Oct 8)
+motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
+with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
+five-fold test, by claim: plain weights 79.8% of the person's motifs in the top 12, learned **83.9%**. Filing uses it
+from the next run (motif_index.file_claims), retrained daily, kept only while it tests better.
+
 ## In progress and planned (Oct 8)
 
 Ideas for the hard misses (the person reads the structure under a claim; every finder reads its topic):
