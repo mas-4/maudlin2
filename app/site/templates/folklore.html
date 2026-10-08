@@ -32,8 +32,9 @@
     <p class="poll-note">{% if report %}🧶 <b>{{ kinds.posts or 0 }}</b> retold online, each by at least {{ floor }} people
         in their own words, from {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
         in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }} ({{ fewer }} more told by fewer
-        aren't shown, and {{ copies|length }} copypasta, the same words pasted). {% endif %}🎙️ <b>{{ kinds.shows or 0 }}</b>
-        told on two or more shows this week. 🔎 <b>{{ kinds.checks or 0 }}</b> more fact-checked in the last {{ check_days }}
+        aren't shown, and {{ copies|length }} copypasta, the same words pasted). {% endif %}{% if shows_on %}🎙️ <b>{{ kinds.shows or 0 }}</b>
+        told on two or more shows this week.{% else %}🎙️ What's told on the shows is coming: first we're teaching it to
+        tell a claim from the news.{% endif %} 🔎 <b>{{ kinds.checks or 0 }}</b> more fact-checked in the last {{ check_days }}
         days{% if checkers %} ({{ checkers|join(', ') }}){% endif %}.</p>
     <details class="how-it-works">
         <summary>How this works</summary>

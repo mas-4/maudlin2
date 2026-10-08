@@ -234,3 +234,19 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
                 {'action': 'not_same', 'a': 'M001', 'b': 'M001'}, {'action': 'new_with', 'name': '', 'claims': []}):
         with pytest.raises(ValueError):
             validate.workbench_action(bad)
+
+
+def test_a_claim_told_on_the_shows_says_which_shows_and_episodes(monkeypatch):
+    """Oct 8: a claim from the shows showed 'fact-check' and nothing else in the workbench's 'where it came from'"""
+    from app.analysis import focus_group, show_claims
+    monkeypatch.setattr(show_claims, 'kept_retold', lambda: [{'claim': 'He says he is a capitalist', 'told': [
+        {'show': 'Ruthless', 'url': 'gid://ep/1', 'at': 845, 'speaker': 'clip', 'claim': 'He is a capitalist', 'quote': 'I am a capitalist'},
+        {'show': 'Fox News Rundown', 'url': 'https://fox.example/ep2', 'at': 0, 'speaker': 'host', 'claim': 'He says he is a capitalist', 'quote': 'a capitalist'}]}])
+    monkeypatch.setattr(show_claims, 'load', lambda: {
+        'gid://ep/1': {'show': 'Ruthless', 'lean': 'right', 'title': 'Deleted tweets', 'date': '2026-10-07', 'claims': []},
+        'https://fox.example/ep2': {'show': 'Fox News Rundown', 'lean': 'right', 'title': 'MacCallum', 'date': '2026-10-06', 'claims': []}})
+    monkeypatch.setattr(focus_group, 'context', lambda url, quote: {'before': 'so ', 'quote': quote, 'after': '.'})
+    told = validate.show_tellings({'He says he is a capitalist'})
+    assert [t['show'] for t in told] == ['Ruthless', 'Fox News Rundown']  # newest first
+    assert told[0]['url'] is None and told[1]['url'] == 'https://fox.example/ep2'  # a feed's guid isn't a link
+    assert told[0]['title'] == 'Deleted tweets' and told[0]['at'] == 845 and told[0]['context']['quote'] == 'I am a capitalist'

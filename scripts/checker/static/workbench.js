@@ -1178,6 +1178,8 @@
       x.kind ? `Source: ${x.kind}${x.title ? ', ' + x.title : ''}${x.url ? ' ' + x.url : ''}` : '',
       x.context ? `Quote: ${x.context.before}${x.context.quote}${x.context.after}` : x.quote ? `Quote: “${x.quote}”` : '',
       x.people ? `Told by ${x.people} people` : '',
+      (x.tellings || []).length ? `Told on the shows (${x.tellings.length}):\n` + x.tellings.map((t) => `- ${t.show}${t.lean ? ' (' + t.lean + ')' : ''}, ${t.title || 'an episode'} ${t.date || ''}`
+        + `${t.at != null ? ', the part from ' + clock(t.at) : ''}${t.speaker ? ', ' + t.speaker : ''}${t.url ? ' ' + t.url : ''}${t.quote ? `: “${t.quote}”` : ''}`).join('\n') : '',
       (() => {  // the motifs it's in now, each with its scope note
         const ms = motifsOf(claim);
         return ms.length ? `Motifs (${ms.length}):\n` + ms.map((e) => `- ${e.name} (${e.id})${e.note ? ': ' + e.note : ': no note yet'}`).join('\n') : 'Motifs: none yet';
@@ -1230,6 +1232,7 @@
     ev.stopPropagation();
     copyText(b.dataset.copymotif ? motifText(S.by[b.dataset.copymotif]) : b.dataset.copy).then(() => toast('📋 copied'), () => toast('😬 couldn’t copy', true));
   }, true);
+  const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;  // 845 -> 14:05
   function detailHTML(x, claim) {
     const lab = x.label || {};
     return [
@@ -1238,6 +1241,13 @@
       x.context ? `<div class="wb-transcript">🗣️ ${esc(x.context.before)}<mark>${esc(x.context.quote)}</mark>${esc(x.context.after)}${x.side ? ` <span class="wb-faint">· the voter: ${esc(x.side)}</span>` : ''}</div>`
         : x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',
       x.people ? `🧶 told by ${x.people} people` : '',
+      (x.tellings || []).length ? `🎙️ told ${x.tellings.length} time${x.tellings.length === 1 ? '' : 's'} on ${new Set(x.tellings.map((t) => t.show)).size} show${new Set(x.tellings.map((t) => t.show)).size === 1 ? '' : 's'}`
+        + x.tellings.map((t) => `<div class="wb-telling"><b>${esc(t.show)}</b>${t.lean ? ` <span class="wb-faint">(${esc(t.lean)})</span>` : ''} · `
+          + (t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title || 'the episode')}</a>` : esc(t.title || 'an episode'))
+          + ` <span class="wb-faint">${esc(t.date || '')}${t.at != null ? ` · the part from ${clock(t.at)}` : ''}${t.speaker ? ' · ' + esc(t.speaker) : ''}</span>`
+          + (t.claim && t.claim !== claim ? `<div class="wb-faint">as read there: “${esc(t.claim)}”</div>` : '')
+          + (t.context ? `<div class="wb-transcript">🗣️ ${esc(t.context.before)}<mark>${esc(t.context.quote)}</mark>${esc(t.context.after)}</div>`
+            : t.quote ? `<div>🗣️ “${esc(t.quote)}”</div>` : '') + '</div>').join('') : '',
       (x.all_posts || []).length
         ? `<details class="wb-posts" open><summary>💬 all ${x.all_posts.reduce((n, p) => n + p.n, 0)} posts still kept (${x.all_posts.length} different)</summary>`
           + x.all_posts.map((p) => `<q>${esc(p.text)}${p.n > 1 ? ` <b class="wb-faint">×${p.n}</b>` : ''}${p.reply ? ' <span class="wb-faint">↩ reply</span>' : ''}${p.source === 'mastodon' ? ' <span class="wb-faint">🐘</span>' : ''}</q>`).join('') + '</details>'

@@ -54,6 +54,9 @@ SOURCES = {'posts': {'emoji': '🧶', 'name': 'retold online', 'about': 'Told by
 MOVED = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Moved</title>'
          '<link rel="canonical" href="{to}"><meta http-equiv="refresh" content="0; url={to}"></head>'
          '<body><p>Rumors are now part of <a href="{to}">Folklore and rumors</a>.</p></body></html>')
+# What's told on the shows reaches the public page only once plain news is filtered out: the first 25 were mostly
+# daily news podcasts repeating the news (BBC, Reuters, Up First, Morning Wire), not claims people tell (Oct 8)
+SHOWS_PUBLIC = False
 SHOW_INK = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#b8b8c8'}  # as the front page's shows (page_headlines)
 
 
@@ -219,7 +222,8 @@ class FolklorePage:
             if said:
                 voters.append({'title': ep['title'], 'date': ep['date'], 'url': url, 'claims': said})
         # Then what's told on the shows, and the fact-checks no narrative's card links already
-        cards += show_cards(index, screen)
+        if SHOWS_PUBLIC or Config.debug:
+            cards += show_cards(index, screen)
         cards += checked_cards(index, {p['url'] for c in cards for p in c.get('factchecks', [])})
         screen.save()
         looked = circulation.load()
@@ -233,7 +237,7 @@ class FolklorePage:
             'motif_counts': motif_counts(cards), 'with_motifs': sum(bool(c['motifs']) for c in cards),
             'looked': looked, 'seen_count': sum(1 for c in cards if (c.get('seen') or {}).get('people')),
             'check_days': CHECK_DAYS, 'checkers': sorted({c['checker'] for c in cards if c['kind'] == 'checks'}),
-            'preview': Config.debug,
+            'preview': Config.debug, 'shows_on': SHOWS_PUBLIC or Config.debug,
         })
         # The Rumors page was folded in here (Oct 8): its address opens this one on the fact-checks
         with open(os.path.join(Config.build, 'rumors.html'), 'w', encoding='utf-8') as f:

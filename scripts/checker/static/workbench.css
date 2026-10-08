@@ -314,3 +314,10 @@ body.dragging .wb-schip { border-style: dashed; }
 
 /* motifs selected in the list (shift-click a range, ctrl/cmd-click one more): dragged together */
 .wb-row.msel { background: color-mix(in srgb, var(--yellow) 45%, white); box-shadow: inset 3px 0 0 var(--ink); }
+
+/* A claim told on the shows, in its "where it came from": each telling with its show, episode and transcript */
+.wb-telling {
+    margin: 0.5em 0 0;
+    padding: 0.4em 0 0;
+    border-top: 1px dashed #c9c9d4;
+}

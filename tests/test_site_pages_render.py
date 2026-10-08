@@ -651,6 +651,9 @@ def test_folklore_page_shows_claims_told_on_the_shows_with_the_persons_genres(mo
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     monkeypatch.setattr(Config, 'debug', False)
     pn.FolklorePage().generate()
+    assert 'Democrats &lt;rig&gt; mail ballots' not in (tmp_path / 'folklore.html').read_text()  # previews only for now
+    monkeypatch.setattr(pn, 'SHOWS_PUBLIC', True)
+    pn.FolklorePage().generate()
     html = (tmp_path / 'folklore.html').read_text()
     assert 'Democrats &lt;rig&gt; mail ballots' in html and '🎙️ Told on 2 shows, by 2 callers' in html
     assert 'The Benny Show</span>' in html and 'SECRET CALLER WORDS' not in html

@@ -274,6 +274,28 @@ def undo() -> str:
     return snap['what']
 
 
+def show_tellings(words: set[str]) -> list[dict]:
+    """Every telling of a claim retold across the shows (show_claims.kept_retold, the group whose claim is one of
+    `words`): the show, its lean, the episode, who said it, about when, the quote and the transcript around it"""
+    from app.analysis import focus_group, show_claims
+    group = next((r for r in show_claims.kept_retold() if r['claim'] in words), None)
+    if group is None:  # not in the last run's groups: its own episode's claims, at least
+        group = {'told': [dict(c, show=e['show'], url=url) for url, e in show_claims.load().items()
+                          for c in e.get('claims', []) if c['claim'] in words]}
+    episodes = show_claims.load()
+    out = []
+    for t in group.get('told', []):
+        ep = episodes.get(t['url'], {})
+        try:
+            around = focus_group.context(t['url'], t.get('quote', ''))
+        except Exception:  # noqa: BLE001 - the telling stands without it
+            around = None
+        out.append({'show': t['show'], 'lean': ep.get('lean'), 'title': ep.get('title'), 'date': ep.get('date'),
+                    'url': t['url'] if t['url'].startswith('http') else None, 'speaker': t.get('speaker') or '',
+                    'at': t.get('at'), 'claim': t.get('claim'), 'quote': t.get('quote'), 'context': around})
+    return sorted(out, key=lambda t: (t['date'] or '', t['show']), reverse=True)
+
+
 def claim_detail(claim: str) -> dict:
     """What's behind a claim for the motif board: the fact-check it came from (headline, summary, link, the model's
     labels) or the folklore group (how many told it, a few of their posts, linked articles, labels). Local only."""
@@ -292,6 +314,10 @@ def claim_detail(claim: str) -> dict:
             out['context'] = focus_group.context(filed.get('ref', ''), said.get('quote', ''))
         except Exception:  # noqa: BLE001 - the detail stands without it
             out['context'] = None
+        return out
+    from app.analysis import show_claims
+    if filed.get('source') == show_claims.SOURCE:  # told on two or more shows: every telling, with its transcript
+        out.update(kind='radio & podcasts', tellings=show_tellings(words))
         return out
     if filed.get('source') and filed['source'] != 'narrative':
         url = filed.get('ref', '')
