@@ -222,6 +222,23 @@ class Signals:
                 best[n] = max(best[n], sim)
         return best
 
+    def prepare(self, claims: list[str], ask: bool = True):
+        """Do the models' part for many claims at once, a model at a time: the shape rewrites (the filing model), then
+        every embedding in two batches. Claim by claim, Ollama swapped three models through the GPU for each one
+        (Oct 8: about 13 s a claim); after this, cheap() reads caches"""
+        if ask:
+            for c in claims:
+                self.shape_of(c, True)
+            self.save()
+        shapes = [self.shapes[mi.key(c)] for c in claims if mi.key(c) in self.shapes]
+        self.vec(list(dict.fromkeys(list(claims) + shapes)))
+        self.note_vectors()
+        if self._filed_v is None:
+            self._filed_v = self.vec([self.filed[k][0] for k in self.filed_keys])
+        if claims:
+            self.nomic(claims[0], False)  # the motif side, once
+            self._nomic(list(dict.fromkeys(claims)), 'search_query')
+
     def cheap(self, claim: str, leave_out: bool = False, ask: bool = True) -> dict[str, np.ndarray]:
         """Every cheap signal against every motif"""
         desc, near = self.nomic(claim, leave_out)

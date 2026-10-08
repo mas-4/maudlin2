@@ -196,6 +196,7 @@ def train(index: dict | None = None) -> dict | None:
     by_claim = defaultdict(list)
     for claim, eid, source, ok in pairs:
         by_claim[(claim, source)].append((eid, ok))
+    scorer.signals.prepare([c for c, _ in by_claim])
     X, y, groups = [], [], []
     for (claim, source), items in by_claim.items():
         X.extend(scorer.rows(claim, [eid for eid, _ in items], source))
@@ -273,6 +274,7 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
         for c in e['claims']:
             if not c.get('checked') and (mi.key(c['claim']), e['id']) not in (skip or ()):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
+    scorer.signals.prepare([c for c, _ in todo])
     out = {}
     for (claim, source), ids in todo.items():
         if budget is not None and time.time() - started > budget:
