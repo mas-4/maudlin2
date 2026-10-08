@@ -140,6 +140,28 @@ filings passable at 95% precision either way. So it helps find the person's moti
 judge a filing once found: its gain waits for the learned shortlist in production. (The 76% of the morning fell to
 66% with the day's new decisions and edits, not the signal: the 95% line is a coarse step.)
 
+### E2 Imagined instances and E7 The layered finder (Oct 8) — E2 nothing; E7 kept
+`scripts/experiments/e2_e7_imagined_layers.py` (gemma4:26b's answers cached in maudlin-data/motifs/experiments).
+E2: for each motif, eight claims people might tell that are instances of it, each on a different subject, written from
+its name and note only (never its claims); a claim scored by its best and mean match among them. E7: each claim
+described layer by layer in plain generic words (a character type, a plot, a theory or belief, an argument, a value at
+stake; "none" where it has none), each layer against every motif's note, and separately the layer that goes with the
+motif's genre (Archetypes: character; Plots: plot; Theories and Beliefs: theory; Arguments: argument; Values and
+Exhortations: value).
+
+| variant | top 8 | top 12 | top 40 | hard misses |
+|---|---|---|---|---|
+| baseline | 77.7 | 82.3 | 91.5 | 76 |
+| E2 imagined instances | 78.0 | 82.5 | 91.7 | 74 (6 back, 4 new) |
+| **E7 layered finder** | **79.7** | **83.7** | **92.5** | **67** (17 back, 8 new) |
+| E2 and E7 together | 79.6 | 84.1 | 92.4 | 68 |
+
+E7 is the day's best gain with nothing of the person's filings in it to leak: reading a claim as the stack of stories
+it tells (who it's about, what happens, what's believed to cause it, what it argues, what's at stake) and matching
+each layer to motifs of that layer is how the person reads them. The imagined instances add nearly nothing over the
+notes they were written from. Next: E7's two signals into motif_signals (the layers asked of the filing model once per
+new claim, cached) and the combiner retrained.
+
 ### E1b The news of the claims' own time (Oct 8) — queued
 `scripts/experiments/e1b_news_span.py`. The person asked whether the old claims had been de-newsed too. They had (E1
 takes the directions out of both sides), but with the wrong news: "the latest 6,000 headlines" by last_accessed are a
