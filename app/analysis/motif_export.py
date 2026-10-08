@@ -92,7 +92,7 @@ def entry_md(m: dict, names: dict, scope: str) -> list[str]:
     """One motif in the readable catalog"""
     lines = []
     tags = [f"genre: {m['genre']}"] if m['genre'] else []
-    tags += [f"kind of: {', '.join(names[p] for p in m['parents'])}"] if m['parents'] else []
+    tags += [f"rests on: {', '.join(names[p] for p in m['parents'])}"] if m['parents'] else []
     tags += [f"related: {', '.join(names[r] for r in m['related'])}"] if m['related'] else []
     tags += ['not yet verified'] if scope == 'all' and not m['verified'] else []
     lines += [f"### {m['name']} ({m['id']})", '']

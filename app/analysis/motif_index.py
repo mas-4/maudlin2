@@ -489,23 +489,21 @@ def add(name: str) -> str:
 def merge(source: str, target: str):
     """Fold `source` into `target`: its claims and phrases move over (a claim in both counts once), and its number
     points to `target`. Everything else it had comes along too (Oct 7; until then its broader motifs, groups, genre,
-    note and 'not the same' verdicts were lost): its related links and kinds, its broader motifs, its groups, its
+    note and 'not the same' verdicts were lost): its related links, what rests on it and what it rests on, its groups, its
     genre and note where the target has none, the claims a person saw when marking it done, and 'not the same'
     verdicts."""
     index = load()
     if source == target:
         return
     src, dst = index['entries'][source], index['entries'][target]
-    # its broader motifs, unless that would make the target a kind of itself or of one of its own kinds
+    # what it rests on, unless that would make the target rest on itself or on something resting on it
     below = {target}
     while True:
         more = {e['id'] for e in index['entries'].values() if set(parents_of(e)) & below} - below
         if not more:
             break
         below |= more
-    genre = genre_of(dst) or genre_of(src)  # the merged motif's genre: its broader motifs must share it
-    ups = [p for p in parents_of(dst) + parents_of(src) if p != source and p not in below
-           and not (genre and genre_of(index['entries'].get(p, {})) not in (None, genre))]
+    ups = [p for p in parents_of(dst) + parents_of(src) if p != source and p not in below]
     if ups or 'parents' in dst or 'parent' in dst:
         dst.pop('parent', None)
         dst['parents'] = list(dict.fromkeys(ups))
@@ -527,7 +525,7 @@ def merge(source: str, target: str):
     src.update(claims=[], merged_into=target)
     index['related'] = [sorted([target if x == source else x for x in p]) for p in index.get('related', [])]
     index['related'] = [p for i, p in enumerate(index['related']) if p[0] != p[1] and p not in index['related'][:i]]
-    for e in index['entries'].values():  # its kinds become kinds of the motif it joined
+    for e in index['entries'].values():  # what rested on it rests on the motif it joined
         if source in parents_of(e):
             e['parents'] = [p for p in dict.fromkeys(target if p == source else p for p in parents_of(e)) if p != e['id']]
             e.pop('parent', None)
@@ -694,7 +692,7 @@ def group_member(eid: str, gid: str, on: bool = True):
     save(index)
 
 
-# Facets: ways of sorting motifs that cut across the kinds tree, one value per motif in each. Genre first, its
+# Facets: ways of sorting motifs that cut across the rests-on links, one value per motif in each. Genre first, its
 # starting values the genres the narrative labeler uses; a person adds more. (Later, perhaps: Barkun's conspiracy scope,
 # a frame from the Media Frames codebook.)
 # A motif's genre: only the ones the person makes (the 13 starting ones were dropped on their word, Oct 7)
@@ -758,13 +756,6 @@ def set_facet(eid: str, facet: str, value: str | None):
     index = load()
     entry = index['entries'][eid]
     value = ' '.join((value or '').split())
-    if value and facet == 'genre':  # its kind-of links stay within one genre (genres_clash)
-        linked = [index['entries'][p] for p in parents_of(entry) if p in index['entries']] + [
-            e for e in live(index) if eid in parents_of(e)]
-        clash = [e['name'] for e in linked if genre_of(e) and genre_of(e) != value]
-        if clash:
-            raise ValueError(f'“{entry["name"]}” is linked as a kind to {", ".join(f"“{n}”" for n in clash)} of another '
-                             f'genre: take that link away first, or give them the same genre')
     if value:
         entry.setdefault('facets', {})[facet] = value
     else:
@@ -976,9 +967,11 @@ def reject(claim: str, eid: str):
     save(index)
 
 
-# Kinds: a motif can be a kind of others ('Fake news fabrication' of both 'Misinformation spread' and 'Disinformation
-# campaign'): a person's links between motifs, finer than groups, kept as each entry's 'parents'. Several parents, as in
-# a thesaurus, not a tree; never a loop.
+# Rests on: a motif can rest on others, only making sense given them: a kind of them ('Pedophile cabal' rests on 'Elite
+# cabal'), or a case, argument or figure that tells them ('Radical left' rests on 'Overton window'; an Argument on a
+# Theory). A person's links between motifs, finer than groups, kept as each entry's 'parents' (named 'kind of' until
+# Oct 8, and held within one genre from Oct 7; the person then found that the links that crossed genres, an argument
+# resting on a theory, were the same link). Several, as in a thesaurus, not a tree; never a loop.
 
 def parents_of(entry: dict) -> list[str]:
     """Its parents (entries saved with a single 'parent' before Oct 5 afternoon read as a list of one)"""
@@ -989,29 +982,20 @@ def genre_of(entry: dict) -> str | None:
     return (entry.get('facets') or {}).get('genre') or None
 
 
-def genres_clash(a: dict, b: dict) -> bool:
-    """Both have a genre and they differ: then neither can be a kind of the other (a kind of stays within its genre;
-    the person's rule, Oct 7). A motif with no genre yet can be a kind of anything"""
-    return bool(genre_of(a) and genre_of(b) and genre_of(a) != genre_of(b))
-
-
 @exclusive
 def set_parent(eid: str, parent: str, on: bool = True):
-    """`eid` is (on) or isn't (off) a kind of `parent`. Refuses a loop, and two genres (genres_clash)."""
+    """`eid` rests (on) or doesn't rest (off) on `parent`. Refuses a loop."""
     index = load()
     entries = index['entries']
     parents = parents_of(entries[eid])
     if on:
         if parent not in entries or entries[parent].get('merged_into') or parent == eid:
             raise ValueError(f'no such motif: {parent}')
-        if genres_clash(entries[eid], entries[parent]):
-            raise ValueError(f'“{entries[eid]["name"]}” is {genre_of(entries[eid])} and “{entries[parent]["name"]}” '
-                             f'is {genre_of(entries[parent])}: a kind of stays within its genre')
         todo, seen = [parent], set()
         while todo:  # everything above the new parent must not include eid
             p = todo.pop()
             if p == eid:
-                raise ValueError(f'{parent} is already a kind of {eid}')
+                raise ValueError(f'{parent} already rests on {eid}')
             if p not in seen:
                 seen.add(p)
                 todo += parents_of(entries.get(p, {}))
@@ -1231,7 +1215,7 @@ def single_suggestions(n: int = 5) -> list[dict]:
     has_kinds = {p for e in entries for p in parents_of(e)}
     singles = [e for e in entries if len(e['claims']) == 1 and not e.get('stands_alone') and not parents_of(e)
                and e['id'] not in has_kinds]
-    settled = {frozenset(p) for p in index.get('not_same', [])}  # kept apart, related or kinds: decided already
+    settled = {frozenset(p) for p in index.get('not_same', [])}  # kept apart, related or resting: decided already
     if not singles:
         return []
     texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(c['claim'][:120] for c in e['claims'][-2:])

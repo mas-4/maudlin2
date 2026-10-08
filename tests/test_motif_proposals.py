@@ -246,47 +246,29 @@ def test_the_judge_scores_open_links_and_is_shown_the_persons_decisions(tmp_path
     assert all(p['judge']['score'] == 7 for p in store.values())
 
 
-def test_a_kind_of_stays_within_its_genre(tmp_path, monkeypatch):
-    import pytest
+def test_rests_on_crosses_genres(tmp_path, monkeypatch):
+    """Oct 8, the person: 'kind of' became 'rests on', which may cross genres (an Argument resting on a Theory); the
+    within-genre rule of Oct 7 is gone"""
     index_with(tmp_path, monkeypatch)
-    mi.set_facet('M001', 'genre', 'Archetypes')
-    mi.set_facet('M002', 'genre', 'Theories')
-    with pytest.raises(ValueError, match='within its genre'):
-        mi.set_parent('M002', 'M001')
-    mi.set_parent('M003', 'M001')  # no genre yet: allowed
-    with pytest.raises(ValueError, match='take that link away first'):
-        mi.set_facet('M003', 'genre', 'Plots')  # would put a kind of across two genres
-    mi.set_facet('M003', 'genre', 'Archetypes')
-    assert mi.parents_of(mi.load()['entries']['M003']) == ['M001']
-    with pytest.raises(ValueError):  # through the checker too
-        validate.workbench_action({'action': 'parent', 'id': 'M002', 'parent': 'M001'})
-
-
-def test_a_merge_drops_a_broader_motif_of_another_genre(tmp_path, monkeypatch):
-    index_with(tmp_path, monkeypatch)
-    mi.set_parent('M002', 'M001')  # Empty suit a kind of Politicians' empty promises, no genres yet
     mi.set_facet('M001', 'genre', 'Theories')
+    mi.set_facet('M002', 'genre', 'Arguments')
+    mi.set_parent('M002', 'M001')  # Magic money tree rests on Politicians' empty promises
     mi.set_facet('M003', 'genre', 'Plots')
-    mi.merge('M002', 'M003')  # into a Plot: its broader motif, a Theory, doesn't come along
-    assert mi.parents_of(mi.load()['entries']['M003']) == []
+    mi.set_parent('M003', 'M002')
+    mi.set_facet('M003', 'genre', 'Archetypes')  # a genre can change whatever it rests on
+    assert mi.parents_of(mi.load()['entries']['M002']) == ['M001']
+    import pytest
+    with pytest.raises(ValueError):  # never a loop
+        mi.set_parent('M001', 'M003')
 
 
-def test_old_links_across_genres_come_up_for_removal_and_none_are_proposed(tmp_path, monkeypatch):
+def test_a_merge_keeps_what_it_rests_on_across_genres(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
     mi.set_parent('M002', 'M001')
-    index = mi.load()
-    index['entries']['M001']['facets'] = {'genre': 'Theories'}  # made before the rule
-    index['entries']['M002']['facets'] = {'genre': 'Archetypes'}
-    mi.save(index)
-    store = {}
-    assert mp.genre_clashes(store, mi.load()) == 1
-    p = next(iter(store.values()))
-    assert p['kind'] == 'unparent' and p['args'] == {'id': 'M002', 'parent': 'M001'}
-    mp.add(store, 'parent', {'id': 'M003', 'parent': 'M002'}, 'x')
-    index = mi.load()
-    index['entries']['M003']['facets'] = {'genre': 'Plots'}
-    mi.save(index)
-    assert not mp.still_holds(store[mp.pid('parent', {'id': 'M003', 'parent': 'M002'})], mi.load())
+    mi.set_facet('M001', 'genre', 'Theories')
+    mi.set_facet('M003', 'genre', 'Plots')
+    mi.merge('M002', 'M003')  # into a Plot: what it rested on, a Theory, comes along
+    assert mi.parents_of(mi.load()['entries']['M003']) == ['M001']
 
 
 def test_genres_are_proposed_from_the_persons_examples(tmp_path, monkeypatch):
@@ -305,5 +287,7 @@ def test_genres_are_proposed_from_the_persons_examples(tmp_path, monkeypatch):
     assert prompts[0][1]['properties']['genre']['enum'] == ['Archetypes', 'Theories', 'none']
     assert mp.genres(store, mi.load()) == 0  # never asked twice
     assert mp.action(p) == {'action': 'facet', 'id': 'M003', 'facet': 'genre', 'value': 'Archetypes'}
-    mi.set_parent('M003', 'M001')  # now a kind of a Theory: Archetypes would put that link across two genres
+    mi.set_parent('M003', 'M001')  # resting on a Theory: an Archetype still may (Oct 8)
+    assert mp.still_holds(p, mi.load())
+    mi.set_facet('M003', 'genre', 'Theories')  # given a genre meanwhile: no longer holds
     assert not mp.still_holds(p, mi.load())

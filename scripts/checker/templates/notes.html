@@ -67,7 +67,7 @@ function card(e) {
   const names = (ids) => ids.map((i) => byId[i] ? esc(byId[i].name) : i).join(', ');
   const claims = expanded.has(e.id) ? e.claims : e.claims.slice(0, 4);
   return `<div class="card${state(e) === 'yours' ? ' yours' : ''}" id="c-${e.id}" data-id="${e.id}">
-    <h3>🧩 ${esc(e.name)} <span class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.parents.length ? ' · kind of ' + names(e.parents) : ''}</span>${tag(e)}</h3>
+    <h3>🧩 ${esc(e.name)} <span class="meta">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.parents.length ? ' · rests on ' + names(e.parents) : ''}</span>${tag(e)}</h3>
     <textarea id="t-${e.id}" rows="2" placeholder="What kind of story does this motif cover? One plain line.">${esc(e.note || '')}</textarea>
     <div class="row"><button class="save" data-do="save" disabled>save</button>
       ${state(e) === 'draft' ? '<button data-do="keep" title="keep the draft exactly as it is: it becomes yours">✓ keep draft</button>' : ''}

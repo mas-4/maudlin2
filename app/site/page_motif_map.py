@@ -1,5 +1,6 @@
 """The motif map: the motif index (app/analysis/motif_index.py) drawn as a map, each verified motif a dot sized by its
-claims, joined to its kinds (a kind of a broader motif), to the motifs a person marked related, and to motifs that
+claims, joined to the motifs it rests on (only makes sense given: a kind of them, or a case, argument or figure that
+tells them; 'kind of' until Oct 8), to the motifs a person marked related, and to motifs that
 share a claim; a person's groups drawn as colored areas around their motifs, a dot's fill its genre. The checker's map
 (scripts/checker) is the private working copy, where motifs are moved and joined; this one only shows what the motifs
 page shows: motifs a person verified, and their claims as the accusations screen lets them through. Both draw through
@@ -66,7 +67,7 @@ def graph(index: dict | None = None, screen: accusations.Screen | None = None) -
     every = motif_index.facet_values(index).get('genre', [])  # only the ones used here go out, with their place (k)
     genres = [{'name': v, 'k': k, 'size': n} for k, v in enumerate(every)
               if (n := sum(m['genre'] == v for m in motifs.values()))]
-    # a dot's outline: broad (a kind with kinds of its own), sub (a kind of a broader one), or both, in a chain
+    # a dot's outline: broad (others rest on it), sub (it rests on another), or both, in a chain
     for m in motifs.values():
         m['broad'] = any(link['target'] == m['id'] and link['kind'] == 'kind' for link in links)
         m['sub'] = any(link['source'] == m['id'] and link['kind'] == 'kind' for link in links)

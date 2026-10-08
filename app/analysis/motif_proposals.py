@@ -3,14 +3,15 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
 
   rename   a typo in a motif's name ("Poltiicians' empty promises")
   note     a typo in its scope note
-  parent   one motif is a kind of another
+  parent   one motif rests on another (only makes sense given it: a kind of it, or a case, argument or figure that
+           tells it; 'kind of' until Oct 8)
   relate   two motifs are related (told together, close cousins)
   merge    two motifs are the same one
   group    a motif belongs in one of the person's groups
   genre    a motif with no genre yet is of one of the person's genres (one layer of a story: a character type, a plot,
            a theory...), judged against examples of each genre from the person's own motifs
   unrelate two motifs linked as related aren't (a review of the links already made)
-  unparent a motif linked as a kind of another isn't
+  unparent a motif linked as resting on another doesn't
 
 Approving runs the same action the person would (logged, undoable); a decision is kept, so a rejected proposal never
 comes back. Candidates are found cheaply (motifs close in meaning, motifs sharing a claim, motifs near a group's
@@ -21,7 +22,7 @@ The model's own "no" (two motifs unrelated, a motif not in a group) and its typo
 motifs as they were (name, note, about how many claims): when a motif changes, it's asked about again. A person's
 decision is never asked again.
 
-Best fit (Oct 7): a second read of each kind-of and related proposal by the same model, shown some of the person's own
+Best fit (Oct 7): a second read of each rests-on and related proposal by the same model, shown some of the person's own
 decisions on such links, scores it 0-10 (judge()); a small model trained on the person's decisions (best_fit()) weighs
 that score with plain facts about the two motifs (how alike their descriptions and claims are, claims and genre
 shared, groups apart) into a best fit, by which the checklist is sorted. Those least likely to be approved are folded
@@ -56,7 +57,7 @@ TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo,
 MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
 # that merely shared a claim: "Watermelon" and "Trojan horse")
 SHARED_FLOOR = 0.6  # motifs sharing a single claim are asked about only if this alike; two or more shared, always
-JUDGED = ('relate', 'parent')  # the kinds the judge scores and best fit sorts
+JUDGED = ('relate', 'parent')  # the kinds of proposal the judge scores and best fit sorts
 JUDGE_EXAMPLES = 8  # of the person's past decisions on that kind of link, shown to the judge: this many kept, this many rejected
 FIT_MIN = 30  # decisions needed before best fit is trained
 FIT_KEEP = 0.9  # the fold: below the best fit that keeps this share of the person's approved proposals above it
@@ -113,18 +114,16 @@ def still_holds(p: dict, index: dict) -> bool:
         return live(a['id']) and (entries[a['id']].get('note') or '') == a['from'] and a['to'] != a['from']
     if k == 'parent':
         return live(a['id']) and live(a['parent']) and a['parent'] not in mi.parents_of(entries[a['id']]) \
-            and a['id'] not in mi.parents_of(entries[a['parent']]) and not mi.genres_clash(entries[a['id']], entries[a['parent']])
+            and a['id'] not in mi.parents_of(entries[a['parent']])
     if k in ('relate', 'merge'):
         pair = sorted([a['a'], a['b']])
         return live(a['a']) and live(a['b']) and pair not in index.get('related', []) \
             and not (k == 'merge' and pair in index.get('not_same', []))
     if k == 'group':
         return live(a['id']) and a['group'] in index.get('groups', {}) and a['group'] not in mi.groups_of(entries[a['id']])
-    if k == 'genre':  # still without a genre, the genre still there, and no kind-of link it would put across two
+    if k == 'genre':  # still without a genre, and the genre still there
         e = entries.get(a['id'], {})
-        linked = [entries[p] for p in mi.parents_of(e) if p in entries] + [x for x in mi.live(index) if a['id'] in mi.parents_of(x)]
-        return live(a['id']) and not mi.genre_of(e) and a['genre'] in mi.facet_values(index).get('genre', []) \
-            and not any(mi.genre_of(x) not in (None, a['genre']) for x in linked)
+        return live(a['id']) and not mi.genre_of(e) and a['genre'] in mi.facet_values(index).get('genre', [])
     if k == 'unrelate':
         return live(a['a']) and live(a['b']) and sorted([a['a'], a['b']]) in index.get('related', [])
     if k == 'unparent':
@@ -136,7 +135,7 @@ KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 
 
 
 def open_proposals() -> list[dict]:
-    """The checklist: typo fixes, merges and link removals first (in KINDS order), then the kind-of and related
+    """The checklist: typo fixes, merges and link removals first (in KINDS order), then the rests-on and related
     proposals together, best fit first; each of those below the fold's cut marked 'unlikely'"""
     index = mi.load()
     cut = (read_json(RUNS, {}).get('fit') or {}).get('cut')
@@ -244,15 +243,16 @@ B. {b}
 How are they related, judging by each motif's name, note and claims: what kind of story each one is? A claim can be \
 filed under several motifs at once (one story can carry several shapes), so two motifs holding the same claim are not \
 the same motif for that.
-- "A is a kind of B": every A story is also a B story, a narrower version of it
-- "B is a kind of A": the other way round
+- "A rests on B": A only makes sense given B: a narrower version of B (every A story is also a B story), or a case, \
+argument or figure by which B is told (an argument resting on a theory, a character type resting on a plot)
+- "B rests on A": the other way round
 - "the same motif": two names for one kind of story
 - "related": different kinds of story that are often told together or are close cousins
 - "unrelated": a shared topic, person or word at most
 
 reason: a sentence
 relation: one of the five"""
-RELATIONS = ["A is a kind of B", "B is a kind of A", "the same motif", "related", "unrelated"]
+RELATIONS = ["A rests on B", "B rests on A", "the same motif", "related", "unrelated"]
 LINK_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
                                                 "relation": {"type": "string", "enum": RELATIONS}},
                "required": ["reason", "relation"]}
@@ -306,9 +306,7 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadl
         if not answer:
             continue
         rel, why = answer.get('relation'), answer.get('reason', '')
-        if rel in RELATIONS[:2] and mi.genres_clash(a, b):
-            pass  # a kind of stays within its genre
-        elif rel == RELATIONS[0]:
+        if rel == RELATIONS[0]:
             made += add(store, 'parent', {'id': a['id'], 'parent': b['id']}, why)
         elif rel == RELATIONS[1]:
             made += add(store, 'parent', {'id': b['id'], 'parent': a['id']}, why)
@@ -326,7 +324,7 @@ def links(store: dict, index: dict, vecs: np.ndarray, entries: list[dict], deadl
 
 # ---------- a review of the links already made ----------
 def review(store: dict, index: dict, deadline: float | None = None) -> int:
-    """Every related and kind-of link put to the same question as a new pair; one the model calls unrelated becomes a
+    """Every related and rests-on link put to the same question as a new pair; one the model calls unrelated becomes a
     proposal to take it away. A link it keeps is remembered with both motifs' marks, so it's read again only once
     either changes; one a person decided on (kept or removed) never is"""
     import time
@@ -488,7 +486,8 @@ mood, a cause and effect, or the same people or events.
 reason: a sentence
 score: 0 (surely rejected) to 10 (surely accepted)"""
 JUDGE_TESTS = {'relate': 'the same kind of story told from another side, or a close cousin that is often told with it',
-               'parent': 'every story of the narrower one is plainly also a story of the broader one'}
+               'parent': 'the first plainly only makes sense given the second: a narrower version of it, or a case, '
+                         'argument or figure by which it is told'}
 JUDGE_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
                                                  "score": {"type": "integer", "minimum": 0, "maximum": 10}},
                 "required": ["reason", "score"]}
@@ -519,13 +518,13 @@ def _examples(p: dict, decided: list[dict], index: dict) -> str:
     lines = []
     for d in rows:
         x, y = pair(d)
-        link = f'{short(x)} — related to — {short(y)}' if d['kind'] == 'relate' else f'{short(x)} — a kind of — {short(y)}'
+        link = f'{short(x)} — related to — {short(y)}' if d['kind'] == 'relate' else f'{short(x)} — rests on — {short(y)}'
         lines.append(f'- {"ACCEPTED" if d["status"] == "approved" else "REJECTED"}: {link}')
     return "\nSome of the person's past decisions on links like this:\n" + '\n'.join(lines) + '\n'
 
 
 def judge(store: dict, index: dict, deadline: float | None = None) -> int:
-    """The judge's score on each kind-of and related proposal not scored yet: open ones first, then decided ones
+    """The judge's score on each rests-on and related proposal not scored yet: open ones first, then decided ones
     (more to train best fit on)"""
     import time
     decided = [p for p in store.values() if p['kind'] in JUDGED and p['status'] in ('approved', 'rejected') and _live_pair(p, index)]
@@ -538,7 +537,7 @@ def judge(store: dict, index: dict, deadline: float | None = None) -> int:
         x, y = pair(p)
         a, b = index['entries'][x], index['entries'][y]
         name = lambda e: f'“{e["name"]}”'  # noqa: E731
-        link = f'{name(a)} and {name(b)} are related' if p['kind'] == 'relate' else f'{name(a)} is a kind of {name(b)}'
+        link = f'{name(a)} and {name(b)} are related' if p['kind'] == 'relate' else f'{name(a)} rests on {name(b)}'
         answer = llm.complete_json(JUDGE_PROMPT.format(a=shown(a, b), b=shown(b, a), link=link, reason=p.get('reason', ''),
                                                        examples=_examples(p, decided, index), test=JUDGE_TESTS[p['kind']]),
                                    JUDGE_SCHEMA, max_tokens=500, model=MODEL)
@@ -552,7 +551,7 @@ def judge(store: dict, index: dict, deadline: float | None = None) -> int:
 
 
 FIT_FACTS = ['descriptions alike', 'claims alike', 'claims shared', 'same group', 'same genre', 'groups apart',
-             'a kind-of link', 'judge']
+             'a rests-on link', 'judge']
 
 
 def fit_facts(ps: list[dict], index: dict) -> np.ndarray:
@@ -576,7 +575,7 @@ def fit_facts(ps: list[dict], index: dict) -> np.ndarray:
 
 
 def best_fit(store: dict, index: dict) -> dict | None:
-    """Trains best fit on the person's decisions (scored by the judge) and gives each open kind-of and related
+    """Trains best fit on the person's decisions (scored by the judge) and gives each open rests-on and related
     proposal its chance of approval ('fit'); the fold's cut is kept in RUNS. None until FIT_MIN decisions"""
     from sklearn.linear_model import LogisticRegression
     scored = [p for p in store.values() if p['kind'] in JUDGED and 'judge' in p and _live_pair(p, index)]
@@ -600,18 +599,6 @@ def best_fit(store: dict, index: dict) -> dict | None:
     return info
 
 
-def genre_clashes(store: dict, index: dict) -> int:
-    """Kind-of links between motifs of two genres, made before the rule that a kind of stays within its genre: each
-    proposed for removal (no model needed)"""
-    made = 0
-    for e in mi.live(index):
-        for p in mi.parents_of(e):
-            if p in index['entries'] and mi.genres_clash(e, index['entries'][p]):
-                made += add(store, 'unparent', {'id': e['id'], 'parent': p},
-                            f'{mi.genre_of(e)} and {mi.genre_of(index["entries"][p])}: a kind of stays within its genre')
-    return made
-
-
 # 'genres' left out of the nightly run until it's been tried on the person's own genres (scripts/propose_motif_fixes.py genres)
 def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float | None = None) -> dict:
     """One run: new proposals of each kind, saved as it goes. Returns how many of each, and 'finished': whether it
@@ -621,7 +608,7 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'judge'), budget: float
     index = mi.load()
     store, runs = load(), read_json(RUNS, {})
     entries = mi.live(index)
-    counts = {'finished': False, 'genre clashes': genre_clashes(store, index)}
+    counts = {'finished': False}
     try:
         if 'typos' in kinds:
             counts['typos'] = typos(store, index, runs, deadline)

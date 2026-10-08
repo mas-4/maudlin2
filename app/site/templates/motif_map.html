@@ -8,17 +8,17 @@
             filed under them are false, some are true.</p>
     </div>
     <p class="wip-banner">🚧 <b>Work in progress.</b> The <a href="motifs.html">motif index</a> drawn as a map: {{ motifs }}
-        motifs a person has checked, each a dot that grows with its claims. Lines join a motif to the broader kind it's
-        a kind of, to motifs a person marked related, and to motifs that share a claim{% if groups %}; the colored areas
+        motifs a person has checked, each a dot that grows with its claims. Lines join a motif to the ones it rests on
+        (it only makes sense given them: a kind of them, or a case, argument or figure that tells them), to motifs a person marked related, and to motifs that share a claim{% if groups %}; the colored areas
         are groups a person made of motifs that go together{% endif %}{% if genres %}, and a dot's color is its genre{% endif %}. Pick a dot to read its claims; drag to look
         around, scroll or pinch to zoom.</p>
 
     <div class="mm-bar">
         <label class="mm-search">🔎 <input type="search" id="mm-search" placeholder="find a motif" list="mm-names" autocomplete="off"></label>
         <datalist id="mm-names"></datalist>
-        <span class="mm-key"><i class="mm-dot mm-broad"></i> a broad kind</span>
-        <span class="mm-key"><i class="mm-dot mm-sub"></i> a kind of one</span>
-        <span class="mm-key"><i class="mm-line"></i> kind of</span>
+        <span class="mm-key"><i class="mm-dot mm-broad"></i> others rest on it</span>
+        <span class="mm-key"><i class="mm-dot mm-sub"></i> rests on one</span>
+        <span class="mm-key"><i class="mm-line"></i> rests on</span>
         <span class="mm-key"><i class="mm-line mm-related"></i> related</span>
         <span class="mm-key"><i class="mm-line mm-shared"></i> share a claim</span>
         <label class="mm-key"><input type="checkbox" id="mm-lonely"> show motifs with no links</label>
@@ -74,7 +74,7 @@
         $('#mm-names').innerHTML = data.motifs.map((m) => `<option value="${esc(m.name)}">`).join('');
         let size = +$('#mm-size').value, zoomK = 1;  // the dot-size slider; the current zoom, for the names' offset
         const r = (m) => (6 + 3.2 * Math.sqrt(m.count)) * size;
-        const fill = (m) => m.genre ? genreColor(m.genre) : '#fff';  // its genre; the outline is its place in the kinds
+        const fill = (m) => m.genre ? genreColor(m.genre) : '#fff';  // its genre; the outline is its place in the rests-on links
         const shownGroups = (n) => n.m.groups.filter((g) => groupOf.has(g) && !hidden.has(g));
         const crossing = M.crossing(shownGroups);
 
@@ -110,7 +110,7 @@
             hull.append('text').text((g) => '📁 ' + g.name);
             const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'mm-link mm-' + l.kind)
                 .attr('marker-end', (l) => l.kind === 'kind' ? 'url(#mm-arrow)' : null);
-            link.append('title').text((l) => l.kind === 'kind' ? 'a kind of' : l.kind === 'related' ? 'related' : `${l.n} claim${l.n === 1 ? '' : 's'} in both`);
+            link.append('title').text((l) => l.kind === 'kind' ? 'rests on' : l.kind === 'related' ? 'related' : `${l.n} claim${l.n === 1 ? '' : 's'} in both`);
             const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'mm-node')
                 .classed('mm-broad', (n) => n.m.broad).classed('mm-sub', (n) => n.m.sub)
                 .attr('tabindex', 0).attr('role', 'button').attr('aria-label', (n) => `${n.m.name}, ${n.m.count} claims`);
@@ -200,7 +200,7 @@
                 ${groups.map((g) => `<span class="mm-gtag" style="--pop: ${groupColor(g.id)}">📁 ${esc(g.name)}</span>`).join(' ')}
                 ${m.genre ? `<span class="mm-gtag" style="--pop: ${genreColor(m.genre)}">🎭 ${esc(m.genre)}</span>` : ''}
                 ${m.note ? `<p class="mm-note">${esc(m.note)}</p>` : ''}
-                ${row('⬆️', 'a kind of', up)}${row('⬇️', 'its kinds', down)}${row('🔗', 'related', rel('related'))}${row('🤝', 'shares claims with', rel('shared'))}
+                ${row('⬆️', 'rests on', up)}${row('⬇️', 'rest on it', down)}${row('🔗', 'related', rel('related'))}${row('🤝', 'shares claims with', rel('shared'))}
                 <p class="mm-count">${m.count} claim${m.count === 1 ? '' : 's'}${m.count > m.claims.length ? `, the newest ${m.claims.length}` : ''}</p>
                 <ul class="mm-claims">${m.claims.map((c) => `<li>“${esc(c.claim)}” <span class="court-when">${c.url ? `<a href="${esc(c.url)}">${esc(c.source)}</a>` : esc(c.source)}</span></li>`).join('')}</ul>
                 <p class="saga-go"><a href="motifs.html#${esc(m.id)}">🧩 in the motif index →</a></p>`;

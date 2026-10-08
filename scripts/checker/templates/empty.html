@@ -15,7 +15,7 @@ want. Deleting one changes nothing else.</p>
 <script>
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 let data = {entries: []};
-// A motif with kinds under it can be empty on purpose (a 'Blame' over its kinds)
+// A motif others rest on can be empty on purpose (a 'Blame' over what rests on it)
 const empty = () => data.entries.filter((e) => !e.claims.length && !data.entries.some((x) => x.parents.includes(e.id)));
 function render() {
   const list = empty();

@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-08
+- **"Kind of" is now "rests on".** The one link that ranks motifs, until now "X is a kind of Y", now reads "X rests on
+  Y": X only makes sense given Y, as a kind of it, or as a case, argument or figure by which it's told ("Magic money
+  tree", an argument, rests on "Politicians' empty promises", a theory). Every kind-of link still holds as one; a survey
+  of the 83 found about 18 that had only ever been right this way (an archetype or argument resting on a theory). The
+  rule of Oct 7 that the link stays within one genre is gone, and the links it took away are proposed back. The
+  proposer, its judge, the workbench, both maps and the export say "rests on"; the data is unchanged.
 - **How sure a filing is.** Each claim the model files under a motif now gets a fit: the chance the person keeps it,
   from a small model trained on their own decisions (723 so far: 572 filings kept, 151 taken out). It weighs how
   alike the claim and motif are (the filing shortlist's measures, the claim held out), how the motif ranks among all

@@ -4,8 +4,8 @@ have filed the claim under was often not among them, so they added it by hand.
 
 Each motif is weighed against the claim by a few plain measures (FACTS): how alike its text is (as closest() reads
 it), its name and note alone, its nearest claim, the center of its claims, its size, and the best of those for the
-motifs next to it in the kind-of tree. A logistic regression trained on the person's confirmed filings weighs them
-(train(), daily, seconds); the top SHOWN, then their broader motifs and kinds (up to TREE_MORE more), are shown.
+motifs next to it by rests-on links. A logistic regression trained on the person's confirmed filings weighs them
+(train(), daily, seconds); the top SHOWN, then what they rest on and what rests on them (up to TREE_MORE more), are shown.
 
 Tested on the person's 766 confirmed filings, each claim held out of training and of its motifs' examples: the
 shortlist held 74% of their motifs (today's 8: 60%) and 61% of those they had added by hand (40%), at about 12
@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 WEIGHTS = f'{Config.data}/motif_retriever.json'
 FACTS = ['text', 'name and note', 'nearest claim', 'center of claims', 'size', 'tree']
 SHOWN = 8  # motifs by score
-TREE_MORE = 6  # ...and up to this many of their broader motifs and kinds
+TREE_MORE = 6  # ...and up to this many of what they rest on and what rests on them
 RETRAIN = td(days=1)
 MIN_FILINGS = 100  # confirmed filings needed to train
 EMBED_DIM = 1024  # mxbai-embed-large; the static fallback model's vectors aren't what the weights were trained on
@@ -78,7 +78,7 @@ def facts(entries: list[dict], claim: str, vec: Vectors, leave_out: bool = False
 
 
 def _tree(entries: list[dict], at: dict) -> list[set]:
-    """Each motif's broader motifs and kinds, as positions"""
+    """What each motif rests on and what rests on it, as positions"""
     up = [[at[p] for p in mi.parents_of(e) if p in at] for e in entries]
     down = defaultdict(list)
     for n, ps in enumerate(up):
@@ -131,8 +131,8 @@ def weights() -> dict | None:
 
 
 def shortlist(index: dict, claim: str, vec: Vectors, w: dict) -> list[dict]:
-    """The motifs to show the filing judge for a claim: the top SHOWN by the weights, then their broader motifs and
-    kinds (up to TREE_MORE); none below motif_index.SHOWN_FLOOR on every likeness (a claim like nothing filed yet
+    """The motifs to show the filing judge for a claim: the top SHOWN by the weights, then what they rest on and
+    what rests on them (up to TREE_MORE); none below motif_index.SHOWN_FLOOR on every likeness (a claim like nothing filed yet
     gets a new motif, as with closest())"""
     k = mi.key(claim)
     entries = [e for e in mi.live(index) if e['claims'] and k not in e.get('not_claims', [])]

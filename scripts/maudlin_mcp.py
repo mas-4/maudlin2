@@ -46,7 +46,7 @@ server = MCPServer('maudlin', instructions=(
     "Read-only access to bignews.day's data. db_schema and db_query read the site's SQLite database (headlines, "
     "articles, agencies, stories, side feeds and their transcripts...). The motif_* tools read the motif index: motifs "
     "(rumor and narrative shapes) with their claims, genre (a layer of story: Archetypes, Plots, Theories...), groups "
-    "(a separate axis), kind-of links (the only hierarchy, within one genre) and related links. checker_action makes a "
+    "(a separate axis), rests-on links (the only hierarchy: a motif only makes sense given the one it rests on, a kind of it or a case, argument or figure that tells it; across genres too) and related links. checker_action makes a "
     "change the person asked for through the checker (logged, undoable, marked by Claude); checker_undo takes back "
     "Claude's own last change only."))
 
@@ -130,7 +130,7 @@ def motif_search(query: str = '', genre: str = '', group: str = '', limit: int =
 
 @server.tool()
 def motif(motif_id: str) -> str:
-    """One motif in full: name, note, genre, groups (by name), done or not, its broader motifs and its kinds, related
+    """One motif in full: name, note, genre, groups (by name), done or not, what it rests on and what rests on it, related
     motifs, the motifs it shares claims with (co-occurrence, not relatedness), and every claim with its source and
     whether a person checked it."""
     index = mi.load()
@@ -153,8 +153,8 @@ def motif(motif_id: str) -> str:
     return json.dumps({
         **_brief(e, index), 'note': e.get('note') or '',
         'merged_into': e.get('merged_into'), 'first_seen': e.get('first_seen'),
-        'a kind of': [name(p) for p in mi.parents_of(e)],
-        'its kinds': [name(o['id']) for o in live if eid in mi.parents_of(o)],
+        'rests on': [name(p) for p in mi.parents_of(e)],
+        'rest on it': [name(o['id']) for o in live if eid in mi.parents_of(o)],
         'related': [name(x) for p in index.get('related', []) if eid in p for x in p if x != eid],
         'shares claims with': dict(sorted(shared.items(), key=lambda kv: -kv[1])),
         'claims': [{'claim': c['claim'], 'source': c.get('source'), 'checked': c.get('checked'), 'date': c.get('date')}
@@ -192,7 +192,7 @@ def motif_overview() -> str:
         'claims': len({mi.key(c['claim']) for e in live for c in e['claims']}),
         'filings': sum(len(e['claims']) for e in live),
         'unchecked filings': sum(1 for e in live for c in e['claims'] if not c.get('checked')),
-        'kind-of links': sum(len(mi.parents_of(e)) for e in live), 'related pairs': len(index.get('related', [])),
+        'rests-on links': sum(len(mi.parents_of(e)) for e in live), 'related pairs': len(index.get('related', [])),
         'groups': dict(sorted(by_group.items())), 'genres': dict(sorted(by_genre.items()))}, ensure_ascii=False)
 
 
@@ -235,7 +235,7 @@ def checker_action(action: dict) -> str:
     to the curation log marked by Claude, and on the undo stack labelled "(by Claude)". Only when the person asked for
     the change. An action is a dict with "action" and its fields, e.g.:
       rename {id, name} · note {id, note} · done {id} (mark done / unmark) · delete {id}
-      merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (a kind of; same genre)
+      merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (id rests on parent)
       relate / unrelate {a, b} · not_same {a, b}
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}
       facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value}

@@ -1,10 +1,10 @@
-"""Propose fixes to the motif index (app/analysis/motif_proposals.py): typos, kind-of and related links, merges and
+"""Propose fixes to the motif index (app/analysis/motif_proposals.py): typos, rests-on and related links, merges and
 group memberships, and links already made that look wrong, for a person to approve or reject in the workbench's 💡 proposals tab. Uses the GPU, so it waits
 for a quiet moment (not during the hourly run or its first 15 minutes).
 
     .venv/bin/python scripts/propose_motif_fixes.py                # all kinds
     .venv/bin/python scripts/propose_motif_fixes.py typos links    # some of them
-    .venv/bin/python scripts/propose_motif_fixes.py judge          # score kind-of and related proposals, then best fit
+    .venv/bin/python scripts/propose_motif_fixes.py judge          # score rests-on and related proposals, then best fit
 """
 import argparse
 import os

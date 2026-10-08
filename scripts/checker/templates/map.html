@@ -67,7 +67,7 @@ h3[data-id] .grip { cursor: grab; }
 </style>{% endblock %}
 {% block body %}
 <div class="bar"><input type="search" id="q" placeholder="🔎 find a motif">
-  <span class="key"><svg width="34" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="#0a8f7e" stroke-width="2"/><path d="M26,1 L34,5 L26,9 z" fill="#0a8f7e"/></svg> kind of (points to the broader)</span>
+  <span class="key"><svg width="34" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="#0a8f7e" stroke-width="2"/><path d="M26,1 L34,5 L26,9 z" fill="#0a8f7e"/></svg> rests on (points to what it rests on)</span>
   <label class="key"><input type="checkbox" id="show-kind" checked></label>
   <span class="key"><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#ff4fa3" stroke-width="2" stroke-dasharray="5 4"/></svg> related</span>
   <label class="key"><input type="checkbox" id="show-related" checked></label>
@@ -77,8 +77,8 @@ h3[data-id] .grip { cursor: grab; }
   <span class="meta" id="count"></span>
   <span class="meta">Dot size: claims. Scroll to zoom, drag the background to pan. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span>
   <span class="key" id="group-chips" title="click a group to hide or show its area; drag a motif onto it to put it in (or take it out)"></span>
-  <span class="key" title="a dot's outline: its place in the kinds"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="3.5"/></svg> broad kind
-    <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> a kind of one · fill: its genre</span>
+  <span class="key" title="a dot's outline: its place in the rests-on links"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="3.5"/></svg> rested on
+    <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> rests on one · fill: its genre</span>
   <span class="key" id="genre-chips" title="a dot's color is its genre: click one to pick out its motifs; drag a motif onto one to give it that genre"></span>
   <span class="map-drops"><span class="map-drop" data-drop="newmotif" title="drop a claim here to start a new motif with it">✨ new motif</span><span class="map-drop" data-drop="nomotif" title="drop a claim here: it tells no recurring story">∅ no motif</span><span class="map-drop" data-drop="trash" title="drop a claim to take it out of its motif, or a motif to delete it">🗑️ take out</span></span></div>
 <datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="map-selbar" hidden></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
@@ -128,7 +128,7 @@ function draw() {
   nodes = data.entries.filter((e) => !only || deg.get(e.id) || e.id === focus || (e.groups || []).some((g) => !hiddenGroups.has(g))).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
   const ids = new Set(nodes.map((n) => n.id));
   links = raw.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => ({...l}));
-  $('#count').textContent = `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} kind-of · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
+  $('#count').textContent = `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} rests on · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
   const svg = d3.select('#net'), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
   svg.selectAll('*').remove();
   svg.append('defs').append('marker').attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 10).attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
@@ -148,14 +148,14 @@ function draw() {
   const drawHulls = () => MotifMap.drawBlobs(hulls, members, (n) => r(n) + 14);
   const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
     .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
-  link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'kind of' : 'related');
+  link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'rests on' : 'related');
   const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'node');
-  // fill: its genre (white for none); outline: its place in the kinds (thick: a broad kind with kinds of its own;
-  // dashed: a kind of a broader one; both: in the middle of a chain)
+  // fill: its genre (white for none); outline: its place in the rests-on links (thick: others rest on it; dashed: it
+  // rests on another; both: in the middle of a chain)
   node.classed('broad', (n) => data.entries.some((x) => x.parents.includes(n.id))).classed('sub', (n) => n.e.parents.length > 0);
   node.append('circle').attr('r', r).attr('fill', (n) => genreOf(n.e) ? genreColor(genreOf(n.e)) : '#fff');
   markGenre();
-  // Names on the dots that matter at a glance (2+ claims, or in the kinds); the rest on hover and when found
+  // Names on the dots that matter at a glance (2+ claims, or linked by rests on); the rest on hover and when found
   node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name)
     .attr('class', (n) => n.e.claims.length > 1 || n.e.parents.length || data.entries.some((x) => x.parents.includes(n.id)) ? '' : 'minor');
   node.append('title').text((n) => `${n.e.name} (${n.e.claims.length} claim${n.e.claims.length === 1 ? '' : 's'})${n.e.note ? '\n' + n.e.note : ''}`);
@@ -217,8 +217,6 @@ const groupColor = (gid) => MotifMap.groupColor(data.groups.findIndex((g) => g.i
 const genres = () => (data.facets || {}).genre || [];
 const genreOf = (e) => (e.facets || {}).genre || '';
 const genreColor = (v) => MotifMap.genreColor(genres(), v);
-// A kind of stays within its genre (the checker refuses it otherwise): two motifs with different genres
-const genresClash = (x, y) => Boolean(genreOf(x) && genreOf(y) && genreOf(x) !== genreOf(y));
 let pickedGenre = null;
 function markGenre() { d3.selectAll('.node').classed('gdim', (n) => pickedGenre !== null && genreOf(n.e) !== pickedGenre); }
 function genreChips() {
@@ -261,7 +259,7 @@ function applyFocus() {
   d3.selectAll('.link').classed('dim', (l) => near ? !(l.source.id === focus || l.target.id === focus) : false);
   document.querySelectorAll('#tree span[data-id]').forEach((s) => s.classList.toggle('on', s.dataset.id === focus));
 }
-// Linked motifs, each with an ✕ that takes the link away (unlink: 'rel', 'up' = it's a kind of that one, 'down' = that one is a kind of it)
+// Linked motifs, each with an ✕ that takes the link away (unlink: 'rel', 'up' = it rests on that one, 'down' = that one rests on it)
 function names(ids, id, unlink) {
   return ids.filter((i) => byId[i]).map((i) => `<a class="go" data-id="${i}">${esc(byId[i].name)}</a>`
     + (unlink ? `<button class="unlink" data-unlink="${unlink}|${id}|${i}" title="take this link away">✕</button>` : '')).join(', ');
@@ -281,8 +279,8 @@ function cardHTML(id) {
   return `<h3 data-id="${e.id}" title="drag by the 🧩 onto a dot, a name or the 📌"><span class="grip">🧩</span><textarea class="cname" data-rename="${e.id}" rows="1" title="its name: edit, then Enter">${esc(e.name)}</textarea></h3>
     <div class="cfacts">${facts.map((f) => `<span>${f}</span>`).join('')}</div>
     <textarea class="cnote" data-note="${e.id}" rows="1" placeholder="a scope note: what kind of story it covers" title="its scope note: saved when you click away">${esc(e.note || '')}</textarea>
-    ${row('↳ a kind of', e.parents, 'up', 'up')}
-    ${row('⤷ its kinds', kinds, 'down', 'down')}
+    ${row('↳ rests on', e.parents, 'up', 'up')}
+    ${row('⤷ rest on it', kinds, 'down', 'down')}
     ${row('↔ related', e.related, 'rel', 'rel')}
     ${row('🤝 shares claims with', shared)}
     <p><b>${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}</b> <span class="meta">✓ you checked it · 🆕 filed since you marked it done</span></p><ul data-motif="${e.id}">${e.claims.map((c) => `<li data-claim="${esc(c.claim)}" title="drag onto a dot or a name to file it there">${c.checked === 'yes' ? '✓ ' : ''}${c.new ? '🆕 ' : ''}${esc(c.claim)} <span class="csrc">${c.ref && /^https?:/.test(c.ref) ? `<a href="${esc(c.ref)}" target="_blank" rel="noopener">${esc(src(c))}</a>` : esc(src(c))}</span></li>`).join('')}</ul>`;
@@ -409,9 +407,8 @@ function manyZones(ids, t) {
   if (t.dataset.drop) return [];
   const m = byId[motifOf(t)], rest = m ? ids.filter((id) => id !== m.id) : [];
   if (!m || !rest.length) return [];
-  const kin = rest.filter((id) => !genresClash(byId[id], m));  // a kind of stays within its genre
   return [{label: `⤵ merge all ${rest.length} into it`, say: `they go; their claims join ${q(m.name)}.`, run: () => sureMenu(`⤵ Merge ${rest.length} motifs into “${esc(m.name)}”?`, '⤵ merge them').then((ok) => ok && all(rest.map((id) => ({action: 'merge', source: id, target: m.id})))())},
-          ...(kin.length ? [{label: '⊂ all kinds of it', say: `${kin.length === rest.length ? 'each' : kin.length + ' of them (its genre)'} a kind of ${q(m.name)}.`, run: all(kin.map((id) => ({action: 'parent', id, parent: m.id})))}] : []),
+          {label: '↳ all rest on it', say: `each rests on ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'parent', id, parent: m.id})))},
           {label: '↔ all related to it', say: `each related to ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'relate', a: id, b: m.id})))}];
 }
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
@@ -468,9 +465,9 @@ dragZones({
     if (m.id === item.id) return [];
     const a = byId[item.id], under = a.parents.includes(m.id), over = m.parents.includes(a.id), rel = a.related.includes(m.id);
     return [{label: '⤵ merge into it', say: `${q(a.name)} goes; its claims join ${q(m.name)}.`, run: () => act({action: 'merge', source: a.id, target: m.id})},
-            under ? {label: '✕ not under it', say: `${q(a.name)} is no longer a kind of ${q(m.name)}.`, run: () => act({action: 'parent', id: a.id, parent: m.id, on: false})}
-                  : genresClash(a, m) ? null : {label: '⊂ under it', say: `${q(a.name)} becomes a kind of ${q(m.name)}: both stay.`, run: () => act({action: 'parent', id: a.id, parent: m.id})},
-            over || genresClash(a, m) ? null : {label: '⊃ over it', say: `${q(m.name)} becomes a kind of ${q(a.name)}: both stay.`, run: () => act({action: 'parent', id: m.id, parent: a.id})},
+            under ? {label: '✕ doesn\'t rest on it', say: `${q(a.name)} no longer rests on ${q(m.name)}.`, run: () => act({action: 'parent', id: a.id, parent: m.id, on: false})}
+                  : {label: '↳ rests on it', say: `${q(a.name)} rests on ${q(m.name)}: both stay.`, run: () => act({action: 'parent', id: a.id, parent: m.id})},
+            over ? null : {label: '↰ it rests on this', say: `${q(m.name)} rests on ${q(a.name)}: both stay.`, run: () => act({action: 'parent', id: m.id, parent: a.id})},
             rel ? {label: '✕ unrelate', say: 'No longer linked as related.', run: () => act({action: 'unrelate', a: a.id, b: m.id})}
                 : {label: '↔ related', say: 'Near each other, different stories: both stay, linked.', run: () => act({action: 'relate', a: a.id, b: m.id})}];
   },
@@ -509,10 +506,10 @@ function tree() {
   const rest = data.entries.filter((e) => !listed.has(e.id) && !e.parents.length && !(e.groups || []).length).sort((a, b) => a.name.localeCompare(b.name));
   const grouped = data.groups.map((g) => `<li><b style="color:${groupColor(g.id)}">📁 ${esc(g.name)}</b><ul>${data.entries.filter((e) => (e.groups || []).includes(g.id)).sort((a, b) => a.name.localeCompare(b.name))
     .map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">${e.claims.length}</span></li>`).join('')}</ul></li>`).join('');
-  $('#tree').innerHTML = (grouped ? `<h3>Groups</h3><ul>${grouped}</ul>` : '') + `<h3>Kinds</h3><p class="meta">Broader motifs with their kinds under them (a motif with two broader ones shows under both). Click one to find it on the map.</p>
-    <ul>${roots.map((e) => item(e, new Set())).join('') || '<li class="meta">No kinds yet.</li>'}</ul>
-    <h3>Related, outside the kinds</h3><ul>${rel.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">↔ ${e.related.map((r) => byId[r] ? esc(byId[r].name) : r).join(', ')}</span></li>`).join('') || '<li class="meta">None.</li>'}</ul>
-    <h3>Everything else <span class="meta">${rest.length}</span></h3><p class="meta">No kinds, no related, no group yet. Click one to put it on the map.</p>
+  $('#tree').innerHTML = (grouped ? `<h3>Groups</h3><ul>${grouped}</ul>` : '') + `<h3>Rests on</h3><p class="meta">Motifs with what rests on them under them (one resting on two shows under both). Click one to find it on the map.</p>
+    <ul>${roots.map((e) => item(e, new Set())).join('') || '<li class="meta">Nothing rests on anything yet.</li>'}</ul>
+    <h3>Related, outside the rests-on links</h3><ul>${rel.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">↔ ${e.related.map((r) => byId[r] ? esc(byId[r].name) : r).join(', ')}</span></li>`).join('') || '<li class="meta">None.</li>'}</ul>
+    <h3>Everything else <span class="meta">${rest.length}</span></h3><p class="meta">No links, no related, no group yet. Click one to put it on the map.</p>
     <ul>${rest.map((e) => `<li><span data-id="${e.id}">🧩 ${esc(e.name)}</span> <span class="meta">${e.claims.length}</span></li>`).join('')}</ul>`;
 }
 $('#tree').addEventListener('click', (ev) => { const s = ev.target.closest('span[data-id]'); if (s) center(s.dataset.id); });

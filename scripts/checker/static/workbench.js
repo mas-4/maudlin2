@@ -161,7 +161,7 @@
       for (const g of groups) {
         const inG = shown.filter((e) => sectionsOf(e).includes(g.id));
         if (!inG.length && !g.id) continue;
-        // Roots: no parent in this section. Kinds nest under their parents wherever those are (a motif with two parents
+        // Roots: rest on nothing in this section. What rests on a motif nests under it wherever that is (a motif with two parents
         // shows under both), and in their own groups too: a motif can be in several groups
         const roots = inG.filter((e) => !e.parents.some((p) => ids.has(p) && sectionsOf(S.by[p]).includes(g.id)));
         const fold = 'g:' + by + ':' + g.id, folded = S.folded.has(fold) || (by === 'genre' && !inG.length);
@@ -275,7 +275,7 @@
             : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ Not done yet</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked over its claims: it can go on the site">mark as done</button>`}
           <span class="wb-pbar-end">
             <button class="wb-mini" data-rename="${e.id}" title="rename">✎ rename</button>
-            <button class="wb-mini" data-copymotif="${e.id}" title="copy everything about it: name, note, groups, genre, kinds, related (with their notes) and every claim">📋 copy</button>
+            <button class="wb-mini" data-copymotif="${e.id}" title="copy everything about it: name, note, groups, genre, what it rests on and what rests on it, related (with their notes) and every claim">📋 copy</button>
             ${isSingle(e) || e.stands_alone ? `<button class="wb-mini${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
             <button class="wb-mini" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
           </span>
@@ -287,10 +287,10 @@
           title="type to find a group and pick it to put it in as well (a motif can be in several); a new name and Enter makes a new group with it in"><datalist id="gl-${e.id}">${groups}</datalist></div>
         <span class="wb-rlabel">🎭 genre</span>
         <div class="wb-rchips"><select data-genre="${e.id}" title="its genre"><option value="">no genre</option>${(S.data.facets.genre || []).map((g) => `<option${(e.facets || {}).genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
-        <span class="wb-rlabel">↳ a kind of</span>
-        <div class="wb-rchips">${e.parents.map((p) => chip(p, `<button class="wb-x" data-unparent="${e.id}|${p}" title="not a kind of it">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
-        <span class="wb-rlabel">⤷ its kinds</span>
-        <div class="wb-rchips">${kids.map((k) => chip(k, `<button class="wb-x" data-unparent="${k}|${e.id}" title="not a kind of this">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
+        <span class="wb-rlabel" title="it only makes sense given these: a kind of them, or a case, argument or figure that tells them">↳ rests on</span>
+        <div class="wb-rchips">${e.parents.map((p) => chip(p, `<button class="wb-x" data-unparent="${e.id}|${p}" title="doesn't rest on it">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
+        <span class="wb-rlabel">⤷ rest on it</span>
+        <div class="wb-rchips">${kids.map((k) => chip(k, `<button class="wb-x" data-unparent="${k}|${e.id}" title="doesn't rest on this">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
         <span class="wb-rlabel">↔ related</span>
         <div class="wb-rchips">${e.related.map((r) => chip(r, `<button class="wb-x" data-unrelate="${e.id}|${r}" title="not related">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
         ${sharedIds.length ? `<span class="wb-rlabel">🤝 shares claims</span>
@@ -452,7 +452,7 @@
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
       const items = q.filter((p) => Object.values(p.do).every((v) => typeof v !== 'string' || !/^M\d+$/.test(v) || S.by[v]));
       S.proposals = Object.fromEntries(items.map((p) => [p.id, p]));
-      // each proposal one card; a kind-of or related one with its best fit (how likely you are to approve it, learned
+      // each proposal one card; a rests-on or related one with its best fit (how likely you are to approve it, learned
       // from your own decisions), the list sorted by it, the least likely folded at the bottom
       const card = (p) => `<div class="wb-card wb-prop"><label class="wb-propline"><input type="checkbox" data-propsel="${p.id}"> ${proposalText(p)}</label>
           ${p.fit != null ? `<b class="wb-fit" style="--fit: ${Math.round(p.fit * 100)}%" title="best fit: how likely you are to approve it, learned from your decisions${p.judge ? `; the judge's ${p.judge.score}/10: ${esc(p.judge.reason)}` : ''}">🎯 ${Math.round(p.fit * 100)}%</b>` : ''}
@@ -476,7 +476,7 @@
         <div>${chip(s.id)} <button class="wb-mini" data-alone1="${s.id}" title="it stands alone: stop suggesting">🧍</button></div>
         <p class="wb-claim mini" ${claimData({claim: s.claim, source: s.source}, s.id)}><span class="wb-ctext">${esc(s.claim)}</span></p>
         ${s.suggest.filter((m) => S.by[m.id]).map((m) => `<div class="wb-sug">${chip(m.id)} <span class="wb-faint">${m.same_claim ? '🎯 same claim' : 'alike ' + (m.score ?? '')}</span>
-          <span class="wb-sbtns"><button class="wb-mini" data-pair="merge|${s.id}|${m.id}" title="merge the single into it">⤵</button><button class="wb-mini" data-pair="under|${s.id}|${m.id}" title="the single is a kind of it">⊂</button><button class="wb-mini" data-pair="related|${s.id}|${m.id}" title="related">↔</button><button class="wb-mini" data-compare="${s.id}|${m.id}" title="open both">⧉</button></span></div>`).join('')}
+          <span class="wb-sbtns"><button class="wb-mini" data-pair="merge|${s.id}|${m.id}" title="merge the single into it">⤵</button><button class="wb-mini" data-pair="under|${s.id}|${m.id}" title="the single rests on it">↳</button><button class="wb-mini" data-pair="related|${s.id}|${m.id}" title="related">↔</button><button class="wb-mini" data-compare="${s.id}|${m.id}" title="open both">⧉</button></span></div>`).join('')}
       </div>`).join('') || '<div class="wb-welcome"><div class="wb-big">🎉</div><p>No singles waiting.</p></div>';
     } else if (tab === 'claims') {
       box.innerHTML = `<label class="wb-addsearch">🔎 <input type="search" id="unfiled-q" placeholder="search claims not filed yet" value="${esc(S.unfiledQ || '')}"></label><ul class="wb-claims" id="unfiled-list"><li class="wb-faint">⏳</li></ul>`;
@@ -513,14 +513,14 @@
       <h3>📊 the catalog now</h3>
       <ul class="story-stickers wb-stat-tiles">
         ${tile('🧩', n.motifs, 'motifs', '#00c2a8')}${tile('💬', n.claims, `claims (${n.filings} filings, ${n.per_motif} a motif)`, '#3a86ff')}
-        ${tile('1️⃣', n.singles + '%', 'single-claim motifs', '#ffc400')}${tile('🌳', n.in_tree + '%', 'in the kinds tree', '#8a5cff')}
+        ${tile('1️⃣', n.singles + '%', 'single-claim motifs', '#ffc400')}${tile('🌳', n.in_tree + '%', 'resting on another, or rested on', '#8a5cff')}
         ${tile('🎭', n.with_genre + '%', 'with a genre', '#ff6b1a')}${tile('✅', n.done + '%', 'done by you', '#7fd97a')}
         ${tile('📝', n.your_notes + '%', 'with your note', '#ff4fa3')}${tile('☑️', n.checked + '%', 'of filings checked', '#a9a9b8')}
         ${tile('∅', n.no_motif, 'claims with no motif', '#e2e2ea')}${tile('≡', n.variants, 'claims folded in as the same', '#ece4ff')}
       </ul>
       ${bars('✨ new motifs a day', ['new_motifs'], ['#00c2a8'], 'the model makes most; a merge doesn\'t take one back')}
       ${bars('🤖 how the model filed claims', ['filed_matched', 'filed_new', 'filed_none'], ['#3a86ff', '#ffc400', '#c9c9d4'], 'counted from Oct 6: into motifs already there, into a new one, or none')}
-      ${bars('✋ your changes a day', ['actions'], ['#ff4fa3'], 'merges, moves, kinds, notes, checks… in the curation log')}
+      ${bars('✋ your changes a day', ['actions'], ['#ff4fa3'], 'merges, moves, links, notes, checks… in the curation log')}
       ${bars('☑️ your checks', ['checks_yes', 'checks_no', 'checks_unsure'], ['#7fd97a', '#ff6b6b', '#c9c9d4'])}
       ${shaped.length ? `<div class="wb-stat"><h3>🧱 the shape, day by day</h3><table class="wb-shape"><tr><th></th>${shaped.map((d) => `<th>${d.day.slice(5)}</th>`).join('')}</tr>
         ${line('singles', 'single-claim')}${line('two_plus', '2+ claims')}${line('in_tree', 'in the tree')}${line('with_genre', 'with a genre')}${line('done', 'done')}${line('your_notes', 'your notes')}</table>
@@ -659,8 +659,8 @@
       <div class="wb-sbtns"><button class="wb-mini" data-compare="${a}|${b}" title="open both side by side">⧉ compare</button>
         <button class="wb-mini" data-pair="merge|${a}|${b}" title="merge the first into the second">⤵ merge →</button>
         <button class="wb-mini" data-pair="merge|${b}|${a}" title="merge the second into the first">← merge ⤵</button>
-        <button class="wb-mini" data-pair="under|${a}|${b}" title="the first is a kind of the second">⊂ kind of →</button>
-        <button class="wb-mini" data-pair="under|${b}|${a}" title="the second is a kind of the first">← kind of ⊃</button>
+        <button class="wb-mini" data-pair="under|${a}|${b}" title="the first rests on the second: a kind of it, or a case, argument or figure that tells it">↳ rests on →</button>
+        <button class="wb-mini" data-pair="under|${b}|${a}" title="the second rests on the first">← rests on ↰</button>
         <button class="wb-mini" data-pair="related|${a}|${b}">↔ related</button>
         <button class="wb-mini" data-pair="notsame|${a}|${b}" title="different motifs: stop suggesting">≠ not the same</button></div></div>`;
   }
@@ -677,7 +677,7 @@
   // ---------- opening motifs ----------
   // A click opens a motif in the active panel (the last one you worked in); Shift-click or ⧉ adds a panel beside the
   // others. A motif already open is just brought into view.
-  // A new motif made with claims, then opened in the middle to work on (named it, now give it a note, kinds...)
+  // A new motif made with claims, then opened in the middle to work on (named it, now give it a note, links...)
   async function makeNew(name, claims) {
     const before = new Set(motifs().map((e) => e.id));
     if (!await act({action: 'new_with', name, claims}, `✨ made “${name}”`)) return false;
@@ -774,11 +774,10 @@
       const ids = item.ids, n = `${ids.length} motifs`, done = (msg) => { S.msel.clear(); return msg; };
       if (drop === 'motif') {
         const b = t.dataset.id, B = S.by[b], rest = ids.filter((i) => i !== b);
-        const kin = rest.filter((i) => !genresClash(S.by[i], B));
         if (!B || !rest.length) return [];
         return [
           {label: `⤵ merge all ${rest.length} into it`, say: `merge all ${rest.length} into “${B.name}”`, run: () => sure(t, `Merge ${rest.length} motifs into “${B.name}”?`, '⤵ merge them').then((ok) => ok && batch(rest.map((i) => ({action: 'merge', source: i, target: b})), done(`⤵ merged ${rest.length} into “${B.name}”`)))},
-          ...kin.length ? [{label: '⊂ all kinds of it', say: `make each of the ${kin.length} a kind of “${B.name}”`, run: () => batch(kin.map((i) => ({action: 'parent', id: i, parent: b})), done(`⊂ ${kin.length} kinds of “${B.name}”`))}] : [],  // only those of its genre (or none)
+          {label: '↳ all rest on it', say: `make each of the ${rest.length} rest on “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'parent', id: i, parent: b})), done(`↳ ${rest.length} rest on “${B.name}”`))},
           {label: '↔ all related to it', say: `relate each of the ${rest.length} to “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'relate', a: i, b})), done(`↔ ${rest.length} related to “${B.name}”`))},
         ];
       }
@@ -807,8 +806,8 @@
       if (!B || a === b) return [];
       return [
         {label: '⤵ merge into it', say: `merge “${A.name}” into “${B.name}”`, run: () => act({action: 'merge', source: a, target: b}, `⤵ merged “${A.name}” into “${B.name}”`)},
-        ...genresClash(A, B) ? [] : [{label: '⊂ a kind of it', say: `make “${A.name}” a kind of “${B.name}”`, run: () => act({action: 'parent', id: a, parent: b}, `⊂ “${A.name}” is a kind of “${B.name}”`)},
-        {label: '⊃ it’s a kind of this', say: `make “${B.name}” a kind of “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `⊃ “${B.name}” is a kind of “${A.name}”`)}],  // a kind of stays within its genre
+        {label: '↳ rests on it', say: `make “${A.name}” rest on “${B.name}”`, run: () => act({action: 'parent', id: a, parent: b}, `↳ “${A.name}” rests on “${B.name}”`)},
+        {label: '↰ it rests on this', say: `make “${B.name}” rest on “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `↰ “${B.name}” rests on “${A.name}”`)},
         {label: '↔ related', say: `relate “${A.name}” and “${B.name}”: related, but different`, run: () => act({action: 'relate', a, b}, `↔ related “${A.name}” and “${B.name}”`)},
         {label: '≠ not the same', say: `“${A.name}” and “${B.name}” are different: stop suggesting them as a pair`, run: () => act({action: 'not_same', a, b}, `≠ “${A.name}” and “${B.name}” are different`)},
       ];
@@ -865,16 +864,11 @@
     return {kind: 'claim', claims: [one]};
   }
   function label(item) { return item.kind === 'motifs' ? (item.group ? `📁 ${item.group}: ` : '🧩 ') + `${item.ids.length} motifs` : item.kind === 'motif' ? '🧩 ' + (S.by[item.id] || {}).name : '💬 ' + claimsName(item); }
-  // A choice says what it does in full: the label's sign (⤵, ⊂, 📁…) and its sentence; the short label alone if it has none
+  // A choice says what it does in full: the label's sign (⤵, ↳, 📁…) and its sentence; the short label alone if it has none
   function zoneText(z) {
     if (!z.say) return z.label;
     const sign = z.label.split(' ')[0];
     return /[\p{L}\p{N}]/u.test(sign) ? z.say : `${sign} ${z.say}`;
-  }
-  // A kind of stays within its genre (the checker refuses it otherwise): two motifs with different genres
-  function genresClash(x, y) {
-    const g = (e) => (e.facets || {}).genre;
-    return Boolean(g(x) && g(y) && g(x) !== g(y));
   }
   function showMenu(t, list, pin, px, py) {
     menu.innerHTML = `<div class="dz-title">${pin ? 'drop it as…' : 'let go on a choice'}</div>` + list.map((z, k) => `<button class="dz-zone" data-zone="${k}" title="${esc(z.label)}">${esc(zoneText(z))}</button>`).join('')
@@ -1083,7 +1077,7 @@
     if ((v = d('alone'))) { const e = S.by[v]; return act({action: 'stands_alone', id: v, alone: !e.stands_alone}, e.stands_alone ? '🧍 suggestions back on' : `🧍 “${e.name}” stands alone`); }
     if ((v = d('alone1'))) return act({action: 'stands_alone', id: v, alone: true}, `🧍 “${S.by[v].name}” stands alone`);
     if ((v = d('delete'))) { const e = S.by[v]; return sure(t, `Delete “${e.name}”?${e.claims.length ? ` Its ${e.claims.length} claims won't be filed again.` : ''}`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: v}, `🗑️ deleted “${e.name}”`)); }
-    if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” is no longer a kind of “${S.by[p].name}”`); }
+    if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” no longer rests on “${S.by[p].name}”`); }
     if ((v = d('unrelate'))) { const [a, b] = v.split('|'); return act({action: 'unrelate', a, b}, '↔ unrelated'); }
     if ((v = d('keepnote'))) return act({action: 'keep_note', id: v}, '✓ kept the draft note');
     if ((v = d('ungroup'))) { const [id, g] = v.split('|'); return act({action: 'group_member', id, group: g, on: false}, '📁 out of the group'); }
@@ -1092,7 +1086,7 @@
     if ((v = d('pair'))) {
       const [kind, a, b] = v.split('|'), A = S.by[a], B = S.by[b];
       const body = {merge: {action: 'merge', source: a, target: b}, under: {action: 'parent', id: a, parent: b}, related: {action: 'relate', a, b}, notsame: {action: 'not_same', a, b}}[kind];
-      const say = {merge: `⤵ merged “${A.name}” into “${B.name}”`, under: `⊂ “${A.name}” is a kind of “${B.name}”`, related: '↔ related', notsame: '≠ marked different'}[kind];
+      const say = {merge: `⤵ merged “${A.name}” into “${B.name}”`, under: `↳ “${A.name}” rests on “${B.name}”`, related: '↔ related', notsame: '≠ marked different'}[kind];
       return act(body, say);
     }
     if ((v = d('verdict'))) return verdict(v);
@@ -1228,8 +1222,8 @@
       `Note: ${e.note || 'none yet'}`,
       `Groups: ${groups.join(', ') || 'none'}`,
       `Genre: ${(e.facets || {}).genre || 'none'}`,
-      list('A kind of', e.parents),
-      list('Its kinds', S.kids[e.id] || []),
+      list('Rests on', e.parents),
+      list('Rest on it', S.kids[e.id] || []),
       list('Related', e.related),
       Object.keys(shared).length ? `Shares claims with (${Object.keys(shared).length}): ` + Object.keys(shared).sort((a, b) => shared[b] - shared[a])
         .map((o) => `${(S.by[o] || {}).name || o} (${shared[o]})`).join(', ') : '',
@@ -1301,11 +1295,11 @@
     const a = p.args;
     if (p.kind === 'rename') return `✏️ rename ${chip(a.id)} to “${wordDiff(a.from, a.to)}”`;
     if (p.kind === 'note') return `📝 fix the note of ${chip(a.id)}: “${wordDiff(a.from, a.to)}”`;
-    if (p.kind === 'parent') return `⊂ ${chip(a.id)} is a kind of ${chip(a.parent)}`;
+    if (p.kind === 'parent') return `↳ ${chip(a.id)} rests on ${chip(a.parent)}`;
     if (p.kind === 'relate') return `↔ ${chip(a.a)} and ${chip(a.b)} are related`;
     if (p.kind === 'merge') return `⤵ ${chip(a.a)} is the same motif as ${chip(a.b)}: merge it in`;
     if (p.kind === 'unrelate') return `✂️ ${chip(a.a)} and ${chip(a.b)} aren't related: take the link away`;
-    if (p.kind === 'unparent') return `✂️ ${chip(a.id)} isn't a kind of ${chip(a.parent)}: take the link away`;
+    if (p.kind === 'unparent') return `✂️ ${chip(a.id)} doesn't rest on ${chip(a.parent)}: take the link away`;
     if (p.kind === 'genre') return `🎭 ${chip(a.id)} is ${esc(a.genre)}`;
     if (p.kind === 'group') return `📁 put ${chip(a.id)} in ${esc((S.data.groups.find((g) => g.id === a.group) || {name: a.group}).name)}`;
     return esc(p.kind);
@@ -1553,8 +1547,8 @@
       hover.innerHTML = `<b>${esc(e.name)}</b> <span class="wb-faint">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.done === 'done' ? ' · ✓ done' : ''}</span>
         ${(e.facets || {}).genre ? `<p>🎭 ${esc(e.facets.genre)}</p>` : ''}
         ${e.note ? `<p>📝 ${esc(e.note)}</p>` : '<p class="wb-faint">no note yet</p>'}
-        ${e.parents.length ? `<p class="wb-faint">↳ a kind of ${e.parents.map((p) => esc((S.by[p] || {}).name || p)).join(', ')}</p>` : ''}
-        ${kids.length ? `<p class="wb-faint">⤷ kinds: ${kids.map(esc).join(', ')}</p>` : ''}
+        ${e.parents.length ? `<p class="wb-faint">↳ rests on ${e.parents.map((p) => esc((S.by[p] || {}).name || p)).join(', ')}</p>` : ''}
+        ${kids.length ? `<p class="wb-faint">⤷ rest on it: ${kids.map(esc).join(', ')}</p>` : ''}
         <ul>${e.claims.slice(0, 4).map((x) => `<li>${esc(x.claim)}</li>`).join('')}${e.claims.length > 4 ? `<li class="wb-faint">and ${e.claims.length - 4} more</li>` : ''}</ul>`;
       hover.hidden = false;
       const r = c.getBoundingClientRect(), m = hover.getBoundingClientRect();
