@@ -41,8 +41,10 @@ MIN_EACH = 40  # kept and removed filings needed to train
 SURE = 0.95  # precision the 'sure' threshold has to reach, held out
 
 
-def decisions(path: str = CURATION_LOG) -> dict[tuple[str, str], bool]:
-    """(claim key, motif id) -> kept, the person's last word on each filing in the curation log"""
+def decisions(path: str = CURATION_LOG, hand: bool = False) -> dict[tuple[str, str], bool]:
+    """(claim key, motif id) -> kept, the person's last word on each filing in the curation log. With `hand`, also
+    the filings they made themselves (a claim added to another motif, filed by hand, or the motif it was moved to):
+    the model's misses (286 'also' by Oct 8)"""
     out = {}
 
     def one(a: dict):
@@ -53,6 +55,12 @@ def decisions(path: str = CURATION_LOG) -> dict[tuple[str, str], bool]:
             out[(mi.key(a['claim']), a['id'])] = False
         elif act == 'move' and a.get('claim') and a.get('source'):
             out[(mi.key(a['claim']), a['source'])] = False
+            if hand and a.get('target'):
+                out[(mi.key(a['claim']), a['target'])] = True
+        elif hand and act == 'also' and a.get('claim') and a.get('target'):
+            out[(mi.key(a['claim']), a['target'])] = True
+        elif hand and act == 'file' and a.get('claim') and a.get('id'):
+            out[(mi.key(a['claim']), a['id'])] = True
         elif act == 'batch':
             for step in a.get('steps') or []:
                 if isinstance(step, dict):
@@ -113,9 +121,9 @@ class Scorer:
         return np.array(out)
 
 
-def labeled(index: dict) -> list[tuple[str, str, str, bool]]:
-    """(claim, motif id, source, kept) for each filing the person decided on, its motif still live, its claim's text
-    known (filed now, or in the log's own words)"""
+def labeled(index: dict, hand: bool = False) -> list[tuple[str, str, str, bool]]:
+    """(claim, motif id, source, kept) for each filing the person decided on (with `hand`, made themselves too), its
+    motif still live, its claim's text known (filed now, or in the log's own words)"""
     text, source = {}, {}
     for e in mi.live(index):
         for c in e['claims']:
@@ -132,7 +140,8 @@ def labeled(index: dict) -> list[tuple[str, str, str, bool]]:
     except (OSError, ValueError):
         pass
     live = {e['id'] for e in mi.live(index) if e['claims'] and yours(e)}
-    return [(text[k], eid, source.get(k, ''), kept) for (k, eid), kept in decisions().items() if eid in live and k in text]
+    return [(text[k], eid, source.get(k, ''), kept) for (k, eid), kept in decisions(hand=hand).items()
+            if eid in live and k in text]
 
 
 def _fit(X: np.ndarray, y: np.ndarray):

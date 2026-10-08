@@ -10,6 +10,9 @@ that one way of seeing missed, nothing else caught it. Each signal here reads a 
   votes      the filed claims most like this one, each voting for its motifs (nearest neighbours)
   nomic      a second embedding model (nomic-embed-text) against the motif's description and its nearest claim, so
              two models' blind spots can cover each other
+  group      the claim against the person's groups (each the center of its motifs' claims), a motif scored by its best
+             group: a group pools many small motifs' evidence (Oct 8, the person: route through groups; one route among
+             the others, not a tree: an ungrouped motif scores nothing here and is found the other ways)
   rerank     a cross-encoder (Qwen3-Reranker-0.6B) reading the claim and the motif together, yes or no
   judge      the filing model asked, of this one pair, is the claim an instance of the motif; its probability of yes
 
@@ -47,7 +50,7 @@ STOP = {'a', 'an', 'the', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at'
         'just', 'should', 'now', 'says', 'said', 'say', 'about', 'into', 'over', 'after', 'before', 'also', 'has',
         'have', 'had', 'do', 'does', 'did', 'would', 'could', 'may', 'might', 'must', 'one', 'two', 'new', 'people'}
 WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
-CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near']
+CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group']
 
 SHAPE_PROMPT = """A claim people are telling or arguing over:
 {claim}
@@ -196,11 +199,35 @@ class Signals:
         near = np.array([max((sims[i] for i in rows if i != skip), default=-1.0) for rows in self._members])
         return self._nomic_desc @ q, near
 
+    def group(self, claim: str, leave_out: bool) -> np.ndarray:
+        """Each motif's best group for the claim: how alike the claim is to the center of the group's claims (the
+        claim itself left out), -1 for a motif in no group"""
+        if self._filed_v is None:
+            self._filed_v = self.vec([self.filed[k][0] for k in self.filed_keys])
+        if getattr(self, '_groups', None) is None:
+            self._groups = {}
+            for n, e in enumerate(self.entries):
+                for g in mi.groups_of(e):
+                    self._groups.setdefault(g, set()).add(n)
+        k = mi.key(claim)
+        q = self.vec([claim])[0]
+        best = np.full(len(self.entries), -1.0)
+        for members in self._groups.values():
+            rows = [i for i, fk in enumerate(self.filed_keys) if self.filed[fk][1] & members and not (leave_out and fk == k)]
+            if not rows:
+                continue
+            c = self._filed_v[rows].mean(0)
+            sim = float(c @ q / (np.linalg.norm(c) + 1e-9))
+            for n in members:
+                best[n] = max(best[n], sim)
+        return best
+
     def cheap(self, claim: str, leave_out: bool = False, ask: bool = True) -> dict[str, np.ndarray]:
         """Every cheap signal against every motif"""
         desc, near = self.nomic(claim, leave_out)
         return {'keywords': self.keywords(claim, leave_out), 'note': self.note(claim), 'shape': self.shape(claim, ask),
-                'votes': self.votes(claim, leave_out), 'nomic desc': desc, 'nomic near': near}
+                'votes': self.votes(claim, leave_out), 'nomic desc': desc, 'nomic near': near,
+                'group': self.group(claim, leave_out)}
 
     # ---- costly signals, for a shortlist ----
 
