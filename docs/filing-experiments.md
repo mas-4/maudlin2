@@ -268,6 +268,27 @@ Least certain first gets in 150 decisions what random order gets in about 550 an
 order later still: the filings the model is sure of teach it least. For the person's limited time, 🎯 today should
 serve the uncertain ones first. `scripts/experiments/e4_e6_jury_active.py`.
 
+### C1 A cascade (Oct 9, overnight) — not worth it: Gemma 26B picks with the fewest wrong
+
+The person: run everything through a smaller model and bump the low-confidence picks to Gemma. The filing pick (which
+of these 12 motifs, none to three) on 240 confirmed claims, the same shortlist for each, four requests at once:
+
+| Picker | Their motifs found | Picks not theirs | s a claim |
+|---|---|---|---|
+| Gemma 4 26B (today's) | 64% | **24%** | 3.5 |
+| Gemma 4 12B | **67%** | 32% | 2.4 |
+| Ministral 3 14B | 65% | 35% | 6.3 |
+| Qwen3.5 9B | 58% | 32% | 1.2 |
+| Gemma 12B, bumped under a fit of 0.85 (20%) | 69% | 30% | 3.1 |
+| Qwen3.5 9B, bumped under a fit of 0.85 (22%) | 63% | 28% | 2.0 |
+| the two small ones, bumped when they disagree (57%) | 64% | 24% | 5.6 |
+
+The confidence model's fit (held out by claim, its reranker and filing-model signals left out) doesn't single out the
+small models' wrong picks: they land on motifs that look right. Agreement of two small models does, but bumps more
+than half, so it costs more than asking Gemma 26B. Four at once Gemma 26B is fast enough (3.5 s a claim) and makes a
+third fewer wrong picks, the person's time to fix. It keeps picking; its yes-or-no can go to Nimble 9B (J1).
+`scripts/experiments/c1_cascade.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
