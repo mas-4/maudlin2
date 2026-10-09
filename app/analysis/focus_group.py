@@ -34,7 +34,9 @@ List the stories, beliefs and claims about politics and public life that the VOT
 part: what they believe is true, why they think things happen, what they say someone is like, stories they have heard. \
 Not wishes or plans ("I want gas prices to go down", "I'm not voting for him"), not what the hosts or guests say in \
 their analysis, not ads. For each:
-claim: one plain sentence, the way the voter tells it: what they say is true or believe
+claim: one plain sentence of what is said to be true or believed, in the teller's own terms, without saying who says \
+it ("Defunding the police isn't a federal issue", not "The voter believes defunding the police isn't a federal \
+issue"; never "the voter", "the speaker" or "the person"): who said it goes in quote and side
 quote: the voter's own words, at most 25 words, copied from the transcript
 side: the voter as the episode presents them ("Trump voter", "Biden voter", "swing voter", "Democrat", "Republican"), \
 or "" if unclear
