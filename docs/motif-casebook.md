@@ -157,6 +157,24 @@ boomers "know who should make the sacrifice. And the answer is their children an
   wrist ("He did a year for the bank fraud"); the lady in red stays Uncanny valley ("Is she real? Is she a robot?"),
   and Transvestigation does not apply (one joking post).
 
+- **Draft notes (Oct 9).** Fourteen of Claude's Oct 5 backfill notes kept as the person's; three rewritten to their
+  genre's form (Welfare queen as a figure; Miracle cure and Everything causes cancer without the hidden agent, as
+  Beliefs). Pattern of retribution and Pattern of suicides became Theories ("too many to be chance" adds a hidden
+  hand). Taken out: the Iran war split from Transparency demand, and the Charlie Kirk conspiracy claim from Political
+  martyrdom (nobody in it makes Kirk a martyr).
+- **The model's seven unshaped motifs**: renamed and reshaped as The sequel is never as good (with a seed, The book was
+  better), The countdown, The wounded healer (Angie Nixon: "I grew up in a house filled with domestic violence… that's
+  why I fight"), Age yourself (a Perennial), An enemy of the people, and Yellow dog (the Dispatch host: "Republican
+  leaners are likely to come home even for a guy like Ken Paxton"). "Dynastic acquisition of legacy institutions" was no
+  shape (the Westons buying Boots is The megadeal). From Trump and the press, a new Argument, **Stochastic terrorism**
+  (David Pakman: "Trump is personally demonizing a member of the press… we have to reintroduce the term stochastic
+  terrorism"), resting on Inflammatory political rhetoric.
+- **Trump and the press stays one claim**, though Jesse Kelly praises it ("treating the media like crap… Put them in
+  their place") and Pakman condemns it: one story told from two sides, like Brazil. The person: "We're identifying
+  motifs in moving stories and they're both about the same story." Claims are grouped by machine (embeddings, a
+  mutual-neighbour graph above a similarity threshold, its connected components), which chains near paraphrases
+  together; a merge is a problem only when it joins two different stories.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
