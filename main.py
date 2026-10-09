@@ -202,7 +202,8 @@ def main(args: argparse.Namespace):
             fetch_chyrons()  # TV news chyrons from the Internet Archive: one request a run (today so far, UTC)
             fetch_polls()
             fetch_aggregates()
-    build()
+    # The upload runs beside the GPU steps (they never write the built site); joined before the run ends
+    upload = build(upload_aside=not args.skip_scrape and not args.scraper and not Config.debug)
     if listening is not None:
         listening.join(timeout=10 * 60)  # five minutes of listening, begun with the scrape: usually already done
     def budget(want: float, step: str, keep: float = FILING_RESERVE) -> float:
@@ -279,6 +280,8 @@ def main(args: argparse.Namespace):
             from app.analysis import motif_proposals
             if (b := budget(motif_proposals.NIGHT_BUDGET, 'Motif proposals', keep=0)):
                 motif_proposals.nightly(budget=b)
+    if upload is not None:
+        upload.join()  # raises if the deploy failed, so the run exits non-zero as before
     logger.info("Finished in %f minutes", round((time.time() - t) / 60, 2))
 
 

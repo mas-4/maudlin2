@@ -1,3 +1,5 @@
+import threading
+
 from app import ratings
 from app.analysis import lean_estimate
 from app.site import favicons
@@ -42,7 +44,10 @@ def prepare():
                 len(j2env.globals['icons']), len(j2env.globals['unrated']), len(lean['estimates']))
 
 
-def build():
+def build(upload_aside: bool = False):
+    """Build the site and publish it. With `upload_aside`, the upload (3 to 5 minutes of network, Oct 8) goes on a thread
+    of its own so the run's GPU steps start meanwhile: the thread is returned, and its join() raises what the upload
+    raised (a failed deploy still fails the run)"""
     stamp_build()
     clear_build()
     prepare()
@@ -61,7 +66,30 @@ def build():
         # Debug builds use stale data for local previews and must never replace the live site
         logger.info("Debug build, not publishing; preview it in %s", Config.build)
         return
-    publish_to_netlify()
+    if not upload_aside:
+        publish_to_netlify()
+        return
+    return Upload()
+
+
+class Upload(threading.Thread):
+    """publish_to_netlify on a thread of its own; join() raises what it raised"""
+
+    def __init__(self):
+        super().__init__(name='netlify-upload', daemon=True)
+        self.error = None
+        self.start()
+
+    def run(self):
+        try:
+            publish_to_netlify()
+        except BaseException as e:  # noqa: BLE001 - raised again in join()
+            self.error = e
+
+    def join(self, timeout: float | None = None):
+        super().join(timeout)
+        if self.error is not None:
+            raise self.error
 
 
 if __name__ == '__main__':

@@ -120,6 +120,32 @@ def test_out_of_memory_is_not_recorded_and_stops_the_round(db, monkeypatch):
     assert len(tr.pending()) == 2  # both wait for the next run
 
 
+def test_the_next_episode_downloads_while_one_is_transcribed(db, monkeypatch):
+    add(db, 'nprnewsnow', 1)
+    add(db, 'nprnewsnow', 2)
+    monkeypatch.setattr(tr, 'free_gpu', lambda: True)
+    monkeypatch.setattr(tr, 'PAUSE', 0)
+    import threading
+    second = threading.Event()
+    calls = []
+
+    def download(url, folder):
+        calls.append(url)
+        if len(calls) == 2:
+            second.set()
+        return 'unused'
+    monkeypatch.setattr(tr, 'download', download)
+    monkeypatch.setattr(tr, 'decode', lambda path: np.zeros(16000, np.float32))
+    overlapped = []
+
+    def transcribe(audio, **kw):
+        overlapped.append(second.wait(timeout=5))  # the first one's transcription waits for the second's download
+        return iter([SimpleNamespace(start=0.0, end=1.0, text=' Hello.')]), None
+    monkeypatch.setattr(tr, 'model', lambda: SimpleNamespace(transcribe=transcribe))
+    assert tr.transcribe_pending(budget=60) == 2
+    assert overlapped[0] and len(calls) == 2
+
+
 def test_busy_gpu_skips_the_round(db, monkeypatch):
     add(db, 'nprnewsnow', 1)
     monkeypatch.setattr(tr, 'free_gpu', lambda: False)

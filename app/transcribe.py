@@ -265,30 +265,50 @@ def transcribe_pending(budget: float = 600) -> int:
         return 0
     started, done = time.time(), 0
     words = hotwords()
-    for item in items:
-        if time.time() - started > budget:
-            break
-        try:
-            with tempfile.TemporaryDirectory(prefix='maudlin-audio-') as folder:
-                path = download(item.audio, folder)
-                if path is None:
+
+    def fetch(item, pause: bool):
+        """The item's audio, decoded (None if over the size limit): on a thread of its own, the next episode's while
+        Whisper works on this one (Oct 8: the card sat idle through each download and decode). One at a time, PAUSE
+        apart, as before"""
+        if pause:
+            time.sleep(PAUSE)
+        with tempfile.TemporaryDirectory(prefix='maudlin-audio-') as folder:
+            path = download(item.audio, folder)
+            return None if path is None else decode(path)
+
+    from concurrent.futures import ThreadPoolExecutor
+    ahead = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio')
+    coming = ahead.submit(fetch, items[0], False)
+    try:
+        for n, item in enumerate(items):
+            if time.time() - started > budget:
+                break
+            this, coming = coming, None
+            try:
+                audio = this.result()
+                # the next one downloads while this one is transcribed (after a failed download, only once it's
+                # known the failure is this file's own)
+                coming = ahead.submit(fetch, items[n + 1], True) if n + 1 < len(items) else None
+                if audio is None:
                     logger.info("Transcribe: %s too big, skipped", item.title)
                     save(item.id, [], 0, model='skipped: over the size limit')  # so it isn't downloaded again
                     continue
-                audio = decode(path)
-            segments, info = model().transcribe(audio, language='en', vad_filter=True, beam_size=1, hotwords=words)
-            kept = trim_ads([{'start': round(s.start, 1), 'end': round(s.end, 1), 'text': fix_text(s.text.strip())}
-                             for s in segments])
-            save(item.id, kept, len(audio) / 16000)
-            done += 1
-        except Exception as e:  # noqa: BLE001 - one bad file mustn't stop the rest
-            if permanent(e):
-                logger.warning("Transcribe: %s failed for good (%s)", item.title, e)
-                save(item.id, [], 0, model=f'failed: {type(e).__name__}'[:64])  # recorded, not retried every hour
-            else:
-                logger.warning("Transcribe: %s failed for now (%s); stopping until next run", item.title, e)
-                break  # out of memory or offline: the rest would fail the same way
-        time.sleep(PAUSE)
+                segments, info = model().transcribe(audio, language='en', vad_filter=True, beam_size=1, hotwords=words)
+                kept = trim_ads([{'start': round(s.start, 1), 'end': round(s.end, 1), 'text': fix_text(s.text.strip())}
+                                 for s in segments])
+                save(item.id, kept, len(audio) / 16000)
+                done += 1
+            except Exception as e:  # noqa: BLE001 - one bad file mustn't stop the rest
+                if permanent(e):
+                    logger.warning("Transcribe: %s failed for good (%s)", item.title, e)
+                    save(item.id, [], 0, model=f'failed: {type(e).__name__}'[:64])  # recorded, not retried every hour
+                    if coming is None and n + 1 < len(items):
+                        coming = ahead.submit(fetch, items[n + 1], True)
+                else:
+                    logger.warning("Transcribe: %s failed for now (%s); stopping until next run", item.title, e)
+                    break  # out of memory or offline: the rest would fail the same way
+    finally:
+        ahead.shutdown(wait=False, cancel_futures=True)  # a download under way finishes on its own and is dropped
     logger.info("Transcribed %d of %d pending items in %.0fs", done, len(items), time.time() - started)
     return done
 
