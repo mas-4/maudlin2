@@ -81,17 +81,14 @@ happens and why)?
 comes out is a Plot.
 - Archetype or Plot: a motif described around a figure is an Archetype; around an incident, a Plot."""
 # 'refined' overshot toward Plot (Theories 73% -> 51%): it took explained situations and alleged revelations for Plots
-REFINED2 = dict(REFINED, **{
-    'Plots': 'what happened or is happening (mythos): an event, a sequence, a decline, or a standing situation people '
+REFINED2 = dict(REFINED, Plots='what happened or is happening (mythos): an event, a sequence, a decline, or a standing situation people '
              'observe (a price, a shortage); an established exposé, where a document, an admission or an investigation '
              'brings hidden wrongdoing out, is a Plot; so is a plain reading of what visibly happened, even told with '
-             'a loaded word',
-    'Theories': 'an account people argue about how the world or society works (logos, the "because..."): a hidden cause, '
+             'a loaded word', Theories='an account people argue about how the world or society works (logos, the "because..."): a hidden cause, '
                 'agent or mechanism the teller infers, or an explanation of what drives an ongoing situation (why the '
                 'country is split, how insiders protect each other); tellers piecing hints together to claim a hidden '
                 'hand is a Theory, however much the telling speaks of revealing; naming an agent is a sign, not the '
-                'definition',
-})
+                'definition')
 REFINED2_TESTS = REFINED_TESTS.replace("""- Plot or Theory: is the hidden hand revealed in the telling (an exposé: a Plot) or inferred by the teller (an \
 alleged hidden cause or agent: a Theory)? Backers named openly hide nothing: a Plot.""", """- Plot or Theory: is the hidden hand established (a document came out, someone admitted it, an investigation found \
 it: a Plot) or pieced together by the tellers from hints (a Theory)? Would it still be there without the tellers' \
