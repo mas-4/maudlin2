@@ -196,6 +196,19 @@ boomers "know who should make the sacrifice. And the answer is their children an
 - **The man they couldn't hang became Survived the sentence (M595).** The old name is John "Babbacombe" Lee's legend,
   too swaggering for Christa Pike's botched lethal injection; "Paid in full" was too generic (anyone finally released).
 
+- **The check queue's hidden shapes (Oct 9).** The person: "there's a lot more shape than it seems an LLM can spot
+  without attention being pointed out." Claims first marked plain keeps or take-outs became new motifs once their
+  sources were read: Not the act of a friend (South Korea recalls its envoy over Zelensky's POW disclosure; Israel shuts
+  the UK consulate over settlement sanctions), Fishing expedition (DHS voter-registration probes: "Stage one found no
+  illegal behavior on 120 non-profits"), Slush fund (USAID as "the piggy bank for the far left of the globalist
+  world"), Imperial judiciary (Brazil's court "having much much much more power than the president"), Softball
+  interviews (Theo Von "pushed back almost none"), Humpty Dumpty (Mamdani and Vance each defining socialism to suit:
+  "When I use a word, it means just what I choose it to mean"), Settling scores (Flavio Bolsonaro: "pardon his father…
+  impeach the Supreme Court justices that have harmed his family"), Let them eat cake (Google Maps as the answer to £2
+  diesel), Hellhole ("When the blues get in, everything becomes dirty"), and Original meaning (Alito: "they mean what
+  they meant on the day when they were created"). Method: read the source and ask what shape the telling has before
+  asking which motif it fits.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
