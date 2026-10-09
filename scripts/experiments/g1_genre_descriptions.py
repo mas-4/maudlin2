@@ -3,7 +3,9 @@ five of the person's motifs in it. docs/motif-praxis.md now says what each genre
 it, with the Plot/Theory, Belief/Theory and Argument/Archetype tests; it says to give the drafter these once they
 settle, measured against the person's own genre calls. Here every motif the person gave a genre is asked again (left
 out of the examples), four ways: 'examples' (today), 'examples+descriptions', 'descriptions' (no examples), and
-'examples+descriptions+topoi' (with the praxis's later Argument/Theory test). The
+'examples+descriptions+topoi' (with the praxis's later Argument/Theory test), and 'refined' (the praxis's lines as
+refined after this experiment's own split report, with Perennials, a genre added Oct 9). Note: the person moved some
+genres after that report, so 'refined' is scored partly on calls made in view of it. The
 descriptions name no motif of the index. Measured: share right, by genre, and on the person's Oct 9 calls (the
 Belief/Theory sorting). Resumable; caches in EXP."""
 import json
@@ -21,7 +23,7 @@ from app.analysis import motif_index as mi  # noqa: E402
 from app.analysis import motif_proposals as mp  # noqa: E402
 
 OUT = os.path.join(harness.EXP, 'g1_genre_descriptions.json')
-WAYS = ['examples', 'examples+descriptions', 'descriptions', 'examples+descriptions+topoi']
+WAYS = ['examples', 'examples+descriptions', 'descriptions', 'examples+descriptions+topoi', 'refined']
 
 DESCRIPTIONS = {
     'Archetypes': 'a kind of person tellers portray (ethos): "a [type of person] who..."; also a portrait drawn through '
@@ -37,6 +39,26 @@ DESCRIPTIONS = {
                  'itself, a charge or a way of answering',
     'Values': 'how things ought to be: "X should be..."',
     'Exhortations': 'a call to act: "we should do X"',
+    'Perennials': 'a safe topic shared for its own sake, which strangers can talk about without taking a side (the '
+                  'weather, babies, pets, sports, birds); the one genre defined by its subject; never politics',
+}
+# The praxis's lines as refined after the drafter's split report (Oct 9, later): 'refined' asks with these
+REFINED = {
+    'Archetypes': 'a kind of person tellers portray (ethos): "the [type of person] who..."; an epithet that labels a '
+                  'kind of person is an Archetype',
+    'Plots': 'what happened or is happening (mythos): an event, a sequence, a standing situation or a decline; an '
+             'exposé, where hidden wrongdoing comes out, is a Plot; so is a plain reading of what visibly happened, '
+             'even told with a loaded word',
+    'Beliefs': 'a premise or lore people pass on and take for granted (endoxa): common sense, folk wisdom, omens, '
+               'scares, nostalgia, prophecy, everyday cynicism; reasoned from, not argued for',
+    'Theories': 'an account people argue about how the world or society works, often a hidden cause, agent or '
+                'mechanism the teller infers rather than sees revealed (logos, the "because..."); naming an agent is a '
+                'sign, not the definition',
+    'Arguments': 'a rhetorical move people make in a debate (topoi): a charge about someone\'s conduct, a way of '
+                 'answering, or a teller offering proof; about the debate rather than the world',
+    'Values': 'how things ought to be: "X should be...", including what someone deserves or has no business doing',
+    'Exhortations': 'a call to act: "we should do X"',
+    'Perennials': DESCRIPTIONS['Perennials'],
 }
 TESTS = """Telling close genres apart:
 - Plot or Theory: does the motif add a cause or agent the events don't show? Then a Theory; a plain reading of what \
@@ -45,6 +67,17 @@ happened is a Plot.
 theory people assume in passing reads as a Belief; one they argue for is a Theory.
 - Argument or Archetype: a charge about a pattern of behaviour is an Argument; a portrait of someone's character is \
 an Archetype."""
+REFINED_TESTS = """Telling close genres apart:
+- Plot or Theory: is the hidden hand revealed in the telling (an exposé: a Plot) or inferred by the teller (an \
+alleged hidden cause or agent: a Theory)? Backers named openly hide nothing: a Plot.
+- Belief or Theory: an argued account of how society works is a Theory, even with no agent named; lore or a premise \
+people pass on is a Belief, even if it names a cause. A judgment of how things ought to be is a Value.
+- Argument or Theory: is the motif about the debate (a form of reasoning any side could use) or about the world (what \
+happens and why)?
+- Argument or Archetype: an epithet labelling a kind of person is an Archetype; a charge about conduct is an Argument.
+- Argument or Plot: a teller offering proof is an Argument; a recurring situation in which the truth is contested or \
+comes out is a Plot.
+- Archetype or Plot: a motif described around a figure is an Archetype; around an incident, a Plot."""
 TOPOI = """- Argument or Theory: an Argument is a form of reasoning any side can fill and turn \
 around, answered with "that doesn't follow" or "that's beside the point"; its note says someone argues by... so.... A \
 Theory is a claim about how the world works, belonging to one picture of it, answered with evidence; its note says X \
@@ -67,11 +100,14 @@ def listing(way: str, examples: dict) -> tuple[str, str]:
     if way == 'examples':
         return '', ''
     rows = []
+    said = REFINED if way == 'refined' else DESCRIPTIONS
     for g in DESCRIPTIONS:
         if g not in examples and way != 'descriptions':
             continue
-        rows.append(f'{g}: {DESCRIPTIONS[g]}' + ('' if way == 'descriptions' else ', for example:\n'
+        rows.append(f'{g}: {said[g]}' + ('' if way == 'descriptions' else ', for example:\n'
                     + '\n'.join(f'  - {mi.described(x)[:200]}' for x in examples.get(g, []))))
+    if way == 'refined':
+        return '\n'.join(rows), '\n' + REFINED_TESTS + '\n'
     return '\n'.join(rows), '\n' + TESTS + ('\n' + TOPOI if way.endswith('topoi') else '') + '\n'
 
 
