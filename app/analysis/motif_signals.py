@@ -401,11 +401,14 @@ class Signals:
         every embedding in two batches. Claim by claim, Ollama swapped three models through the GPU for each one
         (Oct 8: about 13 s a claim); after this, cheap() reads caches. With `budget`, the questions not begun by then
         wait for the next run (Oct 8: a newly trained model's first scoring overran its budget by four minutes here)"""
+        import time
+        t0 = time.time()
         if ask:  # the filing model's questions, PARALLEL at once (llm.parallel), each claim's two in turn
             from app.analysis import llm
             llm.parallel(lambda c: (self.shape_of(c, True), self.layers_of(c, True)), list(dict.fromkeys(claims)),
                          budget=budget)
             self.save()
+        t1 = time.time()
         shapes = [self.shapes[mi.key(c)] for c in claims if mi.key(c) in self.shapes]
         layers = [t for c in claims for t in self.layers_of(c, False).values()]
         self.vec(list(dict.fromkeys(list(claims) + shapes + layers)))
@@ -419,6 +422,7 @@ class Signals:
             for key in EMBEDDERS:
                 self._embed(key, list(dict.fromkeys(claims)), True)
             self.news(claims[0], False)  # the headlines, once
+        self.timings = {'ask': t1 - t0, 'embed': time.time() - t1}  # seconds, for the run's log
 
     def cheap(self, claim: str, leave_out: bool = False, ask: bool = True) -> dict[str, np.ndarray]:
         """Every cheap signal against every motif"""

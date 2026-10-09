@@ -343,9 +343,11 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
             if wanted and (mi.key(c['claim']), e['id']) not in (skip or ()):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
     scorer.signals.prepare([c for c, _ in todo], budget=budget)
+    t_judge = time.time()
     left = None if budget is None else max(0.0, budget - (time.time() - started))
     scorer.signals.judge_many([(c, [scorer.signals.at[eid] for eid in ids]) for (c, _), ids in todo.items()],
                               leave_out=True, budget=left)  # the judge loaded once, not claim by claim
+    t_rows = time.time()
     out = {}
     for (claim, source), ids in todo.items():
         if budget is not None and time.time() - started > budget:
@@ -354,6 +356,11 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
         for eid, v in zip(ids, z):
             out[(mi.key(claim), eid)] = round(float(1 / (1 + np.exp(-v))), 3)
     scorer.signals.save()
+    if out:  # where the time goes (Oct 9, the person: how much faster with Nimble?)
+        t = getattr(scorer.signals, 'timings', {})
+        logger.info("Filing confidence: %d filings in %.0f s: the filing model's questions %.0f s, embedders %.0f s, "
+                    "the judge (%s) %.0f s, the other signals and the reranker %.0f s", len(out), time.time() - started,
+                    t.get('ask', 0), t.get('embed', 0), ms.judge_tag(), t_rows - t_judge, time.time() - t_rows)
     return out
 
 
