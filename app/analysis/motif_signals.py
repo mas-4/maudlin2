@@ -69,8 +69,16 @@ STOP = {'a', 'an', 'the', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at'
         'just', 'should', 'now', 'says', 'said', 'say', 'about', 'into', 'over', 'after', 'before', 'also', 'has',
         'have', 'had', 'do', 'does', 'did', 'would', 'could', 'may', 'might', 'must', 'one', 'two', 'new', 'people'}
 WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
+# More embedders (E11, Oct 9: of twelve tried, Qwen3-Embedding 8B with Snowflake Arctic Embed 2 lifted the shortlist's
+# top 12 from 82.3% to 85.2%): each the claim against each motif's name and note, and against its nearest claim. Its
+# query and document prefixes, as its model card says
+EMBEDDERS = {
+    'qwen3 8b': ('qwen3-embedding:8b', 'Instruct: Given a claim people tell about politics or public life, find the '
+                 'recurring story motif it is an instance of\nQuery: ', ''),
+    'arctic2': ('snowflake-arctic-embed2', 'query: ', ''),
+}
 CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group', 'news out note', 'news out near',
-         'layers best', 'layer of its genre']
+         'layers best', 'layer of its genre'] + [f'{k} {x}' for k in EMBEDDERS for x in ('note', 'near')]
 
 SHAPE_PROMPT = """A claim people are telling or arguing over:
 {claim}
@@ -407,6 +415,9 @@ class Signals:
         if claims:
             self.nomic(claims[0], False)  # the motif side, once
             self._nomic(list(dict.fromkeys(claims)), 'search_query')
+            self.embedders(claims[0], False)  # each embedder: the motif side once, then every claim in one call
+            for key in EMBEDDERS:
+                self._embed(key, list(dict.fromkeys(claims)), True)
             self.news(claims[0], False)  # the headlines, once
 
     def cheap(self, claim: str, leave_out: bool = False, ask: bool = True) -> dict[str, np.ndarray]:
@@ -416,7 +427,36 @@ class Signals:
         best, of_genre = self.layers(claim, ask)
         return {'news out note': news_note, 'news out near': news_near, 'layers best': best, 'layer of its genre': of_genre,'keywords': self.keywords(claim, leave_out), 'note': self.note(claim), 'shape': self.shape(claim, ask),
                 'votes': self.votes(claim, leave_out), 'nomic desc': desc, 'nomic near': near,
-                'group': self.group(claim, leave_out)}
+                'group': self.group(claim, leave_out), **self.embedders(claim, leave_out)}
+
+    def _embed(self, key: str, texts: list[str], query: bool) -> np.ndarray:
+        from app.analysis.clustering import ollama_embed
+        from app.narratives import FOLDER as NFOLDER
+        model, qp, dp = EMBEDDERS[key]
+        # the 8B is slow on the CPU: any batch worth it goes to the GPU (BULK there is for the small embedders)
+        return ollama_embed([(qp if query else dp) + t for t in texts], model=model, keep_days=30, bulk=50,
+                            cache=os.path.join(NFOLDER, 'embeddings.sqlite'))
+
+    def embedders(self, claim: str, leave_out: bool) -> dict[str, np.ndarray]:
+        """EMBEDDERS' signals: the claim against each motif's name and note, and against its nearest claim (itself
+        held out, -1 for a motif with none)"""
+        if getattr(self, '_emb', None) is None:
+            self._emb = {}
+            for key in EMBEDDERS:
+                notes = self._embed(key, [f"{e['name']}: {e.get('note') or ''}" for e in self.entries], False)
+                filed = self._embed(key, [self.filed[k][0] for k in self.filed_keys], False)
+                self._emb[key] = (notes, filed)
+            if getattr(self, '_members', None) is None:
+                self.nomic(claim, leave_out)  # the motifs' members, by filed claim
+        k = mi.key(claim)
+        skip = self.filed_keys.index(k) if leave_out and k in self.filed else -1
+        out = {}
+        for key, (notes, filed) in self._emb.items():
+            q = self._embed(key, [claim], True)[0]
+            sims = filed @ q
+            out[f'{key} note'] = notes @ q
+            out[f'{key} near'] = np.array([max((sims[i] for i in rows if i != skip), default=-1.0) for rows in self._members])
+        return out
 
     # ---- costly signals, for a shortlist ----
 

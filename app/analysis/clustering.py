@@ -139,9 +139,9 @@ BULK = 2000
 
 
 def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
-                 keep_days: float = STORY_CACHE_DAYS) -> np.ndarray:
+                 keep_days: float = STORY_CACHE_DAYS, bulk: int = BULK) -> np.ndarray:
     """Unit vectors for `texts` from the local Ollama, cached by text and model (in `cache`, a SQLite file; the
-    stories' own by default), unused vectors dropped after `keep_days`."""
+    stories' own by default), unused vectors dropped after `keep_days`. `bulk` or more texts to embed: on the GPU."""
     import hashlib
     import time
     import requests as rq
@@ -154,7 +154,7 @@ def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
             rows = con.execute(f"SELECT key, v FROM vec WHERE key IN ({','.join('?' * len(chunk))})", chunk).fetchall()
             found.update({k: np.frombuffer(v, dtype=np.float32) for k, v in rows})
         missing = [i for i, k in enumerate(keys) if k not in found]
-        options = EMBED_OPTIONS if len(missing) < BULK else {}
+        options = EMBED_OPTIONS if len(missing) < bulk else {}
         for start in range(0, len(missing), 256):
             batch = missing[start:start + 256]
             r = rq.post(f'{OLLAMA_URL}/api/embed', json={'model': model, 'input': [texts[i] for i in batch],

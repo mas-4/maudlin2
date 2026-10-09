@@ -14,6 +14,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   (a calibrated probability in one pass), instead of Gemma 4 26B: on the person's 817 decided filings it judged as
   well (AUC 0.824 alone against 0.818; 0.895 in the model against 0.894) in a fifth of the time, and fits the GPU whole.
   The model retrains on Nimble's answers; fits from the old one stand until then.
+- **Two more embedders in the filing shortlist.** Qwen3-Embedding 8B and Snowflake Arctic Embed 2 each compare a
+  claim with every motif's name and note and with its nearest claim (E11: of twelve embedders tried, this pair helped
+  most). The learned shortlist, retrained with them on the person's 470 confirmed claims, puts their motif in the top
+  12 for 85.7% held out (83.9% before; the plain weights 80%). The confidence model weighs them too.
 
 ## 2026-10-08
 - **"Kind of" is now "rests on".** The one link that ranks motifs, until now "X is a kind of Y", now reads "X rests on
