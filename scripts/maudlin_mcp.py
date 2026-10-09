@@ -209,6 +209,17 @@ def second_look() -> str:
 
 
 @server.tool()
+def today() -> str:
+    """The day's set of the most useful decisions (the workbench's 🎯 today tab): the filings the model is torn on, the
+    ones it now doubts with a fix ready ('better'), new motifs nobody has shaped, the likeliest proposals; those still
+    waiting, with each motif's note. Asking picks the day's set if the tab hasn't yet, as opening the tab does."""
+    data = _validate().todays_decisions()
+    index = mi.load()
+    data['items'] = [{**x, 'note': index['entries'].get(x.get('id'), {}).get('note')} for x in data['items']]
+    return json.dumps(data, ensure_ascii=False, default=str)
+
+
+@server.tool()
 def unfiled_claims(query: str = '', limit: int = 30) -> str:
     """Claims waiting with no motif (from the latest folklore report, recent fact-checks, the shows and focus groups),
     with every word of `query` if given: what the person might file by hand."""
