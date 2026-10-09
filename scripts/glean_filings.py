@@ -28,6 +28,19 @@ from app.analysis import motif_retriever as mr  # noqa: E402
 from app.utils import Config  # noqa: E402
 
 OUT = os.path.join(Config.data, 'motifs', 'glean.json')
+CHUNK = 50  # claims judged or scored between saves of the signals' caches
+
+
+def free_gpu():
+    """Unload every model Ollama holds (as transcribe.py does before Whisper)"""
+    import requests as rq
+    from app.analysis import llm
+    try:
+        for x in rq.get(f'{llm.OLLAMA_URL}/api/ps', timeout=10).json().get('models', []):
+            rq.post(f'{llm.OLLAMA_URL}/api/generate', json={'model': x['name'], 'keep_alive': 0}, timeout=30)
+        time.sleep(5)
+    except Exception as e:  # noqa: BLE001 - the reranker falls back to the CPU
+        print(f'could not free the GPU ({e})', flush=True)
 
 
 def filed_claims(index: dict) -> dict[str, dict]:
@@ -57,16 +70,24 @@ def score():
         cands[k] = [eid for eid in scorer.candidates(c['claim']) if (k, eid) not in said_no]
     print(f'candidates ready ({sum(map(len, cands.values()))} pairs, {time.time() - started:.0f} s); judging',
           flush=True)
-    scorer.signals.judge_many([(claims[k]['claim'], [scorer.signals.at[eid] for eid in ids])
-                               for k, ids in cands.items() if ids], leave_out=True)
-    print(f'judged ({time.time() - started:.0f} s); scoring', flush=True)
+    # The judge's answers live in memory until saved: a run cut short (the first, Oct 9, after 72 minutes of judging)
+    # lost them all. A chunk at a time, saved after each, so a second run picks up where the first stopped
+    items = [(claims[k]['claim'], [scorer.signals.at[eid] for eid in ids]) for k, ids in cands.items() if ids]
+    for s in range(0, len(items), CHUNK):
+        scorer.signals.judge_many(items[s:s + CHUNK], leave_out=True)
+        scorer.signals.save()
+        print(f'judged {min(s + CHUNK, len(items))}/{len(items)} claims ({time.time() - started:.0f} s)', flush=True)
+    free_gpu()  # the judge out of the card, so the reranker runs there, not on the CPU (it did, Oct 9: too slow)
     rows = []
-    for k, ids in cands.items():
+    for n, (k, ids) in enumerate(cands.items()):
         if not ids:
             continue
         c = claims[k]
         p = 1 / (1 + np.exp(-(scorer.rows(c['claim'], ids, c.get('source', '')) @ coef + m['bias'])))
         rows += [{'claim': c['claim'], 'id': eid, 'fit': round(float(v), 3)} for eid, v in zip(ids, p)]
+        if n % CHUNK == CHUNK - 1:
+            scorer.signals.save()
+            print(f'scored {n + 1}/{len(cands)} claims ({time.time() - started:.0f} s)', flush=True)
     scorer.signals.save()
     with open(OUT, 'w') as f:
         json.dump({'model': m['at'], 'at': dt.now().isoformat(timespec='seconds'), 'rows': rows}, f)
