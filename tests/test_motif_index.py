@@ -154,6 +154,18 @@ def test_done_marks_hide_a_motif_until_a_new_claim_comes_in(monkeypatch, tmp_pat
     assert mi.board()['entries'][0]['done'] is None
 
 
+def test_a_seed_marked_done_stays_done_when_claims_come(monkeypatch, tmp_path):
+    """A seed marked done has no claims seen yet (an empty list): it's still done and public (Oct 9: 8 seeds weren't)"""
+    from app.analysis import filing_confidence as fc
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'Lucretia', 'claims': []}}})
+    mi.mark_done('M001')
+    e = mi.load()['entries']['M001']
+    assert e['done'] == [] and mi.public(e) and fc.yours(e)
+    e['claims'].append({'claim': 'a', 'source': 's'})
+    assert mi.is_done(e) == 'new' and mi.public(e) and not mi.public_claims(e)  # the new claim waits for a check
+
+
 def test_more_like_this_ranks_other_claims_and_remembers_not_this(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
     claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731

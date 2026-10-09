@@ -165,8 +165,8 @@ def processing() -> dict:
     index = mi.load()
     live = mi.live(index)
     unchecked = sum(1 for e in live for c in e['claims'] if not c.get('checked'))
-    in_mine = sum(1 for e in live if e.get('done') for c in e['claims'] if not c.get('checked'))
-    second = sum(1 for e in live if e.get('done') for c in e['claims']
+    in_mine = sum(1 for e in live if 'done' in e for c in e['claims'] if not c.get('checked'))
+    second = sum(1 for e in live if 'done' in e for c in e['claims']
                  if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None and c['fit'] < 0.5)
     try:
         unfiled = sum(1 for c in mi.searchable_claims() if not c.get('motifs'))

@@ -469,7 +469,7 @@ def workbench_state() -> dict:
         e['phrases'] = (entry.get('phrases') or [])[:6]
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
     hand = hand_made()
-    state['second_look'] = sum(1 for e in mi.live(index) if e.get('done') for c in e['claims']
+    state['second_look'] = sum(1 for e in mi.live(index) if 'done' in e for c in e['claims']
                                if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
                                and c['fit'] < SECOND_LINE and (mi.key(c['claim']), e['id']) not in hand)
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
@@ -527,7 +527,7 @@ def second_look() -> list[dict]:
     from app.analysis import motif_index as mi
     hand = hand_made()
     rows = [{'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''), 'fit': c['fit']}
-            for e in mi.live(mi.load()) if e.get('done') for c in e['claims']
+            for e in mi.live(mi.load()) if 'done' in e for c in e['claims']
             if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
             and c['fit'] < SECOND_LINE and (mi.key(c['claim']), e['id']) not in hand]
     rows = sorted(rows, key=lambda r: r['fit'])

@@ -490,7 +490,7 @@ def clusters(index: dict, entries: list[dict]) -> list[list[str]]:
     from sklearn.cluster import AgglomerativeClustering
 
     from app.narratives import embed
-    mine = [e for e in entries if e.get('done') and e['claims']]
+    mine = [e for e in entries if 'done' in e and e['claims']]
     if len(mine) < CLUSTER_SIZES[0]:
         return []
     V = embed([mi.described(e) for e in mine])

@@ -302,7 +302,7 @@ def model(retrain: bool = False, budget: float | None = None) -> dict | None:
 
 def yours(entry: dict) -> bool:
     """A motif the person has shaped: marked done (every motif a person made is; the model's start out not done)"""
-    return bool(entry.get('done'))
+    return 'done' in entry  # its list of seen claims may be empty: a seed marked done
 
 
 def tested_sources(index: dict) -> set[str]:

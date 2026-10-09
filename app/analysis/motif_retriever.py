@@ -191,7 +191,7 @@ def train_learned(index: dict | None = None) -> dict | None:
     sig = ms.Signals(index, Vectors())
     truth, text = defaultdict(set), {}
     for n, e in enumerate(sig.entries):
-        if e.get('done'):
+        if 'done' in e:
             for c in e['claims']:
                 if c.get('checked') == 'yes':
                     truth[mi.key(c['claim'])].add(n)

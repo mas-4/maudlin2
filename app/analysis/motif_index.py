@@ -373,7 +373,7 @@ def metrics(index: dict | None = None) -> dict:
         'in_tree': share(sum(1 for e in es if parents_of(e) or e['id'] in kids)),
         'with_genre': share(sum(1 for e in es if (e.get('facets') or {}).get('genre'))),
         'in_group': share(sum(1 for e in es if groups_of(e))),
-        'done': share(sum(1 for e in es if e.get('done'))),
+        'done': share(sum(1 for e in es if 'done' in e)),
         'your_notes': share(sum(1 for e in es if e.get('note') and e.get('note_by') not in DRAFTS)),
         'checked': round(100 * sum(1 for e in es for c in e['claims'] if c.get('checked')) / max(1, filings), 1),
         'variants': sum(len(c.get('variants', [])) for e in es for c in e['claims']),
@@ -1446,7 +1446,7 @@ DRAFTS = ('model', 'claude')  # notes drafted, not yet kept: the local model's, 
 def public(entry: dict) -> bool:
     """Whether the site may show a motif: only ones a person has verified, by looking over its claims and marking it
     done (the board's and the workbench's ✓ done). The model's motifs stay in the index, and in the checker, until then."""
-    return bool(entry.get('done')) and not entry.get('merged_into')
+    return 'done' in entry and not entry.get('merged_into')  # its list of seen claims may be empty: a seed marked done
 
 
 def public_claims(entry: dict) -> list[dict]:
