@@ -96,7 +96,8 @@ def score():
 
 
 def report():
-    d = json.load(open(OUT))
+    with open(OUT) as f:
+        d = json.load(f)
     rows = d['rows']
     index = mi.load()
     names = {e['id']: e['name'] for e in mi.live(index)}
@@ -108,7 +109,8 @@ def report():
 
 
 def apply(threshold: float, cap: int = 3):
-    d = json.load(open(OUT))
+    with open(OUT) as f:
+        d = json.load(f)
     by = {}
     for r in sorted(d['rows'], key=lambda r: -r['fit']):
         if r['fit'] >= threshold and len(by.setdefault(r['claim'], [])) < cap:
