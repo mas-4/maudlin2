@@ -10,6 +10,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   such torn filings (10 before, in a wider band: fits from 20% to 80%). A simulation on the person's own decisions
   (E6 in docs/filing-experiments.md) found the model learns as much from 150 checks in this order as from ~550 at
   random, and more slowly still in the old order. The sure ones still pass in one step from their own fold.
+- **A new judge in the confidence model.** Its yes-or-no on each filing now comes from Nimble 9B, a decision model
+  (a calibrated probability in one pass), instead of Gemma 4 26B: on the person's 817 decided filings it judged as
+  well (AUC 0.824 alone against 0.818; 0.895 in the model against 0.894) in a fifth of the time, and fits the GPU whole.
+  The model retrains on Nimble's answers; fits from the old one stand until then.
 
 ## 2026-10-08
 - **"Kind of" is now "rests on".** The one link that ranks motifs, until now "X is a kind of Y", now reads "X rests on

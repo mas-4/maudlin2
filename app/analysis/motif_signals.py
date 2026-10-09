@@ -49,6 +49,13 @@ LAYERED = os.path.join(FOLDER, 'claim_layers.json')  # claim key -> {layer: its 
 NOMIC = 'nomic-embed-text'
 RERANKER = 'Qwen/Qwen3-Reranker-0.6B'
 JUDGE_MODEL = 'gemma4:26b'
+# The yes or no on a (claim, motif) pair, for the confidence model: Bespoke Labs' Nimble 9B, a decision model (one pass,
+# a probability, no text; Ollama's /v1/systemone), since Oct 9: on the person's 817 decided filings it judged as well
+# as Gemma 26B (AUC 0.824 alone, 0.895 in the confidence model, against 0.818 and 0.894) at 0.22 s a pair, and fits the
+# card whole (J1 in docs/filing-experiments.md). None: Gemma 26B's yes or no (JUDGE_PROMPT) as before
+JUDGE_DECIDER = 'nimble:9b'
+JUDGE_QUESTION = ('Is the new claim an instance of this motif: the same shape of story, as its tellers tell it, as the '
+                  'claims filed under it, not just the same topic, person or word?')
 NEIGHBOURS = 15
 NEWS = os.path.join(FOLDER, 'news_directions.npz')  # the latest headlines' center and main directions, a day at a time
 NEWS_HEADLINES = 6000
@@ -116,6 +123,36 @@ def tokens(text: str) -> list[str]:
 
 def pair_hash(*parts: str) -> str:
     return hashlib.sha1('\n'.join(parts).encode()).hexdigest()[:16]
+
+
+def _judge_one(text: str) -> float:
+    """One pair's P(yes): from the decision model (its state: the motif and the new claim), or Gemma's first word"""
+    import requests as rq
+    from app.analysis.llm import OLLAMA_URL
+    if JUDGE_DECIDER:
+        r = rq.post(f'{OLLAMA_URL}/v1/systemone', timeout=300, json={
+            'model': JUDGE_DECIDER, 'state': text, 'questions': {'fits': {'type': 'noul', 'instructions': JUDGE_QUESTION}}})
+        r.raise_for_status()
+        a = r.json()['answers']['fits']
+        return round(float(a.get('noul', a.get('probability')) if isinstance(a, dict) else a), 5)
+    r = rq.post(f'{OLLAMA_URL}/api/chat', timeout=300, json={
+        'model': JUDGE_MODEL, 'messages': [{'role': 'user', 'content': text}], 'think': False,
+        'stream': False, 'logprobs': True, 'top_logprobs': 10, 'options': {'temperature': 0, 'num_predict': 1}})
+    r.raise_for_status()
+    y = no = -math.inf
+    for t in ((r.json().get('logprobs') or [{}])[0].get('top_logprobs') or []):
+        w = t['token'].strip().lower()
+        if w.startswith('yes'):
+            y = max(y, t['logprob'])
+        elif w.startswith('no'):
+            no = max(no, t['logprob'])
+    return 0.5 if y == no == -math.inf else (1.0 if no == -math.inf else 0.0 if y == -math.inf
+                                             else round(1 / (1 + math.exp(no - y)), 5))
+
+
+def judge_tag() -> str:
+    """Which judge the cached yes-or-no answers and the confidence model's 'judge' signal come from"""
+    return JUDGE_DECIDER or JUDGE_MODEL
 
 
 def rerank_text(claim: str, doc: str) -> str:
@@ -433,31 +470,37 @@ class Signals:
         return out
 
     def judge(self, claim: str, ns: list[int], leave_out: bool = False) -> np.ndarray:
-        import requests as rq
-        from app.analysis.llm import OLLAMA_URL
-        out = []
-        for n in ns:
-            e = self.entries[n]
-            ex = self.nearest_claims(claim, n, leave_out, 3)
-            prompt = JUDGE_PROMPT.format(name=e['name'], note=e.get('note') or '(no note yet)',
-                                         examples='\n'.join(f'- {c}' for c in ex) or '(none yet)', claim=claim)
-            h = pair_hash(prompt)
-            if h not in self.judged:
-                r = rq.post(f'{OLLAMA_URL}/api/chat', timeout=300, json={
-                    'model': JUDGE_MODEL, 'messages': [{'role': 'user', 'content': prompt}], 'think': False,
-                    'stream': False, 'logprobs': True, 'top_logprobs': 10, 'options': {'temperature': 0, 'num_predict': 1}})
-                r.raise_for_status()
-                y = no = -math.inf
-                for t in ((r.json().get('logprobs') or [{}])[0].get('top_logprobs') or []):
-                    w = t['token'].strip().lower()
-                    if w.startswith('yes'):
-                        y = max(y, t['logprob'])
-                    elif w.startswith('no'):
-                        no = max(no, t['logprob'])
-                self.judged[h] = 0.5 if y == no == -math.inf else (1.0 if no == -math.inf else 0.0 if y == -math.inf
-                                                                   else round(1 / (1 + math.exp(no - y)), 5))
-            out.append(self.judged[h])
-        return np.array(out)
+        """The judge's P(yes) for the claim in each motif (JUDGE_DECIDER, or Gemma's yes or no), cached"""
+        return self.judge_many([(claim, ns)], leave_out)[0]
+
+    def judge_ask(self, claim: str, n: int, leave_out: bool = False) -> tuple[str, str]:
+        """(cache key, text) of the judge's question for the claim in motif n"""
+        e = self.entries[n]
+        ex = self.nearest_claims(claim, n, leave_out, 3)
+        if JUDGE_DECIDER:
+            text = (f"Motif: {e['name']}\nWhat it covers: {e.get('note') or '(no note yet)'}\nClaims filed under it:\n"
+                    + '\n'.join(f'- {c[:300]}' for c in ex) + f'\n\nNew claim: {claim}')
+            return pair_hash(JUDGE_DECIDER, text), text
+        text = JUDGE_PROMPT.format(name=e['name'], note=e.get('note') or '(no note yet)',
+                                   examples='\n'.join(f'- {c}' for c in ex) or '(none yet)', claim=claim)
+        return pair_hash(text), text
+
+    def judge_many(self, items: list[tuple[str, list[int]]], leave_out: bool = False,
+                   budget: float | None = None) -> list[np.ndarray]:
+        """judge() for many claims at once: the pairs not asked yet llm.PARALLEL at once, in one go, so the judge is
+        loaded once (Nimble and Gemma 26B don't fit the card together); with `budget`, those not begun by then wait
+        (0.5 meanwhile: see judge_missing)"""
+        from app.analysis import llm
+        asks = [[self.judge_ask(claim, n, leave_out) for n in ns] for claim, ns in items]
+        todo = list({h: t for row in asks for h, t in row if h not in self.judged}.items())
+        for (h, _), p in zip(todo, llm.parallel(lambda x: _judge_one(x[1]), todo, budget=budget)):
+            if p is not None:
+                self.judged[h] = p
+        return [np.array([self.judged.get(h, 0.5) for h, _ in row]) for row in asks]
+
+    def judge_missing(self, items: list[tuple[str, list[int]]], leave_out: bool = False) -> int:
+        """How many of these pairs the judge hasn't answered yet"""
+        return sum(1 for claim, ns in items for n in ns if self.judge_ask(claim, n, leave_out)[0] not in self.judged)
 
     def save(self):
         """The costly answers, kept for the next run"""
@@ -472,5 +515,6 @@ def as_dict(arrays: dict, n: int) -> dict:
 
 
 def describe() -> str:
-    return json.dumps({'cheap': CHEAP, 'costly': ['rerank', 'judge'], 'reranker': RERANKER, 'second embedder': NOMIC,
+    return json.dumps({'cheap': CHEAP, 'costly': ['rerank', 'judge'], 'reranker': RERANKER, 'judge': judge_tag(),
+                       'second embedder': NOMIC,
                        'news out': f'{NEWS_DIRECTIONS} directions of the latest {NEWS_HEADLINES} headlines'})

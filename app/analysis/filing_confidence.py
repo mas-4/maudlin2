@@ -238,7 +238,8 @@ def train(index: dict | None = None) -> dict | None:
     model, mu, sd = _fit(X, y)
     coef = model.coef_[0] / sd
     out = {'weights': dict(zip(FEATURES, coef.round(5).tolist())), 'bias': round(float(model.intercept_[0] - mu @ coef), 5),
-           'test': test, 'retriever_at': w['at'], 'reranker': tag, 'at': dt.now().isoformat(timespec='seconds')}
+           'test': test, 'retriever_at': w['at'], 'reranker': tag, 'judge': ms.judge_tag(),
+           'at': dt.now().isoformat(timespec='seconds')}
     write_json(MODEL, out, indent=1)
     logger.info("Filing confidence trained on %d filings (%d kept): AUC %.3f held out, sure from %s", test['filings'],
                 test['kept'], test['auc'], test['sure_at'])
@@ -250,22 +251,18 @@ def warm(index: dict, budget: float) -> bool:
     no, the reranker), llm.PARALLEL at once, for at most `budget` seconds; True when nothing is left to ask, so training
     reads caches only (Oct 8: a day's 200 decisions took training ten minutes past the run's limit)"""
     import time
-
-    from app.analysis import llm
     started = time.time()
     pairs = labeled(index)
     scorer = Scorer(index, mr.weights())
     claims = list(dict.fromkeys(c for c, *_ in pairs))
     scorer.signals.prepare(claims, budget=budget / 2)
     jobs = [(c, scorer.signals.at[eid]) for c, eid, *_ in pairs if eid in scorer.signals.at]
-    for c in claims:  # each claim's nearest filed claims embedded here, before the threads
-        scorer.signals.vec([c])
-    left = budget - (time.time() - started)
-    judged = llm.parallel(lambda j: scorer.signals.judge(j[0], [j[1]], leave_out=True), jobs, budget=max(0.0, left))
-    done = all(j is not None for j in judged)
     by_claim = defaultdict(list)
     for c, n in jobs:
         by_claim[c].append(n)
+    left = budget - (time.time() - started)
+    scorer.signals.judge_many(list(by_claim.items()), leave_out=True, budget=max(0.0, left))
+    done = scorer.signals.judge_missing(list(by_claim.items()), leave_out=True) == 0
     for c, ns in by_claim.items():
         if time.time() - started > budget:
             done = False
@@ -286,6 +283,8 @@ def model(retrain: bool = False, budget: float | None = None) -> dict | None:
         from app.analysis import reranker_teach
         if m.get('reranker', 'base') != reranker_teach.tag():
             m = None  # a newly taught reranker: learn how far to trust it
+        elif m.get('judge', ms.JUDGE_MODEL) != ms.judge_tag():
+            m = None  # another judge (Oct 9: Nimble for Gemma): learn how far to trust it
     if retrain and (not m or dt.now() - dt.fromisoformat(m['at']) > RETRAIN):
         try:
             if budget is not None and not warm(mi.load(), budget):
@@ -344,6 +343,9 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
             if wanted and (mi.key(c['claim']), e['id']) not in (skip or ()):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
     scorer.signals.prepare([c for c, _ in todo], budget=budget)
+    left = None if budget is None else max(0.0, budget - (time.time() - started))
+    scorer.signals.judge_many([(c, [scorer.signals.at[eid] for eid in ids]) for (c, _), ids in todo.items()],
+                              leave_out=True, budget=left)  # the judge loaded once, not claim by claim
     out = {}
     for (claim, source), ids in todo.items():
         if budget is not None and time.time() - started > budget:
@@ -388,11 +390,15 @@ def alternatives(index: dict, m: dict, budget: float | None = None) -> int:
     scorer = Scorer(index, w)
     coef = np.array([m['weights'][f] for f in FEATURES])
     scorer.signals.prepare([c for c, _ in todo.values()], budget=budget)
+    cands = {k: scorer.candidates(claim) for k, (claim, _) in todo.items()}
+    left = None if budget is None else max(0.0, budget - (time.time() - started))
+    scorer.signals.judge_many([(claim, [scorer.signals.at[eid] for eid in cands[k]]) for k, (claim, _) in todo.items()],
+                              leave_out=True, budget=left)  # the judge loaded once, not claim by claim
     done = 0
     for k, (claim, source) in todo.items():
         if budget is not None and time.time() - started > budget:
             break
-        ids = scorer.candidates(claim)
+        ids = cands[k]
         if not ids:
             continue
         p = 1 / (1 + np.exp(-(scorer.rows(claim, ids, source) @ coef + m['bias'])))
