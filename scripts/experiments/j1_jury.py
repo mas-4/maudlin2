@@ -33,7 +33,9 @@ from app.analysis import motif_signals as ms  # noqa: E402
 OUT = os.path.join(harness.EXP, 'j1_jury.json')
 DECIDERS = [m for m in os.environ.get('DECIDERS', 'tev1:4b,tev1:0.8b,nimble:9b').split(',') if m]
 ASKED = [m for m in os.environ.get('ASKED', 'qwen3.5:9b,gemma4:12b,ministral-3:14b').split(',') if m]
-GEV = [m for m in os.environ.get('GEV', '').split(',') if m]  # AutoTrust's GEV-26B-Decide, built for Ollama (gev_build.py)
+GEV = [m for m in os.environ.get('GEV', '').split(',') if m]
+LOCAL = [m for m in os.environ.get('LOCAL', '').split(',') if m]  # Laya (ModernBERT-large), its own SDK on the CPU
+_laya = {}  # AutoTrust's GEV-26B-Decide, built for Ollama (gev_build.py)
 QUESTION = ('Is the new claim an instance of this motif: the same shape of story, as its tellers tell it, as the claims '
             'filed under it, not just the same topic, person or word?')
 ROUND = 32
@@ -98,8 +100,17 @@ def gev(model, p):
     return 1.0 if no == -np.inf else 0.0 if y == -np.inf else float(1 / (1 + np.exp(no - y)))
 
 
+def local(model, p):
+    """Laya: Ollama's build of it needs Apple's MLX, so its own SDK (pip install laya), on the CPU, one at a time"""
+    if model not in _laya:
+        import laya
+        _laya[model] = laya.load('convaiinnovations/laya', device='cpu')
+    a = _laya[model].predict(p['state'], {'fits': {'type': 'noul', 'instructions': QUESTION}})
+    return float(a['answers']['fits']['noul'])
+
+
 def run_jurors(saved, pairs):
-    for model, fn in [(m, decide) for m in DECIDERS] + [(m, ask) for m in ASKED] + [(m, gev) for m in GEV]:
+    for model, fn in [(m, decide) for m in DECIDERS] + [(m, ask) for m in ASKED] + [(m, gev) for m in GEV] + [(m, local) for m in LOCAL]:
         got = saved.setdefault('answers', {}).setdefault(model, {})
         took = saved.setdefault('seconds', {}).setdefault(model, [0.0, 0])
         todo = [p for p in pairs if p['key'] not in got]
@@ -114,7 +125,7 @@ def run_jurors(saved, pairs):
                     errors[f'{type(e).__name__} {e}'[:300]] = 1
                     return None
             t = time.time()
-            answers = llm.parallel(one, part)
+            answers = llm.parallel(one, part, workers=1 if fn is local else llm.PARALLEL)
             took[0] += time.time() - t
             took[1] += len(part)
             if not any(a is not None for a in answers):  # a model that can't answer: say so once, the next model
@@ -181,6 +192,9 @@ if __name__ == '__main__':
     print(f'{len(pairs)} pairs', flush=True)
     if 'report' not in sys.argv:
         run_jurors(saved, pairs)
+    if 'noreport' in sys.argv:
+        print('DONE', flush=True)
+        sys.exit(0)
     for ln in report(saved, pairs):
         print(ln, flush=True)
         harness.note(ln)

@@ -35,6 +35,15 @@ MODELS = {
     'granite-embedding:278m': ('', ''),
 }
 ONLY = [m for m in os.environ.get('ONLY', '').split(',') if m]
+LOCAL = {'embeddinggemma-2': 'google/embeddinggemma-2'}  # Ollama's build of it needs Apple's MLX: from Hugging Face instead
+_st = {}
+
+
+def _local(repo):
+    if repo not in _st:
+        from sentence_transformers import SentenceTransformer
+        _st[repo] = SentenceTransformer(repo, device='cpu')
+    return _st[repo]
 
 
 def embed(model: str, texts: list[str]) -> np.ndarray:
@@ -42,6 +51,11 @@ def embed(model: str, texts: list[str]) -> np.ndarray:
     path = os.path.join(OUT_DIR, model.replace(':', '_').replace('/', '_') + '.npz')
     cache = dict(np.load(path, allow_pickle=True)['c'].item()) if os.path.exists(path) else {}
     todo = [t for t in dict.fromkeys(texts) if t not in cache]
+    if model in LOCAL and todo:  # from Hugging Face on the CPU (sentence-transformers), not Ollama
+        st = _local(LOCAL[model])
+        for t, v in zip(todo, st.encode(todo, normalize_embeddings=True, batch_size=32)):
+            cache[t] = np.asarray(v, dtype=np.float32)
+        todo = []
     for i in range(0, len(todo), 32):
         part = todo[i:i + 32]
         r = rq.post(f'{OLLAMA_URL}/api/embed', timeout=1800, json={
@@ -90,7 +104,7 @@ if __name__ == '__main__':
     data = harness.load()
     have = {m['name'] for m in rq.get(f'{OLLAMA_URL}/api/tags', timeout=30).json()['models']}
     for model in ONLY or MODELS:
-        if model not in have and f'{model}:latest' not in have:
+        if model not in LOCAL and model not in have and f'{model}:latest' not in have:
             print(f'E11 {model}: not pulled, skipped', flush=True)
             continue
         try:
