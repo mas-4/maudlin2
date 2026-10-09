@@ -228,6 +228,14 @@ boomers "know who should make the sacrifice. And the answer is their children an
   that the club is open: the inference is reading a pardon or a cover-up as the club at work. The Bolsonaro "highly
   polarized race" report came out of Polarization: plain news.
 
+- **Rows 13-20 of the proposals (Oct 9).** Take-outs hid shapes again: Bought, not built ("Musk built nothing. He
+  bought."), Government, Inc (the Pentagon's equity in Venezuelan oil), Marking your own homework and, on the same
+  claim, Shocked, shocked! (the person: the posters' "I'm shocked, shocked" is a motif in itself), Lost a step (the
+  person's name over "Lost his fastball": a figure's old magic stops working, kin to Lost golden age), Old news as
+  breaking (Schumer's 2022 quote posted as "BREAKING"), Seriously, not literally (Clay & Buck: "He's speaking as one
+  speaks"). Excusing Hitler (Levin: "He's excusing Hitler") is not You do not, in fact, gotta hand it to them: one
+  shifts the blame for a villain's crimes, the other admires a villain's skill; related, not the same.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
