@@ -103,10 +103,48 @@ boomers "know who should make the sacrifice. And the answer is their children an
 - Plain idioms preferred where they fit: Throw the bums out, Passing the buck, Pain at the pump (was Complaining about
   gas prices; rests on In this economy?), He said, she said, Shadowbanned, Rebranding.
 
+## The afternoon of Oct 9
+
+- **Out of touch (M385): Belief.** Its claims are the premise "they don't get it" (older politicians and AI, a
+  billionaire suspicious to working-class voters, a club board, the AI industry "tone deaf"); note widened past
+  politicians.
+- **The enemy are cowards became Paper tiger (M349)**, an Archetype; related to The enemy of all mankind (a sibling
+  portrait of the enemy, not a kind of it) and The regime is cracking.
+- **It's the economy, stupid (M488)**: a Theory whose note now states it (voters judge those in power by their
+  wallets). Its France debt claim told no such theory and went to a new Plot, **Debt crisis** (M676), named by the
+  person. A voter's "I'm a strong believer in the kitchen table issues" was missing from its claim; reworded.
+- **Punching down (M526)**: both claims held. A swing voter: "I don't want to see somebody in the Senate hammering on
+  people who don't deserve to be hammered on"; the claim had said only "a political misstep". Targeting minorities
+  stopped resting on it (a government driving out a minority makes sense without the charge) and became related.
+- **"The Cornell allegations are not a criminal case"** left Case reopened (the reverse of it) for Potiphar's wife
+  ("she consented", "obviously defamatory") and Lawfare (Letitia James appointed "to make this as political as
+  possible").
+- **General performance criticism became Kicked upstairs (M380).** The quotes were a journalist relaying both sides,
+  not a Republican voter (a source-panel error): Republicans who dislike Paxton want him in the Senate "as long as he's
+  out of the state"; Democrats should have kept him as attorney general because he was bad at it. The second half
+  became a seed, **Never interrupt your enemy** (M678), after Napoleon.
+- **Somebody else's problem (M557): Value.** The posters don't make the dodge, they condemn it ("we cannot dig up coal,
+  ship it overseas… and then pretend the consequences have nothing to do with us").
+- **So much for the tolerant left (M431) and The bullied become bullies (M559)** look alike but differ: a hypocrisy
+  charge against a side (an Argument, resting on Pious hypocrite) and a cycle of harm passed down (a Plot, related to
+  Pious hypocrite). The tolerant left's claim from a Black voter ("they overly try to target people who look like me
+  just because they think that they're my friends") was pandering, not intolerance: new motif **Pandering** (M679).
+- **Groomer (M532)** stays an Archetype (a portrait of a kind of person, its menace part of the figure, as with The
+  sleeper agent), but lost the Sherrod Brown ad claim, which never invokes the trope and is Transing children.
+- **Unholy alliance (M515)** lost a misfiled plague-lab claim; now a seed.
+- **Disinformation campaign (M143): Theory** (as told, "it's a disinformation campaign" points at a hidden hand), and
+  NewsGuard's report on Russia's fake media brands also went to Foreign meddling.
+- **Form over function (M461): Theory**, after the Argument/Theory tests (see the praxis); its touchscreen claim held.
+- **Political identity and Minority cultural celebration** were deleted, their one claim (a definition of Chicano/a/x)
+  marked no motif.
+- **Cats (M576)** fit no genre: "it's a perennial topic that moves information… It's like weather." Three options were
+  weighed: a Perennials genre, leaving it without one, and a catch-all genre (rejected: its members would share
+  nothing, so no definition could emerge, and it would teach the genre model that "doesn't fit" is an answer). The
+  person chose **Perennials**, with seeds Weather, Babies, Sports and Birds. A second axis for why things are told was
+  deferred; carriers in the flow layer are for later.
+
 ## Open questions
 
-- Out of touch: its claims are mostly the premise "they don't get it" (older politicians and AI, a billionaire
-  suspicious to working-class voters, a club board, the AI industry "tone deaf"), which reads as a Belief.
-- The enemy are cowards (M349): one claim, a fake video of a crying Ukrainian soldier; needs rework, and its relation
-  to The enemy of all mankind (M637).
 - Should a widely shared theory used in passing be filed as a Belief?
+- A second axis, why a thing is told (warn, hope, divide, persuade, inform, connect), once the index is stable.
+- Splitting a claim whose clustering merged two subjects (the Frum telling on the voter-anger claim).

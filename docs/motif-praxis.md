@@ -62,6 +62,7 @@ genre calls.
 | **Arguments** | a rhetorical move people actually make | topoi | "people argue by…" |
 | **Values** | how things ought to be | — | "X should be…" |
 | **Exhortations** | a call to act | protropē | "we should do X" |
+| **Perennials** | a safe topic shared for its own sake | — (phatic) | "everyone loves to talk about X" |
 
 ### Plot or Theory
 
@@ -98,6 +99,38 @@ AI turns on us), not a premise like End times.
 
 Blurry edge: a widely shared theory used in passing reads as a belief ("money buys politicians"). File by how the
 tellers use it: argued for, a Theory; assumed, a Belief.
+
+### Argument or Theory
+
+Arguments are *topoi* (Aristotle, *Rhetoric* II.23): forms of reasoning that can be filled with any content and
+turned against either side. A Theory is a content claim about how the world works. Three tests:
+
+1. **Can it be turned around?** An Argument works for anyone against anyone ("but what about", Guilt by association,
+   Proven liar). A Theory belongs to one picture of the world; you can't point Patriarchy back at feminists.
+2. **How is it answered?** An Argument with "that doesn't follow" or "that's beside the point"; a Theory with
+   counter-evidence about the world.
+3. **The note's shape:** an Argument's says *someone argues by… so…*; a Theory's says *X happens because Y*.
+
+Form over function failed tests 1 and 2 and became a Theory ("they care more about how it looks than how it works" is a
+claim about makers' priorities). Cruel and unusual became a Value (a dispute over what's deserved), Historical heroes
+an Exhortation.
+
+### Perennials
+
+Added Oct 9 for Cats, which fit nothing: the **safe topics**, the subjects two strangers can share without learning
+each other's side (Weather, Babies, Cats, Sports, Birds), where the subject's own pull is the point and the telling has
+no shape beyond "here's more of it". The test comes from etiquette: never discuss politics or religion at dinner. The
+election is not a Perennial, because talking about it means taking a side.
+
+- **The one genre defined by its subject, not its form.** It is not a back door for topic genres ("Politics", "AI").
+- **A telling with a shape goes to that shape too:** a cat rescue is Animal hero (a Plot), weather read as an omen is
+  Climate change disaster (a Belief), a brawl at a game is Chaos in sports events.
+- **It reverses rule 11 for these subjects:** an anodyne cat or weather post now gets its Perennial rather than no
+  motif. They were never "no story", but a different kind of story, and counting them now prepares the flow layer,
+  where Perennials are likely carriers that other content rides on ("they're eating the cats").
+- Why it was needed: the claim labeler's rumor classes (Knapp 1944: wish, dread, wedge) have no class for what
+  linguists call the phatic function (Jakobson; Malinowski's "phatic communion"), talk whose point is the contact
+  itself. A second axis for why things are told was considered and deferred until the index is more stable.
 
 ### Argument, Archetype or Plot
 
