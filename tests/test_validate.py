@@ -286,3 +286,15 @@ def test_todays_set_is_picked_once_a_day_runs_out_as_decided_and_more_can_be_ask
     assert [x['key'] for x in got['items']] == ['n|M3', 'p|p2'] and got['done'] == 3  # not filled up again
     more = validate.todays_decisions(more=True)
     assert 't|torn a|M2' in [x['key'] for x in more['items']] and more['picked'] == 6  # the claim's other filing, torn too
+
+
+def test_the_check_list_goes_least_sure_first(monkeypatch):
+    from app.analysis import filing_confidence as fc, motif_index as mi
+    items = [{'claim': c, 'id': 'M1', 'source': ''} for c in ('sure', 'torn', 'unlikely', 'unscored')]
+    monkeypatch.setattr(mi, 'to_check', lambda: [dict(x) for x in items])
+    monkeypatch.setattr(mi, 'load', lambda: {'entries': {}})
+    monkeypatch.setattr(validate, 'filing_fits', lambda: {f'{mi.key(c)}|M1': f for c, f in
+                                                          (('sure', 0.97), ('torn', 0.52), ('unlikely', 0.1))})
+    monkeypatch.setattr(fc, 'tested_sources', lambda index: set())
+    monkeypatch.setattr(fc, 'can_be_sure', lambda *a: True)
+    assert [x['claim'] for x in validate.check_queue()] == ['torn', 'unlikely', 'sure', 'unscored']

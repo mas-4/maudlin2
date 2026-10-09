@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-09
+- **The check list goes least sure first.** The ✅ check tab used to list the filings the confidence model was surest
+  the person keeps first; now those it can least tell (a fit nearest even), and 🎯 today gives 13 of its 20 a day to
+  such torn filings (10 before, in a wider band: fits from 20% to 80%). A simulation on the person's own decisions
+  (E6 in docs/filing-experiments.md) found the model learns as much from 150 checks in this order as from ~550 at
+  random, and more slowly still in the old order. The sure ones still pass in one step from their own fold.
+
 ## 2026-10-08
 - **"Kind of" is now "rests on".** The one link that ranks motifs, until now "X is a kind of Y", now reads "X rests on
   Y": X only makes sense given Y, as a kind of it, or as a case, argument or figure by which it's told ("Magic money

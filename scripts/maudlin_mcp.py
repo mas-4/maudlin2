@@ -182,7 +182,7 @@ def motif_claims(query: str, limit: int = 30) -> str:
 @server.tool()
 def check_queue(limit: int = 30) -> str:
     """The filings waiting for the person's check, as the workbench's ✅ check tab shows them: claim by claim, the
-    likeliest first, each motif with its note and fit (the chance the person keeps it, from the confidence model;
+    least sure first (they teach the confidence model most), each motif with its note and fit (the chance the person keeps it, from the confidence model;
     none until the hourly run has scored it). Verdicts go through checker_action ({'action': 'check', 'claim', 'id',
     'answer': 'yes'|'no'}), and only when the person asks."""
     V = _validate()

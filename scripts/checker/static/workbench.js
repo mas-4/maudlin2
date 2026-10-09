@@ -440,7 +440,7 @@
       if (S.tab !== tab) return;
       // One claim at a time (the biggest motifs' first), with every motif it's in to tick or take away
       const seen = new Set(), items = [];
-      // each filing's fit: the chance you keep it, learned from your own checks (sure ones first, doubtful last)
+      // each filing's fit: the chance you keep it, learned from your own checks (the least sure first; the sure ones in their fold)
       S.fits = Object.fromEntries((q.error ? [] : q).filter((x) => x.fit != null).map((x) => [x.claim + '|' + x.id, x.fit]));
       // never passed as sure: a motif made for this claim alone, or a source too few of your checks have tested
       S.unsure = new Set((q.error ? [] : q).filter((x) => !x.can_be_sure).map((x) => x.claim + '|' + x.id));
@@ -683,7 +683,7 @@
     const src = (rec && rec.source) || c.src || '';
     const conf = S.data.confidence, sure = conf ? sureFilings() : [];
     const verdict = check ? `<div class="wb-checkbar">
-        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest${conf ? ' · 🎯 the likeliest first' : ''}</span>
+        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest${conf ? ' · 🎯 the ones the model is least sure of first: they teach it most' : ''}</span>
         ${sure.length ? `<details class="wb-sure"${S.sureOpen ? ' open' : ''}><summary title="Filings at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept">🎯 ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested): look them over</span></summary>
           <p class="wb-faint">Untick any that don't fit, then pass the rest (one undoable step). An unticked one stays to check.</p>
           ${sure.map((x) => `<label class="wb-sureline"><input type="checkbox" checked data-suresel="${esc(x.claim + '|' + x.id)}">

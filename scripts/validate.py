@@ -491,7 +491,9 @@ def filing_fits() -> dict:
 
 def check_queue() -> list[dict]:
     """Every filing nobody has checked, each with its fit (the chance the person keeps it; only in their own motifs),
-    the claims whose least likely filing is likeliest first, so the sure ones come first and the doubtful ones last"""
+    the claims the model is least sure of first (a fit nearest even, by the claim's least likely filing): E6 (Oct 9)
+    found the person's checks teach it most in that order, 150 of them as much as ~550 at random or more likeliest
+    first (the order before). The sure ones still pass in one step from their own fold"""
     from app.analysis import filing_confidence as fc, motif_index as mi
     items = mi.to_check()
     fits = filing_fits()
@@ -507,7 +509,8 @@ def check_queue() -> list[dict]:
     for x in items:
         if x['fit'] is not None:
             least[x['claim']] = min(least.get(x['claim'], 1.0), x['fit'])
-    return sorted(items, key=lambda x: (-least.get(x['claim'], -1.0), x['claim'], -(x['fit'] or 0)))
+    return sorted(items, key=lambda x: (abs(least[x['claim']] - 0.5) if x['claim'] in least else 1.0, x['claim'],
+                                        abs((x['fit'] if x['fit'] is not None else 1.5) - 0.5)))
 
 
 SECOND_LOOK = 25  # confirmed filings shown for a second look, the least likely first
@@ -536,8 +539,8 @@ def second_look() -> list[dict]:
 # (nearest 50%: a decision there moves it most), the confirmed ones it now doubts with a better motif ready, the
 # motifs the model made that nobody has shaped yet (their drafted note, genre and groups to keep or change), and the
 # likeliest proposals for new motifs and groups.
-TODAY = {'doubted': 4, 'torn': 10, 'new motifs': 3, 'proposals': 3}  # a day's set: twenty
-TORN = (0.25, 0.75)  # a fit in this range: the model can't tell
+TODAY = {'doubted': 3, 'torn': 13, 'new motifs': 2, 'proposals': 2}  # a day's set: twenty, most of it torn (E6, Oct 9)
+TORN = (0.2, 0.8)  # a fit in this range: the model can't tell
 TODAY_FILE = os.path.join(FOLDER, 'today.json')  # {'date', 'keys'}: the day's set, picked the first time it's asked for
 
 
