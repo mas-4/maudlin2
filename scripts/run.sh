@@ -62,7 +62,11 @@ if [ "$woke" = 1 ]; then
     locked=$(for s in $(loginctl list-sessions --no-legend | awk '{print $1}'); do
         loginctl show-session "$s" -p Type -p LockedHint --value | paste -sd' '
     done | awk '$1 == "wayland" || $1 == "x11" {print $2}' | sort -u)
-    if [ "$locked" = "yes" ]; then
+    # The worker in the middle of a cycle keeps the machine awake itself (app/worker.py); it lets it sleep when done
+    worker_busy=$(.venv/bin/python -c 'from app import worker; print(int(worker.busy()))' 2>/dev/null || echo 0)
+    if [ "$locked" = "yes" ] && [ "$worker_busy" = 1 ]; then
+        echo "Woken by the timer and still locked, but the worker is busy: not suspending"
+    elif [ "$locked" = "yes" ]; then
         echo "Woken by the timer and still locked: suspending"
         systemctl suspend || echo "Suspend not allowed for this service (see logind/polkit)" >&2
     fi

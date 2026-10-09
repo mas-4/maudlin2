@@ -1,0 +1,18 @@
+[Unit]
+Description=Maudlin worker: transcription, claims, filing and the rest whenever the GPU is free (app/worker.py)
+Wants=ollama.service
+After=network-online.target ollama.service
+
+[Service]
+Type=simple
+User=mas
+Group=mas
+WorkingDirectory=/home/mas/maudlin-prod
+ExecStart=/home/mas/maudlin-prod/.venv/bin/python -m app.worker
+# It exits when the hourly run has pulled new code, and on any crash: started again on whatever is checked out
+Restart=always
+RestartSec=30
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
