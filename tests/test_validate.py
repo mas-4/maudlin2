@@ -247,6 +247,14 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
     with pytest.raises(ValueError) as failed:
         validate.workbench_action({'action': 'batch', 'steps': [first, {'action': 'not_same', 'a': 'M001', 'b': 'M001'}]})
     assert failed.value.done == [first] and mi.genre_of(mi.load()['entries']['M002']) == 'Plots'
+    # Later steps of a batch name the motifs earlier ones made as "$1", "$2"…, and the batch keeps the real ids
+    made = {'action': 'batch', 'steps': [{'action': 'new_with', 'name': 'Seedling', 'claims': [{'claim': 'z', 'src': 'x'}]},
+                                         {'action': 'facet', 'id': '$1', 'facet': 'genre', 'value': 'Beliefs'}]}
+    validate.workbench_action(made)
+    seed = next(e for e in mi.live(mi.load()) if e['name'] == 'Seedling')
+    assert mi.genre_of(seed) == 'Beliefs' and made['steps'][1]['id'] == seed['id']
+    with pytest.raises(ValueError):
+        validate.workbench_action({'action': 'batch', 'steps': [{'action': 'facet', 'id': '$1', 'facet': 'genre', 'value': 'x'}]})
 
 
 def test_a_claim_told_on_the_shows_says_which_shows_and_episodes(monkeypatch):

@@ -655,6 +655,19 @@ def record_check(data: dict):
                             'at': dt.now().isoformat(timespec='seconds')}) + '\n')
 
 
+def _with_made(x, made: list[str]):
+    """A batch step with "$1", "$2"… replaced by the motifs the batch's earlier steps made"""
+    if isinstance(x, dict):
+        return {k: _with_made(v, made) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_with_made(v, made) for v in x]
+    if isinstance(x, str) and x[:1] == '$' and x[1:].isdigit():
+        if not 0 < int(x[1:]) <= len(made):
+            raise ValueError(f'{x}: no motif made that early in the batch')
+        return made[int(x[1:]) - 1]
+    return x
+
+
 def workbench_action(data: dict):
     from app.analysis import motif_index as mi
     act = data.get('action')
@@ -668,12 +681,16 @@ def workbench_action(data: dict):
         steps = data.get('steps')
         if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) or x.get('action') == 'batch' for x in steps):
             raise ValueError('a batch is a list of actions')
+        made = []  # motifs made by earlier steps: later steps name them "$1", "$2"… (Oct 9, for the MCP)
         for n, step in enumerate(steps):
+            steps[n] = step = _with_made(step, made)  # the real ids, so the log has them
+            had = set(mi.load()['entries'])
             try:
                 workbench_action(step)
             except (ValueError, KeyError) as e:
                 e.done = steps[:n]  # the steps that ran stay done: the caller logs them
                 raise
+            made += sorted(set(mi.load()['entries']) - had)
     elif act == 'not_same':
         live = {e['id'] for e in mi.live(mi.load())}
         if data.get('a') not in live or data.get('b') not in live or data['a'] == data['b']:
