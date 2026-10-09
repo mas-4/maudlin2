@@ -877,6 +877,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(workbench_queue(parse_qs(urlparse(self.path).query).get('kind', [''])[0]))
             except ValueError as e:
                 return self.send_json_error(404, str(e))
+        if self.path.startswith('/motif-claim-map.json'):  # the map's 🧲 claims mode
+            from app.analysis import claim_map
+            return self.send_json(claim_map.cached())
         if self.path.startswith('/motif-board.json'):
             from app.analysis import motif_index
             return self.send_json(motif_index.board())

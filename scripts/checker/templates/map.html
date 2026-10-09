@@ -15,6 +15,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .node circle { stroke: #1f1f2e; stroke-width: 1.5px; cursor: pointer; } .node.broad circle { stroke-width: 4.5px; } .node.sub circle { stroke-dasharray: 3 2; stroke-width: 2.2px; }
 .node.gdim { opacity: .15; } .map-genre.on { background: var(--g); color: #fff; } .node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: #fffdf6; stroke-width: 3px; }
 .node.dim, .link.dim { opacity: .12; } .node.hit circle { stroke: #ff4fa3; stroke-width: 4px; } .node.target circle { stroke: #00c2a8; stroke-width: 5px; }
+.link.alike { stroke: #9b7fd4; opacity: .14; } .link.alike.apart, .link.shared.apart { opacity: .06; } .node.cdim { opacity: .15; } body.claim-mode .map-blob, body.claim-mode .map-glabel { display: none; }
 .link.kind { stroke: #0a8f7e; stroke-width: 2px; } .link.related { stroke: #ff4fa3; stroke-width: 1.8px; stroke-dasharray: 5 4; } .link.shared { stroke: #9aa0a6; opacity: .45; }
 #info { position: absolute; right: 10px; top: 66px; width: 360px; max-height: calc(100% - 76px); overflow: auto; background: #fff; border: 2px solid #1f1f2e;
   border-radius: 12px; box-shadow: 4px 4px 0 #00c2a8; padding: 8px 12px; font-size: .88em; display: none; }
@@ -95,6 +96,7 @@ h3[data-id] .grip { cursor: grab; }
     <select id="shared-min"><option value="0" selected>no shared-claim lines</option><option value="1">sharing 1+ claims</option><option value="2">sharing 2+</option><option value="3">sharing 3+</option></select></label>
   <label class="key"><input type="checkbox" id="only-linked" checked> only linked motifs</label>
   <button id="bubble-btn" class="map-btn" title="each group as one bubble until you open it (click a bubble); drop a motif on one to put it in the group">🫧 groups</button>
+  <button id="claims-btn" class="map-btn" title="the motifs by their claims alone, none of your groups, genres or links: drawn together when they hold the same claims (grey: told together, not a sign they're related) or their claims read alike (purple), colored by the clusters that makes">🧲 claims</button>
   <button id="tree-btn" class="map-btn" title="the rests-on links as a tree: what rests on nothing at the top, each motif a row below the deepest one it rests on (motifs outside them hidden)">🌳 tree</button>
   <button id="chips-btn" class="map-btn" title="show or hide the group and genre chips (they open by themselves while you drag)">📁🎭 chips</button>
   <button id="key-btn" class="map-btn" title="what the dots and lines mean, and how to work the map">ℹ️ key</button>
@@ -104,7 +106,7 @@ h3[data-id] .grip { cursor: grab; }
 <div class="bar map-key" id="key-row" hidden>
   <span class="key" title="a dot's outline: its place in the rests-on links"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="3.5"/></svg> others rest on it
     <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#fff" stroke="#1f1f2e" stroke-width="2" stroke-dasharray="3 2"/></svg> rests on one · fill: its genre · size: its claims</span>
-  <span class="meta">Click a dot to pick it: its neighbourhood stays, the rest fades, and the map zooms to it; Esc or a click on the background brings it all back. Names show where they fit; zoom in for more, point at a dot for its name. Scroll to zoom, drag the background to pan, shift-drag to select. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one.</span></div>
+  <span class="meta">Click a dot to pick it: its neighbourhood stays, the rest fades, and the map zooms to it; Esc or a click on the background brings it all back. Names show where they fit; zoom in for more, point at a dot for its name. Scroll to zoom, drag the background to pan, shift-drag to select. Drag a dot, a name on the left or a claim in a motif's box onto a dot or a name: its choices pop up; let go on one. 🧲 claims lays the motifs out by their claims alone, ignoring your groups, genres and links: grey lines join motifs holding the same claims (told together, not a sign they're related), faint purple ones motifs whose claims read alike; the colors are the clusters that makes (click a cluster's chip to pick it out).</span></div>
 <datalist id="motif-names"></datalist><main><div id="tree"></div><div id="graph"><svg id="net"></svg><div id="info"></div><div id="map-selbar" hidden></div><div id="desk-drop" data-drop="desk" title="drop a motif here to keep it open on the desk">📌</div><div id="desk"></div><div id="menu"></div></div></main>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
@@ -119,7 +121,32 @@ function markPicked() {
   bar.hidden = !picked.size;
   bar.innerHTML = picked.size ? `☑️ <b>${picked.size}</b> selected · drag any of them to move them all <button id="clear-picked">✕ clear</button>` : '';
 }
-const kept = new Map();  // positions kept across redraws
+const keptStructure = new Map(), keptClaims = new Map();  // positions kept across redraws, one set for each way of laying out
+let kept = keptStructure;
+// 🧲 claims (app/analysis/claim_map.py): the motifs by their claims alone; clusters found there, a color each
+let claimMode = false, claimMap = null, pickedCluster = null;
+const clusterColor = (k) => d3.hsl((k * 137.508) % 360, 0.62, k % 2 ? 0.62 : 0.5).formatHex();  // golden-angle hues: 27 clusters, 27 colors
+const apart = (l) => claimMap.nodes[l.source.id ?? l.source] !== claimMap.nodes[l.target.id ?? l.target];  // between two clusters
+function claimLinks() { return claimMap.links.filter((l) => byId[l.source] && byId[l.target]).map((l) => ({...l})); }
+function markCluster() { d3.selectAll('.node').classed('cdim', (n) => claimMode && pickedCluster !== null && claimMap.nodes[n.id] !== pickedCluster); }
+function clusterChips() {
+  $('#group-chips').innerHTML = '🧲 ' + claimMap.clusters.map((c) => `<span class="map-gchip map-cluster${pickedCluster === c.id ? ' on' : ''}" data-cluster="${c.id}" style="--g: ${clusterColor(c.id)}" title="${esc(c.names.join(', '))}">${esc(c.label)} <span class="meta">${c.size}</span></span>`).join(' ');
+}
+async function claimsOn(on) {
+  claimMode = on;
+  $('#claims-btn').classList.toggle('on', on);
+  document.body.classList.toggle('claim-mode', on);
+  if (on) {
+    if (treeMode) $('#tree-btn').click();
+    if (bubbleMode) $('#bubble-btn').click();
+    claimMap = await (await fetch('/motif-claim-map.json')).json();
+  }
+  pickedCluster = null;
+  kept = on ? keptClaims : keptStructure;
+  on ? clusterChips() : groupChips();
+  draw();
+  if (on && !keptClaims.size) setTimeout(fit, 4000);  // and again once it settles (draw)
+}
 async function act(body) {
   const r = await fetch('/workbench', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   if (!r.ok) { alert('Failed: ' + await r.text()); return false; }
@@ -146,13 +173,14 @@ function buildLinks() {
   return out;
 }
 function draw() {
-  const raw = buildLinks(), deg = new Map();
+  const raw = claimMode ? claimLinks() : buildLinks(), deg = new Map();
   raw.forEach((l) => { deg.set(l.source, (deg.get(l.source) || 0) + 1); deg.set(l.target, (deg.get(l.target) || 0) + 1); });
   const only = $('#only-linked').checked;
-  nodes = data.entries.filter((e) => !only || deg.get(e.id) || e.id === focus || (e.groups || []).some((g) => !hiddenGroups.has(g))).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
+  nodes = data.entries.filter((e) => claimMode ? e.id in claimMap.nodes && (!only || deg.get(e.id) || e.id === focus) : !only || deg.get(e.id) || e.id === focus || (e.groups || []).some((g) => !hiddenGroups.has(g))).map((e) => Object.assign({id: e.id, e, deg: deg.get(e.id) || 0}, kept.get(e.id) || {}));
   const ids = new Set(nodes.map((n) => n.id));
   links = raw.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => ({...l}));
-  $('#count').textContent = `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} rests on · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
+  $('#count').textContent = claimMode ? `${nodes.length} motifs by their claims · ${claimMap.clusters.length} clusters · ${links.filter((l) => l.kind === 'shared').length} told together · ${links.filter((l) => l.kind === 'alike').length} alike`
+    : `${nodes.length} motifs · ${links.filter((l) => l.kind === 'kind').length} rests on · ${links.filter((l) => l.kind === 'related').length} related · ${links.filter((l) => l.kind === 'shared').length} sharing claims`;
   const svg = d3.select('#net'), W = $('#graph').clientWidth, H = $('#graph').clientHeight;
   svg.selectAll('*').remove();
   svg.append('defs').append('marker').attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 10).attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
@@ -164,7 +192,7 @@ function draw() {
   root.attr('transform', d3.zoomTransform(svg.node()));  // a redraw keeps the view where it was (it jumped to the start)
   const r = (n) => 5 + 3 * Math.sqrt(n.e.claims.length);
   // Groups: a soft area around each group's motifs, with its name (drawn first, under everything)
-  const shown = data.groups.filter((g) => !hiddenGroups.has(g.id));
+  const shown = claimMode ? [] : data.groups.filter((g) => !hiddenGroups.has(g.id));
   const hulls = root.append('g').selectAll('g').data(shown, (g) => g.id).join('g');
   hulls.append('g').attr('class', 'map-blob').attr('fill', (g) => groupColor(g.id)).attr('stroke', (g) => groupColor(g.id));
   hulls.append('text').attr('class', 'map-glabel').attr('fill', (g) => groupColor(g.id)).attr('text-anchor', 'middle').text((g) => '📁 ' + g.name);
@@ -190,15 +218,16 @@ function draw() {
     if (!m.length) return 'translate(-9999,-9999)';
     return `translate(${m.reduce((t, n) => t + n.x, 0) / m.length},${m.reduce((t, n) => t + n.y, 0) / m.length})`;
   });
-  const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind)
+  const link = root.append('g').selectAll('line').data(links).join('line').attr('class', (l) => 'link ' + l.kind + (claimMode && apart(l) ? ' apart' : ''))
     .attr('stroke-width', (l) => l.kind === 'shared' ? Math.min(1 + l.n, 6) : null).attr('marker-end', (l) => l.kind === 'kind' ? 'url(#arrow)' : null);
-  link.append('title').text((l) => l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'rests on' : 'related');
+  link.append('title').text((l) => l.kind === 'alike' ? `their claims read alike (${l.w})` : l.kind === 'shared' ? `${l.n} claim${l.n === 1 ? '' : 's'} in both` : l.kind === 'kind' ? 'rests on' : 'related');
   const node = root.append('g').selectAll('g').data(nodes, (n) => n.id).join('g').attr('class', 'node');
   // fill: its genre (white for none); outline: its place in the rests-on links (thick: others rest on it; dashed: it
   // rests on another; both: in the middle of a chain)
   node.classed('broad', (n) => data.entries.some((x) => x.parents.includes(n.id))).classed('sub', (n) => n.e.parents.length > 0);
-  node.append('circle').attr('r', r).attr('fill', (n) => genreOf(n.e) ? genreColor(genreOf(n.e)) : '#fff');
+  node.append('circle').attr('r', r).attr('fill', (n) => claimMode ? clusterColor(claimMap.nodes[n.id]) : genreOf(n.e) ? genreColor(genreOf(n.e)) : '#fff');
   markGenre();
+  markCluster();
   // Names on the dots that matter at a glance (2+ claims, or linked by rests on); the rest on hover and when found
   node.append('text').attr('x', (n) => r(n) + 3).attr('y', 4).text((n) => n.e.name);  // which show: placeLabels()
   node.append('title').text((n) => `${n.e.name} (${n.e.claims.length} claim${n.e.claims.length === 1 ? '' : 's'})${n.e.note ? '\n' + n.e.note : ''}`);
@@ -235,11 +264,14 @@ function draw() {
   });
   markPicked();
   sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : 120).strength((l) => (l.kind === 'shared' ? 0.15 : 0.6) * (crossing(l) ? MotifMap.CROSSING : 1)))
+    .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 55 : l.kind === 'related' ? 90 : l.kind === 'alike' ? 60 + 220 * (1 - l.w) : claimMode ? 70 : 120)
+      .strength((l) => claimMode && apart(l) ? 0.05 : l.kind === 'alike' ? 0.5 * l.w : l.kind === 'shared' ? (claimMode ? Math.min(0.2 + 0.15 * l.n, 0.8) : 0.15) : 0.6 * (crossing(l) ? MotifMap.CROSSING : 1)))
     .force('charge', d3.forceManyBody().strength(-160)).force('center', d3.forceCenter(W / 2, H / 2))
     .force('collide', d3.forceCollide().radius((n) => r(n) + 4)).force('x', d3.forceX(W / 2).strength(0.03)).force('y', d3.forceY(H / 2).strength(0.04))
     // groups apart: each drawn to a home of its own, non-members kept off its members (motif-map-layout.js)
-    .force('group', MotifMap.groupForce(nodes, shown.map((g) => g.id), shownGroups, r, W, H))
+    .force('group', claimMode  // each cluster drawn to a home of its own, as the groups are otherwise
+      ? MotifMap.groupForce(nodes, claimMap.clusters.filter((c) => c.size > 1).map((c) => c.id), (n) => [claimMap.nodes[n.id]], r, W, H)
+      : MotifMap.groupForce(nodes, shown.map((g) => g.id), shownGroups, r, W, H))
     .on('tick', () => {
       drawHulls();
       placeBubbles();
@@ -272,6 +304,7 @@ let treeMode = false;
 let bubbleMode = false;
 const openGroups = new Set();
 $('#bubble-btn').addEventListener('click', () => {
+  if (claimMode && !bubbleMode) claimsOn(false);
   bubbleMode = !bubbleMode;
   $('#bubble-btn').classList.toggle('on', bubbleMode);
   if (!bubbleMode) openGroups.clear();
@@ -350,7 +383,9 @@ function leaveTree() {
   sim.alpha(0.2).restart();
   setTimeout(fit, 400);
 }
+$('#claims-btn').addEventListener('click', () => claimsOn(!claimMode));
 $('#tree-btn').addEventListener('click', () => {
+  if (claimMode && !treeMode) claimsOn(false);
   treeMode = !treeMode;
   document.body.classList.toggle('tree-mode', treeMode);
   $('#tree-btn').classList.toggle('on', treeMode);
@@ -380,6 +415,7 @@ function placeLabels() {
 // A motif's neighbourhood: what it rests on and what rests on it, two steps along those; its related motifs, one
 function neighbourhood(id) {
   const s = new Set([id]);
+  if (claimMode) { links.forEach((l) => { if (l.source.id === id) s.add(l.target.id); if (l.target.id === id) s.add(l.source.id); }); return s; }
   let edge = [id];
   for (let step = 0; step < 2; step++) {
     const next = [];
@@ -474,6 +510,8 @@ function groupChips() {
     + ' <span class="map-gchip map-gnew" style="--g: #8a8f98" title="click to make a new group, or drop a motif here to start one with it">＋ new group</span>';
 }
 $('#group-chips').addEventListener('click', (ev) => {
+  const k = ev.target.closest('.map-cluster');
+  if (k) { pickedCluster = pickedCluster === +k.dataset.cluster ? null : +k.dataset.cluster; clusterChips(); return markCluster(); }
   if (ev.target.closest('.map-gnew')) return newGroup(null);
   const c = ev.target.closest('.map-gchip'); if (!c) return;
   hiddenGroups.has(c.dataset.g) ? hiddenGroups.delete(c.dataset.g) : hiddenGroups.add(c.dataset.g);
@@ -650,12 +688,13 @@ function manyZones(ids, t) {
   if (!m || !rest.length) return [];
   return [{label: `⤵ merge all ${rest.length} into it`, say: `they go; their claims join ${q(m.name)}.`, run: () => sureMenu(`⤵ Merge ${rest.length} motifs into “${esc(m.name)}”?`, '⤵ merge them').then((ok) => ok && all(rest.map((id) => ({action: 'merge', source: id, target: m.id})))())},
           {label: '↳ all rest on it', say: `each rests on ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'parent', id, parent: m.id})))},
-          {label: '↔ all related to it', say: `each related to ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'relate', a: id, b: m.id})))}];
+          {label: '↔ all related to it', say: `each related to ${q(m.name)}.`, run: all(rest.map((id) => ({action: 'relate', a: id, b: m.id})))},
+          {label: '📁 a group of these', say: `A new group with all ${rest.length + 1} in it (name it next).`, run: () => newGroup([m.id, ...rest])}];
 }
 const motifOf = (el) => el.matches('.node') ? d3.select(el).datum().id : el.dataset.id;
 dragZones({
   handle: '.node, #tree span[data-id], #info h3[data-id], #info li[data-claim], #desk h3[data-id], #desk li[data-claim]',
-  target: '.node, #tree span[data-id], .map-drop, .map-gchip, .map-genre, #desk-drop, #desk h3[data-id]', minWidth: 300,
+  target: '.node, #tree span[data-id], .map-drop, .map-gchip:not(.map-cluster), .map-genre, #desk-drop, #desk h3[data-id]', minWidth: 300,
   item: (h) => h.matches('li') ? {type: 'claim', claim: h.dataset.claim, from: h.closest('[data-motif]')?.dataset.motif || focus}
     : picked.size > 1 && picked.has(motifOf(h)) ? {type: 'motifs', ids: [...picked].filter((i) => byId[i])}
     : byId[motifOf(h)] && {type: 'motif', id: motifOf(h)},
@@ -710,16 +749,18 @@ dragZones({
                   : {label: '↳ rests on it', say: `${q(a.name)} rests on ${q(m.name)}: both stay.`, run: () => act({action: 'parent', id: a.id, parent: m.id})},
             over ? null : {label: '↰ it rests on this', say: `${q(m.name)} rests on ${q(a.name)}: both stay.`, run: () => act({action: 'parent', id: m.id, parent: a.id})},
             rel ? {label: '✕ unrelate', say: 'No longer linked as related.', run: () => act({action: 'unrelate', a: a.id, b: m.id})}
-                : {label: '↔ related', say: 'Near each other, different stories: both stay, linked.', run: () => act({action: 'relate', a: a.id, b: m.id})}];
+                : {label: '↔ related', say: 'Near each other, different stories: both stay, linked.', run: () => act({action: 'relate', a: a.id, b: m.id})},
+            {label: '📁 a group of these', say: `A new group with ${q(a.name)} and ${q(m.name)} in it (name it next).`, run: () => newGroup([a.id, m.id])}];
   },
 });
 // A new group's name, typed on the page: Enter makes it (with the motif dropped on ＋ new group in it, if any)
-function newGroup(id) {
-  const m = $('#menu'), at = document.querySelector('.map-gnew').getBoundingClientRect(), box = $('#graph').getBoundingClientRect();
-  m.innerHTML = `<p>📁 A new group${id ? ` with <span class="say">${esc(byId[id].name)}</span>` : ''}</p><input id="group-name" placeholder="its name, then Enter"><button data-go>📁 make it</button><button data-cancel>cancel</button>`;
+function newGroup(id) {  // `id`: a motif to start it with, or several (dropped on one another)
+  const ids = id ? [].concat(id).filter((i) => byId[i]) : [];
+  const m = $('#menu'), at = (document.querySelector('.map-gnew') || $('#graph')).getBoundingClientRect(), box = $('#graph').getBoundingClientRect();  // no chip in 🧲 claims
+  m.innerHTML = `<p>📁 A new group${ids.length ? ` with <span class="say">${ids.map((i) => esc(byId[i].name)).join(', ')}</span>` : ''}</p><input id="group-name" placeholder="its name, then Enter"><button data-go>📁 make it</button><button data-cancel>cancel</button>`;
   m.style.left = Math.max(10, Math.min(at.left - box.left, box.width - 320)) + 'px'; m.style.top = '10px'; m.style.display = 'block';
   const input = $('#group-name'); input.focus();
-  const go = () => { const n = input.value.trim(); m.style.display = 'none'; if (n) act({action: 'group_new', name: n, ...(id ? {id} : {})}); };
+  const go = () => { const n = input.value.trim(); m.style.display = 'none'; if (n) act({action: 'group_new', name: n, ...(ids.length ? {ids} : {})}).then(() => { picked.clear(); markPicked(); }); };
   input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); if (ev.key === 'Escape') m.style.display = 'none'; });
   m.onclick = (ev) => { if (ev.target.closest('[data-go]')) go(); if (ev.target.closest('[data-cancel]')) m.style.display = 'none'; };
 }
@@ -762,7 +803,8 @@ async function load() {
   // a card field being typed in keeps its place and what's typed across the redraw (saving the name reloads the cards)
   const a = document.activeElement, keep = a && a.matches && a.matches('.cname, .cnote')
     ? {sel: `${a.closest('#desk') ? '#desk' : '#info'} [data-${a.dataset.note ? 'note' : 'rename'}="${a.dataset.note || a.dataset.rename}"]`, value: a.value, at: a.selectionStart} : null;
-  groupChips(); genreChips(); tree(); filterTree(); draw(); if (focus) show(focus); renderDesk();
+  if (claimMode) claimMap = await (await fetch('/motif-claim-map.json')).json();
+  claimMode ? clusterChips() : groupChips(); genreChips(); tree(); filterTree(); draw(); if (focus) show(focus); renderDesk();
   const back = keep && document.querySelector(keep.sel);
   if (back) { back.value = keep.value; back.focus(); back.setSelectionRange(keep.at, keep.at); }
 }
