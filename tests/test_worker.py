@@ -91,3 +91,22 @@ def test_run_waits_for_the_worker_to_finish_its_step(tmp_path, monkeypatch):
     monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: None)
     assert gpu_lease.run([sys.executable, '-c', 'pass'], minutes=1, holder='test') == 0
     assert busy == [False]  # asked until the worker was done
+
+
+def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatch):
+    from app import gpu_lease
+    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
+    monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: None)
+    tries = []
+    real = gpu_lease.Hold.take
+
+    def take(self):
+        tries.append(1)
+        if len(tries) == 1:
+            raise RuntimeError('taken')
+        return real(self)
+    monkeypatch.setattr(gpu_lease.Hold, 'take', take)
+    assert gpu_lease.run([sys.executable, '-c', 'pass'], minutes=1, holder='test') == 0
+    assert len(tries) == 2 and gpu_lease.held() is None

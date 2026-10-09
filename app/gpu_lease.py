@@ -10,6 +10,7 @@ renewed while its holder lives), so an experiment that crashes can't keep produc
 models may still fill the card), holds the lease while the command runs, renews it every minute up to
 its minutes, and gives it back when the command ends (or the minutes are up: then the command is stopped)."""
 import argparse
+import fcntl
 import json
 import os
 import subprocess
@@ -67,18 +68,25 @@ class Hold:
         self.holder, self.minutes = holder, min(float(minutes), MAX_MINUTES)
 
     def __enter__(self):
-        other = held()
-        if other is not None and other.get('pid') != os.getpid():
-            raise RuntimeError(f"the GPU lease is held by {other.get('holder')} until "
-                               f"{dt.fromtimestamp(other['until']).strftime('%H:%M')}")
-        self.until = time.time() + self.minutes * 60
-        self.lease = {'holder': self.holder, 'pid': os.getpid(), 'until': self.until,
-                      'since': dt.now().isoformat(timespec='seconds'), 'renewed': time.time()}
-        _write(self.lease)
+        if getattr(self, 'lease', None) is None:
+            self.take()
+        return self
+
+    def take(self):
+        """Take the lease and start renewing it; RuntimeError if someone else holds it"""
+        with open(LEASE + '.lock', 'w') as lock:  # looking and taking at once: two waiting at the end of the hourly
+            fcntl.flock(lock, fcntl.LOCK_EX)  # run could both find it free (Oct 9)
+            other = held()
+            if other is not None and other.get('pid') != os.getpid():
+                raise RuntimeError(f"the GPU lease is held by {other.get('holder')} until "
+                                   f"{dt.fromtimestamp(other['until']).strftime('%H:%M')}")
+            self.until = time.time() + self.minutes * 60
+            self.lease = {'holder': self.holder, 'pid': os.getpid(), 'until': self.until,
+                          'since': dt.now().isoformat(timespec='seconds'), 'renewed': time.time()}
+            _write(self.lease)
         self.done = threading.Event()
         self.renewer = threading.Thread(target=self._renew, daemon=True)
         self.renewer.start()
-        return self
 
     def _renew(self):
         while not self.done.wait(RENEW):
@@ -107,9 +115,16 @@ def _worker_busy() -> bool:
 def run(command: list[str], minutes: float, holder: str | None = None) -> int:
     """The command under the lease, after the hourly run is over and the worker has finished its step; its exit
     status"""
-    while _hourly_run_going() or held() is not None:
-        time.sleep(30)
-    with Hold(holder or ' '.join(command)[:120], minutes) as h:
+    while True:
+        while _hourly_run_going() or held() is not None:
+            time.sleep(30)
+        h = Hold(holder or ' '.join(command)[:120], minutes)
+        try:
+            h.take()
+            break
+        except RuntimeError:  # another waiter took it first: wait for that one
+            continue
+    with h:
         if _worker_busy():  # it starts no new step now, but the one it's on may hold Gemma on the card (Oct 9: R1 ran
             print('gpu_lease: waiting for the worker to finish its step', flush=True)  # out of memory beside it)
         while _worker_busy() and h.left() > 0:
