@@ -289,6 +289,12 @@ than half, so it costs more than asking Gemma 26B. Four at once Gemma 26B is fas
 third fewer wrong picks, the person's time to fix. It keeps picking; its yes-or-no can go to Nimble 9B (J1).
 `scripts/experiments/c1_cascade.py`.
 
+### E8 The picking prompt with nearest claims only (Oct 9) — no difference
+
+Today's picking prompt, each motif shown with its three claims nearest the claim instead of its latest three, on the
+same 145 confirmed claims and shortlists as E0.4: latest, 161 of the 239 motifs of theirs in the shortlist found (67%),
+25% of picks not theirs; nearest, 158 (66%), 24%. Within the noise; the prompt stays. `scripts/experiments/e8_picking_nearest.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
