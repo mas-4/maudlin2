@@ -33,6 +33,7 @@ from app.analysis import motif_signals as ms  # noqa: E402
 OUT = os.path.join(harness.EXP, 'j1_jury.json')
 DECIDERS = [m for m in os.environ.get('DECIDERS', 'tev1:4b,tev1:0.8b,nimble:9b').split(',') if m]
 ASKED = [m for m in os.environ.get('ASKED', 'qwen3.5:9b,gemma4:12b,ministral-3:14b').split(',') if m]
+GEV = [m for m in os.environ.get('GEV', '').split(',') if m]  # AutoTrust's GEV-26B-Decide, built for Ollama (gev_build.py)
 QUESTION = ('Is the new claim an instance of this motif: the same shape of story, as its tellers tell it, as the claims '
             'filed under it, not just the same topic, person or word?')
 ROUND = 32
@@ -82,8 +83,23 @@ def ask(model, p):
     return 1.0 if no == -np.inf else 0.0 if y == -np.inf else float(1 / (1 + np.exp(no - y)))
 
 
+def gev(model, p):
+    """GEV's own System 1 read-out (its serve_decide.py, kind noul): its bare prompt, then the next word's
+    log-probabilities for its two answer words, 'false' and 'true' (the decision head's rows)"""
+    prompt = f"[kind] noul\n[state] {p['state']}\n[question] {QUESTION}\n[options]\nfalse\ntrue\n[decision]:"
+    r = rq.post(f'{llm.OLLAMA_URL}/api/generate', timeout=300, json={
+        'model': model, 'prompt': prompt, 'raw': True, 'stream': False, 'logprobs': True, 'top_logprobs': 20,
+        'options': {'temperature': 0, 'num_predict': 1}})
+    r.raise_for_status()
+    lp = {t['token']: t['logprob'] for t in ((r.json().get('logprobs') or [{}])[0].get('top_logprobs') or [])}
+    y, no = lp.get('true', -np.inf), lp.get('false', -np.inf)
+    if y == no == -np.inf:
+        raise ValueError(f"neither answer word among the top: {list(lp)[:8]}")
+    return 1.0 if no == -np.inf else 0.0 if y == -np.inf else float(1 / (1 + np.exp(no - y)))
+
+
 def run_jurors(saved, pairs):
-    for model, fn in [(m, decide) for m in DECIDERS] + [(m, ask) for m in ASKED]:
+    for model, fn in [(m, decide) for m in DECIDERS] + [(m, ask) for m in ASKED] + [(m, gev) for m in GEV]:
         got = saved.setdefault('answers', {}).setdefault(model, {})
         took = saved.setdefault('seconds', {}).setdefault(model, [0.0, 0])
         todo = [p for p in pairs if p['key'] not in got]
@@ -137,7 +153,7 @@ def report(saved, pairs):
     X = base_matrix(pairs)
     judge = X[:, fc.FEATURES.index('judge')]
     cols = {'gemma4:26b (today)': judge}  # already a logit
-    for m in DECIDERS + ASKED:
+    for m in sorted(saved.get('answers', {})):  # every juror asked so far, this run or an earlier one
         got = saved.get('answers', {}).get(m, {})
         if len(got) < 0.95 * len(pairs):
             continue

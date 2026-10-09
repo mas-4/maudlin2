@@ -7,8 +7,8 @@ bias and calibration temperature are left out: for a yes or no, both only shift 
 so any ranking of filings (the jury's AUC) is unchanged.
 
 Steps (each skipped when its output exists): merge into MERGED (safetensors, a layer's worth per shard, so memory
-stays small), convert to a bf16 GGUF with llama.cpp's converter (the lm_head kept, as output.weight), then
-`ollama create gev-26b-decide --quantize q4_K_M`. CPU only, at low priority."""
+stays small), convert to a bf16 GGUF with llama.cpp's converter (the lm_head kept, as output.weight), then to 4 bits
+(llama-quantize Q4_K_M) and `ollama create gev-26b-decide`. CPU only, at low priority."""
 import glob
 import json
 import os
@@ -24,6 +24,7 @@ SRC = glob.glob(os.path.expanduser('~/.cache/huggingface/hub/models--autotrust--
 WORK = '/home/mas/maudlin-data/models'
 MERGED = os.path.join(WORK, 'gev-26b-merged')
 GGUF = os.path.join(WORK, 'gev-26b-decide-bf16.gguf')
+Q4 = os.path.join(WORK, 'gev-26b-decide-q4_k_m.gguf')
 LLAMA = '/home/mas/maudlin-data/llama.cpp'
 NAME = 'gev-26b-decide'
 TARGET = re.compile(r'model\.language_model\.layers\.\d+\.(self_attn\.(q|k|v|o)_proj|mlp\.(gate|up|down)_proj)\.weight$')
@@ -116,6 +117,16 @@ def convert():
     os.rename(GGUF + '.part', GGUF)
 
 
+def quantize():
+    """To 4 bits as Ollama's own Gemma 4 26B (Ollama quantizes only safetensors imports): llama.cpp's llama-quantize,
+    built CPU-only (cmake -B build -DGGML_CUDA=OFF; cmake --build build --target llama-quantize)"""
+    if os.path.exists(Q4):
+        print('quantized already', flush=True)
+        return
+    subprocess.run([os.path.join(LLAMA, 'build', 'bin', 'llama-quantize'), GGUF, Q4 + '.part', 'Q4_K_M'], check=True)
+    os.rename(Q4 + '.part', Q4)
+
+
 def create():
     have = subprocess.run(['ollama', 'list'], capture_output=True, text=True).stdout
     if NAME in have:
@@ -123,12 +134,13 @@ def create():
         return
     modelfile = os.path.join(WORK, 'Modelfile.gev')
     with open(modelfile, 'w') as f:
-        f.write(f'FROM {GGUF}\nPARAMETER temperature 0\n')
-    subprocess.run(['ollama', 'create', NAME, '-f', modelfile, '--quantize', 'q4_K_M'], check=True)
+        f.write(f'FROM {Q4}\nPARAMETER temperature 0\n')
+    subprocess.run(['ollama', 'create', NAME, '-f', modelfile], check=True)
 
 
 if __name__ == '__main__':
     merge()
     convert()
+    quantize()
     create()
     print('DONE', flush=True)
