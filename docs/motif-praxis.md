@@ -79,6 +79,16 @@ reading of what visibly happened stays a Plot, even with a loaded word.
 
 A model can apply this as one question: *does the motif add a cause or agent the event doesn't show?*
 
+Refined after the genre drafter's report (Oct 9, 28 splits): the line is whether the hidden hand is **revealed in the
+telling or inferred by the teller**. An exposé, where the hiding comes out (Institutional cover-up, They knew all
+along, Graft), is a Plot; an alleged hidden hand (Rigged election, False flag operation, Funding conspiracy, It wasn't
+really the disease) is a Theory. Patrons named openly (Proxy warfare) hide nothing, so that's a Plot.
+
+**Plots include standing situations and declines**: what's happening, not only one-off events. Housing shortage,
+Staffing shortage and Pain at the pump are situations; Lost golden age and Moral decadence are falls, often with a
+culprit ("politics ruined it"). The premise behind a decline (Economic nostalgia, They don't make 'em like they used
+to) is a Belief.
+
 ### Belief or Theory
 
 A **Belief** is what people take for granted and reason from: common sense, folk wisdom, omens, nostalgia, prophecy,
@@ -92,7 +102,11 @@ mechanism. Pairs already in the index show the line:
 | Wasted vote | Broken electoral math |
 | It's quiet, too quiet | Elite cabal |
 
-In each pair the Belief has no agent; the Theory supplies one. Moved to Beliefs on Oct 9: Polls are inaccurate,
+In each pair the Belief has no agent; the Theory supplies one. But naming an agent is a sign, not the definition (the
+drafter's report, 15 splits): **a Theory is an account people argue about how society works; a Belief is a premise or
+lore people pass on.** Polarization, Social trust erosion and Subjugation of women are argued diagnoses, so Theories,
+with no agent named; Miracle cure and Everything causes cancer are lore, so Beliefs, though they name causes. A
+judgment of how things ought to be is neither (U.S. overreach, "where it has no business", became a Value). Moved to Beliefs on Oct 9: Polls are inaccurate,
 Politicians' empty promises, Political theater, End times, In this economy?. Moved the other way: Cancel culture (a
 diagnosis of how society works). AI is existentially dangerous stays a Theory: an argued causal account (uncontrolled
 AI turns on us), not a premise like End times.
@@ -110,6 +124,9 @@ turned against either side. A Theory is a content claim about how the world work
 2. **How is it answered?** An Argument with "that doesn't follow" or "that's beside the point"; a Theory with
    counter-evidence about the world.
 3. **The note's shape:** an Argument's says *someone argues by… so…*; a Theory's says *X happens because Y*.
+
+Underneath the three: **is the motif about the debate, or about the world?** Turning it around is a symptom, not the
+definition. "It was one of them" can be pointed at any group, yet it claims who did it, so it stays a Theory.
 
 Form over function failed tests 1 and 2 and became a Theory ("they care more about how it looks than how it works" is a
 claim about makers' priorities). Cruel and unusual became a Value (a dispute over what's deserved), Historical heroes
@@ -140,6 +157,13 @@ election is not a Perennial, because talking about it means taking a side.
 - **Archetypes** when tellers portray a kind of person, even through one figure's habit: Passing the buck ("his zone is
   blame"), Narcissus (rages when the admiration stops).
 - A motif told as a charge about a pattern is an Argument; told as a portrait of someone's character, an Archetype.
+  **An epithet that labels a kind of person is an Archetype** (Groomer, Pants on fire, Traitor to her sex: "a disgrace
+  to our gender"); **a charge about conduct is an Argument** (Blame the victim, Punching down, Sympathy mask).
+- **Establishing truth:** a teller offering proof is an Argument (Caught on camera: "here's the video"); a recurring
+  situation in which truth is contested or comes out is a Plot (He said, she said; He admit it!; We did it, Reddit!).
+- **Archetype or Plot often comes down to the note.** The drafter goes by what the note's sentence describes, so a
+  Plot's note is worded around the incident (Clumsy faux-pas: "fumbles a simple public moment… the clip travels") and
+  an Archetype's around the figure (Hackers: "the faceless hacker…").
 
 ## Notes
 
