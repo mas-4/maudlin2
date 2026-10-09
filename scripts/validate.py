@@ -173,6 +173,27 @@ def motif_context(data: dict) -> dict:
     return out
 
 
+def decision_fits(data: dict) -> dict:
+    """The confidence model's fit, at this moment, for each filing an action names (claim key|motif id), and where its
+    'sure' began: kept in the log's 'before', so the dashboard can tell how often the model called the person's
+    decisions right (Oct 9)"""
+    from app.analysis import filing_confidence as fc, motif_index as mi
+    from app.utils.store import read_json
+    entries = mi.load()['entries']
+    fits = {}
+    for s in [data] + [x for x in (data.get('steps') or []) if isinstance(x, dict)]:
+        pairs = [(s.get('claim'), s.get(k)) for k in ('id', 'source', 'target')]
+        pairs += [(x.get('claim'), x.get('source')) for x in (s.get('claims') or []) if isinstance(x, dict)]
+        for c, eid in pairs:
+            if isinstance(c, str) and isinstance(eid, str) and eid in entries:
+                fit = next((x.get('fit') for x in entries[eid]['claims'] if x['claim'] == c), None)
+                if fit is not None:
+                    fits[f'{mi.key(c)}|{eid}'] = fit
+    if not fits:
+        return {}
+    return {'fits': fits, 'sure_at': ((read_json(fc.MODEL, None) or {}).get('test') or {}).get('sure_at')}
+
+
 BY = {'claude'}  # who besides the person may act through the checker (by MCP, scripts/maudlin_mcp.py), marked as theirs
 
 
@@ -961,6 +982,7 @@ class Handler(BaseHTTPRequestHandler):
             by = by if by in BY else None
             try:
                 before = motif_context(data if data.get('action') != 'batch' else (data.get('steps') or [{}])[0])
+                before.update(decision_fits(data))
                 workbench_action(data)
                 log_curation('motif workbench', data, before, by)
                 steps = data['steps'] if data.get('action') == 'batch' else [data]
@@ -977,6 +999,7 @@ class Handler(BaseHTTPRequestHandler):
             from app.analysis import motif_index
             try:
                 before = motif_context(data)
+                before.update(decision_fits(data))
                 board_action(data)
                 log_curation('motif board', data, before)
                 self.remember(data, before)
@@ -988,6 +1011,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 if self.path == '/motif-index':
                     before = motif_context(data)
+                    before.update(decision_fits(data))
                     organizer_action(data)
                     log_curation('motif organizer', data, before)
                     self.remember(data, before)
@@ -1008,6 +1032,7 @@ class Handler(BaseHTTPRequestHandler):
             from app.analysis import motif_index
             try:
                 before = motif_context(data)
+                before.update(decision_fits(data))
                 motif_index.check(data.get('claim', ''), data.get('id', ''), data.get('answer', ''))
                 log_curation('motif check', data, before)
                 self.remember(data, before)

@@ -26,6 +26,9 @@ from app.utils.store import read_json, write_json
 logger = get_logger(__name__)
 
 MODEL = os.path.join(Config.data, 'filing_confidence.json')
+# Each model's held-out test each time it's trained, a line each, for the dashboard's chart (Oct 9; backfilled from the
+# log to Oct 8): {'at', 'model': 'confidence'|'shortlist'|..., and its numbers}
+HISTORY = os.path.join(Config.data, 'motifs', 'model_history.jsonl')
 CURATION_LOG = os.path.join(Config.data, 'validation', 'curation_log.jsonl')
 SOURCES = ['narrative', 'Focus Group']  # anything else is a fact-checker; what's retold on the shows counts as what's
 # retold online (4 decisions on its own on Oct 8: a weight of its own learned 'always kept' from them)
@@ -50,37 +53,71 @@ BETTER_MIN = 0.3
 SURE = 0.95  # precision the 'sure' threshold has to reach, held out
 
 
+def record(model: str, **numbers):
+    """A model's held-out test, kept in HISTORY"""
+    os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
+    with open(HISTORY, 'a') as f:
+        f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'model': model, **numbers}) + '\n')
+
+
+def history() -> list[dict]:
+    try:
+        with open(HISTORY) as f:
+            return [json.loads(x) for x in f if x.strip()]
+    except (OSError, ValueError):
+        return []
+
+
+def live(rows: list[dict] | None = None) -> list[dict]:
+    """The person's decisions with the fit the confidence model gave each filing at the time (the checker keeps it
+    in the log's 'before' since Oct 9): [{'at', 'fit', 'kept', 'sure_at'}], oldest first"""
+    out = []
+    for r in log_rows() if rows is None else rows:
+        fits = (r.get('before') or {}).get('fits') or {}
+        if not fits or not isinstance(r.get('action'), dict):
+            continue
+        decided = {}
+        _decided(r['action'], decided)
+        for (k, eid), kept in decided.items():
+            fit = fits.get(f'{k}|{eid}')
+            if fit is not None:
+                out.append({'at': r['at'], 'fit': fit, 'kept': kept, 'sure_at': (r.get('before') or {}).get('sure_at')})
+    return out
+
+
+def _decided(a: dict, out: dict, hand: bool = False):
+    """The filings one logged action decides, into out: (claim key, motif id) -> kept"""
+    act = a.get('action')
+    if act == 'check' and a.get('answer') in ('yes', 'no'):
+        out[(mi.key(a['claim']), a['id'])] = a['answer'] == 'yes'
+    elif act in ('unfile', 'reject', 'not this motif') and a.get('claim') and a.get('id'):
+        out[(mi.key(a['claim']), a['id'])] = False
+    elif act == 'move' and a.get('claim') and a.get('source'):
+        out[(mi.key(a['claim']), a['source'])] = False
+        if hand and a.get('target'):
+            out[(mi.key(a['claim']), a['target'])] = True
+    elif hand and act == 'also' and a.get('claim') and a.get('target'):
+        out[(mi.key(a['claim']), a['target'])] = True
+    elif hand and act == 'file' and a.get('claim') and a.get('id'):
+        out[(mi.key(a['claim']), a['id'])] = True
+    elif act == 'new_with':  # a claim moved out of its motif into a new one: not that motif
+        for c in a.get('claims') or []:
+            if isinstance(c, dict) and c.get('mode') == 'move' and c.get('claim') and c.get('source'):
+                out[(mi.key(c['claim']), c['source'])] = False
+    elif act == 'batch':
+        for step in a.get('steps') or []:
+            if isinstance(step, dict):
+                _decided(step, out, hand)
+
+
 def decisions(path: str = CURATION_LOG, hand: bool = False) -> dict[tuple[str, str], bool]:
     """(claim key, motif id) -> kept, the person's last word on each filing in the curation log. With `hand`, also
     the filings they made themselves (a claim added to another motif, filed by hand, or the motif it was moved to):
     the model's misses (286 'also' by Oct 8)"""
     out = {}
-
-    def one(a: dict):
-        act = a.get('action')
-        if act == 'check' and a.get('answer') in ('yes', 'no'):
-            out[(mi.key(a['claim']), a['id'])] = a['answer'] == 'yes'
-        elif act in ('unfile', 'reject', 'not this motif') and a.get('claim') and a.get('id'):
-            out[(mi.key(a['claim']), a['id'])] = False
-        elif act == 'move' and a.get('claim') and a.get('source'):
-            out[(mi.key(a['claim']), a['source'])] = False
-            if hand and a.get('target'):
-                out[(mi.key(a['claim']), a['target'])] = True
-        elif hand and act == 'also' and a.get('claim') and a.get('target'):
-            out[(mi.key(a['claim']), a['target'])] = True
-        elif hand and act == 'file' and a.get('claim') and a.get('id'):
-            out[(mi.key(a['claim']), a['id'])] = True
-        elif act == 'new_with':  # a claim moved out of its motif into a new one: not that motif
-            for c in a.get('claims') or []:
-                if isinstance(c, dict) and c.get('mode') == 'move' and c.get('claim') and c.get('source'):
-                    out[(mi.key(c['claim']), c['source'])] = False
-        elif act == 'batch':
-            for step in a.get('steps') or []:
-                if isinstance(step, dict):
-                    one(step)
     for r in log_rows(path):  # Claude's rows too: it acts through the checker only on the person's word (Oct 9)
         if isinstance(r.get('action'), dict):
-            one(r['action'])
+            _decided(r['action'], out, hand)
     return out
 
 
@@ -245,6 +282,9 @@ def train(index: dict | None = None) -> dict | None:
            'test': test, 'retriever_at': w['at'], 'reranker': tag, 'judge': ms.judge_tag(),
            'at': dt.now().isoformat(timespec='seconds')}
     write_json(MODEL, out, indent=1)
+    sure = next((t for t in test['thresholds'] if t['at'] == test.get('sure_at')), {})
+    record('confidence', auc=test['auc'], decisions=test['filings'], sure_at=test.get('sure_at'),
+           right_when_sure=sure.get('precision'), judge=ms.judge_tag())
     logger.info("Filing confidence trained on %d filings (%d kept): AUC %.3f held out, sure from %s", test['filings'],
                 test['kept'], test['auc'], test['sure_at'])
     return out

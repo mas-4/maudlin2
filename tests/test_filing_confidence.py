@@ -94,3 +94,17 @@ def test_another_judge_means_learning_again(monkeypatch):
     monkeypatch.setattr(fc, 'train', lambda: {'at': 'new'})
     assert fc.model() is fresh  # the checker never retrains
     assert fc.model(retrain=True) == {'at': 'new'}  # a day old or not: trained on Gemma's answers, now Nimble's
+
+
+def test_live_accuracy_reads_the_fit_logged_with_each_decision():
+    """The checker logs each filing's fit with the person's decision; live() pairs them, batches and moves included"""
+    k = fc.mi.key
+    rows = [{'at': '2026-10-09T10:00:00', 'action': {'action': 'check', 'claim': 'a', 'id': 'M1', 'answer': 'yes'},
+             'before': {'fits': {f'{k("a")}|M1': 0.9}, 'sure_at': 0.85}},
+            {'at': '2026-10-09T11:00:00', 'action': {'action': 'batch', 'steps': [
+                {'action': 'unfile', 'claim': 'b', 'id': 'M2'}, {'action': 'move', 'claim': 'c', 'source': 'M1', 'target': 'M3'}]},
+             'before': {'fits': {f'{k("b")}|M2': 0.7, f'{k("c")}|M1': 0.2}}},
+            {'at': '2026-10-09T12:00:00', 'action': {'action': 'check', 'claim': 'd', 'id': 'M1', 'answer': 'no'}, 'before': {}}]
+    got = fc.live(rows)
+    assert [(g['fit'], g['kept']) for g in got] == [(0.9, True), (0.7, False), (0.2, False)]  # d: no fit logged
+    assert got[0]['sure_at'] == 0.85

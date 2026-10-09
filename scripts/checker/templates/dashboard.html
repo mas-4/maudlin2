@@ -85,14 +85,18 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
     return svg + key;
   }
   const one = (labels, obj, name) => plot(bars, labels, {[name]: obj});
-  // A line over time: points = [{at, value}]
+  // A line over time: points = [{at, value}]; lines = [[key, max, color, min (0)]]; a missing value breaks the line
   function line(W, points, lines, opts = {}) {
-    if (!points.length) return '<p class="dash-sub">no readings yet</p>';
+    if (!points.length) return `<p class="dash-sub">${esc(opts.empty || 'no readings yet')}</p>`;
     const H = 170, n = points.length;
     let svg = `<svg class="dash-chart" viewBox="0 0 ${W} ${H + 18}">`;
-    lines.forEach(([key, max, color]) => {
-      const d = points.map((p, i) => `${i ? 'L' : 'M'}${(i / Math.max(1, n - 1)) * W},${H - (p[key] / max) * (H - 6)}`).join('');
+    lines.forEach(([key, max, color, min = 0]) => {
+      const y = (v) => H - ((v - min) / (max - min)) * (H - 6), x = (i) => n === 1 ? W / 2 : (i / (n - 1)) * W;
+      let d = '', up = true;
+      points.forEach((p, i) => { if (p[key] == null) { up = true; return; } d += `${up ? 'M' : 'L'}${x(i)},${y(p[key])}`; up = false; });
       svg += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2"/>`;
+      if (n <= 60) points.forEach((p, i) => { if (p[key] != null) svg += `<circle cx="${x(i)}" cy="${y(p[key])}" r="3" fill="${color}"><title>${esc(p.at.replace('T', ' '))} · ${esc(key)}: ${p[key]}</title></circle>`; });
+      if (opts.scale) svg += `<text x="2" y="12">${max}</text><text x="2" y="${H - 2}">${min}</text>`;
     });
     if (opts.danger) { const y = H - (opts.danger[0] / opts.danger[1]) * (H - 6); svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#ff4d6d" stroke-dasharray="4 3"/><text x="${W - 2}" y="${y - 3}" text-anchor="end">${esc(opts.danger[2])}</text>`; }
     [0, Math.floor(n / 4), Math.floor(n / 2), Math.floor(3 * n / 4), n - 1].forEach((i) => { svg += `<text x="${(i / Math.max(1, n - 1)) * W}" y="${H + 13}" text-anchor="${i ? (i === n - 1 ? 'end' : 'middle') : 'start'}">${esc(points[i].at.slice(5).replace('T', ' '))}</text>`; });
@@ -137,8 +141,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
     html += card('At a glance', `<div class="dash-tiles">
       ${tile(last.ok === null ? '⏳' : last.ok ? '✅' : '❌', last.minutes != null ? last.minutes + ' min' : '—', `last hourly run (${esc((last.start || '').slice(11, 16))}${last.ok === null ? ', going now' : ''}); the limit is 45`, last.minutes > 40 ? '#fff3ef' : '#effbf6')}
       ${tile('⏱️', runMinutes.length ? Math.round(runMinutes.reduce((a, b) => a + b, 0) / runMinutes.length) + ' min' : '—', `average of ${runMinutes.length} runs in 48 h; ${runs.filter((r) => r.ok === false).length} failed`)}
-      ${tile(problems.length ? '🚨' : '💚', problems.length, problems.length ? 'feeds or outlets not coming in' : 'every feed and outlet coming in', problems.length ? '#fff3ef' : '#effbf6')}
-      ${tile('🌡️', hot != null ? hot + '°C' : '—', 'hottest the card got in 24 h')}
+      ${tile(problems.length ? '🚨' : '💚', problems.length || 'all in', problems.length ? 'feeds or outlets not coming in' : 'every feed and outlet coming in as usual', problems.length ? '#fff3ef' : '#effbf6')}
+      ${tile('🌡️', hot != null ? hot + '°C' : '—', 'hottest the card got in 24 h (it runs at 83, its limit is 93)')}
       ${tile('🔁', reloadsToday, 'models loaded into memory today (fewer is better)')}
       ${tile('💽', num(H['disk free GB']) + ' GB', `free on the data disk (${num(H['disk used %'])}% used)`)}
     </div>`, 'wide');
@@ -214,6 +218,16 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
     html += card('🎯 Filing confidence', err(X) + list([['held-out AUC', fc.auc], ['sure from', pct(fc['sure at'])], ['right when sure', pct(fc['precision when sure'])], ['of your kept filings passable when sure', pct(fc['kept passable when sure'])], ['decisions learned from', fc.decisions], ['reranker', fc.reranker], ['trained', (fc.at || '').replace('T', ' ')]]));
     html += card('📋 Shortlist (your motifs in the top 12, held out)', list([['plain weights', pct(sl['plain top 12'])], ['every signal weighed', pct(sl['learned top 12'])], ['learned from claims', sl.claims], ['trained', (sl.at || '').replace('T', ' ')]]));
     html += card('🧑‍🏫 Reranker taught your decisions', list([['taught', (rr.at || '').replace('T', ' ')], ['examples', rr.examples], ['your decisions', rr.decisions]]));
+    const hist = X.history || [], confRuns = hist.filter((h) => h.model === 'confidence'), shortRuns = hist.filter((h) => h.model === 'shortlist');
+    const live = X.live || [], lastDay = live[live.length - 1] || {};
+    html += card('🎯 How often the model calls your decisions right, a day at a time',
+      plot(line, live, [['share_right', 1, '#3a86ff', 0.5], ['right_when_sure', 1, '#2ec27e', 0.5]], {scale: true, empty: 'collecting since Oct 9: each ✓ and ✕ is kept with the fit the model had given it'})
+      + (lastDay.at ? list([[`decisions on ${lastDay.at.slice(5)}`, lastDay.decisions], ['the model called right', pct(lastDay.share_right)], [`of those it was sure of (${lastDay.sure}), you kept`, pct(lastDay.right_when_sure)]]) : '')
+      + '<p class="dash-sub">blue: calls right (a fit of 50%+ for a filing you kept, under 50% for one you took out) · green: of the filings it was sure of, the share you kept. Measured on the claims coming in, not a test on old ones.</p>', 'wide');
+    html += card('📈 Filing confidence, held-out AUC at each training', plot(line, confRuns, [['auc', 1, '#8a5cff', 0.75]], {scale: true})
+      + `<p class="dash-sub">${confRuns.length} trainings since ${(confRuns[0] || {at: '—'}).at.slice(5, 10)}; decisions learned from: ${confRuns.map((c) => c.decisions).join(' → ')}</p>`);
+    html += card('📈 Shortlist, your motif in the top 12 (held out)', plot(line, shortRuns, [['top12', 1, '#ffc400', 0.7], ['plain_top12', 1, '#7a7a8c', 0.7]], {scale: true})
+      + '<p class="dash-sub">yellow: every signal weighed · grey: the plain weights</p>');
     html += card('🧪 Latest experiment results', `<div class="dash-mono">${(X.experiments || []).map(esc).join('\n') || 'none yet'}</div>`, 'wide');
     html += '</div>';
 

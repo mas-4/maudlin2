@@ -34,10 +34,12 @@ def _days(n: int = DAYS) -> list[str]:
     return [(today - td(days=i)).isoformat() for i in range(n - 1, -1, -1)]
 
 
-def _journal(unit: str, hours: int) -> list[str]:
+def _journal(unit: str, hours: int, grep: str | None = None) -> list[str]:
+    """The unit's journal lines of the last hours; with `grep`, only those matching it (Ollama writes about 1 GB a
+    day: read whole, a day of it took 30 s and the dashboard gave up, showing no model loads)"""
     try:
-        out = subprocess.run(['journalctl', '-u', unit, '--since', f'-{hours}h', '--no-pager', '-o', 'short-iso'],
-                             capture_output=True, text=True, timeout=30)
+        out = subprocess.run(['journalctl', '-u', unit, '--since', f'-{hours}h', '--no-pager', '-o', 'short-iso']
+                             + (['-g', grep] if grep else []), capture_output=True, text=True, timeout=90)
         return out.stdout.splitlines()
     except (OSError, subprocess.SubprocessError):
         return []
@@ -80,7 +82,7 @@ def model_loads(hours: int = 24) -> dict:
     import re
     names = _model_names()
     by = defaultdict(Counter)
-    for line in _journal('ollama', hours):
+    for line in _journal('ollama', hours, 'loading model via llama-server'):
         if 'loading model via llama-server' in line:
             m = re.search(r'sha256-[0-9a-f]{12}', line)
             if m:
@@ -247,7 +249,23 @@ def models() -> dict:
             'shortlist': {'at': learned.get('at'), **(learned.get('test') or {}), 'claims': learned.get('claims'),
                           'plain weights at': w.get('at')},
             'reranker': read_json(reranker_teach.META, {}) or {'at': 'not taught yet'},
-            'experiments': results}
+            'experiments': results, 'history': fc.history(), 'live': live_by_day(fc.live())}
+
+
+def live_by_day(rows: list[dict]) -> list[dict]:
+    """How often the confidence model called the person's decisions right, a day at a time: right (a fit of 50% or
+    more for a filing they kept, under 50% for one they took out), and of the filings it was sure of, how many they
+    kept"""
+    days = {}
+    for r in rows:
+        d = days.setdefault(r['at'][:10], {'at': r['at'][:10], 'decisions': 0, 'right': 0, 'sure': 0, 'sure_kept': 0})
+        d['decisions'] += 1
+        d['right'] += (r['fit'] >= 0.5) == r['kept']
+        if r.get('sure_at') is not None and r['fit'] >= r['sure_at']:
+            d['sure'] += 1
+            d['sure_kept'] += r['kept']
+    return [{**d, 'share_right': round(d['right'] / d['decisions'], 3),
+             'right_when_sure': round(d['sure_kept'] / d['sure'], 3) if d['sure'] else None} for d in sorted(days.values(), key=lambda d: d['at'])]
 
 
 def curation(days: int = DAYS) -> dict:

@@ -227,6 +227,9 @@ def train_learned(index: dict | None = None) -> dict | None:
            'at': dt.now().isoformat(timespec='seconds')}
     write_json(LEARNED, out, indent=1)
     logger.info("Motif shortlist learned on %d claims: held out, %s", len(keys), out['test'])
+    from app.analysis import filing_confidence
+    filing_confidence.record('shortlist', top12=out['test'].get('learned top 12'), plain_top12=out['test'].get('plain top 12'),
+                             claims=len(keys))
     return out
 
 
