@@ -24,7 +24,7 @@ from app.analysis import motif_signals as ms  # noqa: E402
 
 OUT = os.path.join(harness.EXP, 'r1_bigger_reranker.json')
 MODELS = [m for m in os.environ.get('RERANKERS', 'Qwen/Qwen3-Reranker-0.6B,Qwen/Qwen3-Reranker-4B').split(',') if m]
-BATCH = 4
+BATCH = 2
 
 
 def unload_ollama():
@@ -56,7 +56,7 @@ def score(model_name, pairs, docs, got, took):
         texts = [ms.rerank_text(p['claim'], docs[p['key']]) for p in part]
         batch = tok(texts, padding=True, truncation=True, max_length=1024, return_tensors='pt').to('cuda')
         with torch.no_grad():
-            logits = model(**batch).logits[:, -1, :]
+            logits = model(**batch, logits_to_keep=1).logits[:, -1, :]  # the last token's only: all of them ran out of memory
         pr = torch.stack([logits[:, no], logits[:, yes]], 1).float().log_softmax(1)[:, 1].exp().tolist()
         took[0] += time.time() - t
         took[1] += len(part)
