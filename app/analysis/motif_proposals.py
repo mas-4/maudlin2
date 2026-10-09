@@ -58,6 +58,10 @@ PROPOSALS = os.path.join(Config.data, 'motif_proposals.json')  # {id: proposal},
 RUNS = os.path.join(Config.data, 'motif_proposals_runs.json')  # {'done': last day finished, 'typos': {motif: mark}}
 NIGHT_BUDGET = 480  # seconds the nightly run may spend; what's left waits for the next hour's run
 MODEL = 'gemma4:26b'
+# The judge of related and rests-on proposals since Oct 9 (P1 in docs/filing-experiments.md): Nimble 9B's yes or no,
+# a probability in one pass, made best fit 0.772 against 0.755 with Gemma's 0-10 score (20 fold splits, ahead in all);
+# None: Gemma's score (JUDGE_PROMPT) as before
+JUDGE_DECIDER = 'nimble:9b'
 TYPO_BATCH = 12  # motifs read in one call for typos
 LINK_NEIGHBORS = 5  # each motif's closest motifs considered for a link
 LINK_FLOOR = 0.7  # ...at least this alike (mxbai, over name, note and claims)
@@ -780,15 +784,48 @@ def _examples(p: dict, decided: list[dict], index: dict) -> str:
     return "\nSome of the person's past decisions on links like this:\n" + '\n'.join(lines) + '\n'
 
 
+def judge_model() -> str:
+    return JUDGE_DECIDER or MODEL
+
+
+def _decide(p: dict, index: dict) -> float:
+    """Nimble's P(the person accepts the link)"""
+    import requests as rq
+    x, y = pair(p)
+    a, b = index['entries'][x], index['entries'][y]
+    link = f'"{a["name"]}" and "{b["name"]}" are related' if p['kind'] == 'relate' else f'"{a["name"]}" rests on "{b["name"]}"'
+    state = f"Motif A. {shown(a, b)}\n\nMotif B. {shown(b, a)}\n\nThe suggested link: {link}"
+    question = ('Would the person who curates this index of recurring rumor and narrative shapes accept this link? '
+                f'A good link: {JUDGE_TESTS[p["kind"]]}. A weak one: the two only share a topic, a mood, a cause and '
+                'effect, or the same people or events.')
+    r = rq.post(f'{llm.OLLAMA_URL}/v1/systemone', timeout=300, json={
+        'model': JUDGE_DECIDER, 'state': state, 'questions': {'accept': {'type': 'noul', 'instructions': question}}})
+    r.raise_for_status()
+    a = r.json()['answers']['accept']
+    return float(a.get('noul', a.get('probability')) if isinstance(a, dict) else a)
+
+
 def judge(store: dict, index: dict, deadline: float | None = None) -> int:
-    """The judge's score on each rests-on and related proposal not scored yet: open ones first, then decided ones
-    (more to train best fit on)"""
+    """The judge's score on each rests-on and related proposal not scored by today's judge (judge_model()): open ones
+    first, then decided ones (more to train best fit on)"""
     import time
     decided = [p for p in store.values() if p['kind'] in JUDGED and p['status'] in ('approved', 'rejected') and _live_pair(p, index)]
-    todo = [p for p in store.values() if p['kind'] in JUDGED and 'judge' not in p and _live_pair(p, index)
-            and (p['status'] in ('approved', 'rejected') or still_holds(p, index))]
+    todo = [p for p in store.values() if p['kind'] in JUDGED and (p.get('judge') or {}).get('model') != judge_model()
+            and _live_pair(p, index) and (p['status'] in ('approved', 'rejected') or still_holds(p, index))]
+    todo = sorted(todo, key=lambda p: p['status'] != 'open')
     made = 0
-    for p in sorted(todo, key=lambda p: p['status'] != 'open'):
+    if JUDGE_DECIDER:  # a decision model: a probability each, llm.PARALLEL at once, saved a round at a time
+        for start in range(0, len(todo), 16):
+            if deadline and time.time() > deadline:
+                raise Spent
+            part = todo[start:start + 16]
+            for p, v in zip(part, llm.parallel(lambda p: _decide(p, index), part)):
+                if v is not None:
+                    p['judge'] = {'p': round(v, 5), 'score': round(10 * v, 1), 'reason': '', 'model': JUDGE_DECIDER}
+                    made += 1
+            save(store)
+        return made
+    for p in todo:
         if deadline and time.time() > deadline:
             raise Spent
         x, y = pair(p)
@@ -811,6 +848,14 @@ FIT_FACTS = ['descriptions alike', 'claims alike', 'claims shared', 'same group'
              'a rests-on link', 'judge']
 
 
+def _judge_value(j: dict) -> float:
+    """The judge's say as best fit weighs it: a decision model's probability as log-odds, Gemma's score out of 10"""
+    if 'p' in j:
+        p = min(max(j['p'], 1e-4), 1 - 1e-4)
+        return float(np.log(p / (1 - p)))
+    return j['score'] / 10
+
+
 def fit_facts(ps: list[dict], index: dict) -> np.ndarray:
     """For each proposal, the facts best fit weighs (FIT_FACTS)"""
     from app.narratives import embed
@@ -827,7 +872,7 @@ def fit_facts(ps: list[dict], index: dict) -> np.ndarray:
         fa, fb = ((e.get('facets') or {}).get('genre') for e in (ea, eb))
         rows.append([float(dv[a] @ dv[b]), float(cv[a] @ cv[b]), np.log1p(len(ka & kb)), float(bool(ga & gb)),
                      float(bool(fa and fa == fb)), float(bool(ga and gb and not ga & gb)), float(p['kind'] == 'parent'),
-                     p['judge']['score'] / 10])
+                     _judge_value(p['judge'])])
     return np.array(rows)
 
 
@@ -835,7 +880,8 @@ def best_fit(store: dict, index: dict) -> dict | None:
     """Trains best fit on the person's decisions (scored by the judge) and gives each open rests-on and related
     proposal its chance of approval ('fit'); the fold's cut is kept in RUNS. None until FIT_MIN decisions"""
     from sklearn.linear_model import LogisticRegression
-    scored = [p for p in store.values() if p['kind'] in JUDGED and 'judge' in p and _live_pair(p, index)]
+    scored = [p for p in store.values() if p['kind'] in JUDGED and (p.get('judge') or {}).get('model') == judge_model()
+              and _live_pair(p, index)]  # one judge's scores only: Gemma's 0-10 and Nimble's odds don't mix
     decided = [p for p in scored if p['status'] in ('approved', 'rejected')]
     todo = [p for p in scored if p['status'] == 'open' and still_holds(p, index)]
     if len(decided) < FIT_MIN or len({p['status'] for p in decided}) < 2:

@@ -209,6 +209,7 @@ def test_a_runs_save_keeps_decisions_made_meanwhile(tmp_path, monkeypatch):
 
 def test_best_fit_sorts_the_links_and_folds_the_unlikely(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
+    monkeypatch.setattr(mp, 'JUDGE_DECIDER', None)  # Gemma's 0-10 scores
     monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
     monkeypatch.setattr(mp, 'FIT_MIN', 4)
     vec = {'M001': [1, 0, 0], 'M002': [0.9, 0.44, 0], 'M003': [0, 0, 1]}
@@ -221,12 +222,12 @@ def test_best_fit_sorts_the_links_and_folds_the_unlikely(tmp_path, monkeypatch):
     for n, (score, status) in enumerate([(9, 'approved'), (8, 'approved'), (2, 'rejected'), (1, 'rejected'), (9, 'approved'), (2, 'rejected')]):
         i = f'd{n}'
         store[i] = {'id': i, 'kind': 'relate', 'args': {'a': 'M001', 'b': 'M003'}, 'status': status, 'made': '1',
-                    'judge': {'score': score}}
+                    'judge': {'score': score, 'model': mp.MODEL}}
     mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'good')
     mp.add(store, 'parent', {'id': 'M003', 'parent': 'M002'}, 'bad')
     mp.add(store, 'rename', {'id': 'M001', 'from': "Poltiicians' empty promises", 'to': "Politicians' empty promises"}, 'typo')
     good, bad = (next(p for p in store.values() if p.get('reason') == r) for r in ('good', 'bad'))
-    good['judge'], bad['judge'] = {'score': 9}, {'score': 1}
+    good['judge'], bad['judge'] = {'score': 9, 'model': mp.MODEL}, {'score': 1, 'model': mp.MODEL}
     info = mp.best_fit(store, mi.load())
     assert info['trained_on'] == 6 and good['fit'] > bad['fit']
     mp.save(store)
@@ -237,6 +238,7 @@ def test_best_fit_sorts_the_links_and_folds_the_unlikely(tmp_path, monkeypatch):
 
 def test_the_judge_scores_open_links_and_is_shown_the_persons_decisions(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
+    monkeypatch.setattr(mp, 'JUDGE_DECIDER', None)  # Gemma's 0-10 scores
     store = {}
     mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'cousins')
     store['old'] = {'id': 'old', 'kind': 'relate', 'args': {'a': 'M001', 'b': 'M003'}, 'status': 'rejected', 'made': '1'}
@@ -404,3 +406,17 @@ def test_claims_that_fit_nowhere_and_tell_one_story_are_proposed_as_a_new_motif(
     act = mp.action(p)
     assert act['action'] == 'new_with' and act['note'].startswith('Dams') and len(act['claims']) == 3
     assert mp.new_motifs(store, index) == 0  # not again for the same claims
+
+
+def test_a_decision_model_judges_every_link_not_yet_judged_by_it(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    monkeypatch.setattr(mp, 'JUDGE_DECIDER', 'nimble:9b')
+    store = {}
+    mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'cousins')
+    store['old'] = {'id': 'old', 'kind': 'relate', 'args': {'a': 'M001', 'b': 'M003'}, 'status': 'rejected', 'made': '1',
+                    'judge': {'score': 3, 'reason': 'x', 'model': 'gemma4:26b'}}
+    monkeypatch.setattr(mp, '_decide', lambda p, index: 0.8 if p['id'] != 'old' else 0.1)
+    assert mp.judge(store, mi.load()) == 2  # Gemma's old score asked again of the new judge
+    assert store['old']['judge'] == {'p': 0.1, 'score': 1.0, 'reason': '', 'model': 'nimble:9b'}
+    assert mp.judge(store, mi.load()) == 0
+    assert mp._judge_value(store['old']['judge']) < 0 < mp._judge_value({'p': 0.8})

@@ -572,7 +572,7 @@
       // each proposal one card; a rests-on or related one with its best fit (how likely you are to approve it, learned
       // from your own decisions), the list sorted by it, the least likely folded at the bottom
       const card = (p) => `<div class="wb-card wb-prop"><label class="wb-propline"><input type="checkbox" data-propsel="${p.id}"> ${proposalText(p)}</label>
-          ${p.fit != null ? `<b class="wb-fit" style="--fit: ${Math.round(p.fit * 100)}%" title="best fit: how likely you are to approve it, learned from your decisions${p.judge ? `; the judge's ${p.judge.score}/10: ${esc(p.judge.reason)}` : ''}">🎯 ${Math.round(p.fit * 100)}%</b>` : ''}
+          ${p.fit != null ? `<b class="wb-fit" style="--fit: ${Math.round(p.fit * 100)}%" title="best fit: how likely you are to approve it, learned from your decisions${p.judge ? `; the judge's ${p.judge.score}/10${p.judge.reason ? `: ${esc(p.judge.reason)}` : ''}` : ''}">🎯 ${Math.round(p.fit * 100)}%</b>` : ''}
           <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
           ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
       const likely = items.filter((p) => !p.unlikely), unlikely = items.filter((p) => p.unlikely);
