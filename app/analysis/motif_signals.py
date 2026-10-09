@@ -31,6 +31,7 @@ import json
 import math
 import os
 import re
+import time
 from collections import Counter
 
 import numpy as np
@@ -45,17 +46,35 @@ FOLDER = os.path.join(Config.data, 'motifs')
 SHAPES = os.path.join(FOLDER, 'claim_shapes.json')  # claim key -> its bare shape, by the filing model
 RERANKS = os.path.join(FOLDER, 'rerank_cache.json')  # pair hash -> the reranker's P(yes)
 JUDGED = os.path.join(FOLDER, 'pair_judge_cache.json')
+ELEMENTS = os.path.join(FOLDER, 'motif_elements.json')  # motif id -> {'element': its must-have, 'from': what it was drafted from}
 LAYERED = os.path.join(FOLDER, 'claim_layers.json')  # claim key -> {layer: its generic sentence or 'none'}  # pair hash -> the filing model's P(yes)
 NOMIC = 'nomic-embed-text'
 RERANKER = 'Qwen/Qwen3-Reranker-0.6B'
 JUDGE_MODEL = 'gemma4:26b'
 # The yes or no on a (claim, motif) pair, for the confidence model: Bespoke Labs' Nimble 9B, a decision model (one pass,
 # a probability, no text; Ollama's /v1/systemone), since Oct 9: on the person's 817 decided filings it judged as well
-# as Gemma 26B (AUC 0.824 alone, 0.895 in the confidence model, against 0.818 and 0.894) at 0.22 s a pair, and fits the
-# card whole (J1 in docs/filing-experiments.md). None: Gemma 26B's yes or no (JUDGE_PROMPT) as before
+# as Gemma 26B (AUC 0.824 alone, 0.895 in the confidence model, against 0.818 and 0.894) at 0.22 s a pair (J1 in
+# docs/filing-experiments.md; its 8-bit build is 9.5 GB, a little of it on the CPU: the 4-bit one that fits whole judged
+# worse, 0.797 against 0.818). None: Gemma 26B's yes or no (JUDGE_PROMPT) as before
 JUDGE_DECIDER = 'nimble:9b'
 JUDGE_QUESTION = ('Is the new claim an instance of this motif: the same shape of story, as its tellers tell it, as the '
                   'claims filed under it, not just the same topic, person or word?')
+# Each motif's must-have element, drafted by Gemma 26B from its name, genre and note (not its claims), and shown to the
+# judge with a question that asks for it (J2, Oct 9: the casebook's lesson that the person checks what a motif needs;
+# on the person's Oct 9 rulings the judge went from AUC 0.54 to 0.79, and 0.811 against 0.801 on every decision).
+# Drafted again when the name, genre or note changes; a motif without one yet is judged the old way meanwhile
+JUDGE_ELEMENTS = True
+ELEMENT_LINE = 'What a telling must contain to be this motif:'
+ELEMENT_QUESTION = 'Does the new claim, as told, contain what a telling must contain to be this motif? ' + JUDGE_QUESTION
+ELEMENT_PROMPT = """A motif in our index of recurring story shapes in what people tell about politics and public life:
+Name: {name}
+Genre: {genre}
+What it covers: {note}
+
+In one sentence: what must a telling contain to be an instance of this motif, the part without which it would be a \
+different motif or none? Not its topic, people or place: the element itself (for "Passing the buck": something has \
+gone wrong and the one responsible deflects the blame onto others)."""
+ELEMENT_SCHEMA = {"type": "object", "properties": {"element": {"type": "string", "maxLength": 300}}, "required": ["element"]}
 NEIGHBOURS = 15
 NEWS = os.path.join(FOLDER, 'news_directions.npz')  # the latest headlines' center and main directions, a day at a time
 NEWS_HEADLINES = 6000
@@ -134,12 +153,14 @@ def pair_hash(*parts: str) -> str:
 
 
 def _judge_one(text: str) -> float:
-    """One pair's P(yes): from the decision model (its state: the motif and the new claim), or Gemma's first word"""
+    """One pair's P(yes): from the decision model (its state: the motif and the new claim; asked for the motif's
+    element when the state gives one), or Gemma's first word"""
     import requests as rq
     from app.analysis.llm import OLLAMA_URL
     if JUDGE_DECIDER:
+        question = ELEMENT_QUESTION if f'\n{ELEMENT_LINE} ' in text else JUDGE_QUESTION
         r = rq.post(f'{OLLAMA_URL}/v1/systemone', timeout=300, json={
-            'model': JUDGE_DECIDER, 'state': text, 'questions': {'fits': {'type': 'noul', 'instructions': JUDGE_QUESTION}}})
+            'model': JUDGE_DECIDER, 'state': text, 'questions': {'fits': {'type': 'noul', 'instructions': question}}})
         r.raise_for_status()
         a = r.json()['answers']['fits']
         return round(float(a.get('noul', a.get('probability')) if isinstance(a, dict) else a), 5)
@@ -160,7 +181,7 @@ def _judge_one(text: str) -> float:
 
 def judge_tag() -> str:
     """Which judge the cached yes-or-no answers and the confidence model's 'judge' signal come from"""
-    return JUDGE_DECIDER or JUDGE_MODEL
+    return (JUDGE_DECIDER + ('+element' if JUDGE_ELEMENTS else '')) if JUDGE_DECIDER else JUDGE_MODEL
 
 
 def rerank_text(claim: str, doc: str) -> str:
@@ -246,6 +267,7 @@ class Signals:
         self.layered = read_json(LAYERED, {})
         self.reranks = read_json(RERANKS, {})
         self.judged = read_json(JUDGED, {})
+        self.elements = read_json(ELEMENTS, {})
         self._reranker = None
         from app.analysis import reranker_teach
         self.rerank_tag = reranker_teach.tag()  # its scores are cached per reranker: base, or the taught one's date
@@ -522,7 +544,9 @@ class Signals:
         e = self.entries[n]
         ex = self.nearest_claims(claim, n, leave_out, 3)
         if JUDGE_DECIDER:
-            text = (f"Motif: {e['name']}\nWhat it covers: {e.get('note') or '(no note yet)'}\nClaims filed under it:\n"
+            need = self.element_of(e)
+            text = (f"Motif: {e['name']}\nWhat it covers: {e.get('note') or '(no note yet)'}\n"
+                    + (f'{ELEMENT_LINE} {need}\n' if need else '') + "Claims filed under it:\n"
                     + '\n'.join(f'- {c[:300]}' for c in ex) + f'\n\nNew claim: {claim}')
             return pair_hash(JUDGE_DECIDER, text), text
         text = JUDGE_PROMPT.format(name=e['name'], note=e.get('note') or '(no note yet)',
@@ -535,12 +559,50 @@ class Signals:
         loaded once (Nimble and Gemma 26B don't fit the card together); with `budget`, those not begun by then wait
         (0.5 meanwhile: see judge_missing)"""
         from app.analysis import llm
+        start = time.time()
+        self.draft_elements(sorted({n for _, ns in items for n in ns}), budget)  # Gemma first, then the judge: not both
+        if budget is not None:
+            budget = max(0.0, budget - (time.time() - start))
         asks = [[self.judge_ask(claim, n, leave_out) for n in ns] for claim, ns in items]
         todo = list({h: t for row in asks for h, t in row if h not in self.judged}.items())
         for (h, _), p in zip(todo, llm.parallel(lambda x: _judge_one(x[1]), todo, budget=budget)):
             if p is not None:
                 self.judged[h] = p
         return [np.array([self.judged.get(h, 0.5) for h, _ in row]) for row in asks]
+
+    @staticmethod
+    def element_source(e: dict) -> str:
+        return pair_hash(e['name'], mi.genre_of(e) or '', e.get('note') or '')
+
+    def element_of(self, e: dict) -> str | None:
+        """The motif's must-have element, if drafted from what it says now"""
+        if not (JUDGE_DECIDER and JUDGE_ELEMENTS):
+            return None
+        got = self.elements.get(e['id']) or {}
+        return got.get('element') if got.get('from') == self.element_source(e) else None
+
+    def draft_elements(self, ns: list[int], budget: float | None = None) -> int:
+        """Draft the element of each of these motifs that has none, or one from an old name, genre or note (Gemma
+        26B, llm.PARALLEL at once); how many were drafted"""
+        if not (JUDGE_DECIDER and JUDGE_ELEMENTS):
+            return 0
+        from app.analysis import llm
+        todo = [self.entries[n] for n in ns if self.element_of(self.entries[n]) is None]
+
+        def one(e):
+            a = llm.complete_json(ELEMENT_PROMPT.format(name=e['name'], genre=mi.genre_of(e) or 'none yet',
+                                                        note=e.get('note') or '(no note yet)'),
+                                  ELEMENT_SCHEMA, max_tokens=200, model=JUDGE_MODEL)
+            return ' '.join(a['element'].split()) if a and a.get('element') else None
+        made = 0
+        for e, got in zip(todo, llm.parallel(one, todo, budget=budget)):
+            if got:
+                self.elements[e['id']] = {'element': got, 'from': self.element_source(e)}
+                made += 1
+        if made:
+            write_json(ELEMENTS, self.elements)
+            logger.info("Judge: drafted the must-have element of %d motifs", made)
+        return made
 
     def judge_missing(self, items: list[tuple[str, list[int]]], leave_out: bool = False) -> int:
         """How many of these pairs the judge hasn't answered yet"""

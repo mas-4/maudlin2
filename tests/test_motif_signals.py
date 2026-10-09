@@ -88,3 +88,25 @@ def test_a_claims_layers_meet_each_motifs_note_and_the_layer_of_its_genre():
 def mi_key(text):
     from app.analysis import motif_index
     return motif_index.key(text)
+
+
+def test_the_judge_is_shown_each_motifs_element_drafted_from_its_note(monkeypatch, tmp_path):
+    """Gemma drafts a motif's must-have element once; the judge's state carries it, with the question that asks for it;
+    a new note means a new draft (J2)"""
+    from app.analysis import llm
+    monkeypatch.setattr(ms, 'ELEMENTS', str(tmp_path / 'elements.json'))
+    monkeypatch.setattr(ms, 'JUDGE_DECIDER', 'nimble:9b')
+    monkeypatch.setattr(ms, 'JUDGE_ELEMENTS', True)
+    asked = []
+    monkeypatch.setattr(llm, 'complete_json', lambda prompt, schema, **kw: asked.append(prompt) or {'element': 'an official campaigns while on duty'})
+    sig = ms.Signals(index(), NoVectors())
+    sig.elements = {}
+    m1 = sig.at['M1']
+    assert f'\n{ms.ELEMENT_LINE} ' not in sig.judge_ask('A claim', m1)[1]  # none drafted yet: the old question
+    assert sig.draft_elements([m1]) == 1 and sig.draft_elements([m1]) == 0  # drafted once
+    key, text = sig.judge_ask('A claim', m1)
+    assert f'{ms.ELEMENT_LINE} an official campaigns while on duty\nClaims filed under it:' in text
+    assert ms.judge_tag() == 'nimble:9b+element'
+    sig.entries[m1]['note'] = 'a new note'
+    assert sig.element_of(sig.entries[m1]) is None and sig.judge_ask('A claim', m1)[0] != key  # drafted again on use
+    assert 'a new note' not in asked[0] and len(asked) == 1

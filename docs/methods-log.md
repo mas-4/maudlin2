@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-09
+- **The judge checks each motif's must-have element.** Each motif now has one sentence saying what a telling must
+  contain to be an instance of it (drafted by Gemma 26B from its name, genre and note, again when they change), and
+  Nimble 9B is asked whether the claim, as told, contains it. On the person's 96 rulings of Oct 9 (the casebook's hard
+  cases) the judge's AUC rose from 0.54 to 0.79; on all 897 decisions from 0.801 to 0.811 (J2 in
+  docs/filing-experiments.md). The confidence model retrains on the new answers; fits from the old ones stand until then.
 - **The check list goes least sure first.** The ✅ check tab used to list the filings the confidence model was surest
   the person keeps first; now those it can least tell (a fit nearest even), and 🎯 today gives 13 of its 20 a day to
   such torn filings (10 before, in a wider band: fits from 20% to 80%). A simulation on the person's own decisions
@@ -12,7 +17,8 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   random, and more slowly still in the old order. The sure ones still pass in one step from their own fold.
 - **A new judge in the confidence model.** Its yes-or-no on each filing now comes from Nimble 9B, a decision model
   (a calibrated probability in one pass), instead of Gemma 4 26B: on the person's 817 decided filings it judged as
-  well (AUC 0.824 alone against 0.818; 0.895 in the model against 0.894) in a fifth of the time, and fits the GPU whole.
+  well (AUC 0.824 alone against 0.818; 0.895 in the model against 0.894) in a fifth of the time. (It doesn't quite fit
+  the card: 2 GB of its 9.5 run on the CPU; the 4-bit build that fits judged worse, 0.797 against 0.818.)
   The model retrains on Nimble's answers; fits from the old one stand until then.
 - **Two more embedders in the filing shortlist.** Qwen3-Embedding 8B and Snowflake Arctic Embed 2 each compare a
   claim with every motif's name and note and with its nearest claim (E11: of twelve embedders tried, this pair helped
