@@ -1012,9 +1012,35 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def follow_code(server, every: int = 60):
+    """As a service (deploy/systemd/maudlin-checker.service): once its checkout has new code (the hourly run pulls),
+    stop serving, so systemd starts it again on the new code a moment later"""
+    import subprocess
+    import threading
+    import time
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def head():
+        return subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True).stdout.strip()
+    start = head()
+
+    def watch():
+        while True:
+            time.sleep(every)
+            if head() != start:
+                print('New code: stopping, to be started again on it', flush=True)
+                server.shutdown()
+                return
+    threading.Thread(target=watch, daemon=True).start()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8766)
-    port = parser.parse_args().port
-    print(f'Label check on http://0.0.0.0:{port} (Ctrl-C to stop)')
-    ThreadingHTTPServer(('0.0.0.0', port), Handler).serve_forever()
+    parser.add_argument('--follow-code', action='store_true', help='stop once the checkout has new code (the service)')
+    args = parser.parse_args()
+    print(f'Label check on http://0.0.0.0:{args.port} (Ctrl-C to stop)')
+    server = ThreadingHTTPServer(('0.0.0.0', args.port), Handler)
+    if args.follow_code:
+        follow_code(server)
+    server.serve_forever()

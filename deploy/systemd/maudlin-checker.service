@@ -1,0 +1,16 @@
+[Unit]
+Description=Maudlin checker: the motif workbench and label checks on port 8766 (scripts/validate.py)
+After=network-online.target
+
+[Service]
+Type=simple
+User=mas
+Group=mas
+WorkingDirectory=/home/mas/maudlin-prod
+ExecStart=/home/mas/maudlin-prod/.venv/bin/python scripts/validate.py --port 8766 --follow-code
+# It stops when the hourly run has pulled new code, and on any crash: started again on whatever is checked out
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

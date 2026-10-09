@@ -298,3 +298,13 @@ def test_the_check_list_goes_least_sure_first(monkeypatch):
     monkeypatch.setattr(fc, 'tested_sources', lambda index: set())
     monkeypatch.setattr(fc, 'can_be_sure', lambda *a: True)
     assert [x['claim'] for x in validate.check_queue()] == ['torn', 'unlikely', 'sure', 'unscored']
+
+
+def test_the_service_stops_for_new_code(monkeypatch):
+    import subprocess
+    import threading
+    heads = iter(['aaa', 'aaa', 'bbb'])
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: type('R', (), {'stdout': next(heads)})())
+    stopped = threading.Event()
+    validate.follow_code(type('S', (), {'shutdown': lambda self: stopped.set()})(), every=0)
+    assert stopped.wait(5)
