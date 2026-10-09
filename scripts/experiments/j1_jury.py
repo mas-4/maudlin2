@@ -87,19 +87,23 @@ def run_jurors(saved, pairs):
         got = saved.setdefault('answers', {}).setdefault(model, {})
         took = saved.setdefault('seconds', {}).setdefault(model, [0.0, 0])
         todo = [p for p in pairs if p['key'] not in got]
+        errors = {}
         for start in range(0, len(todo), ROUND):
             part = todo[start:start + ROUND]
 
-            def one(p, model=model, fn=fn):
+            def one(p, model=model, fn=fn, errors=errors):
                 try:
                     return fn(model, p)
                 except Exception as e:  # noqa: BLE001 - counted as unanswered, asked again on a rerun
-                    print(f'{model}: {type(e).__name__} {e}'[:300], flush=True)
+                    errors[f'{type(e).__name__} {e}'[:300]] = 1
                     return None
             t = time.time()
             answers = llm.parallel(one, part)
             took[0] += time.time() - t
             took[1] += len(part)
+            if not any(a is not None for a in answers):  # a model that can't answer: say so once, the next model
+                print(f'{model}: no answers, skipped ({"; ".join(errors)})'[:400], flush=True)
+                break
             for p, a in zip(part, answers):
                 if a is not None:
                     got[p['key']] = round(a, 5)

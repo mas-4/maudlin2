@@ -3,7 +3,7 @@ Filing is a search: the claim the query, the motifs the documents. Each embeddin
 signals, as mxbai's do in the shortlist: the claim against each motif's name and note, and against the motif's nearest
 claim (the claim held out). Each model's own query and document prefixes, as its card says. Scored by the harness (the
 learned weighting's top 8 / 12 / 40 of the person's motifs, grouped folds): each embedder alone (its two signals, no
-others), and added to every signal we have. On the CPU (num_gpu 0, at low priority), so it runs beside the hourly run;
+others), and added to every signal we have. In the GPU window (E11_CPU=1: on the CPU instead);
 each model's vectors cached in OUT_DIR, so a rerun only embeds what's new."""
 import os
 import sys
@@ -45,7 +45,7 @@ def embed(model: str, texts: list[str]) -> np.ndarray:
     for i in range(0, len(todo), 32):
         part = todo[i:i + 32]
         r = rq.post(f'{OLLAMA_URL}/api/embed', timeout=1800, json={
-            'model': model, 'input': part, 'truncate': True, 'options': {'num_gpu': 0}, 'keep_alive': '2m'})
+            'model': model, 'input': part, 'truncate': True, 'keep_alive': '2m', **({'options': {'num_gpu': 0}} if os.environ.get('E11_CPU') else {})})
         r.raise_for_status()
         for t, v in zip(part, r.json()['embeddings']):
             v = np.asarray(v, dtype=np.float32)
