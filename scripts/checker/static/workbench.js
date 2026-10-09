@@ -954,6 +954,7 @@
           {label: `⤵ merge all ${rest.length} into it`, say: `merge all ${rest.length} into “${B.name}”`, run: () => sure(t, `Merge ${rest.length} motifs into “${B.name}”?`, '⤵ merge them').then((ok) => ok && batch(rest.map((i) => ({action: 'merge', source: i, target: b})), done(`⤵ merged ${rest.length} into “${B.name}”`)))},
           {label: '↳ all rest on it', say: `make each of the ${rest.length} rest on “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'parent', id: i, parent: b})), done(`↳ ${rest.length} rest on “${B.name}”`))},
           {label: '↔ all related to it', say: `relate each of the ${rest.length} to “${B.name}”`, run: () => batch(rest.map((i) => ({action: 'relate', a: i, b})), done(`↔ ${rest.length} related to “${B.name}”`))},
+          {label: '📁 a group of these', say: `start a new group with all ${rest.length + 1} in it`, run: () => newGroupOf(t, [b, ...rest]).then((ok) => ok && S.msel.clear())},
         ];
       }
       if (drop === 'facet') {
@@ -985,6 +986,7 @@
         {label: '↰ it rests on this', say: `make “${B.name}” rest on “${A.name}”`, run: () => act({action: 'parent', id: b, parent: a}, `↰ “${B.name}” rests on “${A.name}”`)},
         {label: '↔ related', say: `relate “${A.name}” and “${B.name}”: related, but different`, run: () => act({action: 'relate', a, b}, `↔ related “${A.name}” and “${B.name}”`)},
         {label: '≠ not the same', say: `“${A.name}” and “${B.name}” are different: stop suggesting them as a pair`, run: () => act({action: 'not_same', a, b}, `≠ “${A.name}” and “${B.name}” are different`)},
+        {label: '📁 a group of these', say: `start a new group with “${A.name}” and “${B.name}” in it`, run: () => newGroupOf(t, [a, b])},
       ];
     }
     if (drop === 'claim' && S.claim) {
@@ -1595,6 +1597,11 @@
     }
   });
   // The group box: a group picked (or typed in full) puts the motif in it; Enter on a name no group has makes a new one
+  // A new group with these motifs in it, named in a box by the drop (one undo step)
+  function newGroupOf(anchor, ids) {
+    return ask(anchor, `Name the new group (${ids.length} motifs in it)`).then((name) => name
+      && act({action: 'group_new', name, ids}, `📁 new group ${name}, with ${ids.length} in it`).then(() => true));
+  }
   function addToGroup(input, enter) {
     const name = input.value.trim(), id = input.dataset.groupadd;
     if (!name) return;
