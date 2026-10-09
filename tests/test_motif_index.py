@@ -480,7 +480,7 @@ def test_a_new_motif_gets_the_models_note_genre_and_groups_as_drafts(monkeypatch
     mi.save({'next': 10, 'claims': {}, 'groups': {'G01': {'name': 'Who rules'}}, 'entries': {**mine, 'M009': new}})
     monkeypatch.setattr(mi, 'gloss', lambda e: 'A party cuts a tax that only the wealthy pay.')
     asked = {}
-    monkeypatch.setattr(mp, 'ask_genre', lambda e, ex: asked.setdefault('genre', (e['note'], sorted(ex))) and ('Plots', 'why'))
+    monkeypatch.setattr(mp, 'ask_genre', lambda e, ex, notes=None: asked.setdefault('genre', (e['note'], sorted(ex))) and ('Plots', 'why'))
     monkeypatch.setattr(mp, 'ask_groups', lambda e, ix: ['G01'])
     assert mi.draft_missing() == 1
     e = mi.load()['entries']['M009']

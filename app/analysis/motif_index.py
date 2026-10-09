@@ -1560,7 +1560,7 @@ def draft_missing(budget: float | None = None) -> int:
         drafted = dict(entry, note=note or entry.get('note', ''))
         genre = None
         if not genre_of(entry) and len(examples) >= 2:
-            got = mp.ask_genre(drafted, examples)
+            got = mp.ask_genre(drafted, examples, facet_notes(index).get('genre'))
             genre = got and got[0]
         groups = [] if groups_of(entry) else mp.ask_groups(drafted, index)
         with locked():

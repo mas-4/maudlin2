@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-09
+- **The genre drafter is told what each genre is.** It used to see only five of the person's motifs in each genre;
+  now it also gets each genre's line from docs/motif-praxis.md (or the person's own 📝 description of it) and the
+  tests for telling close genres apart. On the person's 453 genre calls it was right 53% of the time before and 66%
+  after (Theories 38% to 72%, Plots 57% to 73%: G1 in docs/filing-experiments.md). Proposed genres are drafts, as before.
 - **The judge checks each motif's must-have element.** Each motif now has one sentence saying what a telling must
   contain to be an instance of it (drafted by Gemma 26B from its name, genre and note, again when they change), and
   Nimble 9B is asked whether the claim, as told, contains it. On the person's 96 rulings of Oct 9 (the casebook's hard

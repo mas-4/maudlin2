@@ -663,16 +663,47 @@ def new_motifs(store: dict, index: dict, deadline: float | None = None) -> int:
 
 # ---------- genres ----------
 GENRE_EXAMPLES = 5  # of each genre's motifs, shown to the model (the most claims first; never the motif asked about)
-GENRE_PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: which layer \
-of a story it is. The genres, each with some of the motifs a person put in it:
+# What each genre is and how to tell close ones apart, from docs/motif-praxis.md (G1, Oct 9: on the person's 453 genre
+# calls the drafter was right 53% from examples alone, 66% with these and the examples; the praxis's later lines took
+# Theories for Plots, 54% and 44% of Theories against 72%). A genre the person has described (the checker's 📝,
+# index['facet_notes']) is given in their words instead
+GENRE_LINES = {
+    'Archetypes': 'a kind of person tellers portray (ethos): "a [type of person] who..."; also a portrait drawn through '
+                  'one figure\'s habit',
+    'Plots': 'what happened: an event or a sequence of events (mythos): "X happens, then Y"; a plain reading of what '
+             'visibly happened stays a Plot, even told with a loaded word',
+    'Beliefs': 'a premise people reason from and take for granted (endoxa): common sense, folk wisdom, omens, '
+               'nostalgia, prophecy, everyday cynicism; it says what is so, or what a sign means, without saying why, '
+               'and names no agent',
+    'Theories': 'an account people reason to: the hidden cause, agent or mechanism behind events, which the events '
+                'themselves don\'t show (logos, the "because...")',
+    'Arguments': 'a rhetorical move people actually make (topoi): "people argue by..."; only when the motif is the move '
+                 'itself, a charge or a way of answering',
+    'Values': 'how things ought to be: "X should be..."',
+    'Exhortations': 'a call to act: "we should do X"',
+    'Perennials': 'a safe topic shared for its own sake, which strangers can talk about without taking a side (the '
+                  'weather, babies, pets, sports, birds); the one genre defined by its subject; never politics',
+}
+GENRE_TESTS = """Telling close genres apart:
+- Plot or Theory: does the motif add a cause or agent the events don't show? Then a Theory; a plain reading of what \
+happened is a Plot.
+- Belief or Theory: a Belief is the premise or feeling with no agent; a Theory supplies the agent or mechanism. A \
+theory people assume in passing reads as a Belief; one they argue for is a Theory.
+- Argument or Archetype: a charge about a pattern of behaviour is an Argument; a portrait of someone's character is \
+an Archetype.
+- Argument or Theory: an Argument is a form of reasoning any side can fill and turn around, answered with "that \
+doesn't follow" or "that's beside the point"; its note says someone argues by... so.... A Theory is a claim about how \
+the world works, belonging to one picture of it, answered with evidence; its note says X happens because Y."""
+GENRE_PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: what kind of \
+thing it is, not its topic. The genres:
 {genres}
+
+{tests}
 
 A motif with no genre yet:
 {motif}
 
-Which genre is it, judging by what kind of thing it is (a character type, a sequence of events, a hidden cause, a way \
-of arguing, something believed or valued or urged...) as the examples show, not by its topic? If none fits clearly, \
-say none.
+Which genre is it? If none fits clearly, say none.
 
 reason: a sentence
 genre: one of the genres, or none"""
@@ -687,13 +718,17 @@ def genre_examples(index: dict, leave_out: str | None = None) -> dict[str, list[
     return {g: es for g, es in out.items() if es}
 
 
-def ask_genre(e: dict, examples: dict[str, list[dict]]) -> tuple[str | None, str] | None:
-    """(the genre or None, the reason), or None if the model didn't answer"""
-    listing = '\n'.join(f'{g}:\n' + '\n'.join(f'  - {mi.described(x)[:200]}' for x in es) for g, es in examples.items())
+def ask_genre(e: dict, examples: dict[str, list[dict]], notes: dict | None = None) -> tuple[str | None, str] | None:
+    """(the genre or None, the reason), or None if the model didn't answer. Each genre is given by what it is (the
+    person's description in `notes`, else GENRE_LINES) and some of the person's motifs in it"""
+    said = {**GENRE_LINES, **{g: n for g, n in (notes or {}).items() if n}}
+    listing = '\n'.join((f'{g}: {said[g]}, for example:' if g in said else f'{g}, for example:') + '\n'
+                        + '\n'.join(f'  - {mi.described(x)[:200]}' for x in es) for g, es in examples.items())
     schema = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
                                                "genre": {"type": "string", "enum": list(examples) + ['none']}},
               "required": ["reason", "genre"]}
-    answer = llm.complete_json(GENRE_PROMPT.format(genres=listing, motif=shown(e)), schema, max_tokens=400, model=MODEL)
+    answer = llm.complete_json(GENRE_PROMPT.format(genres=listing, tests=GENRE_TESTS, motif=shown(e)), schema,
+                               max_tokens=400, model=MODEL)
     if not answer:
         return None
     return (answer['genre'] if answer.get('genre') in examples else None), answer.get('reason', '')
@@ -715,7 +750,7 @@ def genres(store: dict, index: dict, deadline: float | None = None) -> int:
             continue
         if deadline and time.time() > deadline:
             raise Spent
-        got = ask_genre(e, examples)
+        got = ask_genre(e, examples, mi.facet_notes(index).get('genre'))
         if got is None:
             continue
         g, why = got

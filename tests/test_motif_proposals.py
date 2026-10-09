@@ -420,3 +420,14 @@ def test_a_decision_model_judges_every_link_not_yet_judged_by_it(tmp_path, monke
     assert store['old']['judge'] == {'p': 0.1, 'score': 1.0, 'reason': '', 'model': 'nimble:9b'}
     assert mp.judge(store, mi.load()) == 0
     assert mp._judge_value(store['old']['judge']) < 0 < mp._judge_value({'p': 0.8})
+
+
+def test_the_genre_drafter_is_told_what_each_genre_is(monkeypatch):
+    """Each genre by its praxis line and its examples; a genre the person described (📝) in their words (G1)"""
+    seen = {}
+    monkeypatch.setattr(mp.llm, 'complete_json', lambda prompt, schema, **kw: seen.setdefault('p', prompt) and {'genre': 'Plots', 'reason': 'r'})
+    ex = {'Plots': [{'name': 'Graft', 'claims': []}], 'Beliefs': [{'name': 'End times', 'claims': []}]}
+    got = mp.ask_genre({'name': 'X', 'claims': []}, ex, {'Beliefs': 'what people take for granted, by the person'})
+    assert got == ('Plots', 'r')
+    assert 'Plots: what happened' in seen['p'] and 'Beliefs: what people take for granted, by the person' in seen['p']
+    assert 'Argument or Theory' in seen['p']
