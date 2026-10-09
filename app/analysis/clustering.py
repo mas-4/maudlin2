@@ -131,8 +131,11 @@ def _story_cache(path: str = None):
 # Embeddings on the CPU (Oct 8): on the GPU, each embedding model loaded beside the filing model pushed it out of the
 # card's memory, and it was loaded again a moment later (in six hours that day, gemma4:26b 242 times, mxbai 236 and
 # nomic 130: about nine minutes an hour of loading). On the 24 cores, mxbai embeds 27 texts a second and nomic 61:
-# a run's new texts in well under a minute (most are cached anyway).
+# a run's new texts in well under a minute (most are cached anyway). But not a bulk job: on Oct 9 the 4 AM narrative
+# report's 101,520 posts would have taken an hour on the CPU, and the run was stopped at its 45-minute limit. A call
+# with BULK or more texts to embed uses the GPU (one load of the embedder, then the filing model loads again once).
 EMBED_OPTIONS = {'num_gpu': 0}
+BULK = 2000
 
 
 def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
@@ -151,10 +154,11 @@ def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
             rows = con.execute(f"SELECT key, v FROM vec WHERE key IN ({','.join('?' * len(chunk))})", chunk).fetchall()
             found.update({k: np.frombuffer(v, dtype=np.float32) for k, v in rows})
         missing = [i for i, k in enumerate(keys) if k not in found]
+        options = EMBED_OPTIONS if len(missing) < BULK else {}
         for start in range(0, len(missing), 256):
             batch = missing[start:start + 256]
             r = rq.post(f'{OLLAMA_URL}/api/embed', json={'model': model, 'input': [texts[i] for i in batch],
-                                                          'options': EMBED_OPTIONS}, timeout=600)
+                                                          'options': options}, timeout=600)
             r.raise_for_status()
             for i, v in zip(batch, r.json()['embeddings']):
                 v = np.asarray(v, dtype=np.float32)

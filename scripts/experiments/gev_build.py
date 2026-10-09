@@ -21,11 +21,11 @@ from safetensors import safe_open
 from safetensors.torch import save_file
 
 SRC = glob.glob(os.path.expanduser('~/.cache/huggingface/hub/models--autotrust--GEV-26B-Decide/snapshots/*'))[0]
-WORK = '/home/mas/maudlin-data/models'
+WORK = '/home/mas/ml/models'  # outside the data folder: its nightly backup would carry them (Oct 9: 17 GB)
 MERGED = os.path.join(WORK, 'gev-26b-merged')
 GGUF = os.path.join(WORK, 'gev-26b-decide-bf16.gguf')
 Q4 = os.path.join(WORK, 'gev-26b-decide-q4_k_m.gguf')
-LLAMA = '/home/mas/maudlin-data/llama.cpp'
+LLAMA = '/home/mas/ml/llama.cpp'
 NAME = 'gev-26b-decide'
 TARGET = re.compile(r'model\.language_model\.layers\.\d+\.(self_attn\.(q|k|v|o)_proj|mlp\.(gate|up|down)_proj)\.weight$')
 SHARD_BYTES = 2 * 1024 ** 3
