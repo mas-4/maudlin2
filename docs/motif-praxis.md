@@ -22,7 +22,8 @@ and a true one can share it.
    on one telling. Say that the exception is used.
 5. **Sparing.** Lead with existing motifs; at most one or two new ones per claim.
 6. **Shapes, not spread.** Fact-check mechanics (fake branding, deepfakes, clipped video, wrong counts, misleading
-   headlines) are not motifs. Breaking-news framing alone doesn't earn one.
+   headlines, an old quote recirculated as new) are not motifs. Breaking-news framing alone doesn't earn one. Such a
+   trick becomes a motif only when tellers themselves accuse someone of it; a fact-checker catching it is not a telling.
 7. **File the telling, not the why.** File what the tellers say, never a reading of why the story is circulating
    (Oct 9). A straight news telling ("Trump has a call scheduled with Putin") gets no motif even when its obvious subtext
    is why it travels, unless a teller voices that subtext. Don't put a critic's verdict on a teller who didn't make it:

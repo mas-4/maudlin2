@@ -236,6 +236,15 @@ boomers "know who should make the sacrifice. And the answer is their children an
   speaks"). Excusing Hitler (Levin: "He's excusing Hitler") is not You do not, in fact, gotta hand it to them: one
   shifts the blame for a villain's crimes, the other admires a villain's skill; related, not the same.
 
+- **Groups and rests-on, Oct 9.** Ten new groups (Pocketbook, Speech and censorship, Surveillance and privacy, Protest,
+  Crime and punishment, Faith and the sacred, Good news, Peril, Shadow of the Reich, Comebacks) and some thirty
+  rests-on links. Crush dissent is a crowd or movement broken up; Political retaliation is particular people punished
+  for what they did (the person's line): 440 revoked press passes and journalists harassed at a protest came out of
+  retaliation. Hackers is the figure and Data breach rests on it, not the reverse: hackers also sabotage and attack.
+- **Old news as breaking was deleted.** Snopes caught Schumer's 2022 quote passed off as new; that's a fact-check's
+  mechanics, not a telling (praxis rule 6, which it slipped past). It would be a motif only if tellers accused
+  someone of recycling old news.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
