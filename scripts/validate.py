@@ -513,8 +513,8 @@ def check_queue() -> list[dict]:
                                         abs((x['fit'] if x['fit'] is not None else 1.5) - 0.5)))
 
 
-SECOND_LOOK = 25  # confirmed filings shown for a second look, the least likely first
-SECOND_LINE = 0.5  # ...those under this fit counted on the tab
+SECOND_LINE = 0.5  # confirmed filings under this fit get a second look, the least likely first (the tab's count too:
+# on Oct 9 the list showed the 25 least likely whatever their fit, the tab counted those under the line, 3 against 25)
 
 
 def second_look() -> list[dict]:
@@ -525,8 +525,8 @@ def second_look() -> list[dict]:
     rows = [{'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''), 'fit': c['fit']}
             for e in mi.live(mi.load()) if e.get('done') for c in e['claims']
             if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
-            and (mi.key(c['claim']), e['id']) not in hand]
-    rows = sorted(rows, key=lambda r: r['fit'])[:SECOND_LOOK]
+            and c['fit'] < SECOND_LINE and (mi.key(c['claim']), e['id']) not in hand]
+    rows = sorted(rows, key=lambda r: r['fit'])
     from app.analysis import filing_confidence as fc
     index = mi.load()
     for r in rows:

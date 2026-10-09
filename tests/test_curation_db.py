@@ -63,10 +63,10 @@ def test_a_second_look_keeps_or_takes_out_a_confirmed_filing(tmp_path, monkeypat
     setup(tmp_path, monkeypatch)
     index = mi.load()
     for c in index['entries']['M001']['claims']:
-        c.update(checked='yes', fit=0.2 if c['claim'] == 'a' else 0.9)
+        c.update(checked='yes', fit=0.2 if c['claim'] == 'a' else 0.4 if c['claim'] == 'b' else 0.9)
     index['entries']['M001']['done'] = [mi.key('a'), mi.key('b')]
     mi.save(index)
-    assert [r['claim'] for r in validate.second_look()] == ['a', 'b']  # the least likely first
+    assert [r['claim'] for r in validate.second_look()] == ['a', 'b']  # the least likely first, only those under 50%
     mi.check('a', 'M001', 'yes')  # still fits: off the list
     assert [r['claim'] for r in validate.second_look()] == ['b']
     mi.check('b', 'M001', 'no')  # taken out
