@@ -136,14 +136,25 @@ def motif(motif_id: str) -> str:
     """One motif in full: name, note, genre, groups (by name), done or not, what it rests on and what rests on it, related
     motifs, the motifs it shares claims with (co-occurrence, not relatedness), and every claim with its source and
     whether a person checked it."""
+    out = _motif(mi.load(), motif_id)
+    return json.dumps(out, ensure_ascii=False) if out else 'no such motif'
+
+
+@server.tool()
+def motifs(motif_ids: list[str]) -> str:
+    """Several motifs in full at once, as `motif` gives each (up to 30)."""
     index = mi.load()
+    return json.dumps([_motif(index, i) or {'id': i, 'error': 'no such motif'} for i in motif_ids[:30]], ensure_ascii=False)
+
+
+def _motif(index: dict, motif_id: str) -> dict | None:
     try:
         eid = mi.resolve(index, motif_id.strip().upper())
     except Exception:
-        return 'no such motif'
+        return None
     e = index['entries'].get(eid)
     if not e:
-        return 'no such motif'
+        return None
     name = lambda i: f"{index['entries'][i]['name']} ({i})" if i in index['entries'] else i  # noqa: E731
     live = mi.live(index)
     shared = {}
@@ -153,7 +164,7 @@ def motif(motif_id: str) -> str:
             n = sum(1 for c in o['claims'] if mi.key(c['claim']) in keys)
             if n:
                 shared[name(o['id'])] = n
-    return json.dumps({
+    return {
         **_brief(e, index), 'note': e.get('note') or '',
         'merged_into': e.get('merged_into'), 'first_seen': e.get('first_seen'),
         'rests on': [name(p) for p in mi.parents_of(e)],
@@ -161,7 +172,21 @@ def motif(motif_id: str) -> str:
         'related': [name(x) for p in index.get('related', []) if eid in p for x in p if x != eid],
         'shares claims with': dict(sorted(shared.items(), key=lambda kv: -kv[1])),
         'claims': [{'claim': c['claim'], 'source': c.get('source'), 'checked': c.get('checked'), 'date': c.get('date')}
-                   for c in e['claims']]}, ensure_ascii=False)
+                   for c in e['claims']]}
+
+
+@server.tool()
+def without_genre(limit: int = 10) -> str:
+    """The person's motifs with no genre yet, the most claims first, each with its note, what it rests on, and its first
+    claims: the next to sort. Seeds and model drafts nobody has shaped are left out."""
+    index = mi.load()
+    name = lambda i: f"{index['entries'][i]['name']} ({i})" if i in index['entries'] else i  # noqa: E731
+    rows = [e for e in mi.live(index) if not mi.genre_of(e) and mi.public(e)]
+    rows.sort(key=lambda e: -len(e['claims']))
+    return json.dumps({'left': len(rows), 'motifs': [
+        {'id': e['id'], 'name': e['name'], 'claims': len(e['claims']), 'note': e.get('note') or '',
+         'rests on': [name(p) for p in mi.parents_of(e)], 'first claims': [c['claim'] for c in e['claims'][:3]]}
+        for e in rows[:max(1, min(limit, 50))]]}, ensure_ascii=False)
 
 
 @server.tool()
@@ -237,6 +262,13 @@ def claim_detail(claim: str) -> str:
 
 
 @server.tool()
+def claim_details(claims: list[str]) -> str:
+    """Where several claims came from, as `claim_detail` gives each (up to 15), in one call."""
+    V = _validate()
+    return json.dumps([V.claim_detail(c) for c in claims[:15]], ensure_ascii=False, default=str)
+
+
+@server.tool()
 def motif_overview() -> str:
     """The index in numbers, and its groups and genres with their sizes."""
     index = mi.load()
@@ -306,14 +338,21 @@ def checker_action(action: dict) -> str:
       its motifs are; "" clears)
       also {claim, source, target} (file it there too) · move {claim, source, target} · unfile {claim, id}
       check {claim, id, answer: yes|no|unsure} · no_motif {claim} · new_with {name, claims: [{claim, source?}]}
-      batch {steps: [actions]} (one undo step)
-    Motifs by id (M123), groups by id (G01; motif_overview and motif have names). Returns the checker's answer."""
+      batch {steps: [actions]} (one undo step; a step can name a motif an earlier step made as "$1", "$2"…, e.g.
+      new_with then group_member {id: "$1"} and check {id: "$1"})
+    Motifs by id (M123), groups by id (G01; motif_overview and motif have names). Returns the checker's answer, with
+    the ids of any motifs the change made or removed."""
     if not isinstance(action, dict) or not action.get('action'):
         return 'an action is a dict with "action"'
+    had = {e['id']: e['name'] for e in mi.live(mi.load())}
     status, text = _post('/workbench', {**action, 'by': 'claude'})
+    now = {e['id']: e['name'] for e in mi.live(mi.load())}
+    made = [f'{now[i]} ({i})' for i in sorted(set(now) - set(had))]
+    gone = [f'{had[i]} ({i})' for i in sorted(set(had) - set(now))]
+    said = (f'; made {", ".join(made)}' if made else '') + (f'; removed {", ".join(gone)}' if gone else '')
     if status == 200:
-        return f'done: {action["action"]} (logged and undoable, by Claude)'
-    return f'refused ({status}): {text}'
+        return f'done: {action["action"]} (logged and undoable, by Claude){said}'
+    return f'refused ({status}): {text}{said}'
 
 
 _V = None
