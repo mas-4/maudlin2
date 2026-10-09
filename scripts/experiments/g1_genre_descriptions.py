@@ -4,7 +4,9 @@ it, with the Plot/Theory, Belief/Theory and Argument/Archetype tests; it says to
 settle, measured against the person's own genre calls. Here every motif the person gave a genre is asked again (left
 out of the examples), four ways: 'examples' (today), 'examples+descriptions', 'descriptions' (no examples), and
 'examples+descriptions+topoi' (with the praxis's later Argument/Theory test), and 'refined' (the praxis's lines as
-refined after this experiment's own split report, with Perennials, a genre added Oct 9). Note: the person moved some
+refined after this experiment's own split report, with Perennials, a genre added Oct 9), and 'refined2' (refined, with
+the Plot/Theory line drawn again after 'refined' overshot toward Plot: observed situations and established exposés
+are Plots; explained situations and hints pieced together are Theories). Note: the person moved some
 genres after that report, so 'refined' is scored partly on calls made in view of it. The
 descriptions name no motif of the index. Measured: share right, by genre, and on the person's Oct 9 calls (the
 Belief/Theory sorting). Resumable; caches in EXP."""
@@ -23,7 +25,7 @@ from app.analysis import motif_index as mi  # noqa: E402
 from app.analysis import motif_proposals as mp  # noqa: E402
 
 OUT = os.path.join(harness.EXP, 'g1_genre_descriptions.json')
-WAYS = ['examples', 'examples+descriptions', 'descriptions', 'examples+descriptions+topoi', 'refined']
+WAYS = ['examples', 'examples+descriptions', 'descriptions', 'examples+descriptions+topoi', 'refined', 'refined2']
 
 DESCRIPTIONS = {
     'Archetypes': 'a kind of person tellers portray (ethos): "a [type of person] who..."; also a portrait drawn through '
@@ -78,6 +80,24 @@ happens and why)?
 - Argument or Plot: a teller offering proof is an Argument; a recurring situation in which the truth is contested or \
 comes out is a Plot.
 - Archetype or Plot: a motif described around a figure is an Archetype; around an incident, a Plot."""
+# 'refined' overshot toward Plot (Theories 73% -> 51%): it took explained situations and alleged revelations for Plots
+REFINED2 = dict(REFINED, **{
+    'Plots': 'what happened or is happening (mythos): an event, a sequence, a decline, or a standing situation people '
+             'observe (a price, a shortage); an established exposé, where a document, an admission or an investigation '
+             'brings hidden wrongdoing out, is a Plot; so is a plain reading of what visibly happened, even told with '
+             'a loaded word',
+    'Theories': 'an account people argue about how the world or society works (logos, the "because..."): a hidden cause, '
+                'agent or mechanism the teller infers, or an explanation of what drives an ongoing situation (why the '
+                'country is split, how insiders protect each other); tellers piecing hints together to claim a hidden '
+                'hand is a Theory, however much the telling speaks of revealing; naming an agent is a sign, not the '
+                'definition',
+})
+REFINED2_TESTS = REFINED_TESTS.replace("""- Plot or Theory: is the hidden hand revealed in the telling (an exposé: a Plot) or inferred by the teller (an \
+alleged hidden cause or agent: a Theory)? Backers named openly hide nothing: a Plot.""", """- Plot or Theory: is the hidden hand established (a document came out, someone admitted it, an investigation found \
+it: a Plot) or pieced together by the tellers from hints (a Theory)? Would it still be there without the tellers' \
+inference? Backers named openly hide nothing: a Plot. A standing situation people observe (the price, the shortage) \
+is a Plot; an account of what drives one is a Theory: is the motif the condition itself, or an explanation of it?""")
+assert REFINED2_TESTS != REFINED_TESTS
 TOPOI = """- Argument or Theory: an Argument is a form of reasoning any side can fill and turn \
 around, answered with "that doesn't follow" or "that's beside the point"; its note says someone argues by... so.... A \
 Theory is a claim about how the world works, belonging to one picture of it, answered with evidence; its note says X \
@@ -100,14 +120,14 @@ def listing(way: str, examples: dict) -> tuple[str, str]:
     if way == 'examples':
         return '', ''
     rows = []
-    said = REFINED if way == 'refined' else DESCRIPTIONS
+    said = {'refined': REFINED, 'refined2': REFINED2}.get(way, DESCRIPTIONS)
     for g in DESCRIPTIONS:
         if g not in examples and way != 'descriptions':
             continue
         rows.append(f'{g}: {said[g]}' + ('' if way == 'descriptions' else ', for example:\n'
                     + '\n'.join(f'  - {mi.described(x)[:200]}' for x in examples.get(g, []))))
-    if way == 'refined':
-        return '\n'.join(rows), '\n' + REFINED_TESTS + '\n'
+    if way.startswith('refined'):
+        return '\n'.join(rows), '\n' + (REFINED2_TESTS if way == 'refined2' else REFINED_TESTS) + '\n'
     return '\n'.join(rows), '\n' + TESTS + ('\n' + TOPOI if way.endswith('topoi') else '') + '\n'
 
 
