@@ -406,3 +406,14 @@
         gap: 0.4em;
     }
 }
+
+/* while the first layout is worked out, out of sight */
+.mm-wait {
+    position: absolute;
+    inset: 45% 0 auto;
+    margin: 0;
+    text-align: center;
+    font: 700 1.1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    pointer-events: none;
+}

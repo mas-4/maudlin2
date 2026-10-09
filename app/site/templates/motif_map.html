@@ -38,6 +38,7 @@
     <div class="mm-wrap">
         <div class="mm-map" id="mm-map">
             <svg id="mm-svg" role="img" aria-label="A map of the motif index"></svg>
+            <p class="mm-wait" id="mm-wait" hidden>🕸️ laying out the map…</p>
             <div class="mm-zoom">
                 <button type="button" data-zoom="1.4" title="Zoom in">＋</button>
                 <button type="button" data-zoom="0.7" title="Zoom out">－</button>
@@ -130,7 +131,8 @@
                 .on('drag', (ev, n) => { n.fx = ev.x; n.fy = ev.y; })
                 .on('end', (ev, n) => { if (!ev.active) sim.alphaTarget(0); n.fx = null; n.fy = null; }));
             svg.on('click', () => pick(null));
-            sim = d3.forceSimulation(nodes)
+            const warm = nodes.every((n) => n.x != null);  // redrawn (a group switched off): settle from where they were
+            sim = d3.forceSimulation(nodes).stop().alphaDecay(0.04)  // about 170 steps, not 300: the first layout is waited for
                 .force('link', d3.forceLink(links).id((n) => n.id).distance((l) => l.kind === 'kind' ? 90 : l.kind === 'related' ? 140 : 190)
                     .strength((l) => (l.kind === 'shared' ? 0.08 : 0.5) * (crossing(l) ? M.CROSSING : 1)))
                 // room for the names: dots push each other well apart, and a name's width keeps its neighbors off it
@@ -139,18 +141,38 @@
                 .force('x', d3.forceX(W / 2).strength(0.025)).force('y', d3.forceY(H / 2).strength(0.04))
                 // groups apart: each drawn to a home of its own, non-members kept off its members
                 .force('group', M.groupForce(nodes, groups.map((g) => g.id), shownGroups, (n) => r(n.m), W, H, 40))
-                .on('tick', () => {
-                    // each group a blob hugging its members: an outline in its color under a pale fill
-                    M.drawBlobs(hull, members, (n) => r(n.m) + 16, [{cls: 'mm-blob-edge', grow: 3}, {cls: 'mm-blob-fill', grow: 0}]);
-                    link.each(function (l) {
-                        const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1;
-                        const cut = l.kind === 'kind' ? r(l.target.m) + 3 : 0;
-                        d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
-                    });
-                    node.attr('transform', (n) => `translate(${n.x},${n.y})`);
-                    queueLabels();
-                })
-                .on('end', () => { if (!fitted) { fitted = true; fit(); } });
+                .on('tick', paint);
+            function paint() {
+                // each group a blob hugging its members: an outline in its color under a pale fill
+                M.drawBlobs(hull, members, (n) => r(n.m) + 16, [{cls: 'mm-blob-edge', grow: 3}, {cls: 'mm-blob-fill', grow: 0}]);
+                link.each(function (l) {
+                    const dx = l.target.x - l.source.x, dy = l.target.y - l.source.y, d = Math.hypot(dx, dy) || 1;
+                    const cut = l.kind === 'kind' ? r(l.target.m) + 3 : 0;
+                    d3.select(this).attr('x1', l.source.x).attr('y1', l.source.y).attr('x2', l.target.x - dx / d * cut).attr('y2', l.target.y - dy / d * cut);
+                });
+                node.attr('transform', (n) => `translate(${n.x},${n.y})`);
+                queueLabels();
+            }
+            if (warm) { sim.alpha(0.3).restart(); return finish(); }
+            // The first layout is worked out out of sight, a few milliseconds at a time so the page stays live, and shown
+            // once, fitted: drawn live, hundreds of dots flew about for seconds and the view then jumped (on a phone above
+            // all, Oct 9: "bounces around and is incomprehensible")
+            root.style('opacity', 0);
+            $('#mm-wait').hidden = false;
+            const settle = () => {
+                const t0 = performance.now();
+                while (sim.alpha() > sim.alphaMin() && performance.now() - t0 < 25) sim.tick();
+                if (sim.alpha() > sim.alphaMin()) return setTimeout(settle, 0);  // not a frame: those wait while the tab is hidden
+                paint();
+                if (!fitted) { fitted = true; fit(null, true); }
+                $('#mm-wait').hidden = true;
+                root.transition().duration(250).style('opacity', 1);
+                placeLabels();
+            };
+            setTimeout(settle, 0);
+            finish();
+        }
+        function finish() {
             mark();
             markGenre();
         }
@@ -171,7 +193,7 @@
             hulls.sort((a, b) => b.size - a.size).forEach(({el}) => {
                 el.classList.remove('mm-lbl-off');
                 const q = el.getBoundingClientRect();
-                const b = {x0: q.left - at.left - 4, x1: q.right - at.left + 4, y0: q.top - at.top - 2, y1: q.bottom - at.top + 2};
+                const b = {x0: q.left - at.left - 10, x1: q.right - at.left + 10, y0: q.top - at.top - 7, y1: q.bottom - at.top + 7};  // room around: crowded group names read as one garble on a phone
                 const free = q.width && !placed.some((p) => b.x0 < p.x1 && b.x1 > p.x0 && b.y0 < p.y1 && b.y1 > p.y0);
                 el.classList.toggle('mm-lbl-off', !free);
                 if (free) placed.push(b);
@@ -199,7 +221,7 @@
         // the width of the map left of the card, where it floats over the map (wide screens)
         const open = () => { const card = $('#mm-card'), W = $('#mm-map').clientWidth;
             return getComputedStyle(card).position === 'absolute' ? W - card.offsetWidth - 40 : W; };
-        function fit(ns) {
+        function fit(ns, now) {  // now: at once, without the glide (the first view)
             ns = ns || nodes;
             if (!ns.length) return;
             const box = $('#mm-map'), W = box.clientWidth, H = box.clientHeight;  // the whole window: the card is small until a motif is picked
@@ -207,7 +229,8 @@
             const q = (k, p) => d3.quantile(ns, p, (n) => n[k]), edge = ns.length > 20 ? 0.04 : 0;
             const x0 = q('x', edge) - 80, x1 = q('x', 1 - edge) + 80, y0 = q('y', edge) - 40, y1 = q('y', 1 - edge) + 40;
             const k = Math.min(2, 0.95 * Math.min(W / (x1 - x0), H / (y1 - y0)));
-            d3.select('#mm-svg').transition().duration(600).call(zoomer.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
+            const to = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k);
+            now ? d3.select('#mm-svg').call(zoomer.transform, to) : d3.select('#mm-svg').transition().duration(600).call(zoomer.transform, to);
         }
 
         function neighbors(id) {

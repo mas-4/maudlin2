@@ -25,23 +25,33 @@ window.MotifMap = (function () {
     // own center and pushing groups apart lost to the links (every pair of 8 groups still overlapped, Oct 7). A motif
     // not in a group is kept `room` off that group's members, so it never sits inside the group's blob.
     // groups: the shown groups' ids; groupsOf(n): a node's groups among them; r(n): a dot's radius
+    // Each step only looks at the motifs inside a group's reach (its members' box, widened by the largest gap): checking
+    // every motif against every member of every group took 10 ms a step with 453 motifs, seconds for a layout (Oct 9)
     function groupForce(nodes, groups, groupsOf, r, W, H, room = 30) {
+        const homes = new Map(), ring = 0.42 * Math.min(W, H);
+        groups.forEach((g, k) => {
+            const t = 2 * Math.PI * k / Math.max(1, groups.length) - Math.PI / 2;
+            homes.set(g, [W / 2 + 1.5 * ring * Math.cos(t), H / 2 + ring * Math.sin(t)]);
+        });
+        const mine = new Map(nodes.map((n) => [n, new Set(groupsOf(n))]));
+        const members = groups.map((g) => [g, nodes.filter((n) => mine.get(n).has(g))]).filter(([, ms]) => ms.length);
         return (alpha) => {
-            const homes = new Map(), ring = 0.42 * Math.min(W, H);
-            groups.forEach((g, k) => {
-                const t = 2 * Math.PI * k / Math.max(1, groups.length) - Math.PI / 2;
-                homes.set(g, [W / 2 + 1.5 * ring * Math.cos(t), H / 2 + ring * Math.sin(t)]);
-            });
-            const members = new Map(groups.map((g) => [g, nodes.filter((n) => groupsOf(n).includes(g))]));
-            members.forEach((ms, g) => ms.length && nodes.forEach((n) => {
-                if (groupsOf(n).includes(g)) return;
-                ms.forEach((m) => {
-                    const dx = n.x - m.x, dy = n.y - m.y, d = Math.hypot(dx, dy) || 1, gap = r(m) + r(n) + room;
-                    if (d < gap) { const f = (gap - d) / d * 0.5 * alpha; n.vx += dx * f; n.vy += dy * f; }
+            const rad = new Map(nodes.map((n) => [n, r(n)]));  // read each step: the dot-size slider changes them
+            const most = d3.max(nodes, (n) => rad.get(n)) || 0;
+            members.forEach(([g, ms]) => {
+                const reach = d3.max(ms, (m) => rad.get(m)) + most + room;
+                const x0 = d3.min(ms, (m) => m.x) - reach, x1 = d3.max(ms, (m) => m.x) + reach;
+                const y0 = d3.min(ms, (m) => m.y) - reach, y1 = d3.max(ms, (m) => m.y) + reach;
+                nodes.forEach((n) => {
+                    if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1 || mine.get(n).has(g)) return;
+                    ms.forEach((m) => {
+                        const dx = n.x - m.x, dy = n.y - m.y, d = Math.hypot(dx, dy) || 1, gap = rad.get(m) + rad.get(n) + room;
+                        if (d < gap) { const f = (gap - d) / d * 0.5 * alpha; n.vx += dx * f; n.vy += dy * f; }
+                    });
                 });
-            }));
+            });
             nodes.forEach((n) => {
-                const hs = groupsOf(n).map((g) => homes.get(g)).filter(Boolean);
+                const hs = [...mine.get(n)].map((g) => homes.get(g)).filter(Boolean);
                 if (!hs.length) return;
                 const tx = d3.mean(hs, (h) => h[0]), ty = d3.mean(hs, (h) => h[1]);
                 n.vx += (tx - n.x) * GROUP_PULL * alpha; n.vy += (ty - n.y) * GROUP_PULL * alpha;
