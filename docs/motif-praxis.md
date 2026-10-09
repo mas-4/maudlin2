@@ -96,6 +96,11 @@ Subjugation of women, Second-class citizens). The test: is the motif the conditi
 drives it? The premise behind a decline (Economic nostalgia, They don't make 'em like they used
 to) is a Belief.
 
+**A Theory's note says whose reading it is.** If the note of a Theory reads like a plain condition ("the country is
+split", "women are kept in their place"), a reader, model or person, will rightly call it a Plot. Fix the note, not
+the genre: put the teller's reading in it ("said to", "read as"), as the claims under it do. (Oct 9: Polarization,
+Corruption, Good old boys, Throw the bums out, Enthusiasm gap, Subjugation of women, Second-class citizens.)
+
 ### Belief or Theory
 
 A **Belief** is what people take for granted and reason from: common sense, folk wisdom, omens, nostalgia, prophecy,

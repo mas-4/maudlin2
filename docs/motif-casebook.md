@@ -221,6 +221,13 @@ boomers "know who should make the sacrifice. And the answer is their children an
   Filed on the Huckabee aide claim because posters say it outright ("an Israeli plant inside Huckabee's
   administration", "a literal traitor"); the exposé itself stays Betrayal by trusted figure and Institutional cover-up.
 
+- **Theory notes rewritten, not re-genred (Oct 9).** The genre drafter called eight Theories Plots, and on several it
+  was reading their notes right: they described a condition ("The country is split into hostile camps…"). The person:
+  "we might just need to actually reformulate some notes." Seven notes now carry the tellers' reading, as their claims
+  do ("algorithmic polarization", "Paxton is a crook", "part of a wealthy 'good old boys club'"). Good old boys keeps
+  that the club is open: the inference is reading a pardon or a cover-up as the club at work. The Bolsonaro "highly
+  polarized race" report came out of Polarization: plain news.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
