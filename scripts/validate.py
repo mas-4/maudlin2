@@ -668,8 +668,12 @@ def workbench_action(data: dict):
         steps = data.get('steps')
         if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) or x.get('action') == 'batch' for x in steps):
             raise ValueError('a batch is a list of actions')
-        for step in steps:
-            workbench_action(step)
+        for n, step in enumerate(steps):
+            try:
+                workbench_action(step)
+            except (ValueError, KeyError) as e:
+                e.done = steps[:n]  # the steps that ran stay done: the caller logs them
+                raise
     elif act == 'not_same':
         live = {e['id'] for e in mi.live(mi.load())}
         if data.get('a') not in live or data.get('b') not in live or data['a'] == data['b']:
@@ -944,7 +948,9 @@ class Handler(BaseHTTPRequestHandler):
                               {'action': f"{len(data['steps'])} changes: {data['steps'][0].get('action')}…"}, before, by,
                               [x['proposal'] for x in steps if isinstance(x, dict) and x.get('proposal')])
             except (ValueError, KeyError) as e:
-                self.remember({'action': 'part of a change that failed'}, {}, by)  # a batch stopped midway: still undoable
+                if getattr(e, 'done', None):  # a batch stopped midway: what it did is logged, and still undoable
+                    log_curation('motif workbench', {'action': 'batch', 'steps': e.done}, before, by)
+                self.remember({'action': 'part of a change that failed'}, {}, by)
                 return self.send_json_error(400, str(e))
             return self.send_json(workbench_state())
         if self.path == '/motif-board':

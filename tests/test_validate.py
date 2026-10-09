@@ -241,6 +241,12 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
                 {'action': 'not_same', 'a': 'M001', 'b': 'M001'}, {'action': 'new_with', 'name': '', 'claims': []}):
         with pytest.raises(ValueError):
             validate.workbench_action(bad)
+    # A batch that fails midway says which steps ran, so they're logged (Oct 9: a 'no motif' that emptied a motif ran,
+    # the delete after it failed, and the verdict never reached the log)
+    first = {'action': 'facet', 'id': 'M002', 'facet': 'genre', 'value': 'Plots'}
+    with pytest.raises(ValueError) as failed:
+        validate.workbench_action({'action': 'batch', 'steps': [first, {'action': 'not_same', 'a': 'M001', 'b': 'M001'}]})
+    assert failed.value.done == [first] and mi.genre_of(mi.load()['entries']['M002']) == 'Plots'
 
 
 def test_a_claim_told_on_the_shows_says_which_shows_and_episodes(monkeypatch):
