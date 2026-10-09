@@ -299,6 +299,15 @@ Today's picking prompt, each motif shown with its three claims nearest the claim
 same 145 confirmed claims and shortlists as E0.4: latest, 161 of the 239 motifs of theirs in the shortlist found (67%),
 25% of picks not theirs; nearest, 158 (66%), 24%. Within the noise; the prompt stays. `scripts/experiments/e8_picking_nearest.py`.
 
+### P1 Nimble on proposals (Oct 9) — in production
+
+The 💡 related and rests-on proposals: Gemma 26B scored each 0 to 10 (how likely the person accepts it), and best fit
+weighs that with how alike the two motifs are to give each its chance of approval. Nimble 9B answered the same question
+as a yes or no on the 301 link proposals the person had decided (150 approved). Alone: Gemma 0.681 AUC, Nimble 0.657.
+In best fit (five folds): no judge 0.751, Gemma 0.754, **Nimble 0.783**, both 0.768; over 20 fold splits, Nimble
+0.772 against Gemma 0.755, ahead in all 20. Nimble judges alone a little worse but adds what the other facts lack.
+1.6 s a proposal. `scripts/experiments/p1_nimble_proposals.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own

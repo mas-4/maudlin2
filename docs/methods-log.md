@@ -18,6 +18,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   claim with every motif's name and note and with its nearest claim (E11: of twelve embedders tried, this pair helped
   most). The learned shortlist, retrained with them on the person's 470 confirmed claims, puts their motif in the top
   12 for 85.7% held out (83.9% before; the plain weights 80%). The confidence model weighs them too.
+- **Nimble judges the link proposals too.** The 💡 related and rests-on proposals' chance of approval (best fit) now
+  weighs Nimble's yes or no instead of Gemma's 0-10 score: on the person's 301 decided proposals it ranked approvals
+  above rejections better (AUC 0.772 against 0.755, in 20 of 20 test splits). The judge's reason no longer shows.
+- **Claims without their teller.** The Focus Group and show readers now write the claim itself ("Defunding the police
+  isn't a federal issue"), not "The voter believes..." (it had named a guest's analysis a voter's). Who said it stays
+  with the quote.
 
 ## 2026-10-08
 - **"Kind of" is now "rests on".** The one link that ranks motifs, until now "X is a kind of Y", now reads "X rests on
