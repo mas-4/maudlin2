@@ -209,6 +209,18 @@ boomers "know who should make the sacrifice. And the answer is their children an
   they meant on the day when they were created"). Method: read the source and ask what shape the telling has before
   asking which motif it fits.
 
+- **One lament, three motifs (Oct 9).** "The shift in immigration patterns has led to a lack of cohesive American
+  identity" (Jesse Kelly: feeling like a stranger) first drew Stranger in a strange land, but that is the newcomer's
+  story; this is the reverse. The person's cases showed the shape isn't only about immigrants: a 1960s warning to
+  family not to visit a town now "full of" newcomers, "this place has gone to hell", "don't bring your politics" said of
+  northerners moving south. Three motifs, each resting on the last: I don't recognize my country (M711, home changed
+  around those who stayed, from any cause), There goes the neighborhood (M712, newcomers spoiled it), They bring what
+  they fled (M713, transplants carry the ways that ruined the place they left; related to Hellhole). Immigration as
+  infiltration rests on There goes the neighborhood: the same spoiling, planned. All Beliefs, laments people reason from.
+- **Dual loyalty (M710) is a trope, a Theory.** A citizen with ties abroad is said to serve that country over their own.
+  Filed on the Huckabee aide claim because posters say it outright ("an Israeli plant inside Huckabee's
+  administration", "a literal traitor"); the exposé itself stays Betrayal by trusted figure and Institutional cover-up.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
