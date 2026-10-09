@@ -218,6 +218,33 @@ Nimble, which fits the card whole, does Gemma 26B's yes-or-no as well; a jury ad
 failed to load at its default context (retried at 8k), Clef 27B and GEV-26B-Decide (Gemma 26B with a decision head,
 built for Ollama by `gev_build.py`) to come. `scripts/experiments/j1_jury.py`.
 
+### E11 Every embedder (Oct 9, overnight) — Qwen3-Embedding 8B with Snowflake Arctic 2: top-12 82.3% -> 85.2%
+
+Twelve embedding models from Ollama's library (and EmbeddingGemma 2 from Hugging Face), each giving the shortlist
+two signals as mxbai's do (the claim against the motif's name and note, and against its nearest claim, held out),
+each with its own query and document prefixes. Top-12 of the person's motifs alone, and added to every signal we have
+(the harness: today 82.3%, 76 hard misses outside the top 40):
+
+| Embedder | Alone, top-12 | Added: top-12 | top-8 | top-40 | misses |
+|---|---|---|---|---|---|
+| mxbai-embed-large (today's) | 65.4% | 82.2% | 78.2% | 91.1% | 79 |
+| nomic-embed-text (today's) | 48.8% | 82.6% | 77.8% | 91.6% | 75 |
+| nomic-embed-text-v2-moe | 60.7% | 82.4% | 78.1% | 91.8% | 73 |
+| embeddinggemma 300m | **70.8%** | 82.5% | 79.5% | 92.0% | 71 |
+| embeddinggemma-2 (Hugging Face; v1's prefixes, to check) | 55.2% | 82.5% | 77.6% | 91.6% | 75 |
+| qwen3-embedding 0.6b | 58.9% | 82.5% | 78.9% | 92.0% | 71 |
+| qwen3-embedding 4b | 62.5% | 84.1% | 79.7% | 93.0% | 62 |
+| **qwen3-embedding 8b** | 70.7% | **84.8%** | **80.9%** | **93.5%** | **58** |
+| bge-m3 | 56.9% | 82.5% | 78.5% | 91.9% | 72 |
+| bge-large | 62.0% | 82.4% | 78.0% | 91.5% | 76 |
+| snowflake-arctic-embed2 | 65.8% | 83.3% | 79.6% | 92.8% | 64 |
+| granite-embedding 278m | 54.4% | 82.2% | 78.5% | 91.6% | 75 |
+
+Together (from the saved vectors): Qwen3-Embedding 8B + Arctic 2, top-12 **85.2%**, top-8 81.0%, top-40 94.2%, misses
+52 (31 brought back); with EmbeddingGemma 300m too, the same; Qwen3 4B + Arctic 2 + EmbeddingGemma, 84.6%; the two
+small ones alone, 83.3%. Next: the 8B and Arctic 2 into the learned shortlist (the 8B is 4.7 GB: its own batch, or the
+CPU). `scripts/experiments/e11_embedders.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
