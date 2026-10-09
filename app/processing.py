@@ -31,15 +31,15 @@ def teaching() -> bool:
 
 
 def process(limit: float, reserve: float = FILING_RESERVE, stop=None) -> None:
-    """Every step in turn, within `limit` seconds from now; `stop()` true (the worker: the hourly run has begun) skips
-    the steps not begun"""
+    """Every step in turn, within `limit` seconds from now; `stop()` true (the worker: the hourly run has begun, or an
+    experiment holds the GPU lease) skips the steps not begun"""
     t = time.time()
 
     def budget(want: float, step: str, keep: float = reserve) -> float:
         """A step's seconds: what it wants, but no more than leaves `keep` before the run's limit; 0 skips it"""
         left = t + limit - time.time() - keep
         if stop is not None and stop():
-            logger.info("%s left for later: the hourly run has begun", step)
+            logger.info("%s left for later: the GPU is wanted (the hourly run, or an experiment's lease)", step)
             return 0
         if left < 30:
             logger.warning("%s skipped this run: %.0f minutes in, no time left before the limit", step,

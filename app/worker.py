@@ -3,7 +3,7 @@ within systemd's 45 minutes: scrape, build, publish, then the GPU's work (app/pr
 growing; five runs were stopped at the limit on Oct 8-9, and between runs the GPU sat idle. Now the hourly run
 scrapes, builds and publishes (about 15 minutes), and this worker does the processing whenever the GPU is free:
 it waits while the hourly run goes, then works in cycles of CYCLE seconds, each the steps of process() with their
-budgets, a step not begun once the hourly run starts again.
+budgets, a step not begun once the hourly run starts again, or an experiment takes the GPU lease (app/gpu_lease.py).
 
 While it works it keeps the machine awake (kde-inhibit, as the hourly run does), so the desktop's idle timer and the
 run's own back-to-sleep (scripts/run.sh) leave it be; idle, it lets the machine sleep and carries on after the wake.
@@ -58,6 +58,16 @@ def run_going() -> bool:
     return state not in ('inactive', 'failed', '')
 
 
+def yielding() -> str | None:
+    """Why the worker should leave the GPU now: the hourly run going, or an experiment holding the GPU lease
+    (app/gpu_lease.py); None when it's free"""
+    if run_going():
+        return 'the hourly run'
+    from app import gpu_lease
+    lease = gpu_lease.held()
+    return f"an experiment ({lease['holder']})" if lease else None
+
+
 def commit() -> str:
     return subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True).stdout.strip()
 
@@ -106,7 +116,7 @@ def cycle(state: dict) -> float:
     beating.start()
     try:
         with Awake():
-            processing.process(limit=CYCLE, stop=run_going)
+            processing.process(limit=CYCLE, stop=lambda: yielding() is not None)
     except Exception as e:  # noqa: BLE001 - one bad cycle mustn't stop the worker; the next one tries again
         logger.exception("Worker: the cycle failed (%s)", e)
     finally:
@@ -128,8 +138,8 @@ def main():
             logger.info("Worker: new code; exiting so systemd starts it again on it")
             beat(state, busy=False, at=0)  # not fresh: the hourly run processes until the new worker beats
             return
-        if run_going():
-            beat(state, busy=False, waiting='the hourly run')
+        if (why := yielding()):
+            beat(state, busy=False, waiting=why)
             time.sleep(POLL)
             continue
         state.pop('waiting', None)
@@ -137,7 +147,7 @@ def main():
         if took < BUSY_CYCLE:  # caught up: look again in a while, beating meanwhile
             for _ in range(IDLE // POLL):
                 beat(state, busy=False)
-                if run_going():
+                if yielding():
                     break
                 time.sleep(POLL)
 
