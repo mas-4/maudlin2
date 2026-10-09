@@ -80,13 +80,20 @@ reading of what visibly happened stays a Plot, even with a loaded word.
 A model can apply this as one question: *does the motif add a cause or agent the event doesn't show?*
 
 Refined after the genre drafter's report (Oct 9, 28 splits): the line is whether the hidden hand is **revealed in the
-telling or inferred by the teller**. An exposé, where the hiding comes out (Institutional cover-up, They knew all
-along, Graft), is a Plot; an alleged hidden hand (Rigged election, False flag operation, Funding conspiracy, It wasn't
-really the disease) is a Theory. Patrons named openly (Proxy warfare) hide nothing, so that's a Plot.
+telling or inferred by the teller**. An *established* exposé is a Plot: a document came out, someone admitted it, an
+investigation found it (Institutional cover-up, They knew all along, Graft). Tellers *piecing hints together* to claim
+a hidden hand is a Theory, however much "revealing" the telling talks of (Rigged election, False flag operation,
+Funding conspiracy, It wasn't really the disease, Moon landing hoax, Pattern of suicides, Defenestration, Celebrity
+corruption). Ask: would the hidden hand still be there if you removed the tellers' inference? Patrons named openly
+(Proxy warfare) hide nothing, so that's a Plot.
 
 **Plots include standing situations and declines**: what's happening, not only one-off events. Housing shortage,
 Staffing shortage and Pain at the pump are situations; Lost golden age and Moral decadence are falls, often with a
-culprit ("politics ruined it"). The premise behind a decline (Economic nostalgia, They don't make 'em like they used
+culprit ("politics ruined it"). But only a situation people **observe**: the price at the pump, the empty shelf. A
+situation people **explain**, why the country is split or how insiders protect each other, is a Theory, even when it
+is ongoing (Polarization, Corruption, Good old boys, Throw the bums out, Generational theft, Enthusiasm gap,
+Subjugation of women, Second-class citizens). The test: is the motif the condition itself, or an account of what
+drives it? The premise behind a decline (Economic nostalgia, They don't make 'em like they used
 to) is a Belief.
 
 ### Belief or Theory
