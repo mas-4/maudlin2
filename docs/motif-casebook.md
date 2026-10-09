@@ -175,6 +175,27 @@ boomers "know who should make the sacrifice. And the answer is their children an
   mutual-neighbour graph above a similarity threshold, its connected components), which chains near paraphrases
   together; a merge is a problem only when it joins two different stories.
 
+- **The proposals queue, cleared (Oct 9).** Of 66 rests-on proposals 6 were kept, 2 reversed (the proposer often gets
+  the direction wrong: "the real cause is structural" is a kind of "umm, actually", not the other way round) and the
+  rest became related links or were rejected; most paired motifs that merely share a claim. Its own confidence score
+  was no guide (Spotless record resting on Electability scored 1.0 and was right; Electability's note names scandals).
+  Of 61 related links 21 were kept. Of 19 new motifs, the catch-alls were rejected and six reshaped: Enthusiasm gap,
+  Taking credit, Atrocity story, Moon landing hoax, Heart in the right place (not "Nice guy", kept free for the Reddit
+  sense), and New stuff!, a Perennial for product and release news. Others came out of the claims they held: Tribune of
+  the people (a politician channelling the crowd's anger), Mangling the name (Roy Cooper's name mocked), Underdog (a
+  seed, under which David and Goliath now rests), and Sympathy for the devil (Trump: he "feels badly" for the Cornell 7,
+  who "won't get a fair shake"). A fabricated screenshot of Trump thanking Musk because "every Republican vote counts as
+  3 votes" is Rigged election and He admit it!, not Owned politician: read the fact-check before filing.
+- **Groups**: new groups Big business, Elections (the machinery of voting, apart from Horserace, the contest), The
+  uncanny, Leadership Legitimacy, Money and power, Hypocrisy, Gendered Accusation Narratives, and Sex and gender over it.
+  Groups overlap on purpose: "a way of slicing information however it wants to be sliced", toward a hierarchical
+  sorting model later.
+- **Gets stuff done (M408) became the forgiving move** ("whatever else is wrong with them…"), an Argument; the plain
+  praise went to Proven record. Work horse not a show horse rests on both Gets stuff done (boring, but it works) and
+  Political accountability (work over show), a single trope that carries both moves, rather than two motifs.
+- **The man they couldn't hang became Survived the sentence (M595).** The old name is John "Babbacombe" Lee's legend,
+  too swaggering for Christa Pike's botched lethal injection; "Paid in full" was too generic (anyone finally released).
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
