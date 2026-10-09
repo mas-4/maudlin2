@@ -582,7 +582,7 @@ def misfits(index: dict) -> list[dict]:
     better motif to offer (filing_confidence.alternatives); each {claim, source, ref, in: a motif it's in or ''}"""
     from app.analysis import curation_db, filing_confidence as fc
     said_none = {mi.key(a['action'].get('claim', '')) for a in curation_db.actions()
-                 if a.get('by') != 'claude' and (a['action'] or {}).get('action') == 'no_motif'}
+                 if (a['action'] or {}).get('action') == 'no_motif'}
     out = {}
     for c in mi.searchable_claims():
         k = mi.key(c['claim'])

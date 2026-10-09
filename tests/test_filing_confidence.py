@@ -16,12 +16,12 @@ def test_decisions_are_the_persons_last_word_on_each_filing(tmp_path):
             {'action': {'action': 'batch', 'steps': [{'action': 'check', 'claim': 'B', 'id': 'M1', 'answer': 'yes'},
                                                      {'action': 'unfile', 'claim': 'B', 'id': 'M2'}]}},
             {'action': {'action': 'move', 'claim': 'C', 'source': 'M3', 'target': 'M1'}},
-            {'action': {'action': 'check', 'claim': 'D', 'id': 'M1', 'answer': 'yes'}, 'by': 'claude'},  # not the person's
+            {'action': {'action': 'check', 'claim': 'D', 'id': 'M1', 'answer': 'yes'}, 'by': 'claude'},  # the person's word, carried out by Claude
             {'action': {'action': 'note', 'id': 'M1', 'note': 'x'}}]
     log.write_text('\n'.join(json.dumps(r) for r in rows) + '\nnot json\n')
     got = fc.decisions(str(log))
     assert got == {(mi.key('A'), 'M1'): True, (mi.key('B'), 'M1'): True, (mi.key('B'), 'M2'): False,
-                   (mi.key('C'), 'M3'): False}
+                   (mi.key('C'), 'M3'): False, (mi.key('D'), 'M1'): True}
 
 
 def test_a_motif_made_for_the_claim_alone_or_an_untested_source_is_never_sure():

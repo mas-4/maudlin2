@@ -74,8 +74,8 @@ def decisions(path: str = CURATION_LOG, hand: bool = False) -> dict[tuple[str, s
             for step in a.get('steps') or []:
                 if isinstance(step, dict):
                     one(step)
-    for r in log_rows(path):
-        if isinstance(r.get('action'), dict) and r.get('by') != 'claude':
+    for r in log_rows(path):  # Claude's rows too: it acts through the checker only on the person's word (Oct 9)
+        if isinstance(r.get('action'), dict):
             one(r['action'])
     return out
 
