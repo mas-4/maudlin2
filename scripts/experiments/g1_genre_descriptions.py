@@ -2,7 +2,8 @@
 five of the person's motifs in it. docs/motif-praxis.md now says what each genre is, as the person's sorting has shown
 it, with the Plot/Theory, Belief/Theory and Argument/Archetype tests; it says to give the drafter these once they
 settle, measured against the person's own genre calls. Here every motif the person gave a genre is asked again (left
-out of the examples), three ways: 'examples' (today), 'examples+descriptions', 'descriptions' (no examples). The
+out of the examples), four ways: 'examples' (today), 'examples+descriptions', 'descriptions' (no examples), and
+'examples+descriptions+topoi' (with the praxis's later Argument/Theory test). The
 descriptions name no motif of the index. Measured: share right, by genre, and on the person's Oct 9 calls (the
 Belief/Theory sorting). Resumable; caches in EXP."""
 import json
@@ -20,7 +21,7 @@ from app.analysis import motif_index as mi  # noqa: E402
 from app.analysis import motif_proposals as mp  # noqa: E402
 
 OUT = os.path.join(harness.EXP, 'g1_genre_descriptions.json')
-WAYS = ['examples', 'examples+descriptions', 'descriptions']
+WAYS = ['examples', 'examples+descriptions', 'descriptions', 'examples+descriptions+topoi']
 
 DESCRIPTIONS = {
     'Archetypes': 'a kind of person tellers portray (ethos): "a [type of person] who..."; also a portrait drawn through '
@@ -44,6 +45,10 @@ happened is a Plot.
 theory people assume in passing reads as a Belief; one they argue for is a Theory.
 - Argument or Archetype: a charge about a pattern of behaviour is an Argument; a portrait of someone's character is \
 an Archetype."""
+TOPOI = """- Argument or Theory: an Argument is a form of reasoning any side can fill and turn \
+around, answered with "that doesn't follow" or "that's beside the point"; its note says someone argues by... so.... A \
+Theory is a claim about how the world works, belonging to one picture of it, answered with evidence; its note says X \
+happens because Y."""
 
 PROMPT = """Our index of recurring rumor and narrative shapes (motifs) sorts each motif into a genre: what kind of \
 thing it is, not its topic. The genres:
@@ -67,7 +72,7 @@ def listing(way: str, examples: dict) -> tuple[str, str]:
             continue
         rows.append(f'{g}: {DESCRIPTIONS[g]}' + ('' if way == 'descriptions' else ', for example:\n'
                     + '\n'.join(f'  - {mi.described(x)[:200]}' for x in examples.get(g, []))))
-    return '\n'.join(rows), '\n' + TESTS + '\n'
+    return '\n'.join(rows), '\n' + TESTS + ('\n' + TOPOI if way.endswith('topoi') else '') + '\n'
 
 
 def ask(e: dict, way: str, index: dict) -> dict | None:
