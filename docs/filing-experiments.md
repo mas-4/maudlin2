@@ -20,8 +20,9 @@ model that saw it, and it's taken out of its own motifs first, so a claim alread
 `scripts/experiments/harness.py` scores any new finding signal the same way (`evaluate(data, extra={...})`).
 
 Experiments that need the GPU run under the GPU lease (`app/gpu_lease.py`, Oct 9): `python -m app.gpu_lease run
---minutes 45 -- .venv/bin/python -u scripts/experiments/x.py` waits for the hourly run to be over, then holds the lease
-while the script runs; the always-on worker finishes its current step and waits until it's given back (or runs out).
+--minutes 45 -- .venv/bin/python -u scripts/experiments/x.py` waits for the hourly run to be over, takes the lease, waits
+for the worker to finish the step it's on (its models may still fill the card), then runs the script; the worker starts
+no new step until the lease is given back (or runs out), and gives back the card's cached memory after each cycle.
 
 ## Where things stood on the morning of Oct 8
 

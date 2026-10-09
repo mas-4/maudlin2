@@ -100,6 +100,17 @@ class Awake:
             self.proc.wait(timeout=10)
 
 
+def free_gpu():
+    """Give back the card's memory the cycle's models left cached (1.3 GB on Oct 9), so an experiment holding the
+    lease has the card while the worker waits"""
+    import gc
+    import sys
+    gc.collect()
+    torch = sys.modules.get('torch')
+    if torch is not None and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def cycle(state: dict) -> float:
     """One cycle of processing; its seconds. The heartbeat goes on every minute meanwhile (a cycle can take half an
     hour; the hourly run would otherwise think the worker gone and process too)"""
@@ -122,6 +133,7 @@ def cycle(state: dict) -> float:
     finally:
         done.set()
         beating.join()
+        free_gpu()
     took = time.time() - started
     beat(state, busy=False, cycles=state.get('cycles', 0) + 1,
          **{'last cycle': {'at': dt.now().isoformat(timespec='seconds'), 'minutes': round(took / 60, 1)}})

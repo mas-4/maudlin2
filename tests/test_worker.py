@@ -75,7 +75,19 @@ def test_run_holds_the_lease_for_the_command(tmp_path, monkeypatch):
     from app import gpu_lease
     monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
     out = tmp_path / 'seen'
     code = f"import json; open({str(out)!r}, 'w').write(json.load(open({str(tmp_path / 'lease.json')!r}))['holder'])"
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
     assert out.read_text() == 'test' and gpu_lease.held() is None
+
+
+def test_run_waits_for_the_worker_to_finish_its_step(tmp_path, monkeypatch):
+    from app import gpu_lease
+    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
+    monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
+    busy = [True, True, False]
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: busy.pop(0) if len(busy) > 1 else busy[0])
+    monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: None)
+    assert gpu_lease.run([sys.executable, '-c', 'pass'], minutes=1, holder='test') == 0
+    assert busy == [False]  # asked until the worker was done

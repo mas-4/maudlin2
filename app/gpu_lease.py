@@ -6,7 +6,8 @@ renewed while its holder lives), so an experiment that crashes can't keep produc
     python -m app.gpu_lease run --minutes 45 -- .venv/bin/python -u scripts/experiments/x.py
     python -m app.gpu_lease status
 
-`run` waits for the hourly run to be over first, holds the lease while the command runs, renews it every minute up to
+`run` waits for the hourly run to be over first, takes the lease, waits for the worker to finish the step it's on (its
+models may still fill the card), holds the lease while the command runs, renews it every minute up to
 its minutes, and gives it back when the command ends (or the minutes are up: then the command is stopped)."""
 import argparse
 import json
@@ -98,11 +99,21 @@ def _hourly_run_going() -> bool:
     return worker.run_going()
 
 
+def _worker_busy() -> bool:
+    from app import worker
+    return worker.busy()
+
+
 def run(command: list[str], minutes: float, holder: str | None = None) -> int:
-    """The command under the lease, after the hourly run is over; its exit status"""
+    """The command under the lease, after the hourly run is over and the worker has finished its step; its exit
+    status"""
     while _hourly_run_going() or held() is not None:
         time.sleep(30)
     with Hold(holder or ' '.join(command)[:120], minutes) as h:
+        if _worker_busy():  # it starts no new step now, but the one it's on may hold Gemma on the card (Oct 9: R1 ran
+            print('gpu_lease: waiting for the worker to finish its step', flush=True)  # out of memory beside it)
+        while _worker_busy() and h.left() > 0:
+            time.sleep(15)
         proc = subprocess.Popen(command)
         while proc.poll() is None:
             if h.left() <= 0:
