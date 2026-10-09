@@ -355,6 +355,14 @@ def checker_action(action: dict) -> str:
     return f'refused ({status}): {text}{said}'
 
 
+@server.tool()
+def checkpoint(name: str) -> str:
+    """Save the motif index and the proposals as they are now, by name, as the workbench's 💾 does: a state the
+    person can go back to in one click. Save one before a big batch of changes."""
+    status, text = _post('/checkpoint', {'name': f'{name.strip()} (by Claude)'})
+    return f'saved: {text}' if status == 200 else f'refused ({status}): {text}'
+
+
 _V = None
 
 
