@@ -191,6 +191,33 @@ AUC gain is small and the 95% line is a coarse step, so the 76% is fragile; but 
 person's reading that the other signals don't carry. To put it in production: train it once on all their decisions,
 keep the top layers it changed (94M weights), retrain weekly as decisions grow.
 
+### J1 A jury of models (Oct 8) — Nimble 9B judges as well as Gemma 26B, several times faster
+
+The person: "having multiple models evaluate and work through our claim motif stack". Every filing they had decided
+(817: 631 kept, 186 taken out) judged by each juror, is this claim an instance of this motif? Decision models (one
+pass, a probability, no text: Ollama's `/v1/systemone`) and language models asked the filing model's yes or no
+(P(yes) from the first word's log-probabilities). AUC alone, and the confidence model's held-out AUC (folds by claim)
+with that juror as its yes-or-no signal; seconds a filing four at once (Gemma 26B's own from the hourly run, ~1-2 s):
+
+| Juror | Alone | In the confidence model | s a filing |
+|---|---|---|---|
+| none | | 0.870 | |
+| Nimble 9B (Bespoke Labs, decision) | **0.824** | **0.895** | 0.22 |
+| Gemma 4 26B (today's) | 0.818 | 0.894 | ~1-2 |
+| Tev1 4B (Together AI, decision) | 0.782 | 0.889 | 0.11 |
+| Ministral 3 14B | 0.757 | 0.889 | 0.37 |
+| Qwen3.5 9B | 0.772 | 0.884 | 0.13 |
+| Gemma 4 12B | 0.786 | 0.883 | 0.36 |
+| Tev1 0.8B (decision) | 0.687 | 0.870 | 0.04 |
+| Laya (ModernBERT-large, decision, on the CPU) | 0.686 | 0.869 | 0.28 |
+| all eight | | 0.897 | |
+| all but Gemma 26B | | 0.892 | |
+
+Nimble, which fits the card whole, does Gemma 26B's yes-or-no as well; a jury adds little over one good juror
+(0.897 against 0.895): what's left is in other kinds of evidence, or in more of the person's decisions. Clef-flash
+failed to load at its default context (retried at 8k), Clef 27B and GEV-26B-Decide (Gemma 26B with a decision head,
+built for Ollama by `gev_build.py`) to come. `scripts/experiments/j1_jury.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
