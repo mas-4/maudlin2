@@ -69,6 +69,7 @@ html, body.wb { max-width: 100vw; overflow-x: hidden; }
 .wb-gtag { display: inline-flex; align-items: center; gap: 2px; font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; padding: 1px 4px 1px 8px;
   border: 2px solid var(--ink); border-radius: 999px; background: #fff4c2; }
 .wb-also { font-size: 11px; margin-left: 3px; opacity: .7; }
+.wb-gnote { font: italic 12.5px system-ui, sans-serif; color: #666; padding: 3px 4px 4px 24px; }
 .wb-gtools { margin-left: auto; opacity: 0; } .wb-ghead:hover .wb-gtools { opacity: 1; }
 .wb-row { display: flex; align-items: center; gap: 4px; padding: 3px 4px 3px calc(4px + var(--depth) * 16px); border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
 .wb-row:hover { background: #f3f0ff; }

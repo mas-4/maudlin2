@@ -440,6 +440,10 @@ def board_action(data: dict):
                 mi.group_member(eid, gid)
     elif act == 'group_rename' and data.get('group') in index.get('groups', {}) and text('name'):
         mi.group_rename(data['group'], data['name'])
+    elif act == 'group_note' and data.get('group') in index.get('groups', {}):
+        mi.group_note(data['group'], data.get('note') or '')
+    elif act == 'facet_note' and isinstance(data.get('facet'), str) and isinstance(data.get('value'), str):
+        mi.facet_note(data['facet'], data['value'], data.get('note') or '')
     elif act == 'group_delete' and data.get('group') in index.get('groups', {}):
         mi.group_delete(data['group'])
     elif act == 'group_assign' and data.get('id') in live:

@@ -253,7 +253,9 @@ def motif_overview() -> str:
         'filings': sum(len(e['claims']) for e in live),
         'unchecked filings': sum(1 for e in live for c in e['claims'] if not c.get('checked')),
         'rests-on links': sum(len(mi.parents_of(e)) for e in live), 'related pairs': len(index.get('related', [])),
-        'groups': dict(sorted(by_group.items())), 'genres': dict(sorted(by_genre.items()))}, ensure_ascii=False)
+        'groups': dict(sorted(by_group.items())), 'genres': dict(sorted(by_genre.items())),
+        'group notes': {g['name']: g['note'] for g in index.get('groups', {}).values() if g.get('note')},
+        'genre notes': mi.facet_notes(index).get('genre', {})}, ensure_ascii=False)
 
 
 @server.tool()
@@ -299,7 +301,9 @@ def checker_action(action: dict) -> str:
       merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (id rests on parent)
       relate / unrelate {a, b} · not_same {a, b}
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}
-      facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value}
+      group_note {group, note} (what its motifs have in common; "" clears)
+      facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value} · facet_note {facet: "genre", value, note} (what kind of thing
+      its motifs are; "" clears)
       also {claim, source, target} (file it there too) · move {claim, source, target} · unfile {claim, id}
       check {claim, id, answer: yes|no|unsure} · no_motif {claim} · new_with {name, claims: [{claim, source?}]}
       batch {steps: [actions]} (one undo step)

@@ -744,6 +744,18 @@ def group_rename(gid: str, name: str):
 
 
 @exclusive
+def group_note(gid: str, note: str):
+    """What the group's motifs have in common, in a sentence or two (the person's; the models read it), or none"""
+    index = load()
+    note = ' '.join((note or '').split())
+    if note:
+        index['groups'][gid]['note'] = note
+    else:
+        index['groups'][gid].pop('note', None)
+    save(index)
+
+
+@exclusive
 def group_delete(gid: str):
     """The group goes; its motifs stay, ungrouped"""
     index = load()
@@ -813,6 +825,9 @@ def facet_rename(facet: str, old: str, new: str):
     index['facet_values'][facet] = [new if v == old else v for v in values] if old in values else values + [new]
     if old in FACETS[facet]:
         index.setdefault('facet_hidden', {}).setdefault(facet, []).append(old)
+    notes = index.get('facet_notes', {}).get(facet, {})
+    if old in notes:
+        notes[new] = notes.pop(old)
     save(index)
 
 
@@ -831,6 +846,29 @@ def facet_remove(facet: str, value: str):
     values[facet] = [v for v in values.get(facet, []) if v != value]
     if value in FACETS[facet]:
         index.setdefault('facet_hidden', {}).setdefault(facet, []).append(value)
+    index.get('facet_notes', {}).get(facet, {}).pop(value, None)
+    save(index)
+
+
+def facet_notes(index: dict | None = None) -> dict[str, dict[str, str]]:
+    """Each facet value's description (a genre's: what kind of thing its motifs are), where the person wrote one"""
+    return (index if index is not None else load()).get('facet_notes', {})
+
+
+@exclusive
+def facet_note(facet: str, value: str, note: str):
+    """A facet value's description (a genre's), or none"""
+    if facet not in FACETS:
+        raise ValueError(f'no such facet: {facet}')
+    index = load()
+    if value not in facet_values(index)[facet]:
+        raise ValueError(f'no such {facet}: {value}')
+    note = ' '.join((note or '').split())
+    notes = index.setdefault('facet_notes', {}).setdefault(facet, {})
+    if note:
+        notes[value] = note
+    else:
+        notes.pop(value, None)
     save(index)
 
 
@@ -929,7 +967,7 @@ def board() -> dict:
                            for c in e['claims']]}
                for e in live(index)]
     groups = sorted(index.get('groups', {}).values(), key=lambda g: g['name'].lower())  # A to Z wherever they're listed
-    return {'groups': groups, 'entries': entries, 'facets': facet_values(index)}
+    return {'groups': groups, 'entries': entries, 'facets': facet_values(index), 'facet_notes': facet_notes(index)}
 
 
 @exclusive

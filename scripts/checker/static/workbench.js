@@ -181,10 +181,13 @@
   const inShelf = (e) => !S.shelf ? true : S.shelf.kind === 'group'
     ? (S.shelf.id ? (e.groups || []).includes(S.shelf.id) : !(e.groups || []).length)
     : ((e.facets || {}).genre || '') === S.shelf.id;
+  // A group's or genre's description (the person's; the models read it)
+  const noteOf = (kind, id) => (kind === 'group' ? (S.data.groups.find((g) => g.id === id) || {}).note : ((S.data.facet_notes || {}).genre || {})[id]) || '';
+  const noteLine = (kind, id) => (id && noteOf(kind, id) ? `<div class="wb-gnote">${esc(noteOf(kind, id))}</div>` : '');
   function renderShelf() {
     const ms = motifs();
-    const sc = (kind, id, label, n, color, tools) => `<span class="wb-schip${S.shelf && S.shelf.kind === kind && S.shelf.id === id ? ' on' : ''}"${kind === 'group' && id ? ` data-drag="group"` : ''} data-drop="${kind === 'group' ? 'group' : 'facet'}" data-g="${esc(id)}" data-shelf="${kind}|${esc(id)}" style="--g: ${color}" title="click: show only these · drop a motif here">${label} <i>${n}</i>${tools
-      ? `<button class="wb-x" data-shelfedit="${kind}|${esc(id)}" title="rename">✎</button><button class="wb-x" data-shelfdel="${kind}|${esc(id)}" title="${kind === 'group' ? 'delete the group (its motifs stay)' : 'remove the genre (its motifs keep none)'}">✕</button>` : ''}</span>`;
+    const sc = (kind, id, label, n, color, tools) => `<span class="wb-schip${S.shelf && S.shelf.kind === kind && S.shelf.id === id ? ' on' : ''}"${kind === 'group' && id ? ` data-drag="group"` : ''} data-drop="${kind === 'group' ? 'group' : 'facet'}" data-g="${esc(id)}" data-shelf="${kind}|${esc(id)}" style="--g: ${color}" title="${noteOf(kind, id) ? esc(noteOf(kind, id)) + '\n\n' : ''}click: show only these · drop a motif here">${label} <i>${n}</i>${tools
+      ? `<button class="wb-x" data-shelfedit="${kind}|${esc(id)}" title="rename">✎</button><button class="wb-x" data-shelfnote="${kind}|${esc(id)}" title="${noteOf(kind, id) ? 'edit the description' : 'describe it: the models read it'}">📝</button><button class="wb-x" data-shelfdel="${kind}|${esc(id)}" title="${kind === 'group' ? 'delete the group (its motifs stay)' : 'remove the genre (its motifs keep none)'}">✕</button>` : ''}</span>`;
     $('#shelf-groups').innerHTML = '<b class="wb-shelfhead">📁 groups</b>'
       + S.data.groups.map((g) => sc('group', g.id, '📁 ' + esc(g.name), ms.filter((e) => (e.groups || []).includes(g.id)).length, '#8a5cff', true)).join('')
       + sc('group', '', '🗃️ in no group', ms.filter((e) => !(e.groups || []).length).length, '#bbb', false)
@@ -209,7 +212,7 @@
     let html = '';
     if (flat) {
       const only = S.shelf ? ` ${S.shelf.kind === 'group' ? '📁 ' + esc((S.data.groups.find((g) => g.id === S.shelf.id) || {name: 'in no group'}).name) : '🎭 ' + esc(S.shelf.id || 'no genre yet')} <button class="wb-mini" data-shelf="${S.shelf.kind}|${esc(S.shelf.id)}" title="show every motif">✕</button>` : '';
-      html += `<div class="wb-group"><div class="wb-ghead">${shown.length} motif${shown.length === 1 ? '' : 's'}${only}</div>${shown.map((e) => row(e, 0, false)).join('')}</div>`;
+      html += `<div class="wb-group"><div class="wb-ghead">${shown.length} motif${shown.length === 1 ? '' : 's'}${only}</div>${S.shelf ? noteLine(S.shelf.kind, S.shelf.id) : ''}${shown.map((e) => row(e, 0, false)).join('')}</div>`;
     } else {
       const ids = new Set(shown.map((e) => e.id));
       shownIds = ids;
@@ -223,8 +226,8 @@
         html += `<div class="wb-group${inG.length ? '' : ' wb-empty-sec'}"${by === 'none' ? '' : ` data-drop="${by === 'genre' ? 'facet' : 'group'}"`} data-g="${esc(g.id)}">
           <div class="wb-ghead"${g.id && by === 'group' ? ` data-drag="group" data-g="${esc(g.id)}" title="drag the group onto a genre to give all its motifs that genre"` : ''}><button class="wb-fold" data-fold="${esc(fold)}">${folded ? '▸' : '▾'}</button>
             <span class="wb-gname">${by === 'none' ? '🧩 ' : by === 'genre' ? '🎭 ' : g.id ? '📁 ' : '🗃️ '}${esc(g.name)}</span> <i>${inG.length}</i>
-            ${g.id && by === 'group' ? `<span class="wb-gtools"><button class="wb-mini" data-grename="${g.id}" title="rename">✎</button><button class="wb-mini" data-gdelete="${g.id}" title="delete the group (its motifs stay)">🗑️</button></span>` : ''}</div>
-          ${folded ? '' : roots.map((e) => branch(e, 0, g.id, new Set())).join('')}</div>`;
+            ${g.id && by === 'group' ? `<span class="wb-gtools"><button class="wb-mini" data-shelfnote="group|${esc(g.id)}" title="describe the group: the models read it">📝</button><button class="wb-mini" data-grename="${g.id}" title="rename">✎</button><button class="wb-mini" data-gdelete="${g.id}" title="delete the group (its motifs stay)">🗑️</button></span>` : ''}${g.id && by === 'genre' ? `<span class="wb-gtools"><button class="wb-mini" data-shelfnote="genre|${esc(g.id)}" title="describe the genre: the models read it">📝</button></span>` : ''}</div>
+          ${by === 'none' ? '' : noteLine(by === 'genre' ? 'genre' : 'group', g.id)}${folded ? '' : roots.map((e) => branch(e, 0, g.id, new Set())).join('')}</div>`;
       }
     }
     const sel = S.msel.size ? `<div class="wb-selbar">☑️ <b>${S.msel.size}</b> selected · drag any of them to move them all <button class="wb-mini" data-clearsel="1">✕ clear</button></div>` : '';
@@ -1209,6 +1212,14 @@
         return act(kind === 'group' ? {action: 'group_rename', group: id, name: n} : {action: 'facet_rename', facet: 'genre', value: id, to: n}, `✎ renamed to “${n}”`);
       });
     }
+    if ((v = d('shelfnote'))) {
+      const [kind, id] = v.split(/\|(.*)/s);
+      const now = noteOf(kind, id);
+      return ask(t, kind === 'group' ? 'Describe the group: what its motifs have in common (empty: none)' : 'Describe the genre: what kind of thing its motifs are (empty: none)', now, true, true).then((n) => {
+        if (n === null || n === now) return;  // cancelled, or unchanged
+        return act(kind === 'group' ? {action: 'group_note', group: id, note: n || ''} : {action: 'facet_note', facet: 'genre', value: id, note: n || ''}, n ? '📝 described' : '📝 description gone');
+      });
+    }
     if ((v = d('shelfdel'))) {
       const [kind, id] = v.split(/\|(.*)/s);
       const name = kind === 'group' ? (S.data.groups.find((g) => g.id === id) || {}).name : id;
@@ -1659,11 +1670,12 @@
       });
     });
   }
-  function ask(anchor, label, value = '', multiline = false) {
+  // Empty saves as null too, unless `empty` (then '' saves, and only cancel gives null: a description can be cleared)
+  function ask(anchor, label, value = '', multiline = false, empty = false) {
     const field = multiline ? `<textarea rows="3">${esc(value)}</textarea>` : `<input type="text" value="${esc(value)}">`;
     return askCardAt(anchor, `<label>${esc(label)}</label>${field}<div class="wb-askbtns"><button class="wb-btn yes" type="submit">💾 save</button>
       <button class="wb-btn" type="button" data-askcancel>cancel</button><span class="wb-faint">Enter saves · Esc cancels</span></div>`,
-    (f) => f.querySelector('input, textarea').value.trim() || null);
+    (f) => f.querySelector('input, textarea').value.trim() || (empty ? '' : null));
   }
   function sure(anchor, text, ok = 'yes, do it') {
     return askCardAt(anchor, `<p>${esc(text)}</p><div class="wb-askbtns"><button class="wb-btn no" type="submit">${esc(ok)}</button>
