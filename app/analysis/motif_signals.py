@@ -351,14 +351,15 @@ class Signals:
         near = np.array([max((sims[i] for i in rows if i != skip), default=-1.0) for rows in self._news_members])
         return self._news_notes @ q, near
 
-    def prepare(self, claims: list[str], ask: bool = True):
+    def prepare(self, claims: list[str], ask: bool = True, budget: float | None = None):
         """Do the models' part for many claims at once, a model at a time: the shape rewrites (the filing model), then
         every embedding in two batches. Claim by claim, Ollama swapped three models through the GPU for each one
-        (Oct 8: about 13 s a claim); after this, cheap() reads caches"""
-        if ask:
-            for c in claims:
-                self.shape_of(c, True)
-                self.layers_of(c, True)
+        (Oct 8: about 13 s a claim); after this, cheap() reads caches. With `budget`, the questions not begun by then
+        wait for the next run (Oct 8: a newly trained model's first scoring overran its budget by four minutes here)"""
+        if ask:  # the filing model's questions, PARALLEL at once (llm.parallel), each claim's two in turn
+            from app.analysis import llm
+            llm.parallel(lambda c: (self.shape_of(c, True), self.layers_of(c, True)), list(dict.fromkeys(claims)),
+                         budget=budget)
             self.save()
         shapes = [self.shapes[mi.key(c)] for c in claims if mi.key(c) in self.shapes]
         layers = [t for c in claims for t in self.layers_of(c, False).values()]

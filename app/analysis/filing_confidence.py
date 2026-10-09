@@ -245,9 +245,40 @@ def train(index: dict | None = None) -> dict | None:
     return out
 
 
-def model(retrain: bool = False) -> dict | None:
+def warm(index: dict, budget: float) -> bool:
+    """Ask the costly signals of the person's decided filings not asked yet (the filing model's shape, layers and yes or
+    no, the reranker), llm.PARALLEL at once, for at most `budget` seconds; True when nothing is left to ask, so training
+    reads caches only (Oct 8: a day's 200 decisions took training ten minutes past the run's limit)"""
+    import time
+
+    from app.analysis import llm
+    started = time.time()
+    pairs = labeled(index)
+    scorer = Scorer(index, mr.weights())
+    claims = list(dict.fromkeys(c for c, *_ in pairs))
+    scorer.signals.prepare(claims, budget=budget / 2)
+    jobs = [(c, scorer.signals.at[eid]) for c, eid, *_ in pairs if eid in scorer.signals.at]
+    for c in claims:  # each claim's nearest filed claims embedded here, before the threads
+        scorer.signals.vec([c])
+    left = budget - (time.time() - started)
+    judged = llm.parallel(lambda j: scorer.signals.judge(j[0], [j[1]], leave_out=True), jobs, budget=max(0.0, left))
+    done = all(j is not None for j in judged)
+    by_claim = defaultdict(list)
+    for c, n in jobs:
+        by_claim[c].append(n)
+    for c, ns in by_claim.items():
+        if time.time() - started > budget:
+            done = False
+            break
+        scorer.signals.rerank(c, ns, leave_out=True)
+    scorer.signals.save()
+    return done and time.time() - started <= budget
+
+
+def model(retrain: bool = False, budget: float | None = None) -> dict | None:
     """The current model; retrained when a day old (or missing) only if `retrain` (the hourly run: training asks the
-    filing model about new decisions, so never from the checker)"""
+    filing model about new decisions, so never from the checker). With `budget`, training waits until the new
+    decisions' signals are all asked (warm), a budget's worth a run; the old model meanwhile"""
     m = read_json(MODEL, None)
     if m and set(m['weights']) != set(FEATURES):
         m = None  # trained on other signals
@@ -257,6 +288,9 @@ def model(retrain: bool = False) -> dict | None:
             m = None  # a newly taught reranker: learn how far to trust it
     if retrain and (not m or dt.now() - dt.fromisoformat(m['at']) > RETRAIN):
         try:
+            if budget is not None and not warm(mi.load(), budget):
+                logger.info("Filing confidence: new decisions' signals asked for %.0f s; training next run", budget)
+                return m
             m = train() or m
         except Exception as e:  # noqa: BLE001 - the old model, or none: the check list keeps its old order
             logger.warning("Filing confidence: training failed (%s)", e)
@@ -309,7 +343,7 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
             wanted = c.get('checked') == 'yes' and not c.get('rechecked') if confirmed else not c.get('checked')
             if wanted and (mi.key(c['claim']), e['id']) not in (skip or ()):
                 todo[(c['claim'], c.get('source', ''))].append(e['id'])
-    scorer.signals.prepare([c for c, _ in todo])
+    scorer.signals.prepare([c for c, _ in todo], budget=budget)
     out = {}
     for (claim, source), ids in todo.items():
         if budget is not None and time.time() - started > budget:
@@ -353,7 +387,7 @@ def alternatives(index: dict, m: dict, budget: float | None = None) -> int:
     w = mr.weights()
     scorer = Scorer(index, w)
     coef = np.array([m['weights'][f] for f in FEATURES])
-    scorer.signals.prepare([c for c, _ in todo.values()])
+    scorer.signals.prepare([c for c, _ in todo.values()], budget=budget)
     done = 0
     for k, (claim, source) in todo.items():
         if budget is not None and time.time() - started > budget:
@@ -388,13 +422,16 @@ def refresh(budget: float | None = None) -> int:
     """The hourly run's part: retrain if a day old, then work out the fit of every unchecked filing in the person's
     motifs that has none from this model yet, and keep it on the filing (motif_index.set_fits), for the checker to
     read"""
-    m = model(retrain=True)
+    import time
+    started = time.time()
+    m = model(retrain=True, budget=None if budget is None else budget * 0.6)
     if not m:
         return 0
+    if budget is not None:
+        budget = max(0.0, budget - (time.time() - started))
     index = mi.load()
     have = {(mi.key(c['claim']), e['id']) for e in mi.live(index) for c in e['claims']
             if c.get('fit_model') == m['at'] and c.get('fit') is not None}
-    import time
     started = time.time()
     fits = score(index, m, skip=have, budget=budget)
     # then the person's confirmed filings, for the second look (most of their signals are cached from training)

@@ -23,6 +23,8 @@ DEFAULT_MODELS = {
 TIMEOUT = 120
 BIG_TIMEOUT = 600  # a bigger model, partly on the CPU, loading and answering
 
+PARALLEL = 4  # requests in flight at once: Ollama's OLLAMA_NUM_PARALLEL here, so they're decoded together
+
 _backend: str | None = None
 _resolved = False
 _lock = threading.Lock()
@@ -78,6 +80,26 @@ def complete_json(prompt: str, schema: dict, max_tokens: int = 1024, model: str 
     except Exception as e:  # noqa: BLE001 - an llm hiccup should never take down a scrape or build
         logger.error("llm call failed: %s", e)
     return None
+
+
+def parallel(fn, items: list, budget: float | None = None, workers: int = PARALLEL) -> list:
+    """fn(item) for each item, PARALLEL at once (Oct 8: one request at a time left the GPU waiting on the CPU's share of
+    each token; see docs/filing-experiments.md, pipelining), results in the items' order. With `budget` (seconds), items
+    not begun by then are skipped (None). fn must be safe to run on threads; its exceptions are raised"""
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    if not items:
+        return []
+    deadline = None if budget is None else time.time() + budget
+
+    def one(item):
+        if deadline is not None and time.time() > deadline:
+            return None
+        return fn(item)
+    if workers <= 1 or len(items) == 1:
+        return [one(i) for i in items]
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='llm') as pool:
+        return list(pool.map(one, items))
 
 
 def _ollama(prompt: str, schema: dict, max_tokens: int, name: str | None = None) -> dict | None:

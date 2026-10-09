@@ -63,3 +63,19 @@ def test_weak_filings_are_found_and_their_alternatives_skip_where_the_claim_alre
     assert fc.better(index, 'strong') == []
     index['entries']['M2']['not_claims'] = [mi.key('weak and confirmed')]  # ✕: not this one
     assert fc.better(index, 'weak and confirmed') == []
+
+
+def test_retraining_waits_until_the_new_decisions_are_asked(monkeypatch, tmp_path):
+    from datetime import datetime, timedelta
+    old = {'weights': dict.fromkeys(fc.FEATURES, 0.0), 'bias': 0.0, 'reranker': 'base',
+           'at': (datetime.now() - timedelta(days=2)).isoformat(timespec='seconds')}
+    monkeypatch.setattr(fc, 'read_json', lambda path, default=None: old)
+    monkeypatch.setattr('app.analysis.reranker_teach.tag', lambda: 'base')
+    monkeypatch.setattr(fc.mi, 'load', dict)
+    trained = []
+    monkeypatch.setattr(fc, 'train', lambda: trained.append(1) or {'at': 'new'})
+    monkeypatch.setattr(fc, 'warm', lambda index, budget: False)
+    assert fc.model(retrain=True, budget=60) is old and not trained  # a run's worth asked, the old model meanwhile
+    monkeypatch.setattr(fc, 'warm', lambda index, budget: True)
+    assert fc.model(retrain=True, budget=60) == {'at': 'new'}
+    assert fc.model(retrain=True) == {'at': 'new'}  # no budget: trains at once, as before

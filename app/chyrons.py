@@ -192,21 +192,27 @@ def clean_day(day: str, news: list[str], budget: float | None = None) -> int:
             store[line_key(e['channel'], e['line'])] = found[line_key(e['channel'], e['line'])] = {'kind': 'junk', 'text': ''}
             done += 1
     started = time.time()
+    jobs = []
     for channel in CHANNELS:
         mine = groups([e for e in todo if e['channel'] == channel and line_key(channel, e['line']) not in store])
-        for i in range(0, len(mine), BATCH):
-            if budget is not None and time.time() - started > budget:
-                save_clean(found)
-                return done
-            batch = mine[i:i + BATCH]
-            programs = sorted({p for g in batch for e in g for p in e['programs']})[:4]
-            schema = {"type": "object", "properties": {"lines": {"type": "array", "items": {"type": "object", "properties": {
-                "n": {"type": "integer", "minimum": 1, "maximum": len(batch)}, "kind": {"type": "string", "enum": KINDS},
-                "text": {"type": "string", "maxLength": 200}}, "required": ["n", "kind", "text"]}}}, "required": ["lines"]}
-            answer = llm.complete_json(CLEAN_PROMPT.format(
-                channel=CHANNELS[channel], programs='; '.join(programs), news='\n'.join(f'- {h}' for h in news[:40]),
-                lines='\n'.join(f'{n}. {g[0]["line"]}' for n, g in enumerate(batch, 1))), schema, max_tokens=4000,
-                model=CLEAN_MODEL)
+        jobs += [(channel, mine[i:i + BATCH]) for i in range(0, len(mine), BATCH)]
+
+    def ask(job):
+        channel, batch = job
+        programs = sorted({p for g in batch for e in g for p in e['programs']})[:4]
+        schema = {"type": "object", "properties": {"lines": {"type": "array", "items": {"type": "object", "properties": {
+            "n": {"type": "integer", "minimum": 1, "maximum": len(batch)}, "kind": {"type": "string", "enum": KINDS},
+            "text": {"type": "string", "maxLength": 200}}, "required": ["n", "kind", "text"]}}}, "required": ["lines"]}
+        return llm.complete_json(CLEAN_PROMPT.format(
+            channel=CHANNELS[channel], programs='; '.join(programs), news='\n'.join(f'- {h}' for h in news[:40]),
+            lines='\n'.join(f'{n}. {g[0]["line"]}' for n, g in enumerate(batch, 1))), schema, max_tokens=4000,
+            model=CLEAN_MODEL)
+    for start in range(0, len(jobs), llm.PARALLEL):  # llm.PARALLEL batches at once
+        if budget is not None and time.time() - started > budget:
+            save_clean(found)
+            return done
+        round_ = jobs[start:start + llm.PARALLEL]
+        for (channel, batch), answer in zip(round_, llm.parallel(ask, round_)):
             for x in (answer or {}).get('lines', []):
                 n = x.get('n')
                 if isinstance(n, int) and 1 <= n <= len(batch) and x.get('kind') in KINDS:
@@ -214,7 +220,7 @@ def clean_day(day: str, news: list[str], budget: float | None = None) -> int:
                         store[line_key(channel, e['line'])] = found[line_key(channel, e['line'])] = {
                             'kind': x['kind'], 'text': ' '.join(x.get('text', '').split())}
                         done += 1
-            save_clean(found)
+        save_clean(found)
     save_clean(found)
     return done
 

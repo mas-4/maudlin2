@@ -125,20 +125,25 @@ def extract(budget: float | None = None) -> dict:
 
 
 def read_episodes(store: dict, budget: float | None) -> int:
+    """Read the parts not read yet, newest episode first, llm.PARALLEL parts at once (each part's claims and their
+    checks in turn), saved after each round in order; for at most `budget` seconds (a round begun is finished)"""
     started, calls = time.time(), 0
+    todo = []
     for ep in episodes():
         entry = store.setdefault(ep['url'], {k: ep[k] for k in ('source', 'show', 'lean', 'title', 'date')} | {'read': 0, 'claims': []})
-        while entry['read'] < len(ep['chunks']):
-            if budget is not None and time.time() - started > budget:
-                logger.info("Show claims: %d parts read this run; more next run", calls)
-                return calls
-            kept, dropped = read_part(ep, ep['chunks'][entry['read']])
+        entry['chunks'] = len(ep['chunks'])
+        todo += [(ep, entry, n) for n in range(entry['read'], len(ep['chunks']))]
+    for start in range(0, len(todo), llm.PARALLEL):
+        if budget is not None and time.time() - started > budget:
+            logger.info("Show claims: %d parts read this run; more next run", calls)
+            return calls
+        round_ = todo[start:start + llm.PARALLEL]
+        for (_ep, entry, n), (kept, dropped) in zip(round_, llm.parallel(lambda t: read_part(t[0], t[0]['chunks'][t[2]]), round_)):
             entry['claims'] += kept
             entry.setdefault('dropped', []).extend(dropped)
-            entry['read'] += 1
-            entry['chunks'] = len(ep['chunks'])
+            entry['read'] = n + 1
             calls += 1
-            save(store)
+        save(store)
     if calls:
         logger.info("Show claims: %d parts read; %d claims from %d episodes", calls,
                     sum(len(e['claims']) for e in store.values()), len(store))

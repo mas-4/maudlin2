@@ -33,7 +33,7 @@ from app.analysis import motif_retriever as mr  # noqa: E402
 OUT = os.path.join(harness.EXP, 'c1_cascade.json')
 SAMPLE, SEED = 240, 5
 BIG = 'gemma4:26b'
-SMALL = ['qwen3.5:9b', 'gemma4:12b']
+SMALL = ['qwen3.5:9b', 'gemma4:12b', 'ministral-3:14b']
 MODELS = SMALL + [BIG]
 ROUND = 8  # claims asked per save
 
@@ -165,7 +165,7 @@ def report(saved, keys, fit):
         bump = {k for k in keys if not A[small][k]}
         line(f'{small}, bumped when it picks nothing', {k: A[BIG][k] if k in bump else A[small][k] for k in keys},
              len(bump) / len(keys), small)
-    a, b = SMALL
+    a, b = SMALL[:2]
     bump = {k for k in keys if set(A[a][k]) != set(A[b][k])}
     picks = {k: A[BIG][k] if k in bump else A[a][k] for k in keys}
     f, wrong = score([(picks[k], C[k]['truth'], C[k]['shown']) for k in keys])

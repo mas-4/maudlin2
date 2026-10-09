@@ -277,6 +277,14 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     weights, vectors = motif_retriever.weights(), motif_retriever.Vectors()
     learned = motif_retriever.learned() if weights else None  # every signal weighed, when it tests better
     sig = None
+    if learned:  # every claim's shape and layers asked first, llm.PARALLEL at once (kept for the shortlists below)
+        try:
+            from app.analysis import motif_signals
+            sig = motif_signals.Signals(index, vectors)
+            sig.prepare([c['claim'] for c in todo], budget=None if budget is None else budget / 2)
+        except Exception as e:  # noqa: BLE001 - each claim asks its own below
+            logger.warning("Motif filing: preparing the shortlists failed (%s)", e)
+            sig = None
     for c in todo:
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
