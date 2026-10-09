@@ -143,6 +143,20 @@ boomers "know who should make the sacrifice. And the answer is their children an
   person chose **Perennials**, with seeds Weather, Babies, Sports and Birds. A second axis for why things are told was
   deferred; carriers in the flow layer are for later.
 
+- **The Israel lobby (M686): Theory**, resting on Money in politics and Foreign meddling, related to Owned politician
+  and Guilt by association. Four focus-group claims (Haley Stevens "beholden to Netanyahu"; "Israel is a part of AIPAC
+  and they're an outside country influencing our elections"; Seth Moulton's AIPAC money, which "seals the deal") each
+  carried the same three layers: money buys the candidate, the donor taints him, a foreign country is behind it.
+  Funding conspiracy doesn't apply: AIPAC's giving is public, and that motif is for secret money. Guardrail: the note
+  names Israel and its government, as the tellers do; a telling that makes it about Jews or "Jewish money" is the older
+  antisemitic trope and is filed as that only when a teller invokes it (rule 7). Whether the shape descends from that
+  trope is a question of lineage, to be decided deliberately, not a verdict on these tellers.
+- **Second look, Oct 9**: Every bang is a bomb (M685) made for the Rotherham explosion retold as "an attempted terror
+  attack on a children's park" (no group named, so not It was one of them); Hastert's bank fraud left Elite cabal for
+  Sanewashing ("'Violating banking laws'? Is that what we are calling being a child molester now?") and Slap on the
+  wrist ("He did a year for the bank fraud"); the lady in red stays Uncanny valley ("Is she real? Is she a robot?"),
+  and Transvestigation does not apply (one joking post).
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
