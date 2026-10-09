@@ -70,6 +70,10 @@ def decisions(path: str = CURATION_LOG, hand: bool = False) -> dict[tuple[str, s
             out[(mi.key(a['claim']), a['target'])] = True
         elif hand and act == 'file' and a.get('claim') and a.get('id'):
             out[(mi.key(a['claim']), a['id'])] = True
+        elif act == 'new_with':  # a claim moved out of its motif into a new one: not that motif
+            for c in a.get('claims') or []:
+                if isinstance(c, dict) and c.get('mode') == 'move' and c.get('claim') and c.get('source'):
+                    out[(mi.key(c['claim']), c['source'])] = False
         elif act == 'batch':
             for step in a.get('steps') or []:
                 if isinstance(step, dict):
