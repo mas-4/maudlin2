@@ -74,6 +74,20 @@ they named), each held out of the index and filed again.
 - Runs of the same model and prompt differ by several points; 60 claims can't separate models a few points apart.
   Every side-by-side model beat the old method.
 
+## Speech to text and the language model's pace (Oct 8)
+
+- **Speech to text bake-off** (`scripts/experiments/asr_bakeoff.py`): the first 10 minutes of a panel show (Breaking
+  Points), a call-in show (Jesse Kelly) and a newscast (Bloomberg News Now), against the transcripts the shows publish
+  (machines' too, so disagreement, not error). faster-whisper large-v3-turbo (today's): 26% disagreement, 94% of the
+  reference's names, 90x real time. Qwen3-ASR 1.7B: 27%, 93%, 25x, 4.6 GB. NVIDIA Parakeet TDT 0.6B v3: 37%, 80%,
+  240x, 1.5 GB, but it **drops whole sentences** (on the newscast it skipped the lead story, "President Trump said
+  the U.S. would not attack Iran ahead of the November midterm elections"). Whisper stays.
+- **Four requests at once** (`scripts/experiments/llm_parallel.py`, `llm.parallel`): Gemma 4 26B doesn't fit the 10 GB
+  card, so the CPU does part of each word while the GPU waits; Ollama decodes OLLAMA_NUM_PARALLEL=4 requests together.
+  Twice, in two GPU windows: short questions (the shape) 1.37-1.38x the work per second, medium (the layers)
+  1.43-1.72x, long (a transcript part) 1.14x. In use from Oct 8 (show claims, chyrons, the filing model's questions):
+  the hourly run read 28-32 transcript parts in the 7 minutes that read 17.
+
 ## Next
 
 1. Every 30B job now has its test (Oct 6): only motif matching stays on qwen3:30b-a3b.
