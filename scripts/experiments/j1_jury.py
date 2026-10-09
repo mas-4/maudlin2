@@ -148,6 +148,7 @@ def base_matrix(pairs):
     X = np.zeros((len(pairs), len(fc.FEATURES)))
     for (claim, source), idx in by_claim.items():
         X[idx] = scorer.rows(claim, [pairs[i]['eid'] for i in idx], source)
+    scorer.signals.save()  # the reranker's answers, so the next report needn't ask again
     from app.analysis import reranker_teach
     if scorer.signals.rerank_tag != 'base':
         held, col = reranker_teach.held_out(), fc.FEATURES.index('rerank')

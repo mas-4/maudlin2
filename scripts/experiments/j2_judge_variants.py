@@ -223,7 +223,10 @@ def main():
     pairs = j1_jury.pairs_and_texts()
     tells = tl.of([p['claim'] for p in pairs])
     print(f'{len(pairs)} pairs', flush=True)
-    if 'report' not in sys.argv:
+    if 'report' in sys.argv:  # the report asks the reranker for the shortlists: the card to itself
+        import r1_bigger_reranker
+        r1_bigger_reranker.unload_ollama()
+    else:
         elements(saved, pairs, index)
         st = {p['key']: states(p, index, tells[mi.key(p['claim'])], saved['elements'].get(p['eid'])) for p in pairs}
         for v in ('tellings', 'element', 'genre', 'all'):
