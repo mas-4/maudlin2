@@ -497,3 +497,16 @@ def test_the_models_drafts_stay_behind_in_a_merge_and_go_with_a_group_change(mon
     mi.merge('M002', 'M001')
     e = mi.load()['entries']['M001']
     assert mi.groups_of(e) == ['G02'] and mi.genre_of(e) is None
+
+
+def test_a_deleted_motif_takes_its_links_with_it(monkeypatch, tmp_path):
+    """Oct 9: three motifs still rested on a deleted M402, and the checker couldn't take them off"""
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 4, 'claims': {}, 'related': [['M001', 'M003']], 'entries': {
+        'M001': {'id': 'M001', 'name': 'Horserace', 'claims': [claim('a')]},
+        'M002': {'id': 'M002', 'name': 'Exploring a run', 'parents': ['M001'], 'claims': [claim('b')]},
+        'M003': {'id': 'M003', 'name': 'Polls are inaccurate', 'claims': [claim('c')]}}})
+    mi.delete('M001')
+    index = mi.load()
+    assert index['entries']['M002']['parents'] == [] and index['related'] == []

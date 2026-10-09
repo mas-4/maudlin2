@@ -294,7 +294,8 @@ def checker_action(action: dict) -> str:
     """Make one change to the motif index through the checker, exactly as the person's clicks do: validated, written
     to the curation log marked by Claude, and on the undo stack labelled "(by Claude)". Only when the person asked for
     the change. An action is a dict with "action" and its fields, e.g.:
-      rename {id, name} · note {id, note} · done {id} (mark done / unmark) · delete {id}
+      add {name} (a motif with no claims yet: a seed) · rename {id, name} · note {id, note} · done {id} (mark done /
+      unmark) · delete {id} · correct {claim, text} (reword a claim; its tellings stay)
       merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (id rests on parent)
       relate / unrelate {a, b} · not_same {a, b}
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}

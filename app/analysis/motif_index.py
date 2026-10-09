@@ -124,6 +124,7 @@ def load() -> dict:
 
 
 def save(index: dict):
+    drop_dangling(index)
     drop_related_resting(index)
     write_json(INDEX, index, indent=1)
     from app.analysis import curation_db  # every state kept, to go back to (Oct 8)
@@ -1080,6 +1081,26 @@ def drop_related_resting(index: dict) -> int:
     if len(kept) != len(links):
         index['related'] = kept
     return len(links) - len(kept)
+
+
+def drop_dangling(index: dict) -> int:
+    """Rests-on and related links to a motif that's gone (deleted, or emptied by a move) go with it: until Oct 9 they
+    stayed, and three motifs rested on a deleted M402 that the checker couldn't take them off"""
+    entries = index.get('entries', {})
+    gone = 0
+    for e in entries.values():
+        parents = parents_of(e)
+        kept = [p for p in parents if p in entries]
+        if len(kept) != len(parents):
+            gone += len(parents) - len(kept)
+            e['parents'] = kept
+            e.pop('parent', None)
+    links = index.get('related', [])
+    kept_links = [p for p in links if p[0] in entries and p[1] in entries]
+    if len(kept_links) != len(links):
+        gone += len(links) - len(kept_links)
+        index['related'] = kept_links
+    return gone
 
 
 def genre_of(entry: dict) -> str | None:
