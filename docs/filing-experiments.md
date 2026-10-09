@@ -245,6 +245,29 @@ Together (from the saved vectors): Qwen3-Embedding 8B + Arctic 2, top-12 **85.2%
 small ones alone, 83.3%. Next: the 8B and Arctic 2 into the learned shortlist (the 8B is 4.7 GB: its own batch, or the
 CPU). `scripts/experiments/e11_embedders.py`.
 
+### E4 A jury of readers and E6 Ask what teaches most (Oct 9, overnight) — E4 nothing; E6 least certain first
+
+**E4.** Gemma 4 26B's yes or no on 753 of the person's decided filings as three readers (a folklorist cataloguing
+story types the way Thompson indexed motifs, a rhetorician, a reader from the claim's other side), against today's
+plain question. Alone: plain 0.820, folklorist 0.794, rhetorician 0.796, other side 0.762, the three's mean 0.807. In
+the confidence model in place of the plain question: 0.882 (plain), 0.883, 0.885, 0.870; all three added, 0.886. The
+plain question already asks the folklorist's question ("the same shape of story, as its tellers tell it, not just the
+same topic, person or word"); the persona adds nothing to it. The folklorist's reading stays where it is: naming and
+proposing motifs.
+
+**E6.** The person checking in different orders (simulated on the same decisions, a quarter of the claims held out,
+five draws): the held-out AUC after N decisions.
+
+| Order | 50 | 150 | 250 | 350 | 450 | 550 |
+|---|---|---|---|---|---|---|
+| least certain first | 0.852 | **0.884** | **0.888** | 0.887 | 0.883 | 0.883 |
+| random | 0.847 | 0.867 | 0.866 | 0.871 | 0.878 | 0.882 |
+| likeliest first (today's check list) | 0.820 | 0.839 | 0.845 | 0.860 | 0.870 | 0.883 |
+
+Least certain first gets in 150 decisions what random order gets in about 550 and the check list's likeliest-first
+order later still: the filings the model is sure of teach it least. For the person's limited time, 🎯 today should
+serve the uncertain ones first. `scripts/experiments/e4_e6_jury_active.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
