@@ -218,3 +218,10 @@ Ideas for the hard misses (the person reads the structure under a claim; every f
   matched to motifs of that genre (the layered prompt found +64% of hand-adds on Oct 7, with many extra picks).
 - **E8 The picking prompt with nearest claims only** (E0.4's other half).
 - **E9 Fine-tune the reranker** on the person's decisions (overnight: it needs the GPU to itself).
+- **C1 A cascade** (the person, Oct 8: run everything through a smaller model, and bump the low-confidence picks to a
+  Gemma round). The filing pick asked of Qwen3.5 9B and Gemma 4 12B (both fit the card whole) and Gemma 4 26B (today's,
+  partly on the CPU) on 240 of the person's confirmed claims, the same shortlist for each; then, with no model asked,
+  each small model's picks bumped to Gemma 26B when the confidence model's fit is under a line (trained on the other
+  claims' decisions only, its reranker and filing-model signals left out), when it picks nothing, or when the two
+  small models disagree. Found, wrong picks, share bumped and seconds a claim for each.
+  `scripts/experiments/c1_cascade.py`.
