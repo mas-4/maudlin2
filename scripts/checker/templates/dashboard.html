@@ -232,7 +232,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
     html += '</div>';
 
     html += `<h2>🖐️ Your curation</h2><div class="dash-grid">`;
-    html += card('Changes a day: you and Claude', err(C) + plot(bars, cdays, {you: Object.fromEntries(cdays.map((x) => [x, cur[x].you || 0])), claude: Object.fromEntries(cdays.map((x) => [x, cur[x].claude || 0]))}, {colors: {you: '#8a5cff', claude: '#00c2a8'}}));
+    html += card('Changes a day: yours, by hand and through Claude', err(C) + plot(bars, cdays, {'by hand': Object.fromEntries(cdays.map((x) => [x, cur[x].you || 0])), 'through Claude': Object.fromEntries(cdays.map((x) => [x, cur[x].claude || 0]))}, {colors: {'by hand': '#8a5cff', 'through Claude': '#00c2a8'}})
+      + '<p class="dash-sub">each change counted, a batch by its steps</p>');
     html += card('This week, by kind of change', list(Object.entries(C['this week by kind'] || {})));
     html += card('💾 Files', list(Object.entries(H['files MB'] || {}).map(([k, v]) => [k, v + ' MB'])));
     html += '</div>';

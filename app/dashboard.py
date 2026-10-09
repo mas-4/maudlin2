@@ -279,10 +279,11 @@ def curation(days: int = DAYS) -> dict:
         if day < first:
             continue
         who = 'claude' if a.get('by') == 'claude' else 'you'
-        per[day][who] += 1
-        if who == 'you' and (a.get('at') or '') >= week:
-            act = a.get('action') or {}
-            for step in act.get('steps', [act]) if act.get('action') == 'batch' else [act]:
+        act = a.get('action') or {}
+        steps = [x for x in act.get('steps') or [] if isinstance(x, dict)] if act.get('action') == 'batch' else [act]
+        per[day][who] += len(steps)  # each change in a batch (most of Claude's arrive as one batch of dozens: Oct 9)
+        if (a.get('at') or '') >= week:
+            for step in steps:
                 kinds[step.get('action', '?')] += 1
     return {'per day': {d: dict(per[d]) for d in _days(days)}, 'this week by kind': dict(kinds.most_common())}
 
