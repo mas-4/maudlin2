@@ -694,10 +694,10 @@
         {% for t in top_stories %}{{ story_card(t.cluster, loop.index0, t) }}{% endfor %}
     </div>
     <script>
-        // The top stories packed into columns like the stories page's (packColumns, index.js)
+        // The top stories packed into columns like the stories page's (packColumns, index.js), three at most
         (function () {
             const box = document.querySelector('.top-story-cards');
-            if (box) packColumns(box, [...box.querySelectorAll('.story')], 340);
+            if (box) packColumns(box, [...box.querySelectorAll('.story')], 340, 3);  // three at most: wider cards read and flow better (Oct 9)
         })();
     </script>
     <p class="more-link"><a href="stories.html">📰 Every story on the front pages now →</a></p>
