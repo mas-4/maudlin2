@@ -441,6 +441,13 @@ disagree more on kept filings (spread 0.086) than on removals (0.052), the wrong
 Requiring all five to agree costs a third of the coverage. Five times the judging for nothing: not kept. The 69% is
 itself the number to watch: two thirds of what the person keeps could be filed without asking, at 95% precision.
 
+### P2b The naming rules without a leading "The" (Oct 10) — the person's call
+`scripts/experiments/p2b_no_the.py`: the production naming rules plus "no leading 'The' unless it is part of the
+idiom", on the same 100 renamed motifs. Names starting with "The" 63% to 4%; likeness to the person's names 0.546 to
+0.540, abstract labels 10% to 13%, 3.2 words to 3.0. Some names only lose the article (Boy who cried wolf, Uncanny
+valley), some change (The Villainous Turn to Moral panic, The Glitch in the Matrix to It's all a setup); good ones
+stay (Punchable face, Eat the rich, Collateral damage). Measures don't decide it; the person does.
+
 ### D5 Tangherlini's actants (Oct 10) — no help in filing
 `scripts/experiments/d5_actants.py`, after Tangherlini et al.'s narrative frameworks (2018, 2020). Gemma 26B read 914
 of the 977 filed claims (63 answers ran off the end, listing a domain over and over) for who does what to whom (roles,
