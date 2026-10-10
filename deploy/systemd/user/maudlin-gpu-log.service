@@ -1,0 +1,13 @@
+[Unit]
+Description=Maudlin GPU log: the card's temperature, load, power, fan and memory once a minute (maudlin-data/gpu_log.csv, read by the checker's dashboard)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nvidia-smi --query-gpu=timestamp,temperature.gpu,utilization.gpu,power.draw,fan.speed,memory.used --format=csv,noheader -l 60
+StandardOutput=append:/home/mas/maudlin-data/gpu_log.csv
+StandardError=journal
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
