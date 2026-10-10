@@ -253,6 +253,16 @@ boomers "know who should make the sacrifice. And the answer is their children an
   now says the line is fuzzy. Sanewashing, by contrast, was misused on the Dayton speech: it's for tellers charging
   someone with it, not for our verdict on a teller's softening.
 
+- **The check pile, cleared (Oct 10).** 192 claims, twenty at a time, each read from its sources with its other motifs
+  named. Most take-outs hid a shape, and some 150 motifs were born, among them The last guy (blame or measure against
+  the predecessor, on eight claims), Lying media (split from Fake news: the standing charge vs a particular story),
+  Distancing (breaking ranks, softly), Call it what it is (the mirror of Words mean things), Camp of the Saints (checked
+  against the historical trope before filing), Driven off the land (the person's ethnic-cleansing reading, filed under
+  a name the telling carries), and the cope cluster the person noticed in right-wing media: They're losing, actually!,
+  The fundamentals, Vibecession. Lessons: raise every doubt in its row; say what other motifs each claim carries; look
+  up a new motif's id before acting on it (a rename once hit They're pouring in!); a model-made Sanewashing isn't ours to
+  apply to a teller's softening.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
