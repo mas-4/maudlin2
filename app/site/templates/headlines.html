@@ -27,7 +27,8 @@
             {% for s in top.spread %}<span class="spread-{{ s.key|e }}" style="width: {{ s.pct }}%{% if s.key != 'unrated' %}; background: {{ s.color|e }}; color: {{ s.ink|e }}{% endif %}" title="{{ s.n }} {{ s.label }}">{% if s.pct >= 9 %}{{ s.n }}{% endif %}</span>{% endfor %}
         </div>
         <p class="spread-key" aria-hidden="true">{% for s in top.spread %}<span><i{% if s.key == 'unrated' %} class="key-unrated"{% else %} style="background: {{ s.color|e }}"{% endif %}></i>{{ s.label }}</span>{% endfor %}</p>
-        <p class="top-facts">📰 on {{ top.now }} front pages now{% if top.outlets != top.now %} · {{ top.outlets }} in all{% endif %}</p>
+        <p class="top-facts">📰 on {{ top.now }} front pages now{% if top.outlets != top.now %} · {{ top.outlets }} in all{% endif %}{% if top.speed %} · <span class="fast-break" title="{{ top.speed|e }} outlets had it within an hour of our first sighting">🚀 {{ top.speed }} in the first hour</span>{% endif %}</p>
+        {% if top.also_on %}<p class="top-facts">📡 also trending on {% for name in top.also_on %}<span class="trend-both" title="Also trending on {{ name|e }}">{{ name }}</span>{% endfor %}</p>{% endif %}
     {% endif %}
         {% if cluster['blindspot'] %}
             {% set b = cluster['blindspot'] %}
@@ -743,22 +744,6 @@
     {% endif %}
     {% endif %}
     <div class="trending-row" id="trending">
-        {% if news_trends %}
-            <section class="trending trending-news">
-                <h3>Trending in the news</h3>
-                <ol>
-                    {% for story in news_trends %}
-                        <li>
-                            {% if story.saga %}<span class="saga-tag" style="--saga: {{ story.color|e }}" title="An ongoing story in {{ story.saga|e }} parts">🧵 {{ story.saga }} parts</span>{% endif %}
-                            <a href="{{ card_href(story.cluster) }}">{{ story.title }}</a>
-                            <span class="trend-posts" title="Outlets with it on their front page now, and all that covered it">{{ story.now }} on front pages now{% if story.outlets > story.now %} · {{ story.outlets }} in all{% endif %}</span>
-                            {% if story.speed %}<span class="fast-break" title="{{ story.speed|e }} outlets had it within an hour of our first sighting">🚀 {{ story.speed }} in the first hour</span>{% endif %}
-                            {% for name in story.also_on %}<span class="trend-both" title="Also trending on {{ name|e }}">{{ name }}</span>{% endfor %}
-                        </li>
-                    {% endfor %}
-                </ol>
-            </section>
-        {% endif %}
         {% for box in trend_boxes %}
             <section class="trending">
                 <h3>{{ box.heading }}</h3>

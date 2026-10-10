@@ -548,7 +548,8 @@ class HeadlinesPage:
     def top_stories(self):
         """The front page's short list: the hottest stories now, as trending in the news ranks them, each as its card
         from stories.html (Oct 8: the person found the lighter cards boring) with a bar of who carries it by lean,
-        far left to far right, apart from the rated center."""
+        far left to far right, apart from the rated center. The list itself is no longer shown on its own (Oct 10:
+        it repeated these cards), so its fast-break count and where else each story trends ride on the cards."""
         by_id = {c['cluster']: c for c in self.context.get('clusters', [])}
         out = []
         for item in self.context.get('news_trends', [])[:self.TOP_STORIES]:
@@ -561,6 +562,7 @@ class HeadlinesPage:
             counts.append(('unrated', 'unrated', len(c['data']) - len(rated), '#ffffff', '#555555'))
             total = max(1, sum(n for _, _, n, _, _ in counts))
             out.append({'cluster': c, 'now': item['now'], 'outlets': item['outlets'],
+                        'speed': item.get('speed'), 'also_on': item.get('also_on') or [],
                         'spread': [{'key': key, 'label': label, 'n': n, 'pct': round(100 * n / total), 'color': color, 'ink': ink}
                                    for key, label, n, color, ink in counts if n]})
         self.context['top_stories'] = out
