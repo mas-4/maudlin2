@@ -9,7 +9,7 @@
 {% endif %}{% endmacro %}
 
 {% macro motifs(c) %}{% if c.motifs %}
-    <div class="card-section"><p class="section-label" title="Recurring shapes this is an instance of, in our own motif index: named and filed by a language model, a work in progress being checked by hand">🧩 BND Motif Index</p>
+    <div class="card-section"><p class="section-label" title="Recurring shapes this is an instance of, in our own motif index: suggested and filed by a language model, each motif checked by a person">🧩 BND Motif Index</p>
         {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.genre %} ({{ m.genre|e }}){% endif %}{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
     </div>
 {% endif %}{% endmacro %}
@@ -24,11 +24,45 @@
             truth claims, and they're the same whether people tell the story or argue against it. Where a fact-checker
             has examined a claim, <b>the verdict is the fact-checker's</b>: follow the link (🔎) to read it.</p>
     </div>
+    {% if index.entries %}
+        <h2 class="section-divider" id="motif-index"><span>🧩 The motif index</span></h2>
+        <section class="motif-front" aria-labelledby="motif-index">
+            <p class="table-intro motif-front-lede">Under every story told is a shape that's been told before. <b>The BND
+                Motif Index</b> is our own catalog of those shapes in what's said about politics and public life:
+                <b>{{ index.entries|length }}</b> motifs holding <b>{{ index.claims }}</b> claims, each checked by a
+                person and sorted into {{ index.genres|length }} genres, the way a folklorist sorts tales. Pick a genre
+                to read its motifs, or go to what's being told now, below.</p>
+            {% if index.lately %}
+                <div class="motif-lately-box">
+                    <p class="section-label" title="Motifs with the most claims dated in the last {{ index.lately_days }} days">🔥 Told most lately</p>
+                    <p class="motif-front-chips">{% for m in index.lately %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.recent }} claims in the last {{ index.lately_days }} days, {{ m.count }} in all{% if m.genre %} ({{ m.genre|e }}){% endif %}">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.recent }}</span></a>{% endfor %}</p>
+                </div>
+            {% endif %}
+            <div class="genre-shelves">
+                {% for g in index.genres %}
+                    <div class="genre-shelf">
+                        <h4><a href="motifs.html#genre={{ g.name|urlencode }}"><span aria-hidden="true">{{ g.emoji }}</span> {{ g.name }}</a></h4>
+                        <p class="genre-about">{{ g.about|e }}</p>
+                        <p class="motif-front-chips">{% for m in g.top %}<a class="motif-chip small" href="motifs.html#{{ m.id|e }}"{% if m.note %} title="{{ m.note|e }}"{% endif %}>🧩 {{ m.name|e }}</a>{% endfor %}</p>
+                        <p class="genre-all"><a href="motifs.html#genre={{ g.name|urlencode }}">all {{ g.count }} motifs, {{ g.claims }} claims →</a></p>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if index.groups %}
+                <details class="motif-front-groups">
+                    <summary>🗂️ <b>{{ index.groups|length }} groups</b>: shelves of motifs that go together, across genres</summary>
+                    <p class="motif-front-chips">{% for g in index.groups %}<a class="motif-chip small" href="motifs.html#group={{ g.id|e }}"{% if g.note %} title="{{ g.note|e }}"{% endif %}>🗂️ {{ g.name|e }} <span class="motif-seen">{{ g.count }}</span></a>{% endfor %}</p>
+                </details>
+            {% endif %}
+            <p class="more-link"><a href="motifs.html">🧩 browse the whole index</a> <a href="motif-map.html">🕸️ see it as a map</a> <a href="motifs.html#how">📖 how it works</a></p>
+            {% include "motif_note.html" %}
+        </section>
+        <h2 class="section-divider" id="told-now"><span>🧶 What's told now</span></h2>
+    {% endif %}
     <p class="wip-banner">🚧 <b>Work in progress.</b> One catalog of the stories told about politics and public life,
         from three places: what people retell in their own words on Bluesky and Mastodon (🧶), what's told on the
         podcasts, call-in and video shows we follow (🎙️), and what fact-checkers examine (🔎). The labels are a small
-        local language model's best guess and are often wrong.</p>
-    {% include "motif_note.html" %}
+        local language model's best guess and are often wrong; the motifs are checked by a person.</p>
     <p class="poll-note">{% if report %}🧶 <b>{{ kinds.posts or 0 }}</b> retold online, each by at least {{ floor }} people
         in their own words, from {{ "{:,}".format(report.posts) }} posts by {{ "{:,}".format(report.authors) }} accounts
         in the {{ report.hours|int }} hours before {{ report.made|replace('T', ' ') }} ({{ fewer }} more told by fewer
@@ -100,7 +134,7 @@
                 {% for k, n in source_counts %}<button type="button" data-sources="{{ k|e }}" title="{{ sources[k].about|e }}">{{ sources[k].emoji }} {{ sources[k].name }} <b>{{ n }}</b></button>{% endfor %}</span>
             {% if genre_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">genre:</span>
-                {% for g, n in genre_counts %}<button type="button" data-genres="{{ g|e }}" title="Filed under a motif of this genre in our motif index">{{ g|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for g, n in genre_counts %}<button type="button" data-genres="{{ g|e }}" title="Filed under a motif of this genre in our motif index">{{ index.genre_emoji.get(g, '') }} {{ g|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
             <span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">only:</span>
                 <button type="button" data-filter="politics">🏛️ politics</button>
@@ -108,7 +142,8 @@
                 {% if seen_count %}<button type="button" data-filter="seen" title="Fact-checked rumors people in our social sample are telling or arguing over">💬 circulating <b>{{ seen_count }}</b></button>{% endif %}</span>
             {% if motif_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">motif:</span>
-                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id|e }}" title="{{ m.id|e }} in our motif index">🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index"{% if loop.index > motif_chips %} class="motif-more" hidden{% endif %}>🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}
+                {% if motif_counts|length > motif_chips %}<button type="button" class="motif-more-toggle" data-more="1" aria-expanded="false">➕ {{ motif_counts|length - motif_chips }} more</button>{% endif %}</span>{% endif %}
             {% if class_counts %}<span class="bar-divider" aria-hidden="true"></span>
             <span class="bar-group"><span class="bar-label">rumor:</span>
                 {% for k, n in class_counts %}<button type="button" data-rumor="{{ k|e }}" title="{{ rumor_classes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
@@ -123,7 +158,7 @@
         <div class="court-cards narrative-cards">
             {% for c in cards %}
                 <div class="story court-story narrative folk-{{ c.kind }}" data-politics="{{ (1 if c.politics else '')|e }}" data-sources="|{{ c.sources|join('|')|e }}|" data-genres="|{{ c.genres|join('|')|e }}|" data-rumor="{{ (c.rumor_class or '')|e }}" data-scope="{{ (c.conspiracy or '')|e }}" data-family="{{ (c.family or '')|e }}" data-seen="{{ (1 if c.seen and c.seen.people else '')|e }}" data-hasmotif="{{ (1 if c.motifs else '')|e }}" data-motif="{% if c.motifs %}|{{ c.motifs|map(attribute='id')|join('|') }}|{% endif %}">
-                    <p class="folk-sources">{% for s in c.sources %}<span class="folk-source folk-from-{{ s }}" title="{{ sources[s].about|e }}">{{ sources[s].emoji }} {{ sources[s].name }}</span>{% endfor %}{% for g in c.genres %}<span class="folk-genre" title="Genre of its motifs in our motif index, given by a person">{{ g|e }}</span>{% endfor %}{% if c.kind == 'checks' %} <span class="court-when">{{ c.checker|e }} · {{ c.date }}</span>{% elif c.kind == 'shows' %} <span class="court-when">latest {{ c.date }}</span>{% endif %}</p>
+                    <p class="folk-sources">{% for s in c.sources %}<span class="folk-source folk-from-{{ s }}" title="{{ sources[s].about|e }}">{{ sources[s].emoji }} {{ sources[s].name }}</span>{% endfor %}{% for g in c.genres %}<a class="folk-genre" href="motifs.html#genre={{ g|urlencode }}" title="Genre of its motifs in our motif index, given by a person: see the whole genre">{{ index.genre_emoji.get(g, '') }} {{ g|e }}</a>{% endfor %}{% if c.kind == 'checks' %} <span class="court-when">{{ c.checker|e }} · {{ c.date }}</span>{% elif c.kind == 'shows' %} <span class="court-when">latest {{ c.date }}</span>{% endif %}</p>
                     {% if c.kind == 'checks' %}
                         <h4><a href="{{ c.url|e }}">{{ c.title|e }}</a></h4>
                         <p class="narrative-claim" title="The claim checked, in the model's words">“{{ c.claim|e }}”</p>
@@ -198,6 +233,8 @@
                 const only = new Set();  // 🏛️ politics, 🧩 has a motif, 💬 circulating
                 const pick = {sources: null, genres: null, motif: null, rumor: null, scope: null, family: null};  // one per row, tapped again to clear
                 // A card can have several sources, genres and motifs ('|M004|M005|'): it matches one it holds; the other rows match exactly
+                const more = document.querySelector('.motif-more-toggle');
+                if (more) more.dataset.label = more.textContent;
                 const holds = (c, k, v) => ['sources', 'genres', 'motif'].includes(k) ? c.dataset[k].includes(`|${v}|`) : c.dataset[k] === v;
                 const show = () => repack(all.filter((c) => [...only].every((k) => c.dataset[k])
                     && Object.entries(pick).every(([k, v]) => !v || holds(c, k, v))));
@@ -208,6 +245,13 @@
                 document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
                     const b = ev.target.closest('button');
                     if (!b) return;
+                    if (b.dataset.more) {  // every motif on a card, not only the most common
+                        const open = b.getAttribute('aria-expanded') !== 'true';
+                        document.querySelectorAll('.narrative-tools .motif-more').forEach((x) => { x.hidden = !open && !x.classList.contains('active'); });
+                        b.setAttribute('aria-expanded', open);
+                        b.textContent = open ? '➖ fewer' : b.dataset.label;
+                        return;
+                    }
                     if (b.dataset.filter) {
                         if (b.classList.toggle('active')) only.add(b.dataset.filter); else only.delete(b.dataset.filter);
                     }

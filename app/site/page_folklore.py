@@ -6,7 +6,9 @@ then Folklore and Rumors were two pages). A card per claim:
   (app/analysis/show_claims.py), with which shows;
 - fact-checked: the rumors fact-checkers examined in the last few weeks (app/analysis/factchecks.py); the verdict
   is always the fact-checker's own, behind its link. A check already linked from a narrative's card isn't repeated.
-Each card carries the motifs it's filed under in our motif index, and the person's genres of those motifs.
+The page opens on the motif index itself (Oct 10: it had shown only the motifs on today's cards): its genres, the
+motifs told most lately and its groups, from page_motifs.catalog. Each card carries the motifs it's filed under in
+our motif index, and the person's genres of those motifs.
 
 People's own posts are never shown on the published site, only the model's summary of what they share: even without
 handles, a quoted post can be searched back to its author. Local preview builds (debug) show a few versions, so the
@@ -21,6 +23,7 @@ from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, R
 from app import bluesky_examples
 from app.analysis import accusations, circulation, factchecks, motif_index, narrative_threads, show_claims
 from app.site.common import TemplateHandler
+from app.site.page_motifs import catalog
 from app.utils import Config, get_logger
 from app.utils.store import read_json
 
@@ -45,7 +48,7 @@ def withheld() -> set[str]:
 
 
 FOCUS_EPISODES = 4  # Focus Group episodes shown, the latest
-MOTIF_CHIPS = 12  # motif filters at most
+MOTIF_CHIPS = 12  # motif filters shown before "more"
 CHECK_DAYS = 30  # fact-checks this recent
 # Where a card's claim was heard: the source chips on each card and the filter row
 SOURCES = {'posts': {'emoji': '🧶', 'name': 'retold online', 'about': 'Told by many people in their own words on Bluesky and Mastodon'},
@@ -61,14 +64,14 @@ SHOW_INK = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#b8b8c8'}  # as th
 
 
 def motif_counts(cards: list[dict]) -> list[tuple[dict, int]]:
-    """(motif, how many cards carry it) for the motif filter row: motifs on two or more cards, most first (one on a
-    single card would filter down to that card)."""
+    """(motif, how many cards carry it) for the motif filter row, every motif on a card, most first: the first
+    MOTIF_CHIPS show, the rest behind "more" (Oct 10: only the 12 on two or more cards showed, of over a hundred)"""
     seen, counts = {}, Counter()
     for c in cards:
         for m in c['motifs']:
             seen[m['id']] = m
             counts[m['id']] += 1
-    return [(seen[i], n) for i, n in counts.most_common() if n >= 2][:MOTIF_CHIPS]
+    return [(seen[i], n) for i, n in sorted(counts.items(), key=lambda kv: (-kv[1], seen[kv[0]]['name'].lower()))]
 
 
 def motif_cards(index: dict, claim: str) -> list[dict]:
@@ -225,6 +228,7 @@ class FolklorePage:
         if SHOWS_PUBLIC or Config.debug:
             cards += show_cards(index, screen)
         cards += checked_cards(index, {p['url'] for c in cards for p in c.get('factchecks', [])})
+        shelf = catalog(index, screen)  # the motif index itself, which the page opens on
         screen.save()
         looked = circulation.load()
         self.template.write({
@@ -234,7 +238,8 @@ class FolklorePage:
             'genre_counts': counted(cards, 'genres'), 'family_counts': counted(cards, 'family'),
             'class_counts': counted(cards, 'rumor_class'), 'scope_counts': counted(cards, 'conspiracy'),
             'rumor_classes': RUMOR_CLASSES, 'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
-            'motif_counts': motif_counts(cards), 'with_motifs': sum(bool(c['motifs']) for c in cards),
+            'motif_counts': motif_counts(cards), 'motif_chips': MOTIF_CHIPS, 'with_motifs': sum(bool(c['motifs']) for c in cards),
+            'index': shelf,
             'looked': looked, 'seen_count': sum(1 for c in cards if (c.get('seen') or {}).get('people')),
             'check_days': CHECK_DAYS, 'checkers': sorted({c['checker'] for c in cards if c['kind'] == 'checks'}),
             'preview': Config.debug, 'shows_on': SHOWS_PUBLIC or Config.debug,

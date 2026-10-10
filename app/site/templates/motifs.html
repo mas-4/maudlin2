@@ -1,37 +1,75 @@
 {% extends "page.html" %}
 
 {% block content %}
-    <h2>🧩 Motif index</h2>
+    <h2>🧩 The BND Motif Index</h2>
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>
         <p>Each motif is <b>the shape of a story as people tell it</b>, not a claim that it's true: many of the claims
             filed here are false, some are true, and a motif is the same whether people tell the story or argue
             against it.</p>
     </div>
-    <p class="wip-banner">🚧 <b>Work in progress.</b> Our own index of the recurring shapes of today's political
-        rumors and narratives, built as we go: the way Stith Thompson built his <i>Motif-Index of Folk-Literature</i>
-        from the folktales he read, but from what people say online and on the shows we follow, and what fact-checkers
-        examine (on <a href="folklore.html">Folklore and rumors</a>). A small language model names each claim's
-        shape as a reusable framing and files it under a matching motif or starts a new one; a person refines the
-        entries by hand. {{ entries|length }} motifs from {{ claims }} claims so far, {{ recurring }} seen more than
-        once.</p>
-    <p class="more-link"><a href="motif-map.html">🕸️ see them on the map</a></p>
+    <p class="wip-banner">🚧 <b>Work in progress.</b> Our own index of the recurring shapes in what's told about
+        politics and public life, built as we go: the way Stith Thompson built his <i>Motif-Index of
+        Folk-Literature</i> from the folktales he read, but from what people say online, what's told on the shows we
+        follow and what fact-checkers examine (on <a href="folklore.html">Folklore and rumors</a>). <b>{{ entries|length }}</b>
+        motifs from <b>{{ claims }}</b> claims so far, in {{ genres|length }} genres and {{ groups|length }} groups;
+        {{ recurring }} seen more than once, {{ resting }} resting on another.</p>
+    <p class="more-link"><a href="motif-map.html">🕸️ see them on the map</a> <a href="folklore.html">🧶 what's told now</a></p>
     {% include "motif_note.html" %}
+    <details class="how-it-works" id="how">
+        <summary>How the index works</summary>
+        <p class="poll-note"><b>🧩 A motif</b> is a shape a story takes, named so the same story told about other people
+            or in another year lands in the same entry: <i>Pattern of retribution</i>, not one whistleblower's death.
+            The name and the shape are ours; the shape has to be in what the tellers say, not in why the story
+            spreads. A claim can carry several motifs.</p>
+        <p class="poll-note"><b>Genre</b> is what kind of thing a motif is, not its topic. Every motif has one:</p>
+        <ul class="label-notes">
+            {% for g in genres %}<li>{{ g.emoji }} <b>{{ g.name }}</b> ({{ g.count }}): {{ g.about|e }}</li>{% endfor %}
+        </ul>
+        <p class="poll-note"><b>🗂️ Groups</b> are loose shelves of motifs that go together, across genres
+            (<i>Horserace</i>, <i>Who rules</i>, <i>War motifs</i>); a motif can sit in several. <b>🪜 Rests on</b> is
+            the one hierarchy: a motif rests on another when it only makes sense given it, as a kind of it or a case,
+            argument or figure that tells it.</p>
+        <p class="poll-note">A language model running on our own computer suggests motifs and files claims under them.
+            A person checks each motif before it's shown here: its name, its note, its genre, its groups and the
+            claims in it. The genres' definitions are found as we sort, case by case, and change when a case doesn't
+            fit.</p>
+    </details>
     {% if entries %}
-        <p class="poll-note"><label>Search: <input type="search" id="motif-search" placeholder="a word in a motif or claim"></label></p>
+        <div class="table-filters story-sort narrative-tools motif-tools" role="group" aria-label="Filter the index">
+            <span class="bar-group"><span class="bar-label">genre:</span>
+                {% for g in genres %}<button type="button" data-genre="{{ g.name|e }}" title="{{ g.about|e }}">{{ g.emoji }} {{ g.name }} <b>{{ g.count }}</b></button>{% endfor %}</span>
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><span class="bar-label">sort:</span>
+                <button type="button" data-sort="count" class="active" title="Most claims first">🧮 most told</button>
+                <button type="button" data-sort="recent" title="Most claims in the last {{ lately_days }} days first">🔥 lately</button>
+                <button type="button" data-sort="first" title="The newest motifs first">🆕 newest</button>
+                <button type="button" data-sort="name">🔤 A–Z</button></span>
+            <span class="bar-divider" aria-hidden="true"></span>
+            <span class="bar-group"><label class="bar-label" for="motif-search">🔎</label>
+                <input type="search" id="motif-search" placeholder="a word in a motif or claim"></span>
+        </div>
+        <details class="motif-group-picker">
+            <summary>🗂️ <b>{{ groups|length }} groups</b>: shelves of motifs that go together, across genres</summary>
+            <p class="motif-group-chips">{% for g in groups %}<button type="button" data-group="{{ g.id|e }}"{% if g.note %} title="{{ g.note|e }}"{% endif %}>🗂️ {{ g.name|e }} <b>{{ g.count }}</b></button>{% endfor %}</p>
+        </details>
+        <p class="table-intro motif-showing" aria-live="polite"></p>
         <div class="court-cards narrative-cards motif-cards">
             {% for e in entries %}
-                <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-text="{{ (e.name ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
-                    <p class="court-when">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %}</p>
+                <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-genre="{{ e.genre|e }}" data-groups="|{{ e.groups|map(attribute='id')|join('|')|e }}|" data-count="{{ e.count }}" data-recent="{{ e.recent }}" data-first="{{ (e.first_seen or '')|e }}" data-name="{{ e.name|lower|e }}" data-text="{{ (e.name ~ ' ' ~ e.note ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
+                    {% if e.genre or e.groups %}<p class="folk-sources">{% if e.genre %}<a class="folk-genre" href="#genre={{ e.genre|urlencode }}" title="{{ e.genre|e }}: show the whole genre">{{ genre_emoji.get(e.genre, '') }} {{ e.genre|e }}</a>{% endif %}{% for g in e.groups %}<a class="folk-genre motif-group-tag" href="#group={{ g.id|e }}" title="Show the whole group">🗂️ {{ g.name|e }}</a>{% endfor %}</p>{% endif %}
                     <h4>🧩 {{ e.name|e }}</h4>
                     {% if e.note %}<p class="motif-note">{{ e.note|e }}</p>{% endif %}
-                    <p class="court-stages">{{ e.count }} claim{{ '' if e.count == 1 else 's' }}: {% for s, n in e.sources %}{{ s|e }}{% if n > 1 %} ×{{ n }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+                    {% if e.rests_on %}<p class="motif-rests" title="This motif only makes sense given these: a kind of them, or a case, argument or figure that tells them">🪜 rests on {% for p in e.rests_on %}<a href="#{{ p.id|e }}">{{ p.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+                    {% if e.under %}<p class="motif-rests" title="Motifs that only make sense given this one">⤵️ under it: {% for p in e.under %}<a href="#{{ p.id|e }}">{{ p.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+                    <p class="court-stages">{{ e.count }} claim{{ '' if e.count == 1 else 's' }}{% if e.recent %} <span class="motif-lately" title="Claims dated in the last {{ lately_days }} days">🔥 {{ e.recent }} lately</span>{% endif %}: {% for s, n in e.sources %}{{ s|e }}{% if n > 1 %} ×{{ n }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
                     <ul class="story-checks motif-claims">
                         {% for c in e.claims[:8] %}
                             <li>{% if c.source != 'narrative' and c.ref %}<a href="{{ c.ref|e }}">“{{ c.claim|e }}”</a> <span class="court-when">{{ c.source|e }}</span>{% else %}“{{ c.claim|e }}” <span class="court-when">people online</span>{% endif %}</li>
                         {% endfor %}
                         {% if e.claims|length > 8 %}<li class="court-when">and {{ e.claims|length - 8 }} more</li>{% endif %}
                     </ul>
+                    <p class="court-when">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %}</p>
                 </div>
             {% endfor %}
         </div>
@@ -40,11 +78,81 @@
                 const box = document.querySelector('.motif-cards');
                 const all = [...box.querySelectorAll('.motif-entry')];
                 const repack = packColumns(box, all, 340);
-                document.getElementById('motif-search').addEventListener('input', (ev) => {
-                    const q = ev.target.value.trim().toLowerCase();
-                    repack(all.filter((c) => !q || c.dataset.text.includes(q)));
+                const about = Object.fromEntries({{ genres|map(attribute='name')|list|tojson }}.map((g, i) => [g, {{ genres|map(attribute='about')|list|tojson }}[i]]));
+                const groupName = Object.fromEntries({{ groups|map(attribute='id')|list|tojson }}.map((g, i) => [g, {{ groups|map(attribute='name')|list|tojson }}[i]]));
+                const showing = document.querySelector('.motif-showing');
+                const search = document.getElementById('motif-search');
+                const esc = (s) => s.replace(/[&<>"]/g, (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+                let sort = 'count';
+                // The genre or group picked lives in the address (#genre=Plots, #group=G19), so it can be linked to,
+                // as Folklore and rumors does; a motif's own address (#M004) clears them and goes to it
+                const picked = () => {
+                    const h = new URLSearchParams(location.hash.slice(1));
+                    return {genre: h.get('genre'), group: h.get('group')};
+                };
+                const order = {
+                    count: (a, b) => b.dataset.count - a.dataset.count,
+                    recent: (a, b) => (b.dataset.recent - a.dataset.recent) || (b.dataset.count - a.dataset.count),
+                    first: (a, b) => b.dataset.first.localeCompare(a.dataset.first) || (b.dataset.count - a.dataset.count),
+                    name: (a, b) => a.dataset.name.localeCompare(b.dataset.name),
+                };
+                const show = () => {
+                    const {genre, group} = picked();
+                    const q = search.value.trim().toLowerCase();
+                    const shown = all.filter((c) => (!genre || c.dataset.genre === genre)
+                        && (!group || c.dataset.groups.includes(`|${group}|`)) && (!q || c.dataset.text.includes(q)))
+                        .sort(order[sort]);
+                    repack(shown);
+                    document.querySelectorAll('.motif-tools button[data-genre]').forEach((b) => b.classList.toggle('active', b.dataset.genre === genre));
+                    document.querySelectorAll('.motif-group-picker button').forEach((b) => b.classList.toggle('active', b.dataset.group === group));
+                    if (group) document.querySelector('.motif-group-picker').open = true;
+                    const what = [genre && `<b>${esc(genre)}</b>: ${esc(about[genre] || '')}`,
+                                  group && `🗂️ the group <b>${esc(groupName[group] || group)}</b>`].filter(Boolean);
+                    showing.innerHTML = `Showing <b>${shown.length}</b> of ${all.length} motifs` + (what.length ? `. ${what.join('. ')}` : '')
+                        + (genre || group ? ' · <a href="#" class="motif-clear">show all</a>' : '');
+                };
+                const go = (key, value) => {
+                    const h = new URLSearchParams(location.hash.slice(1));
+                    if (h.get(key) === value) h.delete(key); else h.set(key, value);
+                    [...h.keys()].filter((k) => !['genre', 'group'].includes(k)).forEach((k) => h.delete(k));
+                    history.replaceState(null, '', h.toString() ? `#${h}` : location.pathname);
+                    show();
+                };
+                document.querySelector('.motif-tools').addEventListener('click', (ev) => {
+                    const b = ev.target.closest('button');
+                    if (!b) return;
+                    if (b.dataset.genre) go('genre', b.dataset.genre);
+                    if (b.dataset.sort) {
+                        sort = b.dataset.sort;
+                        document.querySelectorAll('.motif-tools button[data-sort]').forEach((x) => x.classList.toggle('active', x === b));
+                        show();
+                    }
                 });
-                if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+                document.querySelector('.motif-group-picker').addEventListener('click', (ev) => {
+                    const b = ev.target.closest('button');
+                    if (b) go('group', b.dataset.group);
+                });
+                showing.addEventListener('click', (ev) => {
+                    if (!ev.target.closest('.motif-clear')) return;
+                    ev.preventDefault();
+                    history.replaceState(null, '', location.pathname);
+                    show();
+                });
+                search.addEventListener('input', show);
+                const arrive = () => {
+                    const id = location.hash.slice(1);
+                    const one = /^M\d+$/.test(id) && all.find((c) => c.id === id);  // filtered out, it's off the page
+                    if (!one) return show();
+                    search.value = '';  // a motif's own address: show everything, then go to it
+                    history.replaceState(null, '', location.pathname);
+                    show();
+                    history.replaceState(null, '', `#${id}`);
+                    requestAnimationFrame(() => one.scrollIntoView({block: 'start'}));  // after the repack lays out
+                    one.classList.add('motif-arrived');
+                    setTimeout(() => one.classList.remove('motif-arrived'), 2000);
+                };
+                window.addEventListener('hashchange', arrive);
+                arrive();
             })();
         </script>
     {% else %}
