@@ -410,6 +410,29 @@ by more than 0.1 on 63% of filings. The judge reads the element, beyond the genr
 costs filings: worth keeping elements current when a note changes (they are redrafted then) and worth the person's
 eye on the elements of their busiest motifs.
 
+### D2 The person's past removals as examples (Oct 10) — not yet
+`scripts/experiments/d2_past_verdicts.py`, after the few-shot results in motif indexing (arXiv 2603.19283) and CIPHER
+(NeurIPS 2024). The judge never sees the claims the person took out of a motif; here it was shown the three nearest
+removals decided before each filing (no later rulings), on the 624 filings (427 kept) whose motif had one to show.
+
+| shown | AUC | later half |
+|---|---|---|
+| nothing (production) | 0.796 | 0.793 |
+| the removals | 0.809 | 0.810 |
+| the removals, with a drafted reason each | 0.795 | 0.802 |
+
++0.012 AUC with the removals, but a bootstrap by claim puts it at -0.003 to +0.028: not shown to help yet. The
+drafted reasons don't help. Worth asking again when there are more removals per motif.
+
+### D4 A Tell-Tale Hat list (Oct 10) — a list for the person
+`scripts/experiments/d4_tell_tale_hat.py`, after Tangherlini and Abello's Tell-Tale Hat (2017), from the glean's
+scores (no GPU): motif pairs whose claims the confidence model thinks fit the other too (461 pairs with two or more
+claims fitting across at fit 0.7), and motifs holding kept claims the model gives little chance (drift). Of the top
+30 pairs the person had already linked 8 (4 rests on, 4 related): 27%, against 0.3% of random pairs, so the list
+finds real overlaps; the other 22 (The sleeper agent / Every bang is a bomb, Money in politics / Graft, Pain at the
+pump / It's the economy, stupid...) are candidates for merging, a rests-on link or sharper notes. Drift: 6 motifs.
+The measure is the share the person acts on; the list is in `experiments/d4_tell_tale_hat.json`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
