@@ -78,6 +78,10 @@ def score():
         scorer.signals.save()
         print(f'judged {min(s + CHUNK, len(items))}/{len(items)} claims ({time.time() - started:.0f} s)', flush=True)
     free_gpu()  # the judge out of the card, so the reranker runs there, not on the CPU (it did, Oct 9: too slow)
+    # and made to: it picks its device when first loaded, and fell back to the CPU when anything else held the card
+    # at that moment (Oct 10: 7 cores for 80 minutes, the card idle, the lease held)
+    os.environ['MOTIF_RERANK_DEVICE'] = 'cuda'
+    scorer.signals._reranker = None
     rows = []
     for n, (k, ids) in enumerate(cands.items()):
         if not ids:
