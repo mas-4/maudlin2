@@ -441,7 +441,27 @@ disagree more on kept filings (spread 0.086) than on removals (0.052), the wrong
 Requiring all five to agree costs a third of the coverage. Five times the judging for nothing: not kept. The 69% is
 itself the number to watch: two thirds of what the person keeps could be filed without asking, at 95% precision.
 
-### D4 A Tell-Tale Hat list (Oct 10) — a list for the person
+### P2 The Oct 10 praxis (Oct 10) — "ours to name" changes nothing; the naming rules are the person's call
+`scripts/experiments/p2_praxis_oct10.py`. **The judge** asked with today's question and with "the tellers needn't name
+the motif... but the shape must be in what is told" added, on 1,524 decided filings: AUC 0.827 against 0.825, and on
+the 524 decided Oct 10, under the new rule, 0.837 against 0.836. The judge already reads it that way; not added.
+
+**Naming**: Gemma 26B named again the 100 motifs the model named and the person renamed (the rules' own examples left
+out), from the same claims:
+
+| names | like the person's | 0.8 or more | abstract | words |
+|---|---|---|---|---|
+| the model's first names | 0.653 | 28% | 49% | 3.1 |
+| today's instruction | 0.587 | 4% | 51% | 4.9 |
+| the new rules | 0.546 | 7% | **10%** | **3.2** |
+| the person's | | | 26% | 2.8 |
+
+The rules do what they say (abstract labels from 51% to 10%, five words to three), but likeness to the person's names
+can't judge them: only 2 renames came after Oct 9, the rest are the person's older, plainer names (several only
+capitalized the model's), and the rules' own examples, the newest names, had to be left out. Gemma's new names lean on
+"The X" (The Villainous Turn, The Identity Reclaimed) beside good ones (Eat the rich, Punchable face, Collateral
+damage). The person's eye decides.
+
 `scripts/experiments/d4_tell_tale_hat.py`, after Tangherlini and Abello's Tell-Tale Hat (2017), from the glean's
 scores (no GPU): motif pairs whose claims the confidence model thinks fit the other too (461 pairs with two or more
 claims fitting across at fit 0.7), and motifs holding kept claims the model gives little chance (drift). Of the top
