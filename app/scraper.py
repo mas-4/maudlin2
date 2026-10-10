@@ -185,6 +185,9 @@ class Scraper(ABC, Thread):
         judged = pd.DataFrame(newsfilter.assess(df['title'].tolist(), self.agency), index=df.index,
                               columns=['news_score', 'event_score', 'loaded_score', 'emotion', 'emotion_ranks',
                                        'scored_by', 'scored_at', 'affected'])
+        # Some judged and some not (the model timed out on a few) makes pandas fill the gaps with NaN and NaT, which
+        # the database can't store: unjudged is None, as when none were judged (Oct 10: two hourly runs crashed)
+        judged = judged.astype(object).where(judged.notna(), None)
         df = df.join(judged)
         df['artpair'] = df.apply(lambda x: ArticleTuple(x['href'], x['raw'], x['title'], x['processed'], x['row'],
                                                         x['news_score'], x['event_score'], x['loaded_score'],
