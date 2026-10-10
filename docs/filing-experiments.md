@@ -393,6 +393,23 @@ the person's 33 merges (the right answer: the motif it went into) and 44 "not th
 | Qwen3 30B (before) | 18/33 | 7 | 4/44 | 17.6 |
 | **Gemma 4 26B** | **20/33** | 8 | 4/44 | 12.9 |
 
+### D1 The definition swap (Oct 10) — the judge reads the element
+`scripts/experiments/d1_definition_swap.py`, after "When Better Codebooks Are Not Enough" (arXiv 2606.06781: a model
+can score well on a codebook task while ignoring the codebook). Nimble 9B asked again on the person's 1,465 decided
+filings (1,070 kept, 375 motifs) with the motif's own must-have element, another motif's (a shuffle, none left in
+place), and another motif's of the same genre. Name, note and claims filed under it unchanged.
+
+| element shown | AUC | yes on kept | yes on taken out |
+|---|---|---|---|
+| **its own (production)** | **0.821** | 0.597 | 0.191 |
+| another motif's | 0.641 | 0.220 | 0.101 |
+| another of the same genre | 0.654 | 0.238 | 0.085 |
+
+A wrong element costs the kept filings 0.36 to 0.38 of their yes and the taken-out ones 0.09 to 0.11; it moved the yes
+by more than 0.1 on 63% of filings. The judge reads the element, beyond the genre too, so a wrong or vague element
+costs filings: worth keeping elements current when a note changes (they are redrafted then) and worth the person's
+eye on the elements of their busiest motifs.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
