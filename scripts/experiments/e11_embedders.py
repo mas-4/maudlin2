@@ -26,6 +26,9 @@ MODELS = {
     'nomic-embed-text-v2-moe': ('search_query: ', 'search_document: '),
     'embeddinggemma:300m': ('task: search result | query: ', 'title: none | text: '),
     'embeddinggemma-2': ('task: search result | query: ', 'title: none | text: '),
+    # Oct 10: its card's other prompts, for a claim against a motif is more likeness than search
+    'embeddinggemma-2 similarity': ('task: sentence similarity | query: ', 'task: sentence similarity | query: '),
+    'embeddinggemma-2 fact checking': ('task: fact checking | query: ', 'title: none | text: '),
     'qwen3-embedding:0.6b': (f'Instruct: {TASK}\nQuery: ', ''),
     'qwen3-embedding:4b': (f'Instruct: {TASK}\nQuery: ', ''),
     'qwen3-embedding:8b': (f'Instruct: {TASK}\nQuery: ', ''),
@@ -35,7 +38,8 @@ MODELS = {
     'granite-embedding:278m': ('', ''),
 }
 ONLY = [m for m in os.environ.get('ONLY', '').split(',') if m]
-LOCAL = {'embeddinggemma-2': 'google/embeddinggemma-2'}  # Ollama's build of it needs Apple's MLX: from Hugging Face instead
+LOCAL = {'embeddinggemma-2': 'google/embeddinggemma-2', 'embeddinggemma-2 similarity': 'google/embeddinggemma-2',
+         'embeddinggemma-2 fact checking': 'google/embeddinggemma-2'}  # Ollama's build of it needs Apple's MLX: from Hugging Face instead
 _st = {}
 
 

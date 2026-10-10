@@ -236,7 +236,9 @@ each with its own query and document prefixes. Top-12 of the person's motifs alo
 | nomic-embed-text (today's) | 48.8% | 82.6% | 77.8% | 91.6% | 75 |
 | nomic-embed-text-v2-moe | 60.7% | 82.4% | 78.1% | 91.8% | 73 |
 | embeddinggemma 300m | **70.8%** | 82.5% | 79.5% | 92.0% | 71 |
-| embeddinggemma-2 (Hugging Face; v1's prefixes, to check) | 55.2% | 82.5% | 77.6% | 91.6% | 75 |
+| embeddinggemma-2 (Hugging Face; search prompts, its card's own) | 55.2% | 82.5% | 77.6% | 91.6% | 75 |
+| embeddinggemma-2, sentence-similarity prompts (Oct 10) | 60.7% | 82.7% | 77.8% | 92.3% | 69 |
+| embeddinggemma-2, fact-checking prompts (Oct 10) | 53.8% | 82.4% | 78.0% | 91.9% | 72 |
 | qwen3-embedding 0.6b | 58.9% | 82.5% | 78.9% | 92.0% | 71 |
 | qwen3-embedding 4b | 62.5% | 84.1% | 79.7% | 93.0% | 62 |
 | **qwen3-embedding 8b** | 70.7% | **84.8%** | **80.9%** | **93.5%** | **58** |
