@@ -6,7 +6,8 @@ kinds (RULES below, their examples made up: the corrections' own words would han
 
 - 'current': the source's own instruction (fact-checks with their production examples);
 - 'rules': the same plus the rules read from the corrections;
-- 'rules+examples': plus up to EXAMPLES of the person's corrections of the same kind of source.
+- 'rules+examples': plus up to EXAMPLES of the person's corrections of the same kind of source;
+- 'short' (Oct 10): rules+examples and a rule to write one short plain sentence, as the person does.
 
 The correction under test, and any other correction to the same wording, is never among the examples. Scored against
 the person's own wording: how alike (Qwen3-Embedding 8B, cosine), and a blind side-by-side (Nimble 9B: which of two
@@ -30,7 +31,7 @@ from app.analysis import motif_index as mi  # noqa: E402
 
 OUT = os.path.join(harness.EXP, 'w1_claim_wording.json')
 MODELS = ['qwen3:8b', 'gemma4:26b']
-WAYS = ['current', 'rules', 'rules+examples']
+WAYS = ['current', 'rules', 'rules+examples', 'short']
 EXAMPLES = 8
 EMBED = 'qwen3-embedding:8b'
 JUDGE = 'nimble:9b'
@@ -54,6 +55,11 @@ president.
 - Exact facts from the source: who sued whom, the amounts, the place.
 - A stated concern is worded as the belief behind it ("elections should be paid for by citizens, not corporations", \
 not "corporate money is a big issue")."""
+
+# Oct 10: both models wrote longer than the person (W1's first run), and no rule said so
+SHORT = """- Write it as the person does: one short, plain sentence, usually under 20 words, saying what is claimed, not \
+who reports it or where it circulates ("A video shows a crowd storming a stadium", not "Social media posts claim a \
+video shows a crowd storming a stadium"); leave out dates, places and numbers unless the claim turns on them."""
 
 CURRENT = {
     'folklore': 'The claim or story most of the posts share, in one plain sentence.',
@@ -127,6 +133,8 @@ def prompt(item: dict, way: str, every: list[dict]) -> str:
         extra = '\n\n' + RULES
     elif way == 'rules+examples':
         extra = '\n\n' + RULES + '\n' + examples(item, every)
+    elif way == 'short':
+        extra = '\n\n' + RULES + '\n' + SHORT + '\n' + examples(item, every)
     return f"{item['material']}\n\nclaim: {CURRENT[item['kind']]}{extra}"
 
 
@@ -234,6 +242,10 @@ def report(saved, every):
         v = [sides[f'{m}|current-vs-before|{it["key"]}'] for it in every if f'{m}|current-vs-before|{it["key"]}' in sides]
         row.append(f'current against the original wording {np.mean([x > 0.5 for x in v]):.2f}')
         lines.append(f'    {m}: ' + '; '.join(row))
+    words = lambda t: len(str(t).split())  # noqa: E731
+    lines.append(f'  words a wording (mean): the person {np.mean([words(it["person"]) for it in every]):.1f}; ' + '; '.join(
+        f'{m} ' + ', '.join(f'{w} {np.mean([words(saved["written"][k]) for it in every if (k := f"{m}|{w}|{it["key"]}") in saved["written"]]):.1f}'
+                            for w in WAYS) for m in MODELS))
     for kind in kinds:
         its = [it for it in every if it['kind'] == kind]
         lines.append(f'  {kind} ({len(its)}): ' + '; '.join(
