@@ -218,7 +218,8 @@ goods", "Ascension to official station", "Scandalous past hindering political re
    candidates" became Dead weight president). One to five words that make sense alone on a chip.
 6. **Name the shape, not the case.** General enough for the next story (Driven off the land, not the settlers;
    Distancing, not Collins). A kind of person is an Archetype and sounds like one: RINO, Champagne socialist, Culture
-   warrior, Equivocator.
+   warrior, Equivocator. "The" belongs to Archetypes (The carpetbagger, The impostor, The sleeper agent); other
+   names take it only when it's part of the idiom (The buck stops here), never as a leading flourish (Oct 10).
 7. **No collisions.** A name that echoes an existing one confuses everyone (Wag the Dog beside Tail wags the dog became
    War for votes).
 
