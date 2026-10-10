@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-10
+- **Licensing narrowed.** The motif index (on the site and in its Markdown and SKOS exports) is now CC BY-NC-SA 4.0
+  with credit to bignews.day, and commercial use needs permission; the site's own writing and readings are all rights
+  reserved. They had been CC BY 4.0 since Oct 8. Third-party data keeps its own licenses (AllSides CC BY-NC, Wikipedia
+  CC BY-SA, VoteHub CC BY), and the code stays proprietary (LICENSE).
 - **New motifs are named the way the person names them.** The filer and the proposer used to name a new motif in
   "three to seven words, terse like a folklorist's label", and the person renamed or rejected every such name. They now
   follow the praxis's naming rules (docs/motif-praxis.md): an idiom, a catchphrase or the tellers' own words, or a
