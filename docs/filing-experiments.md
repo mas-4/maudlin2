@@ -446,7 +446,10 @@ itself the number to watch: two thirds of what the person keeps could be filed w
 idiom", on the same 100 renamed motifs. Names starting with "The" 63% to 4%; likeness to the person's names 0.546 to
 0.540, abstract labels 10% to 13%, 3.2 words to 3.0. Some names only lose the article (Boy who cried wolf, Uncanny
 valley), some change (The Villainous Turn to Moral panic, The Glitch in the Matrix to It's all a setup); good ones
-stay (Punchable face, Eat the rich, Collateral damage). Measures don't decide it; the person does.
+stay (Punchable face, Eat the rich, Collateral damage). Measures don't decide it; the person does: "it's a house
+style, it's fine". The person then asked for "The" to be kept for Archetypes (now in the praxis, rule 6). Told so in
+the rules, Gemma began 80% of names with "The", Archetypes and the rest alike (from 62%): The punchable face, The
+collateral damage. Naming the word primed it; the line stays in the praxis for people and out of the model's rules.
 
 ### D5 Tangherlini's actants (Oct 10) — no help in filing
 `scripts/experiments/d5_actants.py`, after Tangherlini et al.'s narrative frameworks (2018, 2020). Gemma 26B read 914
