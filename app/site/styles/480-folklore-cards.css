@@ -145,12 +145,12 @@
     background: rgba(255, 255, 255, 0.92);
     border: 2px solid #1f1f2e;
     border-radius: 12px;
-    padding: 0.5em 0.9em 0.2em;
+    padding: 0.5em 0.9em;
     margin: 0 0 1em;
 }
 
-.motif-front-groups {
-    padding-bottom: 0.5em;
+.motif-lately-box .motif-front-chips {
+    margin-bottom: -0.3em;  /* the chips' own bottom margin is padding enough */
 }
 
 .motif-front-groups summary {
