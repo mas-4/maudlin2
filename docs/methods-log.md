@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-10
+- **New motifs are named the way the person names them.** The filer and the proposer used to name a new motif in
+  "three to seven words, terse like a folklorist's label", and the person renamed or rejected every such name. They now
+  follow the praxis's naming rules (docs/motif-praxis.md): an idiom, a catchphrase or the tellers' own words, or a
+  known story whose plot is the shape; no abstract or topic labels; one to five words. Tested on 101 motifs the person
+  had renamed (P2): abstract labels went from 51% of names to 10%, five words to three; the person judged the names
+  far better. Motifs already named keep their names.
 - **One model fewer.** Whether a newly named motif is one the index already has is now asked of Gemma 4 26B, not Qwen3
   30B, which did only this: on the person's 33 merges and 44 "not the same" verdicts Gemma found 20 merges to the 30B's
   18 and joined the same 4 not-same pairs, faster (M1). The two no longer trade places on the card mid-filing.

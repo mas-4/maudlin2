@@ -67,7 +67,9 @@ def test_naming_prompt_has_no_example_names_to_copy():
     # The model copied prompt examples before ("the false flag", "the hidden ruler"); quoted examples invite it
     import re
     quoted = re.findall(r'"([^"{}]+)"', mi.NAME_PROMPT)
-    assert all(q in ('a claim that', 'is accused of') for q in quoted), quoted  # even a template got copied ("X is Y")
+    # ...but the naming rules' two bad names, shown as what not to do, may stay (Oct 10)
+    assert all(q in ('a claim that', 'is accused of', 'X of Y via Z', "Trump's influence on candidates")
+               for q in quoted), quoted  # even a template got copied ("X is Y")
 
 
 def test_a_sentence_is_not_a_motif_name(monkeypatch, tmp_path):

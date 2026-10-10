@@ -53,11 +53,24 @@ SHOWN = 8  # existing motifs shown when filing a claim, the closest to it (the u
 JUDGE_MODEL = 'gemma4:26b'
 SHOWN_FLOOR = 0.45  # ...if at least this alike
 
+# How a new motif is named (docs/motif-praxis.md, "Naming a proposed motif", Oct 10): the person renamed or rejected
+# every name the model gave in the old style ("three to seven words, terse like a folklorist's label"). With these
+# rules (P2, Oct 10) abstract labels went from 51% of names to 10% and five words to three, and the person judged the
+# names "way, way better"; on 101 motifs none copied an example. Filled into NAME_PROMPT, NEW_PROMPT and the
+# proposer's NEW_MOTIF_PROMPT
+NAME_RULES = """in one to five words that make sense alone on a chip:
+- say it the way people say it: an idiom, a catchphrase or the tellers' own words (They're pouring in!, Shocked, \
+shocked!, I could shoot someone on Fifth Avenue, The hospitals will close, Wealth without well-being, Gaslit);
+- or a well-known story whose plot is the shape, when the reference lands (Camp of the Saints, Five O'Clock Follies, \
+Hoist by his own petard, Sholay, Human centipede, No second acts, Bread and circuses); not Latin for its own sake;
+- no abstract nominalizations ("X of Y via Z"), no academic labels, no topic labels ("Trump's influence on \
+candidates" became Dead weight president);
+- name the shape, not the case: general enough for the next story (Driven off the land, not the settlers); a kind of \
+person is an Archetype and sounds like one (RINO, Champagne socialist, Culture warrior, Equivocator)"""
 NAME_PROMPT = """A claim people are telling or arguing over:
 {claim}
 
-Name the recurring rumor or narrative shapes it is an instance of: none to three, each a short reusable framing of \
-three to seven words, terse like a folklorist's label or a proverb (a subject and what it does or is), without \
+Name the recurring rumor or narrative shapes it is an instance of: none to three, each named {rules}; without \
 hedges such as "a claim that" or "is accused of": a shape that would fit the same kind of story told about \
 other people, places or years. A story often \
 carries more than one shape (who is blamed, what is feared, what is hoped); give each separately, the main one \
@@ -91,8 +104,7 @@ NEW_PROMPT = """A claim people are telling or arguing over:
 None of the motifs in our index of recurring rumor and narrative shapes fits it; the closest were: {closest}.
 
 Does the claim tell a recurring story, the kind told again about other people, places or years? If it does, name it \
-as a new motif: three to seven words, terse like a folklorist's label (a subject and what it does or is), no names of \
-people, places, organizations or dates. If it only reports an event or states a fact, with no story told around it, \
+as a new motif, {rules}; no names of people, places, organizations or dates. If it only reports an event or states a fact, with no story told around it, \
 give no name: don't force one.
 
 reason: a sentence
@@ -229,7 +241,7 @@ def name_claim(claim: str, shown: list[dict]) -> dict | None:
     back as numbers (Qwen3.5 under Ollama returned an empty list of fixed strings, Oct 5)."""
     from datetime import datetime
     if not shown:
-        named = llm.complete_json(NAME_PROMPT.format(claim=claim), NAME_SCHEMA, max_tokens=300, model=JUDGE_MODEL)
+        named = llm.complete_json(NAME_PROMPT.format(claim=claim, rules=NAME_RULES), NAME_SCHEMA, max_tokens=300, model=JUDGE_MODEL)
         return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)][:1]}
     options = '\n'.join(f'{n}. {described(e)}\n' + '\n'.join(f'   - {c["claim"][:160]}' for c in e['claims'][-3:])
                         for n, e in enumerate(shown, 1))
@@ -247,7 +259,7 @@ def name_claim(claim: str, shown: list[dict]) -> dict | None:
     schema = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
                                                "new": {"type": "array", "maxItems": 1, "items": {"type": "string", "maxLength": 60}}},
               "required": ["reason", "new"]}
-    named = llm.complete_json(NEW_PROMPT.format(claim=claim, closest='; '.join(e['name'] for e in shown[:5])), schema,
+    named = llm.complete_json(NEW_PROMPT.format(claim=claim, rules=NAME_RULES, closest='; '.join(e['name'] for e in shown[:5])), schema,
                               max_tokens=500, model=JUDGE_MODEL)
     if named is None:
         return None

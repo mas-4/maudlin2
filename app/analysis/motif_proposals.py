@@ -563,9 +563,8 @@ Read them as a folklorist would. Do these claims tell one recurring story, the s
 again about other people, places or years, that none of the motifs above covers? If one of those motifs covers them, \
 or they share only a topic, say so.
 
-If they do tell one: name the motif the way the index names them (three to seven words, terse like a folklorist's \
-label: a subject and what it does or is; no names of people, places or dates unless the story is about that one \
-figure), write its scope note (one plain sentence on what kind of story it covers, as its tellers tell it, never \
+If they do tell one: name the motif {rules}; no names of people, places or dates unless the story is about that one \
+figure. Write its scope note (one plain sentence on what kind of story it covers, as its tellers tell it, never \
 judging it true or false), give its genre (the layer of story it is) from: {genres}, and say which of the claims are \
 of it.
 
@@ -644,7 +643,7 @@ def new_motifs(store: dict, index: dict, deadline: float | None = None) -> int:
             "claims": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": len(cs)}}},
             "required": ["reason", "new", "name", "note", "genre", "claims"]}
         answer = llm.complete_json(NEW_MOTIF_PROMPT.format(claims=listing, near='\n'.join(f'- {shown(e)}' for e in near)
-                                                           or '(none)', genres=genres),
+                                                           or '(none)', genres=genres, rules=mi.NAME_RULES),
                                    schema, max_tokens=900, model=MODEL)
         if not answer:
             continue
