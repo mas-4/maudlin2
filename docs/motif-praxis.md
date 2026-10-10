@@ -199,6 +199,29 @@ Narcissus) but takes a plain one when it reads better or the classical one is ob
 for no really good reason I make it simpler". Plain names may also help the filing models match. Prefer a known idiom
 (Throw the bums out, Passing the buck, Pain at the pump, He said, she said, Shadowbanned).
 
+### Naming a proposed motif (for the proposer and anyone drafting one, Oct 10)
+
+The model's names are its weakest output: "Essential service destruction via policy", "Synthetic replacement of natural
+goods", "Ascension to official station", "Scandalous past hindering political reentry", "The media's feedback loop",
+"Public scrutiny of royal decorum". The person renamed or rejected every one. What the good names have in common:
+
+1. **Look first.** Is the shape already named? "Synthetic replacement" was Frankenfood; "Scapegoating for failure" was
+   Passing the buck. A near-duplicate goes to the existing motif, not a new one.
+2. **Is it a shape at all?** An appointment, a trade deal, a match result is news, not a motif: it goes to Straight
+   news ("Ascension to official station" was a press-secretary appointment).
+3. **Say it the way people say it.** An idiom, a catchphrase or the tellers' own words: They're pouring in!, Shocked,
+   shocked!, I could shoot someone on Fifth Avenue, The hospitals will close, Wealth without well-being, Gaslit.
+4. **Or a well-known story whose plot is the shape**, when the reference lands and the note explains it: Camp of the
+   Saints, Five O'Clock Follies, Hoist by his own petard, Sholay, Human centipede, No second acts (Fitzgerald), Bread
+   and circuses. Not Latin for its own sake.
+5. **No abstract nominalizations** ("X of Y via Z"), no academic labels, no topic labels ("Trump's influence on
+   candidates" became Dead weight president). One to five words that make sense alone on a chip.
+6. **Name the shape, not the case.** General enough for the next story (Driven off the land, not the settlers;
+   Distancing, not Collins). A kind of person is an Archetype and sounds like one: RINO, Champagne socialist, Culture
+   warrior, Equivocator.
+7. **No collisions.** A name that echoes an existing one confuses everyone (Wag the Dog beside Tail wags the dog became
+   War for votes).
+
 ## Seeds
 
 A motif idea with one telling or none is created at once as a motif with no claims (the checker's `add`), with its
