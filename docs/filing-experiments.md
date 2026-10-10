@@ -424,6 +424,23 @@ removals decided before each filing (no later rulings), on the 624 filings (427 
 +0.012 AUC with the removals, but a bootstrap by claim puts it at -0.003 to +0.028: not shown to help yet. The
 drafted reasons don't help. Worth asking again when there are more removals per motif.
 
+### D3 Simulated annotators (Oct 10) — no help
+`scripts/experiments/d3_simulated_annotators.py`, after Trust or Escalate (ICLR 2025, arXiv 2407.18370). The judge asked
+four more times on each decided filing, each time shown a random three of the motif's claims instead of the nearest
+three; 918 filings (670 kept) on motifs with more than three other claims.
+
+| | AUC | kept filings filed unasked at 95% precision |
+|---|---|---|
+| **the confidence model as it is** | **0.885** | **69%** (from fit 0.85) |
+| the mean of the five asks in the judge's place | 0.883 | 61% |
+| the mean and the spread among them | 0.882 | 61% |
+| any of these, when every ask must also say yes | | 41-42% |
+
+Alone the mean is a hair better (0.819 against 0.814), but in the confidence model it adds nothing, and the asks
+disagree more on kept filings (spread 0.086) than on removals (0.052), the wrong way round for a trust signal.
+Requiring all five to agree costs a third of the coverage. Five times the judging for nothing: not kept. The 69% is
+itself the number to watch: two thirds of what the person keeps could be filed without asking, at 95% precision.
+
 ### D4 A Tell-Tale Hat list (Oct 10) — a list for the person
 `scripts/experiments/d4_tell_tale_hat.py`, after Tangherlini and Abello's Tell-Tale Hat (2017), from the glean's
 scores (no GPU): motif pairs whose claims the confidence model thinks fit the other too (461 pairs with two or more
