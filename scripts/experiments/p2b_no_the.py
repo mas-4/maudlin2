@@ -18,8 +18,11 @@ from app.analysis import llm  # noqa: E402
 from app.analysis import motif_index as mi  # noqa: E402
 from app.analysis import motif_signals as ms  # noqa: E402
 
-NO_THE = mi.NAME_RULES.rsplit(';\n- "The" belongs', 1)[0] + ';\n- no leading "The" unless it is part of the idiom'
-ARMS = {'new naming': None, 'new naming, no The': NO_THE, 'production, The for Archetypes': mi.NAME_RULES}
+NO_THE = mi.NAME_RULES + ';\n- no leading "The" unless it is part of the idiom'
+THE_FOR_ARCHETYPES = mi.NAME_RULES + (';\n- "The" belongs to a kind of person (The carpetbagger, The impostor, The '
+                                      'sleeper agent); other names take it only when it\'s part of the idiom (The buck '
+                                      'stops here), never as a leading flourish')
+ARMS = {'new naming': None, 'new naming, no The': NO_THE, 'production, The for Archetypes': THE_FOR_ARCHETYPES}
 
 
 def main():

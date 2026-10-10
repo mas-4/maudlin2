@@ -56,9 +56,9 @@ SHOWN_FLOOR = 0.45  # ...if at least this alike
 # How a new motif is named (docs/motif-praxis.md, "Naming a proposed motif", Oct 10): the person renamed or rejected
 # every name the model gave in the old style ("three to seven words, terse like a folklorist's label"). With these
 # rules (P2, Oct 10) abstract labels went from 51% of names to 10% and five words to three, and the person judged the
-# names "way, way better"; on 101 motifs none copied an example. The last line (the person, Oct 10: "The" is useful
-# for Archetypes): without it 63% of names began with "The" (P2b), against 6-16% of the person's own in any genre,
-# most of those kinds of person. Filled into NAME_PROMPT, NEW_PROMPT and the proposer's NEW_MOTIF_PROMPT
+# names "way, way better"; on 101 motifs none copied an example. Not told about "The" (the praxis keeps it for
+# Archetypes): told so, the model began 80% of names with it, every genre alike, up from 62% (P2b, Oct 10). Filled
+# into NAME_PROMPT, NEW_PROMPT and the proposer's NEW_MOTIF_PROMPT
 NAME_RULES = """in one to five words that make sense alone on a chip:
 - say it the way people say it: an idiom, a catchphrase or the tellers' own words (They're pouring in!, Shocked, \
 shocked!, I could shoot someone on Fifth Avenue, The hospitals will close, Wealth without well-being, Gaslit);
@@ -67,9 +67,7 @@ Hoist by his own petard, Sholay, Human centipede, No second acts, Bread and circ
 - no abstract nominalizations ("X of Y via Z"), no academic labels, no topic labels ("Trump's influence on \
 candidates" became Dead weight president);
 - name the shape, not the case: general enough for the next story (Driven off the land, not the settlers); a kind of \
-person is an Archetype and sounds like one (RINO, Champagne socialist, Culture warrior, Equivocator);
-- "The" belongs to a kind of person (The carpetbagger, The impostor, The sleeper agent); other names take it only \
-when it's part of the idiom (The buck stops here), never as a leading flourish"""
+person is an Archetype and sounds like one (RINO, Champagne socialist, Culture warrior, Equivocator)"""
 NAME_PROMPT = """A claim people are telling or arguing over:
 {claim}
 
