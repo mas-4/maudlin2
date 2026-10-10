@@ -205,6 +205,11 @@ argument or figure that tells it), across genres too. Everything else is "relate
 motifs told together aren't thereby related. Examples: Potiphar's wife rests on He said, she said; Pain at the pump on
 In this economy?; In this economy? on It's the economy, stupid.
 
+**File the specific and keep the general (Oct 10).** When a claim fits a motif and the one it rests on, it stays in
+both. Rests-on is loose (a case, a figure, an argument that tells it), not a strict subtype, so the general one isn't
+always implied; and taking a claim out of a motif, by a "no" or an unfile, teaches the models that it is *not* that
+motif, which would be a false lesson. 169 filings sat in both a motif and its parent that day; leave them.
+
 ## Decisions teach the models
 
 Every change goes through the checker and into the curation log. The confidence model and the reranker learn from the
