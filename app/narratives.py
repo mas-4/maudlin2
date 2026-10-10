@@ -50,6 +50,10 @@ MIN_CHARS = 40
 MIN_WORDS = 6  # words of letters: a string of emoji and a link has none
 FEED_POSTS = 20  # posts in six hours: more is a feed or a bot
 SAMPLE = 10  # versions shown to the model
+# The model that reads each group's posts and checks which are about its claim: Gemma 4 26B since Oct 10 (Qwen3 8B
+# before). On the person's corrected claims it wrote closer to their wording from posts (W1: 0.799 against 0.775 alike)
+# and didn't loop or invent; both questions on one model, so the nightly report doesn't swap models group by group
+LABEL_MODEL = 'gemma4:26b'
 LABEL_TOP = 150  # biggest candidate groups labeled per report
 FOLK_VARIETY = 0.5  # wording at least this varied: told, not pasted
 COPY_VARIETY = 0.2  # under this: the same words
@@ -236,11 +240,11 @@ def label(group: dict, cache: dict) -> dict | None:
         answer = llm.complete_json(PROMPT.format(posts='\n'.join(f'- {t[:280]}' for t in shown),
                                                  genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS),
                                                  shapes=prompt_fields()),
-                                   SCHEMA, max_tokens=600)
+                                   SCHEMA, max_tokens=600, model=LABEL_MODEL)
         if not answer:
             return None
         settle(answer)  # a conspiracy scope only when a secret plot is claimed
-        cache[key] = {**answer, 'model': llm.model()}
+        cache[key] = {**answer, 'model': LABEL_MODEL}
     return cache[key]
 
 
@@ -252,7 +256,8 @@ def about(group: dict, claim: str, cache: dict) -> float:
     for post in group['examples']:
         key = hashlib.sha1(f'{ABOUT_PROMPT}\n{claim}\n{post}'.encode()).hexdigest()
         if key not in cache:
-            answer = llm.complete_json(ABOUT_PROMPT.format(claim=claim, post=post[:400]), ABOUT_SCHEMA, max_tokens=20)
+            answer = llm.complete_json(ABOUT_PROMPT.format(claim=claim, post=post[:400]), ABOUT_SCHEMA, max_tokens=20,
+                                       model=LABEL_MODEL)
             if not answer:
                 continue
             cache[key] = answer['about']

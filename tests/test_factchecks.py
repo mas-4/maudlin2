@@ -34,8 +34,9 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
     monkeypatch.setattr(llm, 'model', lambda: 'm')
     prompts = []
 
-    def answer(prompt, schema, max_tokens=0):
+    def answer(prompt, schema, max_tokens=0, model=None):
         prompts.append(prompt)
+        assert model == factchecks.LABEL_MODEL
         return {'claim': 'Posts on X claim the governor banned prayer', 'context': 'Viral posts; nothing of the kind.',
                 'genre': schema['properties']['genre']['enum'][0], 'motif_chapter': schema['properties']['motif_chapter']['enum'][0],
                 'motif': '', 'politics': True, **{k: '' for k in schema['required'] if k not in ('claim', 'context', 'genre',
@@ -45,7 +46,8 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
     items = [{'url': f'https://a.example/{n}', 'title': 'Did the governor ban prayer?', 'summary': '', 'source': 'Snopes',
               'published': now} for n in (1, 2)]
     labels = factchecks.label_all(items)
-    assert 'THE PIECE SAYS' in prompts[0] and '"Pols are bad" became "Critics say a senator lied about a vote"' in prompts[0]
+    assert any('THE PIECE SAYS' in p for p in prompts)  # asked four at once: in any order
+    assert all('"Pols are bad" became "Critics say a senator lied about a vote"' in p for p in prompts)
     assert labels['https://a.example/1']['claim'] == 'Old claim, filed'  # filed: the person's claim stays as it is
     assert labels['https://a.example/1']['claim from the piece'].startswith('Posts on X')
     assert labels['https://a.example/2']['claim'].startswith('Posts on X') and labels['https://a.example/2']['read'] == 'piece'

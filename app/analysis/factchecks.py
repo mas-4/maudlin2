@@ -70,6 +70,9 @@ def for_narratives(claims: dict[int, str], items: list[dict] | None = None) -> d
 LABELS = os.path.join(Config.data, 'factcheck_labels.json')  # url -> labels, kept for good (a few KB a day)
 LABEL_DAYS = 30
 MAX_LABELS = 40  # model calls a run, at most
+# Gemma 4 26B since Oct 10 (Qwen3 8B before): on the person's corrected fact-check claims it wrote closer to their
+# wording (W1: 0.791 against 0.746 alike), with fewer verdicts slipped in
+LABEL_MODEL = 'gemma4:26b'
 LABEL_PROMPT = """{source}, a fact-checker, published this:
 {title}
 {summary}
@@ -151,16 +154,20 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
     schema = label_schema()
     index = mi.load()
     examples = correction_examples(index)
-    for item in todo:
-        text = ft.text_of(item['url'], texts)
-        answer = llm.complete_json(LABEL_PROMPT.format(
+    read = {item['url']: ft.text_of(item['url'], texts) for item in todo}
+
+    def ask(item):
+        text = read[item['url']]
+        return llm.complete_json(LABEL_PROMPT.format(
             source=item['source'], title=item['title'], summary=(item.get('summary') or '')[:400],
             article=f'\nThe piece itself:\n{text[:ARTICLE_CHARS]}\n' if text else '', examples=examples,
             genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS), shapes=prompt_fields()),
-            schema, max_tokens=700)
+            schema, max_tokens=700, model=LABEL_MODEL)
+    for item, answer in zip(todo, llm.parallel(ask, todo)):  # four at once: the bigger model is slower a call
+        text = read[item['url']]
         if answer:
             old = (labels.get(item['url']) or {}).get('claim')
-            new = {**settle(answer), 'model': llm.model(), 'read': 'piece' if text else 'feed'}
+            new = {**settle(answer), 'model': LABEL_MODEL, 'read': 'piece' if text else 'feed'}
             if old and new.get('claim') != old and (mi.key(old) in index.get('claims', {}) or old in index.get('corrections', {})):
                 new['claim from the piece'], new['claim'] = new.get('claim'), old
             labels[item['url']] = new

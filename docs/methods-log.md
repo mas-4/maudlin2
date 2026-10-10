@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-10
+- **Gemma 26B writes the claims from posts and fact-checks.** The nightly report's narratives (each group's claim and
+  labels, and the check of which posts are about it) and the fact-check labels were written by Qwen3 8B; Gemma 4 26B
+  now. On the person's corrected claims Gemma's wordings came closer to theirs (W1: posts 0.799 against 0.775,
+  fact-checks 0.791 against 0.746 alike), and Qwen3 8B looped or invented details. Labels already made stay; the
+  headline scorer stays on Qwen3 8B, so the news, loaded and emotion series don't change.
+
 ## 2026-10-09
 - **The genre drafter is told what each genre is.** It used to see only five of the person's motifs in each genre;
   now it also gets each genre's line from docs/motif-praxis.md (or the person's own 📝 description of it) and the
