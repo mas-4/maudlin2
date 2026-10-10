@@ -62,3 +62,18 @@ Oh! And the site is hosted on netlify. It's just a bunch of flat files I upload 
 ## Testing
 
 Not really sure how to do testing. I guess the site builder could be tested but meh. I'm a pretty TDD guy but kinda hard to test scrapers. I had a test suite and have abandoned it. Sites change, scrapers have to be updated. I'd rather add in some features to get a good sense of what's going wrong. I have a daily report system that gets emailed to me every morning and I keep extensive logs and daily backups. Over the weekend (end of March) my entire machine went down so I missed a day of articles. But that's what happens when you run this thing out of your garage.
+
+## License
+
+Copyright (c) 2024-2026 Michael.
+
+- **Code:** GNU Affero General Public License v3 or later ([LICENSE](LICENSE)). Run a modified copy as a service
+  and you share your changes under the same license. Versions published before October 8, 2026 were MIT, and copies
+  of those stay MIT; the code was proprietary from October 8 to 10.
+- **Docs** (`docs/`: the methods log, the motif praxis and casebook, the experiment write-ups): CC BY 4.0, with
+  credit to bignews.day.
+- **The motif index** (on bignews.day and in its exports, not in this repository): CC BY-NC-SA 4.0, with credit to
+  bignews.day; commercial use needs permission.
+- **Third-party data** keeps its own license: `ratings.csv` carries AllSides Media Bias Ratings (CC BY-NC 4.0) and
+  Wikipedia's perennial sources list (CC BY-SA 4.0); `outlet_wiki.csv` quotes Wikipedia (CC BY-SA 4.0).
+- **Contributions:** not accepted for now.

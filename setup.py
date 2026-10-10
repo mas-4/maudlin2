@@ -20,6 +20,6 @@ setup(
     classifiers=[
         'Programming Language :: Python :: 3',
         'Programming Language :: C',
-        'License :: Other/Proprietary License',
+        'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
     ],
 )
