@@ -8,7 +8,8 @@ renewed while its holder lives), so an experiment that crashes can't keep produc
 
 `run` waits for the hourly run to be over first, takes the lease, waits for the worker to finish the step it's on (its
 models may still fill the card), holds the lease while the command runs, renews it every minute up to
-its minutes, and gives it back when the command ends (or the minutes are up: then the command is stopped)."""
+its minutes, and gives it back when the command ends (or the minutes are up: then the command is stopped). An hourly
+run that starts meanwhile goes first: the command is stopped, and started again once the run is over."""
 import argparse
 import fcntl
 import json
@@ -112,35 +113,54 @@ def _worker_busy() -> bool:
     return worker.busy()
 
 
+def _stop(proc: subprocess.Popen):
+    proc.terminate()
+    try:
+        proc.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
 def run(command: list[str], minutes: float, holder: str | None = None) -> int:
     """The command under the lease, after the hourly run is over and the worker has finished its step; its exit
-    status"""
+    status. The hourly run comes first: if one starts while the command runs, the command is stopped and the lease
+    given back, and once the run is over it's started again (Oct 10: an experiment held the card through the 16:00 and
+    17:00 runs, whose headline judgments timed out and crashed them; the experiments resume from their caches).
+    `minutes` counts the command's own running time, not the waits"""
+    left = min(float(minutes), MAX_MINUTES) * 60
     while True:
-        while _hourly_run_going() or held() is not None:
-            time.sleep(30)
-        h = Hold(holder or ' '.join(command)[:120], minutes)
-        try:
-            h.take()
-            break
-        except RuntimeError:  # another waiter took it first: wait for that one
-            continue
-    with h:
-        if _worker_busy():  # it starts no new step now, but the one it's on may hold Gemma on the card (Oct 9: R1 ran
-            print('gpu_lease: waiting for the worker to finish its step', flush=True)  # out of memory beside it)
-        while _worker_busy() and h.left() > 0:
-            time.sleep(15)
-        proc = subprocess.Popen(command)
-        while proc.poll() is None:
-            if h.left() <= 0:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=30)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
-                return 124
-            time.sleep(5)
-        return proc.returncode
+        while True:
+            while _hourly_run_going() or held() is not None:
+                time.sleep(30)
+            h = Hold(holder or ' '.join(command)[:120], left / 60)
+            try:
+                h.take()
+                break
+            except RuntimeError:  # another waiter took it first: wait for that one
+                continue
+        with h:
+            if _worker_busy():  # it starts no new step now, but the one it's on may hold Gemma on the card (Oct 9: R1
+                print('gpu_lease: waiting for the worker to finish its step', flush=True)  # ran out of memory beside it)
+            while _worker_busy() and h.left() > 0:
+                time.sleep(15)
+            began = time.time()
+            proc = subprocess.Popen(command)
+            while proc.poll() is None:
+                if h.left() <= 0:
+                    _stop(proc)
+                    print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
+                    return 124
+                if _hourly_run_going():
+                    _stop(proc)
+                    print('gpu_lease: the hourly run started; the command stopped, to start again after it', flush=True)
+                    break
+                time.sleep(5)
+            else:
+                return proc.returncode
+            left -= time.time() - began
+        if left <= 0:
+            return 124
 
 
 def main(argv=None):

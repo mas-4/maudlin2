@@ -112,6 +112,27 @@ def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatc
     assert len(tries) == 2 and gpu_lease.held() is None
 
 
+def test_run_steps_aside_for_an_hourly_run_and_starts_again(tmp_path, monkeypatch):
+    """Oct 10: an experiment held the card through two hourly runs, which crashed"""
+    from app import gpu_lease
+    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    runs, started = tmp_path / 'runs', []
+
+    def hourly():  # starts once the command is under way, the first time only
+        if runs.exists() and not started:
+            started.append(1)
+            return True
+        return False
+    monkeypatch.setattr(gpu_lease, '_hourly_run_going', hourly)
+    real_sleep = time.sleep
+    monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: real_sleep(0.05))
+    code = (f"import time; p = {str(runs)!r}; n = len(open(p).read()) if __import__('os').path.exists(p) else 0; "
+            "open(p, 'a').write('x'); time.sleep(30 if n == 0 else 0)")
+    assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
+    assert runs.read_text() == 'xx' and gpu_lease.held() is None  # stopped once, then run to the end
+
+
 def test_a_short_cycle_never_takes_the_awake_lock(monkeypatch, tmp_path):
     """Only a cycle past `after` seconds keeps the machine awake: empty cycles mustn't restart the idle countdown"""
     started = []
