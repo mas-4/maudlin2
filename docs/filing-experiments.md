@@ -309,6 +309,67 @@ In best fit (five folds): no judge 0.751, Gemma 0.754, **Nimble 0.783**, both 0.
 0.772 against Gemma 0.755, ahead in all 20. Nimble judges alone a little worse but adds what the other facts lack.
 1.6 s a proposal. `scripts/experiments/p1_nimble_proposals.py`.
 
+### J2 The judge as the casebook reasons (Oct 9) — the must-have element in production
+`scripts/experiments/j2_judge_variants.py`, on 897 decided filings (96 of them the person's Oct 9 rulings, the
+casebook's hard cases). The judge (Nimble 9B) was shown more than the claim's one-line summary, three ways.
+
+| judge | AUC alone | Oct 9 rulings | in the confidence model |
+|---|---|---|---|
+| today (summary only) | 0.801 | 0.542 | 0.901 |
+| + the tellers' own words | 0.794 | 0.716 | 0.899 |
+| **+ the motif's must-have element** (Gemma drafts it from name, genre, note) | **0.811** | **0.791** | **0.904** |
+| + a question in the genre's terms | 0.816 | 0.682 | 0.901 |
+| all three | 0.791 | 0.703 | 0.899 |
+
+Signals tried beside it: story-or-news (Nimble), distinct tellers, news-bulletin share: +0.001 to +0.003, not kept. By
+the kind of removal (Gemma's guess of why each ✕): the element and 'all' did best on subtext filings (0.77, 0.81 against
+0.73, 11 cases). The element judge went into production the same day (motif_signals.JUDGE_ELEMENTS).
+
+### R1 A bigger reranker (Oct 9) — not worth it
+Qwen3-Reranker 4B untaught: AUC 0.793 alone (the taught 0.6B 0.737, the untaught 0.6B 0.749), 0.895 in the confidence
+model against 0.892 (no reranker at all: 0.890), at 8 GB of card. Not switched. The taught 0.6B judging worse than the
+untaught one is a question for the weekly teaching.
+
+### Nimble 4-bit (Oct 9) — not kept
+The 8-bit Nimble (9.5 GB) doesn't quite fit the card. The 4-bit build fits whole and is 1.6x faster, but judged worse on
+the same 812 filings (0.797 against 0.818); the GPU was no busier (55% against 57%: the gaps are the one-slot server's
+per-request overhead, not the CPU part).
+
+### W1 Claim wording from the person's corrections (Oct 9) — Gemma writes closer; rules unproven
+`scripts/experiments/w1_claim_wording.py`: the person's 72 corrected claims written again from their sources. Likeness
+to the person's wording (Qwen3-Embedding 8B; the original wordings they corrected: 0.834):
+
+| writer | current prompt | + rules read from the corrections | + same-source examples |
+|---|---|---|---|
+| Qwen3 8B (posts, fact-checks today) | 0.722 | 0.745 | 0.745 |
+| Gemma 4 26B (shows, focus groups today) | 0.754 | 0.758 | 0.775 |
+
+Qwen3 8B loops ("thousands of thousands...") and invents facts; Gemma is closer from every source. Nimble's blind
+side-by-side didn't confirm the rules (Gemma: 0.35 and 0.47 of claims closer). Both models write longer than the person.
+Next: Gemma for posts and fact-checks (after a run-time check), and a "short and plain" rule.
+
+### G1 Genre descriptions (Oct 9) — in production
+`scripts/experiments/g1_genre_descriptions.py`: the genre drafter asked again for each of the person's 453 genre
+calls (re-asked on the notes as rewritten that evening).
+
+| drafter sees | right | Theories | Plots | Beliefs |
+|---|---|---|---|---|
+| five examples a genre (before) | 52.8% | 38% | 57% | 31% |
+| + the praxis's descriptions and tests | 64.0% | 64% | 72% | 44% |
+| descriptions only | 60.9% | 67% | 72% | 38% |
+| **+ the Argument/Theory test** | **66.0%** | **72%** | 73% | 38% |
+| the praxis's refined lines | 66.9% | 54% | 82% | 50% |
+| refined2 (Plot/Theory redrawn) | 63.1% | 44% | 84% | 34% |
+
+Each refinement widened Plots (situations, declines, exposés) and took Theories with it, so the fourth row went in
+(motif_proposals.GENRE_LINES; the person's 📝 genre descriptions override it).
+
+### G2 Group descriptions (Oct 9) — no help
+`scripts/experiments/g2_group_descriptions.py`: a description drafted from half of each of 32 groups' members, the other
+half and their nearest outsiders asked about: balanced accuracy 69.6% without, 70.2% with. The drafts read as abstract
+sociology, and two halves of one group sometimes described different things. Not used; a person's description is a
+different test.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
