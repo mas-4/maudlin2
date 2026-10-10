@@ -5,4 +5,4 @@ Description=Maudlin database backup
 Type=oneshot
 User=mas
 Group=mas
-ExecStart=/home/mas/Repos/maudlin2/scripts/backup.sh
+ExecStart=/home/mas/maudlin-prod/scripts/backup.sh
