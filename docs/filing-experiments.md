@@ -441,6 +441,23 @@ disagree more on kept filings (spread 0.086) than on removals (0.052), the wrong
 Requiring all five to agree costs a third of the coverage. Five times the judging for nothing: not kept. The 69% is
 itself the number to watch: two thirds of what the person keeps could be filed without asking, at 95% precision.
 
+### D5 Tangherlini's actants (Oct 10) — no help in filing
+`scripts/experiments/d5_actants.py`, after Tangherlini et al.'s narrative frameworks (2018, 2020). Gemma 26B read 914
+of the 977 filed claims (63 answers ran off the end, listing a domain over and over) for who does what to whom (roles,
+not names), whether the threat comes from inside the teller's community or outside, and the domains the claim threads.
+On the shortlist harness rebuilt for today's index (971 confirmed claims, 574 motifs):
+
+- the claim's who-does-what-to-whom against each motif's other claims': alone a strong signal (AUC 0.899 on 156,000
+  claim-motif pairs) but weaker than plain likeness to the nearest claim (0.933) and tied to it (r 0.68); added to the
+  learned shortlist, top-12 86.7% stays 86.7%, the same in every genre;
+- the kind of threat: 86.7% to 86.5%;
+- domains threaded, Theories against Plots: 2.99 against 2.90 (AUC 0.519): no genre signal. Theories' threats are a
+  little more often from inside (58% against Plots' 49%).
+
+The embeddings already carry who does what to whom. Tangherlini's frameworks are built for a corpus's narrative
+structure as a whole (actants and their relations across thousands of posts), which may suit the map's claims mode
+better than filing; not pursued now.
+
 ### P2 The Oct 10 praxis (Oct 10) — "ours to name" changes nothing; the naming rules are the person's call
 `scripts/experiments/p2_praxis_oct10.py`. **The judge** asked with today's question and with "the tellers needn't name
 the motif... but the shape must be in what is told" added, on 1,524 decided filings: AUC 0.827 against 0.825, and on

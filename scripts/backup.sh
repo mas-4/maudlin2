@@ -36,8 +36,9 @@ else
 fi
 echo "Backed up to $TARGET.gz ($(du -h "$TARGET.gz" | cut -f1))"
 
-# The other data files. Left out: the database (above) and what's rebuilt on demand (embedding caches, motif
-# vectors, the log). The collected posts (vernacular.sqlite) go in the nightly copy only, through SQLite's online
+# The other data files. Left out: the database (above), what's rebuilt on demand (embedding caches with their WAL
+# files, motif vectors, the log) and the downloaded American Stories corpus (archives/american_stories, 5.9G; fetched
+# again from its source). The collected posts (vernacular.sqlite) go in the nightly copy only, through SQLite's online
 # backup; the hourly copy is the small hand-curation set, so a day's curation is never more than an hour from a copy.
 DATA="$ROOT/data"
 TMP="$(mktemp -d)"
@@ -70,7 +71,7 @@ fi
 # may miss its last lines) and the warnings name what changed. 2 and up (unreadable file, full disk, gzip) is a failure.
 TAR_STATUS=0
 tar -czf "$FILES" -C "$DATA" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
-    --exclude='*embeddings.sqlite' \
+    --exclude='*embeddings.sqlite*' --exclude=./archives/american_stories \
     --exclude=./motifs/vectors.npy --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}" \
     || TAR_STATUS=$?
 if [ "$TAR_STATUS" -gt 1 ]; then
