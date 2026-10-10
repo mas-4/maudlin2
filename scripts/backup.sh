@@ -65,9 +65,18 @@ dst.close(); src.close()
 PY
     EXTRA+=(-C "$TMP" vernacular.sqlite)
 fi
+# GNU tar exits 1 when a file or folder changes while it's read, which the worker and checker cause most nights; the
+# archive is still whole (write_json replaces files by rename, so tar reads one version or the other; an appended log
+# may miss its last lines) and the warnings name what changed. 2 and up (unreadable file, full disk, gzip) is a failure.
+TAR_STATUS=0
 tar -czf "$FILES" -C "$DATA" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
     --exclude='*embeddings.sqlite' \
-    --exclude=./motifs/vectors.npy --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}"
+    --exclude=./motifs/vectors.npy --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}" \
+    || TAR_STATUS=$?
+if [ "$TAR_STATUS" -gt 1 ]; then
+    echo "tar failed (exit $TAR_STATUS); $FILES is incomplete" >&2
+    exit "$TAR_STATUS"
+fi
 if [ "${1:-}" = "run" ]; then
     ls -1t "$DEST"/files-*.tar.gz | tail -n +"$((RUN_KEEP + 1))" | xargs -r rm -f
 else
