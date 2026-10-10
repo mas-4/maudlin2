@@ -110,3 +110,24 @@ def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatc
     monkeypatch.setattr(gpu_lease.Hold, 'take', take)
     assert gpu_lease.run([sys.executable, '-c', 'pass'], minutes=1, holder='test') == 0
     assert len(tries) == 2 and gpu_lease.held() is None
+
+
+def test_a_short_cycle_never_takes_the_awake_lock(monkeypatch, tmp_path):
+    """Only a cycle past `after` seconds keeps the machine awake: empty cycles mustn't restart the idle countdown"""
+    started = []
+    monkeypatch.setattr(worker.os.path, 'exists', lambda p: True)
+    monkeypatch.setattr(worker.subprocess, 'run', lambda *a, **k: type('R', (), {'returncode': 0})())
+
+    class Proc:
+        pid = 1
+
+        def wait(self, timeout=None):
+            pass
+    monkeypatch.setattr(worker.subprocess, 'Popen', lambda *a, **k: started.append(a) or Proc())
+    monkeypatch.setattr(worker.os, 'killpg', lambda pid, sig: None)
+    with worker.Awake(after=5):
+        pass
+    assert started == []  # done before its minute: no lock
+    with worker.Awake(after=0.01):
+        time.sleep(0.2)
+    assert len(started) == 1  # still working past it: the lock

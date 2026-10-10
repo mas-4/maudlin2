@@ -5,7 +5,7 @@ scrapes, builds and publishes (about 15 minutes), and this worker does the proce
 it waits while the hourly run goes, then works in cycles of CYCLE seconds, each the steps of process() with their
 budgets, a step not begun once the hourly run starts again, or an experiment takes the GPU lease (app/gpu_lease.py).
 
-While it works it keeps the machine awake (kde-inhibit, as the hourly run does), so the desktop's idle timer and the
+While it works (a cycle past its first minute) it keeps the machine awake (kde-inhibit, as the hourly run does), so the desktop's idle timer and the
 run's own back-to-sleep (scripts/run.sh) leave it be; idle, it lets the machine sleep and carries on after the wake.
 It leaves a heartbeat (HEARTBEAT): while that's fresh, the hourly run leaves the processing to it; if the worker is
 down, the run does it as before. It exits when its checkout has new code (the hourly run pulls), so systemd starts it
@@ -82,19 +82,32 @@ def beat(state: dict, **changes):
 
 
 class Awake:
-    """Keep the machine from sleeping while inside (kde-inhibit over the session bus, as scripts/run.sh does);
-    without the bus or kde-inhibit, nothing"""
+    """Keep the machine from sleeping while inside (kde-inhibit over the session bus, as scripts/run.sh does), once
+    the cycle has worked for `after` seconds: a cycle that finds nothing to do never takes the lock (Oct 9-10, the
+    worker's 20-second empty cycles every five minutes took and dropped it all night, each drop starting the
+    desktop's 10-minute idle countdown again, and the machine never slept). Without the bus or kde-inhibit, nothing"""
+
+    def __init__(self, after: float = 60):
+        self.after = after
 
     def __enter__(self):
-        self.proc = None
+        import threading
+        self.proc, self.done = None, threading.Event()
         bus = f'/run/user/{os.getuid()}/bus'
         if os.path.exists(bus) and subprocess.run(['which', 'kde-inhibit'], capture_output=True).returncode == 0:
-            self.proc = subprocess.Popen(['kde-inhibit', '--power', 'sleep', 'infinity'],
-                                         env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS': f'unix:path={bus}'},
-                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            def hold():
+                if not self.done.wait(self.after):
+                    self.proc = subprocess.Popen(['kde-inhibit', '--power', 'sleep', 'infinity'],
+                                                 env={**os.environ, 'DBUS_SESSION_BUS_ADDRESS': f'unix:path={bus}'},
+                                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            self.waiter = threading.Thread(target=hold, daemon=True)
+            self.waiter.start()
         return self
 
     def __exit__(self, *exc):
+        self.done.set()
+        if getattr(self, 'waiter', None) is not None:
+            self.waiter.join()
         if self.proc is not None:
             os.killpg(self.proc.pid, 15)
             self.proc.wait(timeout=10)
