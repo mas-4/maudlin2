@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 FOLDER = os.path.join(Config.data, 'archive')
 DAYS = os.path.join(FOLDER, 'days.json')
 RELATIVE = re.compile(r'''(\b(?:href|src)=["'])(?!https?:|#|/|mailto:|data:)([^"']+)''')
+FOOTER = re.compile(r'<div class="site-footer">.*?</div>', re.S)
 
 
 def _today() -> str:
@@ -28,9 +29,16 @@ def _days() -> dict:
     return read_json(DAYS, {})
 
 
+def refooter(page: str) -> str:
+    """A kept page with today's footer in place of its own. What a page reported stays as it was, but its footer's
+    license notice must be the one in force: the blanket CC BY 4.0 of Oct 8-9 was narrowed on Oct 10."""
+    footer = TemplateHandler('footer.html').render({}).strip()
+    return FOOTER.sub(lambda m: footer, page, count=1)
+
+
 def edition(page: str, day: str) -> str:
     """The front page as a dated edition: absolute links, the icons' paths too, and a ribbon saying what it is."""
-    page = RELATIVE.sub(lambda m: m.group(1) + '/' + m.group(2).removeprefix('./'), page)
+    page = RELATIVE.sub(lambda m: m.group(1) + '/' + m.group(2).removeprefix('./'), refooter(page))
     page = page.replace('"icons/', '"/icons/')
     when = dt.strptime(day, '%Y-%m-%d').strftime('%A, %B %-d, %Y')
     ribbon = (f'<div class="archive-ribbon">📅 The front page as of the end of {when}. '

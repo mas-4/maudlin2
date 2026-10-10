@@ -13,7 +13,7 @@ import pytz
 from app import bluesky_examples, chyrons
 from app.analysis import entities, running_order
 from app.analysis.stories import merges as story_merges
-from app.site import page_tv, story_charts
+from app.site import archive, page_tv, story_charts
 from app.site.common import TemplateHandler, chip_style, outlet_icon, short_name
 from app.site.page_sagas import EASTERN, eastern
 from app.utils import Config, get_logger
@@ -436,6 +436,8 @@ class StoryPages:
         for sid in kept_pages:
             path = os.path.join(Config.build, page_name(sid))
             if not os.path.exists(path):
-                shutil.copyfile(os.path.join(ARCHIVE, page_name(sid)), path)
+                with open(os.path.join(ARCHIVE, page_name(sid)), encoding='utf-8') as f, \
+                        open(path, 'w', encoding='utf-8') as out:
+                    out.write(archive.refooter(f.read()))  # today's license notice, the page otherwise as it was
                 old += 1
         logger.info("...%d story pages, %d older ones kept as they were", len(stories), old)

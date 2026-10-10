@@ -19,6 +19,15 @@ def test_edition_makes_links_absolute_and_adds_a_ribbon():
     assert '<body class="x"><div class="archive-ribbon">' in out and 'Saturday, October 3, 2026' in out
 
 
+def test_kept_pages_carry_todays_footer():
+    """An edition saved under the Oct 8-9 blanket CC BY 4.0 shows the license notice in force now"""
+    old = PAGE.replace('</body>', '<div class="site-footer">\n Our own writing, readings and motif index: '
+                       '<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>\n</div></body>')
+    out = ar.edition(old, '2026-10-08')
+    assert 'licenses/by/4.0' not in out and 'by-nc-sa/4.0' in out and out.count('site-footer') == 1
+    assert ar.refooter(PAGE) == PAGE  # a page without a footer is left alone
+
+
 @pytest.fixture
 def folders(tmp_path, monkeypatch):
     build, data = tmp_path / 'build', tmp_path / 'archive'
