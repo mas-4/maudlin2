@@ -370,6 +370,27 @@ half and their nearest outsiders asked about: balanced accuracy 69.6% without, 7
 sociology, and two halves of one group sometimes described different things. Not used; a person's description is a
 different test.
 
+### W1 again, a "short and plain" rule (Oct 10) — Gemma with the rules, examples and the short rule closest
+The same 74 corrected wordings, a fourth way: the rules, same-source examples and "one short plain sentence, as the
+person writes".
+
+| writer | current | rules | rules + examples | **short** | words a claim (the person: 16.8) |
+|---|---|---|---|---|---|
+| Qwen3 8B | 0.726 | 0.749 | 0.750 | 0.743 | 31.9 → 27.0 |
+| Gemma 4 26B | 0.758 | 0.763 | 0.778 | **0.784** | 20.6 → **17.7** |
+
+Nimble's blind side-by-side agrees for the first time: Gemma's short wordings were closer than its current ones on
+54% of claims (the rules alone 34%, with examples 47%). Gemma writes the posts' and fact-checks' claims since Oct 10.
+
+### M1 One model fewer: the match question (Oct 10) — Gemma 26B in production
+`scripts/experiments/m1_match_model.py`: when a new motif name comes up, is an existing motif the same shape? Asked on
+the person's 33 merges (the right answer: the motif it went into) and 44 "not the same" verdicts (anything but the other).
+
+| model | merges found | called new | not-same joined anyway | s a call (4 at once) |
+|---|---|---|---|---|
+| Qwen3 30B (before) | 18/33 | 7 | 4/44 | 17.6 |
+| **Gemma 4 26B** | **20/33** | 8 | 4/44 | 12.9 |
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own

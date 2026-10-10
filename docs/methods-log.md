@@ -5,6 +5,9 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-10
+- **One model fewer.** Whether a newly named motif is one the index already has is now asked of Gemma 4 26B, not Qwen3
+  30B, which did only this: on the person's 33 merges and 44 "not the same" verdicts Gemma found 20 merges to the 30B's
+  18 and joined the same 4 not-same pairs, faster (M1). The two no longer trade places on the card mid-filing.
 - **Gemma 26B writes the claims from posts and fact-checks.** The nightly report's narratives (each group's claim and
   labels, and the check of which posts are about it) and the fact-check labels were written by Qwen3 8B; Gemma 4 26B
   now. On the person's corrected claims Gemma's wordings came closer to theirs (W1: posts 0.799 against 0.775,
