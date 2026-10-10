@@ -29,6 +29,13 @@ and a true one can share it.
    is why it travels, unless a teller voices that subtext. Don't put a critic's verdict on a teller who didn't make it:
    Bribing voters needs someone calling it a bribe. Hate tropes apply only when a teller invokes them. Why a story
    spreads belongs to the flow layer (which shows pick it up, what it travels with), not to the filing.
+   Refined Oct 10: **the motif is ours to name; the shape has to be in what's told.** Tellers rarely name the motif (no
+   one says "corporatism" or "news of the weird"), and they don't have to: file the motif the told event is itself a
+   case of, in the details it chooses, its framing, or the reactions it draws. Take away what the audience brings; if
+   the shape is still there, file it. An official promising his agency will be a "sales engine" for AI companies is
+   Corporatism as reported; "Trump has a call scheduled with Putin" is only a phone call until someone says puppet.
+   **The line is fuzzy, and that's expected.** This is judgment, not an algorithm: the rules give the reasons, and the
+   person's decisions are what the models learn the function from.
 8. **Fix the claim.** A claim's words should carry what its tellings say. Reword a gloss that takes a side or the
    fact-check's verdict; word a debate as the argument it is; check who said it (focus-group and radio quotes are often
    the host or a played clip). When a gloss hides the part a motif is filed for, reword it from the posts and

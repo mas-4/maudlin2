@@ -245,6 +245,14 @@ boomers "know who should make the sacrifice. And the answer is their children an
   mechanics, not a telling (praxis rule 6, which it slipped past). It would be a motif only if tellers accused
   someone of recycling old news.
 
+- **Ours to name, theirs to carry (Oct 10).** The person: "no one is claiming news of the weird… no one is claiming
+  corporatism. I'm identifying why the story is moving, what narrative it fits into, what motif it activates." Against
+  rule 7 (Oct 9), the difference is whether the reported event is itself a case of the shape (the CMS official's "sales
+  engine" promise) or only a reason to suspect it (a scheduled Putin call). "I suspect we're trying to create an
+  algorithm when this is a by feel sort of thing and that's precisely why we're using deep learning models": the praxis
+  now says the line is fuzzy. Sanewashing, by contrast, was misused on the Dayton speech: it's for tellers charging
+  someone with it, not for our verdict on a teller's softening.
+
 ## Open questions
 
 - Should a widely shared theory used in passing be filed as a Belief?
