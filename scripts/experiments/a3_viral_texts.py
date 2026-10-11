@@ -89,7 +89,7 @@ def sample():
             if len(copies) == COPIES:
                 break
         for r in copies:
-            picked[r['id']] = {'headline': '', 'paper': r['paper'], 'date': r['date'], 'url': r['url'], 'text': r['text'],
+            picked[r['id']] = {'id': r['id'], 'headline': '', 'paper': r['paper'], 'date': r['date'], 'url': r['url'], 'text': r['text'],
                                'state': '', 'controls': [], 'cluster': c}
     state = saved()
     state['articles'] = picked
@@ -138,6 +138,9 @@ def report():
         return len(motifs[a] & motifs[b]) / len(motifs[a] | motifs[b])
     within = [jac(a, b) for ks in by.values() for i, a in enumerate(ks) for b in ks[i + 1:]]
     keys = list(motifs)
+    if len(by) < 2:
+        print(f'report: only {len(keys)} copies with filings; nothing to compare yet', flush=True)
+        return
     rnd = random.Random(4)
     between = [jac(a, b) for a, b in (rnd.sample(keys, 2) for _ in range(3000)) if arts[a]['cluster'] != arts[b]['cluster']]
     shared = [len(set.intersection(*(motifs[k] for k in ks))) > 0 for ks in by.values() if len(ks) >= 2]
