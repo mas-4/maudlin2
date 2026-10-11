@@ -199,6 +199,25 @@ def running_items() -> list[str]:
     return out
 
 
+def load_history(minutes: int = 60) -> list[float]:
+    """The GPU's load once a minute for the last `minutes`, from the GPU logger (maudlin-gpu-log.service)"""
+    try:
+        with open(os.path.join(Config.data, 'gpu_log.csv'), 'rb') as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 80 * (minutes + 5)))
+            lines = f.read().decode(errors='ignore').splitlines()[1:]
+    except OSError:
+        return []
+    out = []
+    for line in lines[-minutes:]:
+        parts = [p.strip() for p in line.split(',')]
+        try:
+            out.append(float(parts[2].rstrip(' %')))
+        except (IndexError, ValueError):
+            continue
+    return out
+
+
 def data() -> dict:
     """The panel as data, for the Plasma widget to lay out (python -m app.desk --json)"""
     from app import gpu_lease, lights
@@ -221,9 +240,12 @@ def data() -> dict:
            '--format=csv,noheader,nounits')
     if g:
         util, temp, used, total, power = [float(x) for x in g.split(',')]
+        names = [line.split()[0].split(':')[0] for line in sh('ollama', 'ps').splitlines()[1:] if line.strip()]
+        chat = [n for n in names if 'embed' not in n]
+        embedders = len(names) - len(chat)
+        models = ' · '.join(chat + ([f"{embedders} embedder{'s' if embedders > 1 else ''}"] if embedders else []))
         out['gpu'] = {'util': util, 'temp': temp, 'mem': round(used / 1024, 1), 'mem_total': round(total / 1024, 1),
-                      'power': round(power), 'models': [line.split()[0].split(':')[0] for line in
-                                                        sh('ollama', 'ps').splitlines()[1:] if line.strip()]}
+                      'power': round(power), 'models': models or 'no model loaded', 'history': load_history()}
     out['rows'] = [{'name': name, 'value': value} for name, value in (
         ('Hourly run', hourly_words()), ('Worker', worker_words()), ('Claims filed', claims_words()))]
     out['running'] = running_items()

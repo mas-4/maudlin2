@@ -51,7 +51,8 @@ PlasmoidItem {
     }
 
     readonly property int meterWidth: 168  // the four meters alike (the person: "not the same widths which is weird")
-    readonly property int textCap: 380  // a long line elides here rather than widening its tile
+    readonly property int tileWidth: meterWidth * 2 + 22 + 30  // every tile as wide as the meters: one clean column
+    readonly property int textCap: tileWidth - 30  // a long line elides rather than widening its tile
 
     component Meter: ColumnLayout {
         property string label
@@ -85,7 +86,7 @@ PlasmoidItem {
     // own darker tile, none wider than it needs)
     component Tile: Rectangle {
         default property alias content: inner.data
-        implicitWidth: inner.implicitWidth + 30
+        implicitWidth: root.tileWidth
         implicitHeight: inner.implicitHeight + 24
         radius: 12
         color: Qt.rgba(0.04, 0.05, 0.05, 0.80)
@@ -102,7 +103,7 @@ PlasmoidItem {
         property string value
         spacing: 12
         Text { text: name; color: root.quiet; font.pixelSize: 13; Layout.preferredWidth: 92 }
-        Text { text: value; color: root.ink; font.pixelSize: 13; Layout.maximumWidth: root.textCap; elide: Text.ElideRight; font.features: { "tnum": 1 } }
+        Text { text: value; color: root.ink; font.pixelSize: 13; Layout.maximumWidth: root.textCap - 104; elide: Text.ElideRight; font.features: { "tnum": 1 } }
     }
 
     fullRepresentation: Item {
@@ -114,6 +115,8 @@ PlasmoidItem {
             id: card
             anchors { left: parent.left; top: parent.top }
             spacing: 8
+            opacity: root.d.look && root.d.look.night ? 0.55 : 1  // dimmer at night, as the lights are
+            Behavior on opacity { NumberAnimation { duration: 1200 } }
 
             // What the machine is doing, in the light's own colour
             Tile {
@@ -153,7 +156,7 @@ PlasmoidItem {
                             font.weight: Font.DemiBold
                         }
                         Text {
-                            text: root.error ? root.error : (root.d.gpu ? (root.d.gpu.models.length ? root.d.gpu.models.join(" · ") : "no model loaded") + "  ·  " + root.d.time : "")
+                            text: root.error ? root.error : (root.d.gpu ? root.d.gpu.models + "  ·  " + root.d.time : "")
                             color: root.quiet
                             font.pixelSize: 13
                             Layout.maximumWidth: root.textCap
@@ -194,6 +197,48 @@ PlasmoidItem {
                         fraction: root.d.gpu ? root.d.gpu.power / 370 : 0
                         tint: Qt.rgba(1, 1, 1, 0.75)
                     }
+
+                }
+                // The last hour's load, a minute a point (the GPU logger)
+                Canvas {
+                    id: spark
+                    // a three-minute average: the raw minutes saw-tooth
+                    property var points: (root.d.gpu ? root.d.gpu.history : []).map((v, i, a) => {
+                        const w = a.slice(Math.max(0, i - 1), i + 2)
+                        return w.reduce((x, y) => x + y, 0) / w.length
+                    })
+                    property color tint: root.lightColor
+                    Layout.preferredWidth: root.meterWidth * 2 + 22
+                    Layout.preferredHeight: 30
+                    Layout.topMargin: 4
+                    onPointsChanged: requestPaint()
+                    onTintChanged: requestPaint()
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.reset()
+                        const n = points.length
+                        if (n < 2) return
+                        const step = width / (n - 1)
+                        const y = v => height - 2 - (height - 4) * Math.max(0, Math.min(1, v / 100))
+                        ctx.beginPath()
+                        ctx.moveTo(0, height)
+                        for (let i = 0; i < n; i++) ctx.lineTo(i * step, y(points[i]))
+                        ctx.lineTo(width, height)
+                        ctx.closePath()
+                        ctx.fillStyle = Qt.rgba(tint.r, tint.g, tint.b, 0.22)
+                        ctx.fill()
+                        ctx.beginPath()
+                        for (let i = 0; i < n; i++) i ? ctx.lineTo(i * step, y(points[i])) : ctx.moveTo(0, y(points[0]))
+                        ctx.strokeStyle = Qt.rgba(tint.r, tint.g, tint.b, 0.9)
+                        ctx.lineWidth = 1.5
+                        ctx.stroke()
+                    }
+                }
+                RowLayout {
+                    Layout.preferredWidth: root.meterWidth * 2 + 22
+                    Text { text: "an hour ago"; color: root.faint; font.pixelSize: 11 }
+                    Item { Layout.fillWidth: true }
+                    Text { text: "now"; color: root.faint; font.pixelSize: 11 }
                 }
             }
 
@@ -229,10 +274,10 @@ PlasmoidItem {
             // The lights' key, and the machine
             Tile {
                 RowLayout {
-                    spacing: 12
+                    spacing: 9
                     Repeater {
                         model: [["#00beaa", "worker"], ["#8c3cff", "experiment"], ["#ff8c00", "hourly"],
-                                ["#2850c8", "idle"], ["#ff0000", "failed/hot"], ["#780c00", "night"]]
+                                ["#2850c8", "idle"], ["#ff0000", "alert"], ["#780c00", "night"]]
                         delegate: RowLayout {
                             spacing: 5
                             Rectangle { implicitWidth: 7; implicitHeight: 7; radius: 3.5; color: modelData[0] }
@@ -240,7 +285,7 @@ PlasmoidItem {
                         }
                     }
                 }
-                Text { text: root.d.machine || ""; color: root.faint; font.pixelSize: 12 }
+                Text { text: root.d.machine || ""; color: root.faint; font.pixelSize: 12; Layout.maximumWidth: root.textCap; elide: Text.ElideRight }
             }
         }
     }
