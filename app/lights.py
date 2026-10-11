@@ -105,8 +105,13 @@ def main():
     devices = {d.name: d for d in client.devices}
     gpu, board = devices.get(GPU), devices.get(BOARD)
     logger.info("Lights: %s", ', '.join(devices))
+    from app import worker
+    start = worker.commit()
     shown, shown_at, smooth = None, 0.0, 0.0
     while True:
+        if worker.commit() != start:  # the hourly run pulled new code: exit, and systemd starts this again on it
+            logger.info("Lights: new code; exiting so systemd starts them again on it")
+            return
         try:
             load, temp = card()
             # The load jumps second to second; a new brightness restarts the card's effect, so it follows a ~20 s
