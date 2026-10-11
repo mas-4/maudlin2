@@ -89,6 +89,7 @@ REGISTRY = {
            'f4_abstract.sqlite; f4_abstract.json', ''),
     'F6': ('A telling abstracted as its rhetoric: stasis, driver, time shape, speech act', 'f4_abstract_tellings.py',
            'queued', 'f4_abstract.sqlite; f4_abstract.json', ''),
+    'F8': ('Are claims from posts several tellings stitched into one?', 'f8_chimera.py', 'queued', 'f8_chimera.json', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'planned', 'u1_uncurated.json (split); archives/u1', ''),
     'U1': ('The machine alone: our filing from an empty index', 'u1_uncurated.py', 'running',

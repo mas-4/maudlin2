@@ -638,6 +638,16 @@ motif's odd one out 9% of 35 times against chance's 17%.
   kept that pass as sure. Weekly, Sunday 02:30, by `deploy/systemd/user/maudlin-maat.timer`, under the GPU lease.
   `scripts/experiments/f3_maat.py`.
 
+### Queued (Oct 11): the Chimera, claims stitched together
+
+The person: claims are often "too shoved together"; the posts under one claim carry several motifs. Claims from
+Bluesky and Mastodon posts sit in 3+ motifs 32% of the time (2+: 64%), against 12-17% for the shows, the
+fact-checkers and the Focus Group. Most groups behind them have 6-15 posts, so the model usually reads them all: if
+claims are stitched, it's the grouping (mutual neighbours chained into one group) or the one-claim summary. For 80
+claims from posts in 3+ motifs and 80 in one, Gemma lists each distinct claim at least two posts make; for the 3+ ones
+it splits, which sub-claim tells each motif: different ones (stitched tellings) or all one (one telling, several
+layers). `scripts/experiments/f8_chimera.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
