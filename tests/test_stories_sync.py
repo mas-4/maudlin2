@@ -91,11 +91,12 @@ def test_a_story_whose_news_moved_on_is_labeled_again_from_its_newest_headlines(
         s.commit()
         ids = old.id, quiet.id, fresh.id
         found = {k: s.get(Story, i) for k, i in enumerate(ids)}
-    df = pd.DataFrame([
-        {'cluster': 0, 'agency': 'a', 'title': 'Inmate survives execution', 'first_accessed': now - td(days=9)},
-        {'cluster': 0, 'agency': 'b', 'title': 'Pike leaves hospital', 'first_accessed': now - td(hours=1)},
-        {'cluster': 1, 'agency': 'a', 'title': 'Nothing new', 'first_accessed': now - td(days=3)},
-        {'cluster': 2, 'agency': 'a', 'title': 'Just in', 'first_accessed': now - td(hours=1)}])
+    # As the front page hands it over: first_seen the time in Eastern, first_accessed already display text
+    rows = [(0, 'a', 'Inmate survives execution', td(days=9)), (0, 'b', 'Pike leaves hospital', td(hours=1)),
+            (1, 'a', 'Nothing new', td(days=3)), (2, 'a', 'Just in', td(hours=1))]
+    df = pd.DataFrame([{'cluster': c, 'agency': a, 'title': t,
+                        'first_seen': pd.Timestamp(now - ago, tz='UTC').tz_convert('US/Eastern')} for c, a, t, ago in rows])
+    df['first_accessed'] = ['Oct 9 4:04 PM', 'Oct 11 9:03 AM', 'Oct 9 4:04 PM', 'Oct 11 9:03 AM']  # Oct 9 > Oct 11 as text
     labels = stories.label_stories(df, found)
     assert labels == {0: 'Pike discharged from hospital', 1: 'A quiet story', 2: 'A new story'}
     assert len(shown) == 1 and shown[0].index('Pike leaves hospital') < shown[0].index('Inmate survives execution')

@@ -286,7 +286,14 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
     outlets = df.groupby('cluster')['agency'].nunique()
     labeled_at = read_json(LABELED_AT, {})
     now = dt.now(pytz.UTC).replace(tzinfo=None)
-    newest = df.groupby('cluster')['first_accessed'].max() if 'first_accessed' in df else None
+    # Each headline's first sighting, naive UTC as the stories table keeps its times. Not 'first_accessed': by now
+    # that's display text ("Oct 9 4:04 PM"), and as text Oct 9 sorts after Oct 11, so no story ever looked to have
+    # news newer than its label (Oct 11: the diesel deal's part kept its first title over two days of Zelensky news)
+    seen = None
+    if 'first_seen' in df:
+        seen = pd.to_datetime(df['first_seen'])
+        seen = seen.dt.tz_convert('UTC').dt.tz_localize(None) if seen.dt.tz is not None else seen
+    newest = seen.groupby(df['cluster']).max() if seen is not None else None
 
     def stale(cluster, story) -> bool:
         """Old, and headlines have come in since it was written (a story labeled before Oct 11 counts from its start)"""
@@ -297,8 +304,8 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
             or stale(cluster, story)]
     for cluster in todo[:MAX_LABELS_PER_RUN]:
         part = df[df['cluster'] == cluster]
-        if 'first_accessed' in part:
-            part = part.sort_values('first_accessed', ascending=False)
+        if seen is not None:
+            part = part.loc[seen[part.index].sort_values(ascending=False).index]
         headlines = '\n'.join(f'- {title}' for title in part['title'][:LABEL_FROM])
         result = llm.complete_json(LABEL_PROMPT.format(headlines=headlines), LABEL_SCHEMA, max_tokens=64)
         label = (result or {}).get('title', '').strip().rstrip('.')
