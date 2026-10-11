@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Authors": [{"Name": "mas"}],
+        "Category": "System Information",
+        "Description": "What the machine is doing for bignews.day: the lights, the GPU, the hourly run, the worker, experiments",
+        "Icon": "utilities-system-monitor",
+        "Id": "day.bignews.status",
+        "License": "AGPL-3.0-or-later",
+        "Name": "Maudlin status",
+        "Version": "1.0"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

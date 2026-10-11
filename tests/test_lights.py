@@ -10,7 +10,7 @@ def test_the_day_shows_who_has_the_gpu():
     assert lights.look(state(who='worker', load=90), 12) == ('Breathing', lights.TEAL, 0, 5)
     assert lights.look(state(who='worker', load=20), 12)[3] == 2  # dimmer at light load
     assert lights.look(state(who='experiment', load=60), 12)[:2] == ('Flowing', lights.VIOLET)
-    assert lights.look(state(who='hourly', load=60), 12)[:2] == ('Wave', lights.AMBER)
+    assert lights.look(state(who='hourly', load=60), 12)[:2] == ('Flowing', lights.AMBER)
     assert lights.look(state(), 12) == ('Breathing', lights.IDLE, 0, 2)
 
 
@@ -22,7 +22,7 @@ def test_the_night_stays_dark():
 
 def test_a_failed_run_and_heat_show():
     assert lights.look(state(failed=True), 12)[:2] == ('Doubleflashing', lights.RED)
-    assert lights.look(state(who='hourly', failed=True, load=50), 12)[0] == 'Wave'  # the next run is trying
+    assert lights.look(state(who='hourly', failed=True, load=50), 12)[1] == lights.AMBER  # the next run is trying
     assert lights.look(state(who='worker', load=90, temp=95), 12)[:2] == ('Flashing', lights.RED)
     warm = lights.look(state(who='worker', load=90, temp=89), 12)[1]
     assert warm != lights.TEAL and warm[0] > lights.TEAL[0]  # toward orange

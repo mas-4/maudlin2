@@ -6,14 +6,14 @@ brightness is the card's own 0-5):
 
     the worker              teal, breathing slowly; brighter with the load
     an experiment's lease   violet, flowing
-    the hourly run          amber, wave
+    the hourly run          amber, flowing
     nothing                 blue, breathing slowly and dim
     last hourly run failed  red, double-flashing (until a run succeeds)
     hot (HOT C and up)      the colour turns toward orange; at LIMIT, red flashing
 
 At night (NIGHT to DAY) the room stays dark: off while the GPU is idle, a dim ember breathing while it works. The
 case fans on the board take the same colour. Picked with the person on Oct 11 from a demo of each (the meteor effect
-ignores its colour, "rainbow goop"; breathing at the fastest speed looked like blinking).
+ignores its colour, "rainbow goop", and so does the wave; breathing at the fastest speed looked like blinking).
 
 It talks to OpenRGB's server (deploy/systemd/user/openrgb-server.service) and changes the card only when the look
 does, so the card's effects run smoothly in between. deploy/systemd/rgb-off.service sets everything dark at boot and
@@ -78,7 +78,7 @@ def look(state: dict, hour: float) -> tuple:
         return ('Doubleflashing', RED, 0, 3)
     if not working:
         return ('Breathing', IDLE, 0, 2)
-    effect, colour = {'hourly': ('Wave', AMBER), 'experiment': ('Flowing', VIOLET)}.get(state['who'], ('Breathing', TEAL))
+    effect, colour = {'hourly': ('Flowing', AMBER), 'experiment': ('Flowing', VIOLET)}.get(state['who'], ('Breathing', TEAL))
     colour = mix(colour, ORANGE, (state['temp'] - HOT) / (LIMIT - HOT))
     return effect, colour, 0, 2 + min(3, int(state['load'] / 25))  # 2 at light load, 5 from 75%
 
