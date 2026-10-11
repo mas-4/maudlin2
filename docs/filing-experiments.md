@@ -648,6 +648,12 @@ claims from posts in 3+ motifs and 80 in one, Gemma lists each distinct claim at
 it splits, which sub-claim tells each motif: different ones (stitched tellings) or all one (one telling, several
 layers). `scripts/experiments/f8_chimera.py`.
 
+**Isis** turns it round (the person: "running on single posts even and then seeing if we can reverse group by
+motif"): each post behind those 160 claims gets its own one-sentence claim from Gemma (or none), filed on its own as
+the filing would (the shortlist's 12 best, the confidence model's chance past 0.5); then the motifs make the groups.
+How many different motifs a group's posts go to (3+ against one), how many of the person's motifs for the claim the
+posts reach, and which motifs gather posts from several of the day's groups. `scripts/experiments/f9_isis.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
