@@ -176,3 +176,31 @@ between languages. For the ancient sets, eclipses in the Diaries can be computed
 
 Questions to settle before any download: the Delpher zip's contents; the Couranten Corpus and CKCC licences;
 whether the person wants to email UCC or INT for data.
+
+## Modern and American corpora (Oct 11)
+
+A second search, after A1 and with A2 and A3 running: corpora for rumor, conspiracy and political narrative, each
+checked live (V) unless marked. Nothing downloaded yet; each needs the person's pick. Each is paired with the
+experiment it would serve.
+
+| Corpus | What | Access, license | Experiment |
+|---|---|---|---|
+| [LOCO](https://osf.io/snpcg/) (Miani, Hills & Bangerter 2022) | 88M words, 150 sites: 23,937 conspiracy documents and 72,806 mainstream ones matched by topic | OSF "data" folder; **no license set** (the paper: "freely available"); format and years unverified | **A6 a control**: our conspiracy motifs must fire on the conspiracy side and stay quiet on its matched mainstream twin: precision and recall for conspiracy shapes, by topic |
+| [Congressional Record, hein-bound](https://data.stanford.edu/congress_text) (Gentzkow, Shapiro & Taddy) | 13.5M speeches 1873–2011 (daily edition 1981–2016), speaker and party | one zip; ODC-By 1.0 | **A7 lineage**: the floor's tellings beside A2's 1896 and 1920 papers; by party, over 140 years; Huey Long's 1934–35 radio addresses were read into it |
+| [JSON-QAnon](https://github.com/jkingsman/JSON-QAnon) | ~5,000 Q drops, 2017–2022 | GitHub, MIT (collation), "research only" | **A8 lineage**: do the cabal and banker-plot motifs of 2017 meet 1896's "Crime of '73" filings? |
+| [ClaimsKG](https://data.gesis.org/claimskg/) | 74,066 fact-checked claims from 13 checkers, 1996–2023 | RDF + SPARQL; CC BY-NC-SA 4.0, research only | **A9 consistency at scale**: one claim checked by several outlets should file alike; and a decade of fact-checked claims for motif lineage |
+| [Miller Center speeches](https://data.millercenter.org/) | 1,000+ presidential speeches, Washington on | one .tgz; public domain | a low-rumor baseline (presidents argue, rarely retell rumors) and the presidency's own motifs |
+| [ParlaMint-en 5.0](http://hdl.handle.net/11356/2006) | 1.37B words, 29 European parliaments, machine-translated to English | CC BY 4.0 | consistency across countries and through translation: does "the enemy within" file alike in Budapest and London? |
+| [Truth Social dataset](https://zenodo.org/records/7522646) (Gerard et al. 2023) | 845,060 posts, Feb–Sep 2022 | 169 MB zip; CC BY 4.0 | grassroots tellings on the right, beside our Bluesky/Mastodon sample (which leans left) |
+| [4chan /pol/](https://zenodo.org/records/3606810) | 134.5M posts, 2016–2019 | 24 GB; CC BY 4.0; very toxic | upstream: where shapes begin and how they change before they reach the news |
+| [PHEME](https://figshare.com/articles/dataset/PHEME_dataset_for_Rumour_Detection_and_Veracity_Classification/6392078) | rumour and non-rumour threads around 9 breaking events, 2014–15 | figshare; annotations CC BY (page refused the fetch: snippets only) | rumor against plain news inside one event: straight news should get no motif |
+| [MultiFC](http://www.copenlu.com/publication/2019_emnlp_augenstein/) / [LIAR on Zenodo](https://zenodo.org/records/14011838) | 34,918 claims from 26 checkers / 12.8K PolitiFact statements | MultiFC licence unknown; the LIAR copy CC BY 4.0 | true claims should get no motif; ratings against motifs |
+
+Not available or weak: **WWII rumor collections** (Allport and Postman's rumor clinics, Knapp 1944) aren't digitized
+in the open; **Father Coughlin** only as 24 broadcasts of audio (CC0, Internet Archive), which we could transcribe
+ourselves; no openly licensed Snopes or urban-legend corpus; COCO and other tweet sets ship IDs only; RadioTalk
+(2.8B words of 2018–19 talk radio) states no license; the Federal Writers' Project life histories (1936–40) have no
+verified bulk download.
+
+Suggested: **A6 LOCO first** (a real control, labelled by others; ask about its missing license or read the paper's
+terms), then **A7 the Congressional Record** (lineage beside A2, open license), then A8 and A9.
