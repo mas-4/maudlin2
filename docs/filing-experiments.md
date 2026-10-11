@@ -497,6 +497,24 @@ finds real overlaps; the other 22 (The sleeper agent / Every bang is a bomb, Mon
 pump / It's the economy, stupid...) are candidates for merging, a rests-on link or sharper notes. Drift: 6 motifs.
 The measure is the share the person acts on; the list is in `experiments/d4_tell_tale_hat.json`.
 
+### S1 A new event or the same one updated (Oct 11) — Gemma, not Nimble
+`scripts/experiments/s1_story_splits.py`. A story is continued hour to hour by whichever saved story holds most of a
+cluster's headlines, so a new event joins the old story while a few of its headlines are still on front pages: the
+diesel deal's story (saga-30) took in two days of Trump calling for Zelensky to be replaced. By meaning the two don't
+come apart (their headlines sit 0.92 apart: both say "diesel deal"). So a yes or no: do the day's new articles report
+a new event (someone's new action, statement or decision, or a new outcome) or the same event updated (new details,
+condition, numbers, reactions, commentary)? The person's line: Pike on a ventilator, Pike discharged and the prison
+chief resigning are three stories; handcuffs off and walking and eating are updates. 89 day-to-day transitions with
+15 or more new articles, in 50 stories; the answer key is Claude's, at the person's request ("you be the judge of
+the transitions"): 53 new events, 36 updates.
+
+| | agrees | new events found | updates called new |
+|---|---|---|---|
+| Gemma 26B | 78% | 79% | 25% |
+| Nimble 9B (AUC 0.715) | 60% at 0.5 | | |
+
+Gemma is the one to split stories with; a quarter of updates called new means a split needs more than its word (S2).
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
