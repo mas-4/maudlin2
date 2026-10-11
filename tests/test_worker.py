@@ -146,6 +146,7 @@ def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monke
     monkeypatch.setattr(gpu_lease, 'TURN', 0.5 / 60)  # half a second
     asked = []
     monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: asked.append(since) or len(asked) % 2 == 0)
+    monkeypatch.setattr(gpu_lease, '_worker_had_turn', lambda since: False)
     real_sleep = time.sleep
     monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: real_sleep(0.05))
     runs = tmp_path / 'runs'
@@ -154,6 +155,33 @@ def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monke
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
     assert runs.read_text() == 'xx'  # stopped after its turn, run again once the worker caught up
     assert asked[0] == 0 and asked[-1] > 0  # waited for the worker first, and again after giving way
+
+
+def test_run_takes_its_turn_after_a_whole_worker_cycle_though_the_worker_never_catches_up(tmp_path, monkeypatch):
+    """Oct 11: with new transcripts every hour no cycle was short, and experiments waited all morning"""
+    from app import gpu_lease
+    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
+    monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: False)
+    began = time.time()
+    asked = []
+    monkeypatch.setattr(gpu_lease, '_worker_had_turn', lambda since: asked.append(since) or len(asked) >= 3)
+    real_sleep = time.sleep
+    monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: real_sleep(0.01))
+    assert gpu_lease.run([sys.executable, '-c', 'pass'], minutes=1, holder='test') == 0
+    assert len(asked) == 3 and asked[0] >= began  # a cycle ended since it began waiting, not since ever
+
+
+def test_the_worker_had_its_turn_once_a_cycle_ended_since(tmp_path, monkeypatch):
+    from datetime import datetime as dt
+    beat = tmp_path / 'worker.json'
+    monkeypatch.setattr(worker, 'HEARTBEAT', str(beat))
+    assert worker.had_turn(time.time())  # no worker
+    now = time.time()
+    beat.write_text(json.dumps({'at': now, 'busy': True,
+                                'last cycle': {'at': dt.fromtimestamp(now - 60).isoformat(timespec='seconds'), 'minutes': 25}}))
+    assert worker.had_turn(now - 120) and not worker.had_turn(now - 30)  # busy again, but a whole cycle ended since
 
 
 def test_the_worker_is_caught_up_after_a_short_cycle_since(tmp_path, monkeypatch):

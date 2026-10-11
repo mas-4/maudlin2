@@ -69,6 +69,22 @@ def caught_up(since: float = 0) -> bool:
     return ended >= since and last.get('minutes', 99) * 60 < BUSY_CYCLE
 
 
+def had_turn(since: float) -> bool:
+    """The worker has finished a whole cycle since `since` (or no worker is up). An experiment that has waited that
+    long takes the GPU even if the worker has more to do: with new transcripts and captions every hour no cycle was
+    short, and on Oct 11 experiments waited all morning for a caught_up() that never came. Turns, then: a worker
+    cycle, which files every claim waiting, then the experiment's TURN"""
+    try:
+        with open(HEARTBEAT) as f:
+            beat = json.load(f)
+    except (OSError, ValueError):
+        return True
+    if time.time() - beat.get('at', 0) >= FRESH:
+        return True
+    last = (beat.get('last cycle') or {}).get('at')
+    return bool(last) and dt.fromisoformat(last).timestamp() >= since
+
+
 def run_going() -> bool:
     """The hourly run is going (a one-shot service is 'activating' while it runs: anything but inactive or failed)"""
     state = subprocess.run(['systemctl', 'show', '-p', 'ActiveState', '--value', 'maudlin-scrape.service'],
