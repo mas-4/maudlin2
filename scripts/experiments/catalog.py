@@ -25,7 +25,7 @@ DB = os.path.join(harness.EXP, 'experiments.sqlite')
 ARCHIVES = 'archives/archives.sqlite'
 SCHEMA = """
 create table if not exists experiments (code text primary key, name text, family text, question text, script text,
-    status text, data text, result text, updated text);
+    status text, data text, result text, updated text, codename text, why text);
 create table if not exists results (at text, code text, line text, unique (at, line));
 create table if not exists files (path text primary key, code text, bytes integer, modified text);
 """
@@ -100,6 +100,56 @@ for code, name, status, result in [
         ('M1', 'Gemma 26B or Qwen3 30B for the match question', 'in production', 'Gemma; the 30B retired'),
         ('P1', 'Nimble scoring the proposals', 'in production', 'ranking AUC 0.772 against 0.755')]:
     REGISTRY.setdefault(code, (name, '', status, '', result))
+# Codenames (Oct 11, the person, on a bike ride: "i hate your experiment codes you should give them codenames like figures
+# from folklore"): code -> (figure, why it fits). The code stays the scripts' and logs' key; people say the figure
+CODENAMES = {
+    'A1': ('Scheherazade', 'a thousand and one tales, told again'),
+    'A2': ('Rip Van Winkle', 'wakes in 1896 and tells what he finds'),
+    'A3': ('Echo', 'one voice, repeated from paper to paper'),
+    'A4': ('Cassandra', 'speeches warning of the enemy within'),
+    'A5': ('Fama', "Virgil's Rumour, who runs through the early modern news"),
+    'A6': ('Argus', 'the many-eyed watchman, set on known conspiracies'),
+    'A7': ('Nestor', 'the old counsellor of long speeches, 140 years of them'),
+    'A8': ('the Sphinx', 'riddles of a cabal, set beside 1896'),
+    'A9': ('Rashomon', 'one claim, told back by many checkers'),
+    'U1': ('the Golem', 'made by us, left to work alone'),
+    'S1': ('Janus', 'looks back and forward: a new event, or the same one?'),
+    'S2': ('Penelope', 'weaves the saga and unpicks it again'),
+    'S3': ('Rumpelstiltskin', 'the power is in the exact words'),
+    'S4': ('Atropos', 'the Fate who cuts the thread where it frays'),
+    'E12': ('Jack', 'seeds, and whether they grow'),
+    'E13': ('Anansi', 'the spider who owns every story, told in full'),
+    'D1': ('Cinderella', 'the slipper must fit: the must-have element'),
+    'D2': ('Bluebeard', "the rooms of past removals"),
+    'D3': ('the Hydra', 'many heads asked at once'),
+    'D4': ('Proteus', 'motifs that shift shape and drift'),
+    'D5': ('Punch and Judy', 'the stock roles: who does what to whom'),
+    'P1': ('Puck', 'the mischief-maker who proposes'),
+    'P2': ('Adam', 'who named every creature'),
+    'P2b': ('Nobody', "Odysseus's name for himself: a name without 'The'"),
+    'E0.1': ('the Oracle', 'a yes or no from on high'),
+    'E0.2': ('Sisyphus', 'rolls the ranking uphill again'),
+    'E0.5': ('the Bremen Town Musicians', 'a band of finders, stronger together'),
+    'E0.6': ('Athena', 'the wise judge of which filings to keep'),
+    'E1': ('Lethe', "the river of forgetting: the day's news washed out"),
+    'E2': ('Morpheus', 'dreamed-up instances'),
+    'E3': ('the Pleiades', 'stars that travel together'),
+    'E4': ('the Three Wise Men', 'a jury of readers'),
+    'E5': ('Arachne', 'scores spread along the web of links'),
+    'E6': ('Ariadne', 'the thread through the check queue'),
+    'E7': ('Matryoshka', 'a claim read layer by layer'),
+    'E8': ('Narcissus', 'shown its nearest likeness'),
+    'E9': ('Pygmalion', "shaped to the person's taste"),
+    'E11': ('Babel', 'every embedding model, every tongue'),
+    'J1': ('the Norns', 'three judges of fate'),
+    'J2': ('Solomon', 'judges as the casebook reasons'),
+    'C1': ('Goldilocks', 'small, middling and big models, in turn'),
+    'R1': ('Goliath', 'the bigger reranker, not worth it'),
+    'W1': ('the Brothers Grimm', 'rewording the tales'),
+    'G1': ('Mother Goose', 'what each kind of tale is'),
+    'G2': ('Noah', 'sorting into groups'),
+    'M1': ('the Changeling', 'one model swapped for another'),
+}
 CODE = re.compile(r'^(E0\.\d|E\d+[a-z]?(?:\+E\d+)?|[A-Z]\d+[a-z]?|ASR|LLM)\b')
 
 
@@ -124,12 +174,17 @@ def record(line: str):
 def sync():
     now = dt.now().isoformat(timespec='seconds')
     with connect() as con:
+        cols = {r[1] for r in con.execute('pragma table_info(experiments)')}
+        for col in ('codename', 'why'):
+            if col not in cols:
+                con.execute(f'alter table experiments add column {col} text')
         for code, (name, script, status, data, result) in REGISTRY.items():
             family = FAMILIES.get(code.rstrip('0123456789b'), FAMILIES.get(code[0], ''))
-            con.execute('insert into experiments values (?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict (code) do update set '
+            con.execute('insert into experiments values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict (code) do update set '
                         'name = excluded.name, family = excluded.family, script = excluded.script, status = excluded.status, '
                         'data = excluded.data, result = case when excluded.result != \'\' then excluded.result else result end, '
-                        'updated = excluded.updated', (code, name, family, name, script, status, data, result, now))
+                        'updated = excluded.updated, codename = excluded.codename, why = excluded.why',
+                        (code, name, family, name, script, status, data, result, now, *CODENAMES.get(code, ('', ''))))
         log = os.path.join(harness.EXP, 'results.log')
         if os.path.exists(log):
             for raw in open(log):
@@ -150,8 +205,8 @@ def sync():
 
 def show():
     con = connect()
-    for code, name, status, result in con.execute('select code, name, status, result from experiments order by code'):
-        print(f'{code:5} {status:13} {name[:60]:60} {result[:70]}')
+    for code, fig, name, status, result in con.execute('select code, codename, name, status, result from experiments order by code'):
+        print(f'{code:5} {fig or "":26} {status:13} {name[:52]:52} {result[:60]}')
     n, size = con.execute('select count(*), sum(bytes) from files').fetchone()
     big = con.execute('select path, bytes from files order by bytes desc limit 5').fetchall()
     print(f'\n{con.execute("select count(*) from results").fetchone()[0]} result lines; {n} files, {size / 1e6:.0f} MB; '
