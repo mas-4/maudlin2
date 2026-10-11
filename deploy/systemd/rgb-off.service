@@ -1,0 +1,17 @@
+[Unit]
+# The person, Oct 11: the machine could stay up all night for the worker and experiments "if the gpu didn't glow up the
+# entire room like a discotheque". The MSI card and the board's JRAINBOW headers (the case fans) go back to their
+# rainbow at boot and after sleep, so this sets them dark at boot and after every wake. The card has an Off mode, the
+# board only colours (static black). The Yeti X mic is left alone: its light shows when it's muted.
+# Install (once): sudo ln -sf /home/mas/Repos/maudlin2/deploy/systemd/rgb-off.service /etc/systemd/system/ &&
+#                 sudo systemctl daemon-reload && sudo systemctl enable --now rgb-off.service
+Description=Turn the GPU and motherboard lighting off, at boot and after every wake
+After=systemd-modules-load.service suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/openrgb --noautoconnect -d "MSI GeForce RTX 3080 Gaming Z Trio LHR" -m Off -d "MSI PRO Z790-P WIFI (MS-7E06)" -m Static -c 000000
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
