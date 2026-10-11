@@ -112,6 +112,8 @@ def ask():
                                 (mi.key(c), c, r['proverb'].strip(), json.dumps(r['retellings']),
                                  *(r.get(k) for k in LABELS)))
         print(f'ask: {min(start + 32, len(todo))}/{len(todo)}', flush=True)
+        if not any(got):  # Ollama down: stop, so the chain's next try waits for the lease again
+            sys.exit('ask: no answer for a whole batch; Ollama down? stopping to try again')
 
 
 class Spaces:

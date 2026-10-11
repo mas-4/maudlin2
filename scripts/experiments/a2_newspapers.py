@@ -189,10 +189,13 @@ def claims():
         return kept, out
     for start in range(0, len(todo), 32):
         part = todo[start:start + 32]
-        for a, r in zip(part, llm.parallel(read, part)):
+        answers = llm.parallel(read, part)
+        for a, r in zip(part, answers):
             if r is not None:
                 got[a['id']], dropped[a['id']] = r
         save(state)
+        if all(r is None for r in answers):  # Ollama down (restarted on Oct 11 mid-run: the stage raced through every
+            sys.exit('claims: no answer for a whole batch; Ollama down? stopping to try again')  # article and "finished")
         n, d = sum(map(len, got.values())), sum(map(len, dropped.values()))
         print(f"claims: {len(got)}/{len(state['articles'])} articles, {n} claims kept, {d} dropped", flush=True)
 
