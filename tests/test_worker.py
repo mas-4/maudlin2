@@ -76,6 +76,7 @@ def test_run_holds_the_lease_for_the_command(tmp_path, monkeypatch):
     monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
     out = tmp_path / 'seen'
     code = f"import json; open({str(out)!r}, 'w').write(json.load(open({str(tmp_path / 'lease.json')!r}))['holder'])"
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
@@ -88,6 +89,7 @@ def test_run_waits_for_the_worker_to_finish_its_step(tmp_path, monkeypatch):
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     busy = [True, True, False]
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: busy.pop(0) if len(busy) > 1 else busy[0])
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
     monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: None)
     assert gpu_lease.run([sys.executable, '-c', 'pass'], minutes=1, holder='test') == 0
     assert busy == [False]  # asked until the worker was done
@@ -98,6 +100,7 @@ def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatc
     monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
     monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: None)
     tries = []
     real = gpu_lease.Hold.take
@@ -117,6 +120,7 @@ def test_run_steps_aside_for_an_hourly_run_and_starts_again(tmp_path, monkeypatc
     from app import gpu_lease
     monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
     runs, started = tmp_path / 'runs', []
 
     def hourly():  # starts once the command is under way, the first time only
@@ -131,6 +135,42 @@ def test_run_steps_aside_for_an_hourly_run_and_starts_again(tmp_path, monkeypatc
             "open(p, 'a').write('x'); time.sleep(30 if n == 0 else 0)")
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
     assert runs.read_text() == 'xx' and gpu_lease.held() is None  # stopped once, then run to the end
+
+
+def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monkeypatch):
+    """Oct 11: a lease held all night left a day's claims unwritten"""
+    from app import gpu_lease
+    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
+    monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease, 'TURN', 0.5 / 60)  # half a second
+    asked = []
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: asked.append(since) or len(asked) % 2 == 0)
+    real_sleep = time.sleep
+    monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: real_sleep(0.05))
+    runs = tmp_path / 'runs'
+    code = (f"import time; p = {str(runs)!r}; n = len(open(p).read()) if __import__('os').path.exists(p) else 0; "
+            "open(p, 'a').write('x'); time.sleep(30 if n == 0 else 0)")
+    assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
+    assert runs.read_text() == 'xx'  # stopped after its turn, run again once the worker caught up
+    assert asked[0] == 0 and asked[-1] > 0  # waited for the worker first, and again after giving way
+
+
+def test_the_worker_is_caught_up_after_a_short_cycle_since(tmp_path, monkeypatch):
+    from datetime import datetime as dt
+    beat = tmp_path / 'worker.json'
+    monkeypatch.setattr(worker, 'HEARTBEAT', str(beat))
+    assert worker.caught_up()  # no worker: nothing to wait for
+    now = time.time()
+
+    def write(**b):
+        beat.write_text(json.dumps({'at': now, 'busy': False, **b}))
+    write(busy=True)
+    assert not worker.caught_up()
+    write(**{'last cycle': {'at': dt.fromtimestamp(now - 60).isoformat(timespec='seconds'), 'minutes': 30}})
+    assert not worker.caught_up()  # a full cycle: work waiting
+    write(**{'last cycle': {'at': dt.fromtimestamp(now - 60).isoformat(timespec='seconds'), 'minutes': 0.5}})
+    assert worker.caught_up() and not worker.caught_up(since=now - 30)  # short, but before the experiment gave way
 
 
 def test_a_short_cycle_never_takes_the_awake_lock(monkeypatch, tmp_path):

@@ -26,6 +26,7 @@ LEASE = os.path.join(Config.data, 'gpu_lease.json')  # {'holder', 'pid', 'until'
 MAX_MINUTES = 120
 RENEW = 60  # seconds between renewals while the holder lives
 STALE = 3 * RENEW  # a lease not renewed this long is dropped (its holder died)
+TURN = 60  # minutes a command runs before it gives the worker its turn (production's claims come first)
 
 
 def held() -> dict | None:
@@ -113,6 +114,11 @@ def _worker_busy() -> bool:
     return worker.busy()
 
 
+def _worker_caught_up(since: float) -> bool:
+    from app import worker
+    return worker.caught_up(since)
+
+
 def _stop(proc: subprocess.Popen):
     proc.terminate()
     try:
@@ -127,11 +133,15 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
     status. The hourly run comes first: if one starts while the command runs, the command is stopped and the lease
     given back, and once the run is over it's started again (Oct 10: an experiment held the card through the 16:00 and
     17:00 runs, whose headline judgments timed out and crashed them; the experiments resume from their caches).
+    Production's processing comes first too: the command starts only once the worker has caught up (its last cycle
+    found little to do), and every TURN minutes it's stopped and the worker given the card until it has caught up
+    again (Oct 11: an experiment's lease held from the afternoon through the night left a day's claims unwritten).
     `minutes` counts the command's own running time, not the waits"""
     left = min(float(minutes), MAX_MINUTES) * 60
+    gave_way = 0.0  # when the command last gave the worker its turn
     while True:
         while True:
-            while _hourly_run_going() or held() is not None:
+            while _hourly_run_going() or held() is not None or not _worker_caught_up(gave_way):
                 time.sleep(30)
             h = Hold(holder or ' '.join(command)[:120], left / 60)
             try:
@@ -155,10 +165,16 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
                     _stop(proc)
                     print('gpu_lease: the hourly run started; the command stopped, to start again after it', flush=True)
                     break
+                if time.time() - began >= TURN * 60:
+                    _stop(proc)
+                    print(f'gpu_lease: {TURN} minutes run; the worker gets its turn, the command starts again after',
+                          flush=True)
+                    break
                 time.sleep(5)
             else:
                 return proc.returncode
             left -= time.time() - began
+            gave_way = time.time()
         if left <= 0:
             return 124
 

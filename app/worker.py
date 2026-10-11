@@ -51,6 +51,24 @@ def busy() -> bool:
         return False
 
 
+def caught_up(since: float = 0) -> bool:
+    """The worker has nothing waiting: its last cycle, ended after `since`, found little to do (or no worker is up). An
+    experiment takes the GPU only then (Oct 11: an experiment held the lease from the afternoon through the night, the
+    worker yielded to it the whole time, and the day's claims went unwritten: 100 filings on Oct 10 against ~250)"""
+    try:
+        with open(HEARTBEAT) as f:
+            beat = json.load(f)
+    except (OSError, ValueError):
+        return True
+    if time.time() - beat.get('at', 0) >= FRESH:
+        return True
+    last = beat.get('last cycle') or {}
+    if beat.get('busy') or not last.get('at'):
+        return False
+    ended = dt.fromisoformat(last['at']).timestamp()
+    return ended >= since and last.get('minutes', 99) * 60 < BUSY_CYCLE
+
+
 def run_going() -> bool:
     """The hourly run is going (a one-shot service is 'activating' while it runs: anything but inactive or failed)"""
     state = subprocess.run(['systemctl', 'show', '-p', 'ActiveState', '--value', 'maudlin-scrape.service'],
