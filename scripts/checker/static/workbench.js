@@ -557,14 +557,8 @@
       const items = q.filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && c.checked === 'yes')
         && !S.decided.has(x.claim + '|' + x.id));
       box.innerHTML = items.length ? `<p class="wb-faint">🔁 The model's filings you confirmed that it now finds least likely, the least first (yours made by hand aren't here: they score low because they're the links it misses). ✓ still fits takes one off this list (and counts as a fresh yes); ✕ takes the claim out of that motif. Most will be fine: these are just the ones worth a second glance.</p>
-        ${items.map((x) => `<div class="wb-card wb-unck">
-          <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
-            <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
-          <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" data-ckc="${esc(x.claim)}" title="it still fits: off this list">✓ still fits</button><button class="wb-mini" data-ck="no|${x.id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕ take out</button></span></div>
-          ${S.by[x.id].note ? `<div class="wb-faint">${esc(S.by[x.id].note)}</div>` : ''}
-          ${(x.better || []).filter(stillBetter(x.claim)).length ? `<div class="wb-faint">🤖 might fit better:</div>
-            ${x.better.filter(stillBetter(x.claim)).map((b) => betterRow(b, x.claim)).join('')}` : ''}
-        </div>`).join('')}`
+        <p class="wb-faint wb-keys">⌨ on the top card: <b>y</b> still fits · <b>n</b> take out · <b>m</b> move to the best fit · <b>1</b>–<b>3</b> add that one too · <b>o</b> open the claim</p>
+        ${items.map((x, i) => secondCard(x, i === 0)).join('')}`
         : '<div class="wb-welcome"><div class="wb-big">🔁</div><p>Nothing to look at again: the second look fills in once the hourly run has scored your confirmed filings.</p></div>';
     } else if (tab === 'proposals') {
       const q = await queue('proposals');
@@ -736,6 +730,26 @@
   const betterRow = (b, claim) => `<div class="wb-motifrow wb-better">${chip(b.id)}
       ${S.by[b.id] && S.by[b.id].note ? `<span class="wb-mnote">${esc(S.by[b.id].note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
       <span class="wb-sbtns">${fitChip(b.fit)}<button class="wb-btn yes" data-alt="add|${b.id}" data-altc="${esc(claim)}" title="file it here too (then ✕ the weak one if it doesn't belong there)">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" data-altc="${esc(claim)}" title="not this motif: don't suggest it again">✕</button></span></div>`;
+  // A second look card (Oct 11, the person: it didn't show where else the claim is filed, and was hard to work): the
+  // doubted filing with its two answers, the other motifs the claim is in (each with its own ✕), and the better fits
+  // as one tight row each: ⇄ moves the claim there (out of the doubted motif, in that one, one undo step), ＋ adds it
+  // too. The top card answers to keys (see the keydown handler)
+  function secondCard(x, top) {
+    const c = esc(x.claim), e = S.by[x.id];
+    const also = motifsOf(x.claim).filter((m) => m.id !== x.id);
+    const better = (x.better || []).filter(stillBetter(x.claim)).slice(0, 3);
+    return `<div class="wb-card wb-unck wb-second${top ? ' wb-top' : ''}" data-ckc="${c}" data-altc="${c}">
+      <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${c}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
+        <button class="wb-mini" data-ckopen="${c}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
+      <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" title="it still fits: off this list (y)">✓ still fits</button><button class="wb-mini" data-ck="no|${x.id}" title="it doesn't fit: out of this motif (n)">✕ take out</button></span>
+        ${e.note ? `<div class="wb-bnote">${esc(e.note)}</div>` : ''}</div>
+      ${also.length ? `<div class="wb-alsoin"><span class="wb-faint">also in</span> ${also.map((m) => `<span class="wb-alsochip">${chip(m.id)}<button class="wb-mini" data-ck="no|${m.id}" title="out of “${esc(m.name)}” too">✕</button></span>`).join('')}</div>` : ''}
+      ${better.length ? `<div class="wb-faint">🤖 might fit better</div>${better.map((b, k) => `<div class="wb-bline">
+        <b class="wb-bkey">${k + 1}</b>${chip(b.id)} ${fitChip(b.fit)}
+        <span class="wb-sbtns"><button class="wb-btn yes" data-move="${x.id}|${b.id}" title="move it: out of “${esc(e.name)}”, into this one${k === 0 ? ' (m)' : ''}">⇄ move</button><button class="wb-mini" data-alt="add|${b.id}" title="file it here too, keeping the other (${k + 1})">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" title="not this motif: don't suggest it again">✕</button></span>
+        ${S.by[b.id].note ? `<div class="wb-bnote">${esc(S.by[b.id].note)}</div>` : ''}</div>`).join('')}` : ''}
+    </div>`;
+  }
   // A claim opened from a list (🎯 today, second look, unchecked): the list and where you were in it kept, to go back
   // to with ← back or the browser's own back
   function openClaim(claim) {
@@ -1243,6 +1257,12 @@
       S.decided.add(claim + '|' + id);  // off the lists in place (fetching them again made the page jump)
       return act({action: 'check', claim, id, answer}, answer === 'yes' ? '✓ fits' : '✕ out of that motif');
     }
+    if ((v = d('move'))) {  // out of the doubted motif, into the better one: one undo step
+      const [from, to] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
+      S.decided.add(claim + '|' + from);
+      return batch([{action: 'also', claim, source: from, target: to}, {action: 'check', claim, id: from, answer: 'no'}],
+        `⇄ moved to “${S.by[to].name}”`);
+    }
     if ((v = d('alt'))) {  // a suggested better motif: add the claim there too, or never suggest it again
       const [kind, id] = v.split('|'), claim = t.closest('[data-altc]').dataset.altc;
       const from = motifsOf(claim)[0];
@@ -1635,6 +1655,13 @@
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !typing) { ev.preventDefault(); undo(); return; }
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }
+    if (S.tab === 'second') {  // the top card: y still fits, n take out, m move to the best fit, 1-3 add, o open
+      const card = $('#inbox .wb-second'), k = ev.key.toLowerCase();
+      const sel = {y: '[data-ck^="yes|"]', n: '.wb-sug [data-ck^="no|"]', m: '[data-move]', o: '[data-ckopen]'}[k];
+      const btn = !card ? null : sel ? card.querySelector(sel) : /^[1-3]$/.test(k) ? card.querySelectorAll('[data-alt^="add|"]')[+k - 1] : null;
+      if (btn) { ev.preventDefault(); btn.click(); }
+      return;
+    }
     if (S.tab === 'check' && $('#inbox').dataset.check) {
       const k = {y: 'allyes', arrowright: 'next', j: 'next', s: 'next', arrowleft: 'prev', k: 'prev'}[ev.key.toLowerCase()];
       if (k) { ev.preventDefault(); verdict(k); }

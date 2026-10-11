@@ -4,8 +4,24 @@
     {
       "name": "site",
       "runtimeExecutable": ".venv/bin/python",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "_build"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "_build"
+      ],
       "port": 8765
+    },
+    {
+      "name": "checker-dev",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": [
+        "scripts/validate.py",
+        "--port",
+        "8799"
+      ],
+      "port": 8799
     }
   ]
 }

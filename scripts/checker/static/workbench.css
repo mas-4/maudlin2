@@ -395,3 +395,13 @@ body.dragging .wb-schip { border-style: dashed; }
     padding: 6px 0;
     border-top: 1px dashed #c9c9d4;
 }
+
+/* the second look (Oct 11): where else the claim is, better fits one tight row each, the top card answers to keys */
+.wb-second .wb-bnote { flex-basis: 100%; font-size: 13px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-second .wb-bnote:hover { white-space: normal; }
+.wb-alsoin { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 0; border-top: 1px dashed #ddd; }
+.wb-alsochip { display: inline-flex; align-items: center; gap: 2px; }
+.wb-bline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 0 3px 4px; border-left: 3px solid #b8f0c8; margin: 3px 0; }
+.wb-bkey { font: 12px/1 monospace; color: #888; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; }
+.wb-second.wb-top { outline: 3px solid #ffc400; }
+.wb-keys { margin-top: -4px; }

@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 
 LOOK = 20  # seconds between lookups
 PARTY_SECONDS = 30
-CHECKER = 'http://localhost:8766/workbench'
+CHECKER = 'http://localhost:8766/motif-workbench'
 SITE = 'https://bignews.day/'
 SEEN = 'deck_seen.json'  # the newborn motifs met on the deck
 BRIGHT, DIM = 70, 12  # percent, day and night
