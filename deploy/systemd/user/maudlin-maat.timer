@@ -1,0 +1,9 @@
+[Unit]
+Description=Weigh the machine against Ma'at's fixed yardstick every Sunday night
+
+[Timer]
+OnCalendar=Sun 02:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

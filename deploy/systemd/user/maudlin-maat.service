@@ -1,0 +1,9 @@
+[Unit]
+Description=Maudlin Ma'at: the weekly fixed yardstick, the machine weighed against the same 200 decisions (scripts/experiments/f3_maat.py)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/mas/Repos/maudlin2
+# Under the GPU lease like every experiment; it waits its turn with the worker and the others
+ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python -m app.gpu_lease run --minutes 120 --holder maat-weigh -- /home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/f3_maat.py
+Nice=5

@@ -158,10 +158,16 @@ def _judge_one(text: str) -> float:
     import requests as rq
     from app.analysis.llm import OLLAMA_URL
     if JUDGE_DECIDER:
+        import time
+        from app.analysis import token_log
         question = ELEMENT_QUESTION if f'\n{ELEMENT_LINE} ' in text else JUDGE_QUESTION
+        started = time.time()
         r = rq.post(f'{OLLAMA_URL}/v1/systemone', timeout=300, json={
             'model': JUDGE_DECIDER, 'state': text, 'questions': {'fits': {'type': 'noul', 'instructions': question}}})
         r.raise_for_status()
+        # Its endpoint gives no token counts: its time on the card is what's logged (Oct 11: what renting Gemma would
+        # free for it, not what renting it would cost; it runs well locally)
+        token_log.record(JUDGE_DECIDER, {}, time.time() - started)
         a = r.json()['answers']['fits']
         return round(float(a.get('noul', a.get('probability')) if isinstance(a, dict) else a), 5)
     import time

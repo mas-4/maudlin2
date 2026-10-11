@@ -60,6 +60,7 @@ CODENAMES = {
     'F4': ('Aesop', 'the proverb a telling is an instance of: the moral without the animals'),
     'F5': ('Loki', 'the same story in three disguises, so only its shape stays'),
     'F6': ('Hermagoras', 'what a telling contends, what drives it, its time and its speech act'),
+    'F7': ('Procrustes', 'who stretched every guest to fit his bed: claims forced into the nearest motif'),
 }
 
 

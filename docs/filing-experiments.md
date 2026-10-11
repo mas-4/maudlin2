@@ -620,6 +620,24 @@ fused with plain), top 8/12/40; the Gordian Knot's odd one out in each space; an
 together within a motif. `scripts/experiments/f4_abstract_tellings.py`. Cerberus is queued too:
 `scripts/experiments/f2_cerberus.py`.
 
+### Queued (Oct 11): Procrustes and Ma'at
+
+A correction to the counts above: a new motif made from a claim copies it unless marked a move, and 105 of the 242
+claims the person made new motifs from are still in the motif they came from (a new motif found inside the claim, not
+a misfiling). Sorted by the person's last word on each of the machine's claims: 871 fit (a filing kept), 112 where
+nothing fit (every filing removed, the claim in a motif made from it or in none), 73 in the wrong motif (every filing
+removed, the claim put in a motif that already existed). The Gordian Knot holds on the claims that really left: their
+motif's odd one out 9% of 35 times against chance's 17%.
+
+- **Procrustes: can the machine tell when nothing fits?** The confidence model, trained in folds without the claim,
+  scores the claim's shortlist (the motif it was filed in and the 12 best others): does the best score, or its margin
+  over the second, pick out "nothing fit" from "fits", and where would a line sending claims to the proposals instead
+  of filing them catch them, at what cost? `scripts/experiments/f7_procrustes.py`.
+- **Ma'at, built:** 200 decisions drawn once and kept (`maat_set.json`); each run trains its own copy of the
+  confidence model on every other decision (production's is untouched) and scores the set: AUC, right when sure, the
+  kept that pass as sure. Weekly, Sunday 02:30, by `deploy/systemd/user/maudlin-maat.timer`, under the GPU lease.
+  `scripts/experiments/f3_maat.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own
