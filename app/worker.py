@@ -159,12 +159,16 @@ def free_gpu():
 
 
 def holding_gpu() -> bool:
-    """This process still holds the card: torch has made its context here. free_gpu() gives back only the cache, not
-    the context and the models the cycle's steps keep loaded (1.3 GB held on Oct 11 while the worker waited, with Gemma
-    at 7.5 GB for an experiment: the 10 GB card full, Firefox crashing and screenshots failing)"""
-    import sys
-    torch = sys.modules.get('torch')
-    return torch is not None and torch.cuda.is_available() and torch.cuda.is_initialized()
+    """This process still holds memory on the card, by any library: the card's own list of processes using it. free_gpu()
+    gives back only torch's cache, not a context or the models the cycle's steps keep loaded (1.3 GB held on Oct 11 while
+    the worker waited, with Gemma at 7.5 GB for an experiment: the 10 GB card full, Firefox crashing and screenshots
+    failing). Torch alone isn't the test: that 1.3 GB was the transcriber's CTranslate2 and onnxruntime"""
+    try:
+        out = subprocess.run(['nvidia-smi', '--query-compute-apps=pid', '--format=csv,noheader'],
+                             capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return str(os.getpid()) in out.split()
 
 
 def cycle(state: dict) -> float:
