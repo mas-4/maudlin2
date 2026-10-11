@@ -392,7 +392,22 @@ def metrics(index: dict | None = None) -> dict:
         'your_notes': share(sum(1 for e in es if e.get('note') and e.get('note_by') not in DRAFTS)),
         'checked': round(100 * sum(1 for e in es for c in e['claims'] if c.get('checked')) / max(1, filings), 1),
         'variants': sum(len(c.get('variants', [])) for e in es for c in e['claims']),
+        **sure_share(es),
     }
+
+
+def sure_share(es: list[dict]) -> dict:
+    """The person's workload (Oct 11, the person: "are we going to be able to see if/when that 85% right number climbs
+    over time?"): of the day's filings in their motifs, how many the confidence model puts past its sure line, as the
+    day's snapshot keeps it (the model of that day). As it climbs while the sure ones stay as right, there's less to
+    look at and correct"""
+    from app.analysis import filing_confidence as fc
+    sure_at = next((r['sure_at'] for r in reversed(fc.history()) if r.get('model') == 'confidence' and r.get('sure_at')), None)
+    today = dt.now().strftime('%Y-%m-%d')
+    fits = [c['fit'] for e in es if 'done' in e for c in e['claims'] if c.get('fit') is not None and c.get('date', '')[:10] == today]
+    if not sure_at or not fits:
+        return {}
+    return {'filed_today': len(fits), 'sure_share': round(100 * sum(f >= sure_at for f in fits) / len(fits), 1)}
 
 
 def snapshot_metrics():
@@ -441,7 +456,21 @@ def metrics_history() -> dict:
         if day < '2026-10-01':
             continue
         out.append({'day': day, **days.get(day, {}), **({'shape': snaps[day]} if day in snaps else {})})
-    return {'now': metrics(index), 'days': out}
+    return {'now': metrics(index), 'days': out, 'models': model_days()}
+
+
+def model_days() -> list[dict]:
+    """The models' held-out tests (filing_confidence.HISTORY), the day's last of each model: how good the machine is,
+    measured on the person's checks it didn't learn from, so it doesn't move with what they choose to check"""
+    from app.analysis import filing_confidence as fc
+    days = defaultdict(dict)
+    for r in fc.history():
+        d = days[r['at'][:10]]
+        if r.get('model') == 'confidence':
+            d.update({k: r[k] for k in ('auc', 'right_when_sure', 'sure_at', 'decisions') if r.get(k) is not None})
+        elif r.get('model') == 'shortlist':
+            d.update({k: r[k] for k in ('top12', 'plain_top12') if r.get(k) is not None})
+    return [{'day': day, **d} for day, d in sorted(days.items())]
 
 
 def nightly(budget: float | None = None):

@@ -641,10 +641,29 @@
       ${bars('🤖 how the model filed claims', ['filed_matched', 'filed_new', 'filed_none'], ['#3a86ff', '#ffc400', '#c9c9d4'], 'counted from Oct 6: into motifs already there, into a new one, or none')}
       ${bars('✋ your changes a day', ['actions'], ['#ff4fa3'], 'merges, moves, links, notes, checks… in the curation log')}
       ${bars('☑️ your checks', ['checks_yes', 'checks_no', 'checks_unsure'], ['#7fd97a', '#ff6b6b', '#c9c9d4'])}
+      ${machine(m.models || [], m.days.filter((d) => d.shape && d.shape.sure_share != null))}
       ${shaped.length ? `<div class="wb-stat"><h3>🧱 the shape, day by day</h3><table class="wb-shape"><tr><th></th>${shaped.map((d) => `<th>${d.day.slice(5)}</th>`).join('')}</tr>
         ${line('singles', 'single-claim')}${line('two_plus', '2+ claims')}${line('in_tree', 'in the tree')}${line('with_genre', 'with a genre')}${line('done', 'done')}${line('your_notes', 'your notes')}</table>
         <p class="wb-faint">a snapshot after each filing run, from Oct 6</p></div>` : ''}
     </div>`;
+  }
+
+  // 🤖 how good the machine is, day by day: the models' tests on checks they didn't learn from (not the day's ticks,
+  // which rise and fall with what you chose to check), and how much of what waits for you is past the sure line
+  function machine(models, sure) {
+    if (!models.length) return '';
+    const pct = (v) => (v == null ? '–' : `${Math.round(v * 1000) / 10}%`);
+    const row = (label, cells, title) => `<tr><td title="${esc(title)}">${label}</td>${cells}</tr>`;
+    const cells = (key, fmt) => models.map((d) => `<td>${fmt(d[key])}</td>`).join('');
+    const bySure = Object.fromEntries(sure.map((d) => [d.day, d.shape]));
+    return `<div class="wb-stat"><h3>🤖 how good the machine is</h3><table class="wb-shape">
+      <tr><th></th>${models.map((d) => `<th>${d.day.slice(5)}</th>`).join('')}</tr>
+      ${row('🎯 right when sure', cells('right_when_sure', pct), 'of the filings the confidence model calls sure, how many you kept: tested on checks it never learned from')}
+      ${row('📏 the sure line', cells('sure_at', (v) => (v == null ? '–' : `${Math.round(v * 100)}%`)), 'the fit a filing needs to count as sure: lower means more pass as sure')}
+      ${row('⚖️ AUC', cells('auc', (v) => (v == null ? '–' : v.toFixed(3))), 'how often the confidence model scores a filing you kept above one you took out: 0.5 a coin toss, 1 perfect')}
+      ${row('🔎 right motif in the top 12', cells('top12', pct), 'how often the motif you chose is among the 12 the shortlist shows the judge')}
+      ${row('🫶 the day\'s filings sure', models.map((d) => `<td>${bySure[d.day] ? `${bySure[d.day].sure_share}%` : '–'}</td>`).join(''), 'of the day\'s filings in your motifs, how many the model of the day put past the sure line: as this climbs and right-when-sure holds, you have less to look at and correct (from Oct 11)')}
+      </table><p class="wb-faint">the day's last test of each model, held out from its training; from Oct 8</p></div>`;
   }
 
   // ---------- one claim, inspected: where it came from, every motif it's in, and moving it ----------

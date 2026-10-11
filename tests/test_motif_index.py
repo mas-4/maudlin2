@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pytest
 
@@ -524,3 +526,17 @@ def test_a_deleted_motif_takes_its_links_with_it(monkeypatch, tmp_path):
     mi.delete('M001')
     index = mi.load()
     assert index['entries']['M002']['parents'] == [] and index['related'] == []
+
+
+def test_model_days_keep_each_days_last_test(tmp_path, monkeypatch):
+    from app.analysis import filing_confidence as fc
+    from app.analysis import motif_index as mi
+    path = tmp_path / 'model_history.jsonl'
+    path.write_text('\n'.join(json.dumps(r) for r in [
+        {'at': '2026-10-09T08:00:00', 'model': 'confidence', 'auc': 0.89, 'sure_at': 0.85},
+        {'at': '2026-10-09T23:00:00', 'model': 'confidence', 'auc': 0.895, 'sure_at': 0.85, 'right_when_sure': 0.953},
+        {'at': '2026-10-10T11:00:00', 'model': 'shortlist', 'top12': 0.88}]) + '\n')
+    monkeypatch.setattr(fc, 'HISTORY', str(path))
+    days = mi.model_days()
+    assert days == [{'day': '2026-10-09', 'auc': 0.895, 'sure_at': 0.85, 'right_when_sure': 0.953},
+                    {'day': '2026-10-10', 'top12': 0.88}]
