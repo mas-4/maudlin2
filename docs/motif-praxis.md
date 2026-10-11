@@ -4,7 +4,7 @@ How the person files claims under motifs and shapes the motifs themselves: the w
 tell them apart, names, seeds, and how claims are worded. Written Oct 9, 2026 from the person's sessions of Oct 8–9
 (first in chat, then with Claude through the maudlin MCP). It is the reference for anyone, person or model, proposing a
 filing, a motif, a note or a genre, and material for the models to refine on; the worked examples behind each rule are
-in `docs/motif-casebook.md`. The rules are practice written down, not a codebook laid down in advance: the index is
+in the casebook, kept private with the index since Oct 11. The rules are practice written down, not a codebook laid down in advance: the index is
 built bottom-up, and this records what the building has taught.
 
 The index reads claims for their **shape, not their truth**: a motif is a recurring way of telling, and a false claim
@@ -55,7 +55,7 @@ Every motif has one genre: what kind of thing it is, not its topic. Rests-on lin
 **These definitions are found, not given.** The genres began as names with a rough verb test and no definitions; the
 person has been sorting motifs into them case by case and letting the categories show themselves, the Aristotelian
 way: from the particulars and what people already say about them (endoxa) toward the definition. What follows is what
-the sorting has shown so far (Oct 9), drawn from the cases in `docs/motif-casebook.md`. It is provisional: when a case
+the sorting has shown so far (Oct 9), drawn from the cases in the casebook. It is provisional: when a case
 doesn't fit, the case wins and the definition is revised. The verb test was a starting point; the person found it has
 "a decent amount of problems". The genre-drafting model (`motif_proposals.GENRE_PROMPT`) still sees only examples of
 each genre, no definitions; giving it these is a later step, once they settle, measured against the person's own

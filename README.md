@@ -70,7 +70,7 @@ Copyright (c) 2024-2026 Michael.
 - **Code:** GNU Affero General Public License v3 or later ([LICENSE](LICENSE)). Run a modified copy as a service
   and you share your changes under the same license. Versions published before October 8, 2026 were MIT, and copies
   of those stay MIT; the code was proprietary from October 8 to 10.
-- **Docs** (`docs/`: the methods log, the motif praxis and casebook, the experiment write-ups): CC BY 4.0, with
+- **Docs** (`docs/`: the methods log, the motif praxis, the experiment write-ups): CC BY 4.0, with
   credit to bignews.day.
 - **The motif index** (on bignews.day and in its exports, not in this repository): all rights reserved since
   October 11, 2026. It was CC BY 4.0 from October 8 to 10 and CC BY-NC-SA 4.0 from October 10 to 11.

@@ -1,4 +1,4 @@
-"""J2 the judge, as the casebook reasons (Oct 9; docs/motif-praxis.md, docs/motif-casebook.md). The person's rulings
+"""J2 the judge, as the casebook reasons (Oct 9; docs/motif-praxis.md, and the casebook, kept private since Oct 11 in maudlin-data/motifs/casebook.md). The person's rulings
 turn on things the confidence model's judge (Nimble 9B, J1) isn't shown or isn't asked:
 
 - the tellers' own words: the judge sees only the claim's one-line summary (the Fox News claim's "threatening to
