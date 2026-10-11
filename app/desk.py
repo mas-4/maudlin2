@@ -16,6 +16,7 @@ from datetime import datetime as dt
 from app.utils import Config
 
 QUEUE = os.path.expanduser('~/Repos/maudlin-notes/queue.md')
+DAY_HOURS = (8, 23)  # app/lights.py's DAY and NIGHT
 WIDTH = 64
 LOOKS = {  # app/lights.py's looks, in words
     'TEAL': 'teal breathing: the worker', 'VIOLET': 'violet flowing: an experiment', 'AMBER': 'amber flowing: the hourly run',
@@ -152,5 +153,85 @@ def panel() -> str:
     return '\n'.join(lines)
 
 
+def hourly_words() -> str:
+    line = hourly_line()
+    if 'going since' in line:
+        return 'going now, since ' + line.split('since ')[1]
+    m = re.search(r'last (\S+) (.) (\S+) · next (\S+)', line)
+    return f"{'ok' if m and m.group(3) == 'ok' else 'failed'} at {m.group(1)} · next {m.group(4)}" if m else line
+
+
+def worker_words() -> str:
+    line = re.sub(r'^\S+ worker: ', '', worker_line())
+    return re.sub(r' · \d+ cycles since (\S+)', r' since \1', line).replace('working', 'busy')
+
+
+def claims_words() -> str:
+    m = re.search(r'today: (\d+) · newest (\S+)', claims_line())
+    if not m:
+        return 'unreadable'
+    last = dt.strptime(m.group(2), '%Y-%m-%d').strftime('%b %-d') if m.group(2) != 'none' else 'never'
+    return f'{m.group(1)} today · last {last}'
+
+
+def running_items() -> list[str]:
+    """The work queue's 'Running now' items, each its first sentence, without the session tag"""
+    try:
+        with open(QUEUE) as f:
+            text = f.read()
+    except OSError:
+        return []
+    m = re.search(r'^## Running now.*?\n(.*?)(?=^## )', text, re.S | re.M)
+    items, cur = [], None
+    for line in (m.group(1).splitlines() if m else []):
+        if line.startswith('- '):
+            cur = [line[2:]]
+            items.append(cur)
+        elif cur is not None and line.strip():
+            cur.append(line.strip())
+    out = []
+    for parts in items:
+        text = re.sub(r'^\[[^]]*\] ', '', ' '.join(parts))
+        text = re.sub(r'\s*\([^)]*\)', '', text)  # no asides
+        head, _, tail = text.partition(': ')
+        text = tail if tail and len(head.split()) <= 3 else text  # "chain: S1 ..." is the S1
+        out.append(re.split(r'; | — |\. ', text, maxsplit=1)[0].strip())
+    return out
+
+
+def data() -> dict:
+    """The panel as data, for the Plasma widget to lay out (python -m app.desk --json)"""
+    from app import gpu_lease, lights
+    out = {'time': dt.now().strftime('%a %H:%M')}
+    try:
+        load, temp = lights.card()
+        state = {'who': lights.who(), 'load': load, 'temp': temp, 'failed': lights.failed()}
+        d = dt.now()
+        effect, colour, speed, bright = lights.look(state, d.hour + d.minute / 60)
+        title = {'worker': 'Writing claims and filing', 'experiment': 'Running an experiment',
+                 'hourly': 'The hourly run', 'idle': 'Idle'}[state['who']]
+        if state['failed']:
+            title += ' · last run failed'
+        out['look'] = {'title': title, 'effect': effect.lower(), 'color': '#%02x%02x%02x' % colour,
+                       'brightness': bright, 'night': not DAY_HOURS[0] <= d.hour < DAY_HOURS[1]}
+    except Exception as e:  # noqa: BLE001
+        out['look'] = {'title': 'Lights unreadable', 'effect': 'direct', 'color': '#666666', 'brightness': 0,
+                       'error': str(e)}
+    g = sh('nvidia-smi', '--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw',
+           '--format=csv,noheader,nounits')
+    if g:
+        util, temp, used, total, power = [float(x) for x in g.split(',')]
+        out['gpu'] = {'util': util, 'temp': temp, 'mem': round(used / 1024, 1), 'mem_total': round(total / 1024, 1),
+                      'power': round(power), 'models': [line.split()[0].split(':')[0] for line in
+                                                        sh('ollama', 'ps').splitlines()[1:] if line.strip()]}
+    out['rows'] = [{'name': name, 'value': value} for name, value in (
+        ('Hourly run', hourly_words()), ('Worker', worker_words()), ('Claims filed', claims_words()))]
+    out['running'] = running_items()
+    out['machine'] = re.sub(r'^\S+ ', '', machine_line())
+    out['lease'] = (gpu_lease.held() or {}).get('holder')
+    return out
+
+
 if __name__ == '__main__':
-    print(panel())
+    import sys
+    print(json.dumps(data()) if '--json' in sys.argv else panel())
