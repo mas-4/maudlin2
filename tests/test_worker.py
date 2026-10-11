@@ -220,3 +220,15 @@ def test_a_short_cycle_never_takes_the_awake_lock(monkeypatch, tmp_path):
     with worker.Awake(after=0.01):
         time.sleep(0.2)
     assert len(started) == 1  # still working past it: the lock
+
+
+def test_the_worker_leaves_to_free_the_card_and_keeps_its_last_cycle(tmp_path, monkeypatch):
+    path = tmp_path / 'worker.json'
+    monkeypatch.setattr(worker, 'HEARTBEAT', str(path))
+    path.write_text(json.dumps({'at': time.time(), 'cycles': 4, 'last cycle': {'at': '2026-10-11T16:17:00', 'minutes': 0.4}}))
+    monkeypatch.setattr(worker, 'commit', lambda: 'abc1234')
+    monkeypatch.setattr(worker, 'yielding', lambda: 'an experiment (rip-van-winkle-claims)')
+    monkeypatch.setattr(worker, 'holding_gpu', lambda: True)
+    worker.main()  # returns: systemd starts a fresh worker without the card
+    beat = json.loads(path.read_text())
+    assert beat['waiting'].startswith('an experiment') and beat['cycles'] == 4 and beat['last cycle']['minutes'] == 0.4

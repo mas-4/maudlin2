@@ -158,6 +158,15 @@ def free_gpu():
         torch.cuda.empty_cache()
 
 
+def holding_gpu() -> bool:
+    """This process still holds the card: torch has made its context here. free_gpu() gives back only the cache, not
+    the context and the models the cycle's steps keep loaded (1.3 GB held on Oct 11 while the worker waited, with Gemma
+    at 7.5 GB for an experiment: the 10 GB card full, Firefox crashing and screenshots failing)"""
+    import sys
+    torch = sys.modules.get('torch')
+    return torch is not None and torch.cuda.is_available() and torch.cuda.is_initialized()
+
+
 def cycle(state: dict) -> float:
     """One cycle of processing; its seconds. The heartbeat goes on every minute meanwhile (a cycle can take half an
     hour; the hourly run would otherwise think the worker gone and process too)"""
@@ -191,6 +200,11 @@ def cycle(state: dict) -> float:
 def main():
     start = commit()
     state = {'commit': start[:7], 'cycles': 0, 'since': dt.now().isoformat(timespec='seconds')}
+    try:  # the last cycle carried over a restart, for the experiments' turns (caught_up, had_turn)
+        with open(HEARTBEAT) as f:
+            state.update({k: v for k, v in json.load(f).items() if k in ('cycles', 'last cycle')})
+    except (OSError, ValueError):
+        pass
     logger.info("Worker up at %s", start[:7])
     while True:
         if commit() != start:
@@ -199,6 +213,9 @@ def main():
             return
         if (why := yielding()):
             beat(state, busy=False, waiting=why)
+            if holding_gpu():  # give the whole card back: systemd starts a fresh worker, which waits without one
+                logger.info("Worker: giving way to %s; exiting to free the card's memory", why)
+                return
             time.sleep(POLL)
             continue
         state.pop('waiting', None)
