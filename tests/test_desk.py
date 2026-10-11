@@ -50,10 +50,14 @@ def test_ollama_says_when_it_needs_a_restart(monkeypatch):
         def json(self):
             return self.body
     models = {'models': [{'name': m} for m in desk.NEEDED]}
+    from app import gpu_lease
     monkeypatch.setattr(desk, 'going', lambda: False)
+    monkeypatch.setattr(gpu_lease, 'held', lambda: None)
     monkeypatch.setattr(desk, 'sh', lambda *a, **k: 'ollama 0.40.3-1')
     monkeypatch.setattr(requests, 'get', lambda url, timeout: R({'version': '0.40.2'} if 'version' in url else models))
     assert desk.ollama_words().startswith('⚠️ restart it now: 0.40.3 installed, 0.40.2 running')
+    monkeypatch.setattr(gpu_lease, 'held', lambda: {'holder': 'echo-claims'})
+    assert desk.ollama_words().startswith('⚠️ restart it now, though Echo · claims loses the calls it has in flight')
     monkeypatch.setattr(desk, 'sh', lambda *a, **k: 'ollama 0.40.2-1')
     assert desk.ollama_words() == '0.40.2 ✓'
 

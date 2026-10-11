@@ -182,7 +182,10 @@ def ollama_words() -> str:
     except Exception:  # noqa: BLE001 - down or not answering
         return '⛔ not answering: sudo systemctl restart ollama'
     if installed and running and installed != running:
-        when = 'now' if not going() else 'once the hourly run is done'
+        from app import gpu_lease
+        holder = (gpu_lease.held() or {}).get('holder')
+        when = ('once the hourly run is done' if going() else  # Oct 11: "now" while Echo held the GPU cut its stage short
+                f'now, though {figure_of(holder)} loses the calls it has in flight and tries again' if holder else 'now')
         return f'⚠️ restart it {when}: {installed} installed, {running} running (sudo systemctl restart ollama)'
     missing = [m for m in NEEDED if m not in have and f'{m}:latest' not in have]
     if missing:
