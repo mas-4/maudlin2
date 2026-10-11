@@ -8,6 +8,7 @@ matplotlib==3.11.2
 mistune==3.3.4
 nltk==3.10.3
 numpy==2.5.3
+openrgb-python==0.3.8  # app/lights.py, the case lights as a GPU monitor (OpenRGB server, deploy/systemd/user)
 pandas==3.0.6
 pytest==9.1.1
 pytz==2026.4

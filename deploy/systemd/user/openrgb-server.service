@@ -1,0 +1,11 @@
+[Unit]
+Description=OpenRGB's server: the case lighting, for maudlin-lights (app/lights.py)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/openrgb --server --noautoconnect
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

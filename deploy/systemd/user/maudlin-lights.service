@@ -1,0 +1,14 @@
+[Unit]
+Description=Maudlin lights: the GPU's light bar shows who has the GPU and how hard it works, dark at night (app/lights.py)
+Wants=openrgb-server.service
+After=openrgb-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mas/maudlin-prod
+ExecStart=/home/mas/maudlin-prod/.venv/bin/python -m app.lights
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
