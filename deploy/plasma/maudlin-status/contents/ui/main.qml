@@ -11,7 +11,8 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: root
     readonly property int interval: 15000
-    readonly property string command: "cd /home/mas/maudlin-prod && .venv/bin/python -m app.desk"
+    // the production checkout, else the working one (a new app/desk.py reaches production at the next hourly run)
+    readonly property string command: "cd /home/mas/maudlin-prod && .venv/bin/python -m app.desk 2>/dev/null || (cd /home/mas/Repos/maudlin2 && .venv/bin/python -m app.desk)"
     property string panel: "Reading the machine…"
 
     preferredRepresentation: fullRepresentation
