@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-11
+- **The motif index is all rights reserved.** On the site, in its Markdown and SKOS exports, and in the footer of
+  every page of the daily archive (the build gives kept pages today's footer; the 346 stored copies were rewritten
+  to match): reusing it now needs our permission. It was CC BY 4.0 from
+  October 8 to 10 and CC BY-NC-SA 4.0 from October 10 to 11; copies taken then keep those licenses. The docs stay
+  CC BY 4.0 and the code AGPL. The Wayback Machine holds no copy of the site from after June 2024.
 - **Story titles keep up with the story.** A story's title was written again only when its outlet count doubled, but
   stories are kept for days and their news moves on: "Tennessee inmate survives botched execution attempt", written
   Oct 2, still headed nine days of Christa Pike coverage that had moved on to her leaving hospital. Now a live story's
