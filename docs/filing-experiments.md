@@ -497,6 +497,30 @@ finds real overlaps; the other 22 (The sleeper agent / Every bang is a bomb, Mon
 pump / It's the economy, stupid...) are candidates for merging, a rests-on link or sharper notes. Drift: 6 motifs.
 The measure is the share the person acts on; the list is in `experiments/d4_tell_tale_hat.json`.
 
+### A1 Our machinery on folktales (Oct 10-11) — it holds up; the learned shortlist buries motifs without claims
+`scripts/experiments/a1_folktales.py`. Bag-of-Tales (Hagedorn and Darányi 2022): 1,518 folktales labelled by
+folklorists with their ATU tale type (182 types among them), against the whole ATU index (2,247 types, each a name and
+a description) as the codebook. Our pipeline as it is, nothing retrained: Gemma sums each tale up as a claim (one plain
+sentence, or three), the learned shortlist ranks the types (each a motif: its ATU description the note, the other tales
+of its type the claims), Gemma picks from the best 8, Nimble judges with each type's must-have element.
+
+| | one sentence | three sentences |
+|---|---|---|
+| shortlist, right type in the top 8 / 12 / 40, all 2,247 types: plain likeness | 64 / 68 / 81% | 68 / 72 / 83% |
+| the same, the learned shortlist | 34 / 38 / 52% | 47 / 52 / 66% |
+| the learned shortlist over the 182 types with tales | 88 / 90 / 97% | 89 / 92 / 97% |
+| the pick: the right type (it was among the 8 for) | 79% (88%) | 80% (90%) |
+| the pick: none / wrong picks a tale | 7% / 0.24 | 6% / 0.22 |
+| the judge: AUC; yes on the right type / on wrong ones | 0.934; 0.53 / 0.02 | 0.946; 0.60 / 0.02 |
+
+On a codebook built by folklorists, never seen, the machinery files nine tales in ten among its shortlist and
+picks the right type four times in five; the judge separates right from wrong better than on our own filings (0.93-0.95
+against ~0.83), and almost never says yes to a wrong type, though it says no to two right ones in five. Three
+sentences help a little. The finding that matters for production: **the learned shortlist buries motifs that have no
+claims yet** (34% in the top 8 against plain likeness's 64%), because its weights lean on likeness to a motif's claims.
+Every seed motif (created with no claims, so the filing can find it) starts in that position. Next: measure it on our
+own seeds, and if it holds, rank a motif with few claims by plain likeness to its note.
+
 ### S1 A new event or the same one updated (Oct 11) — Gemma, not Nimble
 `scripts/experiments/s1_story_splits.py`. A story is continued hour to hour by whichever saved story holds most of a
 cluster's headlines, so a new event joins the old story while a few of its headlines are still on front pages: the
