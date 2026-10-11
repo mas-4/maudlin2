@@ -13,8 +13,10 @@ our pipeline as it is, against a copy of today's motif index, never our database
 Stages, each resumable, the GPU ones under the lease:
     a2_newspapers.py extract     the political articles, from the 5.9 GB archive (CPU)
     a2_newspapers.py sample      the controls and a sample of the rest
-    a2_newspapers.py claims      Gemma 26B reads each for the claims it tells (GPU)
-    a2_newspapers.py file        the filing machinery on the index copy (GPU)
+    a2_newspapers.py claims      Gemma 26B reads each for the claims it tells, each with its quote, kept only if the
+                                 quote is in the article and supports it, as the shows' claims are (GPU)
+    a2_newspapers.py file        which claims are retold (versions in two papers or more, as on two shows), then the
+                                 filing machinery on the index copy, every kept claim (GPU)
     a2_newspapers.py load        every political article into the archives' database, word-searchable (CPU)
     a2_newspapers.py record      what A2 has so far into that database: the sample, claims, filings
     a2_newspapers.py report      the numbers, and the spot-check list"""
@@ -102,10 +104,18 @@ run-together columns, stray words).
 
 List the claims about politics and public life it tells or argues: what it says is true, why it says things happen, \
 what it says someone is like, stories it passes on. Claims the writer asserts, not ones quoted only to knock down. Not \
-ads, market prices, notices or the paper's own business. Each in one plain sentence of your own, in the present tense, \
-as a reader would retell it (no quotes, no "the article says"). At most six; none if it tells none."""
-CLAIMS_SCHEMA = {"type": "object", "properties": {"claims": {"type": "array", "maxItems": 6, "items": {"type": "string",
-                 "maxLength": 300}}}, "required": ["claims"]}
+ads, market prices, notices or the paper's own business. At most six; none if it tells none. For each:
+claim: in one plain sentence of your own, in the present tense, as a reader would retell it (no "the article says")
+quote: the words in the article that tell it, copied exactly as printed above, OCR errors and all (one to three \
+sentences)"""
+CLAIMS_SCHEMA = {"type": "object", "properties": {"claims": {"type": "array", "maxItems": 6, "items": {
+    "type": "object", "properties": {"claim": {"type": "string", "maxLength": 300}, "quote": {"type": "string", "maxLength": 600}},
+    "required": ["claim", "quote"]}}}, "required": ["claims"]}
+# As the shows' claims are kept (app/analysis/show_claims.py): the quote must be in the article and support the claim.
+# OCR garbles words, and the model may mend them when it copies, so the share of a quote's four-word runs that must be
+# found is lower than the transcripts' (focus_group.FOUND, 0.6)
+FOUND = 0.4
+RETOLD = 2  # papers: a claim is retold once versions of it are in this many (the shows' MIN_SHOWS)
 CHUNK = 6000  # characters of an article read (a long one: its start)
 
 
@@ -140,22 +150,51 @@ def sample():
 
 
 def claims():
-    """Gemma 26B's claims for each sampled article, PARALLEL at once"""
+    """Gemma 26B's claims for each sampled article, PARALLEL at once, each kept only if its quote is in the article and
+    supports it (the shows' checks); the dropped ones kept too, with why"""
+    from app.analysis import focus_group as fg
     from app.analysis import llm
     from app.analysis import motif_signals as ms
+    fg.FOUND = FOUND
     state = saved()
     got = state.setdefault('claims', {})
+    dropped = state.setdefault('dropped', {})
     todo = [a for k, a in state['articles'].items() if k not in got]
+
+    def read(a):
+        r = llm.complete_json(CLAIMS_PROMPT.format(paper=a['paper'], date=a['date'], headline=a['headline'],
+                                                   text=a['text'][:CHUNK]), CLAIMS_SCHEMA, max_tokens=1200,
+                              model=ms.JUDGE_MODEL)
+        if r is None:
+            return None
+        found = [{'claim': ' '.join(c.get('claim', '').split()), 'quote': c.get('quote', '').strip()}
+                 for c in r.get('claims', []) if sum(ch.isalpha() for ch in c.get('claim', '')) >= 12]
+        kept, out = fg.checked(found, a['text'][:CHUNK])
+        for c in list(kept):
+            if fg.supported(c['claim'], c['quote'], who=f"A newspaper ({a['paper']}, {a['date']})", noun='paper') is False:
+                kept.remove(c)
+                out.append(dict(c, why="the quote doesn't support the claim"))
+        return kept, out
     for start in range(0, len(todo), 32):
         part = todo[start:start + 32]
-        answers = llm.parallel(lambda a: llm.complete_json(CLAIMS_PROMPT.format(
-            paper=a['paper'], date=a['date'], headline=a['headline'], text=a['text'][:CHUNK]), CLAIMS_SCHEMA,
-            max_tokens=700, model=ms.JUDGE_MODEL), part)
-        for a, r in zip(part, answers):
+        for a, r in zip(part, llm.parallel(read, part)):
             if r is not None:
-                got[a['id']] = [c.strip() for c in r.get('claims', []) if len(c.strip()) > 20]
+                got[a['id']], dropped[a['id']] = r
         save(state)
-        print(f"claims: {len(got)}/{len(state['articles'])} articles, {sum(map(len, got.values()))} claims", flush=True)
+        n, d = sum(map(len, got.values())), sum(map(len, dropped.values()))
+        print(f"claims: {len(got)}/{len(state['articles'])} articles, {n} claims kept, {d} dropped", flush=True)
+
+
+def retold(state: dict) -> dict[str, int]:
+    """Claim -> how many papers tell a version of it (versions grouped as the posts and shows are: app.narratives)"""
+    from app.narratives import groups
+    rows = [(c['claim'], state['articles'][k]['paper']) for k, cs in state['claims'].items() for c in cs]
+    out = {c: 1 for c, _ in rows}
+    for g in groups([{'text': c} for c, _ in rows]):
+        papers = len({rows[i][1] for i in g})
+        for i in g:
+            out[rows[i][0]] = max(out[rows[i][0]], papers)
+    return out
 
 
 def sandbox():
@@ -194,7 +233,9 @@ def file():
     from app.utils.store import read_json
     state = saved()
     arts = state['articles']
-    todo = [{'claim': c, 'source': SOURCE, 'ref': k, 'date': arts[k]['date']}
+    state['retold'] = retold(state)
+    save(state)
+    todo = [{'claim': c['claim'], 'source': SOURCE, 'ref': k, 'date': arts[k]['date']}
             for k, cs in state['claims'].items() for c in cs]
     print(f'file: {len(todo)} claims', flush=True)
     mi.file_claims(todo, limit=len(todo))
@@ -253,7 +294,8 @@ def record():
     if state.get('claims'):
         runs.setdefault('claims', db.run('A2', 'claims', f'Gemma reads each article for its claims ({ms.JUDGE_MODEL})'))
         for k, cs in state['claims'].items():
-            for c, i in zip(cs, db.claims(CORPUS, k, cs, ms.JUDGE_MODEL, CLAIMS_PROMPT, runs['claims'])):
+            texts = [c['claim'] for c in cs]
+            for c, i in zip(texts, db.claims(CORPUS, k, texts, ms.JUDGE_MODEL, CLAIMS_PROMPT, runs['claims'])):
                 ids[c] = i
     if state.get('filed'):
         sandbox()
