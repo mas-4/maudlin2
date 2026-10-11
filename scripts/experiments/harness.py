@@ -136,6 +136,11 @@ def note(line: str):
     from datetime import datetime
     with open(os.path.join(EXP, 'results.log'), 'a') as f:
         f.write(f"{datetime.now().isoformat(timespec='seconds')} {line}\n")
+    try:  # and into the catalog (catalog.py: experiments.sqlite)
+        import catalog
+        catalog.record(line)
+    except Exception:  # noqa: BLE001 - the log line above stands
+        pass
 
 
 if __name__ == '__main__':

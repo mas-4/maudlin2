@@ -11,13 +11,12 @@ our pipeline as it is, against a copy of today's motif index, never our database
   (the person, Oct 10: recurrence over time is not the test; old tellings are lineage).
 
 Stages, each resumable, the GPU ones under the lease:
-    a2_newspapers.py extract     the political articles, from the 5.9 GB archive (CPU)
+    a2_newspapers.py extract     the political articles, from the 5.9 GB archive into the archives' database (CPU)
     a2_newspapers.py sample      the controls and a sample of the rest
     a2_newspapers.py claims      Gemma 26B reads each for the claims it tells, each with its quote, kept only if the
                                  quote is in the article and supports it, as the shows' claims are (GPU)
     a2_newspapers.py file        which claims are retold (versions in two papers or more, as on two shows), then the
                                  filing machinery on the index copy, every kept claim (GPU)
-    a2_newspapers.py load        every political article into the archives' database, word-searchable (CPU)
     a2_newspapers.py record      what A2 has so far into that database: the sample, claims, filings
     a2_newspapers.py report      the numbers, and the spot-check list"""
 import json
@@ -37,7 +36,6 @@ from app.utils import Config  # noqa: E402
 DATA = os.path.join(Config.data, 'archives', 'american_stories')
 ARCHIVE = os.path.join(DATA, 'faro_1896.tar.gz')
 WORK = os.path.join(DATA, 'a2_1896')  # everything A2 makes: never the production data folder
-ARTICLES = os.path.join(WORK, 'articles.jsonl')  # the political articles
 OUT = os.path.join(harness.EXP, 'a2_newspapers.json')
 MIN_CHARS = 600  # shorter pieces are mostly briefs, ads and notices
 # The campaign's words, to find political articles among the ads, serials and market reports
@@ -59,11 +57,13 @@ def page_url(lccn: str, date: str, edition: str, page: str) -> str:
 
 
 def extract():
-    """Every article of MIN_CHARS or more with POLITICS in it, one JSON line each"""
-    os.makedirs(WORK, exist_ok=True)
+    """Every article of MIN_CHARS or more with POLITICS in it, straight into the archives' database (word-searchable),
+    no file between (the person, Oct 11: no 1 GB JSON files)"""
+    import archive_db as db
     seen = kept = pages = 0
     started = time.time()
-    with tarfile.open(ARCHIVE, 'r:gz') as t, open(ARTICLES + '.part', 'w') as out:
+    batch = []
+    with tarfile.open(ARCHIVE, 'r:gz') as t:
         for m in t:
             if not m.isfile() or not m.name.endswith('.json'):
                 continue
@@ -81,16 +81,28 @@ def extract():
                 if len(text) < MIN_CHARS or len(POLITICS.findall(text)) < 2:
                     continue
                 kept += 1
-                out.write(json.dumps({
-                    'id': a.get('id'), 'headline': ' '.join((a.get('headline') or '').split()), 'text': text,
-                    'paper': paper.get('title', ''), 'state': paper.get('state', ''), 'date': ed.get('date', ''),
-                    'url': page_url(paper.get('lccn', ''), ed.get('date', ''), ed.get('edition', 'ed-01'), page),
-                    'controls': [c for c, rx in CONTROLS.items() if rx.search(text)]}) + '\n')
+                batch.append({'id': a.get('id'), 'title': ' '.join((a.get('headline') or '').split()), 'text': text,
+                              'source': paper.get('title', ''), 'place': paper.get('state', ''), 'date': ed.get('date', ''),
+                              'url': page_url(paper.get('lccn', ''), ed.get('date', ''), ed.get('edition', 'ed-01'), page),
+                              'controls': [c for c, rx in CONTROLS.items() if rx.search(text)]})
+            if len(batch) >= 5000:
+                db.documents(CORPUS, batch)
+                batch = []
             if pages % 20000 == 0:
-                print(f'{pages} pages, {seen} articles, {kept} political, {(time.time() - started) / 60:.0f} min',
-                      flush=True)
-    os.replace(ARTICLES + '.part', ARTICLES)
-    print(f'extract: {pages} pages, {seen} articles, {kept} political', flush=True)
+                print(f'{pages} pages, {seen} articles, {kept} political, {(time.time() - started) / 60:.0f} min', flush=True)
+    db.documents(CORPUS, batch)
+    db.index_text()
+    print(f'extract: {pages} pages, {seen} articles, {kept} political, into {db.DB}', flush=True)
+
+
+def political() -> list[dict]:
+    """The year's political articles from the archives' database"""
+    import archive_db as db
+    con = db.connect()
+    return [{'id': i, 'headline': t, 'text': x, 'paper': src, 'state': pl, 'date': d, 'url': u,
+             'controls': json.loads(meta or '{}').get('controls', [])}
+            for i, t, x, src, pl, d, u, meta in con.execute(
+                'select id, title, text, source, place, date, url, meta from documents where corpus = ?', (CORPUS,))]
 
 
 N_CONTROL = 40  # articles for each control
@@ -130,7 +142,7 @@ def save(state: dict):
 
 def sample():
     """Each control's articles (N_CONTROL, spread over the year), then N_SAMPLE of the rest, a few a week"""
-    arts = [json.loads(line) for line in open(ARTICLES)]
+    arts = political()
     rnd = random.Random(2)
     picked = {}
     for c in CONTROLS:
@@ -258,26 +270,6 @@ def file():
 CORPUS = 'american_stories_1896'
 
 
-def load():
-    """Every political article extract() found into the archives' database, word-searchable: to sample again, look
-    things up, or run other questions over the whole year, not only A2's sample"""
-    import archive_db as db
-    batch, n = [], 0
-    for line in open(ARTICLES):
-        a = json.loads(line)
-        batch.append({'id': a['id'], 'title': a['headline'], 'date': a['date'], 'place': a['state'],
-                      'source': a['paper'], 'url': a['url'], 'text': a['text'], 'controls': a['controls']})
-        if len(batch) == 5000:
-            db.documents(CORPUS, batch)
-            n += len(batch)
-            batch = []
-            if n % 50000 == 0:
-                print(f'load: {n}', flush=True)
-    db.documents(CORPUS, batch)
-    db.index_text()
-    print(f'load: {n + len(batch)} articles into {db.DB}, word-searchable', flush=True)
-
-
 def record():
     """What A2 has so far into the archives' database (scripts/experiments/archive_db.py), to revisit and query:
     the sampled articles, their claims, and once filed, the filings with their fits and the motifs as they stood.
@@ -366,7 +358,7 @@ def report():
 
 def main():
     stage = sys.argv[1] if len(sys.argv) > 1 else 'extract'
-    {'extract': extract, 'sample': sample, 'claims': claims, 'file': file, 'load': load, 'record': record,
+    {'extract': extract, 'sample': sample, 'claims': claims, 'file': file, 'record': record,
      'report': report}[stage]()
     print('DONE', flush=True)
 
