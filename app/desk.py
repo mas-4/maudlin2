@@ -1,8 +1,8 @@
 """The desktop status panel (Oct 11, the person: "some kind of overlay on my desktop with information about this
 stuff... statuses like the dashboard for bnd but more about computer situation what's running"). Prints a compact
 plain-text panel for the Plasma widget in deploy/plasma/maudlin-status, which runs it every few seconds: the lights
-and their key, the GPU, the hourly run, the worker, the GPU lease, what the work queue says is running, today's claims,
-and the machine. Each part that can't be read says so and the rest still shows.
+and their key, the GPU, the hourly run, the worker, the GPU lease and the experiments waiting for it, today's
+claims, and the machine. Each part that can't be read says so and the rest still shows.
 
 Run: python -m app.desk"""
 import json
@@ -15,7 +15,6 @@ from datetime import datetime as dt
 
 from app.utils import Config
 
-QUEUE = os.path.expanduser('~/Repos/maudlin-notes/queue.md')
 DAY_HOURS = (8, 23)  # app/lights.py's DAY and NIGHT
 WIDTH = 64
 LOOKS = {  # app/lights.py's looks, in words
@@ -105,17 +104,10 @@ def lease_line() -> str:
     return f"🧪 GPU lease: {lease['holder']} until {dt.fromtimestamp(lease['until']).strftime('%H:%M')}"
 
 
-def queue_lines(n: int = 4) -> list[str]:
-    """The first lines of each item in the work queue's 'Running now' section"""
-    try:
-        with open(QUEUE) as f:
-            text = f.read()
-    except OSError:
-        return []
-    m = re.search(r'^## Running now.*?\n(.*?)(?=^## )', text, re.S | re.M)
-    items = [line[2:] for line in (m.group(1).splitlines() if m else []) if line.startswith('- ')]
-    out = [f'   · {re.sub(r"^\[[^]]*\] ", "", i)[:WIDTH - 5]}' for i in items[:n]]
-    return ['📋 running now (queue):'] + out if out else ['📋 running now (queue): nothing listed']
+def experiment_lines() -> list[str]:
+    """The experiments under the GPU lease, by their lease names"""
+    jobs = lease_jobs()
+    return ['🧪 experiments:'] + [f"   · {j['name']}: {j['state']}" for j in jobs] if jobs else ['🧪 experiments: none']
 
 
 def claims_line() -> str:
@@ -144,7 +136,7 @@ def machine_line() -> str:
 
 def panel() -> str:
     lines = [f"standingwater · {dt.now().strftime('%a %H:%M')}", '', lights_line(), KEY, '']
-    for part in (gpu_line, hourly_line, worker_line, lease_line, claims_line, queue_lines, machine_line):
+    for part in (gpu_line, hourly_line, worker_line, lease_line, claims_line, experiment_lines, machine_line):
         try:
             got = part()
         except Exception as e:  # noqa: BLE001 - one part failing leaves the rest
@@ -188,29 +180,21 @@ def claims_words() -> str:
     return f'{count(today)} today · {count(today - td(days=1))} yesterday'
 
 
-def running_items() -> list[str]:
-    """The work queue's 'Running now' items, each its first sentence, without the session tag"""
-    try:
-        with open(QUEUE) as f:
-            text = f.read()
-    except OSError:
-        return []
-    m = re.search(r'^## Running now.*?\n(.*?)(?=^## )', text, re.S | re.M)
-    items, cur = [], None
-    for line in (m.group(1).splitlines() if m else []):
-        if line.startswith('- '):
-            cur = [line[2:]]
-            items.append(cur)
-        elif cur is not None and line.strip():
-            cur.append(line.strip())
-    out = []
-    for parts in items:
-        text = re.sub(r'^\[[^]]*\] ', '', ' '.join(parts))
-        text = re.sub(r'\s*\([^)]*\)', '', text)  # no asides
-        head, _, tail = text.partition(': ')
-        text = tail if tail and len(head.split()) <= 3 else text  # "chain: S1 ..." is the S1
-        out.append(re.split(r'; | — |\. ', text, maxsplit=1)[0].strip())
-    return out
+def lease_jobs() -> list[dict]:
+    """[{name, state}] for each experiment under `gpu_lease run` now, by its lease name (the person, Oct 11: the card
+    took its list from the work queue's notes, which folded a chain's next step into what was running and called
+    waiting jobs running). One holds the lease ('running N min'); the others wait for it, and for the hourly run and
+    the worker (app/gpu_lease.py). The running one first, then the longest waiting."""
+    from app import gpu_lease
+    held = (gpu_lease.held() or {}).get('holder')
+    found = []
+    for line in sh('ps', '-eo', 'etimes=,args=').splitlines():
+        m = re.match(r'\s*(\d+)\s+\S*python\S* -m app\.gpu_lease run .*?--holder (\S+)', line)
+        if m:
+            secs, name = int(m[1]), m[2]
+            found.append((name != held, -secs, {'name': name, 'state': f'running {secs // 60} min' if name == held
+                                                 else f'waiting for the GPU, {secs // 60} min'}))
+    return [j for _, _, j in sorted(found, key=lambda f: f[:2])]
 
 
 def load_history(minutes: int = 60) -> list[dict]:
@@ -272,7 +256,7 @@ def data() -> dict:
                       'power': round(power), 'models': models or 'no model loaded', 'history': load_history()}
     out['rows'] = [{'name': name, 'value': value} for name, value in (
         ('Hourly run', hourly_words()), ('Worker', worker_words()), ('Claims filed', claims_words()))]
-    out['running'] = running_items()
+    out['running'] = lease_jobs()
     out['machine'] = re.sub(r'^\S+ ', '', machine_line())
     out['lease'] = (gpu_lease.held() or {}).get('holder')
     return out

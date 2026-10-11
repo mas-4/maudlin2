@@ -1,6 +1,6 @@
 // The desktop status card (Oct 11): what the machine is doing for bignews.day, from app/desk.py --json every INTERVAL
 // ms. A translucent glass card over the wallpaper, no Plasma background: a large line with a dot in the card's own light
-// colour (it breathes when the light does), meters for the GPU, a few quiet rows, what the work queue says is running,
+// colour (it breathes when the light does), meters for the GPU, a few quiet rows, the experiments under the GPU lease,
 // and the lights' key. Install: kpackagetool6 -t Plasma/Applet -i deploy/plasma/maudlin-status (-u to update), then
 // restart plasmashell to load the new version.
 import QtQuick
@@ -208,7 +208,8 @@ PlasmoidItem {
                         const w = a.slice(Math.max(0, i - 1), i + 2)
                         return { v: w.reduce((x, y) => x + y.v, 0) / w.length, who: p.who }
                     })
-                    readonly property var tints: ({ worker: "#00beaa", experiment: "#8c3cff", hourly: "#ff8c00" })
+                    // the key's colours; grey where nothing was logged (before the lights logged who had the GPU)
+                    readonly property var tints: ({ worker: "#00beaa", experiment: "#8c3cff", hourly: "#ff8c00", idle: "#2850c8" })
                     Layout.preferredWidth: root.meterWidth * 2 + 22
                     Layout.preferredHeight: 30
                     Layout.topMargin: 4
@@ -254,23 +255,42 @@ PlasmoidItem {
                         model: root.d.rows || []
                         delegate: Row2 { name: modelData.name; value: modelData.value }
                     }
-                    Row2 { name: "GPU lease"; value: root.d.lease ? root.d.lease : "free" }
                 }
             }
 
+            // The experiments under the GPU lease, by their lease names: the one holding it, then those waiting
+            // (the person, Oct 11: the queue's notes folded a chain's next step into what was running)
             Tile {
-                visible: (root.d.running || []).length > 0
                 ColumnLayout {
                     spacing: 4
-                    Text { text: "Running now"; color: root.quiet; font.pixelSize: 12; font.letterSpacing: 0.6; font.capitalization: Font.AllUppercase }
+                    Text { text: "GPU lease"; color: root.quiet; font.pixelSize: 12; font.letterSpacing: 0.6; font.capitalization: Font.AllUppercase }
+                    Text {
+                        visible: (root.d.running || []).length === 0
+                        text: "free: no experiment running or waiting"
+                        color: root.faint
+                        font.pixelSize: 13
+                    }
                     Repeater {
                         model: root.d.running || []
-                        delegate: Text {
-                            text: "–  " + modelData
-                            color: root.ink
-                            font.pixelSize: 13
-                            Layout.maximumWidth: root.textCap
-                            elide: Text.ElideRight
+                        delegate: RowLayout {
+                            // until production has the new app/desk.py its entries are plain text: shown as names
+                            readonly property string jobName: typeof modelData === "string" ? modelData : modelData.name
+                            readonly property string jobState: typeof modelData === "string" ? "" : modelData.state
+                            spacing: 8
+                            Rectangle {
+                                implicitWidth: 7; implicitHeight: 7; radius: 3.5
+                                color: jobState.startsWith("running") ? "#8c3cff" : "transparent"
+                                border.color: "#8c3cff"
+                                border.width: 1
+                            }
+                            Text { text: jobName; color: root.ink; font.pixelSize: 13; Layout.preferredWidth: 92; Layout.maximumWidth: root.textCap - 20; elide: Text.ElideRight }
+                            Text {
+                                text: jobState
+                                color: jobState.startsWith("running") ? root.ink : root.faint
+                                font.pixelSize: 13
+                                Layout.maximumWidth: root.textCap - 115
+                                elide: Text.ElideRight
+                            }
                         }
                     }
                 }
