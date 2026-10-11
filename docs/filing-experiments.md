@@ -521,6 +521,41 @@ claims yet** (34% in the top 8 against plain likeness's 64%), because its weight
 Every seed motif (created with no claims, so the filing can find it) starts in that position. Next: measure it on our
 own seeds, and if it holds, rank a motif with few claims by plain likeness to its note.
 
+### E12 Seed motifs in the shortlist (Oct 11) — not buried on our index; empty motifs get a lift they didn't earn
+`scripts/experiments/e12_seed_shortlist.py`, after A1 (on folktales the shortlist's weights found types with no tales
+far less often than plain likeness). 1,860 confirmed filings, each motif emptied of its claims as a seed would be,
+the others as they are; the right motif in the top 8 / 12 / 40:
+
+| | top 8 | 12 | 40 |
+|---|---|---|---|
+| as it is (only the claim itself left out) | 64% | 70% | 86% |
+| the shortlist's weights, the motif a seed | 89% | 93% | 99% |
+| plain likeness, the motif a seed | 44% | 51% | 71% |
+| the weights, a seed's missing claim-likeness filled in with its note's | 28% | 33% | 52% |
+
+On our index a seed isn't buried; it's lifted. The weights give "nearest claim" -7.0 (it overlaps "center of claims",
++12.4, which carries the signal), and a motif with no claims scores -1 there by default: +7 to its logit, a value
+the weights never saw in training. In the ATU index nearly every type was empty, so all of them had the lift and it
+decided nothing. The fix tried here undoes the lift and does worse. Nothing to change for seeds; but the 16 empty
+motifs get the same lift on every claim, so they may take shortlist places they don't deserve: worth a look if
+empty motifs keep turning up in filings (the 🫙 empty tab).
+
+### S2 Sorting a saga's headlines into its parts again (Oct 11) — three dry runs, not yet
+`scripts/experiments/s2_saga_resort.py`, the person's idea after saga-30 (the diesel deal's part held two days of
+Trump calling for Zelensky's replacement, which showed as a separate part one hour old): k-means on each live saga's
+headlines, k a few more than its parts, then merge groups that are one event. Three dry runs over 12 live sagas,
+nothing changed:
+1. merged by the stories' return judge: saga-30 came apart right (the deal, Zelensky's answer, the strikes, Trump's
+   call for a new president, and a stray Columbus Day group), but one event split by angle (the FlyDubai hero pilot's
+   interview, the co-pilot's Oman ban), and a part could lose its own first headlines to a new one;
+2. merged by S1's new-event-or-update question, asking each earlier group in turn, and a saga judge removing groups
+   that don't belong: false merges added up (Pike's ventilator news into the prison chief's resignation) and the
+   saga judge removed real parts (the Cornell defence's motion, both halves of the Oct 7 saga);
+3. only the nearest earlier group asked, doubtful groups only flagged: nothing real removed, but it still lumps
+   (Pike 344 of 438 in one part, FlyDubai 137, Cornell 188): each "same event updated?" is a chance of a wrong yes
+   (S1: Gemma calls a fifth of new events updates). Events start at a time, and k-means doesn't know it: next, split
+   where S1 splits, at the day a story's new articles turn to a new event, and leave the rest alone.
+
 ### S1 A new event or the same one updated (Oct 11) — Gemma, not Nimble
 `scripts/experiments/s1_story_splits.py`. A story is continued hour to hour by whichever saved story holds most of a
 cluster's headlines, so a new event joins the old story while a few of its headlines are still on front pages: the
