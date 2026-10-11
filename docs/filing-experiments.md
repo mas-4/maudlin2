@@ -602,6 +602,24 @@ are cached four days only). `scripts/experiments/f1_gordian_knot.py`.
   models refiles them weekly under the lease, one number that means the same thing every week. The daily kept rate
   moves with what the person chooses to check; this doesn't. Costs 200 checks of training data.
 
+### Queued (Oct 11): Aesop, Loki and Hermagoras, abstracting a telling without its topic
+
+The filing's abstractions (the shape restated with kinds for names, Matryoshka's layers, Lethe) keep the topic in
+generic words, which is why the Gordian Knot couldn't see two tellings in a motif. Three that drop it, asked of Gemma
+in one call for each of 1,043 claims (the person's confirmed filings and the Gordian Knot's motifs as they stood):
+
+- **Aesop:** the proverb, idiom or fable the telling is an instance of (Kuusi's proverb types: folklore's own
+  abstraction of a situation, and the language the index is named in).
+- **Loki:** the same story told about a school board, a football club and a royal court; their embeddings averaged,
+  the topic washes out.
+- **Hermagoras:** a fixed signature: the stasis (fact, definition, quality, jurisdiction), Burke's driver (agent,
+  scene, purpose, means, act), the time shape and the speech act.
+
+Yardsticks: the right motif's rank among all by likeness to its name and its other claims (plain, each space, and
+fused with plain), top 8/12/40; the Gordian Knot's odd one out in each space; and whether Hermagoras's labels hold
+together within a motif. `scripts/experiments/f4_abstract_tellings.py`. Cerberus is queued too:
+`scripts/experiments/f2_cerberus.py`.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own

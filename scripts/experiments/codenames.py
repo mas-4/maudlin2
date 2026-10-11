@@ -57,6 +57,9 @@ CODENAMES = {
     'F1': ('the Gordian Knot', 'cut the motif where it holds two tellings'),
     'F2': ('Cerberus', 'one claim, several heads: the motifs the machine missed'),
     'F3': ("Ma'at", 'the same feather every week: a fixed yardstick for the machine'),
+    'F4': ('Aesop', 'the proverb a telling is an instance of: the moral without the animals'),
+    'F5': ('Loki', 'the same story in three disguises, so only its shape stays'),
+    'F6': ('Hermagoras', 'what a telling contends, what drives it, its time and its speech act'),
 }
 
 
