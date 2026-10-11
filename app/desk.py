@@ -141,7 +141,7 @@ def machine_line() -> str:
 
 def panel() -> str:
     lines = [f"standingwater · {dt.now().strftime('%a %H:%M')}", '', lights_line(), KEY, '']
-    for part in (gpu_line, hourly_line, worker_line, lease_line, claims_line, tokens_line, experiment_lines, machine_line):
+    for part in (gpu_line, hourly_line, ollama_line, worker_line, lease_line, claims_line, tokens_line, experiment_lines, machine_line):
         try:
             got = part()
         except Exception as e:  # noqa: BLE001 - one part failing leaves the rest
@@ -164,6 +164,39 @@ def hourly_words() -> str:
     except ValueError:
         nxt = f'next {nxt}'
     return f"{'ok' if m.group(3) == 'ok' else 'failed'} at {m.group(1)} · {nxt}"
+
+
+NEEDED = ('gemma4:26b', 'nimble:9b', 'qwen3:8b')  # what the hourly run and the worker ask Ollama for
+
+
+def ollama_words() -> str:
+    """Whether Ollama is fit for the next hourly run (Oct 11, the person: "i like updating but if it bombs right before
+    an hourly run i need to know if i need to restart"). An update replaces the files on disk but not the server
+    running: the old server then starts the new llama-server for each model it loads, which can fail. So: not
+    answering, updated but not restarted, or a model the pipeline needs gone; each with what to do"""
+    import requests as rq
+    installed = (sh('pacman', '-Q', 'ollama').split() or ['', ''])[-1].split('-')[0]
+    try:
+        running = rq.get('http://localhost:11434/api/version', timeout=3).json().get('version', '')
+        have = {m['name'] for m in rq.get('http://localhost:11434/api/tags', timeout=3).json().get('models', [])}
+    except Exception:  # noqa: BLE001 - down or not answering
+        return '⛔ not answering: sudo systemctl restart ollama'
+    if installed and running and installed != running:
+        when = 'now' if not going() else 'once the hourly run is done'
+        return f'⚠️ restart it {when}: {installed} installed, {running} running (sudo systemctl restart ollama)'
+    missing = [m for m in NEEDED if m not in have and f'{m}:latest' not in have]
+    if missing:
+        return f"⚠️ {running}, but {', '.join(missing)} gone: ollama pull {missing[0]}"
+    return f'{running} ✓'
+
+
+def ollama_line() -> str:
+    return f'🦙 ollama: {ollama_words()}'
+
+
+def going() -> bool:
+    from app import worker
+    return worker.run_going()
 
 
 def worker_words() -> str:
@@ -303,7 +336,7 @@ def data() -> dict:
         out['gpu'] = {'util': util, 'temp': temp, 'mem': round(used / 1024, 1), 'mem_total': round(total / 1024, 1),
                       'power': round(power), 'models': models or 'no model loaded', 'history': load_history()}
     out['rows'] = [{'name': name, 'value': value} for name, value in (
-        ('Hourly run', hourly_words()), ('Worker', worker_words()), ('Claims filed', claims_words()),
+        ('Hourly run', hourly_words()), ('Ollama', ollama_words()), ('Worker', worker_words()), ('Claims filed', claims_words()),
         *zip(('Tokens today', 'If rented'), tokens_today()))]
     out['running'] = lease_jobs()
     out['machine'] = re.sub(r'^\S+ ', '', machine_line())

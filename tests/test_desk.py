@@ -37,3 +37,27 @@ def test_tokens_today_and_what_gemma_would_cost_rented(monkeypatch, tmp_path):
         'x,show_claims,gemma4:26b,3000000,200000,9.0\n' 'x,stories,qwen3:8b,500000,10000,1.0\n')
     # Gemma only, at the cheapest price: 3M x $0.07 + 0.2M x $0.34
     assert desk.tokens_today() == ('3.5M read · 210k written', '$0.28 so far today')
+
+
+def test_ollama_says_when_it_needs_a_restart(monkeypatch):
+    import requests
+    from app import desk
+
+    class R:
+        def __init__(self, body):
+            self.body = body
+
+        def json(self):
+            return self.body
+    models = {'models': [{'name': m} for m in desk.NEEDED]}
+    monkeypatch.setattr(desk, 'going', lambda: False)
+    monkeypatch.setattr(desk, 'sh', lambda *a, **k: 'ollama 0.40.3-1')
+    monkeypatch.setattr(requests, 'get', lambda url, timeout: R({'version': '0.40.2'} if 'version' in url else models))
+    assert desk.ollama_words().startswith('⚠️ restart it now: 0.40.3 installed, 0.40.2 running')
+    monkeypatch.setattr(desk, 'sh', lambda *a, **k: 'ollama 0.40.2-1')
+    assert desk.ollama_words() == '0.40.2 ✓'
+
+    def down(url, timeout):
+        raise requests.ConnectionError
+    monkeypatch.setattr(requests, 'get', down)
+    assert desk.ollama_words().startswith('⛔ not answering')

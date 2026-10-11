@@ -103,7 +103,7 @@ PlasmoidItem {
         property string value
         spacing: 12
         Text { text: name; color: root.quiet; font.pixelSize: 13; Layout.preferredWidth: 92 }
-        Text { text: value; color: root.ink; font.pixelSize: 13; Layout.maximumWidth: root.textCap - 104; elide: Text.ElideRight; font.features: { "tnum": 1 } }
+        Text { text: value; color: root.ink; font.pixelSize: 13; Layout.maximumWidth: root.textCap - 104; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; font.features: { "tnum": 1 } }
     }
 
     fullRepresentation: Item {
