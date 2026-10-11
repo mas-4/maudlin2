@@ -72,7 +72,9 @@ REGISTRY = {
     'S3': ('What makes headlines one story: TF-IDF, embeddings or hybrids', 's3_story_similarity.py', 'running',
            's3_story_similarity.json; s3_day.json', ''),
     'S4': ('Seams in stories: embeddings, then TF-IDF cuts', 's4_story_seams.py', 'running', 's4_story_seams.json', ''),
-    'U1': ('The machine alone: our filing from an empty index', 'u1_uncurated.py', 'planned',
+    'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
+            'planned', 'u1_uncurated.json (split); archives/u1', ''),
+    'U1': ('The machine alone: our filing from an empty index', 'u1_uncurated.py', 'running',
            f'{ARCHIVES} (runs U1:*); archives/u1 (sandboxes)', ''),
 }
 # the earlier ones (Oct 8-10), as the Experiment codes doc has them
@@ -114,6 +116,7 @@ CODENAMES = {
     'A8': ('the Sphinx', 'riddles of a cabal, set beside 1896'),
     'A9': ('Rashomon', 'one claim, told back by many checkers'),
     'U1': ('the Golem', 'made by us, left to work alone'),
+    'U1b': ("the Sorcerer's Apprentice", 'each broom split in two, and in two again'),
     'S1': ('Janus', 'looks back and forward: a new event, or the same one?'),
     'S2': ('Penelope', 'weaves the saga and unpicks it again'),
     'S3': ('Rumpelstiltskin', 'the power is in the exact words'),

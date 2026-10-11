@@ -15,7 +15,13 @@ Corpora (each in its own sandbox under archives/u1/, never production's files):
 Then a blind test for the person: BLIND motifs the machine made on our claims and BLIND of theirs, each with its name,
 note and three claims, mixed, to rate for interest without knowing which is which.
 
-    u1_uncurated.py file <corpus> | report <corpus> | blind"""
+The Golem lumps (Oct 11, at 537 claims: 59 motifs where the person has 424 for the same claims; B-cubed precision 0.20,
+recall 0.55): the first motifs it makes are broad, and every later claim, shown them, fits one. The person: "I wonder if
+it's possible to second pass a grouping to see if it can split out more motifs". So `split` (Golem II): each motif of
+SPLIT_MIN claims or more, Gemma reads its claims and splits them into the distinct tellings inside it, each a motif of
+its own that rests on the broad one (the archetype stays above); the leaves scored against the person's index as before.
+
+    u1_uncurated.py file <corpus> | report <corpus> | blind | split <corpus>"""
 import json
 import os
 import random
@@ -168,12 +174,77 @@ def blind():
     print(f"blind: {len(state['blind'])} motifs ({sum(m['by'] == 'machine' for m in state['blind'])} the machine's)", flush=True)
 
 
+SPLIT_MIN = 6  # claims: a smaller motif is left whole
+SPLIT_PROMPT = """These claims were filed under one motif, "{name}"{note}:
+{claims}
+
+A folklorist would split a broad motif into the distinct tellings inside it: shapes that people retell, each with its
+own who-does-what-to-whom (foreign meddling, a trusted figure's betrayal and leaked secrets are three tellings, not one
+"enemy within"). Split these claims into the tellings they hold, or keep them as one if they truly are one. Each group:
+name: {rules}
+note: one sentence, the shape the group's claims share
+claims: the numbers of its claims
+Every claim in exactly one group; a group of one claim only if it truly stands alone."""
+SPLIT_SCHEMA = {"type": "object", "properties": {"groups": {"type": "array", "items": {"type": "object", "properties": {
+    "name": {"type": "string", "maxLength": 80}, "note": {"type": "string", "maxLength": 300},
+    "claims": {"type": "array", "items": {"type": "integer"}}}, "required": ["name", "note", "claims"]}}},
+    "required": ["groups"]}
+
+
+def split(corpus: str):
+    """Golem II: each big motif split by Gemma into the tellings inside it; the leaves into the state and the archives'
+    database (each rests on its parent), and scored against the person's index on 'ours'"""
+    from app.analysis import llm
+    from app.analysis import motif_index as mi
+    from app.analysis import motif_signals as ms
+    state = saved()
+    motifs = state[corpus]['motifs']
+    big = {mid: m for mid, m in motifs.items() if len(m['claims']) >= SPLIT_MIN}
+
+    def ask(item):
+        mid, m = item
+        listed = '\n'.join(f'{n}. {c[:220]}' for n, c in enumerate(m['claims'], 1))
+        return llm.complete_json(SPLIT_PROMPT.format(name=m['name'], note=f" ({m['note']})" if m.get('note') else '',
+                                                     claims=listed, rules=mi.NAME_RULES), SPLIT_SCHEMA,
+                                 max_tokens=3000, model=ms.JUDGE_MODEL)
+    leaves = {mid: m for mid, m in motifs.items() if mid not in big}
+    for (mid, m), r in zip(big.items(), llm.parallel(ask, list(big.items()))):
+        groups = (r or {}).get('groups') or []
+        seen = set()
+        for k, g in enumerate(groups):
+            cs = [m['claims'][n - 1] for n in g.get('claims', []) if 1 <= n <= len(m['claims']) and n - 1 not in seen]
+            seen |= {n - 1 for n in g.get('claims', []) if 1 <= n <= len(m['claims'])}
+            if cs:
+                leaves[f'{mid}.{k + 1}'] = {'name': g['name'], 'note': g['note'], 'claims': cs, 'rests_on': mid}
+        rest = [c for n, c in enumerate(m['claims']) if n not in seen]
+        if rest or not groups:  # what the split left out stays in the broad motif
+            leaves[mid] = dict(m, claims=rest or m['claims'])
+    state[corpus]['split'] = leaves
+    save(state)
+    import numpy as np
+    sizes = sorted((len(m['claims']) for m in leaves.values()), reverse=True)
+    lines = [f"U1 Golem II, {corpus}: {len(big)} motifs of {SPLIT_MIN}+ claims split by Gemma into the tellings inside; "
+             f"{len(motifs)} motifs became {len(leaves)}; sizes {sizes[:10]}..., median {np.median(sizes):.0f}"]
+    if corpus == 'ours':
+        gold = {c: set(ms_) for c, ms_ in curated().items()}
+        for label, idx in (('before', motifs), ('after', leaves)):
+            pred = defaultdict(set)
+            for mid, m in idx.items():
+                for c in m['claims']:
+                    pred[c].add(mid)
+            p, r = bcubed(pred, gold)
+            lines.append(f'  {label} the split: B-cubed precision {p:.2f}, recall {r:.2f}')
+    for line in lines:
+        print(line, flush=True)
+        harness.note(line)
+
+
 def main():
     stage = sys.argv[1]
     if stage == 'blind':
         blind()
     else:
-        {'file': file, 'report': report}[stage](sys.argv[2])
+        {'file': file, 'report': report, 'split': split}[stage](sys.argv[2])
     print('DONE', flush=True)
 
 
