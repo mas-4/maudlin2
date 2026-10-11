@@ -26,3 +26,18 @@ def test_a_failed_run_and_heat_show():
     assert lights.look(state(who='worker', load=90, temp=95), 12)[:2] == ('Flashing', lights.RED)
     warm = lights.look(state(who='worker', load=90, temp=89), 12)[1]
     assert warm != lights.TEAL and warm[0] > lights.TEAL[0]  # toward orange
+
+
+def test_the_unicorn_key_brings_the_rainbow_for_a_while(monkeypatch, tmp_path):
+    import json
+    import time
+    assert lights.look(state(party=True), 12)[0] == 'Rainbow'
+    assert lights.look(state(party=True), 2)[0] == 'Rainbow'  # the person pressed it: night too
+    assert lights.look(state(party=True, who='worker', temp=95), 12)[:2] == ('Flashing', lights.RED)  # heat first
+    from app.utils import Config
+    monkeypatch.setattr(Config, 'data', str(tmp_path))
+    assert not lights.party()
+    (tmp_path / lights.PARTY).write_text(json.dumps({'until': time.time() + 30}))
+    assert lights.party()
+    (tmp_path / lights.PARTY).write_text(json.dumps({'until': time.time() - 1}))
+    assert not lights.party()

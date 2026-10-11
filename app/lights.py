@@ -35,6 +35,7 @@ DAY, NIGHT = 8, 23  # hours: the lights work from DAY until NIGHT
 LOOK = 2.0  # seconds between looks at the GPU and the machine's state
 LOG, LOG_KEEP = 'lights_log.csv', 1440  # who had the GPU each minute, the last day of it
 HOT, LIMIT = 85, 93  # degrees C: the card runs at ~83 under load; its slowdown limit is 93
+PARTY = 'lights_party.json'  # {'until': epoch seconds}: the Stream Deck's 🦄 key asks for the rainbow until then
 
 AMBER, VIOLET, TEAL, IDLE = (255, 140, 0), (140, 60, 255), (0, 190, 170), (40, 80, 200)
 ORANGE, RED, EMBER, DARK = (255, 70, 0), (255, 0, 0), (120, 12, 0), (0, 0, 0)
@@ -77,14 +78,28 @@ def log(holder: str, load: float):
             f.writelines(lines)
 
 
+def party() -> bool:
+    """Someone pressed the Stream Deck's 🦄 key lately (app/deck.py): the card's own rainbow until PARTY's time"""
+    import json
+    from app.utils import Config
+    try:
+        with open(os.path.join(Config.data, PARTY)) as f:
+            return json.load(f).get('until', 0) > time.time()
+    except (OSError, ValueError):
+        return False
+
+
 def mix(a, b, t: float):
     t = max(0.0, min(1.0, t))
     return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
 
 def look(state: dict, hour: float) -> tuple:
-    """(effect, colour, speed 0-2, brightness 0-5) for the state: {'who', 'load', 'temp', 'failed'}; hour: 0-24"""
+    """(effect, colour, speed 0-2, brightness 0-5) for the state: {'who', 'load', 'temp', 'failed', 'party'};
+    hour: 0-24"""
     working = not (state['who'] == 'idle' and state['load'] < 10)
+    if state.get('party') and state['temp'] < LIMIT:  # the 🦄 key: the unicorn puke on demand, night or day
+        return ('Rainbow', VIOLET, 2, 5)
     if hour >= NIGHT or hour < DAY:  # the room stays dark
         return ('Breathing', EMBER, 0, 1) if working else ('Direct', DARK, 0, 0)
     if state['temp'] >= LIMIT:
@@ -132,7 +147,7 @@ def main():
             # The load jumps second to second; a new brightness restarts the card's effect, so it follows a ~20 s
             # average
             smooth += (load - smooth) * LOOK / 20
-            state = {'who': who(), 'load': smooth, 'temp': temp, 'failed': failed()}
+            state = {'who': who(), 'load': smooth, 'temp': temp, 'failed': failed(), 'party': party()}
             if time.time() - logged >= 60:  # who had the GPU, a minute a line, for the desktop widget's sparkline
                 log(state['who'], load)
                 logged = time.time()

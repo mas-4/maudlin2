@@ -1,0 +1,13 @@
+[Unit]
+Description=Maudlin deck: the Stream Deck Mini's six keys show the news day, newborn and retold motifs, the mood, the GPU and a unicorn (app/deck.py)
+After=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mas/maudlin-prod
+ExecStart=/home/mas/maudlin-prod/.venv/bin/python -m app.deck
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

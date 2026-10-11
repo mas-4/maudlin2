@@ -49,6 +49,7 @@ GHOST_OPACITY = 0.35
 # Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
+NEWS_DAY_FILE = os.path.join(Config.data, 'newsday.json')  # the last build's news day
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
 INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a current story
 BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
@@ -410,6 +411,11 @@ class HeadlinesPage:
             'live_headlines': int(self.dh.main_headline_df['live'].sum()),
             'stories': len(self.context.get('clusters', [])),
         }
+        if not Config.debug:  # for the Stream Deck's news-day key (app/deck.py), between builds
+            from app.utils.store import write_json
+            anchor = self.context.get('anchor_of', {}).get(self.context['newsday']['cluster'])
+            write_json(NEWS_DAY_FILE, {**self.context['newsday'], 'anchor': anchor,
+                                       'at': dt.now().isoformat(timespec='seconds')})
 
     def cluster_and_summarize(self, df):
         global DB_START
