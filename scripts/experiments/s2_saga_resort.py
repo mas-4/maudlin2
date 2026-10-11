@@ -13,9 +13,12 @@ few of its headlines are on front pages. Here, for each live saga, every headlin
        condition, reactions and commentary are updates; someone's new action, statement or decision, or a new outcome,
        is a new event) as an earlier group joins it. S1: Gemma agrees with the answer key on 78%, Nimble 60%. (The
        first run used the stories' return judge, stories.same_event: it split one event by angle, the FlyDubai hero
-       pilot's interview and the co-pilot's Oman ban each a part of their own)
-    4. a group the saga judge (sagas.saga_verdict, both wordings) says isn't part of the running story at all leaves
-       the saga (the first run made Trump's Columbus Day remarks a part of the diesel deal's saga)
+       pilot's interview and the co-pilot's Oman ban each a part of their own; the second asked each earlier group in
+       turn, and false merges added up: Pike's ventilator news into the prison chief's resignation. Now only the
+       nearest earlier group is asked)
+    4. a group the saga judge (sagas.saga_verdict, both wordings) says isn't part of the running story is flagged
+       (the first run made Trump's Columbus Day remarks a part of the diesel deal's saga; the second removed such
+       groups and took real parts out too, so the person decides)
     5. each part keeps the group holding most of its own first headlines, so it stays the event it began as (the first
        run gave the FlyDubai attack's part the later investigation news, and the attack itself a new part); a larger
        part wins a contested group; other groups are new parts
@@ -113,15 +116,16 @@ def resort(saga: dict) -> list[dict]:
         groups[near] += g
     groups.sort(key=np.median)  # rows are in order of first sighting
     merged = []
-    for g in groups:
+    for g in groups:  # only the nearest earlier group is asked (asking each in turn compounded false merges: run 2)
         day = hs[int(np.median(g))]['seen'][:10]
-        for m in merged:
-            if is_update([hs[i]['title'] for i in central(m, X)], [hs[i]['title'] for i in central(g, X)], day):
-                m += g
-                break
+        c = X[g].mean(0)
+        m = max(merged, key=lambda m: float(X[m].mean(0) @ c), default=None)
+        if m is not None and is_update([hs[i]['title'] for i in central(m, X)], [hs[i]['title'] for i in central(g, X)], day):
+            m += g
         else:
             merged.append(list(g))
-    # a group that isn't part of the running story leaves the saga
+    # a group the saga judge says isn't part of the running story is only flagged (run 2 let it remove groups: it took
+    # out the Cornell defence's motion to remove the special prosecutor, and both halves of the Oct 7 saga)
     leaves = set()
     if len(merged) > 1:
         for n, g in enumerate(merged):
@@ -136,12 +140,12 @@ def resort(saga: dict) -> list[dict]:
         rows_of.setdefault(h['story'], []).append(i)
     story_at = {}
     for story, rows in sorted(rows_of.items(), key=lambda kv: -len(kv[1])):
-        votes = Counter(group_of[i] for i in rows[:FIRST] if group_of[i] not in leaves)
+        votes = Counter(group_of[i] for i in rows[:FIRST])
         for n, _ in votes.most_common():
             if n not in story_at:
                 story_at[n] = story
                 break
-    out = [{'headlines': sorted(int(i) for i in g), 'story': story_at.get(n), 'leaves': n in leaves}
+    out = [{'headlines': sorted(int(i) for i in g), 'story': story_at.get(n), 'leaves': False, 'doubt': n in leaves}
            for n, g in enumerate(merged)]
     out.sort(key=lambda o: hs[o['headlines'][0]]['seen'])
     return out
@@ -159,7 +163,7 @@ def show(sid: int, saga: dict, groups: list[dict]):
         idx = g['headlines']
         frm = Counter(hs[i]['story'] for i in idx)
         span = f"{hs[idx[0]]['seen'][5:13]} to {hs[idx[-1]]['seen'][5:13]}"
-        name = 'LEAVES THE SAGA' if g['leaves'] else saga['parts'].get(g['story'], 'NEW PART') if g['story'] else 'NEW PART'
+        name = ('(the saga judge doubts it belongs) ' if g.get('doubt') else '') + ('LEAVES THE SAGA' if g['leaves'] else saga['parts'].get(g['story'], 'NEW PART') if g['story'] else 'NEW PART')
         lines.append(f"    {g['story'] or ('out' if g['leaves'] else 'new'):>4} {len(idx):>4}  {span}  (from {dict(frm)})  "
                      f"{'' if g['leaves'] else 'was: '}{name}")
         step = max(1, len(idx) // 4)
