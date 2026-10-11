@@ -14,16 +14,18 @@ def test_a_failing_part_leaves_the_rest(monkeypatch, tmp_path):
     assert desk.KEY in text and '🖥 up' in text
 
 
-def test_experiments_are_listed_by_their_lease_names_running_first(monkeypatch):
-    """Oct 11: the card took the queue's notes, calling a chain's next step and waiting jobs running"""
+def test_experiments_are_listed_by_their_figures_running_first(monkeypatch):
+    """Oct 11: the card took the queue's notes, calling a chain's next step and waiting jobs running; and leases show
+    as the experiments' folklore figures, never codes"""
     from app import gpu_lease
     ps = ('  6279 /usr/bin/zsh -c ... .venv/bin/python -m app.gpu_lease run --holder s1-judge -- x\n'
           '  6279 .venv/bin/python -m app.gpu_lease run --minutes 20 --holder s1-judge -- python s1.py judge\n'
           '   964 .venv/bin/python -m app.gpu_lease run --minutes 30 --holder s2-resort -- python s2.py\n')
     monkeypatch.setattr(desk, 'sh', lambda *a, **k: ps)
     monkeypatch.setattr(gpu_lease, 'held', lambda: {'holder': 's2-resort'})
-    assert desk.lease_jobs() == [{'name': 's2-resort', 'state': 'running 16 min'},
-                                 {'name': 's1-judge', 'state': 'waiting for the GPU, 104 min'}]
+    assert desk.lease_jobs() == [{'name': 'Penelope · resort', 'state': 'running 16 min'},
+                                 {'name': 'Janus · judge', 'state': 'waiting for the GPU, 104 min'}]
+    assert desk.figure_of('atropos-judge') == 'Atropos · judge' and desk.figure_of('unknown') == 'unknown'
 
 
 def test_tokens_today_and_what_gemma_would_cost_rented(monkeypatch, tmp_path):

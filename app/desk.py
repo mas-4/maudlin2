@@ -205,20 +205,43 @@ def tokens_today() -> tuple[str, str]:
                                                              else 'under 1¢ so far today')
 
 
+def figure_of(lease: str) -> str:
+    """A lease's holder as the person says it, by the experiment's folklore figure (scripts/experiments/codenames.py;
+    the person, Oct 11: codes are "straight confusing to me and terrible to read")"""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'scripts', 'experiments', 'codenames.py')
+    try:
+        spec = importlib.util.spec_from_file_location('codenames', path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.figure_of(lease)
+    except (OSError, AttributeError, ImportError, SyntaxError):
+        return lease
+
+
 def lease_jobs() -> list[dict]:
-    """[{name, state}] for each experiment under `gpu_lease run` now, by its lease name (the person, Oct 11: the card
-    took its list from the work queue's notes, which folded a chain's next step into what was running and called
-    waiting jobs running). One holds the lease ('running N min'); the others wait for it, and for the hourly run and
-    the worker (app/gpu_lease.py). The running one first, then the longest waiting."""
+    """[{name, state}] for each experiment under `gpu_lease run` now, by its folklore figure (the person, Oct 11: the
+    card took its list from the work queue's notes, which folded a chain's next step into what was running and called
+    waiting jobs running). One holds the lease ('running N min', since it took the lease); the others wait for it, and
+    for the hourly run and the worker (app/gpu_lease.py). The running one first, then the longest waiting."""
     from app import gpu_lease
-    held = (gpu_lease.held() or {}).get('holder')
+    lease = gpu_lease.held() or {}
+    held = lease.get('holder')
+    try:
+        ran = (dt.now() - dt.fromisoformat(lease['since'])).total_seconds()
+    except (KeyError, TypeError, ValueError):
+        ran = None
     found = []
+    seen = set()
     for line in sh('ps', '-eo', 'etimes=,args=').splitlines():
         m = re.match(r'\s*(\d+)\s+\S*python\S* -m app\.gpu_lease run .*?--holder (\S+)', line)
-        if m:
+        if m and m[2] not in seen:
+            seen.add(m[2])
             secs, name = int(m[1]), m[2]
-            found.append((name != held, -secs, {'name': name, 'state': f'running {secs // 60} min' if name == held
-                                                 else f'waiting for the GPU, {secs // 60} min'}))
+            running = name == held
+            mins = int((ran if running and ran is not None else secs) // 60)
+            found.append((not running, -secs, {'name': figure_of(name), 'state': f'running {mins} min' if running
+                                                else f'waiting for the GPU, {mins} min'}))
     return [j for _, _, j in sorted(found, key=lambda f: f[:2])]
 
 
