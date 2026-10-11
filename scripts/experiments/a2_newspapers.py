@@ -15,6 +15,8 @@ Stages, each resumable, the GPU ones under the lease:
     a2_newspapers.py sample      the controls and a sample of the rest
     a2_newspapers.py claims      Gemma 26B reads each for the claims it tells (GPU)
     a2_newspapers.py file        the filing machinery on the index copy (GPU)
+    a2_newspapers.py load        every political article into the archives' database, word-searchable (CPU)
+    a2_newspapers.py record      what A2 has so far into that database: the sample, claims, filings
     a2_newspapers.py report      the numbers, and the spot-check list"""
 import json
 import os
@@ -212,9 +214,66 @@ def file():
           f"{len(state['new_motifs'])} new motifs", flush=True)
 
 
+CORPUS = 'american_stories_1896'
+
+
+def load():
+    """Every political article extract() found into the archives' database, word-searchable: to sample again, look
+    things up, or run other questions over the whole year, not only A2's sample"""
+    import archive_db as db
+    batch, n = [], 0
+    for line in open(ARTICLES):
+        a = json.loads(line)
+        batch.append({'id': a['id'], 'title': a['headline'], 'date': a['date'], 'place': a['state'],
+                      'source': a['paper'], 'url': a['url'], 'text': a['text'], 'controls': a['controls']})
+        if len(batch) == 5000:
+            db.documents(CORPUS, batch)
+            n += len(batch)
+            batch = []
+            if n % 50000 == 0:
+                print(f'load: {n}', flush=True)
+    db.documents(CORPUS, batch)
+    db.index_text()
+    print(f'load: {n + len(batch)} articles into {db.DB}, word-searchable', flush=True)
+
+
+def record():
+    """What A2 has so far into the archives' database (scripts/experiments/archive_db.py), to revisit and query:
+    the sampled articles, their claims, and once filed, the filings with their fits and the motifs as they stood.
+    Safe to run again: each stage keeps one run id"""
+    import archive_db as db
+    from app.analysis import motif_signals as ms
+    state = saved()
+    runs = state.setdefault('runs', {})
+    arts = state.get('articles', {})
+    db.documents(CORPUS, [{'id': k, 'title': a['headline'], 'date': a['date'], 'place': a['state'],
+                           'source': a['paper'], 'url': a['url'], 'text': a['text'], 'controls': a['controls']}
+                          for k, a in arts.items()])
+    ids = {}
+    if state.get('claims'):
+        runs.setdefault('claims', db.run('A2', 'claims', f'Gemma reads each article for its claims ({ms.JUDGE_MODEL})'))
+        for k, cs in state['claims'].items():
+            for c, i in zip(cs, db.claims(CORPUS, k, cs, ms.JUDGE_MODEL, CLAIMS_PROMPT, runs['claims'])):
+                ids[c] = i
+    if state.get('filed'):
+        sandbox()
+        from app.analysis import motif_index as mi
+        runs.setdefault('file', db.run('A2', 'file', 'our filing on a copy of the motif index; fits by the '
+                                                      f"confidence model, sure at {state.get('sure_at')}"))
+        index = mi.load()
+        db.motifs(runs['file'], mi.live(index), set(state.get('new_motifs', {})))
+        by_key = {mi.key(c): i for c, i in ids.items()}
+        sure = state.get('sure_at') or 1
+        db.filings(runs['file'], [(by_key[k], f['motif'], f['fit'], f['fit'] is not None and f['fit'] >= sure)
+                                  for k, fs in state['filed'].items() if k in by_key for f in fs])
+    save(state)
+    print(f"record: {len(arts)} articles, {len(ids)} claims, {sum(len(v) for v in state.get('filed', {}).values())} "
+          f"filings into {db.DB}", flush=True)
+
+
 def main():
     stage = sys.argv[1] if len(sys.argv) > 1 else 'extract'
-    {'extract': extract, 'sample': sample, 'claims': claims, 'file': file}[stage]()
+    {'extract': extract, 'sample': sample, 'claims': claims, 'file': file, 'load': load, 'record': record}[stage]()
     print('DONE', flush=True)
 
 
