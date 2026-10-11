@@ -259,6 +259,11 @@ def saga_coverage(parts: list[dict], height: int = 140) -> dict | None:
     times = sorted({s['at'] for p in parts for s in p.get('snapshots', [])})
     if len(times) < 2:
         return None
+    # Where no part was on a front page for a while (no snapshots at all), the next hourly run after one and the last
+    # before the next carry nothing: else the polygons slope across the gap, a part that left the front pages on
+    # Oct 4 drawn there until Oct 9 (Oct 11, saga-30)
+    gaps = [t for a, b in zip(times, times[1:]) if b - a > td(minutes=90) for t in (a + td(hours=1), b - td(hours=1))]
+    times = sorted(set(times) | set(gaps))
     counts = []
     for p in parts:
         snap = {s['at']: s['outlets'] for s in p.get('snapshots', [])}

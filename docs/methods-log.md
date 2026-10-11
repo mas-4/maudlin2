@@ -10,6 +10,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   Oct 2, still headed nine days of Christa Pike coverage that had moved on to her leaving hospital. Now a live story's
   title is written again once it's 12 hours old and new headlines have come in, from its 30 newest headlines, stating
   the latest development. Titles already written are refreshed over the next runs, 25 an hour at most.
+  Until the afternoon of Oct 11 this didn't happen: the rule read each headline's time after the front page had made
+  it display text, and as text "Oct 9" sorts after "Oct 11", so no story looked to have news since its title. The
+  Trump–Russia diesel deal's part kept its Oct 9 title over two days of Trump calling for Zelensky to be replaced.
+- **Saga charts drop to nothing between sightings.** A saga's spread chart drew each part from snapshot to snapshot,
+  so where no part was on a front page for days it sloped across the gap: a part gone on Oct 4 was drawn until Oct 9.
+  Now each part falls to nothing an hour after it was last seen.
 
 ## 2026-10-10
 - **Licensing narrowed.** The motif index (on the site and in its Markdown and SKOS exports) is now CC BY-NC-SA 4.0

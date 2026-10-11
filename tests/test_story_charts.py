@@ -68,3 +68,14 @@ def test_a_saga_draws_a_lane_per_part_and_coverage_stacked_by_part():
     assert '📻 radio' in svg and f'fill="{sc.PART_COLORS[1]}"' in svg  # the newscast in its part's color
     cov = sc.saga_coverage(parts)
     assert cov['peak'] == 14 and cov['svg'].count('<polygon') == 2
+
+
+def test_a_saga_coverage_drops_to_nothing_where_no_part_was_on_the_front_pages():
+    """Oct 11, saga-30: a part gone from the front pages on Oct 4 was drawn sloping down until Oct 9"""
+    parts = [{'label': 'Oil deal', 'snapshots': [{'at': T + td(hours=h), 'outlets': 10} for h in (0, 1)]},
+             {'label': 'Diesel deal', 'snapshots': [{'at': T + td(days=5, hours=h), 'outlets': 6} for h in (0, 1)]}]
+    svg = sc.saga_coverage(parts)['svg']
+    axis = sc.Axis(T, T + td(days=5, hours=1), 30, sc.WIDTH - 10)
+    oil = svg.split('<polygon points="')[1].split('"')[0]
+    # the oil deal's top edge is at the baseline an hour after its last sighting, not partway down a slope
+    assert f'{axis.x(T + td(hours=2)):.1f},120.0' in oil
