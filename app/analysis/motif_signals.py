@@ -164,10 +164,14 @@ def _judge_one(text: str) -> float:
         r.raise_for_status()
         a = r.json()['answers']['fits']
         return round(float(a.get('noul', a.get('probability')) if isinstance(a, dict) else a), 5)
+    import time
+    from app.analysis import token_log
+    started = time.time()
     r = rq.post(f'{OLLAMA_URL}/api/chat', timeout=300, json={
         'model': JUDGE_MODEL, 'messages': [{'role': 'user', 'content': text}], 'think': False,
         'stream': False, 'logprobs': True, 'top_logprobs': 10, 'options': {'temperature': 0, 'num_predict': 1}})
     r.raise_for_status()
+    token_log.record(JUDGE_MODEL, r.json(), time.time() - started)
     y = no = -math.inf
     for t in ((r.json().get('logprobs') or [{}])[0].get('top_logprobs') or []):
         w = t['token'].strip().lower()

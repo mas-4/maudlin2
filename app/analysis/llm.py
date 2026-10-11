@@ -103,6 +103,9 @@ def parallel(fn, items: list, budget: float | None = None, workers: int = PARALL
 
 
 def _ollama(prompt: str, schema: dict, max_tokens: int, name: str | None = None) -> dict | None:
+    import time
+    from app.analysis import token_log
+    started = time.time()
     response = rq.post(f'{OLLAMA_URL}/api/chat', timeout=TIMEOUT if not name else BIG_TIMEOUT, json={
         'model': name or model(),
         'messages': [{'role': 'user', 'content': prompt}],
@@ -112,7 +115,9 @@ def _ollama(prompt: str, schema: dict, max_tokens: int, name: str | None = None)
         'options': {'temperature': 0, 'num_predict': max_tokens},
     })
     response.raise_for_status()
-    return json.loads(response.json()['message']['content'])
+    answer = response.json()
+    token_log.record(name or model(), answer, time.time() - started)
+    return json.loads(answer['message']['content'])
 
 
 _client = None
