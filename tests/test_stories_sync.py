@@ -68,3 +68,36 @@ def test_smaller_part_falls_back_to_its_next_best_story(db):
     out = stories.sync_stories(frame({0: [1, 2, 3, 4, 30], 1: [4, 7, 8]}))
     assert out[0].id == first
     assert out[1].id == second
+
+
+def test_a_story_whose_news_moved_on_is_labeled_again_from_its_newest_headlines(db, monkeypatch, tmp_path):
+    """Oct 11: an Oct 2 label stood over nine days of a story's later news (its outlet count never doubled)"""
+    from datetime import timedelta as td
+    monkeypatch.setattr(stories, 'LABELED_AT', str(tmp_path / 'labeled_at.json'))
+    monkeypatch.setattr(stories.llm, 'backend', lambda: 'ollama')
+    shown = []
+
+    def ask(prompt, schema, **k):
+        shown.append(prompt)
+        return {'title': 'Pike discharged from hospital'}
+    monkeypatch.setattr(stories.llm, 'complete_json', ask)
+    now = dt.now(stories.pytz.UTC).replace(tzinfo=None)
+    with db() as s:
+        old = Story(label='Inmate survives execution attempt', labeled_with=3, first_seen=now - td(days=9),
+                    last_seen=now)
+        quiet = Story(label='A quiet story', labeled_with=3, first_seen=now - td(days=3), last_seen=now)
+        fresh = Story(label='A new story', labeled_with=3, first_seen=now - td(hours=2), last_seen=now)
+        s.add_all([old, quiet, fresh])
+        s.commit()
+        ids = old.id, quiet.id, fresh.id
+        found = {k: s.get(Story, i) for k, i in enumerate(ids)}
+    df = pd.DataFrame([
+        {'cluster': 0, 'agency': 'a', 'title': 'Inmate survives execution', 'first_accessed': now - td(days=9)},
+        {'cluster': 0, 'agency': 'b', 'title': 'Pike leaves hospital', 'first_accessed': now - td(hours=1)},
+        {'cluster': 1, 'agency': 'a', 'title': 'Nothing new', 'first_accessed': now - td(days=3)},
+        {'cluster': 2, 'agency': 'a', 'title': 'Just in', 'first_accessed': now - td(hours=1)}])
+    labels = stories.label_stories(df, found)
+    assert labels == {0: 'Pike discharged from hospital', 1: 'A quiet story', 2: 'A new story'}
+    assert len(shown) == 1 and shown[0].index('Pike leaves hospital') < shown[0].index('Inmate survives execution')
+    stories.label_stories(df, found)
+    assert len(shown) == 1  # labeled now: not again until it's old and has news

@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-11
+- **Story titles keep up with the story.** A story's title was written again only when its outlet count doubled, but
+  stories are kept for days and their news moves on: "Tennessee inmate survives botched execution attempt", written
+  Oct 2, still headed nine days of Christa Pike coverage that had moved on to her leaving hospital. Now a live story's
+  title is written again once it's 12 hours old and new headlines have come in, from its 30 newest headlines, stating
+  the latest development. Titles already written are refreshed over the next runs, 25 an hour at most.
+
 ## 2026-10-10
 - **Licensing narrowed.** The motif index (on the site and in its Markdown and SKOS exports) is now CC BY-NC-SA 4.0
   with credit to bignews.day, and commercial use needs permission; the site's own writing and readings are all rights

@@ -21,6 +21,12 @@ logger = get_logger(__name__)
 
 # Relabel a story once its coverage has grown this much, since early labels come from the first few outlets
 RELABEL_GROWTH = 2
+# A live story's label is written again once it's this old and new headlines have come in since: a story is kept for
+# days and its news moves on, but its outlet count rarely doubles (Oct 11: "Tennessee inmate survives botched
+# execution attempt" from Oct 2 stood over nine days of Christa Pike headlines, by then about her leaving hospital;
+# "Trump announces diesel deal with Putin" over his call for Ukraine to replace Zelensky)
+RELABEL_AGE = td(hours=12)
+LABEL_FROM = 30  # the newest headlines the label is written from
 MAX_LABELS_PER_RUN = 25
 FRAMING_WINDOW_DAYS = 30
 MIN_STORIES_FOR_FRAMING = 5
@@ -64,6 +70,7 @@ RETURN_CANDIDATES = 2  # the most alike stories put to the model, the closest fi
 RETURN_MODEL = 'gemma4:26b'
 RETURNS = os.path.join(Config.data, 'story_returns.json')  # the model's verdicts, by the headlines shown
 MERGES = os.path.join(Config.data, 'story_merges.json')  # a story found to be another's return: {gone id: kept id}
+LABELED_AT = os.path.join(Config.data, 'story_labeled_at.json')  # story id -> when its label was written (ISO)
 STOP = {'that', 'this', 'with', 'from', 'after', 'over', 'into', 'about', 'what', 'says', 'said', 'will', 'more',
         'than', 'have', 'been', 'were', 'their', 'they', 'when', 'amid', 'year', 'news', 'live', 'updates', 'just'}
 SAME_EVENT_PROMPT = """Two groups of news headlines. The first left the front pages some hours before the second \
@@ -228,11 +235,12 @@ LABEL_SCHEMA = {
     "additionalProperties": False,
 }
 
-LABEL_PROMPT = """These headlines from different news outlets all cover the same news event:
+LABEL_PROMPT = """These headlines from different news outlets all cover the same news story, newest first:
 
 {headlines}
 
-Write a short, neutral title (4 to 10 words) that states what happened. Use plain factual language a wire \
+Write a short, neutral title (4 to 10 words) that states what happened, its latest development if the story has \
+moved on. Use plain factual language a wire \
 service would use: no outlet names, no loaded or emotive words, no opinion, and don't adopt any one \
 outlet's framing. Write it in sentence case: capitalize only the first word and proper nouns.
 
@@ -276,21 +284,35 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
         return labels
 
     outlets = df.groupby('cluster')['agency'].nunique()
+    labeled_at = read_json(LABELED_AT, {})
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
+    newest = df.groupby('cluster')['first_accessed'].max() if 'first_accessed' in df else None
+
+    def stale(cluster, story) -> bool:
+        """Old, and headlines have come in since it was written (a story labeled before Oct 11 counts from its start)"""
+        at = pd.Timestamp(labeled_at.get(str(story.id)) or story.first_seen)
+        return newest is not None and now - at >= RELABEL_AGE and pd.Timestamp(newest[cluster]) > at
     todo = [cluster for cluster, story in stories.items()
-            if not story.label or outlets[cluster] >= RELABEL_GROWTH * (story.labeled_with or 0)]
+            if not story.label or outlets[cluster] >= RELABEL_GROWTH * (story.labeled_with or 0)
+            or stale(cluster, story)]
     for cluster in todo[:MAX_LABELS_PER_RUN]:
-        headlines = '\n'.join(f'- {title}' for title in df[df['cluster'] == cluster]['title'])
+        part = df[df['cluster'] == cluster]
+        if 'first_accessed' in part:
+            part = part.sort_values('first_accessed', ascending=False)
+        headlines = '\n'.join(f'- {title}' for title in part['title'][:LABEL_FROM])
         result = llm.complete_json(LABEL_PROMPT.format(headlines=headlines), LABEL_SCHEMA, max_tokens=64)
         label = (result or {}).get('title', '').strip().rstrip('.')
         if not label:
             continue
-        label = restore_case(label, df[df['cluster'] == cluster]['title'])
+        label = restore_case(label, part['title'])
         with Session() as s, SqlLock:
             story = s.get(Story, stories[cluster].id)
             story.label = label
             story.labeled_with = int(outlets[cluster])
             s.commit()
         labels[cluster] = label
+        labeled_at[str(stories[cluster].id)] = now.isoformat(timespec='seconds')
+    write_json(LABELED_AT, labeled_at)
     return labels
 
 
