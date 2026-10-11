@@ -313,9 +313,61 @@ def record():
           f"filings into {db.DB}", flush=True)
 
 
+SPOT = 50  # sure filings for the person to check against the page scans
+
+
+def report():
+    """The numbers (claims kept and dropped, filed, sure, retold against one-off, the controls' motifs, new motifs),
+    into the experiments' log; and the spot-check list: SPOT sure filings with their quote and page scan"""
+    from collections import Counter
+    import numpy as np
+    sandbox()
+    from app.analysis import motif_index as mi
+    state = saved()
+    arts, claims_of, filed = state['articles'], state.get('claims', {}), state.get('filed', {})
+    sure = state.get('sure_at') or 0.8
+    index = mi.load()
+    rows = []  # (article id, claim, quote, motif, fit)
+    for k, cs in claims_of.items():
+        for c in cs:
+            for f in filed.get(mi.key(c['claim']), []):
+                rows.append((k, c['claim'], c['quote'], f['motif'], f['fit']))
+    kept = sum(map(len, claims_of.values()))
+    dropped = Counter(d['why'] for ds in state.get('dropped', {}).values() for d in ds)
+    n_filed = sum(1 for k, cs in claims_of.items() for c in cs if filed.get(mi.key(c['claim'])))
+    fits = [r[4] for r in rows if r[4] is not None]
+    rt = state.get('retold', {})
+    lines = [f"A2 1896 newspapers: {len(arts)} articles ({state['counts']['political']:,} political in the year), "
+             f"{kept} claims kept, dropped {dict(dropped)}; {n_filed} filed in {len(rows)} filings; "
+             f"{len(state.get('new_motifs', {}))} new motifs",
+             f"  fits: {len(fits)} scored (in the person's motifs), median {np.median(fits):.2f}; sure (>= {sure}) "
+             f"{sum(f >= sure for f in fits)} ({np.mean([f >= sure for f in fits]):.0%})" if fits else '  fits: none scored']
+    for label, test in (('retold (2+ papers)', lambda c: rt.get(c, 1) >= RETOLD), ('one paper', lambda c: rt.get(c, 1) < RETOLD)):
+        fs = [r[4] for r in rows if r[4] is not None and test(r[1])]
+        if fs:
+            lines.append(f'  {label}: {len(fs)} scored filings, median fit {np.median(fs):.2f}, sure {np.mean([f >= sure for f in fs]):.0%}')
+    for control in CONTROLS:
+        motifs = Counter(index['entries'][r[3]]['name'] for r in rows if control in arts[r[0]]['controls'] and r[3] in index['entries'])
+        lines.append(f"  control {control}: " + ', '.join(f'{n} {k}' for n, k in ((k, v) for k, v in motifs.most_common(8))))
+    lines.append('  new motifs: ' + '; '.join(f"{v['name']} ({len(v['claims'])})" for v in
+                                               sorted(state.get('new_motifs', {}).values(), key=lambda v: -len(v['claims']))[:15]))
+    for line in lines:
+        print(line, flush=True)
+        harness.note(line)
+    pool = [r for r in rows if r[4] is not None and r[4] >= sure]
+    picks = random.Random(5).sample(pool, min(SPOT, len(pool)))
+    spot = [{'claim': c, 'quote': q, 'motif': index['entries'][m]['name'], 'note': index['entries'][m].get('note', ''),
+             'fit': f, 'paper': arts[k]['paper'], 'date': arts[k]['date'], 'url': arts[k]['url'], 'headline': arts[k]['headline']}
+            for k, c, q, m, f in picks]
+    state['spot_check'] = spot
+    save(state)
+    print(f'report: {len(spot)} sure filings kept for the spot-check (state["spot_check"])', flush=True)
+
+
 def main():
     stage = sys.argv[1] if len(sys.argv) > 1 else 'extract'
-    {'extract': extract, 'sample': sample, 'claims': claims, 'file': file, 'load': load, 'record': record}[stage]()
+    {'extract': extract, 'sample': sample, 'claims': claims, 'file': file, 'load': load, 'record': record,
+     'report': report}[stage]()
     print('DONE', flush=True)
 
 
