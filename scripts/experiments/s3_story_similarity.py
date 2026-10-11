@@ -9,6 +9,9 @@ Arms, each clustered as production does (clustering.form_clusters, money conflic
     mxbai          the embeddings (production)
     gate T         mxbai, but a pair links only if its TF-IDF cosine is at least T: some distinctive words in common
     blend          the mean of the two, each scaled to its own spread over the day's pairs
+    seams T        two passes (the person's idea): stories by mxbai, then inside each a TF-IDF graph (links at T or
+                   more); where it falls into two or more groups of OUTLETS outlets each, the story is cut there, and
+                   the headlines no words link (often pure paraphrase) join the side they're nearest by meaning
 At equal coverage (each arm's threshold set so about COVERAGE headlines are in stories), as on Oct 4:
 - precision: cross-outlet pairs sampled inside each arm's stories, judged "the same news event?" by Gemma 26B under
   two wordings, agreement only;
@@ -37,6 +40,7 @@ DAY = os.path.join(harness.EXP, 's3_day.json')  # the day's headlines, kept so e
 COVERAGE = (400, 500)  # headlines in stories (Oct 4 used 900 and 1,100 of 6,733; a Sunday of 4,989 tops out lower: TF-IDF ~520, mxbai ~740)
 OUTLETS = 6
 GATES = (0.15, 0.25, 0.35)
+SEAMS = (0.15, 0.25)
 PER_CELL = 80  # pairs judged for each arm's precision at each coverage
 POOL = 700  # pairs in the shared recall pool
 MODEL = 'gemma4:26b'
@@ -104,15 +108,40 @@ def stories(S: np.ndarray, threshold: float, rows: list[dict]) -> list[set]:
     return [c for c in clusters if len({rows[i]['agency'] for i in c}) >= OUTLETS]
 
 
+def split_seams(clusters: list[set], T: np.ndarray, E: np.ndarray, tau: float, rows: list[dict]) -> list[set]:
+    """Each story cut where its TF-IDF graph (links at tau or more) falls into two or more groups of OUTLETS outlets;
+    the rest of its headlines join the group they're nearest by meaning (mean embedding likeness)"""
+    out = []
+    for c in clusters:
+        members = sorted(c)
+        from scipy.sparse.csgraph import connected_components
+        _, lab = connected_components(T[np.ix_(members, members)] >= tau, directed=False)
+        comps = {}
+        for k, g in enumerate(lab):
+            comps.setdefault(g, []).append(members[k])
+        big = [g for g in comps.values() if len({rows[i]['agency'] for i in g}) >= OUTLETS]
+        if len(big) < 2:
+            out.append(c)
+            continue
+        sides = [set(g) for g in big]
+        for i in members:
+            if not any(i in g for g in sides):
+                best = max(range(len(sides)), key=lambda n: E[i, list(sides[n])].mean())
+                sides[best].add(i)
+        out += sides
+    return out
+
+
 def coverage(clusters: list[set], rows: list[dict]) -> int:
     """Headlines in stories, one per outlet in each"""
     return sum(len({rows[i]['agency'] for i in c}) for c in clusters)
 
 
-def threshold_for(S: np.ndarray, target: int, rows: list[dict]) -> float:
+def threshold_for(S: np.ndarray, target: int, rows: list[dict], make=None) -> float:
     """The threshold at which an arm puts about `target` headlines into stories. Not a bisection: coverage rises as the
     threshold falls only until everything chains into one giant story (which counts its outlets once), so scan down
     from the top through the highest pairs' values, stop past the target, then narrow between the last two"""
+    make = make or (lambda t: stories(S, t, rows))
     rnd = np.random.default_rng(0)
     n = len(S)
     i, j = rnd.integers(0, n, 400000), rnd.integers(0, n, 400000)
@@ -121,11 +150,11 @@ def threshold_for(S: np.ndarray, target: int, rows: list[dict]) -> float:
     grid = np.linspace(top, float(np.quantile(vals, 0.99)), 60)
     prev = top
     for t in grid:
-        if coverage(stories(S, float(t), rows), rows) >= target:
+        if coverage(make(float(t)), rows) >= target:
             lo, hi = float(t), prev  # coverage at lo >= target > coverage at hi
             for _ in range(8):
                 mid = (lo + hi) / 2
-                if coverage(stories(S, mid, rows), rows) >= target:
+                if coverage(make(mid), rows) >= target:
                     lo = mid
                 else:
                     hi = mid
@@ -140,10 +169,14 @@ def prepare():
     M = matrices(texts)
     rnd = random.Random(3)
     state = {'headlines': len(rows), 'arms': {}, 'pairs': {}}
-    for arm, S in M.items():
+    makers = {arm: (S, None) for arm, S in M.items()}
+    for tau in SEAMS:  # the two passes: mxbai's stories, cut at TF-IDF's seams
+        makers[f'seams {tau}'] = (M['mxbai'], lambda t, tau=tau: split_seams(stories(M['mxbai'], t, rows), M['tfidf'],
+                                                                             M['mxbai'], tau, rows))
+    for arm, (S, make) in makers.items():
         for target in COVERAGE:
-            th = threshold_for(S, target, rows)
-            cs = stories(S, th, rows)
+            th = threshold_for(S, target, rows, make)
+            cs = make(th) if make else stories(S, th, rows)
             label = {i: n for n, c in enumerate(cs) for i in c}
             inside = [(i, j) for c in cs for i in c for j in c if i < j and rows[i]['agency'] != rows[j]['agency']]
             sample = rnd.sample(inside, min(PER_CELL, len(inside)))
@@ -165,7 +198,7 @@ def prepare():
                     pool.add((int(i), int(j)))
     state['pool'] = sorted(pool)
     json.dump(state, open(OUT, 'w'))
-    print(f"prepare: {n} headlines; {len(M)} arms x {len(COVERAGE)} coverages; pool {len(pool)} pairs", flush=True)
+    print(f"prepare: {n} headlines; {len(makers)} arms x {len(COVERAGE)} coverages; pool {len(pool)} pairs", flush=True)
     for k, a in state['arms'].items():
         print(f"  {k}: threshold {a['threshold']}, {a['stories']} stories, {a['covered']} headlines", flush=True)
 
