@@ -202,17 +202,17 @@ PlasmoidItem {
                 // The last hour's load, a minute a point (the GPU logger)
                 Canvas {
                     id: spark
-                    // a three-minute average: the raw minutes saw-tooth
-                    property var points: (root.d.gpu ? root.d.gpu.history : []).map((v, i, a) => {
+                    // a three-minute average (the raw minutes saw-tooth), each minute in the colour of who had the
+                    // GPU then (app/lights.py logs it)
+                    property var points: (root.d.gpu ? root.d.gpu.history : []).map((p, i, a) => {
                         const w = a.slice(Math.max(0, i - 1), i + 2)
-                        return w.reduce((x, y) => x + y, 0) / w.length
+                        return { v: w.reduce((x, y) => x + y.v, 0) / w.length, who: p.who }
                     })
-                    property color tint: root.lightColor
+                    readonly property var tints: ({ worker: "#00beaa", experiment: "#8c3cff", hourly: "#ff8c00" })
                     Layout.preferredWidth: root.meterWidth * 2 + 22
                     Layout.preferredHeight: 30
                     Layout.topMargin: 4
                     onPointsChanged: requestPaint()
-                    onTintChanged: requestPaint()
                     onPaint: {
                         const ctx = getContext("2d")
                         ctx.reset()
@@ -220,18 +220,23 @@ PlasmoidItem {
                         if (n < 2) return
                         const step = width / (n - 1)
                         const y = v => height - 2 - (height - 4) * Math.max(0, Math.min(1, v / 100))
-                        ctx.beginPath()
-                        ctx.moveTo(0, height)
-                        for (let i = 0; i < n; i++) ctx.lineTo(i * step, y(points[i]))
-                        ctx.lineTo(width, height)
-                        ctx.closePath()
-                        ctx.fillStyle = Qt.rgba(tint.r, tint.g, tint.b, 0.22)
-                        ctx.fill()
-                        ctx.beginPath()
-                        for (let i = 0; i < n; i++) i ? ctx.lineTo(i * step, y(points[i])) : ctx.moveTo(0, y(points[0]))
-                        ctx.strokeStyle = Qt.rgba(tint.r, tint.g, tint.b, 0.9)
-                        ctx.lineWidth = 1.5
-                        ctx.stroke()
+                        for (let i = 1; i < n; i++) {
+                            const c = Qt.color(tints[points[i].who] || "#c8c8c8")
+                            ctx.beginPath()
+                            ctx.moveTo((i - 1) * step, height)
+                            ctx.lineTo((i - 1) * step, y(points[i - 1].v))
+                            ctx.lineTo(i * step, y(points[i].v))
+                            ctx.lineTo(i * step, height)
+                            ctx.closePath()
+                            ctx.fillStyle = Qt.rgba(c.r, c.g, c.b, 0.22)
+                            ctx.fill()
+                            ctx.beginPath()
+                            ctx.moveTo((i - 1) * step, y(points[i - 1].v))
+                            ctx.lineTo(i * step, y(points[i].v))
+                            ctx.strokeStyle = Qt.rgba(c.r, c.g, c.b, 0.95)
+                            ctx.lineWidth = 1.5
+                            ctx.stroke()
+                        }
                     }
                 }
                 RowLayout {

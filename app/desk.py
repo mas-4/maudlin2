@@ -158,7 +158,15 @@ def hourly_words() -> str:
     if 'going since' in line:
         return 'going now, since ' + line.split('since ')[1]
     m = re.search(r'last (\S+) (.) (\S+) · next (\S+)', line)
-    return f"{'ok' if m and m.group(3) == 'ok' else 'failed'} at {m.group(1)} · next {m.group(4)}" if m else line
+    if not m:
+        return line
+    nxt = m.group(4)
+    try:
+        at = dt.combine(dt.now().date(), dt.strptime(nxt, '%H:%M').time())
+        nxt = f'next in {max(0, (at - dt.now()).total_seconds()) / 60:.0f} min'
+    except ValueError:
+        nxt = f'next {nxt}'
+    return f"{'ok' if m.group(3) == 'ok' else 'failed'} at {m.group(1)} · {nxt}"
 
 
 def worker_words() -> str:
@@ -167,11 +175,17 @@ def worker_words() -> str:
 
 
 def claims_words() -> str:
-    m = re.search(r'today: (\d+) · newest (\S+)', claims_line())
-    if not m:
+    from datetime import timedelta as td
+    try:
+        with open(os.path.join(Config.data, 'motif_index.json')) as f:
+            index = json.load(f)
+    except (OSError, ValueError):
         return 'unreadable'
-    last = dt.strptime(m.group(2), '%Y-%m-%d').strftime('%b %-d') if m.group(2) != 'none' else 'never'
-    return f'{m.group(1)} today · last {last}'
+    dates = [c.get('date', '') for e in index.get('entries', {}).values() if not e.get('merged_into')
+             for c in e.get('claims', [])]
+    today = dt.now().date()
+    count = lambda day: sum(d.startswith(day.isoformat()) for d in dates)  # noqa: E731
+    return f'{count(today)} today · {count(today - td(days=1))} yesterday'
 
 
 def running_items() -> list[str]:
@@ -199,20 +213,30 @@ def running_items() -> list[str]:
     return out
 
 
-def load_history(minutes: int = 60) -> list[float]:
-    """The GPU's load once a minute for the last `minutes`, from the GPU logger (maudlin-gpu-log.service)"""
-    try:
-        with open(os.path.join(Config.data, 'gpu_log.csv'), 'rb') as f:
-            f.seek(0, 2)
-            f.seek(max(0, f.tell() - 80 * (minutes + 5)))
-            lines = f.read().decode(errors='ignore').splitlines()[1:]
-    except OSError:
-        return []
+def load_history(minutes: int = 60) -> list[dict]:
+    """The last `minutes` of the GPU, a minute a point: {'v': load, 'who': who had it}, from app/lights.py's log (the
+    GPU logger's load where the lights weren't running)"""
+    from app import lights
+
+    def tail(name: str) -> list[str]:
+        try:
+            with open(os.path.join(Config.data, name), 'rb') as f:
+                f.seek(0, 2)
+                f.seek(max(0, f.tell() - 80 * (minutes + 5)))
+                return f.read().decode(errors='ignore').splitlines()[1:][-minutes:]
+        except OSError:
+            return []
+    seen = {}
+    for line in tail(lights.LOG):
+        parts = line.split(',')
+        if len(parts) == 3:
+            seen[parts[0][:16]] = parts[1]
     out = []
-    for line in lines[-minutes:]:
+    for line in tail('gpu_log.csv'):
         parts = [p.strip() for p in line.split(',')]
         try:
-            out.append(float(parts[2].rstrip(' %')))
+            when = dt.strptime(parts[0][:16], '%Y/%m/%d %H:%M').strftime('%Y-%m-%dT%H:%M')
+            out.append({'v': float(parts[2].rstrip(' %')), 'who': seen.get(when, '')})
         except (IndexError, ValueError):
             continue
     return out

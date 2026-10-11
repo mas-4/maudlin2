@@ -20,6 +20,7 @@ does, so the card's effects run smoothly in between. deploy/systemd/rgb-off.serv
 after a wake, should this not be running.
 
 Run: python -m app.lights"""
+import os
 import subprocess
 import time
 from datetime import datetime as dt
@@ -32,6 +33,7 @@ GPU = 'MSI GeForce RTX 3080 Gaming Z Trio LHR'
 BOARD = 'MSI PRO Z790-P WIFI (MS-7E06)'
 DAY, NIGHT = 8, 23  # hours: the lights work from DAY until NIGHT
 LOOK = 2.0  # seconds between looks at the GPU and the machine's state
+LOG, LOG_KEEP = 'lights_log.csv', 1440  # who had the GPU each minute, the last day of it
 HOT, LIMIT = 85, 93  # degrees C: the card runs at ~83 under load; its slowdown limit is 93
 
 AMBER, VIOLET, TEAL, IDLE = (255, 140, 0), (140, 60, 255), (0, 190, 170), (40, 80, 200)
@@ -60,6 +62,19 @@ def card() -> tuple[float, float]:
     out = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu,temperature.gpu', '--format=csv,noheader,nounits'],
                          capture_output=True, text=True, timeout=10).stdout.strip().split(',')
     return float(out[0]), float(out[1])
+
+
+def log(holder: str, load: float):
+    """A line in LOG: when, who had the GPU, its load; kept to its last LOG_KEEP lines"""
+    from app.utils import Config
+    path = os.path.join(Config.data, LOG)
+    with open(path, 'a') as f:
+        f.write(f"{dt.now().isoformat(timespec='seconds')},{holder},{load:.0f}\n")
+    if os.path.getsize(path) > LOG_KEEP * 40:
+        with open(path) as f:
+            lines = f.readlines()[-LOG_KEEP:]
+        with open(path, 'w') as f:
+            f.writelines(lines)
 
 
 def mix(a, b, t: float):
@@ -107,7 +122,7 @@ def main():
     logger.info("Lights: %s", ', '.join(devices))
     from app import worker
     start = worker.commit()
-    shown, shown_at, smooth = None, 0.0, 0.0
+    shown, shown_at, smooth, logged = None, 0.0, 0.0, 0.0
     while True:
         if worker.commit() != start:  # the hourly run pulled new code: exit, and systemd starts this again on it
             logger.info("Lights: new code; exiting so systemd starts them again on it")
@@ -118,6 +133,9 @@ def main():
             # average
             smooth += (load - smooth) * LOOK / 20
             state = {'who': who(), 'load': smooth, 'temp': temp, 'failed': failed()}
+            if time.time() - logged >= 60:  # who had the GPU, a minute a line, for the desktop widget's sparkline
+                log(state['who'], load)
+                logged = time.time()
             d = dt.now()
             now = look(state, d.hour + d.minute / 60)
             if now != shown or time.time() - shown_at > 60:  # again each minute: after a wake rgb-off has set it dark
