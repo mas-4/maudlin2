@@ -54,6 +54,9 @@ CODENAMES = {
     'G1': ('Mother Goose', 'what each kind of tale is'),
     'G2': ('Noah', 'sorting into groups'),
     'M1': ('the Changeling', 'one model swapped for another'),
+    'F1': ('the Gordian Knot', 'cut the motif where it holds two tellings'),
+    'F2': ('Cerberus', 'one claim, several heads: the motifs the machine missed'),
+    'F3': ("Ma'at", 'the same feather every week: a fixed yardstick for the machine'),
 }
 
 

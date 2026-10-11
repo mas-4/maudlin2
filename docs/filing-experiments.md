@@ -574,6 +574,34 @@ the transitions"): 53 new events, 36 updates.
 
 Gemma is the one to split stories with; a quarter of updates called new means a split needs more than its word (S2).
 
+### The Gordian Knot: splitting a motif where it holds two tellings (Oct 11) — not with words
+
+The person's corrections from Oct 8 to 11: of 2,102 filings checked, 1,790 kept (85%) and 312 taken out, spread over
+152 motifs (the 15 worst only 27% of them); 312 claims added to a second motif the machine had missed ("also"); and
+225 new motifs carved out of claims, 252 of those claims taken out of a motif the machine had forced them into because
+the right one didn't exist yet. Atropos's seams (the TF-IDF normalized cut that found two events in a story 18 of 18
+times under 0.6) were replayed on the motifs carved from, each as it stood just before (the index's saved versions).
+
+- **Odd one out:** the claim the person carved out was the motif's least alike claim 11% of 123 times, below the 14%
+  chance gives; among its two least alike 25%. Words can't tell which claim doesn't belong.
+- **Seams:** the best cut's score tells the 54 motifs carved from from 35 of 6+ claims never carved at AUC 0.67. Under
+  Atropos's 0.6 line fall 32 of the 54 carved and 15 of the 35 never carved: too many false alarms to propose splits.
+- Only 3 motifs lost 2+ claims together; the best cut kept them on one side 83% of the time (too few to say).
+
+Why: a story's two events differ in their words; a motif's two tellings share the topic's words and differ in shape.
+Splitting motifs needs meaning, not words: the Sorcerer's Apprentice (Gemma reading a broad motif's claims and naming
+the tellings inside) is the test of that, and an embeddings arm of this replay would need the GPU (claims' embeddings
+are cached four days only). `scripts/experiments/f1_gordian_knot.py`.
+
+### Planned (Oct 11): Cerberus and Ma'at
+
+- **Cerberus: the motifs the machine missed.** For each of the person's 312 "also" corrections, was the motif they
+  added already in the claim's shortlist (top 8, 12, 40)? If usually, asking the judge for a second motif is cheap; if
+  not, the shortlist is where a second motif gets lost. Rebuilding shortlists needs the GPU, under the lease.
+- **Ma'at: a fixed yardstick.** 200 of the person's checks set aside and never trained on; each new version of the
+  models refiles them weekly under the lease, one number that means the same thing every week. The daily kept rate
+  moves with what the person chooses to check; this doesn't. Costs 200 checks of training data.
+
 ### The learned shortlist in production (Oct 8)
 motif_retriever.train_learned: the harness's weighting over every live signal ('today', the FACTS, motif_signals.CHEAP
 with the news out and the layers), trained on the person's 428 confirmed claims, each held out of its motifs. Its own

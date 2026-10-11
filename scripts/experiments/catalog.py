@@ -32,7 +32,7 @@ create table if not exists files (path text primary key, code text, bytes intege
 FAMILIES = {'E': 'the shortlist: finding a claim\'s motifs', 'J': 'the judge', 'C': 'a cascade', 'R': 'the reranker',
             'W': 'wording claims', 'G': 'genre and group descriptions', 'M': 'one model for another',
             'P': 'proposals and praxis', 'D': 'ideas from the research', 'A': 'archives: our method on outside material',
-            'S': 'stories and sagas', 'U': 'the machine alone, without curation', 'ASR': 'transcription'}
+            'S': 'stories and sagas', 'F': 'filing: fewer corrections for the person', 'U': 'the machine alone, without curation', 'ASR': 'transcription'}
 # code: (name, script, status, data, result)
 REGISTRY = {
     'A1': ('Our pipeline on 1,518 ATU-labelled folktales', 'a1_folktales.py', 'answered',
@@ -73,6 +73,11 @@ REGISTRY = {
            's3_story_similarity.json; s3_day.json', ''),
     'S4': ('Seams in stories: embeddings, then TF-IDF cuts', 's4_story_seams.py', 'answered', 's4_story_seams.json',
            'cuts scoring under 0.6 right 18 of 18, 0.6-0.7 69%, over 0.8 rarely'),
+    'F1': ('Splitting motifs where they hold two tellings: Atropos\'s word cut on motifs', 'f1_gordian_knot.py',
+           'answered', 'f1_gordian_knot.json; curation.sqlite (the index\'s versions)',
+           'no: words can\'t see it (odd one out 11% against chance 14%; cut AUC 0.67)'),
+    'F2': ('The motifs the machine missed: was your "also" in the shortlist?', '', 'planned', '', ''),
+    'F3': ('A fixed yardstick: 200 held-out checks refiled by each version of the models', '', 'planned', '', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'planned', 'u1_uncurated.json (split); archives/u1', ''),
     'U1': ('The machine alone: our filing from an empty index', 'u1_uncurated.py', 'running',
