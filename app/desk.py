@@ -123,6 +123,11 @@ def claims_line() -> str:
     return f"🗂 filings today: {sum(d.startswith(today) for d in dates)} · newest {newest or 'none'}"
 
 
+def tokens_line() -> str:
+    used, cost = tokens_today()
+    return f'🪙 tokens today: {used} · rented, Gemma would cost {cost}'
+
+
 def machine_line() -> str:
     with open('/proc/uptime') as f:
         up = float(f.read().split()[0])
@@ -136,7 +141,7 @@ def machine_line() -> str:
 
 def panel() -> str:
     lines = [f"standingwater · {dt.now().strftime('%a %H:%M')}", '', lights_line(), KEY, '']
-    for part in (gpu_line, hourly_line, worker_line, lease_line, claims_line, experiment_lines, machine_line):
+    for part in (gpu_line, hourly_line, worker_line, lease_line, claims_line, tokens_line, experiment_lines, machine_line):
         try:
             got = part()
         except Exception as e:  # noqa: BLE001 - one part failing leaves the rest
@@ -178,6 +183,26 @@ def claims_words() -> str:
     today = dt.now().date()
     count = lambda day: sum(d.startswith(day.isoformat()) for d in dates)  # noqa: E731
     return f'{count(today)} today · {count(today - td(days=1))} yesterday'
+
+
+def tokens_today() -> tuple[str, str]:
+    """(tokens today in words, what Gemma's share would cost rented) from the token log (app/analysis/token_log.py;
+    the person, Oct 11: deciding on rented compute for the archive experiments): read and written by every model so
+    far today, and Gemma 4 26B's at the cheapest per-token price"""
+    from app.analysis import token_log
+    rows = token_log.load(0)
+    if not rows:
+        return 'none logged yet', 'nothing yet'
+
+    def size(n):
+        return f'{n / 1e6:.1f}M' if n >= 1e6 else f'{n / 1e3:.0f}k'
+    read, written = sum(r[3] for r in rows), sum(r[4] for r in rows)
+    model, prices = next(iter(token_log.PRICES.items()))
+    a, b = next(iter(prices.values()))
+    gr, gw = sum(r[3] for r in rows if r[2] == model), sum(r[4] for r in rows if r[2] == model)
+    cost = (gr * a + gw * b) / 1e6
+    return f'{size(read)} read · {size(written)} written', (f'${cost:.2f} so far today' if cost >= 0.01
+                                                             else 'under 1¢ so far today')
 
 
 def lease_jobs() -> list[dict]:
@@ -255,7 +280,8 @@ def data() -> dict:
         out['gpu'] = {'util': util, 'temp': temp, 'mem': round(used / 1024, 1), 'mem_total': round(total / 1024, 1),
                       'power': round(power), 'models': models or 'no model loaded', 'history': load_history()}
     out['rows'] = [{'name': name, 'value': value} for name, value in (
-        ('Hourly run', hourly_words()), ('Worker', worker_words()), ('Claims filed', claims_words()))]
+        ('Hourly run', hourly_words()), ('Worker', worker_words()), ('Claims filed', claims_words()),
+        *zip(('Tokens today', 'If rented'), tokens_today()))]
     out['running'] = lease_jobs()
     out['machine'] = re.sub(r'^\S+ ', '', machine_line())
     out['lease'] = (gpu_lease.held() or {}).get('holder')

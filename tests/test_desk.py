@@ -24,3 +24,14 @@ def test_experiments_are_listed_by_their_lease_names_running_first(monkeypatch):
     monkeypatch.setattr(gpu_lease, 'held', lambda: {'holder': 's2-resort'})
     assert desk.lease_jobs() == [{'name': 's2-resort', 'state': 'running 16 min'},
                                  {'name': 's1-judge', 'state': 'waiting for the GPU, 104 min'}]
+
+
+def test_tokens_today_and_what_gemma_would_cost_rented(monkeypatch, tmp_path):
+    from datetime import datetime as dt
+    from app.analysis import token_log
+    monkeypatch.setattr(token_log, 'DIR', str(tmp_path))
+    assert desk.tokens_today() == ('none logged yet', 'nothing yet')
+    (tmp_path / f"{dt.now():%Y-%m-%d}.csv").write_text(
+        'x,show_claims,gemma4:26b,3000000,200000,9.0\n' 'x,stories,qwen3:8b,500000,10000,1.0\n')
+    # Gemma only, at the cheapest price: 3M x $0.07 + 0.2M x $0.34
+    assert desk.tokens_today() == ('3.5M read · 210k written', '$0.28 so far today')
