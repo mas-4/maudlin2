@@ -4,8 +4,10 @@
 # rainbow at boot and after sleep, so this sets them dark at boot and after every wake: the card in Direct mode set to
 # black (its own Off mode didn't take: it stayed on the rainbow), the board in static black (it has no Off). The Yeti X
 # mic is left alone: its light shows when it's muted.
-# Install (once): sudo ln -sf /home/mas/Repos/maudlin2/deploy/systemd/rgb-off.service /etc/systemd/system/ &&
-#                 sudo systemctl daemon-reload && sudo systemctl enable --now rgb-off.service
+# Install (and again after a change): a copy, not a link: a link into /home dangles at boot, when systemd reads its
+# units before /home is mounted (Oct 11: the linked unit never ran at boot)
+#   sudo rm -f /etc/systemd/system/rgb-off.service && sudo cp /home/mas/Repos/maudlin2/deploy/systemd/rgb-off.service
+#   /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable rgb-off.service
 Description=Turn the GPU and motherboard lighting off, at boot and after every wake
 After=systemd-modules-load.service suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
 
