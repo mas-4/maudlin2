@@ -1,8 +1,9 @@
 """The work after the site is built: transcription, the nightly narrative report, claims from the shows and the
-Focus Group, the radio running order, TV chyrons, filing claims in the motif index, their fits, the weekly reranker
-teaching and the nightly proposals. The hourly run did it all after its build until Oct 9; now the worker (app/worker.py)
-does it whenever the GPU is free, and the hourly run only when no worker is up (main.py). Each step has a budget, and
-none starts later than leaves `reserve` seconds of `limit` (FILING_RESERVE: kept for filing claims and their fits)."""
+Focus Group, the radio running order, TV chyrons, filing claims in the motif index, plain news filed again, their fits,
+the weekly reranker teaching and the nightly proposals. The hourly run did it all after its build until Oct 9; now the
+worker (app/worker.py) does it whenever the GPU is free, and the hourly run only when no worker is up (main.py). Each
+step has a budget, and none starts later than leaves `reserve` seconds of `limit` (FILING_RESERVE: kept for filing
+claims and their fits)."""
 import os
 import sys
 import time
@@ -20,6 +21,7 @@ CHYRON_BUDGET = 180  # seconds a run spends cleaning TV chyron OCR (about 45 min
 MOTIF_BUDGET = 300  # seconds a run spends filing claims in the motif index
 FIT_BUDGET = 240  # seconds a run spends scoring new filings (reranker and a yes/no from the filing model per filing)
 PROPOSAL_HOUR = 5  # the motif proposer's nightly run: after the 4 AM report and its first filings
+REFILE_HOUR = 3  # the watch list's plain news is filed again in this hour's runs (before the 4 AM report)
 TEACH_HOUR = 1  # the weekly reranker teaching starts in this hour's run (done by the 4 AM report)
 FILING_RESERVE = 600  # seconds kept back for filing claims and their fits, whatever the steps before them want
 
@@ -85,6 +87,15 @@ def process(limit: float, reserve: float = FILING_RESERVE, stop=None) -> None:
     from app.analysis import motif_index
     if (b := budget(MOTIF_BUDGET, 'Motif filing', keep=FIT_BUDGET)):
         motif_index.nightly(budget=b)
+    # Plain news filed again against the grown index, weekly (or when a later day tells it again): a few minutes, in
+    # the night's runs (watch_list.py)
+    if dt.now().hour == REFILE_HOUR and not reported:
+        try:
+            from app.analysis import watch_list
+            if (b := budget(watch_list.BUDGET, 'Plain news refiling', keep=FIT_BUDGET)):
+                watch_list.refile(budget=b)
+        except Exception as e:  # noqa: BLE001 - the next night tries again
+            logger.warning("Plain news refiling failed: %s", e)
     # How sure each new filing is (its fit: many signals weighed on the person's own decisions), for the checker
     if not reported:  # never in the report's run: it nears the 45-minute limit
         from app.analysis import filing_confidence

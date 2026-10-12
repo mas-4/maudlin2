@@ -611,8 +611,9 @@ def test_a_filing_keeps_the_story_its_claim_was_told_about(monkeypatch, tmp_path
 
 def test_a_story_lists_its_motifs_in_time_order_through_merges(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
-    from app.analysis import stories
+    from app.analysis import stories, watch_list
     monkeypatch.setattr(stories, 'merges', lambda: {7: 5})  # story 7 was folded into 5
+    monkeypatch.setattr(watch_list, 'STORE', str(tmp_path / 'watch.json'))
     mi.save({'next': 3, 'claims': {}, 'entries': {
         'M001': {'id': 'M001', 'name': 'Straight news', 'claims': [
             {'claim': 'Polls closed at eight', 'source': 'narrative', 'date': '2026-10-01', 'story': 5}]},

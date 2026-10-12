@@ -306,6 +306,46 @@ def record(c: dict, today: str) -> dict:
             'date': c.get('date') or today, **{f: c[f] for f in STORY_FIELDS if c.get(f) is not None}}
 
 
+class Shortlister:
+    """The motifs filing shows the judge for a claim: the learned shortlist (motif_retriever: every signal weighed, when
+    it tests better), the plain weights' without it, the closest 8 without either. Each claim's shape and layers are
+    asked first for all the claims at once, llm.PARALLEL at a time, and kept (save()). Shared by file_claims and the
+    watch list's refiling (watch_list.py)"""
+
+    def __init__(self, index: dict, claims: list[str], budget: float | None = None):
+        from app.analysis import motif_retriever
+        self.weights, self.vectors = motif_retriever.weights(), motif_retriever.Vectors()
+        self.learned = motif_retriever.learned() if self.weights else None
+        self.sig = None
+        if self.learned:
+            try:
+                from app.analysis import motif_signals
+                self.sig = motif_signals.Signals(index, self.vectors)
+                self.sig.prepare(claims, budget=budget)
+            except Exception as e:  # noqa: BLE001 - each claim asks its own
+                logger.warning("Motif filing: preparing the shortlists failed (%s)", e)
+                self.sig = None
+
+    def __call__(self, index: dict, claim: str) -> list[dict]:
+        from app.analysis import motif_retriever
+        if self.weights:
+            try:
+                if self.learned:
+                    ids = [e['id'] for e in live(index) if e['claims']]
+                    if self.sig is None or [e['id'] for e in self.sig.entries] != ids:  # a motif made or gone meanwhile
+                        from app.analysis import motif_signals
+                        self.sig = motif_signals.Signals(index, self.vectors)
+                    return motif_retriever.learned_shortlist(index, claim, self.sig, self.weights, self.learned)
+                return motif_retriever.shortlist(index, claim, self.vectors, self.weights)
+            except Exception as e:  # noqa: BLE001 - the closest 8 will do
+                logger.warning("Motif retriever failed (%s); the closest motifs instead", e)
+        return closest(index, claim)
+
+    def save(self):
+        if self.sig is not None:
+            self.sig.save()
+
+
 def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None = None) -> dict:
     """File each claim ({'claim', 'source': 'narrative' or a fact-checker's name, 'ref', 'side', and 'story' and
     'story_tie' when known}) under a motif, creating entries as needed. Claims already filed are left where they are.
@@ -318,19 +358,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     import time
     started = time.time()
     outcomes = Counter()  # for the metrics: each claim matched to motifs already there, given a new one, or none
-    # The shortlist the judge chooses from: the learned one (motif_retriever), or the closest 8 without its weights
-    from app.analysis import motif_retriever
-    weights, vectors = motif_retriever.weights(), motif_retriever.Vectors()
-    learned = motif_retriever.learned() if weights else None  # every signal weighed, when it tests better
-    sig = None
-    if learned:  # every claim's shape and layers asked first, llm.PARALLEL at once (kept for the shortlists below)
-        try:
-            from app.analysis import motif_signals
-            sig = motif_signals.Signals(index, vectors)
-            sig.prepare([c['claim'] for c in todo], budget=None if budget is None else budget / 2)
-        except Exception as e:  # noqa: BLE001 - each claim asks its own below
-            logger.warning("Motif filing: preparing the shortlists failed (%s)", e)
-            sig = None
+    lister = Shortlister(index, [c['claim'] for c in todo], budget=None if budget is None else budget / 2)
     for c in todo:
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
@@ -340,21 +368,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             index = load()
             if key(c['claim']) in index['claims']:
                 continue
-            shown = None
-            if weights:
-                try:
-                    if learned:
-                        ids = [e['id'] for e in live(index) if e['claims']]
-                        if sig is None or [e['id'] for e in sig.entries] != ids:  # a motif made or gone meanwhile
-                            from app.analysis import motif_signals
-                            sig = motif_signals.Signals(index, vectors)
-                        shown = motif_retriever.learned_shortlist(index, c['claim'], sig, weights, learned)
-                    else:
-                        shown = motif_retriever.shortlist(index, c['claim'], vectors, weights)
-                except Exception as e:  # noqa: BLE001 - the closest 8 will do
-                    logger.warning("Motif retriever failed (%s); the closest motifs instead", e)
-            if shown is None:
-                shown = closest(index, c['claim'])
+            shown = lister(index, c['claim'])
             named = name_claim(c['claim'], shown)
             if not named:
                 continue
@@ -382,8 +396,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             made = sum(1 for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1)
             outcomes['none' if not filed else 'new' if made else 'matched'] += 1
             save(index)
-    if sig is not None:
-        sig.save()  # the new claims' shapes and layers, asked once
+    lister.save()  # the new claims' shapes and layers, asked once
     if outcomes:
         os.makedirs(os.path.dirname(FILING_LOG), exist_ok=True)
         with open(FILING_LOG, 'a') as f:
@@ -599,7 +612,8 @@ def story_of_group(g: dict) -> dict:
 def story_motifs(story_id: int, index: dict | None = None) -> list[dict]:
     """Which motifs a story is told in, in time order: a row per filing of a claim tied to the story (or to a story
     since merged into it), {'date', 'claim', 'source', 'story_tie', 'motif', 'name', 'checked', 'plain'}; 'plain' marks
-    the plain report (filed in Straight news), the baseline the tellings are read against."""
+    the plain report (filed in Straight news, or with no motif: 'motif' None, from the watch list, which keeps the
+    words the index drops), the baseline the tellings are read against."""
     from app.analysis.stories import merges
     gone = merges()
     target = gone.get(int(story_id), int(story_id))
@@ -612,6 +626,12 @@ def story_motifs(story_id: int, index: dict | None = None) -> list[dict]:
                 rows.append({'date': c.get('date', ''), 'claim': c['claim'], 'source': c.get('source', ''),
                              'story_tie': c.get('story_tie'), 'motif': e['id'], 'name': e['name'],
                              'checked': c.get('checked'), 'plain': e['id'] == plain})
+    from app.analysis import watch_list  # claims with no motif: their words and story are kept there
+    for w in watch_list.load()['claims'].values():
+        if w.get('story') is not None and gone.get(int(w['story']), int(w['story'])) == target \
+                and index['claims'].get(w['key']) == []:
+            rows.append({'date': w.get('date', ''), 'claim': w['claim'], 'source': w.get('source', ''),
+                         'story_tie': w.get('story_tie'), 'motif': None, 'name': None, 'checked': None, 'plain': True})
     return sorted(rows, key=lambda r: (r['date'], r['claim'], r['motif'] or ''))
 
 
