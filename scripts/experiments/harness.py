@@ -1,7 +1,8 @@
 """The filing experiments' common ground (docs/filing-experiments.md): the person's confirmed claims (truth), every
 cheap signal against every motif for each (the claim held out of its motifs), and one way of scoring any new idea:
 a weighting learned on the other claims (grouped folds), then how many of the person's motifs land in the top 8 / 12 /
-20 / 40, and how many of the hard misses (outside today's top 40) it brings back.
+20 / 40, and how many of the hard misses (outside today's top 40) it brings back. Every figure comes with its 95%
+bootstrap interval (claims resampled 200 times), and every gain with the interval of the paired difference.
 
     from harness import load, evaluate
     data = load()                      # cached in maudlin-data/motifs/experiments
@@ -78,14 +79,18 @@ def _matrix(data: dict, k: str, feats: list[str], extra: dict) -> np.ndarray:
     return np.column_stack(cols)
 
 
-def ranks(data: dict, extra: dict | None = None, feats: list[str] | None = None, folds: int = 5) -> dict:
-    """Each claim's ranking of every motif by a weighting learned on the other claims: {claim key: rank array}"""
+def ranks(data: dict, extra: dict | None = None, feats: list[str] | None = None, folds: int = 5,
+          seed: int | None = None) -> dict:
+    """Each claim's ranking of every motif by a weighting learned on the other claims: {claim key: rank array}. With
+    `seed`, the claims are dealt into folds in a shuffled order (the split's own noise)"""
     from sklearn.linear_model import LogisticRegression
     extra = extra or {}
     if feats is None:  # signals added since the cache was built (rebuild to have them) left out
         have = next(iter(data['claims'].values()))['signals']
         feats = [f for f in BASE if f in have]
     keys = sorted(data['claims'])
+    if seed is not None:
+        np.random.default_rng(seed).shuffle(keys)
     out = {}
     for f in range(folds):
         test = set(keys[f::folds])
@@ -116,16 +121,57 @@ def misses(data: dict, rk: dict, K: int = 40) -> set:
     return {(k, m) for k, r in rk.items() for m in data['claims'][k]['truth'] if r[at[m]] >= K}
 
 
-def evaluate(data: dict, extra: dict | None = None, feats: list[str] | None = None, label: str = '') -> dict:
-    """The learned weighting with and without `extra` signals: recall at each K, and the hard misses brought back"""
+BOOTS = 200  # Oct 12 (Fable's review, Tyche): every recall figure with a 95% interval, claims resampled
+
+
+def _hits(data: dict, rk: dict, keys: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """Per claim: how many of the person's motifs it has, and how many of them are in the top K, for each K"""
+    at = data['at']
+    n = np.array([len(data['claims'][k]['truth']) for k in keys], dtype=float)
+    h = np.array([[sum(rk[k][at[m]] < K for m in data['claims'][k]['truth']) for K in KS] for k in keys], dtype=float)
+    return n, h
+
+
+def interval(data: dict, rk: dict, other: dict | None = None, boots: int = BOOTS, seed: int = 0) -> dict:
+    """The 95% bootstrap interval of recall at each K: claims drawn with replacement `boots` times (a claim's motifs
+    travel together), the ranks held fixed. With `other` (a second arm's ranks over the same claims), the interval of
+    its recall minus this one's, on the same draws: {K: (low, high)}"""
+    keys = sorted(rk)
+    n, h = _hits(data, rk, keys)
+    h2 = _hits(data, other, keys)[1] if other is not None else None
+    rng = np.random.default_rng(seed)
+    out = np.empty((boots, len(KS)))
+    for b in range(boots):
+        pick = rng.integers(0, len(keys), len(keys))
+        tot = n[pick].sum()
+        out[b] = (h2[pick].sum(0) - h[pick].sum(0)) / tot if h2 is not None else h[pick].sum(0) / tot
+    lo, hi = np.percentile(out, [2.5, 97.5], axis=0)
+    return {K: (round(float(lo[i]), 3), round(float(hi[i]), 3)) for i, K in enumerate(KS)}
+
+
+def evaluate(data: dict, extra: dict | None = None, feats: list[str] | None = None, label: str = '',
+             boots: int = BOOTS) -> dict:
+    """The learned weighting with and without `extra` signals: recall at each K, and the hard misses brought back.
+    Each recall with its 95% bootstrap interval over claims, and the gain with the interval of the paired difference
+    (the same draws for both arms); boots=0 for none"""
     base = ranks(data, feats=feats)
     new = ranks(data, extra, feats=feats)
     b, n = recall(data, base), recall(data, new)
     mb, mn = misses(data, base), misses(data, new)
     out = {'label': label, 'base': b, 'with': n, 'misses before': len(mb), 'misses after': len(mn),
            'brought back': len(mb - mn), 'newly missed': len(mn - mb)}
-    line = (f"{label or 'experiment'}: top-12 {b[12]:.1%} -> {n[12]:.1%}; top-8 {b[8]:.1%} -> {n[8]:.1%}; "
-            f"top-40 {b[40]:.1%} -> {n[40]:.1%}; misses {len(mb)} -> {len(mn)} (back {len(mb - mn)}, new {len(mn - mb)})")
+    if boots:
+        bi, ni, gi = interval(data, base, boots=boots), interval(data, new, boots=boots), interval(data, base, new, boots=boots)
+        out.update({'base interval': bi, 'with interval': ni, 'gain interval': gi})
+
+        def fig(K):
+            return (f"top-{K} {b[K]:.1%} [{bi[K][0]:.1%}-{bi[K][1]:.1%}] -> {n[K]:.1%} [{ni[K][0]:.1%}-{ni[K][1]:.1%}] "
+                    f"(gain {n[K] - b[K]:+.1%}, {gi[K][0]:+.1%} to {gi[K][1]:+.1%})")
+    else:
+        def fig(K):
+            return f"top-{K} {b[K]:.1%} -> {n[K]:.1%}"
+    line = (f"{label or 'experiment'}: {fig(12)}; {fig(8)}; {fig(40)}; "
+            f"misses {len(mb)} -> {len(mn)} (back {len(mb - mn)}, new {len(mn - mb)})")
     print(line, flush=True)
     note(line)
     return out

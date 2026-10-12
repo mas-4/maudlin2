@@ -67,6 +67,7 @@ CODENAMES = {
     'F11': ('the Danaids', 'condemned to fill leaking jars: how much the confidence model leaks'),
     'F12': ('Prometheus', 'forethought: what the machine shows a claim before anyone has judged it'),
     'F13': ('Persephone', 'the seed that comes back up: motifs with no claims let into the shortlist'),
+    'F14': ('Tyche', 'Fortune: how much of a gain is chance'),
 }
 
 

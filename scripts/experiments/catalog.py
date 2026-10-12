@@ -98,6 +98,9 @@ REGISTRY = {
     'F12': ('The shortlist forward: what each new claim is shown, against the final word', 'f12_prometheus.py',
             'running', 'motifs/shortlist_log.jsonl', ''),
     'F13': ('Seeds let into the shortlist', 'f12_prometheus.py', 'running', 'motifs/shortlist_log.jsonl', ''),
+    'F14': ('Bootstrap intervals in the harness; the Oct 8-10 gains read again', 'f14_tyche.py', 'answered',
+            'f14_tyche.json', 'Babel clears the noise (+2.9, +1.7 to +4.2); Matryoshka did on Oct 8 but adds 0.2 now; '
+            'the Pleiades inside the fold-split noise'),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
