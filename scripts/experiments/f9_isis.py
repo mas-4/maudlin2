@@ -12,7 +12,9 @@ On the posts behind the Chimera's claims (from Bluesky and Mastodon, filed by th
               confidence model's chance the person keeps each); a post goes to its best motif when that's past FILE
     report    within a claim's posts, how many different motifs they go to (3+ motifs claims against one-motif ones);
               how many of the person's motifs for the claim some post reaches, and how many of the posts land in one of
-              them; and the reverse groups: motifs that gather posts from several of today's groups
+              them; and the reverse groups: motifs that gather posts from several of today's groups. Also, after
+              Fable (Oct 12): read at the lines 0.3 and 0.7 too; and for groups whose posts reach 2+ of the person's
+              motifs, whether some post carries 2+ of them (layers of one telling) or each post one (stitched)
 
     f9_isis.py ask | file | report      under the GPU lease (lease 'isis-ask', 'isis-file')"""
 import json
@@ -35,6 +37,7 @@ from app.analysis import motif_retriever as mr  # noqa: E402
 OUT = os.path.join(harness.EXP, 'f9_isis.json')
 MODEL = 'gemma4:26b'
 FILE = 0.5  # the confidence model's chance the person keeps it, for a post to go to a motif
+LINES = (0.3, 0.5, 0.7)  # the report read at these too: the model has never seen a single post (Fable)
 PROMPT = """A post someone wrote:
 {post}
 
@@ -105,35 +108,53 @@ def file():
     save(state)
 
 
-def report():
-    state = saved()
+def tally(state: dict, line: float) -> dict:
+    """The report's numbers with a post going to its best motif when the fit is at least `line`."""
     said, filed = state['said'], state['filed']
 
-    def motif_of(post: str) -> str | None:
+    def motifs_of(post: str) -> list[str]:  # every motif past the line among the post's top 3, best first
         c = said.get(post)
-        best = (filed.get(c) or [[None, 0]])[0] if c else [None, 0]
-        return best[0] if best[1] >= FILE else None
+        return [eid for eid, v in (filed.get(c) or []) if v >= line] if c else []
     spread = defaultdict(list)  # kind -> distinct motifs a group's posts go to
     reach, onto, claimless, unfiled = [], [], [], []
+    layered = stitched = 0  # groups whose posts reach 2+ of the person's motifs: in one post, or only across posts
     gather = defaultdict(set)  # motif -> the groups whose posts it gathers
     for claim, g in state['groups'].items():
-        got = [motif_of(t) for t in g['posts'] if t in said]
-        claimless.append(np.mean([said[t] is None for t in g['posts'] if t in said]))
-        placed = [x for x in got if x]
-        unfiled.append(1 - len(placed) / max(1, sum(1 for t in g['posts'] if said.get(t))))
+        posts = [t for t in g['posts'] if t in said]
+        claimless.append(np.mean([said[t] is None for t in posts]) if posts else 0)
+        tops = [motifs_of(t) for t in posts]
+        placed = [m[0] for m in tops if m]
+        unfiled.append(1 - len(placed) / max(1, sum(1 for t in posts if said.get(t))))
         spread[g['kind']].append(len(set(placed)))
         if placed:
             reach.append(len(set(placed) & set(g['motifs'])) / len(g['motifs']))
             onto.append(np.mean([x in g['motifs'] for x in placed]))
+        theirs = [set(m) & set(g['motifs']) for m in tops]
+        if len(set().union(*theirs, set())) >= 2:
+            if any(len(x) >= 2 for x in theirs):
+                layered += 1
+            else:
+                stitched += 1
         for x in placed:
             gather[x].add(claim)
-    across = sum(1 for gs in gather.values() if len(gs) >= 2)
-    out = {'groups': {k: len(v) for k, v in spread.items()},
-           'distinct motifs a group': {k: round(float(np.mean(v)), 2) for k, v in spread.items()},
-           'claimless posts': round(float(np.mean(claimless)), 3), 'claims unfiled': round(float(np.mean(unfiled)), 3),
-           "person's motifs reached": round(float(np.mean(reach)), 3), "posts onto the person's motifs": round(float(np.mean(onto)), 3),
-           'motifs gathering 2+ groups': across, 'motifs reached': len(gather),
-           'biggest gatherings': Counter({m: len(g) for m, g in gather.items()}).most_common(10)}
+    return {'line': line, 'groups': {k: len(v) for k, v in spread.items()},
+            'distinct motifs a group': {k: round(float(np.mean(v)), 2) for k, v in spread.items()},
+            'claimless posts': round(float(np.mean(claimless)), 3),
+            'claimless by kind': {k: round(float(np.mean([c for c, g in zip(claimless, state['groups'].values())
+                                                          if g['kind'] == k])), 3) for k in spread},
+            'claims unfiled': round(float(np.mean(unfiled)), 3),
+            "person's motifs reached": round(float(np.mean(reach)), 3) if reach else 0,
+            "posts onto the person's motifs": round(float(np.mean(onto)), 3) if onto else 0,
+            'layered groups': layered, 'stitched groups': stitched,
+            'motifs gathering 2+ groups': sum(1 for gs in gather.values() if len(gs) >= 2), 'motifs reached': len(gather),
+            'biggest gatherings': Counter({m: len(g) for m, g in gather.items()}).most_common(10)}
+
+
+def report():
+    state = saved()
+    out = tally(state, FILE)
+    out['at other lines'] = {str(x): {k: v for k, v in tally(state, x).items() if k != 'biggest gatherings'}
+                             for x in LINES if x != FILE}
     state['report'] = out
     save(state)
     reached, landed = out["person's motifs reached"], out["posts onto the person's motifs"]
@@ -142,7 +163,12 @@ def report():
             f"a group's posts go to {out['distinct motifs a group'].get('3+ motifs', 0)} different motifs where the person "
             f"filed its claim in 3+, {out['distinct motifs a group'].get('one motif', 0)} where in one; the posts reach "
             f"{reached:.0%} of the person's motifs for the claim, and {landed:.0%} of the posts filed land in one of them; "
-            f"{across} of {len(gather)} motifs gather posts from 2+ groups (the reverse grouping)")
+            f"{out['motifs gathering 2+ groups']} of {out['motifs reached']} motifs gather posts from 2+ groups (the "
+            f"reverse grouping); of groups whose posts reach 2+ of the person's motifs, {out['layered groups']} have a "
+            f"post carrying 2+ (layers of one telling), {out['stitched groups']} only across posts (stitched)")
+    for x, t in out['at other lines'].items():
+        reached, landed = t["person's motifs reached"], t["posts onto the person's motifs"]
+        line += f"; at {x}: reach {reached:.0%}, onto {landed:.0%}, unfiled {t['claims unfiled']:.0%}"
     print(line, flush=True)
     harness.note(line)
 
