@@ -9,3 +9,5 @@ ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python -m app.gpu_lease run --minut
 # and the torn set (fit 0.3-0.7 at decision time), where the model's learning shows (Oct 12, from Fable's review)
 ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python -m app.gpu_lease run --minutes 120 --holder maat-torn -- /home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/f3_maat.py torn
 Nice=5
+# and the week's forward shortlist log against the person's final word (Prometheus, Persephone; CPU)
+ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/f12_prometheus.py 7

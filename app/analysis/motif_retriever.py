@@ -34,6 +34,9 @@ WEIGHTS = f'{Config.data}/motif_retriever.json'
 FACTS = ['text', 'name and note', 'nearest claim', 'center of claims', 'size', 'tree']
 SHOWN = 8  # motifs by score
 TREE_MORE = 6  # ...and up to this many of what they rest on and what rests on them
+SEEDS = 2  # ...and up to this many seeds: the person's motifs with no claims yet, by likeness to name and note alone
+# (Oct 12, Persephone: every shortlist was built from motifs with claims, so a seed could never be offered, against the
+# praxis's reason for seeding. Not through the learned weights, which lift empty motifs they never saw: see Jack)
 RETRAIN = td(days=1)
 MIN_FILINGS = 100  # confirmed filings needed to train
 EMBED_DIM = 1024  # mxbai-embed-large; the static fallback model's vectors aren't what the weights were trained on
@@ -156,7 +159,17 @@ def shortlist(index: dict, claim: str, vec: Vectors, w: dict) -> list[dict]:
     top = order[:SHOWN]
     tree = _tree(entries, {e['id']: n for n, e in enumerate(entries)})
     more = sorted({x for m in top for x in tree[m] if x not in top and alike[x]}, key=lambda x: -score[x])[:TREE_MORE]
-    return [entries[i] for i in top + more]
+    return [entries[i] for i in top + more] + seeds(index, claim, vec)
+
+
+def seeds(index: dict, claim: str, vec, n: int = SEEDS) -> list[dict]:
+    """The person's seeds (done, no claims yet) most like the claim by name and note, each at least SHOWN_FLOOR alike"""
+    k = mi.key(claim)
+    empty = [e for e in mi.live(index) if not e['claims'] and 'done' in e and k not in e.get('not_claims', [])]
+    if not empty or n <= 0:
+        return []
+    like = vec([mi.described(e) for e in empty]) @ vec([claim])[0]
+    return [empty[i] for i in np.argsort(-like)[:n] if like[i] >= mi.SHOWN_FLOOR]
 
 
 LEARNED = f'{Config.data}/motif_shortlist_learned.json'
@@ -261,7 +274,7 @@ def learned_shortlist(index: dict, claim: str, sig, w: dict, L: dict) -> list[di
     top = order[:SHOWN]
     tree = _tree(entries, {e['id']: n for n, e in enumerate(entries)})
     more = sorted({x for m in top for x in tree[m] if x not in top and alike[x]}, key=lambda x: -score[x])[:TREE_MORE]
-    return [entries[i] for i in top + more]
+    return [entries[i] for i in top + more] + (seeds(index, claim, sig.vec) if getattr(sig, 'vec', None) else [])
 
 
 def describe() -> str:

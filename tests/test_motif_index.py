@@ -540,3 +540,18 @@ def test_model_days_keep_each_days_last_test(tmp_path, monkeypatch):
     days = mi.model_days()
     assert days == [{'day': '2026-10-09', 'auc': 0.895, 'sure_at': 0.85, 'right_when_sure': 0.953},
                     {'day': '2026-10-10', 'top12': 0.88}]
+
+
+def test_seeds_reach_the_shortlist_by_name_and_note(monkeypatch):
+    from app.analysis import motif_retriever as mr
+    index = {'entries': {
+        'M1': {'id': 'M1', 'name': 'Weather', 'note': 'talk of the weather', 'claims': [], 'done': '2026-10-09'},
+        'M2': {'id': 'M2', 'name': 'Birds', 'note': 'birds', 'claims': [], 'done': '2026-10-09'},
+        'M3': {'id': 'M3', 'name': 'Graft', 'note': 'x', 'claims': [{'claim': 'a deal'}], 'done': '2026-10-09'},
+        'M4': {'id': 'M4', 'name': 'Drafted', 'note': 'the model made it', 'claims': []}},  # not the person's: not a seed
+        'claims': {}}
+    vecs = {'Weather (talk of the weather)': [1.0, 0.0], 'Birds (birds)': [0.0, 1.0], 'it rained all day': [0.9, 0.1]}
+    monkeypatch.setattr(mi, 'described', lambda e: f"{e['name']} ({e['note']})")
+    vec = lambda texts: np.array([vecs.get(t, [0.0, 0.0]) for t in texts])  # noqa: E731
+    got = [e['id'] for e in mr.seeds(index, 'it rained all day', vec)]
+    assert got == ['M1']  # Birds is too unlike (0.1, under the floor); Graft has claims; Drafted isn't a seed

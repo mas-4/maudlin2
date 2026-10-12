@@ -5,6 +5,15 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **Seeds can be filed into.** A seed (a motif the person makes with a name and note and no claims) was never offered
+  to the filing model: every shortlist was built from motifs with claims, so the praxis's reason for seeding didn't
+  hold (found in Fable's review). Now up to 2 of the person's seeds most like a new claim by name and note (at least
+  0.45 alike) join its shortlist, outside the learned weights, which lift motifs with no claims unearned (Jack). A
+  filing into a seed is never passed as sure. Measured weekly (Persephone).
+- **What each new claim is shown is logged** (`motifs/shortlist_log.jsonl`): the motifs shown, the seeds among them,
+  the pick, and the next motif number then, scored weekly against the person's final word (Prometheus). The
+  shortlist's held-out recall (86.5% at 12) is measured on filings it had already found; forward, on the Oct 8
+  weighting, it was about 60%, mostly motifs the person made after the claim arrived.
 - **Stories get a second pass: cut where their words fall apart.** The person's idea (Oct 11), tested as Atropos and
   Rumpelstiltskin: stories are still formed by meaning (mxbai embeddings, 0.80), then each story of 12+ outlets is
   compared by its headlines' words (TF-IDF fitted on the story's own processed headlines) and split at the cleanest

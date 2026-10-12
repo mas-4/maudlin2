@@ -277,6 +277,24 @@ def same_name(index: dict, phrase: str) -> str | None:
     return next((e['id'] for e in live(index) if norm(e['name']) == norm(phrase)), None)
 
 
+SHORTLIST_LOG = os.path.join(Config.data, 'motifs', 'shortlist_log.jsonl')
+
+
+def log_shortlist(index: dict, c: dict, shown: list[dict], named: dict):
+    """What a new claim was shown and what the filing model made of it, before anyone judged it (Oct 12, Prometheus,
+    from Fable's review: the shortlist's held-out recall is measured on filings it already found; this is the forward
+    record, scored weekly against the person's final word). 'next' is the next motif number then, so a motif the
+    person makes later is told from one that existed but wasn't shown. Never stops a filing"""
+    try:
+        with open(SHORTLIST_LOG, 'a') as f:
+            f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'key': key(c['claim']), 'claim': c['claim'],
+                                'source': c.get('source', ''), 'next': index['next'],
+                                'shown': [e['id'] for e in shown], 'seeds': [e['id'] for e in shown if not e['claims']],
+                                'picked': [e['id'] for e in named['existing']], 'new': named['new']}) + '\n')
+    except (OSError, KeyError, TypeError) as e:
+        logger.warning("Shortlist log: %s", e)
+
+
 def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None = None) -> dict:
     """File each claim ({'claim', 'source': 'narrative' or a fact-checker's name, 'ref', 'side'}) under a motif,
     creating entries as needed. Claims already filed are left where they are. Returns the index."""
@@ -328,6 +346,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             named = name_claim(c['claim'], shown)
             if not named:
                 continue
+            log_shortlist(index, c, shown, named)
             filed = [e['id'] for e in named['existing']]
             for e in named['existing']:
                 entry = index['entries'][e['id']]
