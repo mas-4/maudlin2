@@ -650,3 +650,23 @@ def test_older_filings_get_their_story_from_the_report_they_came_in(monkeypatch,
     assert (recs['The count was rigged']['story'], recs['The count was rigged']['story_tie']) == (12, 'same event')
     assert 'story' not in recs['No story here'] and recs['A checked rumor']['story'] == 30
     assert recs['Kept as it was']['story'] == 2  # never changed
+
+
+def test_a_hand_filing_and_a_fold_keep_the_claims_story(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    c = {'claim': 'the mayor took bribes', 'source': 'narrative', 'ref': '2026-10-05T08:17', 'story': 7,
+         'story_tie': 'same event', 'checked': 'yes'}
+    mi.save({'next': 3, 'claims': {mi.key(c['claim']): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Graft', 'claims': [c]},
+        'M002': {'id': 'M002', 'name': 'Cover-up', 'claims': []}}})
+    mi.file_by_hand({'claim': 'the mayor took bribes', 'source': 'narrative', 'ref': '2026-10-05T08:17'}, 'M002')
+    assert mi.load()['entries']['M002']['claims'][0]['story'] == 7  # from its other filing
+    mi.file_by_hand({'claim': 'a new one', 'source': 'Snopes', 'ref': 'x', 'story': 9}, 'M002')
+    assert mi.load()['entries']['M002']['claims'][-1]['story'] == 9  # from the claim given
+    index = mi.load()  # a kept claim with no story takes its variant's when they're folded
+    index['entries']['M002']['claims'].append({'claim': 'bribes for the mayor', 'source': 'narrative', 'checked': 'yes'})
+    index['claims'][mi.key('bribes for the mayor')] = ['M002']
+    mi.save(index)
+    mi.same_claim('a new one', 'bribes for the mayor')
+    kept = next(x for x in mi.load()['entries']['M002']['claims'] if x['claim'] == 'bribes for the mayor')
+    assert kept['story'] == 9 and kept['variants'][0]['story'] == 9

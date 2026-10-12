@@ -44,13 +44,36 @@ def kind_of(source: str) -> str:
     return {'narrative': 'posts', 'shows': 'shows', 'Focus Group': 'Focus Group'}.get(source, 'fact-checks')
 
 
+def authors() -> dict[tuple[str, str], int]:
+    """Who made each logged correction (the claim's words, the new words) -> 0 the person, 1 Claude with the person's
+    approval noted, 2 Claude alone (a curation session can't steer the claim writer by accident: the curation session's
+    note, Oct 12, after ~20 of its long "Posters say..." corrections reached the examples)"""
+    from app.analysis import curation_db
+    out = {}
+    try:
+        rows = curation_db.actions()
+    except Exception:  # noqa: BLE001 - no log: every correction counts as the person's
+        return out
+    for r in rows:
+        a, by = r['action'], (r.get('by') or '')
+        rank = 0 if not by else 1 if 'approved' in by else 2
+        for step in (a.get('steps') or []) if a.get('action') == 'batch' else [a]:
+            if isinstance(step, dict) and step.get('action') == 'correct':
+                out[(step.get('claim', ''), step.get('text', ''))] = rank
+    return out
+
+
 def examples(kind: str, index: dict | None = None, n: int = EXAMPLES) -> str:
-    """The person's latest corrections (✎) of claims from this kind of source, as the Brothers Grimm showed them"""
+    """The person's latest corrections (✎) of claims from this kind of source, as the Brothers Grimm showed them: the
+    ones they typed first, then Claude's they approved, then Claude's alone only to fill the n"""
     from app.analysis import motif_index as mi
     index = index if index is not None else mi.load()
     source = {mi.key(c['claim']): c.get('source', '') for e in index.get('entries', {}).values() for c in e.get('claims', [])}
     fixes = [(a, b) for a, b in index.get('corrections', {}).items()
-             if a != b and len(a) < 400 and len(b) < 400 and mi.key(b) in source and kind_of(source[mi.key(b)]) == kind][-n:]
+             if a != b and len(a) < 400 and len(b) < 400 and mi.key(b) in source and kind_of(source[mi.key(b)]) == kind]
+    by = authors()
+    order = {fix: i for i, fix in enumerate(fixes)}  # the index keeps them oldest first
+    fixes = sorted(fixes, key=lambda f: (by.get(f, 0), -order[f]))[:n][::-1]  # the best n, then oldest first as before
     if not fixes:
         return ''
     return ('\nHow the person corrected claims from the same kind of source before (do as they did):\n'

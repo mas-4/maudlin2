@@ -1551,6 +1551,9 @@ def same_claim(variant: str, canonical: str):
                 crec['claim'] = canonical
                 e['claims'].append(crec)
             crec['variants'] = crec.get('variants', []) + vrec.get('variants', [])
+            if crec.get('story') is None and vrec.get('story') is not None:  # the variant's story, if the kept has none
+                crec.update({f: vrec[f] for f in STORY_FIELDS if vrec.get(f) is not None})
+            told.update({f: vrec[f] for f in STORY_FIELDS if vrec.get(f) is not None})
         if e.get('done') and kv in e['done']:
             e['done'] = sorted((set(e['done']) - {kv}) | {kc})
         if kv in e.get('not_claims', []):
@@ -1617,6 +1620,42 @@ def searchable_claims() -> list[dict]:
 
 
 @exclusive
+def story_for(claim: dict, index: dict) -> dict:
+    """A claim's story fields for a filing made by hand (the curation session, Oct 12: hand filings and 💡 new motifs
+    dropped them): from the claim given, else another filing of it, else the watch list, else (a posts claim) the
+    report it came in, its ref being the report's time"""
+    have = {f: claim[f] for f in STORY_FIELDS if claim.get(f) is not None}
+    if have:
+        return have
+    k = key(claim['claim'])
+    for eid in _ids(index, k):
+        for c in index['entries'].get(eid, {}).get('claims', []):
+            if key(c['claim']) == k and c.get('story') is not None:
+                return {f: c[f] for f in STORY_FIELDS if c.get(f) is not None}
+    try:
+        from app.analysis import watch_list
+        w = watch_list.load()['claims'].get(k) or {}
+        if w.get('story') is not None:
+            return {'story': w['story'], **({'story_tie': w['story_tie']} if w.get('story_tie') else {})}
+    except Exception:  # noqa: BLE001 - no watch list yet
+        pass
+    ref = claim.get('ref') or ''
+    if claim.get('source') == 'narrative' and ref:
+        import glob
+        from app import narratives
+        name = f'report-{ref[:10]}-{ref[11:13]}{ref[14:16]}*.json'  # 2026-10-05T08:17 -> report-2026-10-05-0817.json
+        for path in glob.glob(os.path.join(narratives.FOLDER, name)):
+            for g in read_json(path, {}).get('found', []):
+                said = (g.get('label') or {}).get('narrative')
+                if said and k in (key(said), key(corrected(said, index))):
+                    if not g.get('story'):  # the model left it untied: the story its posts link to
+                        known = narratives.articles([u for u, _ in g.get('shared') or []])
+                        g = {**g, 'story': narratives.linked_story(
+                            {'articles': [{**known[u], 'shares': n} for u, n in g.get('shared') or [] if u in known]})}
+                    return story_of_group(g)
+    return {}
+
+
 def file_by_hand(claim: dict, eid: str):
     """File a claim (one not in the index yet, or already elsewhere) under a motif a person chose"""
     index = load()
@@ -1626,7 +1665,8 @@ def file_by_hand(claim: dict, eid: str):
     k = key(claim['claim'])
     if not any(key(c['claim']) == k for c in entry['claims']):
         entry['claims'].append({'claim': claim['claim'], 'source': claim.get('source', ''), 'ref': claim.get('ref', ''),
-                                'date': dt.now().strftime('%Y-%m-%d'), 'checked': 'yes'})  # a person's filing
+                                'date': dt.now().strftime('%Y-%m-%d'), 'checked': 'yes',  # a person's filing
+                                **story_for(claim, index)})
     entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
     index['claims'][k] = list(dict.fromkeys(index['claims'].get(k, []) + [eid]))
     save(index)
