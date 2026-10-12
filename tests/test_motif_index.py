@@ -589,3 +589,58 @@ def test_seeds_reach_the_shortlist_by_name_and_note(monkeypatch):
     vec = lambda texts: np.array([vecs.get(t, [0.0, 0.0]) for t in texts])  # noqa: E731
     got = [e['id'] for e in mr.seeds(index, 'it rained all day', vec)]
     assert got == ['M1']  # Birds is too unlike (0.1, under the floor); Graft has claims; Drafted isn't a seed
+
+
+def test_a_filing_keeps_the_story_its_claim_was_told_about(monkeypatch, tmp_path):
+    """Oct 12: 'which motifs is story S told in, in time order' is a join on the filings"""
+    fresh(monkeypatch, tmp_path)
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(mi, 'closest', lambda index, claim: [])
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'motifs': ['Rigged count']})
+    index = mi.file_claims([{'claim': 'The count was rigged in Maricopa', 'source': 'narrative', 'story': 41,
+                             'story_tie': 'same event', 'date': '2026-10-10'},
+                            {'claim': 'They rigged it again', 'source': 'shows', 'date': '2026-10-11'}])
+    recs = {c['claim']: c for e in mi.live(index) for c in e['claims']}
+    assert recs['The count was rigged in Maricopa']['story'] == 41
+    assert recs['The count was rigged in Maricopa']['story_tie'] == 'same event'
+    assert 'story' not in recs['They rigged it again']  # a show's claim has none
+    assert mi.story_of_group({'story': {'label': 'x', 'relation': 'same issue', 'id': 9}}) == {'story': 9, 'story_tie': 'same issue'}
+    assert mi.story_of_group({'story': {'label': 'x', 'relation': 'same issue', 'id': None}}) == {}
+    assert mi.story_of_group({}) == {}
+
+
+def test_a_story_lists_its_motifs_in_time_order_through_merges(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    from app.analysis import stories
+    monkeypatch.setattr(stories, 'merges', lambda: {7: 5})  # story 7 was folded into 5
+    mi.save({'next': 3, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Straight news', 'claims': [
+            {'claim': 'Polls closed at eight', 'source': 'narrative', 'date': '2026-10-01', 'story': 5}]},
+        'M002': {'id': 'M002', 'name': 'Rigged count', 'claims': [
+            {'claim': 'The count was rigged', 'source': 'narrative', 'date': '2026-10-03', 'story': 7, 'checked': 'yes'},
+            {'claim': 'Another story', 'source': 'narrative', 'date': '2026-10-02', 'story': 6}]}}})
+    rows = mi.story_motifs(5)
+    assert [(r['date'], r['motif'], r['plain']) for r in rows] == [('2026-10-01', 'M001', True), ('2026-10-03', 'M002', False)]
+    assert mi.story_motifs(7) == rows  # asked by the gone id: the same story
+    assert mi.plain_news(mi.load()) == 'M001'
+
+
+def test_older_filings_get_their_story_from_the_report_they_came_in(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    from app import narratives
+    from app.analysis import factchecks
+    monkeypatch.setattr(narratives, 'FOLDER', str(tmp_path))
+    (tmp_path / 'report-2026-10-05-0817.json').write_text(json.dumps({'made': '2026-10-05T08:17', 'found': [
+        {'label': {'narrative': 'The count was rigged'}, 'story': {'label': 'x', 'relation': 'same event', 'id': 12}},
+        {'label': {'narrative': 'No story here'}, 'story': None}]}))
+    monkeypatch.setattr(factchecks, 'stories_of', lambda: {'https://check/1': 30})
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [
+        {'claim': 'The count was rigged', 'source': 'narrative', 'ref': '2026-10-05T08:17'},
+        {'claim': 'No story here', 'source': 'narrative', 'ref': '2026-10-05T08:17'},
+        {'claim': 'A checked rumor', 'source': 'Snopes', 'ref': 'https://check/1'},
+        {'claim': 'Kept as it was', 'source': 'Snopes', 'ref': 'https://check/1', 'story': 2}]}}})
+    assert mi.backfill_stories() == {'narrative': 1, 'fact-check': 1}
+    recs = {c['claim']: c for c in mi.load()['entries']['M001']['claims']}
+    assert (recs['The count was rigged']['story'], recs['The count was rigged']['story_tie']) == (12, 'same event')
+    assert 'story' not in recs['No story here'] and recs['A checked rumor']['story'] == 30
+    assert recs['Kept as it was']['story'] == 2  # never changed

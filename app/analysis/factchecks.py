@@ -63,6 +63,22 @@ def for_narratives(claims: dict[int, str], items: list[dict] | None = None) -> d
                max_new=200)
 
 
+def stories_of() -> dict[str, int]:
+    """Fact-check url -> the story it was tied to (for_stories) while that story was on a card, read from the story
+    pages' saved extras (page_headlines.STORY_EXTRAS), which keep every tie ever found; the most recently updated story
+    when more than one. Not STORY_CACHE: a tie cache keeps a run's answers as picks among that run's options, not
+    story ids. Checks tied only on the story pages (for_story_pages) aren't here: those ties last a run. For the motif
+    index's filings (motif_index.story_motifs)"""
+    from app.site.page_headlines import STORY_EXTRAS
+    out, when = {}, {}
+    for sid, extra in read_json(STORY_EXTRAS, {}).items():
+        for p in extra.get('factchecks') or []:
+            url, at = p.get('url'), extra.get('updated', '')
+            if url and sid.isdigit() and at >= when.get(url, ''):
+                out[url], when[url] = int(sid), at
+    return out
+
+
 # Each fact-check read the way the folklore narratives are (app/narratives.py: the same genres, Motif-Index
 # chapters and cast), so the rumors fact-checkers take on can be read beside what people retell. No verdicts: the
 # feeds' titles are often questions ("Was X...?"), and the model guessed ratings the checkers never gave (Oct 4);

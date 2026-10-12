@@ -296,9 +296,20 @@ def log_shortlist(index: dict, c: dict, shown: list[dict], named: dict):
         logger.warning("Shortlist log: %s", e)
 
 
+STORY_FIELDS = ('story', 'story_tie')  # carried onto the filing when the claim's source ties it to a story
+
+
+def record(c: dict, today: str) -> dict:
+    """A filing's claim record, with the story the claim was told about when its source ties it to one (see
+    story_motifs)"""
+    return {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'side': c.get('side'),
+            'date': c.get('date') or today, **{f: c[f] for f in STORY_FIELDS if c.get(f) is not None}}
+
+
 def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None = None) -> dict:
-    """File each claim ({'claim', 'source': 'narrative' or a fact-checker's name, 'ref', 'side'}) under a motif,
-    creating entries as needed. Claims already filed are left where they are. Returns the index."""
+    """File each claim ({'claim', 'source': 'narrative' or a fact-checker's name, 'ref', 'side', and 'story' and
+    'story_tie' when known}) under a motif, creating entries as needed. Claims already filed are left where they are.
+    Returns the index."""
     index = load()
     todo = [c for c in claims if c.get('claim') and key(c['claim']) not in index['claims']][:limit]
     if not todo or llm.backend() is None:
@@ -351,8 +362,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             filed = [e['id'] for e in named['existing']]
             for e in named['existing']:
                 entry = index['entries'][e['id']]
-                entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
-                                        'side': c.get('side'), 'date': c.get('date') or today})
+                entry['claims'].append(record(c, today))
                 entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
             for phrase in named['new'][:max(0, 3 - len(filed))]:
                 eid = same_name(index, phrase) or match(index, phrase, c['claim'])
@@ -364,8 +374,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
                     index['entries'][eid] = {'id': eid, 'name': phrase, 'curated': False, 'first_seen': today,
                                              'claims': [], 'phrases': []}
                 entry = index['entries'][eid]
-                entry['claims'].append({'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
-                                        'side': c.get('side'), 'date': c.get('date') or today})
+                entry['claims'].append(record(c, today))
                 entry['phrases'] = (entry.get('phrases', []) + [phrase])[-20:]
                 entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
                 filed.append(eid)
@@ -507,13 +516,17 @@ def nightly(budget: float | None = None):
         lab = g.get('label') or {}
         if lab.get('retold') and lab.get('narrative') and lab['narrative'] not in pulled and fits(lab):
             claims.append({'claim': corrected(lab['narrative'], index), 'source': 'narrative', 'ref': report.get('made', ''),
-                           'side': g.get('shared_side'), 'date': (report.get('made') or '')[:10]})
+                           'side': g.get('shared_side'), 'date': (report.get('made') or '')[:10], **story_of_group(g)})
     labels = factchecks.load_labels()
+    checked = factchecks.stories_of()
     for item in factchecks._items(factchecks.LABEL_DAYS):
         lab = labels.get(item['url']) or {}
         if lab.get('claim') and lab.get('genre') not in NOT_STORIES:  # a roundup or explainer checks no rumor
             claims.append({'claim': corrected(lab['claim'], index), 'source': item['source'], 'ref': item['url'],
-                           'date': item['published'][:10]})
+                           'date': item['published'][:10],
+                           **({'story': checked[item['url']]} if item['url'] in checked else {})})
+    # The Focus Group's and the shows' claims carry no story: an episode covers several, and nothing cheap says which
+    # one a claim is about
     from app.analysis import focus_group  # what voters say in focus groups: a source of its own
     claims += [{**c, 'claim': corrected(c['claim'], index)} for c in focus_group.claims()]
     from app.analysis import show_claims  # what's retold across the shows we transcribe
@@ -556,6 +569,92 @@ def fits(label: dict) -> bool:
         return True
     return label.get('genre') not in NOT_STORIES and label.get('family') not in (None, '', 'none')
 
+
+# Stories (Oct 12, the person's decision on Straight news): a filing keeps the story its claim was told about, so
+# "which motifs is story S told in, in time order" is a join, with the plain report as its baseline. A story id is a
+# row of the site database's story table (app/models.Story): one news event as covered across outlets, kept across the
+# hourly runs (each run's clusters continue the story that holds most of their headlines, and a story back on the front
+# pages under new headlines gets its old id back: app/analysis/stories.sync_stories). An id lasts unless the story is
+# folded into another (stories.merge_stories, by hand or a return the model missed); the gone id is kept in
+# story_merges.json and followed here. Labels get reworded, so ties are by id. A story isn't a saga: sagas are loose
+# clusters of stories by design (Story.saga_id). A narrative's tie is the model's, to one of the stories seen last
+# when the report was made ('story_tie': 'same event' or 'same issue', app/narratives.story_link); a fact-check's is
+# the one its card showed (factchecks.stories_of). The Focus Group's and the shows' claims carry none
+PLAIN_NEWS = 'Straight news'  # the motif for a plain report: a sink and a watch list, not a Perennial (Oct 12)
+
+
+def plain_news(index: dict) -> str | None:
+    """The Straight news motif's id, found by its name (never assumed)"""
+    return next((e['id'] for e in live(index) if e['name'].strip().lower() == PLAIN_NEWS.lower()), None)
+
+
+def story_of_group(g: dict) -> dict:
+    """A narrative report group's story tie as claim fields ({} when it has none or no id)"""
+    st = g.get('story') or {}
+    if st.get('id') is None:
+        return {}
+    return {'story': int(st['id']), **({'story_tie': st['relation']} if st.get('relation') else {})}
+
+
+def story_motifs(story_id: int, index: dict | None = None) -> list[dict]:
+    """Which motifs a story is told in, in time order: a row per filing of a claim tied to the story (or to a story
+    since merged into it), {'date', 'claim', 'source', 'story_tie', 'motif', 'name', 'checked', 'plain'}; 'plain' marks
+    the plain report (filed in Straight news), the baseline the tellings are read against."""
+    from app.analysis.stories import merges
+    gone = merges()
+    target = gone.get(int(story_id), int(story_id))
+    index = index if index is not None else load()
+    plain = plain_news(index)
+    rows = []
+    for e in live(index):
+        for c in e['claims']:
+            if c.get('story') is not None and gone.get(int(c['story']), int(c['story'])) == target:
+                rows.append({'date': c.get('date', ''), 'claim': c['claim'], 'source': c.get('source', ''),
+                             'story_tie': c.get('story_tie'), 'motif': e['id'], 'name': e['name'],
+                             'checked': c.get('checked'), 'plain': e['id'] == plain})
+    return sorted(rows, key=lambda r: (r['date'], r['claim'], r['motif'] or ''))
+
+
+def report_stories(index: dict) -> dict[str, dict[str, dict]]:
+    """Each saved narrative report's story ties, by the report's time (a narrative filing's ref): {made: {claim, in the
+    model's words and as corrected since: story fields}}"""
+    import glob
+    from app import narratives
+    out = {}
+    for path in glob.glob(os.path.join(narratives.FOLDER, 'report-*.json')):
+        report = read_json(path, {})
+        ties = out.setdefault(report.get('made', ''), {})
+        for g in report.get('found', []):
+            lab, st = g.get('label') or {}, story_of_group(g)
+            if lab.get('narrative') and st:
+                ties[lab['narrative']] = ties[corrected(lab['narrative'], index)] = st
+    return out
+
+
+@exclusive
+def backfill_stories() -> dict:
+    """Story ids for the filings made before filings kept them (Oct 12): a narrative's from the report it came in (its
+    ref is the report's time), a fact-check's from factchecks.stories_of(). Only adds: a filing's story is never
+    changed. How many records got one, by kind"""
+    from app.analysis import factchecks
+    index = load()
+    reports, checked = report_stories(index), factchecks.stories_of()
+    done = Counter()
+    for e in index['entries'].values():
+        for c in e.get('claims', []):
+            if c.get('story') is not None:
+                continue
+            if c.get('source') == 'narrative':
+                st = reports.get(c.get('ref', ''), {}).get(c['claim'])
+            else:
+                st = {'story': checked[c['ref']]} if c.get('ref') in checked else None
+            if st:
+                c.update(st)
+                done['narrative' if c.get('source') == 'narrative' else 'fact-check'] += 1
+    if done:
+        save(index)
+    logger.info("Motif index: story ids backfilled on %s", dict(done))
+    return dict(done)
 
 # Curation, from the organizer on the label-check page (scripts/validate.py). A curated name is kept as given; a
 # merged entry points to the one it joined, so its number still resolves; a deleted entry's claims are marked

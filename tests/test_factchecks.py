@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 
 from app.analysis import clustering, factchecks, llm
@@ -81,3 +83,14 @@ def test_robots_txt_is_read_under_our_own_name(monkeypatch):
     assert p.allowed('https://a.example/fact-check/x') and not p.allowed('https://a.example/private/y')
     assert not p.allowed('https://b.example/x') and p.allowed('https://c.example/x')
     assert set(seen.values()) == {ft.USER_AGENT}
+
+
+def test_a_fact_check_is_tied_to_the_story_its_card_showed(monkeypatch, tmp_path):
+    from app.site import page_headlines
+    path = tmp_path / 'extras.json'
+    path.write_text(json.dumps({
+        '10': {'factchecks': [{'url': 'u1'}, {'url': 'u2'}], 'updated': '2026-10-05T10:00'},
+        '11': {'factchecks': [{'url': 'u2'}], 'updated': '2026-10-06T10:00'},
+        '12': {'factchecks': [], 'updated': '2026-10-07T10:00'}}))
+    monkeypatch.setattr(page_headlines, 'STORY_EXTRAS', str(path))
+    assert factchecks.stories_of() == {'u1': 10, 'u2': 11}  # the most recently updated story

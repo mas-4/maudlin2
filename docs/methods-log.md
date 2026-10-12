@@ -5,6 +5,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **A filing keeps the story its claim was told about.** A narrative's claim carries the news story the report tied
+  it to (the model's tie, "same event" or "same issue"), a fact-check's the story whose card showed it; the Focus
+  Group's and the shows' claims carry none (an episode covers several stories, and nothing cheap says which). So
+  which motifs a story is told in, in time order, is a join (`motif_index.story_motifs`), with the plain report
+  (Straight news) as its baseline: the person's decision that Straight news is a sink and a watch list. A story id is
+  the site database's story, kept across hourly runs; a story folded into another is followed to it. Filings from
+  before today were given theirs from the reports they came in: 212 of 768 narrative filings and 25 fact-check
+  filings, over 81 stories.
 - **Claims are written short and plain, by the rules read from the person's corrections.** Every prompt that writes a
   claim (posts, shows, the Focus Group, fact-checks) now carries, after its own instruction, the rules read from the
   person's corrections, a rule to write one short plain sentence (usually under 20 words, what is claimed, not who
