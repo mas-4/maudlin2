@@ -703,7 +703,7 @@
         ${sure.length ? `<details class="wb-sure"${S.sureOpen ? ' open' : ''}><summary title="Filings at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept">🎯 ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested): look them over</span></summary>
           <p class="wb-faint">Untick any that don't fit, then pass the rest (one undoable step). An unticked one stays to check.</p>
           ${sure.map((x) => `<label class="wb-sureline"><input type="checkbox" checked data-suresel="${esc(x.claim + '|' + x.id)}">
-            ${fitChip(S.fits[x.claim + '|' + x.id])} ${chip(x.id)} <span>${esc(x.claim)}</span></label>`).join('')}
+            ${fitChip(S.fits[x.claim + '|' + x.id])} ${chip(x.id)} <button type="button" class="wb-surego" data-surego="${esc(x.claim)}" title="open it here, whole: every motif it's in, take this one out, move it, reword it">${esc(x.claim)} 🔍</button></label>`).join('')}
           <button class="wb-btn yes" data-passsure="1">✓ pass the ticked</button></details>` : ''}
         <span class="wb-checkbtns">
           <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
@@ -1306,6 +1306,14 @@
       return act(body, say);
     }
     if ((v = d('verdict'))) return verdict(v);
+    if ((v = d('surego'))) {  // a sure one opened whole, in place of the claim on screen (← comes back to that one)
+      ev.preventDefault();
+      if (S.checkHere && S.checkHere.claim !== v) { S.checkTrail = S.checkTrail || []; S.checkTrail.push(S.checkHere.claim); }
+      S.checkBack = null;
+      S.checkHere = {claim: v, source: ((motifsOf(v)[0] || {claims: []}).claims.find((c) => c.claim === v) || {}).source || ''};
+      S.sureOpen = false;
+      return renderInbox();
+    }
     if (d('passsure')) {  // the sure filings still ticked in the fold, passed in one undoable step
       const ticked = new Set([...document.querySelectorAll('[data-suresel]:checked')].map((b) => b.dataset.suresel));
       const sure = sureFilings().filter((x) => ticked.has(x.claim + '|' + x.id));
