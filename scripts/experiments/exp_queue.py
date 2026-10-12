@@ -7,7 +7,7 @@ each step is a row in the catalog's database (experiments.sqlite, table queue), 
 experiments' data. A step that fails is tried again (the experiments resume from what they saved) up to TRIES times.
 While any step is waiting or running the machine is kept awake (kde-inhibit, as the worker does).
 
-    exp_queue.py add CODE HOLDER [--minutes N] [--no-lease] [--after ID] -- command...     a step; its id
+    exp_queue.py add CODE HOLDER [--minutes N] [--no-lease] [--after ID] [--priority P] -- command...   a step
     exp_queue.py show                                                                       the queue, newest last
     exp_queue.py run                                                                        the service's loop"""
 import argparse
@@ -30,12 +30,14 @@ TRIES = 8
 POLL = 30
 SCHEMA = """create table if not exists queue (id integer primary key, code text, holder text, cmd text, minutes real,
     lease integer, after integer, status text, tries integer default 0, added text, started text, finished text,
-    exit integer)"""
+    exit integer, priority integer default 0)"""
 
 
 def connect() -> sqlite3.Connection:
     con = sqlite3.connect(DB, timeout=60)
     con.execute(SCHEMA)
+    if 'priority' not in {r[1] for r in con.execute('pragma table_info(queue)')}:
+        con.execute('alter table queue add column priority integer default 0')
     return con
 
 
@@ -43,11 +45,19 @@ def now() -> str:
     return dt.now().isoformat(timespec='seconds')
 
 
-def add(code: str, holder: str, cmd: list[str], minutes: float = 120, lease: bool = True, after: int | None = None) -> int:
+def add(code: str, holder: str, cmd: list[str], minutes: float = 120, lease: bool = True, after: int | None = None,
+        priority: int = 0) -> int:
     with connect() as con:
-        cur = con.execute('insert into queue (code, holder, cmd, minutes, lease, after, status, added) values '
-                          '(?, ?, ?, ?, ?, ?, ?, ?)', (code, holder, json.dumps(cmd), minutes, int(lease), after, 'waiting', now()))
+        cur = con.execute('insert into queue (code, holder, cmd, minutes, lease, after, status, added, priority) values '
+                          '(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                          (code, holder, json.dumps(cmd), minutes, int(lease), after, 'waiting', now(), priority))
         return cur.lastrowid
+
+
+def prioritize(sid: int, priority: int):
+    """A step (and the steps after it) taken before those of lower priority"""
+    with connect() as con:
+        con.execute('update queue set priority = ? where id = ? or after = ?', (priority, sid, sid))
 
 
 def show():
@@ -60,9 +70,10 @@ def show():
 
 
 def next_step(con: sqlite3.Connection) -> tuple | None:
-    """The oldest waiting step whose step before it is done; a step after a failed one is blocked"""
-    for row in con.execute('select id, holder, cmd, minutes, lease, after, tries from queue where status = ? order by id',
-                           ('waiting',)).fetchall():
+    """The oldest waiting step of the highest priority whose step before it is done; a step after a failed one is
+    blocked"""
+    for row in con.execute('select id, holder, cmd, minutes, lease, after, tries from queue where status = ? '
+                           'order by priority desc, id', ('waiting',)).fetchall():
         after = row[5]
         if after:
             before = con.execute('select status from queue where id = ?', (after,)).fetchone()
@@ -136,13 +147,14 @@ def main():
     a.add_argument('--minutes', type=float, default=120)
     a.add_argument('--no-lease', action='store_true')
     a.add_argument('--after', type=int)
+    a.add_argument('--priority', type=int, default=0)
     a.add_argument('cmd', nargs=argparse.REMAINDER)
     sub.add_parser('show')
     sub.add_parser('run')
     args = p.parse_args()
     if args.what == 'add':
         cmd = args.cmd[1:] if args.cmd[:1] == ['--'] else args.cmd
-        print(add(args.code, args.holder, cmd, args.minutes, not args.no_lease, args.after))
+        print(add(args.code, args.holder, cmd, args.minutes, not args.no_lease, args.after, args.priority))
     elif args.what == 'show':
         show()
     else:

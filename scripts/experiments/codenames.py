@@ -63,6 +63,7 @@ CODENAMES = {
     'F7': ('Procrustes', 'who stretched every guest to fit his bed: claims forced into the nearest motif'),
     'F8': ('the Chimera', 'lion, goat and serpent in one beast: several tellings stitched into one claim'),
     'F9': ('Isis', "who gathered Osiris's scattered pieces: single posts filed, then grouped by their motifs"),
+    'F10': ('Pandora', "the box opened: the tellings inside the person's biggest motifs"),
 }
 
 

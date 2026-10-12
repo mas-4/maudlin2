@@ -92,6 +92,8 @@ REGISTRY = {
     'F8': ('Are claims from posts several tellings stitched into one?', 'f8_chimera.py', 'answered', 'f8_chimera.json',
            'yes, nearly all: ~4 claims a group, 3+ motif and one-motif groups alike; motifs on different sub-claims 46 of 59'),
     'F9': ('Single posts filed on their own, then grouped by motif', 'f9_isis.py', 'queued', 'f9_isis.json', ''),
+    'F10': ("Pandora: the tellings inside the person's biggest motifs (a dry run)", 'f10_pandora.py', 'queued',
+            'f10_pandora.json', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
