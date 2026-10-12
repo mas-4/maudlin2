@@ -192,6 +192,11 @@ Plot's the sequence). Widen a note when its claims outgrow it (Some of you may d
 benefits while others pay); narrow it when it hides two motifs (Reward a loyal political figure, the Value, split from
 It's her turn, the Theory).
 
+**Not this (Oct 12).** A motif that keeps drawing the wrong claims can say what it isn't, in one line beside its note
+(the checker's 🚫 field): the filing model, the judge and the element drafter read it; likeness doesn't, so it never
+pulls the motif toward what it excludes. A related link can carry its reason the same way (✎ why? beside the link):
+"a case of it, not a sibling", "a rival telling", shown on the map and in the checker.
+
 ## Names
 
 The person likes classical and literary names (Caligula, Tommy, Mors omnia solvit, Potiphar's wife, Lucretia,
@@ -228,6 +233,13 @@ goods", "Ascension to official station", "Scandalous past hindering political re
 A motif idea with one telling or none is created at once as a motif with no claims (the checker's `add`), with its
 note, genre and groups (Oct 9: "there's no reason not to, it would help with the claim system"). The filing models can
 then find it when the next telling comes. The repetition bar governs how sure a filing is, not whether the motif exists.
+
+**Attested or placed (Oct 12).** At the motif level the bar is checked by occasions, not tellers: a posts claim already
+has many tellers, so what counts is whether the shape turns up about more than one event. Every motif carries `told`,
+counted hourly from its kept claims (`app/analysis/motif_told.py`): claims that read alike, come from the same
+fact-check or show claim, or share a rare name are one occasion. Two or more occasions is **attested**; one is
+**placed**, a shape seen about one event so far (eleven Cornell claims are one occasion). Placed motifs are drawn faint
+on the map; nothing about filing changes.
 
 ## Hierarchy
 

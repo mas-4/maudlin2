@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **Motifs count their occasions.** Each motif's kept claims are joined into occasions (alike by mxbai at 0.72, from
+  one fact-check or show claim, or sharing a name found in at most 25 of the index's claims and not a common word);
+  two or more occasions is attested, one is placed. Counted hourly after filing; the map draws placed motifs faint. On
+  Oct 12: 288 of 616 motifs attested. An estimate, from Fable's reading of the index against the praxis.
+- **A motif can say what it isn't** (`not_this`), read by the filing model, the judge and the element drafter; a
+  related link can carry the person's reason (`related_notes`). Neither changes anything until the person writes one.
 - **Seeds can be filed into.** A seed (a motif the person makes with a name and note and no claims) was never offered
   to the filing model: every shortlist was built from motifs with claims, so the praxis's reason for seeding didn't
   hold (found in Fable's review). Now up to 2 of the person's seeds most like a new claim by name and note (at least
