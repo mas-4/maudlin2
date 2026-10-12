@@ -181,9 +181,10 @@ a .nw-spike-label {
     cursor: pointer;
 }
 
-/* a phone held upright that can't lock to landscape: the chart turned a quarter to fill the screen sideways */
+/* full screen is always horizontal: whenever the screen is taller than wide (a phone held upright, locked to
+   landscape or not), the chart is turned a quarter to fill it sideways */
 @media (orientation: portrait) {
-    .nw-open:not(.nw-locked) .nw-stage {
+    .nw-open .nw-stage {
         inset: auto;
         top: 0;
         left: 100vw;

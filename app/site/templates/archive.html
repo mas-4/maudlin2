@@ -21,8 +21,9 @@
             {% endfor %}</ul>{% endif %}
         </figure>
         <script>
-            // Full screen, sideways: the browser's own full screen turned to landscape where the phone allows it
-            // (Android); where it doesn't (iPhone), the chart is turned a quarter by CSS (.nw-open, 580-newsiness.css)
+            // Full screen, always sideways: the browser's own full screen, landscape where the phone allows it
+            // (Android); and while the screen is still taller than wide, the chart is turned a quarter by CSS
+            // (.nw-open, 580-newsiness.css), so it's horizontal either way
             (function () {
                 const fig = document.getElementById('newsiness');
                 const open = async () => {
@@ -30,11 +31,11 @@
                     try {
                         if (fig.requestFullscreen) await fig.requestFullscreen();
                         if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
-                        fig.classList.add('nw-locked');  // turned by the phone: no CSS turn needed
-                    } catch (e) { /* the CSS turn does it */ }
+                    } catch (e) { /* no lock (an iPhone, a computer): the CSS turn does it */ }
                 };
                 const close = () => {
-                    fig.classList.remove('nw-open', 'nw-locked');
+                    fig.classList.remove('nw-open');
+                    if (screen.orientation && screen.orientation.unlock) try { screen.orientation.unlock(); } catch (e) { /* none held */ }
                     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
                 };
                 fig.querySelector('.nw-full').addEventListener('click', open);
