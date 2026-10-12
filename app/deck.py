@@ -81,9 +81,12 @@ def mood() -> list[tuple[str, float]]:
     return sorted(((e, n / total) for e, n in rows if e in MOODS), key=lambda x: -x[1])
 
 
-def gpu() -> tuple[str, float]:
-    from app import lights
-    return lights.who(), lights.card()[0]
+def gpu() -> tuple[str, float, str]:
+    """(who has it, load, and for an experiment its figure: 'Isis')"""
+    from app import desk, gpu_lease, lights
+    who = lights.who()
+    holder = (gpu_lease.held() or {}).get('holder') if who == 'experiment' else None
+    return who, lights.card()[0], desk.figure_of(holder).split(' · ')[0] if holder else ''  # the figure, not the step: it fits
 
 
 def look_up(state: dict):
@@ -216,8 +219,8 @@ def faces(state: dict, size: tuple, now: float) -> list:
     else:
         out.append(key(size, (60, 60, 70), '🌡', ['no mood']))
 
-    who, load = state.get('gpu') or ('idle', 0.0)
-    out.append(key(size, dim(GPU_TINTS.get(who, (60, 60, 70)), 0.6 + 0.4 * min(1, load / 100)), '🎛', [who],
+    who, load, *figure = state.get('gpu') or ('idle', 0.0)
+    out.append(key(size, dim(GPU_TINTS.get(who, (60, 60, 70)), 0.6 + 0.4 * min(1, load / 100)), '🎛', [(figure or [''])[0] or who],
                    f'{load:.0f}%'))
 
     left = state.get('party_until', 0) - now
