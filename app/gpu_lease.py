@@ -162,25 +162,27 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
                 print('gpu_lease: waiting for the worker to finish its step', flush=True)  # ran out of memory beside it)
             while _worker_busy() and h.left() > 0:
                 time.sleep(15)
-            began = time.time()
-            proc = subprocess.Popen(command)
-            while proc.poll() is None:
-                if h.left() <= 0:
-                    _stop(proc)
-                    print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
-                    return 124
-                if _hourly_run_going():
-                    _stop(proc)
-                    print('gpu_lease: the hourly run started; the command stopped, to start again after it', flush=True)
-                    break
-                if time.time() - began >= TURN * 60:
-                    _stop(proc)
-                    print(f'gpu_lease: {TURN} minutes run; the worker gets its turn, the command starts again after',
-                          flush=True)
-                    break
-                time.sleep(5)
-            else:
-                return proc.returncode
+            from app.worker import Awake  # an experiment keeps the machine awake while it runs (Oct 11-12: the night's
+            with Awake(after=0):  # experiments slept from 02:45; each hourly run woke the machine and put it back)
+                began = time.time()
+                proc = subprocess.Popen(command)
+                while proc.poll() is None:
+                    if h.left() <= 0:
+                        _stop(proc)
+                        print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
+                        return 124
+                    if _hourly_run_going():
+                        _stop(proc)
+                        print('gpu_lease: the hourly run started; the command stopped, to start again after it', flush=True)
+                        break
+                    if time.time() - began >= TURN * 60:
+                        _stop(proc)
+                        print(f'gpu_lease: {TURN} minutes run; the worker gets its turn, the command starts again after',
+                              flush=True)
+                        break
+                    time.sleep(5)
+                else:
+                    return proc.returncode
             left -= time.time() - began
             gave_way = time.time()
         if left <= 0:

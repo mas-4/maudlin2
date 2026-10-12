@@ -64,8 +64,12 @@ if [ "$woke" = 1 ]; then
     done | awk '$1 == "wayland" || $1 == "x11" {print $2}' | sort -u)
     # The worker in the middle of a cycle keeps the machine awake itself (app/worker.py); it lets it sleep when done
     worker_busy=$(.venv/bin/python -c 'from app import worker; print(int(worker.busy()))' 2>/dev/null || echo 0)
+    # An experiment under the GPU lease, running or waiting its turn, wants the night too (Oct 12: they slept from 02:45)
+    experiments=$(pgrep -fc "[a]pp.gpu_lease run" || true)
     if [ "$locked" = "yes" ] && [ "$worker_busy" = 1 ]; then
         echo "Woken by the timer and still locked, but the worker is busy: not suspending"
+    elif [ "$locked" = "yes" ] && [ "${experiments:-0}" -gt 0 ]; then
+        echo "Woken by the timer and still locked, but $experiments experiment(s) are running or waiting: not suspending"
     elif [ "$locked" = "yes" ]; then
         echo "Woken by the timer and still locked: suspending"
         systemctl suspend || echo "Suspend not allowed for this service (see logind/polkit)" >&2
