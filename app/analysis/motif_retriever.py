@@ -261,14 +261,20 @@ def learned(retrain: bool = False) -> dict | None:
     return L if t[f'learned top {LEARNED_TOP}'] > t[f'plain top {LEARNED_TOP}'] else None
 
 
+def learned_scores(sig, claim: str, w: dict, L: dict, leave_out: bool = False) -> tuple[np.ndarray, np.ndarray]:
+    """(each of sig's motifs scored against the claim by the learned weights, the plain FACTS): the one formula filing's
+    shortlist and the checker's suggestions (filing_confidence.Scorer.candidates) both rank by"""
+    X, F = signal_rows(sig, claim, w, leave_out=leave_out)
+    return ((X - np.array(L['mu'])) / np.array(L['sd'])) @ np.array(L['coef']) + L['bias'], F
+
+
 def learned_shortlist(index: dict, claim: str, sig, w: dict, L: dict) -> list[dict]:
     """shortlist() by the learned weights over every signal (sig: a motif_signals.Signals of this index)"""
     k = mi.key(claim)
     entries = sig.entries
     if not entries:
         return []
-    X, F = signal_rows(sig, claim, w, leave_out=False)
-    score = ((X - np.array(L['mu'])) / np.array(L['sd'])) @ np.array(L['coef']) + L['bias']
+    score, F = learned_scores(sig, claim, w, L)
     alike = (F[:, :3].max(1) >= mi.SHOWN_FLOOR) & np.array([k not in e.get('not_claims', []) for e in entries])
     order = [int(i) for i in np.argsort(-score) if alike[i]]
     top = order[:SHOWN]

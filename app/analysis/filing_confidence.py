@@ -160,6 +160,7 @@ class Scorer:
         self.entries = [e for e in mi.live(index) if e['claims']]
         self.at = {e['id']: n for n, e in enumerate(self.entries)}
         self.weights = np.array([w['weights'][f] for f in mr.FACTS])
+        self.learned = mr.learned()  # the learned shortlist's weights while filing uses them, else None
         self.motifs_of = defaultdict(set)
         for e in self.entries:
             for c in e['claims']:
@@ -167,10 +168,15 @@ class Scorer:
 
     def candidates(self, claim: str, n: int = CANDIDATES) -> list[str]:
         """The person's motifs (yours) the shortlist ranks highest for a claim, but those it's in or a person said it
-        isn't"""
+        isn't: by the learned shortlist's weights while filing uses them (Oct 12, Castor and Pollux: these were ranked
+        by the plain weights, so the checker's suggestions came from another shortlist than filing's), else the plain
+        ones. The claim is held out of its motifs; no alike floor, so there are n when the index has them"""
         k = mi.key(claim)
-        F = mr.facts(self.entries, claim, self.vec, leave_out=True)
-        score = F @ self.weights + self.w['bias']
+        if self.learned:
+            score = mr.learned_scores(self.signals, claim, self.w, self.learned, leave_out=True)[0]
+        else:
+            F = mr.facts(self.entries, claim, self.vec, leave_out=True)
+            score = F @ self.weights + self.w['bias']
         return [self.entries[i]['id'] for i in np.argsort(-score)
                 if yours(self.entries[i]) and self.entries[i]['id'] not in self.motifs_of.get(k, ())
                 and k not in self.entries[i].get('not_claims', [])][:n]

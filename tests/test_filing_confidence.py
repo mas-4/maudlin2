@@ -108,3 +108,26 @@ def test_live_accuracy_reads_the_fit_logged_with_each_decision():
     got = fc.live(rows)
     assert [(g['fit'], g['kept']) for g in got] == [(0.9, True), (0.7, False), (0.2, False)]  # d: no fit logged
     assert got[0]['sure_at'] == 0.85
+
+
+def test_suggestions_rank_by_the_learned_shortlist_while_filing_uses_it_else_by_the_plain_weights(monkeypatch):
+    from app.analysis import motif_retriever as mr
+    entries = [{'id': f'M{i}', 'name': f'm{i}', 'done': ['x'], 'claims': [{'claim': f'other {i}'}]} for i in range(1, 6)]
+    entries[0]['claims'].append({'claim': 'c'})  # the claim is in M1 already
+    entries[3]['not_claims'] = [mi.key('c')]  # and a person said it isn't M4
+    del entries[4]['done']  # M5 is the model's, not the person's
+    scorer = fc.Scorer.__new__(fc.Scorer)
+    scorer.entries, scorer.signals, scorer.vec = entries, object(), None
+    scorer.w, scorer.weights = {'bias': 0.0}, np.ones(len(mr.FACTS))
+    scorer.motifs_of = {mi.key('c'): {'M1'}}
+    plain = np.zeros((5, len(mr.FACTS)))
+    plain[:, 0] = [5, 1, 2, 4, 9]  # plain: M5, M1, M4, M3, M2
+    monkeypatch.setattr(mr, 'facts', lambda entries, claim, vec, leave_out: plain)
+    seen = []
+    monkeypatch.setattr(mr, 'learned_scores', lambda sig, claim, w, L, leave_out: seen.append(leave_out)
+                        or (np.array([9, 3, 1, 8, 7]), plain))  # learned: M1, M4, M5, M2, M3
+    scorer.learned = None
+    assert scorer.candidates('c') == ['M3', 'M2']
+    scorer.learned = {'coef': []}
+    assert scorer.candidates('c') == ['M2', 'M3'] and seen == [True]  # the claim held out, as before
+    assert scorer.candidates('c', n=1) == ['M2']

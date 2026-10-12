@@ -95,7 +95,7 @@ def test_the_learned_shortlist_ranks_by_its_weights_and_keeps_out_rejected_motif
     n = len(mr.learned_features())
     X = np.zeros((4, n))
     X[:, -1] = [0.1, 0.9, 0.5, 0.3]  # the last signal decides
-    monkeypatch.setattr(mr, 'signal_rows', lambda s, claim, w, leave_out: (X, np.ones((4, 6))))
+    monkeypatch.setattr(mr, 'signal_rows', lambda s, claim, w, leave_out, **k: (X, np.ones((4, 6))))
     L = {'coef': [0.0] * (n - 1) + [1.0], 'bias': 0.0, 'mu': [0.0] * n, 'sd': [1.0] * n}
     monkeypatch.setattr(mr, 'SHOWN', 2)
     got = [e['id'] for e in mr.learned_shortlist({}, 'c', sig, {}, L)]

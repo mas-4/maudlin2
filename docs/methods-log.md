@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **The checker's "might fit better" suggestions come from filing's own shortlist.** For a weakly filed claim, the 12
+  motifs the confidence model weighs as alternatives were ranked by the plain six-fact weights, while filing has used
+  the learned shortlist since Oct 8. They are now ranked by the learned shortlist's weights whenever filing uses them
+  (the plain ones otherwise), the claim held out of its motifs as before. On 488 motifs the person added a claim to by
+  hand, the 12 candidates held the person's motif 68.4% of the time against 62.9% (Castor and Pollux); 4.7 of the 12
+  change for a claim. Procrustes and Isis take their candidates from the same function.
 - **The taught reranker is kept only if it judges better than the untaught one.** Each weekly teaching of
   Qwen3-Reranker-0.6B on the person's decisions now also scores the same decisions, on the same text, with the untaught
   model, and keeps the taught layers only if their held-out AUC is higher; otherwise the untaught reranker is used

@@ -107,6 +107,9 @@ REGISTRY = {
     'F16': ('The taught reranker against the untaught, at each teaching and forward', 'f16_magic_mirror.py',
             'in production', 'f16_magic_mirror.json; motifs/reranker/taught.json',
             'no better: untaught 0.776 vs taught 0.758 held out, 0.738 vs 0.739 forward; teaching keeps the winner'),
+    'F17': ("The checker's suggestions from the learned shortlist, as filing", 'f17_castor_pollux.py', 'in production',
+            'f17_castor_pollux.json', "the person's hand-added motif among the 12 candidates 62.9% to 68.4% "
+            '(+3.0 to +9.0); 4.7 of 12 change'),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
