@@ -574,7 +574,8 @@ def second_look() -> list[dict]:
 # (nearest 50%: a decision there moves it most), the confirmed ones it now doubts with a better motif ready, the
 # motifs the model made that nobody has shaped yet (their drafted note, genre and groups to keep or change), and the
 # likeliest proposals for new motifs and groups.
-TODAY = {'doubted': 3, 'torn': 13, 'new motifs': 2, 'proposals': 2}  # a day's set: twenty, most of it torn (E6, Oct 9)
+TODAY = {'doubted': 0, 'torn': 0, 'new motifs': 10, 'proposals': 10}  # a day's set: since Oct 12 the motif-level decisions only
+# (the torn and doubted filings are in the claims to judge, each claim whole: judge_queue)
 TORN = (0.2, 0.8)  # a fit in this range: the model can't tell
 TODAY_FILE = os.path.join(FOLDER, 'today.json')  # {'date', 'keys'}: the day's set, picked the first time it's asked for
 
@@ -655,8 +656,39 @@ def hand_made() -> set:
     return {k for k, ok in fc.decisions(hand=True).items() if ok} - {k for k, ok in fc.decisions().items() if ok}
 
 
+def judge_queue() -> list[dict]:
+    """Every claim with a decision waiting, once each (Oct 12, the person: "I just seem to encounter the claims multiple
+    times ... it's hard to judge a claim and its motifs holistically"; the check, unchecked, second look and today tabs
+    each showed one filing of a claim at a time, so a claim in three motifs came up again and again). Each claim with
+    why it's here: its filings nobody has checked (each with its fit), and its filings the person confirmed that the
+    model now doubts (the second look). In the check queue's order (the least sure first: E6), the doubted after"""
+    out, by = [], {}
+
+    def entry(x):
+        if x['claim'] not in by:
+            by[x['claim']] = {'claim': x['claim'], 'source': x.get('source', ''), 'reasons': [], 'fits': {}, 'unsure': [],
+                              'better': []}
+            out.append(by[x['claim']])
+        return by[x['claim']]
+    for x in check_queue():
+        e = entry(x)
+        e['reasons'].append({'kind': 'unchecked', 'id': x['id'], 'fit': x.get('fit')})
+        if x.get('fit') is not None:
+            e['fits'][x['id']] = x['fit']
+        if not x.get('can_be_sure', True):
+            e['unsure'].append(x['id'])
+    for x in sorted(second_look(), key=lambda r: r['fit']):
+        e = entry(x)
+        e['reasons'].append({'kind': 'doubted', 'id': x['id'], 'fit': x['fit']})
+        e['fits'][x['id']] = x['fit']
+        e['better'] = e['better'] or x.get('better') or []
+    return out
+
+
 def workbench_queue(kind: str):
     from app.analysis import motif_index as mi
+    if kind == 'judge':
+        return judge_queue()
     if kind == 'check':
         return check_queue()
     if kind == 'second':

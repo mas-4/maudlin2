@@ -322,3 +322,18 @@ def test_the_service_stops_for_new_code(monkeypatch):
     stopped = threading.Event()
     validate.follow_code(type('S', (), {'shutdown': lambda self: stopped.set()})(), every=0)
     assert stopped.wait(5)
+
+
+def test_each_claim_waits_once_with_why(monkeypatch):
+    monkeypatch.setattr(validate, 'check_queue', lambda: [
+        {'claim': 'a', 'id': 'M1', 'fit': 0.4, 'source': 'shows', 'can_be_sure': True},
+        {'claim': 'a', 'id': 'M2', 'fit': 0.9, 'source': 'shows', 'can_be_sure': False},
+        {'claim': 'b', 'id': 'M1', 'fit': None, 'source': 'narrative'}])
+    monkeypatch.setattr(validate, 'second_look', lambda: [
+        {'claim': 'a', 'id': 'M3', 'fit': 0.2, 'source': 'shows', 'better': [{'id': 'M4', 'fit': 0.7}]},
+        {'claim': 'c', 'id': 'M5', 'fit': 0.1, 'source': 'shows', 'better': []}])
+    q = validate.judge_queue()
+    assert [x['claim'] for x in q] == ['a', 'b', 'c']  # each once: the unchecked in their order, then the doubted
+    a = q[0]
+    assert [(r['kind'], r['id']) for r in a['reasons']] == [('unchecked', 'M1'), ('unchecked', 'M2'), ('doubted', 'M3')]
+    assert a['fits'] == {'M1': 0.4, 'M2': 0.9, 'M3': 0.2} and a['unsure'] == ['M2'] and a['better'][0]['id'] == 'M4'

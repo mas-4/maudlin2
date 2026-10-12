@@ -151,6 +151,8 @@ details.wb-rchips { display: block; } details.wb-rchips[open] { display: flex; }
 .wb-cbtns { position: absolute; right: 6px; top: 4px; display: none; gap: 2px; background: white; border-radius: 8px; padding: 1px; }
 .wb-claim:hover .wb-cbtns { display: flex; }
 .wb-detail { margin-top: 4px; padding: 6px; background: #f6f6fa; border-radius: 8px; font-size: 12.5px; display: grid; gap: 3px; cursor: auto; }
+/* in a claim, where it came from stays short above its motifs (scroll for the rest): judged together on one screen */
+#cl-detail { max-height: 230px; overflow: auto; }
 .wb-detail q { display: block; font-style: italic; color: #444; }
 .wb-more { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 .wb-addsearch { display: flex; align-items: center; gap: 4px; font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; }
@@ -223,6 +225,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-motifrow .wb-sbtns { grid-area: btns; }
 .wb-motifrow .wb-mnote { grid-area: note; font-size: 13.5px; color: #444; }
 .wb-motifrow.fits { border-color: #7fd97a; background: #f2fcf1; }
+.wb-motifrow.doubt { border-color: #ffb347; background: #fff6e8; }  /* you said it fits; the model now doubts it */
 .wb-fits { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; color: #1d7a18; padding: 2px 6px; }
 /* hovering a motif */
 .wb-hover { position: fixed; z-index: 1003; max-width: 26em; padding: 8px 12px; background: white; border: 3px solid var(--ink); border-radius: 12px;

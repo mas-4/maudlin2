@@ -15,7 +15,7 @@
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
     decided: new Set(), rejected: new Set(), claimCache: {detail: {}, similar: {}, better: {}},  // this session's decisions ('claim|motif', 'p:proposal'; ✕'d suggestions)
-    q: '', sel: [], last: [], msel: new Set(), mlast: null, active: 0, tab: store.get('tab', 'check'), queues: {}, folded: new Set(store.get('folded', [])),
+    q: '', sel: [], last: [], msel: new Set(), mlast: null, active: 0, tab: ({check: 'judge', unchecked: 'judge', second: 'judge'})[store.get('tab', 'judge')] || store.get('tab', 'judge'), queues: {}, folded: new Set(store.get('folded', [])),
     checkAt: 0, extra: {}, claimHits: [], groupBy: store.get('groupby', 'group'),
   };
 
@@ -408,9 +408,12 @@
   }
 
   // ---------- the inbox ----------
-  const TABS = [['stats', '📊'], ['today', '🎯 today'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['check', '✅ check'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['unchecked', '🤖 unchecked'], ['second', '🔁 second look'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  // The claims to judge, one claim at a time with everything about it (Oct 12, the person: they met the same claim in the
+  // check, unchecked, second look and today tabs, each showing one of its motifs: "hard to judge a claim and its motifs
+  // holistically"). Today keeps the motif-level decisions (new motifs to shape, proposals)
+  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {check: S.data.to_check, second: S.data.second_look, unchecked: unchecked().length, proposals: S.data.proposals, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), proposals: S.data.proposals, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
   }
   // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
@@ -425,6 +428,22 @@
     });
     return [...by.values()].reverse();
   }
+  // A claim's filings still waiting for you: the ones nobody has checked, and the ones you confirmed that the model
+  // now doubts (until you say again that they fit, or take them out)
+  function waiting(claim) {
+    return motifsOf(claim).filter((e) => e.claims.some((c) => c.claim === claim && !c.checked)
+      || (S.doubted && S.doubted.has(claim + '|' + e.id) && !S.decided.has(claim + '|' + e.id))).map((e) => e.id);
+  }
+  const doubts = (claim, id) => !!(S.doubted && S.doubted.has(claim + '|' + id) && !S.decided.has(claim + '|' + id));
+  // Why a claim is in the claims to judge, in a line
+  function whyHere(claim) {
+    const x = (S.why || {})[claim];
+    if (!x) return '';
+    const fresh = x.reasons.filter((r) => r.kind === 'unchecked'), torn = fresh.filter((r) => r.fit != null && r.fit >= 0.2 && r.fit <= 0.8);
+    const doubted = x.reasons.filter((r) => r.kind === 'doubted');
+    return [fresh.length ? `🤖 ${fresh.length} new filing${fresh.length === 1 ? '' : 's'}${torn.length ? ` (the model torn on ${torn.length})` : ''}` : '',
+      doubted.length ? `🧐 ${doubted.length} you confirmed that the model now doubts` : ''].filter(Boolean).join(' · ');
+  }
   async function queue(kind) {
     if (!S.queues[kind]) {
       $('#inbox').innerHTML = '<p class="wb-faint">⏳ thinking…</p>';
@@ -438,20 +457,24 @@
     delete box.dataset.check;
     if (tab === 'claim') return renderClaim(box);
     if (tab === 'stats') return renderStats(box);
-    if (tab === 'check') {
-      const q = await queue('check');
+    if (tab === 'judge') {
+      const q = await queue('judge');
       if (S.tab !== tab) return;
-      // One claim at a time (the biggest motifs' first), with every motif it's in to tick or take away
-      const seen = new Set(), items = [];
-      // each filing's fit: the chance you keep it, learned from your own checks (the least sure first; the sure ones in their fold)
-      S.fits = Object.fromEntries((q.error ? [] : q).filter((x) => x.fit != null).map((x) => [x.claim + '|' + x.id, x.fit]));
-      // never passed as sure: a motif made for this claim alone, or a source too few of your checks have tested
-      S.unsure = new Set((q.error ? [] : q).filter((x) => !x.can_be_sure).map((x) => x.claim + '|' + x.id));
-      for (const x of (q.error ? [] : q)) {
-        if (seen.has(x.claim)) continue;
-        seen.add(x.claim);
-        if (motifsOf(x.claim).some((e) => e.claims.some((c) => c.claim === x.claim && !c.checked))) items.push(x);
+      // One claim at a time, once: every motif it's in, why it's here (filings nobody has checked; ones you confirmed
+      // that the model now doubts), where it came from and where else it might belong
+      const list = q.error ? [] : q;
+      // each filing's fit: the chance you keep it, learned from your own checks; never passed as sure: a motif made for
+      // this claim alone, or a source too few of your checks have tested
+      S.fits = {}; S.unsure = new Set(); S.doubted = new Set(); S.why = {};
+      for (const x of list) {
+        for (const [id, f] of Object.entries(x.fits)) S.fits[x.claim + '|' + id] = f;
+        x.unsure.forEach((id) => S.unsure.add(x.claim + '|' + id));
+        x.reasons.filter((r) => r.kind === 'doubted').forEach((r) => S.doubted.add(x.claim + '|' + r.id));
+        S.why[x.claim] = x;
       }
+      const items = list.filter((x) => waiting(x.claim).length);
+      S.judgeLeft = items.length;
+      renderTabs();
       // ◀ goes back along the claims you've seen (even one you've finished, which has left the list)
       // The claim on screen stays until next ▶ or ✓ all fit: ticking or taking out its last motif, adding one, or
       // rewording it leaves it here for the next edit (it used to jump to the next claim)
@@ -464,7 +487,7 @@
         x = items[S.checkAt % Math.max(items.length, 1)];
         if (x) S.checkHere = {claim: x.claim, source: x.source};
       }
-      if (!x) { box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🎉</div><p>Nothing to check right now.</p></div>'; S.queues.check = null; return; }
+      if (!x) { box.innerHTML = '<div class="wb-welcome"><div class="wb-big">🎉</div><p>No claim waiting for you.</p></div>'; S.queues.judge = null; return; }
       S.claim = {claim: x.claim, src: x.source, from: null};
       renderClaim(box, true, items.length);
       box.dataset.check = JSON.stringify(x);
@@ -495,16 +518,6 @@
           findClaims();
         }, 200);
       });
-    } else if (tab === 'unchecked') {
-      const items = unchecked();
-      box.innerHTML = items.length ? `<p class="wb-faint">🤖 ${items.length} claim${items.length === 1 ? '' : 's'} the model filed that you haven't checked, ${items.reduce((n, x) => n + x.motifs.length, 0)} filings. ✓ it fits, ✕ it doesn't (out of that motif for good); 🔍 opens the claim.</p>
-        ${items.map((x) => `<div class="wb-card wb-unck">
-          <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source, ref: x.ref}, x.motifs[0])}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(x.source || '')}${x.id ? ' #' + esc(x.id) : ''}</span>
-            <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
-          ${x.motifs.map((id) => `<div class="wb-sug">${chip(id)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${id}" data-ckc="${esc(x.claim)}" title="it fits">✓</button><button class="wb-mini" data-ck="no|${id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕</button></span></div>`).join('')}
-          ${x.motifs.length > 1 ? `<button class="wb-mini" data-ckall="${esc(x.claim)}">✓ all fit</button>` : ''}
-        </div>`).join('')}`
-        : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>You\'ve checked every claim the model filed.</p></div>';
     } else if (tab === 'today') {
       // Today's most useful decisions: a short list that teaches the models most per minute, not the whole queue
       const q = await queue('today');
@@ -512,19 +525,8 @@
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
       const list = q.items || [];
       S.proposals = Object.assign(S.proposals || {}, Object.fromEntries(list.filter((x) => x.kind === 'proposal').map((x) => [x.proposal.id, x.proposal])));
-      const why = {torn: '🤔 the model can’t tell: is it this motif?', doubted: '🧐 you said yes; the model now doubts it (a better motif below?)'};
       const cards = list.map((x) => {
-        if (x.kind === 'torn' || x.kind === 'doubted') {
-          const rec = S.by[x.id] && S.by[x.id].claims.find((c) => c.claim === x.claim);
-          if (!rec || (x.kind === 'torn' && rec.checked) || S.decided.has(x.claim + '|' + x.id)) return '';
-          const better = (x.better || []).filter(stillBetter(x.claim));
-          return `<div class="wb-card wb-unck"><div class="wb-today-why">${why[x.kind]}</div>
-            <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${esc(x.claim)}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
-              <button class="wb-mini" data-ckopen="${esc(x.claim)}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
-            <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" data-ckc="${esc(x.claim)}" title="it belongs here">✓ ${x.kind === 'torn' ? 'fits' : 'still fits'}</button><button class="wb-mini" data-ck="no|${x.id}" data-ckc="${esc(x.claim)}" title="it doesn't fit: out of this motif">✕ take out</button></span></div>
-            ${S.by[x.id].note ? `<div class="wb-faint">${esc(S.by[x.id].note)}</div>` : ''}
-            ${better.length ? `<div class="wb-faint">🤖 might fit better:</div>${better.map((b) => betterRow(b, x.claim)).join('')}` : ''}</div>`;
-        }
+        if (x.kind === 'torn' || x.kind === 'doubted') return '';  // in the claims to judge, whole, since Oct 12
         if (x.kind === 'new motif') {
           const e = S.by[x.id];
           if (!e || e.done) return '';
@@ -546,20 +548,9 @@
         return '';
       }).filter(Boolean);
       const done = q.picked - cards.length;
-      box.innerHTML = cards.length ? `<p class="wb-faint">🎯 Today's set: the decisions that teach the models most per minute of your time, not the whole queue (the filings the model is torn on, the ones it now doubts with a fix ready, new motifs nobody has shaped, the likeliest proposals). <b>${done} of ${q.picked} done today.</b> A new set tomorrow, once the models have learned from these.</p>${cards.join('')}`
+      box.innerHTML = cards.length ? `<p class="wb-faint">✨ To shape: the motifs the model made that nobody has shaped yet, and its likeliest proposals. The claims to judge are in 🎯, each claim whole. <b>${done} of ${q.picked} done today.</b></p>${cards.join('')}`
         : `<div class="wb-welcome"><div class="wb-big">🎉</div><p>Done for today: all ${q.picked} of today's most useful decisions are made. The models learn from them tonight; a new set tomorrow.</p>
           <p><button class="wb-btn" data-todaymore="1" title="another twenty of the most useful decisions, if you'd like to keep going">🎯 20 more</button></p></div>`;
-    } else if (tab === 'second') {
-      // Your own confirmed filings the confidence model finds least likely: an honest slip is easy in 1,000 judgments
-      const q = await queue('second');
-      if (S.tab !== tab) return;
-      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
-      const items = q.filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && c.checked === 'yes')
-        && !S.decided.has(x.claim + '|' + x.id));
-      box.innerHTML = items.length ? `<p class="wb-faint">🔁 The model's filings you confirmed that it now finds least likely, the least first (yours made by hand aren't here: they score low because they're the links it misses). ✓ still fits takes one off this list (and counts as a fresh yes); ✕ takes the claim out of that motif. Most will be fine: these are just the ones worth a second glance.</p>
-        <p class="wb-faint wb-keys">⌨ on the top card: <b>y</b> still fits · <b>n</b> take out · <b>m</b> move to the best fit · <b>1</b>–<b>3</b> add that one too · <b>o</b> open the claim</p>
-        ${items.map((x, i) => secondCard(x, i === 0)).join('')}`
-        : '<div class="wb-welcome"><div class="wb-big">🔁</div><p>Nothing to look at again: the second look fills in once the hourly run has scored your confirmed filings.</p></div>';
     } else if (tab === 'proposals') {
       const q = await queue('proposals');
       if (S.tab !== tab) return;
@@ -699,7 +690,7 @@
     const src = (rec && rec.source) || c.src || '';
     const conf = S.data.confidence, sure = conf ? sureFilings() : [];
     const verdict = check ? `<div class="wb-checkbar">
-        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to check (${S.data.to_check} filings) · tick each motif that fits, take away the rest${conf ? ' · 🎯 the ones the model is least sure of first: they teach it most' : ''}</span>
+        <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to judge${whyHere(c.claim) ? ' · here for: ' + whyHere(c.claim) : ''} · judge it whole: tick each motif that fits, take out the rest, add what's missing, then ✓ all fit</span>
         ${sure.length ? `<details class="wb-sure"${S.sureOpen ? ' open' : ''}><summary title="Filings at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept">🎯 ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested): look them over</span></summary>
           <p class="wb-faint">Untick any that don't fit, then pass the rest (one undoable step). An unticked one stays to check.</p>
           ${sure.map((x) => `<label class="wb-sureline"><input type="checkbox" checked data-suresel="${esc(x.claim + '|' + x.id)}">
@@ -716,10 +707,11 @@
       <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}><span class="wb-bigtext" title="click to correct the wording">${esc(c.claim)}</span>
         <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif · <button class="wb-mini" data-editclaim="1" title="correct the wording (our summary, not the source)">✎ correct wording</button></span></blockquote>
       ${rec && rec.variants && rec.variants.length ? `<p class="wb-faint">≡ also told as: ${rec.variants.map((v) => '“' + esc(v) + '”').join(' · ')}</p>` : ''}
+      <h3>📜 where it came from</h3><div class="wb-detail" id="cl-detail">⏳</div>
       <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
-      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim); return `<div class="wb-motifrow${r.checked === 'yes' ? ' fits' : ''}">${chip(e.id)}
+      ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim), doubt = doubts(c.claim, e.id); return `<div class="wb-motifrow${r.checked === 'yes' && !doubt ? ' fits' : ''}${doubt ? ' doubt' : ''}">${chip(e.id)}
         ${e.note ? `<span class="wb-mnote">${esc(e.note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
-        <span class="wb-sbtns">${r.checked !== 'yes' && S.fits && S.fits[c.claim + '|' + e.id] != null ? fitChip(S.fits[c.claim + '|' + e.id], S.unsure && S.unsure.has(c.claim + '|' + e.id)) : ''}${r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
+        <span class="wb-sbtns">${(r.checked !== 'yes' || doubt) && S.fits && S.fits[c.claim + '|' + e.id] != null ? fitChip(S.fits[c.claim + '|' + e.id], S.unsure && S.unsure.has(c.claim + '|' + e.id)) : ''}${doubt ? `<button class="wb-btn yes" data-cl="check|${e.id}" title="you said it fits; the model now doubts it: does it still?">🧐 ✓ still fits</button>` : r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
         <button class="wb-btn no" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
         || '<p class="wb-faint">📥 not in any motif</p>'}
       <div id="cl-better"></div>
@@ -730,7 +722,6 @@
         <button class="wb-btn" data-cl="new|">✨ new motif with it</button>
         ${ins.length ? '<button class="wb-btn" data-cl="nomotif|">∅ no motif</button>' : ''}
       </div>
-      <h3>📜 where it came from</h3><div class="wb-detail" id="cl-detail">⏳</div>
       <h3>≡ claims like this one <span class="wb-faint">closest in meaning; fold one in if it's the same claim told another way</span></h3>
       <ul class="wb-claims" id="cl-similar"><li class="wb-faint">⏳</li></ul>
     </div>`;
@@ -746,29 +737,9 @@
   }
   // Where a weakly filed claim might belong instead: the model's best fits among your motifs it isn't in (the hourly
   // run works them out for claims with a filing under 50%)
-  const betterRow = (b, claim) => `<div class="wb-motifrow wb-better">${chip(b.id)}
+  const betterRow = (b, claim, from) => `<div class="wb-motifrow wb-better" data-ckc="${esc(claim)}">${chip(b.id)}
       ${S.by[b.id] && S.by[b.id].note ? `<span class="wb-mnote">${esc(S.by[b.id].note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
-      <span class="wb-sbtns">${fitChip(b.fit)}<button class="wb-btn yes" data-alt="add|${b.id}" data-altc="${esc(claim)}" title="file it here too (then ✕ the weak one if it doesn't belong there)">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" data-altc="${esc(claim)}" title="not this motif: don't suggest it again">✕</button></span></div>`;
-  // A second look card (Oct 11, the person: it didn't show where else the claim is filed, and was hard to work): the
-  // doubted filing with its two answers, the other motifs the claim is in (each with its own ✕), and the better fits
-  // as one tight row each: ⇄ moves the claim there (out of the doubted motif, in that one, one undo step), ＋ adds it
-  // too. The top card answers to keys (see the keydown handler)
-  function secondCard(x, top) {
-    const c = esc(x.claim), e = S.by[x.id];
-    const also = motifsOf(x.claim).filter((m) => m.id !== x.id);
-    const better = (x.better || []).filter(stillBetter(x.claim)).slice(0, 3);
-    return `<div class="wb-card wb-unck wb-second${top ? ' wb-top' : ''}" data-ckc="${c}" data-altc="${c}">
-      <p class="wb-claim mini" ${claimData({claim: x.claim, source: x.source}, x.id)}><span class="wb-ctext">${c}</span> <span class="wb-faint">${esc(SOURCE[x.source] || x.source || '')}</span>
-        <button class="wb-mini" data-ckopen="${c}" title="open the claim: where it came from, every motif it's in">🔍</button></p>
-      <div class="wb-sug">${chip(x.id)} ${fitChip(x.fit)}<span class="wb-sbtns"><button class="wb-mini" data-ck="yes|${x.id}" title="it still fits: off this list (y)">✓ still fits</button><button class="wb-mini" data-ck="no|${x.id}" title="it doesn't fit: out of this motif (n)">✕ take out</button></span>
-        ${e.note ? `<div class="wb-bnote">${esc(e.note)}</div>` : ''}</div>
-      ${also.length ? `<div class="wb-alsoin"><span class="wb-faint">also in</span> ${also.map((m) => `<span class="wb-alsochip">${chip(m.id)}<button class="wb-mini" data-ck="no|${m.id}" title="out of “${esc(m.name)}” too">✕</button></span>`).join('')}</div>` : ''}
-      ${better.length ? `<div class="wb-faint">🤖 might fit better</div>${better.map((b, k) => `<div class="wb-bline">
-        <b class="wb-bkey">${k + 1}</b>${chip(b.id)} ${fitChip(b.fit)}
-        <span class="wb-sbtns"><button class="wb-btn yes" data-move="${x.id}|${b.id}" title="move it: out of “${esc(e.name)}”, into this one${k === 0 ? ' (m)' : ''}">⇄ move</button><button class="wb-mini" data-alt="add|${b.id}" title="file it here too, keeping the other (${k + 1})">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" title="not this motif: don't suggest it again">✕</button></span>
-        ${S.by[b.id].note ? `<div class="wb-bnote">${esc(S.by[b.id].note)}</div>` : ''}</div>`).join('')}` : ''}
-    </div>`;
-  }
+      <span class="wb-sbtns">${fitChip(b.fit)}${from ? `<button class="wb-btn" data-move="${from}|${b.id}" title="move it: out of “${esc(S.by[from].name)}” (which the model doubts), into this one">⇄ move</button>` : ''}<button class="wb-btn yes" data-alt="add|${b.id}" data-altc="${esc(claim)}" title="file it here too (then ✕ the weak one if it doesn't belong there)">＋ add</button><button class="wb-mini" data-alt="reject|${b.id}" data-altc="${esc(claim)}" title="not this motif: don't suggest it again">✕</button></span></div>`;
   // A claim opened from a list (🎯 today, second look, unchecked): the list and where you were in it kept, to go back
   // to with ← back or the browser's own back
   function openClaim(claim) {
@@ -800,7 +771,7 @@
     if (!box || !S.claim || S.claim.claim !== claim) return;
     const shown = items.filter(stillBetter(claim));
     box.innerHTML = shown.length ? `<h3>🤖 might fit better <span class="wb-faint">your motifs it isn't in, by fit: ＋ adds it there, then ✕ the weak one above</span></h3>
-      ${shown.map((b) => betterRow(b, claim)).join('')}` : '';
+      ${shown.map((b) => betterRow(b, claim, waiting(claim).find((id) => doubts(claim, id)))).join('')}` : '';
   }
   async function loadSimilarClaims(claim, filed) {
     const items = S.claimCache.similar[claim] || await getJSON('/claim-similar.json?claim=' + encodeURIComponent(claim)).catch(() => null);
@@ -841,6 +812,7 @@
     const src = (rec && rec.source) || c.src || '', ref = (rec && rec.ref) || c.ref || '';
     const fileHere = (to) => first ? {action: 'also', claim: c.claim, source: first.id, target: to} : {action: 'file', claim: c.claim, id: to, source: src, ref};
     const name = (to) => (S.by[to] || {}).name;
+    if (kind === 'check' || kind === 'unfile') S.decided.add(c.claim + '|' + id);  // off the claims to judge's doubts too
     if (kind === 'check') return act({action: 'check', claim: c.claim, id, answer: 'yes'}, '✓ checked');
     if (kind === 'unfile') return act({action: 'unfile', claim: c.claim, id}, `✕ out of “${name(id)}”`);
     if (kind === 'add') return act(fileHere(id), `＋ filed in “${name(id)}”`);
@@ -1328,7 +1300,7 @@
       const ticked = new Set([...document.querySelectorAll('[data-suresel]:checked')].map((b) => b.dataset.suresel));
       const sure = sureFilings().filter((x) => ticked.has(x.claim + '|' + x.id));
       if (!sure.length) { toast('nothing ticked'); return; }
-      S.queues.check = null;
+      S.queues.judge = null;
       S.checkHere = null;
       return batch(sure.map((x) => ({action: 'check', claim: x.claim, id: x.id, answer: 'yes'})), `🎯 passed ${sure.length} sure filing${sure.length === 1 ? '' : 's'}`);
     }
@@ -1580,12 +1552,13 @@
       S.checkBack = S.checkTrail.pop();
       return renderInbox();
     }
-    if (answer === 'allyes') {
-      const left = motifsOf(x.claim).filter((e) => e.claims.some((c) => c.claim === x.claim && !c.checked));
+    if (answer === 'allyes') {  // every motif still waiting fits: the new filings and the doubted ones alike
+      const left = waiting(x.claim);
       if (!S.checkBack) { S.checkTrail.push(x.claim); S.checkHere = null; }
       else S.checkBack = (S.checkForward || []).pop() || null;
       if (!left.length) return renderInbox();
-      return batch(left.map((e) => ({action: 'check', claim: x.claim, id: e.id, answer: 'yes'})), `✓ ${left.length} motif${left.length === 1 ? '' : 's'} fit`);
+      left.forEach((id) => S.decided.add(x.claim + '|' + id));
+      return batch(left.map((id) => ({action: 'check', claim: x.claim, id, answer: 'yes'})), `✓ ${left.length} motif${left.length === 1 ? '' : 's'} fit`);
     }
   }
   function saveNote(id) {
@@ -1674,16 +1647,11 @@
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !typing) { ev.preventDefault(); undo(); return; }
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }
-    if (S.tab === 'second') {  // the top card: y still fits, n take out, m move to the best fit, 1-3 add, o open
-      const card = $('#inbox .wb-second'), k = ev.key.toLowerCase();
-      const sel = {y: '[data-ck^="yes|"]', n: '.wb-sug [data-ck^="no|"]', m: '[data-move]', o: '[data-ckopen]'}[k];
-      const btn = !card ? null : sel ? card.querySelector(sel) : /^[1-3]$/.test(k) ? card.querySelectorAll('[data-alt^="add|"]')[+k - 1] : null;
-      if (btn) { ev.preventDefault(); btn.click(); }
-      return;
-    }
-    if (S.tab === 'check' && $('#inbox').dataset.check) {
+    if (S.tab === 'judge' && $('#inbox').dataset.check) {
       const k = {y: 'allyes', arrowright: 'next', j: 'next', s: 'next', arrowleft: 'prev', k: 'prev'}[ev.key.toLowerCase()];
-      if (k) { ev.preventDefault(); verdict(k); }
+      if (k) { ev.preventDefault(); verdict(k); return; }
+      const move = ev.key.toLowerCase() === 'm' && $('#cl-better [data-move]');  // m: out of the doubted motif, into its best fit
+      if (move) { ev.preventDefault(); move.click(); }
     }
   });
 
