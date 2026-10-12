@@ -5,9 +5,11 @@
     <p class="table-intro">Each day's front page as it stood at the end of the day: the cloud, the stories and every
         measure, kept as they were. Our archive starts on October 2, 2026.</p>
     {% if newsiness %}
-        <figure class="nw-figure">
-            <h2>🌡️ How newsy each hour was</h2>
-            <div class="nw-scroll">{{ newsiness|safe }}</div>
+        <figure class="nw-figure" id="newsiness">
+            <h2>🌡️ How newsy each hour was
+                <button type="button" class="nw-full" aria-label="show the chart full screen">⛶ full screen</button></h2>
+            <div class="nw-scroll"><div class="nw-stage">{{ newsiness|safe }}
+                <button type="button" class="nw-close" aria-label="close full screen">✕</button></div></div>
             <figcaption>Each hour's news-day score over the past week: the share of the outlets with a story on their front
                 page that carry the day's biggest story, halving every 24 hours once it's 12 hours old. Over 0.45 is a big
                 news day. Dashed: worked out afterwards from what we'd saved; solid: kept by each hour's build. Hover for
@@ -18,6 +20,29 @@
                     <span class="nw-faint">({{ p.outlets }} of {{ p.active }} outlets)</span></li>
             {% endfor %}</ul>{% endif %}
         </figure>
+        <script>
+            // Full screen, sideways: the browser's own full screen turned to landscape where the phone allows it
+            // (Android); where it doesn't (iPhone), the chart is turned a quarter by CSS (.nw-open, 580-newsiness.css)
+            (function () {
+                const fig = document.getElementById('newsiness');
+                const open = async () => {
+                    fig.classList.add('nw-open');
+                    try {
+                        if (fig.requestFullscreen) await fig.requestFullscreen();
+                        if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+                        fig.classList.add('nw-locked');  // turned by the phone: no CSS turn needed
+                    } catch (e) { /* the CSS turn does it */ }
+                };
+                const close = () => {
+                    fig.classList.remove('nw-open', 'nw-locked');
+                    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+                };
+                fig.querySelector('.nw-full').addEventListener('click', open);
+                fig.querySelector('.nw-close').addEventListener('click', close);
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fig.classList.contains('nw-open')) close(); });
+                document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) close(); });
+            })();
+        </script>
     {% endif %}
     {% if days %}
         <ul class="archive-days">

@@ -109,3 +109,87 @@ a .nw-spike-label {
     color: #777;
     font-size: 0.9em;
 }
+
+/* ⛶ full screen, sideways (the script on archive.html) */
+.nw-full {
+    float: right;
+    font: 700 0.7em 'Comic Neue', 'Comic Sans MS', cursive;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: #ffc400;
+    padding: 0.15em 0.7em;
+    cursor: pointer;
+}
+
+.nw-close {
+    display: none;
+}
+
+.nw-figure.nw-open {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: white;
+}
+
+.nw-open > h2,
+.nw-open > figcaption,
+.nw-open > .nw-spikes {
+    display: none;
+}
+
+.nw-open .nw-scroll {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    direction: ltr;
+}
+
+.nw-open .nw-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.nw-open .nw-chart {
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.nw-open .nw-close {
+    display: block;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font: 700 20px system-ui;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: #ffc400;
+    cursor: pointer;
+}
+
+/* a phone held upright that can't lock to landscape: the chart turned a quarter to fill the screen sideways */
+@media (orientation: portrait) {
+    .nw-open:not(.nw-locked) .nw-stage {
+        inset: auto;
+        top: 0;
+        left: 100vw;
+        width: 100vh;
+        height: 100vw;
+        transform: rotate(90deg);
+        transform-origin: top left;
+    }
+}
