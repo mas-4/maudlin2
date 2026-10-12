@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **Bloomberg from its own feeds.** Its front page has answered every request with a captcha since Oct 11, 20:04, and
+  we don't get around bot checks; its official section feeds (politics, markets, economics) still answer, so its
+  headlines come from those, articles only. Their order is the feeds' (newest first), not the front page's, so
+  anything weighted by a headline's place on the page treats Bloomberg's as a list from Oct 12 on.
 - **Posts are tied to news stories by the links they share, where the model finds none.** A paraphrase group whose
   posts share an article in one of our stories is tied to that story when the model's own tie (embeddings, then
   Gemma) finds nothing; where both tie, they agree by story id 62 times in 65, and the model was the better of the
