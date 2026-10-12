@@ -200,9 +200,12 @@ def pandora() -> dict:
     s = _load('f10_pandora.json')
     verdicts = s.get('verdicts', {})
     rows = []
+    controls = {}
+    for c in s.get('controls', []):  # random groups named the same way, mixed in unlabelled (the baseline)
+        controls.setdefault(c['motif'], []).append(c)
     for mid, m in s.get('motifs', {}).items():
-        for g in m['groups']:
-            key = f"{mid}|{g['name']}"
+        told = [(f"{mid}|{g['name']}", g) for g in m['groups']] + [(f"ctl|{mid}|{c['name']}", c) for c in controls.get(mid, [])]
+        for key, g in sorted(told, key=lambda kg: kg[1]['name'].lower()):
             rows.append({'kind': verdicts.get(key, 'to judge'), 'key': key, 'verdict': verdicts.get(key),
                          'cells': [f"{m['name']} ({m['claims']})", g['name'], g['note'], len(g['claims']),
                                    ' · '.join(g['claims'][:6])]})
