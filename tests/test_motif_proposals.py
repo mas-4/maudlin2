@@ -431,3 +431,32 @@ def test_the_genre_drafter_is_told_what_each_genre_is(monkeypatch):
     assert got == ('Plots', 'r')
     assert 'Plots: what happened' in seen['p'] and 'Beliefs: what people take for granted, by the person' in seen['p']
     assert 'Argument or Theory' in seen['p']
+
+
+def test_what_the_person_said_was_wrong_is_kept_with_the_draft(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    from app.analysis import critiques, curation_db
+    monkeypatch.setattr(curation_db, 'DB', str(tmp_path / 'curation.sqlite'))
+    monkeypatch.setattr(validate, 'FOLDER', str(tmp_path))
+    monkeypatch.setattr(validate, 'CURATION_LOG', str(tmp_path / 'log.jsonl'))
+    store = {}
+    mp.add(store, 'merge', {'a': 'M003', 'b': 'M001'}, 'both about votes')
+    mp.add(store, 'rename', {'id': 'M002', 'from': 'Empty suit', 'to': 'Hollow man'}, 'more vivid')
+    write_json(mp.PROPOSALS, store)
+    merge, rename = (mp.pid('merge', {'a': 'M003', 'b': 'M001'}),
+                     mp.pid('rename', {'id': 'M002', 'from': 'Empty suit', 'to': 'Hollow man'}))
+    validate.workbench_action({'action': 'proposal_reject', 'proposal': merge})
+    validate.critique({'proposal': merge, 'why': ' rigging is a  Theory, promises an Archetype '})
+    # approved, but carried out with the person's own name: the final action is kept beside the draft
+    validate.workbench_action({'action': 'rename', 'id': 'M002', 'name': 'Suit with no one in it', 'proposal': rename,
+                               'why': 'Hollow man is a poem'})
+    mp.save(mp.load())  # a run writing its store back keeps both
+    got = mp.load()
+    assert got[merge]['why'] == 'rigging is a Theory, promises an Archetype' and got[merge]['status'] == 'rejected'
+    assert got[rename]['final']['name'] == 'Suit with no one in it' and got[rename]['why'] == 'Hollow man is a poem'
+    kinds = {r['kind']: r for r in critiques.from_proposals()}
+    assert kinds['proposal merge rejected']['draft']['reason'] == 'both about votes'
+    assert kinds['proposal rename approved']['final']['name'] == 'Suit with no one in it'
+    assert [r['why'] for r in critiques.from_log()] == []  # the critique's own log row isn't counted twice
+    mp.reopen([rename])
+    assert 'final' not in mp.load()[rename] and mp.load()[rename]['why'] == 'Hollow man is a poem'

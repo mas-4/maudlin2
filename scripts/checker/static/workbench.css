@@ -416,3 +416,5 @@ body.dragging .wb-schip { border-style: dashed; }
 .wb-bkey { font: 12px/1 monospace; color: #888; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; }
 .wb-second.wb-top { outline: 3px solid #ffc400; }
 .wb-keys { margin-top: -4px; }
+.wb-why { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 50; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; max-width: min(900px, calc(100vw - 32px)); background: #fff4c2; border: 2px solid var(--ink); border-radius: 12px; padding: 6px 10px; box-shadow: 3px 3px 0 var(--ink); }
+.wb-why input { flex: 1; min-width: 14em; font: inherit; border: 1.5px solid #ccc; border-radius: 8px; padding: 3px 6px; }

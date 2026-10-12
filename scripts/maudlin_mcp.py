@@ -343,6 +343,9 @@ def checker_action(action: dict) -> str:
       check {claim, id, answer: yes|no|unsure} · no_motif {claim} · new_with {name, claims: [{claim, source?}]}
       batch {steps: [actions]} (one undo step; a step can name a motif an earlier step made as "$1", "$2"…, e.g.
       new_with then group_member {id: "$1"} and check {id: "$1"})
+    Any action may carry "why": the person's own words on what was wrong with the model's draft it corrects (a
+    proposal, a drafted name or note). Pass it whenever they gave one: kept with the draft and the result in the
+    curation log, it teaches the proposer and namer and shows which wording is the person's (app/analysis/critiques.py).
     Motifs by id (M123), groups by id (G01; motif_overview and motif have names). Returns the checker's answer, with
     the ids of any motifs the change made or removed."""
     if not isinstance(action, dict) or not action.get('action'):

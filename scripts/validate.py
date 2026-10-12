@@ -175,6 +175,7 @@ def motif_context(data: dict) -> dict:
     def motif(eid):
         e = entries.get(eid)
         return e and {'id': eid, 'name': e['name'], 'by': 'person' if e.get('curated') else 'model',
+                      'note': e.get('note', ''), 'note_by': e.get('note_by', ''),  # a draft rewritten: the pair kept
                       'claims': [c['claim'] for c in e['claims'][:8]], 'size': len(e['claims'])}
     out = {k: motif(data[k]) for k in ('id', 'source', 'target', 'a', 'b', 'child', 'parent') if isinstance(data.get(k), str) and data[k] in entries}
     claim = data.get('claim')
@@ -733,6 +734,20 @@ def _with_made(x, made: list[str]):
     return x
 
 
+def critique(data: dict) -> dict:
+    """The person's words on what was wrong with a proposal they decided, kept on the proposal and in the curation log:
+    the model's draft, the critique and the final version together, examples for the proposer and the namer, and the
+    trail of the person's authorship (Fable, Oct 12)"""
+    from app.analysis import motif_proposals as mp
+    why = data.get('why')
+    if not isinstance(why, str) or not why.strip() or not isinstance(data.get('proposal'), str):
+        raise ValueError('a critique needs a proposal and what was wrong')
+    p = mp.critique(data['proposal'], why)
+    log_curation('/critique', {'action': 'critique', 'proposal': p['id'], 'why': p['why']},
+                 {'proposal': {k: p.get(k) for k in ('kind', 'args', 'reason', 'status')}})
+    return {'ok': True}
+
+
 def workbench_action(data: dict):
     from app.analysis import motif_index as mi
     act = data.get('action')
@@ -740,7 +755,9 @@ def workbench_action(data: dict):
         from app.analysis import motif_proposals as mp
         if act != 'proposal_reject':
             workbench_action({k: v for k, v in data.items() if k != 'proposal'})
-        mp.decide(data['proposal'], 'rejected' if act == 'proposal_reject' else 'approved')
+        mp.decide(data['proposal'], 'rejected' if act == 'proposal_reject' else 'approved',
+                  data['why'] if isinstance(data.get('why'), str) else None,
+                  None if act == 'proposal_reject' else {k: v for k, v in data.items() if k not in ('proposal', 'why')})
         return
     if act == 'batch':
         steps = data.get('steps')
@@ -1012,9 +1029,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
         if self.path == '/experiment-verdict':  # the person's verdict on an experiment's item (Pandora's tellings)
-            data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
             try:
                 return self.send_json(experiments_lab().verdict(data.get('code', ''), data.get('key', ''), data.get('verdict')))
+            except (ValueError, OSError) as e:
+                return self.send_json_error(400, str(e))
+        if self.path == '/critique':  # what the person said was wrong with a proposal, after deciding it (not undone)
+            try:
+                return self.send_json(critique(data))
             except (ValueError, OSError) as e:
                 return self.send_json_error(400, str(e))
         if self.path == '/undo':
@@ -1039,6 +1060,8 @@ class Handler(BaseHTTPRequestHandler):
             by = by if by in BY else None
             try:
                 before = motif_context(data if data.get('action') != 'batch' else (data.get('steps') or [{}])[0])
+                if data.get('action') == 'batch':  # each step's own context too: a draft renamed in step 5 is known
+                    before['steps'] = [motif_context(x) if isinstance(x, dict) else {} for x in data.get('steps') or []]
                 before.update(decision_fits(data))
                 workbench_action(data)
                 log_curation('motif workbench', data, before, by)

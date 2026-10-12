@@ -1539,8 +1539,28 @@
     if (!ps.length) return;
     const steps = ps.map((p) => yes ? {...p.do, proposal: p.id} : {action: 'proposal_reject', proposal: p.id});
     ps.forEach((p) => S.decided.add('p:' + p.id));  // off the lists in place
-    await act(steps.length === 1 ? steps[0] : {action: 'batch', steps}, `${yes ? '✓ approved' : '✕ rejected'} ${ps.length} proposal${ps.length === 1 ? '' : 's'}`);
+    const ok = await act(steps.length === 1 ? steps[0] : {action: 'batch', steps}, `${yes ? '✓ approved' : '✕ rejected'} ${ps.length} proposal${ps.length === 1 ? '' : 's'}`);
     if (S.tab === 'proposals') renderInbox();
+    if (ok && !yes && ps.length === 1) askWhy(ps[0]);
+  }
+  // After a ✕: what was wrong with it, in a line (optional). Kept on the proposal with the draft, examples for the
+  // proposer and the namer and the trail of what's the person's own (app/analysis/critiques.py); not an undo step.
+  function askWhy(p) {
+    let bar = $('#wb-why');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'wb-why'; bar.className = 'wb-why'; document.body.appendChild(bar); }
+    bar.innerHTML = `<span>✕ rejected: <b>${proposalText(p).replace(/<ul[\s\S]*<\/ul>/, '')}</b></span>
+      <input placeholder="what was wrong with it? (optional, Enter keeps it: it teaches the proposer)" aria-label="what was wrong">
+      <button class="wb-mini" title="skip">✕</button>`;
+    const inp = bar.querySelector('input'), close = () => bar.remove();
+    bar.querySelector('button').addEventListener('click', close);
+    inp.addEventListener('keydown', async (ev) => {
+      if (ev.key === 'Escape') return close();
+      if (ev.key !== 'Enter' || !inp.value.trim()) return;
+      const r = await fetch('/critique', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({proposal: p.id, why: inp.value.trim()})});
+      close();
+      toast(r.ok ? '📝 kept what was wrong' : '😬 couldn’t keep it', !r.ok);
+    });
+    inp.focus();
   }
   async function verdict(answer) {
     const x = JSON.parse($('#inbox').dataset.check || 'null');

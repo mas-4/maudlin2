@@ -109,7 +109,8 @@ def save(store: dict):
     disk = load()
     for i, p in store.items():
         if i in disk and disk[i].get('status') in ('approved', 'rejected'):
-            disk[i] = {**p, 'status': disk[i]['status'], 'decided': disk[i].get('decided')}
+            disk[i] = {**p, 'status': disk[i]['status'], 'decided': disk[i].get('decided'),
+                       **{k: disk[i][k] for k in ('why', 'final') if k in disk[i]}}  # and what they said and did
         else:
             disk[i] = p
     write_json(PROPOSALS, disk)
@@ -179,12 +180,29 @@ def open_proposals() -> list[dict]:
                                       -(p.get('fit') if p.get('fit') is not None else -1), p['made']))
 
 
-def decide(proposal_id: str, decision: str):
+def decide(proposal_id: str, decision: str, why: str | None = None, final: dict | None = None):
+    """Approve or reject a proposal; with the person's words on what was wrong (`why`), and for an approval the action
+    actually carried out when it isn't the proposal's own (the person changed the name, the note, the claims)"""
     store = load()
     if proposal_id not in store or decision not in ('approved', 'rejected'):
         raise ValueError(f'no such proposal or decision: {proposal_id} {decision}')
-    store[proposal_id].update(status=decision, decided=dt.now().isoformat(timespec='seconds'))
+    p = store[proposal_id]
+    p.update(status=decision, decided=dt.now().isoformat(timespec='seconds'))
+    if why and why.strip():
+        p['why'] = ' '.join(why.split())
+    if final is not None and final != action(p):
+        p['final'] = final
     write_json(PROPOSALS, store)
+
+
+def critique(proposal_id: str, why: str) -> dict:
+    """What the person said was wrong with a proposal, written after deciding it"""
+    store = load()
+    if proposal_id not in store:
+        raise ValueError(f'no such proposal: {proposal_id}')
+    store[proposal_id]['why'] = ' '.join(why.split())
+    write_json(PROPOSALS, store)
+    return store[proposal_id]
 
 
 def reopen(ids: list[str]) -> list[str]:
@@ -194,6 +212,7 @@ def reopen(ids: list[str]) -> list[str]:
     for i in done:
         store[i]['status'] = 'open'
         store[i].pop('decided', None)
+        store[i].pop('final', None)  # what was done is undone; what the person said was wrong stands
     if done:
         write_json(PROPOSALS, store)
     return done
