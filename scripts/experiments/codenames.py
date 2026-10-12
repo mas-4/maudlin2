@@ -72,6 +72,7 @@ CODENAMES = {
     'F16': ('the Magic Mirror', 'asked each week whether the taught reranker is still the fairest'),
     'F17': ('Castor and Pollux', 'the twins who share one life: one shortlist for filing and for the suggestions'),
     'F18': ('Cordelia', 'who said little and plainly: claims written short, as the person writes them'),
+    'F20': ('the Blind Men and the Elephant', 'each feels one part: the claim written from the most varied posts'),
     'F19': ('Theseus', "who followed the thread through the labyrinth: a telling as its course of action alone"),
 }
 
