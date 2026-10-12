@@ -1,6 +1,7 @@
 """The watch list (Oct 12, the person's decision on Straight news): a claim judged plain news is not terminal. Straight
-news stays as a motif, but as a sink and a watch list, not a Perennial. Claims in it, and claims with no motif (a
-person's "tells no story", or the filing model's none), are watched and filed again when something changes: weekly
+news stays as a motif, but as a sink and a watch list, not a Perennial: a person marks such a motif as watched
+(motif_index.set_watch, the checker's 'watch' action). Claims in a watched motif, and claims with no motif (a person's
+"tells no story", or the filing model's none), are watched and filed again when something changes: weekly
 against the index as it has grown, and at once when a narrative thread ties the telling to a later day (the same
 narrative told again, app/analysis/narrative_threads.py). A show retelling it isn't caught yet: that needs the claims
 compared by meaning, which waits for the weekly pass.
@@ -8,13 +9,13 @@ compared by meaning, which waits for the weekly pass.
 Filing again runs filing's own shortlist and judge (motif_index.Shortlister, name_claim), but file_claims skips any
 claim already in the index, so this is its own path. Each pass is logged, dated (REFILE_LOG): the claim, the day it was
 reported (t0), and the motifs the judge picked at t (t1), so "a report at t0, told as motif X at t1" is on record. A
-pick of a real motif (not Straight news, not one a person took the claim out of) becomes an unchecked filing, marked
+pick of a real motif (not a watched one, not one a person took the claim out of) becomes an unchecked filing, marked
 'refiled' with what the claim was, which reaches the person's claims to judge like any other; a no there takes it out
 again, and a claim left with no motif is back where the person put it. A new name the judge offers is logged, never
-made into a motif. Straight news's own pick means it's still plain.
+made into a motif. A watched motif picked means it's still plain.
 
-    watch_list.json    {'claims': claim key -> {claim, source, ref, date (t0), story, why ('no motif', 'straight
-                       news'), plain (watched now), since, refiled (last pass)}, 'unfound': keys whose words weren't
+    watch_list.json    {'claims': claim key -> {claim, source, ref, date (t0), story, why ('no motif', 'watched
+                       motif'), plain (watched now), since, refiled (last pass)}, 'unfound': keys whose words weren't
                        found, with the day they were looked for}
     refile_log.jsonl   one line a pass over a claim"""
 import json
@@ -46,14 +47,15 @@ def save(store: dict):
     write_json(STORE, store, indent=1)
 
 
-def state(index: dict, k: str, plain: str | None) -> str | None:
-    """'no motif', 'straight news', or None: the claim tells something now (or has left the index)"""
+def state(index: dict, k: str, plain: set[str]) -> str | None:
+    """'no motif', 'watched motif' (only in motifs marked watched, `plain`), or None: the claim tells something now,
+    or has left the index"""
     if k not in index['claims']:
         return None
     ids = {mi.resolve(index, i) for i in mi._ids(index, k)}
     if not ids:
         return 'no motif'
-    return 'straight news' if plain and ids == {plain} else None
+    return 'watched motif' if ids <= plain else None
 
 
 def known_texts(index: dict) -> dict[str, dict]:
@@ -104,14 +106,14 @@ def known_texts(index: dict) -> dict[str, dict]:
 
 
 def sync(index: dict | None = None, store: dict | None = None) -> dict:
-    """The watch list brought up to date with the index: Straight news's claims and the claims with no motif in, each
-    marked plain or not (a claim that tells something now stays listed, unwatched, with what it was)"""
+    """The watch list brought up to date with the index: the watched motifs' claims and the claims with no motif in,
+    each marked plain or not (a claim that tells something now stays listed, unwatched, with what it was)"""
     index = index if index is not None else mi.load()
     store = store if store is not None else load()
     claims = store.setdefault('claims', {})
-    plain = mi.plain_news(index)
+    plain = mi.watched(index)
     today = dt.now().strftime('%Y-%m-%d')
-    for c in (index['entries'].get(plain) or {}).get('claims', []) if plain else []:
+    for c in (c for eid in sorted(plain) for c in index['entries'][eid]['claims']):
         k = mi.key(c['claim'])
         w = claims.setdefault(k, {'key': k, 'since': today})
         w.update({f: c[f] for f in ('claim', 'source', 'ref', 'date', *mi.STORY_FIELDS) if c.get(f) is not None})
@@ -169,7 +171,7 @@ def due(store: dict, index: dict, now: dt | None = None) -> list[tuple[dict, str
 
 def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
     """File the watched claims that are due again against the index as it is now; how many were filed again, by
-    outcome ('told': a real motif picked and filed unchecked; 'still plain': Straight news picked; 'new name': only a
+    outcome ('told': a real motif picked and filed unchecked; 'still plain': a watched motif picked; 'new name': only a
     name for a motif we don't have; 'none')"""
     import time
     if llm.backend() is None:
@@ -188,7 +190,7 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
             break  # the rest wait for the next pass
         with mi.locked():
             index = mi.load()
-            k, plain = w['key'], mi.plain_news(index)
+            k, plain = w['key'], mi.watched(index)
             was = state(index, k, plain)
             if was is None:  # filed meanwhile
                 w['plain'] = False
@@ -202,7 +204,7 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
             filed = []
             for eid in picked:
                 entry = index['entries'].get(eid)
-                if eid == plain or entry is None or entry.get('merged_into') or k in entry.get('not_claims', []) \
+                if eid in plain or entry is None or entry.get('merged_into') or k in entry.get('not_claims', []) \
                         or any(mi.key(c['claim']) == k for c in entry['claims']):
                     continue
                 rec = mi.record(w, at[:10])
@@ -213,7 +215,7 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
             if filed:
                 index['claims'][k] = list(dict.fromkeys(mi._ids(index, k) + filed))
                 mi.save(index)
-        outcome = 'told' if filed else 'still plain' if plain in picked else 'new name' if named['new'] else 'none'
+        outcome = 'told' if filed else 'still plain' if plain & set(picked) else 'new name' if named['new'] else 'none'
         outcomes[outcome] += 1
         w['refiled'] = at
         os.makedirs(os.path.dirname(REFILE_LOG), exist_ok=True)

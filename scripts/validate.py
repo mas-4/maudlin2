@@ -457,6 +457,8 @@ def board_action(data: dict):
         mi.keep_note(data['id'])
     elif act == 'stands_alone' and data.get('id') in live:
         mi.stands_alone(data['id'], data.get('alone', True) is not False)
+    elif act == 'watch' and data.get('id') in live:  # a sink for plain reports, its claims watched (Straight news)
+        mi.set_watch(data['id'], data.get('on', True) is not False)
     elif act == 'correct' and text('claim') and text('text'):
         mi.correct_claim(data['claim'], data['text'])
     elif act == 'reject' and text('claim') and data.get('id') in live:
@@ -500,6 +502,7 @@ def workbench_state() -> dict:
     for e in state['entries']:
         entry = index['entries'].get(e['id'], {})
         e['stands_alone'] = bool(entry.get('stands_alone'))
+        e['watch'] = bool(entry.get('watch'))
         e['phrases'] = (entry.get('phrases') or [])[:6]
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
     hand = hand_made()

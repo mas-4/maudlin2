@@ -21,19 +21,19 @@ def setup(monkeypatch, tmp_path, texts=None):
                                    mi.key('The House met'): [], mi.key('The count was rigged'): ['M002'],
                                    mi.key('Lost words'): []},
              'entries': {
-                 'M001': {'id': 'M001', 'name': 'Straight news', 'claims': [
+                 'M001': {'id': 'M001', 'name': 'Straight news', 'watch': True, 'claims': [
                      {'claim': 'Polls closed at eight', 'source': 'narrative', 'date': '2026-09-30', 'story': 5}]},
                  'M002': {'id': 'M002', 'name': 'Rigged count', 'not_claims': [mi.key('The House met')], 'claims': [
                      {'claim': 'The count was rigged', 'source': 'narrative', 'date': '2026-10-03', 'checked': 'yes'}]}}})
     return looked
 
 
-def test_plain_news_and_claims_with_no_motif_are_watched(monkeypatch, tmp_path):
+def test_a_watched_motifs_claims_and_claims_with_no_motif_are_watched(monkeypatch, tmp_path):
     looked = setup(monkeypatch, tmp_path, {'The Senate met': {'story': 5}, 'The House met': {}})
     store = wl.sync()
     ws = {w['claim']: w for w in store['claims'].values()}
     assert {c: (w['why'], w['plain']) for c, w in ws.items()} == {
-        'Polls closed at eight': ('straight news', True), 'The Senate met': ('no motif', True),
+        'Polls closed at eight': ('watched motif', True), 'The Senate met': ('no motif', True),
         'The House met': ('no motif', True)}  # the told claim isn't watched; 'Lost words' has no words to file
     assert ws['Polls closed at eight']['date'] == '2026-09-30' and ws['Polls closed at eight']['story'] == 5
     assert store['unfound'] == {mi.key('Lost words'): dt.now().strftime('%Y-%m-%d')}
@@ -91,3 +91,9 @@ def test_a_narrative_told_again_on_a_later_day_is_filed_again_at_once(monkeypatc
         w['refiled'] = '2026-10-02T03:00:00'
     found = wl.due(store, mi.load(), now=dt(2026, 10, 6))
     assert [(w['claim'], why) for w, why in found] == [('The Senate met', 'told again on 2026-10-05')]
+
+
+def test_a_motif_not_marked_watched_holds_tellings_not_plain_news(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path, {})
+    mi.set_watch('M001', on=False)  # Straight news by name alone isn't a watch list: the person's mark makes it one
+    assert [w['claim'] for w in wl.sync()['claims'].values() if w['plain']] == []

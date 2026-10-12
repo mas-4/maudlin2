@@ -10,15 +10,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   held-out top 12 read 86.7% (Thumbelina). Both trainings (the plain weights and the learned shortlist) now leave such
   rows out, and the test counts them as misses: about 73% at top 12 over all filings, about 85% on motifs of two or
   more claims. The dashboard's shortlist line steps down on this date for that reason, not because filing got worse.
-- **Plain news is watched and filed again.** A claim judged plain news, in Straight news or with no motif (a person's
-  "tells no story" or the filing model's none), is no longer final: it is on a watch list (`motifs/watch_list.json`,
-  130 claims on Oct 12; 3 claims with no motif have no words left anywhere to file) and filed again weekly against the
-  index as it has grown, and at once when a narrative thread tells it again on a later day, in the 3 AM runs (at most
-  60 claims or 5 minutes a night). Filing again uses filing's own shortlist and judge; each pass is logged with the
-  day the claim was reported and the motifs picked (`motifs/refile_log.jsonl`), so "a report at t0, told as motif X at
-  t1" is on record. A real motif picked becomes an unchecked filing, marked as refiled, for the person to judge; a no
-  puts the claim back with no motif. Straight news picked means still plain; a new name is logged, never made. A show
-  retelling the claim isn't detected yet (it needs claims compared by meaning); the weekly pass stands in.
+- **Plain news is watched and filed again.** A claim judged plain news, in a motif the person marks as watched (Straight
+  news: the checker's watch mark) or with no motif (a person's "tells no story" or the filing model's none), is no
+  longer final: it is on a watch list (`motifs/watch_list.json`: 126 claims with no motif on Oct 12, and Straight news's
+  4 once marked; 3 claims with no motif have no words left anywhere to file) and filed again weekly against the index as
+  it has grown, and at once when a narrative thread tells it again on a later day, in the 3 AM runs (at most 60 claims
+  or 5 minutes a night). Filing again uses filing's own shortlist and judge; each pass is logged with the day the claim
+  was reported and the motifs picked (`motifs/refile_log.jsonl`), so "a report at t0, told as motif X at t1" is on
+  record. A real motif picked becomes an unchecked filing, marked as refiled, for the person to judge; a no puts the
+  claim back with no motif. A watched motif picked means still plain; a new name is logged, never made. A show retelling
+  the claim isn't detected yet (it needs claims compared by meaning); the weekly pass stands in.
 - **A filing keeps the story its claim was told about.** A narrative's claim carries the news story the report tied
   it to (the model's tie, "same event" or "same issue"), a fact-check's the story whose card showed it; the Focus
   Group's and the shows' claims carry none (an episode covers several stories, and nothing cheap says which). So

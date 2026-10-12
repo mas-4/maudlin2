@@ -593,12 +593,28 @@ def fits(label: dict) -> bool:
 # clusters of stories by design (Story.saga_id). A narrative's tie is the model's, to one of the stories seen last
 # when the report was made ('story_tie': 'same event' or 'same issue', app/narratives.story_link); a fact-check's is
 # the one its card showed (factchecks.stories_of). The Focus Group's and the shows' claims carry none
-PLAIN_NEWS = 'Straight news'  # the motif for a plain report: a sink and a watch list, not a Perennial (Oct 12)
 
 
-def plain_news(index: dict) -> str | None:
-    """The Straight news motif's id, found by its name (never assumed)"""
-    return next((e['id'] for e in live(index) if e['name'].strip().lower() == PLAIN_NEWS.lower()), None)
+def watched(index: dict) -> set[str]:
+    """The motifs a person marked as watch lists (set_watch): a sink for plain reports, Straight news first of all,
+    whose claims are watched and filed again (watch_list.py)"""
+    return {e['id'] for e in live(index) if e.get('watch')}
+
+
+@exclusive
+def set_watch(eid: str, on: bool = True):
+    """A person marks a motif as a watch list, or not: its claims are plain reports, not tellings of a shape; each
+    is watched and filed again as the index grows (watch_list.py), and a story's filings in it are its baseline
+    (story_motifs). Straight news, by the person's decision of Oct 12: a sink and a watch list, not a Perennial"""
+    index = load()
+    entry = index['entries'][eid]
+    if entry.get('merged_into'):
+        raise ValueError(f'{eid} is gone')
+    if on:
+        entry['watch'] = True
+    else:
+        entry.pop('watch', None)
+    save(index)
 
 
 def story_of_group(g: dict) -> dict:
@@ -612,20 +628,20 @@ def story_of_group(g: dict) -> dict:
 def story_motifs(story_id: int, index: dict | None = None) -> list[dict]:
     """Which motifs a story is told in, in time order: a row per filing of a claim tied to the story (or to a story
     since merged into it), {'date', 'claim', 'source', 'story_tie', 'motif', 'name', 'checked', 'plain'}; 'plain' marks
-    the plain report (filed in Straight news, or with no motif: 'motif' None, from the watch list, which keeps the
-    words the index drops), the baseline the tellings are read against."""
+    the plain report (filed in a watched motif, Straight news, or with no motif: 'motif' None, from the watch list,
+    which keeps the words the index drops), the baseline the tellings are read against."""
     from app.analysis.stories import merges
     gone = merges()
     target = gone.get(int(story_id), int(story_id))
     index = index if index is not None else load()
-    plain = plain_news(index)
+    plain = watched(index)
     rows = []
     for e in live(index):
         for c in e['claims']:
             if c.get('story') is not None and gone.get(int(c['story']), int(c['story'])) == target:
                 rows.append({'date': c.get('date', ''), 'claim': c['claim'], 'source': c.get('source', ''),
                              'story_tie': c.get('story_tie'), 'motif': e['id'], 'name': e['name'],
-                             'checked': c.get('checked'), 'plain': e['id'] == plain})
+                             'checked': c.get('checked'), 'plain': e['id'] in plain})
     from app.analysis import watch_list  # claims with no motif: their words and story are kept there
     for w in watch_list.load()['claims'].values():
         if w.get('story') is not None and gone.get(int(w['story']), int(w['story'])) == target \

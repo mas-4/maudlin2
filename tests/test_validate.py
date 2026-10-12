@@ -337,3 +337,16 @@ def test_each_claim_waits_once_with_why(monkeypatch):
     a = q[0]
     assert [(r['kind'], r['id']) for r in a['reasons']] == [('unchecked', 'M1'), ('unchecked', 'M2'), ('doubted', 'M3')]
     assert a['fits'] == {'M1': 0.4, 'M2': 0.9, 'M3': 0.2} and a['unsure'] == ['M2'] and a['better'][0]['id'] == 'M4'
+
+
+def test_the_workbench_marks_a_motif_as_a_watch_list(monkeypatch, tmp_path):
+    """Straight news (Oct 12): a sink whose claims are watched and filed again, marked by the person"""
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Straight news', 'claims': [{'claim': 'a', 'source': 'narrative'}]}}})
+    assert validate.workbench_state()['entries'][0]['watch'] is False
+    validate.workbench_action({'action': 'watch', 'id': 'M001', 'on': True})
+    assert mi.watched(mi.load()) == {'M001'} and validate.workbench_state()['entries'][0]['watch'] is True
+    validate.workbench_action({'action': 'watch', 'id': 'M001', 'on': False})
+    assert mi.watched(mi.load()) == set()

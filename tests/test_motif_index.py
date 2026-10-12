@@ -617,13 +617,18 @@ def test_a_story_lists_its_motifs_in_time_order_through_merges(monkeypatch, tmp_
     mi.save({'next': 3, 'claims': {}, 'entries': {
         'M001': {'id': 'M001', 'name': 'Straight news', 'claims': [
             {'claim': 'Polls closed at eight', 'source': 'narrative', 'date': '2026-10-01', 'story': 5}]},
+        'M003': {'id': 'M003', 'name': 'Another sink', 'claims': []},
         'M002': {'id': 'M002', 'name': 'Rigged count', 'claims': [
             {'claim': 'The count was rigged', 'source': 'narrative', 'date': '2026-10-03', 'story': 7, 'checked': 'yes'},
             {'claim': 'Another story', 'source': 'narrative', 'date': '2026-10-02', 'story': 6}]}}})
+    assert [r['plain'] for r in mi.story_motifs(5)] == [False, False]  # no motif is watched yet
+    mi.set_watch('M001')  # the person marks Straight news as a watch list: its claims are the plain report
+    mi.set_watch('M003')
+    mi.set_watch('M003', on=False)
+    assert mi.watched(mi.load()) == {'M001'}
     rows = mi.story_motifs(5)
     assert [(r['date'], r['motif'], r['plain']) for r in rows] == [('2026-10-01', 'M001', True), ('2026-10-03', 'M002', False)]
     assert mi.story_motifs(7) == rows  # asked by the gone id: the same story
-    assert mi.plain_news(mi.load()) == 'M001'
 
 
 def test_older_filings_get_their_story_from_the_report_they_came_in(monkeypatch, tmp_path):
