@@ -68,6 +68,7 @@ CODENAMES = {
     'F12': ('Prometheus', 'forethought: what the machine shows a claim before anyone has judged it'),
     'F13': ('Persephone', 'the seed that comes back up: motifs with no claims let into the shortlist'),
     'F14': ('Tyche', 'Fortune: how much of a gain is chance'),
+    'F15': ('Thumbelina', 'no bigger than a thumb: does the shortlist serve the small motifs'),
 }
 
 
