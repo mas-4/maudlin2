@@ -16,8 +16,8 @@ def test_the_day_shows_who_has_the_gpu():
 
 def test_the_night_stays_dark():
     assert lights.look(state(), 2) == ('Direct', lights.DARK, 0, 0)
-    assert lights.look(state(who='worker', load=90), 23.5) == ('Breathing', lights.EMBER, 0, 1)
-    assert lights.look(state(who='worker', load=90, failed=True, temp=95), 3)[1] == lights.EMBER  # no alarms at night
+    assert lights.look(state(who='worker', load=90), 23.5) == ('Direct', lights.DARK, 0, 0)  # working: still dark
+    assert lights.look(state(who='worker', load=90, failed=True, temp=95), 3)[1] == lights.DARK  # no alarms at night
 
 
 def test_a_failed_run_and_heat_show():

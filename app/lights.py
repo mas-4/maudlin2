@@ -11,7 +11,8 @@ brightness is the card's own 0-5):
     last hourly run failed  red, double-flashing (until a run succeeds)
     hot (HOT C and up)      the colour turns toward orange; at LIMIT, red flashing
 
-At night (NIGHT to DAY) the room stays dark: off while the GPU is idle, a dim ember breathing while it works. The
+At night (NIGHT to DAY) the room stays dark: off, working or not (Oct 12: the dim ember breathing while it worked kept
+Terra, the dog, up all night: "your freaking computer keeps me up at night grrrr"). The
 case fans on the board take the same colour. Picked with the person on Oct 11 from a demo of each (the meteor effect
 ignores its colour, "rainbow goop", and so does the wave; breathing at the fastest speed looked like blinking).
 
@@ -100,8 +101,8 @@ def look(state: dict, hour: float) -> tuple:
     working = not (state['who'] == 'idle' and state['load'] < 10)
     if state.get('party') and state['temp'] < LIMIT:  # the 🦄 key: the unicorn puke on demand, night or day
         return ('Rainbow', VIOLET, 2, 5)
-    if hour >= NIGHT or hour < DAY:  # the room stays dark
-        return ('Breathing', EMBER, 0, 1) if working else ('Direct', DARK, 0, 0)
+    if hour >= NIGHT or hour < DAY:  # the room stays dark, for the dog
+        return ('Direct', DARK, 0, 0)
     if state['temp'] >= LIMIT:
         return ('Flashing', RED, 1, 5)
     if state['failed'] and state['who'] != 'hourly':

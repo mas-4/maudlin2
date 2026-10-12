@@ -1,0 +1,14 @@
+[Unit]
+Description=Maudlin experiments: the queue of experiment steps, one at a time under the GPU lease, surviving reboots (scripts/experiments/exp_queue.py)
+After=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mas/Repos/maudlin2
+ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/exp_queue.py run
+Restart=always
+RestartSec=30
+Nice=5
+
+[Install]
+WantedBy=default.target
