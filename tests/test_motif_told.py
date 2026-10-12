@@ -41,3 +41,12 @@ def test_told_is_kept_on_entries_and_decides_attested(monkeypatch, tmp_path):
     assert es['M001']['told']['events'] == 1 and es['M001']['told']['span'] == ['2026-10-01', '2026-10-05']
     assert es['M002']['told']['events'] == 2  # the unchecked filing isn't counted
     assert not mi.attested(es['M001']) and mi.attested(es['M002'])
+
+
+def test_one_news_story_is_one_occasion_but_one_issue_isnt():
+    claims = [kept('the mayor took bribes', 'narrative') | {'story': 7, 'story_tie': 'same event'},
+              kept('a builder paid off city hall', 'Snopes', 'https://s/1') | {'story': 9},
+              kept('corruption is everywhere', 'narrative') | {'story': 7, 'story_tie': 'same issue'}]
+    named = mt.telling_names([c['claim'] for c in claims])
+    vec = {c['claim']: v for c, v in zip(claims, np.eye(3))}
+    assert sorted(len(g) for g in mt.occasions(claims, vec, named, {9: 7})) == [1, 2]  # story 9 was merged into 7

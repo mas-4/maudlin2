@@ -340,6 +340,7 @@
             <button class="wb-mini" data-rename="${e.id}" title="rename">✎ rename</button>
             <button class="wb-mini" data-copymotif="${e.id}" title="copy everything about it: name, note, groups, genre, what it rests on and what rests on it, related (with their notes) and every claim">📋 copy</button>
             ${isSingle(e) || e.stands_alone ? `<button class="wb-mini${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
+            <button class="wb-mini${e.watch ? ' on' : ''}" data-watch="${e.id}" title="${e.watch ? 'a watch list: its claims are plain reports, filed again each week as the index grows (click to stop)' : 'make it a watch list, like Straight news: its claims are plain reports, filed again each week in case they are later told as a motif'}">👁 ${e.watch ? 'watched' : 'watch?'}</button>
             <button class="wb-mini" data-delete="${e.id}" title="delete this motif (its claims aren't filed again)">🗑️</button>
           </span>
         </div>
@@ -1290,6 +1291,7 @@
     if (t.closest('.wb-pname') && !t.closest('input')) return editTitle(t.closest('[data-panel]').dataset.id);
     if ((v = d('done'))) { const e = S.by[v]; return act({action: 'done', id: v, done: e.done !== 'done'}, e.done === 'done' ? `“${e.name}” is not done any more` : `✅ “${e.name}” is done`); }
     if ((v = d('alone'))) { const e = S.by[v]; return act({action: 'stands_alone', id: v, alone: !e.stands_alone}, e.stands_alone ? '🧍 suggestions back on' : `🧍 “${e.name}” stands alone`); }
+    if ((v = d('watch'))) { const e = S.by[v]; return act({action: 'watch', id: v, on: !e.watch}, e.watch ? `👁 “${e.name}” isn't watched now` : `👁 “${e.name}” is a watch list`); }
     if ((v = d('alone1'))) return act({action: 'stands_alone', id: v, alone: true}, `🧍 “${S.by[v].name}” stands alone`);
     if ((v = d('delete'))) { const e = S.by[v]; return sure(t, `Delete “${e.name}”?${e.claims.length ? ` Its ${e.claims.length} claims won't be filed again.` : ''}`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: v}, `🗑️ deleted “${e.name}”`)); }
     if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” no longer rests on “${S.by[p].name}”`); }

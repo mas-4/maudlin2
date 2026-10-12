@@ -148,12 +148,16 @@ def main():
     a.add_argument('--no-lease', action='store_true')
     a.add_argument('--after', type=int)
     a.add_argument('--priority', type=int, default=0)
-    a.add_argument('cmd', nargs=argparse.REMAINDER)
     sub.add_parser('show')
     sub.add_parser('run')
-    args = p.parse_args()
+    # The command is everything after '--', so options may come before or after CODE and HOLDER (Oct 12: with the
+    # command as argparse's remainder, '--minutes' or '--after' after HOLDER were swallowed into the command)
+    argv = sys.argv[1:]
+    cmd = argv[argv.index('--') + 1:] if '--' in argv else []
+    args = p.parse_args(argv[:argv.index('--')] if '--' in argv else argv)
     if args.what == 'add':
-        cmd = args.cmd[1:] if args.cmd[:1] == ['--'] else args.cmd
+        if not cmd:
+            p.error("add: the command goes after '--'")
         print(add(args.code, args.holder, cmd, args.minutes, not args.no_lease, args.after, args.priority))
     elif args.what == 'show':
         show()

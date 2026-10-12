@@ -10,6 +10,8 @@ A motif's kept claims are joined into one occasion when two of them
                            report's time, so not those)
     share a rare name      a name (capitalized words) found in at most RARE of all the index's claims, not a word also
                            used in lower case nor a people's name ('Cornell University' joins; 'Republican' doesn't)
+    share a story          the same news story on both filings (motif_index's story ids, Oct 12: the person's tier
+                           two), merged stories followed; a posts claim tied to a story only as 'same issue' doesn't
 
 and the occasions are what's left apart. An estimate: a name can join two affairs of one person, and a story told
 with no names in common splits in two. Kept on each entry as 'told', refreshed in the hourly run after filing:
@@ -53,8 +55,21 @@ def telling_names(claims: list[str]) -> dict[str, set[str]]:
     return {c: {n for n in s if df[n] <= RARE and n not in generic} for c, s in of.items()}
 
 
-def occasions(claims: list[dict], vec: dict, named: dict) -> list[list[dict]]:
+def story(c: dict, merged: dict) -> int | None:
+    """The news story a filing is about, as an event (not a 'same issue' tie), merges followed"""
+    if c.get('story') is None or c.get('story_tie') == 'same issue':
+        return None
+    try:
+        sid = int(c['story'])
+    except (TypeError, ValueError):
+        return None
+    return merged.get(sid, sid)
+
+
+def occasions(claims: list[dict], vec: dict, named: dict, merged: dict | None = None) -> list[list[dict]]:
     """A motif's claims in occasions (see the module's note)"""
+    merged = merged or {}
+    stories = [story(c, merged) for c in claims]
     n = len(claims)
     root = list(range(n))
 
@@ -69,7 +84,8 @@ def occasions(claims: list[dict], vec: dict, named: dict) -> list[list[dict]]:
         for j in range(i + 1, n):
             a, b = claims[i], claims[j]
             same = a.get('source') != 'narrative' and a.get('ref') and a.get('ref') == b.get('ref')
-            if alike[i, j] >= ALIKE or same or named[a['claim']] & named[b['claim']]:
+            if (alike[i, j] >= ALIKE or same or named[a['claim']] & named[b['claim']]
+                    or (stories[i] is not None and stories[i] == stories[j])):
                 root[find(i)] = find(j)
     out = {}
     for i in range(n):
@@ -84,11 +100,16 @@ def told(index: dict) -> dict[str, dict]:
     texts = sorted({c['claim'] for cs in kept.values() for c in cs})
     vec = dict(zip(texts, embed(texts))) if texts else {}
     named = telling_names(texts)
+    try:
+        from app.analysis import stories
+        merged = stories.merges()
+    except Exception:  # noqa: BLE001 - without the merges, story ids as they are
+        merged = {}
     at = dt.now().isoformat(timespec='seconds')
     out = {}
     for eid, cs in kept.items():
         dates = sorted(c['date'] for c in cs if c.get('date'))
-        out[eid] = {'events': len(occasions(cs, vec, named)), 'sources': sorted({c.get('source', '') for c in cs}),
+        out[eid] = {'events': len(occasions(cs, vec, named, merged)), 'sources': sorted({c.get('source', '') for c in cs}),
                     'span': [dates[0], dates[-1]] if dates else [], 'at': at}
     return out
 
