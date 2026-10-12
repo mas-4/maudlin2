@@ -45,6 +45,7 @@ def saved() -> dict:
 
 
 def save(state: dict):
+    state['verdicts'] = {**state.get('verdicts', {}), **saved().get('verdicts', {})}  # the person's, given meanwhile
     json.dump(state, open(OUT + '.tmp', 'w'), indent=1)
     os.replace(OUT + '.tmp', OUT)
 

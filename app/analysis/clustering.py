@@ -251,7 +251,8 @@ def two_events(a: list[str], b: list[str], cache: dict) -> bool:
         answers = [llm.complete_json(q.format(**shown), SEAM_SCHEMA, max_tokens=300, model=SEAM_MODEL) for q in SEAM_ASK]
         if any(x is None for x in answers):
             return False  # not cached: asked again next run
-        cache[key] = [bool(x['one_event']) for x in answers] + [answers[0].get('reason', '')]
+        cache[key] = [bool(x['one_event']) for x in answers] + [answers[0].get('reason', ''), a, b]  # sides: for the
+        # experiments page's list of the cuts production weighed
     return not cache[key][0] and not cache[key][1]
 
 

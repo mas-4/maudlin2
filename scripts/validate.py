@@ -33,11 +33,21 @@ SHARED_STATIC = {'motif-map-layout.js': os.path.join(os.path.dirname(CHECKER), '
 # then the other tools. The organizer, the singles page and the board were dropped Oct 7 (the workbench does their
 # work; the board's /motif-board.json and POST /motif-board stay, for the map and the other pages). (path, label, section)
 NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '🕸️ Motif map', 'main'),
-       ('/dashboard', '📈 Dashboard', 'main'),
+       ('/dashboard', '📈 Dashboard', 'main'), ('/experiments', '🧪 Experiments', 'main'),
        ('/motifs', '✅ check', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
        ('/motif-notes', '📝 notes', 'motifs'),
        ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
 _templates = None
+
+
+def experiments_lab():
+    """scripts/experiments/lab.py, the experiments page's data, imported from this checkout"""
+    import sys
+    folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'experiments')
+    if folder not in sys.path:
+        sys.path.insert(0, folder)
+    import lab
+    return lab
 
 
 def render(template: str, here: str, undo: bool = True, **context) -> str:
@@ -51,7 +61,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
 
 
 STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-empty': 'empty.html',
-                '/motif-notes': 'notes.html', '/dashboard': 'dashboard.html'}
+                '/motif-notes': 'notes.html', '/dashboard': 'dashboard.html', '/experiments': 'experiments.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
 
@@ -882,6 +892,13 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.startswith(('/experiments.json', '/experiment-paper.json', '/experiment-cases.json')):
+            from urllib.parse import urlparse, parse_qs
+            lab = experiments_lab()  # 🧪 the experiments page (scripts/experiments/lab.py)
+            code = parse_qs(urlparse(self.path).query).get('code', [''])[0]
+            if self.path.startswith('/experiments.json'):
+                return self.send_json(lab.overview())
+            return self.send_json(lab.paper(code) if self.path.startswith('/experiment-paper') else lab.cases(code))
         if self.path.startswith('/dashboard.json'):  # 📈 everything at a glance (app/dashboard.py)
             from app import dashboard
             return self.send_json(dashboard.gather(fresh='fresh=1' in self.path))
@@ -926,7 +943,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Location', '/motif-workbench')
             self.end_headers()
             return
-        body = (render(page_of, path, undo=page_of != 'dashboard.html') if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
+        body = (render(page_of, path, undo=page_of not in ('dashboard.html', 'experiments.html')) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
                 else page())
         body = body.encode()
         self.send_response(200)
@@ -960,6 +977,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+        if self.path == '/experiment-verdict':  # the person's verdict on an experiment's item (Pandora's tellings)
+            data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+            try:
+                return self.send_json(experiments_lab().verdict(data.get('code', ''), data.get('key', ''), data.get('verdict')))
+            except (ValueError, OSError) as e:
+                return self.send_json_error(400, str(e))
         if self.path == '/undo':
             try:
                 what = undo()
