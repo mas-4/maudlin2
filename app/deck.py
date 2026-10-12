@@ -202,7 +202,7 @@ def faces(state: dict, size: tuple, now: float) -> list:
     bg = (40, 40, 48)
     if fresh:  # glows while there's one not met
         bg = dim((0, 200, 120), 0.55 + 0.45 * abs((now % 2) - 1))
-    out.append(key(size, bg, '🧬', [born[0]['name']] if born else ['none yet'], str(len(born)) if born else None))
+    out.append(key(size, bg, '🧬', [born[0]['name']] if born else ['no new motif today'], str(len(born)) if born else None))
 
     top = state.get('retold') or []
     if top:
