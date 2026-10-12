@@ -296,8 +296,7 @@ def run(deck, start: str):
         if now - looked >= LOOK:
             look_up(state)
             looked = now
-            hour = dt.now().hour
-            want = DIM if hour >= lights.NIGHT or hour < lights.DAY else BRIGHT
+            want = DIM if lights.night() else BRIGHT
             if want != bright:
                 deck.set_brightness(want)
                 bright = want

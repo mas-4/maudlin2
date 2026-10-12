@@ -15,7 +15,6 @@ from datetime import datetime as dt
 
 from app.utils import Config
 
-DAY_HOURS = (8, 23)  # app/lights.py's DAY and NIGHT
 WIDTH = 64
 LOOKS = {  # app/lights.py's looks, in words
     'TEAL': 'teal breathing: the worker', 'VIOLET': 'violet flowing: an experiment', 'AMBER': 'amber flowing: the hourly run',
@@ -45,8 +44,7 @@ def lights_line() -> str:
     try:
         load, temp = lights.card()
         state = {'who': lights.who(), 'load': load, 'temp': temp, 'failed': lights.failed()}
-        d = dt.now()
-        effect, colour, _, bright = lights.look(state, d.hour + d.minute / 60)
+        effect, colour, _, bright = lights.look(state, lights.night())
         name = next((n for n in LOOKS if getattr(lights, n) == colour), None)
         words = LOOKS.get(name) or f'{effect.lower()} {colour}'
         return f"💡 {words}{f', brightness {bright}/5' if bright else ''}"
@@ -317,14 +315,13 @@ def data() -> dict:
     try:
         load, temp = lights.card()
         state = {'who': lights.who(), 'load': load, 'temp': temp, 'failed': lights.failed()}
-        d = dt.now()
-        effect, colour, speed, bright = lights.look(state, d.hour + d.minute / 60)
+        effect, colour, speed, bright = lights.look(state, lights.night())
         title = {'worker': 'Writing claims and filing', 'experiment': 'Running an experiment',
                  'hourly': 'The hourly run', 'idle': 'Idle'}[state['who']]
         if state['failed']:
             title += ' · last run failed'
         out['look'] = {'title': title, 'effect': effect.lower(), 'color': '#%02x%02x%02x' % colour,
-                       'brightness': bright, 'night': not DAY_HOURS[0] <= d.hour < DAY_HOURS[1]}
+                       'brightness': bright, 'night': lights.night()}
     except Exception as e:  # noqa: BLE001
         out['look'] = {'title': 'Lights unreadable', 'effect': 'direct', 'color': '#666666', 'brightness': 0,
                        'error': str(e)}
