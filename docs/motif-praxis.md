@@ -241,6 +241,13 @@ fact-check or show claim, or share a rare name are one occasion. Two or more occ
 **placed**, a shape seen about one event so far (eleven Cornell claims are one occasion). Placed motifs are drawn faint
 on the map; nothing about filing changes.
 
+**Specific motifs are motifs (Oct 12).** A motif named for the tellers' own category (Sharia takeover: Ben-Amos's
+ethnic genre, the tellers' term) belongs as much as one named in ours (Immigration as infiltration: analytical). The
+test is not how abstract it is but whether it is *told*: a claim asserted against doubt, not reported. A specific
+motif should rest on the shape it is a case of (Sharia takeover on Immigration as infiltration); one that rests on
+nothing and asserts nothing is a topic, not a motif. Recurrence across events is a status (attested or placed, a
+motif's birth), never a test of whether a motif deserves to exist.
+
 ## Hierarchy
 
 Rests-on is the only hierarchy: a motif rests on another when it only makes sense given it (a kind of it, or a case,

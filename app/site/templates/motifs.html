@@ -11,9 +11,10 @@
     <p class="wip-banner">🚧 <b>Work in progress.</b> Our own index of the recurring shapes in what's told about
         politics and public life, built as we go: the way Stith Thompson built his <i>Motif-Index of
         Folk-Literature</i> from the folktales he read, but from what people say online, what's told on the shows we
-        follow and what fact-checkers examine (on <a href="folklore.html">Folklore and rumors</a>). <b>{{ entries|length }}</b>
-        motifs from <b>{{ claims }}</b> claims so far, in {{ genres|length }} genres and {{ groups|length }} groups;
-        {{ recurring }} seen more than once, {{ resting }} resting on another.</p>
+        follow and what fact-checkers examine (on <a href="folklore.html">Folklore and rumors</a>). <b>{{ attested }}</b>
+        shapes told about two or more different events, and {{ entries|length - attested }} more seen about one so far
+        (<b>{{ entries|length }}</b> motifs from <b>{{ claims }}</b> claims), in {{ genres|length }} genres and
+        {{ groups|length }} groups; {{ resting }} resting on another.</p>
     <p class="more-link"><a href="motif-map.html">🕸️ see them on the map</a> <a href="folklore.html">🧶 what's told now</a></p>
     {% include "motif_note.html" %}
     <details class="how-it-works" id="how">

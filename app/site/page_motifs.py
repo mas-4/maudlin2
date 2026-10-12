@@ -87,5 +87,7 @@ class MotifsPage:
         shown = catalog()
         self.template.write({'title': 'Motif index', **shown,
                              'recurring': sum(1 for e in shown['entries'] if e['count'] > 1),
+                             # the headline: shapes told about two events or more (motif_told.py), the rest placed
+                             'attested': sum(1 for e in shown['entries'] if motif_index.attested(e)),
                              'resting': sum(1 for e in shown['entries'] if e['rests_on'])})
         logger.info("...%d motifs", len(shown['entries']))

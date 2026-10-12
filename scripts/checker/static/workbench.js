@@ -167,7 +167,7 @@
     if (!S.data) return;
     const es = motifs();
     const filings = es.reduce((n, e) => n + e.claims.length, 0);
-    $('#stats').innerHTML = `<b>${es.length}</b> motifs · <b>${filings}</b> filings · <b>${es.filter((e) => e.claims.length > 1).length}</b> with 2+ · <b>${es.filter((e) => e.done !== 'done').length}</b> not done`;
+    $('#stats').innerHTML = `<b>${es.filter((e) => e.attested).length}</b> attested <span class="wb-faint" title="told about two or more different events (the rest are placed: one event so far)">of</span> <b>${es.length}</b> motifs · <b>${filings}</b> filings · <b>${es.filter((e) => e.claims.length > 1).length}</b> with 2+ · <b>${es.filter((e) => e.done !== 'done').length}</b> not done`;
     $('#views').innerHTML = VIEWS.map(([k, label, test]) => `<button class="wb-view${S.view === k ? ' on' : ''}" data-view="${k}">${label} <i>${es.filter(test).length}</i></button>`).join('');
     $('#sort').value = S.sort;
     renderShelf();
