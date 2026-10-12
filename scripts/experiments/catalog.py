@@ -93,8 +93,9 @@ REGISTRY = {
     'F9': ('Single posts filed on their own, then grouped by motif', 'f9_isis.py', 'queued', 'f9_isis.json', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'planned', 'u1_uncurated.json (split); archives/u1', ''),
-    'U1': ('The machine alone: our filing from an empty index', 'u1_uncurated.py', 'running',
-           f'{ARCHIVES} (runs U1:*); archives/u1 (sandboxes)', ''),
+    'U1': ('The machine alone: our filing from an empty index', 'u1_uncurated.py', 'answered',
+           f'{ARCHIVES} (runs U1:*); archives/u1 (sandboxes)',
+           'it lumps: 63 motifs for 600 claims where you have 465; B-cubed precision 0.19, recall 0.53'),
 }
 # the earlier ones (Oct 8-10), as the Experiment codes doc has them
 for code, name, status, result in [
