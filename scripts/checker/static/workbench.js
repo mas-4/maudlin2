@@ -551,7 +551,7 @@
           const p = x.proposal;
           if (S.decided.has('p:' + p.id)) return '';
           return `<div class="wb-card wb-prop"><div class="wb-today-why">💡 the model proposes</div><span class="wb-propline">${proposalText(p)}</span>
-            <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
+            <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="${p.kind === 'new_motif' ? 'make it, with the ticked claims' : 'approve: do it'}">✓</button>${p.kind === 'new_motif' ? `<button class="wb-mini" data-prop="seed|${p.id}" title="keep the motif as a seed, with none of these claims: the filing can find it for the next telling">🌱</button>` : ''}${p.kind === 'parent' || p.kind === 'merge' ? `<button class="wb-mini" data-prop="flip|${p.id}" title="${p.kind === 'parent' ? 'yes, but the other way round: the second rests on the first' : 'yes, but the other way round: merge the second into the first'}">⇅</button>` : ''}<button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
             ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
         }
         return '';
@@ -570,7 +570,7 @@
       // from your own decisions), the list sorted by it, the least likely folded at the bottom
       const card = (p) => `<div class="wb-card wb-prop"><label class="wb-propline"><input type="checkbox" data-propsel="${p.id}"> ${proposalText(p)}</label>
           ${p.fit != null ? `<b class="wb-fit" style="--fit: ${Math.round(p.fit * 100)}%" title="best fit: how likely you are to approve it, learned from your decisions${p.judge ? `; the judge's ${p.judge.score}/10${p.judge.reason ? `: ${esc(p.judge.reason)}` : ''}` : ''}">🎯 ${Math.round(p.fit * 100)}%</b>` : ''}
-          <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="approve: do it">✓</button><button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
+          <span class="wb-sbtns"><button class="wb-mini" data-prop="yes|${p.id}" title="${p.kind === 'new_motif' ? 'make it, with the ticked claims' : 'approve: do it'}">✓</button>${p.kind === 'new_motif' ? `<button class="wb-mini" data-prop="seed|${p.id}" title="keep the motif as a seed, with none of these claims: the filing can find it for the next telling">🌱</button>` : ''}${p.kind === 'parent' || p.kind === 'merge' ? `<button class="wb-mini" data-prop="flip|${p.id}" title="${p.kind === 'parent' ? 'yes, but the other way round: the second rests on the first' : 'yes, but the other way round: merge the second into the first'}">⇅</button>` : ''}<button class="wb-mini" data-prop="no|${p.id}" title="reject: don't suggest it again">✕</button></span>
           ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
       const likely = items.filter((p) => !p.unlikely), unlikely = items.filter((p) => p.unlikely);
       box.innerHTML = items.length ? `<p class="wb-faint">💡 The model's suggestions, each one change. ✓ does it (undoable, like doing it by hand); ✕ and it won't suggest it again. 🎯 is the best fit: how likely you are to approve it, learned from your decisions (best first).</p>
@@ -1251,7 +1251,7 @@
       renderShelf();
       return renderTree();
     }
-    if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], yes === 'yes'); }
+    if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], ['seed', 'flip'].includes(yes) ? yes : yes === 'yes'); }
     if ((v = d('ck'))) {
       const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
       S.decided.add(claim + '|' + id);  // off the lists in place (fetching them again made the page jump)
@@ -1537,7 +1537,8 @@
     if (p.kind === 'unrelate') return `✂️ ${chip(a.a)} and ${chip(a.b)} aren't related: take the link away`;
     if (p.kind === 'unparent') return `✂️ ${chip(a.id)} doesn't rest on ${chip(a.parent)}: take the link away`;
     if (p.kind === 'genre') return `🎭 ${chip(a.id)} is ${esc(a.genre)}`;
-    if (p.kind === 'new_motif') return `✨ a new motif “${esc(a.name)}”${a.genre ? ` 🎭 ${esc(a.genre)}` : ''}: ${esc(a.note || '')}<ul class="wb-propclaims">${a.claims.map((c) => `<li>${esc(c.claim)}${c.in ? ` <span class="wb-faint">(now in ${chip(c.in)})</span>` : ''}</li>`).join('')}</ul>`;
+    // its claims each ticked: untick the ones that don't fit before ✓ (🌱 keeps the motif with none, as a seed)
+    if (p.kind === 'new_motif') return `✨ a new motif “${esc(a.name)}”${a.genre ? ` 🎭 ${esc(a.genre)}` : ''}: ${esc(a.note || '')}<ul class="wb-propclaims">${a.claims.map((c, i) => `<li><label><input type="checkbox" checked data-propclaim="${p.id}|${i}" title="untick a claim that doesn't fit: ✓ files only the ticked ones"> ${esc(c.claim)}</label>${c.in ? ` <span class="wb-faint">(now in ${chip(c.in)})</span>` : ''}</li>`).join('')}</ul>`;
     if (p.kind === 'new_group') return `🫧 a new group “${esc(a.name)}”: ${a.members.map((m) => chip(m)).join(' ')}`;
     if (p.kind === 'group') return `📁 put ${chip(a.id)} in ${esc((S.data.groups.find((g) => g.id === a.group) || {name: a.group}).name)}`;
     return esc(p.kind);
@@ -1545,18 +1546,31 @@
   async function decideProposals(ids, yes) {
     const ps = ids.map((id) => S.proposals[id]).filter(Boolean);
     if (!ps.length) return;
-    const steps = ps.map((p) => yes ? {...p.do, proposal: p.id} : {action: 'proposal_reject', proposal: p.id});
+    const steps = ps.map((p) => !yes ? {action: 'proposal_reject', proposal: p.id}
+      : yes === 'flip' ? {...flipped(p.do), proposal: p.id}
+      : p.kind === 'new_motif' ? {...p.do, proposal: p.id, claims: keptClaims(p, yes === 'seed')} : {...p.do, proposal: p.id});
     ps.forEach((p) => S.decided.add('p:' + p.id));  // off the lists in place
-    const ok = await act(steps.length === 1 ? steps[0] : {action: 'batch', steps}, `${yes ? '✓ approved' : '✕ rejected'} ${ps.length} proposal${ps.length === 1 ? '' : 's'}`);
+    const ok = await act(steps.length === 1 ? steps[0] : {action: 'batch', steps}, `${yes === 'flip' ? '⇅ approved the other way round:' : yes === 'seed' ? '🌱 kept as a seed:' : yes ? '✓ approved' : '✕ rejected'} ${ps.length} proposal${ps.length === 1 ? '' : 's'}`);
     if (S.tab === 'proposals') renderInbox();
-    if (ok && !yes && ps.length === 1) askWhy(ps[0]);
+    const p0 = ps[0], trimmed = yes && p0.kind === 'new_motif' && steps[0].claims.length < p0.do.claims.length;
+    if (ok && ps.length === 1 && (!yes || trimmed)) askWhy(p0, !yes ? 'rejected' : steps[0].claims.length ? 'kept, some claims left out' : 'kept as a seed');
+  }
+  // a rests-on or merge proposal the other way round (⇅): the person agrees they belong together, not on the direction
+  function flipped(a) {
+    return a.action === 'parent' ? {...a, id: a.parent, parent: a.id} : {...a, source: a.target, target: a.source};
+  }
+  // a proposed motif's claims still ticked on its card (all of them when it isn't on screen); none for a seed
+  function keptClaims(p, seed) {
+    if (seed) return [];
+    const boxes = $$(`[data-propclaim^="${p.id}|"]`);
+    return boxes.length ? p.do.claims.filter((_, i) => boxes.some((b) => b.dataset.propclaim === `${p.id}|${i}` && b.checked)) : p.do.claims;
   }
   // After a ✕: what was wrong with it, in a line (optional). Kept on the proposal with the draft, examples for the
   // proposer and the namer and the trail of what's the person's own (app/analysis/critiques.py); not an undo step.
-  function askWhy(p) {
+  function askWhy(p, how = 'rejected') {
     let bar = $('#wb-why');
     if (!bar) { bar = document.createElement('div'); bar.id = 'wb-why'; bar.className = 'wb-why'; document.body.appendChild(bar); }
-    bar.innerHTML = `<span>✕ rejected: <b>${proposalText(p).replace(/<ul[\s\S]*<\/ul>/, '')}</b></span>
+    bar.innerHTML = `<span>${how === 'rejected' ? '✕' : '🌱'} ${how}: <b>${proposalText(p).replace(/<ul[\s\S]*<\/ul>/, '')}</b></span>
       <input placeholder="what was wrong with it? (optional, Enter keeps it: it teaches the proposer)" aria-label="what was wrong">
       <button class="wb-mini" title="skip">✕</button>`;
     const inp = bar.querySelector('input'), close = () => bar.remove();

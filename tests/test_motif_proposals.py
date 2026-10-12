@@ -460,3 +460,39 @@ def test_what_the_person_said_was_wrong_is_kept_with_the_draft(tmp_path, monkeyp
     assert [r['why'] for r in critiques.from_log()] == []  # the critique's own log row isn't counted twice
     mp.reopen([rename])
     assert 'final' not in mp.load()[rename] and mp.load()[rename]['why'] == 'Hollow man is a poem'
+
+
+def test_a_proposed_motif_can_be_kept_as_a_seed_or_with_some_of_its_claims(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    store = {}
+    args = {'name': 'The gold star', 'note': 'praise as proof', 'genre': None,
+            'claims': [{'claim': 'a', 'in': 'M001'}, {'claim': 'b', 'in': 'M002'}]}
+    mp.add(store, 'new_motif', args, 'praise')
+    mp.add(store, 'new_motif', {**args, 'name': 'Nobody home'}, 'decay')
+    write_json(mp.PROPOSALS, store)
+    seed, some = mp.pid('new_motif', args), mp.pid('new_motif', {**args, 'name': 'Nobody home'})
+    validate.workbench_action({**mp.action(store[seed]), 'claims': [], 'proposal': seed})
+    validate.workbench_action({**mp.action(store[some]), 'claims': mp.action(store[some])['claims'][:1], 'proposal': some})
+    made = {e['name']: e for e in mi.live(mi.load())}
+    assert made['The gold star']['claims'] == [] and made['The gold star']['note'] == 'praise as proof'
+    assert [c['claim'] for c in made['Nobody home']['claims']] == ['a']
+    got = mp.load()
+    assert got[seed]['status'] == 'approved' and got[seed]['final']['claims'] == []  # kept, not as proposed
+    try:
+        validate.workbench_action({'action': 'new_with', 'name': 'x', 'claims': []})  # by hand, a motif needs claims
+        raise AssertionError('made a motif with no claims outside a proposal')
+    except ValueError:
+        pass
+
+
+def test_a_rests_on_proposal_can_be_taken_the_other_way_round(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    store = {}
+    mp.add(store, 'parent', {'id': 'M001', 'parent': 'M002'}, 'backwards')
+    write_json(mp.PROPOSALS, store)
+    p = next(iter(store.values()))
+    do = mp.action(p)
+    validate.workbench_action({**do, 'id': do['parent'], 'parent': do['id'], 'proposal': p['id']})  # the checker's ⇅
+    e = mi.load()['entries']
+    assert 'M001' in mi.parents_of(e['M002']) and 'M002' not in mi.parents_of(e['M001'])
+    assert mp.load()[p['id']]['final']['id'] == 'M002'  # kept as done, not as proposed

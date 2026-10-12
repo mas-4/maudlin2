@@ -754,7 +754,7 @@ def workbench_action(data: dict):
     if data.get('proposal'):  # a proposal approved (its own action, carried out as usual) or rejected
         from app.analysis import motif_proposals as mp
         if act != 'proposal_reject':
-            workbench_action({k: v for k, v in data.items() if k != 'proposal'})
+            workbench_action({**{k: v for k, v in data.items() if k != 'proposal'}, 'proposed': True})
         mp.decide(data['proposal'], 'rejected' if act == 'proposal_reject' else 'approved',
                   data['why'] if isinstance(data.get('why'), str) else None,
                   None if act == 'proposal_reject' else {k: v for k, v in data.items() if k not in ('proposal', 'why')})
@@ -807,7 +807,8 @@ def workbench_action(data: dict):
         mi.same_claim(data['variant'].strip(), data['canonical'].strip())
     elif act == 'new_with':  # a new motif made from claims dropped on it: each moved or copied from its motif, or filed
         name, claims = data.get('name'), data.get('claims')
-        if not (isinstance(name, str) and name.strip() and isinstance(claims, list) and claims):
+        # no claims at all: a proposed motif kept as a seed, its claims not fitting (Oct 12)
+        if not (isinstance(name, str) and name.strip() and isinstance(claims, list) and (claims or data.get('proposed'))):
             raise ValueError('new_with: a name and claims')
         live = {e['id'] for e in mi.live(mi.load())}
         eid = mi.add(name)
