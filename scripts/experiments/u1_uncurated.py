@@ -80,6 +80,17 @@ def curated() -> dict[str, list[str]]:
     return dict(out)
 
 
+def gold() -> dict[str, set]:
+    """The person's motifs for each claim to score against, Straight news left out (Oct 12, the person's decision (c):
+    Straight news and no motif are one "nothing fit" population, so its claims aren't a group the machine should
+    match). curated() itself is unchanged: the sample is drawn from it"""
+    from app.utils.store import read_json
+    index = read_json(os.path.join(Config.data, 'motif_index.json'), {'entries': {}})
+    sink = {eid for eid, e in index['entries'].items() if not e.get('merged_into')
+            and e.get('name', '').strip().lower() == 'straight news'}
+    return {c: set(ms) - sink for c, ms in curated().items()}
+
+
 def claims_of(corpus: str) -> list[dict]:
     rnd = random.Random(11)
     if corpus == 'ours':
@@ -141,15 +152,20 @@ def report(corpus: str):
     lines = [f"U1 the machine alone, {corpus}: {len(s['claims'])} claims made {len(motifs)} motifs from nothing; "
              f"sizes {sizes[:10]}..., {sum(1 for n in sizes if n == 1)} of one claim; median {np.median(sizes):.0f}"]
     if corpus == 'ours':
-        gold = {c: set(ms) for c, ms in curated().items()}
+        theirs = gold()
         pred = defaultdict(set)
         for mid, m in motifs.items():
             for c in m['claims']:
                 pred[c].add(mid)
-        p, r = bcubed(pred, gold)
-        cur = {mid for c in s['claims'] for mid in gold.get(c, ())}
+        p, r = bcubed(pred, theirs)
+        cur = {mid for c in s['claims'] for mid in theirs.get(c, ())}
         lines.append(f"  beside the person's index on the same claims ({len(cur)} of their motifs): B-cubed precision "
                      f"{p:.2f} (claims it puts together that they do), recall {r:.2f} (claims they put together that it does)")
+        # Nothing fit (c): the person's (claims in Straight news, scored as no motif) and the machine's (no motif given)
+        sunk = {c for c in s['claims'] if c in theirs and not theirs[c]}
+        bare = {c for c in s['claims'] if not pred.get(c)}
+        lines.append(f"  nothing fit: {len(sunk)} of the claims are in Straight news in the person's index (scored as no "
+                     f"motif); the machine gave no motif to {len(bare)}; both {len(sunk & bare)}")
     lines.append('  its biggest: ' + '; '.join(f"{m['name']} ({len(m['claims'])})" for m in
                                                sorted(motifs.values(), key=lambda m: -len(m['claims']))[:15]))
     for line in lines:
@@ -226,13 +242,13 @@ def split(corpus: str):
     lines = [f"U1 Golem II, {corpus}: {len(big)} motifs of {SPLIT_MIN}+ claims split by Gemma into the tellings inside; "
              f"{len(motifs)} motifs became {len(leaves)}; sizes {sizes[:10]}..., median {np.median(sizes):.0f}"]
     if corpus == 'ours':
-        gold = {c: set(ms_) for c, ms_ in curated().items()}
+        theirs = gold()
         for label, idx in (('before', motifs), ('after', leaves)):
             pred = defaultdict(set)
             for mid, m in idx.items():
                 for c in m['claims']:
                     pred[c].add(mid)
-            p, r = bcubed(pred, gold)
+            p, r = bcubed(pred, theirs)
             lines.append(f'  {label} the split: B-cubed precision {p:.2f}, recall {r:.2f}')
     for line in lines:
         print(line, flush=True)

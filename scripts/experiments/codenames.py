@@ -74,6 +74,7 @@ CODENAMES = {
     'F18': ('Cordelia', 'who said little and plainly: claims written short, as the person writes them'),
     'F20': ('the Blind Men and the Elephant', 'each feels one part: the claim written from the most varied posts'),
     'F19': ('Theseus', "who followed the thread through the labyrinth: a telling as its course of action alone"),
+    'F21': ('Charybdis', 'who swallows whatever sails near: Straight news as a sink for the claims that tell nothing'),
 }
 
 

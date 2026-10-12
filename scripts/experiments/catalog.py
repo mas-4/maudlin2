@@ -116,6 +116,8 @@ REGISTRY = {
             'f20_blind_men.json', ''),
     'F19': ("A telling as its course of action, no topic (SemEval 2026 Task 4's recipe), beside Aesop",
             'f4_abstract_tellings.py', 'queued', 'f4_abstract.sqlite; f4_abstract.json', ''),
+    'F21': ('Straight news as a sink: offered beside the wrong motifs, is it picked where nothing fits?',
+            'f21_charybdis.py', 'queued', 'f21_charybdis.json', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
