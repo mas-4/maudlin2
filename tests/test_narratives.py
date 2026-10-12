@@ -71,3 +71,12 @@ def test_made_today_needs_a_full_day_report(monkeypatch, tmp_path):
     assert not narratives.made_today()  # a short test report doesn't count
     (tmp_path / f'report-{today}-0412.json').write_text(json.dumps({'hours': 24}))
     assert narratives.made_today()
+
+
+def test_a_group_is_tied_to_the_story_its_posts_link_to():
+    from app import narratives as n
+    g = {'articles': [{'url': 'a', 'story': 'Storm hits coast', 'story_id': 5, 'shares': 2},
+                      {'url': 'b', 'story': 'Mayor resigns', 'story_id': 9, 'shares': 3},
+                      {'url': 'c', 'story': None, 'story_id': None, 'shares': 9}]}
+    assert n.linked_story(g) == {'label': 'Mayor resigns', 'relation': 'same event', 'id': 9, 'via': 'link'}
+    assert n.linked_story({'articles': [{'url': 'c', 'story': None, 'story_id': None, 'shares': 1}]}) is None

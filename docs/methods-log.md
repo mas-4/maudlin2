@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **Posts are tied to news stories by the links they share, where the model finds none.** A paraphrase group whose
+  posts share an article in one of our stories is tied to that story when the model's own tie (embeddings, then
+  Gemma) finds nothing; where both tie, they agree by story id 62 times in 65, and the model was the better of the
+  two in the rest. On two weeks of reports this tied 27 more of 855 groups (389 in all). Guardian links now match
+  whether or not they carry the edition (/us/world/... as we read it, /world/... as people share it): 60 of 71
+  shared Guardian links once missed now match, which also feeds a group's shared-side lean. Past filings backfilled:
+  258 of 783 posts filings now carry a story.
 - **The shortlist's held-out test is honest now, and its training too.** Held out, a claim that was its motif's only one
   leaves that motif empty, a look nothing in real filing has; the weights learned to find exactly those, so the
   held-out top 12 read 86.7% (Thumbelina). Both trainings (the plain weights and the learned shortlist) now leave such

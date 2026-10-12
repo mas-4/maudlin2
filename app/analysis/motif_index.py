@@ -657,10 +657,18 @@ def report_stories(index: dict) -> dict[str, dict[str, dict]]:
     import glob
     from app import narratives
     out = {}
-    for path in glob.glob(os.path.join(narratives.FOLDER, 'report-*.json')):
-        report = read_json(path, {})
+    reports = [read_json(path, {}) for path in glob.glob(os.path.join(narratives.FOLDER, 'report-*.json'))]
+    try:  # a group the model left untied takes the story its posts link to (narratives.linked_story, Oct 12)
+        known = narratives.articles(sorted({u for r in reports for g in r.get('found', []) for u, _ in g.get('shared') or []}))
+    except Exception as e:  # noqa: BLE001 - the model's ties alone
+        logger.warning("Motif index: shared links unread (%s)", e)
+        known = {}
+    for report in reports:
         ties = out.setdefault(report.get('made', ''), {})
         for g in report.get('found', []):
+            if not g.get('story'):
+                g = {**g, 'story': narratives.linked_story(
+                    {'articles': [{**known[u], 'shares': n} for u, n in g.get('shared') or [] if u in known]})}
             lab, st = g.get('label') or {}, story_of_group(g)
             if lab.get('narrative') and st:
                 ties[lab['narrative']] = ties[corrected(lab['narrative'], index)] = st

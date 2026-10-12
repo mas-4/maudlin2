@@ -373,33 +373,61 @@ def shared_side(shares: list[tuple[str, int]], leans: dict[str, int], least: int
     return 'left' if mean <= -0.5 else 'right' if mean >= 0.5 else 'center'
 
 
+GUARDIAN_EDITIONS = ('us', 'uk', 'au', 'international')
+
+
+def linked_story(group: dict) -> dict | None:
+    """The news story a group's posts link to: the story holding the articles they share most, as a tie by link (Oct 12,
+    the person: "should be relatively easy to identify urls from a story in bluesky posts as a start"). On two weeks of
+    reports (855 groups) it agreed with the model's tie by id 62 times in 65 (where not, the model was right at least
+    twice: a shared article in the wrong story), and tied 27 groups the model left untied: a fallback, not first"""
+    shares = Counter()
+    labels = {}
+    for a in group.get('articles') or []:
+        if a.get('story_id'):
+            shares[a['story_id']] += a.get('shares', 1)
+            labels[a['story_id']] = a['story']
+    if not shares:
+        return None
+    sid = shares.most_common(1)[0][0]
+    return {'label': labels[sid], 'relation': 'same event', 'id': sid, 'via': 'link'}
+
+
 def articles(urls: list[str]) -> dict[str, dict]:
     """The articles in our own database at these addresses (http or https, with or without www or a trailing slash):
-    url -> {title, outlet, story} with the headline it was last seen under and the story it's in, if any."""
+    url -> {title, outlet, story, story_id} with the headline it was last seen under and the story it's in, if any. The
+    Guardian's addresses are matched with or without their edition (we read its US front page, /us/world/...; people
+    share /world/...: 76 shared Guardian links in two weeks of reports went unmatched until Oct 12)."""
     from app.models import Session, Article, Agency, Headline, Story, StoryHeadline
     from urllib.parse import urlsplit
     variants = {}
     for url in urls:
         parts = urlsplit(url)
         host = parts.netloc.removeprefix('www.')
+        paths = {parts.path}
+        if host == 'theguardian.com':
+            bare = re.sub(r'^/(us|uk|au|international)(?=/)', '', parts.path)
+            paths |= {bare} | {f'/{ed}{bare}' for ed in GUARDIAN_EDITIONS}
         for scheme in ('https', 'http'):
             for h in (host, 'www.' + host):
-                for path in {parts.path, parts.path.rstrip('/'), parts.path.rstrip('/') + '/'}:
+                for path in {x for p in paths for x in (p, p.rstrip('/'), p.rstrip('/') + '/')}:
                     variants[f'{scheme}://{h}{path}'] = url
     found = {}
     with Session() as s:
         keys = list(variants)
         for start in range(0, len(keys), 500):
-            rows = s.query(Article.url, Agency.name, Headline.processed, Story.label).join(Article.agency).join(
+            rows = s.query(Article.url, Agency.name, Headline.processed, Story.label, Story.id).join(Article.agency).join(
                 Headline, Headline.article_id == Article.id).outerjoin(
                 StoryHeadline, StoryHeadline.headline_id == Headline.id).outerjoin(
                 Story, Story.id == StoryHeadline.story_id).filter(Article.url.in_(keys[start:start + 500])).order_by(
                 Headline.last_accessed).all()
-            for url, outlet, title, story in rows:  # later headlines win: the latest wording
+            for url, outlet, title, story, sid in rows:  # later headlines win: the latest wording
                 original = variants[url]
-                entry = found.setdefault(original, {'url': original, 'outlet': outlet, 'title': title, 'story': None})
+                entry = found.setdefault(original, {'url': original, 'outlet': outlet, 'title': title, 'story': None,
+                                                    'story_id': None})
                 entry['title'] = title or entry['title']
-                entry['story'] = story or entry['story']
+                if story:
+                    entry['story'], entry['story_id'] = story, sid
     return found
 
 
@@ -517,6 +545,9 @@ def report(hours: float = 6) -> dict:
                 g['story'] = story_link(g, [stories[i] for i in np.argsort(-row)[:CANDIDATES]], cache)
                 if g['story']:  # its id too, since labels get reworded (the story pages tie by id, Oct 6)
                     g['story']['id'] = ids.get(g['story']['label'])
+                    g['story']['via'] = 'model'
+                else:  # none: the story its posts link to, if any (where both tie, the model was the better of the two)
+                    g['story'] = linked_story(g)
         write_json(JUDGMENTS, cache)
         try:
             from app.analysis import factchecks
