@@ -32,6 +32,7 @@ logger = get_logger(__name__)
 
 WEIGHTS = f'{Config.data}/motif_retriever.json'
 FACTS = ['text', 'name and note', 'nearest claim', 'center of claims', 'size', 'tree']
+NEAR = FACTS.index('nearest claim')  # -1 when the motif has no claims (left: held out, its only one)
 SHOWN = 8  # motifs by score
 TREE_MORE = 6  # ...and up to this many of what they rest on and what rests on them
 SEEDS = 2  # ...and up to this many seeds: the person's motifs with no claims yet, by likeness to name and note alone
@@ -121,13 +122,17 @@ def train(index: dict | None = None) -> dict | None:
     if next(iter(vec.seen.values())).shape[0] != EMBED_DIM:
         logger.warning("Motif retriever: not trained (embeddings aren't mxbai's)")
         return None
-    X = np.concatenate([facts(entries, text[k], vec, leave_out=True) for k in truth])
-    y = np.concatenate([[m in truth[k] for m in range(len(entries))] for k in truth])
+    # Held out, a motif whose only claim this is has none left: nothing in real filing looks like that, and the
+    # weights learned to find exactly those (Thumbelina, Oct 12: top 12 86.7% held out, 72.7% without them). Dropped.
+    Xs = {k: facts(entries, text[k], vec, leave_out=True) for k in truth}
+    keep = {k: Xs[k][:, NEAR] > -1.0 for k in truth}
+    X = np.concatenate([Xs[k][keep[k]] for k in truth])
+    y = np.concatenate([np.array([m in truth[k] for m in range(len(entries))])[keep[k]] for k in truth])
     mu, sd = X.mean(0), X.std(0) + 1e-9
     model = LogisticRegression(max_iter=2000, class_weight='balanced').fit((X - mu) / sd, y)
     w = model.coef_[0] / sd
     out = {'weights': dict(zip(FACTS, w.round(5).tolist())), 'bias': round(float(model.intercept_[0] - mu @ w), 5),
-           'trained_on': int(y.sum()), 'claims': len(truth), 'at': dt.now().isoformat(timespec='seconds')}
+           'trained_on': int(y.sum()), 'claims': len(truth), 'leak_free': True, 'at': dt.now().isoformat(timespec='seconds')}
     write_json(WEIGHTS, out, indent=1)
     logger.info("Motif retriever trained on %d filings: %s", out['trained_on'], out['weights'])
     return out
@@ -136,7 +141,7 @@ def train(index: dict | None = None) -> dict | None:
 def weights() -> dict | None:
     """The current weights, retrained when a day old (or missing)"""
     w = read_json(WEIGHTS, None)
-    if not w or dt.now() - dt.fromisoformat(w['at']) > RETRAIN:
+    if not w or dt.now() - dt.fromisoformat(w['at']) > RETRAIN or not w.get('leak_free'):
         try:
             w = train() or w
         except Exception as e:  # noqa: BLE001 - the old weights (or closest()) will do
@@ -213,31 +218,38 @@ def train_learned(index: dict | None = None) -> dict | None:
         return None
     sig.prepare(list(text.values()))
     keys = sorted(truth)
-    rows = {k: signal_rows(sig, text[k], w, leave_out=True)[0] for k in keys}
+    both = {k: signal_rows(sig, text[k], w, leave_out=True) for k in keys}
+    rows = {k: x for k, (x, _) in both.items()}
+    empty = {k: F[:, NEAR] <= -1.0 for k, (_, F) in both.items()}  # the leak (see train): out of training and ranking
     sig.save()
     labels = {k: np.array([m in truth[k] for m in range(len(sig.entries))]) for k in keys}
 
     def fit(ks):
-        X = np.concatenate([rows[k] for k in ks])
-        y = np.concatenate([labels[k] for k in ks])
+        X = np.concatenate([rows[k][~empty[k]] for k in ks])
+        y = np.concatenate([labels[k][~empty[k]] for k in ks])
         mu, sd = X.mean(0), X.std(0) + 1e-9
         return LogisticRegression(max_iter=3000, class_weight='balanced', C=0.5).fit((X - mu) / sd, y), mu, sd
 
-    found = {'plain': 0, 'learned': 0}
+    found = {'plain': 0, 'learned': 0, 'plain 2+': 0, 'learned 2+': 0}
     total = sum(len(truth[k]) for k in keys)
+    total2 = sum(len({m for m in truth[k] if not empty[k][m]}) for k in keys)  # filings in motifs with another claim
     for f in range(LEARNED_FOLDS):
         test = keys[f::LEARNED_FOLDS]
         model, mu, sd = fit([k for k in keys if k not in set(test)])
         for k in test:
             for name, score in (('plain', rows[k][:, 0]), ('learned', model.decision_function((rows[k] - mu) / sd))):
-                top = set(np.argsort(-score)[:LEARNED_TOP].tolist())
+                score = np.where(empty[k], -np.inf, score)  # a motif left empty can't be found: a miss, honestly
+                top = set(np.argsort(-score)[:LEARNED_TOP].tolist()) - set(np.flatnonzero(empty[k]).tolist())
                 found[name] += len(truth[k] & top)
+                found[f'{name} 2+'] += len(truth[k] & top)
     model, mu, sd = fit(keys)
     out = {'features': learned_features(), 'coef': model.coef_[0].round(6).tolist(), 'bias': float(model.intercept_[0]),
            'mu': mu.round(6).tolist(), 'sd': sd.round(6).tolist(), 'claims': len(keys), 'filings': total,
            'test': {f'plain top {LEARNED_TOP}': round(found['plain'] / total, 3),
-                    f'learned top {LEARNED_TOP}': round(found['learned'] / total, 3)},
-           'at': dt.now().isoformat(timespec='seconds')}
+                    f'learned top {LEARNED_TOP}': round(found['learned'] / total, 3),
+                    f'plain top {LEARNED_TOP}, motifs of 2+': round(found['plain 2+'] / max(1, total2), 3),
+                    f'learned top {LEARNED_TOP}, motifs of 2+': round(found['learned 2+'] / max(1, total2), 3)},
+           'leak_free': True, 'at': dt.now().isoformat(timespec='seconds')}
     write_json(LEARNED, out, indent=1)
     logger.info("Motif shortlist learned on %d claims: held out, %s", len(keys), out['test'])
     from app.analysis import filing_confidence
@@ -250,7 +262,8 @@ def learned(retrain: bool = False) -> dict | None:
     """The learned shortlist's weights if they're for today's signals and beat the plain weights held out (retrained
     when a day old, only if `retrain`: the hourly run's nightly filing); else None"""
     L = read_json(LEARNED, None)
-    if retrain and (not L or dt.now() - dt.fromisoformat(L['at']) > RETRAIN or L.get('features') != learned_features()):
+    if retrain and (not L or dt.now() - dt.fromisoformat(L['at']) > RETRAIN or L.get('features') != learned_features()
+                    or not L.get('leak_free')):
         try:
             L = train_learned() or L
         except Exception as e:  # noqa: BLE001 - the plain weights will do

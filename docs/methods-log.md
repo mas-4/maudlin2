@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **The shortlist's held-out test is honest now, and its training too.** Held out, a claim that was its motif's only one
+  leaves that motif empty, a look nothing in real filing has; the weights learned to find exactly those, so the
+  held-out top 12 read 86.7% (Thumbelina). Both trainings (the plain weights and the learned shortlist) now leave such
+  rows out, and the test counts them as misses: about 73% at top 12 over all filings, about 85% on motifs of two or
+  more claims. The dashboard's shortlist line steps down on this date for that reason, not because filing got worse.
 - **Plain news is watched and filed again.** A claim judged plain news, in Straight news or with no motif (a person's
   "tells no story" or the filing model's none), is no longer final: it is on a watch list (`motifs/watch_list.json`,
   130 claims on Oct 12; 3 claims with no motif have no words left anywhere to file) and filed again weekly against the

@@ -100,3 +100,18 @@ def test_the_learned_shortlist_ranks_by_its_weights_and_keeps_out_rejected_motif
     monkeypatch.setattr(mr, 'SHOWN', 2)
     got = [e['id'] for e in mr.learned_shortlist({}, 'c', sig, {}, L)]
     assert got == ['M3', 'M4']  # M2 scores highest, but the person said the claim isn't it
+
+
+def test_a_motif_left_empty_by_holding_its_claim_out_teaches_nothing(tmp_path, monkeypatch):
+    """Thumbelina's leak: held out, a one-claim motif has no claims left, a look nothing in real filing has"""
+    index_with(tmp_path, monkeypatch)
+    index = mi.load()
+    index['entries']['M005'] = {'id': 'M005', 'name': 'Flood cabal', 'note': 'a flood and a cabal',
+                                'claims': [{'claim': 'A flood cabal', 'source': 'narrative', 'checked': 'yes'}]}
+    mi.save(index)
+    w = mr.train()
+    assert w['leak_free'] and w['trained_on'] == 8  # the one-claim motif's filing isn't a positive example
+    monkeypatch.setattr(mr, 'WEIGHTS', str(tmp_path / 'old.json'))
+    from app.utils.store import write_json
+    write_json(mr.WEIGHTS, {**w, 'leak_free': False})
+    assert mr.weights()['leak_free']  # weights trained the old way are trained again at once
