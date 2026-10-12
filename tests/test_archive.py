@@ -20,11 +20,14 @@ def test_edition_makes_links_absolute_and_adds_a_ribbon():
 
 
 def test_kept_pages_carry_todays_footer():
-    """An edition saved under the Oct 8-9 blanket CC BY 4.0 shows the notice in force now (all rights reserved, Oct 11)"""
+    """An edition saved under the Oct 8-9 blanket CC BY 4.0 shows the notice in force now (the index all
+    rights reserved since Oct 11; the methods log CC BY since Oct 12)"""
     old = PAGE.replace('</body>', '<div class="site-footer">\n Our own writing, readings and motif index: '
                        '<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>\n</div></body>')
     out = ar.edition(old, '2026-10-08')
-    assert 'licenses/by/4.0' not in out and 'by-nc-sa' not in out and 'motif index: © bignews.day, all rights reserved' in out
+    assert 'motif index: <a' not in out and 'by-nc-sa' not in out  # the old blanket notice is gone
+    assert 'The motif index, our readings and our other writing: © bignews.day, all rights reserved' in out
+    assert 'Our methods log: <a href="https://creativecommons.org/licenses/by/4.0/">' in out  # the method layer is open
     assert out.count('site-footer') == 1
     assert ar.refooter(PAGE) == PAGE  # a page without a footer is left alone
 

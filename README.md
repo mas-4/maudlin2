@@ -72,8 +72,10 @@ Copyright (c) 2024-2026 Michael.
   of those stay MIT; the code was proprietary from October 8 to 10.
 - **Docs** (`docs/`: the methods log, the motif praxis, the experiment write-ups): CC BY 4.0, with
   credit to bignews.day.
-- **The motif index** (on bignews.day and in its exports, not in this repository): all rights reserved since
-  October 11, 2026. It was CC BY 4.0 from October 8 to 10 and CC BY-NC-SA 4.0 from October 10 to 11.
+- **The motif index** (on bignews.day and in its exports, not in this repository), its casebook and the curation
+  log: all rights reserved since October 11, 2026. The index was CC BY 4.0 from October 8 to 10 and CC BY-NC-SA 4.0
+  from October 10 to 11. Research use: ask.
+- **The site's methods log** is `docs/methods-log.md`, so CC BY 4.0 like the rest of the docs.
 - **Third-party data** keeps its own license: `ratings.csv` carries AllSides Media Bias Ratings (CC BY-NC 4.0) and
   Wikipedia's perennial sources list (CC BY-SA 4.0); `outlet_wiki.csv` quotes Wikipedia (CC BY-SA 4.0).
 - **Contributions:** not accepted for now.
