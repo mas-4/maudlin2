@@ -5,7 +5,7 @@ Debug builds never save, so a preview's stale data can't become an edition."""
 import os
 import re
 import shutil
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 
 import pytz
 
@@ -59,6 +59,36 @@ def save(newsday: dict | None):
     write_json(DAYS, days, indent=1)
 
 
+WEEK = 7  # days the newsiness chart shows
+
+
+def newsiness_chart(published: set[str]) -> dict:
+    """The archive's chart of how newsy each hour was (app/analysis/newsiness.py), each spike linked to its story's own
+    page, else to the story on that day's front page (today's live one, or the day's saved edition)"""
+    try:
+        from app.analysis import newsiness
+        from app.site import page_story, story_charts
+        since = (dt.utcnow() - td(days=WEEK)).isoformat()  # the past week, for now (the person, Oct 12)
+        points = [p for p in newsiness.series() if p['at'] >= since]
+        spikes = newsiness.spikes(points)
+        with_page = {st['id'] for st in page_story.recent_stories()} | page_story.archived_ids()
+
+        def link_of(p):
+            if p['story'] in with_page:
+                return page_story.page_name(p['story'])
+            day = story_charts._local(dt.fromisoformat(p['at'])).strftime('%Y-%m-%d')
+            if day == _today():
+                return f"index.html#s-{p['story']}"
+            return f"/{day.replace('-', '/')}/#s-{p['story']}" if day in published else None
+        return {'newsiness': story_charts.newsiness(points, spikes, link_of),
+                'spikes': [{**p, 'href': link_of(p), 'when': story_charts._local(dt.fromisoformat(p['at'])).strftime('%a %b %-d, %-I %p')}
+                           for p in reversed(spikes)],
+                'since': story_charts._local(dt.fromisoformat(points[0]['at'])).strftime('%B %-d') if points else ''}
+    except Exception as e:  # noqa: BLE001 - the list of days stands without it
+        logger.warning("Archive: newsiness chart failed (%s)", e)
+        return {}
+
+
 def publish():
     """Write every saved edition into the build at /YYYY/MM/DD/ and the list of days at archive.html."""
     days = _days()
@@ -73,5 +103,5 @@ def publish():
             out.write(edition(f.read(), day))
         published.append({'day': day, 'path': '/' + day.replace('-', '/') + '/',
                           'when': dt.strptime(day, '%Y-%m-%d').strftime('%a %b %-d, %Y'), **days[day]})
-    TemplateHandler('archive.html').write({'title': 'Archive', 'days': published})
+    TemplateHandler('archive.html').write({'title': 'Archive', 'days': published, **newsiness_chart({d['day'] for d in published})})
     logger.info("Archive: %d past days published", len(published))

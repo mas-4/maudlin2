@@ -1,0 +1,111 @@
+/* The archive's chart of how newsy each hour was (story_charts.newsiness) */
+.nw-figure {
+    max-width: 62em;
+    margin: 0.8em auto 1.2em;
+    padding: 0.4em 0.5em 0.6em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 4px 4px 0 #ff6b1a;
+}
+
+.nw-figure h2 {
+    font: 700 1.35em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0 0.2em 0.2em;
+}
+
+/* a phone keeps the chart readable and scrolls it sideways, starting at the latest hours (right to left scrolling,
+   the chart itself left to right); the page doesn't scroll */
+.nw-scroll {
+    overflow-x: auto;
+    direction: rtl;
+}
+
+.nw-scroll > svg {
+    direction: ltr;
+}
+
+.nw-chart {
+    display: block;
+    min-width: 720px;
+    width: 100%;
+    height: auto;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+.nw-big {
+    fill: color-mix(in srgb, #ff4fa3 10%, white);
+}
+
+.nw-normal {
+    fill: color-mix(in srgb, #ffc400 10%, white);
+}
+
+.nw-line-mark {
+    stroke: #d6d0e6;
+    stroke-dasharray: 3 3;
+}
+
+.nw-area {
+    fill: color-mix(in srgb, #00c2a8 14%, transparent);
+}
+
+.nw-score {
+    fill: none;
+    stroke: #1f1f2e;
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.nw-hit {
+    fill: transparent;
+}
+
+.nw-hit:hover {
+    fill: rgba(31, 31, 46, 0.06);
+}
+
+.nw-spike {
+    fill: #ff6b1a;
+    stroke: #1f1f2e;
+    stroke-width: 1.5;
+}
+
+.nw-spike-stem {
+    stroke: #1f1f2e;
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+}
+
+.nw-tick {
+    font-size: 13px;
+    fill: #555;
+}
+
+.nw-spike-label {
+    font-size: 13px;
+    fill: #1f1f2e;
+}
+
+a .nw-spike-label {
+    fill: #c43d00;
+    text-decoration: underline;
+}
+
+.nw-figure figcaption {
+    font-size: 0.9em;
+    color: #555;
+    margin: 0.4em 0.3em 0;
+}
+
+.nw-spikes {
+    margin: 0.5em 0.3em 0;
+    padding-left: 1.2em;
+    font-size: 0.95em;
+}
+
+.nw-faint {
+    color: #777;
+    font-size: 0.9em;
+}

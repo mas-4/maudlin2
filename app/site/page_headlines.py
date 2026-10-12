@@ -404,6 +404,7 @@ class HeadlinesPage:
                     kind, 100 * stories.loc[top, 'share'], hours[top], score)
         self.context['newsday'] = {
             **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * stories.loc[top, 'share']),
+            'score': round(float(score), 3),  # the age-weighted share the kind comes from (app/analysis/newsiness.py)
             'outlets': int(stories.loc[top, 'outlets']), 'active': live_outlets,
             'story': sagas[top]['name'] if top in sagas else self.context['titles'][top],
             'cluster': int(sagas[top]['lead'] if top in sagas else top), 'age': age_text(hours[top]),
@@ -416,6 +417,11 @@ class HeadlinesPage:
             anchor = self.context.get('anchor_of', {}).get(self.context['newsday']['cluster'])
             write_json(NEWS_DAY_FILE, {**self.context['newsday'], 'anchor': anchor,
                                        'at': dt.now().isoformat(timespec='seconds')})
+            try:  # and kept, hour by hour, for the archive's chart of how newsy each hour was
+                from app.analysis import newsiness
+                newsiness.record(self.context['newsday'], self.story_of.get(self.context['newsday']['cluster']))
+            except Exception as e:  # noqa: BLE001 - the chart is extra
+                logger.warning("Newsiness: not kept (%s)", e)
 
     def cluster_and_summarize(self, df):
         global DB_START

@@ -4,6 +4,21 @@
     <h1>Past front pages</h1>
     <p class="table-intro">Each day's front page as it stood at the end of the day: the cloud, the stories and every
         measure, kept as they were. Our archive starts on October 2, 2026.</p>
+    {% if newsiness %}
+        <figure class="nw-figure">
+            <h2>🌡️ How newsy each hour was</h2>
+            <div class="nw-scroll">{{ newsiness|safe }}</div>
+            <figcaption>Each hour's news-day score over the past week: the share of the outlets with a story on their front
+                page that carry the day's biggest story, halving every 24 hours once it's 12 hours old. Over 0.45 is a big
+                news day. Dashed: worked out afterwards from what we'd saved; solid: kept by each hour's build. Hover for
+                the hour's top story; a dot marks each story's peak over the big line.</figcaption>
+            {% if spikes %}<ul class="nw-spikes">{% for p in spikes %}
+                <li><b>{{ p.when }} ET</b> · {{ '%.2f'|format(p.score) }} ·
+                    {% if p.href %}<a href="{{ p.href|e }}">{{ p.label }}</a>{% else %}{{ p.label }}{% endif %}
+                    <span class="nw-faint">({{ p.outlets }} of {{ p.active }} outlets)</span></li>
+            {% endfor %}</ul>{% endif %}
+        </figure>
+    {% endif %}
     {% if days %}
         <ul class="archive-days">
             {% for d in days %}
