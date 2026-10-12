@@ -12,7 +12,12 @@ never drawn again), whole claims at a time. Each run trains its own copy of the 
 The features are the machine as it stands that day: the index, the shortlist, the reranker and the judge then. Each run
 is a line in the log and a row in maat_history.json.
 
-    f3_maat.py      under the GPU lease (the judge's yes or no for new pairs; lease 'maat-weigh')"""
+A second feather (Oct 12, from Fable's review): the first set was drawn from all decided filings, three quarters of
+which the model was already sure of (fit 0.8 or more at decision time), so its AUC sits near the ceiling and moves
+little. The torn set (maat_set_torn.json) is drawn only from filings whose fit at decision time was 0.3 to 0.7, where
+the model's learning shows. Each weighing row says which set.
+
+    f3_maat.py [torn]      under the GPU lease (the judge's yes or no for new pairs; lease 'maat-weigh')"""
 import json
 import os
 import random
@@ -32,32 +37,50 @@ from app.analysis import motif_retriever as mr  # noqa: E402
 from app.analysis import motif_signals as ms  # noqa: E402
 
 SET = os.path.join(harness.EXP, 'maat_set.json')
+TORN_SET = os.path.join(harness.EXP, 'maat_set_torn.json')
+TORN = (0.3, 0.7)  # the fit at decision time, for the torn set
+TORN_SIZE = 100  # of only ~210 torn decisions on Oct 12: half held out, half left for its copy to learn from
 HISTORY = os.path.join(harness.EXP, 'maat_history.json')
 SIZE = 200  # filings, whole claims at a time
 
 
-def feather(pairs: list[tuple]) -> list[tuple[str, str, bool]]:
+def torn_pairs() -> set[tuple[str, str]]:
+    """(claim key, motif) for decisions whose fit at the time was in the TORN band (the log's 'before.fits')"""
+    out = set()
+    for r in fc.log_rows():
+        fits = (r.get('before') or {}).get('fits') or {}
+        if fits and isinstance(r.get('action'), dict):
+            decided = {}
+            fc._decided(r['action'], decided)
+            out |= {(k, e) for (k, e) in decided if TORN[0] <= (fits.get(f'{k}|{e}') or -1) <= TORN[1]}
+    return out
+
+
+def feather(pairs: list[tuple], path: str = SET) -> list[tuple[str, str, bool]]:
     """The set: drawn on the first run, the same ever after"""
-    if os.path.exists(SET):
-        return [tuple(x) for x in json.load(open(SET))['filings']]
+    if os.path.exists(path):
+        return [tuple(x) for x in json.load(open(path))['filings']]
+    torn = torn_pairs() if path == TORN_SET else None
     by = defaultdict(list)
     for claim, eid, _, ok in pairs:
-        by[mi.key(claim)].append((mi.key(claim), eid, ok))
+        if torn is None or (mi.key(claim), eid) in torn:
+            by[mi.key(claim)].append((mi.key(claim), eid, ok))
     keys = sorted(by)
     random.Random(42).shuffle(keys)
     out = []
     for k in keys:
-        if len(out) >= SIZE:
+        if len(out) >= (TORN_SIZE if torn is not None else SIZE):
             break
         out += by[k]
-    json.dump({'drawn': dt.now().isoformat(timespec='seconds'), 'filings': out}, open(SET, 'w'))
+    json.dump({'drawn': dt.now().isoformat(timespec='seconds'), 'filings': out}, open(path, 'w'))
     return out
 
 
 def main():
+    which = sys.argv[1] if len(sys.argv) > 1 else 'all'
     index = mi.load()
     pairs = fc.labeled(index)
-    held = feather(pairs)
+    held = feather(pairs, TORN_SET if which == 'torn' else SET)
     held_keys, held_pairs = {k for k, _, _ in held}, {(k, e) for k, e, _ in held}
     scorer = fc.Scorer(index, mr.weights())
     by_claim = defaultdict(list)
@@ -88,7 +111,7 @@ def main():
     from sklearn.metrics import roc_auc_score
     yt = y[test]
     passed = p >= sure_at
-    row = {'at': dt.now().isoformat(timespec='seconds'), 'filings': int(test.sum()), 'kept': int(yt.sum()),
+    row = {'at': dt.now().isoformat(timespec='seconds'), 'set': which, 'filings': int(test.sum()), 'kept': int(yt.sum()),
            'auc': round(float(roc_auc_score(yt, p)), 3), 'sure_at': sure_at,
            'right when sure': round(float(yt[passed].mean()), 3) if passed.any() else None,
            'kept that pass': round(float(passed[yt].mean()), 3) if yt.any() else None,
@@ -96,7 +119,7 @@ def main():
     history = json.load(open(HISTORY)) if os.path.exists(HISTORY) else []
     history.append(row)
     json.dump(history, open(HISTORY, 'w'), indent=1)
-    line = (f"F3 Ma'at: the fixed set of {row['filings']} filings ({row['kept']} kept) against a model trained on the "
+    line = (f"F3 Ma'at ({'the torn set' if which == 'torn' else 'the first set'}): the fixed set of {row['filings']} filings ({row['kept']} kept) against a model trained on the "
             f"other {row['trained on']}: AUC {row['auc']:.3f}; past the sure line ({sure_at:.0%}) "
             f"{row['right when sure'] if row['right when sure'] is None else format(row['right when sure'], '.0%')} right, "
             f"{row['kept that pass']:.0%} of the kept passing as sure")

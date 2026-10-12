@@ -6,4 +6,6 @@ Type=oneshot
 WorkingDirectory=/home/mas/Repos/maudlin2
 # Under the GPU lease like every experiment; it waits its turn with the worker and the others
 ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python -m app.gpu_lease run --minutes 120 --holder maat-weigh -- /home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/f3_maat.py
+# and the torn set (fit 0.3-0.7 at decision time), where the model's learning shows (Oct 12, from Fable's review)
+ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python -m app.gpu_lease run --minutes 120 --holder maat-torn -- /home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/f3_maat.py torn
 Nice=5
