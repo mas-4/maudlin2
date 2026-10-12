@@ -36,7 +36,7 @@ Not wishes or plans ("I want gas prices to go down", "I'm not voting for him"), 
 their analysis, not ads. For each:
 claim: one plain sentence of what is said to be true or believed, in the teller's own terms, without saying who says \
 it ("Defunding the police isn't a federal issue", not "The voter believes defunding the police isn't a federal \
-issue"; never "the voter", "the speaker" or "the person"): who said it goes in quote and side
+issue"; never "the voter", "the speaker" or "the person"): who said it goes in quote and side{wording}
 quote: the voter's own words, at most 25 words, copied from the transcript
 side: the voter as the episode presents them ("Trump voter", "Biden voter", "swing voter", "Democrat", "Republican"), \
 or "" if unclear
@@ -188,8 +188,9 @@ def extract(budget: float | None = None) -> dict:
                 logger.info("Focus Group: %d chunks read this run; more next run", calls)
                 return store
             chunk = ep['chunks'][entry['read']]
-            answer = llm.complete_json(PROMPT.format(title=ep['title'], text=chunk['text']), SCHEMA, max_tokens=900,
-                                       model=MODEL)
+            from app.claim_wording import rules  # the Brothers Grimm's wording, Oct 12 (Cordelia)
+            answer = llm.complete_json(PROMPT.format(title=ep['title'], text=chunk['text'], wording=rules('Focus Group')),
+                                       SCHEMA, max_tokens=900, model=MODEL)
             found = []
             for c in (answer or {}).get('claims', []):
                 claim = ' '.join(c.get('claim', '').split())

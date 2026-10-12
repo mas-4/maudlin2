@@ -71,6 +71,7 @@ CODENAMES = {
     'F15': ('Thumbelina', 'no bigger than a thumb: does the shortlist serve the small motifs'),
     'F16': ('the Magic Mirror', 'asked each week whether the taught reranker is still the fairest'),
     'F17': ('Castor and Pollux', 'the twins who share one life: one shortlist for filing and for the suggestions'),
+    'F18': ('Cordelia', 'who said little and plainly: claims written short, as the person writes them'),
 }
 
 

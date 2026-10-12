@@ -40,7 +40,7 @@ they quote only to knock down. Not wishes or plans ("we need lower taxes", "I'm 
 show's own business. For each:
 claim: one plain sentence, the way it's told: what the speaker says is true. Name who it's about as the speaker \
 means it ("Democrats", "Trump", "the Fed"), never "the speaker", "the host", "the voter" or "his opponents", and \
-without saying who says it ("Tariffs raised prices", not "The host says tariffs raised prices")
+without saying who says it ("Tariffs raised prices", not "The host says tariffs raised prices"){wording}
 quote: the speaker's own words, at most 25 words, copied from the transcript
 speaker: "host" (the show's own hosts), "guest" (someone the hosts interview), "caller" (a listener calling in), \
 "clip" (a recording the show plays: a politician's speech, another show; hosts often play a clip and then react to \
@@ -95,7 +95,9 @@ def episodes(days: int = DAYS) -> list[dict]:
 
 def read_part(ep: dict, chunk: dict) -> tuple[list[dict], list[dict]]:
     """(kept, dropped) claims of one part of an episode"""
-    answer = llm.complete_json(PROMPT.format(show=ep['show'], kind=ep['kind'], title=ep['title'], text=chunk['text']),
+    from app.claim_wording import rules  # the Brothers Grimm's wording, Oct 12 (Cordelia)
+    answer = llm.complete_json(PROMPT.format(show=ep['show'], kind=ep['kind'], title=ep['title'], text=chunk['text'],
+                                             wording=rules('shows')),
                                SCHEMA, max_tokens=1000, model=MODEL)
     found = []
     for c in (answer or {}).get('claims', []):

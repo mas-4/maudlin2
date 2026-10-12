@@ -110,6 +110,8 @@ REGISTRY = {
     'F17': ("The checker's suggestions from the learned shortlist, as filing", 'f17_castor_pollux.py', 'in production',
             'f17_castor_pollux.json', "the person's hand-added motif among the 12 candidates 62.9% to 68.4% "
             '(+3.0 to +9.0); 4.7 of 12 change'),
+    'F18': ("The Brothers Grimm's winning wording in every claim prompt, measured forward", '', 'running',
+            'motif index (claims, corrections); app/claim_wording.py', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),

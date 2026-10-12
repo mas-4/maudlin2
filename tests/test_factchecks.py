@@ -25,7 +25,9 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
     monkeypatch.setattr(factchecks, 'LABELS', str(tmp_path / 'labels.json'))
     monkeypatch.setattr(ft, 'TEXTS', str(tmp_path / 'texts.json'))
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    mi.save({'next': 2, 'entries': {}, 'claims': {mi.key('Old claim, filed'): ['M1']},
+    fixed = {'claim': 'Critics say a senator lied about a vote', 'source': 'PolitiFact'}  # a fact-check's, corrected
+    mi.save({'next': 2, 'entries': {'M1': {'id': 'M1', 'name': 'm', 'claims': [fixed]}},
+             'claims': {mi.key('Old claim, filed'): ['M1']},
              'corrections': {'Pols are bad': 'Critics say a senator lied about a vote'}})
     (tmp_path / 'labels.json').write_text(json.dumps({'https://a.example/1': {'claim': 'Old claim, filed'}}))
     (tmp_path / 'texts.json').write_text(json.dumps({'https://a.example/1': {'text': 'THE PIECE SAYS posts claimed X.'},
@@ -48,6 +50,8 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
     labels = factchecks.label_all(items)
     assert any('THE PIECE SAYS' in p for p in prompts)  # asked four at once: in any order
     assert all('"Pols are bad" became "Critics say a senator lied about a vote"' in p for p in prompts)
+    from app.claim_wording import SHORT
+    assert all(SHORT in p for p in prompts)  # the Brothers Grimm's wording (Cordelia)
     assert labels['https://a.example/1']['claim'] == 'Old claim, filed'  # filed: the person's claim stays as it is
     assert labels['https://a.example/1']['claim from the piece'].startswith('Posts on X')
     assert labels['https://a.example/2']['claim'].startswith('Posts on X') and labels['https://a.example/2']['read'] == 'piece'

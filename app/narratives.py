@@ -74,7 +74,7 @@ words), or do they only share a topic? Reporting or reacting to the same news ev
 reaction", not a legend or rumor: a legend or rumor is a story told as true that isn't plain reporting of the day's
 news. A claim made in only one or two of the posts is not their narrative. Answer in the fields below.
 
-narrative: the claim or story most of the posts share, in one plain sentence, or "" if there is none
+narrative: the claim or story most of the posts share, in one plain sentence, or "" if there is none{wording}
 retold: true if most of the posts retell that one narrative, false if they only share a topic
 genre: one of {genres}
 motif_chapter: the chapter of Thompson's Motif-Index it fits best, one of {chapters}
@@ -237,7 +237,8 @@ def label(group: dict, cache: dict) -> dict | None:
     shown = sorted(group['examples'])
     key = hashlib.sha1((PROMPT + json.dumps(shown)).encode()).hexdigest()
     if key not in cache:
-        answer = llm.complete_json(PROMPT.format(posts='\n'.join(f'- {t[:280]}' for t in shown),
+        from app.claim_wording import rules  # the Brothers Grimm's wording, Oct 12 (Cordelia)
+        answer = llm.complete_json(PROMPT.format(posts='\n'.join(f'- {t[:280]}' for t in shown), wording=rules('posts'),
                                                  genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS),
                                                  shapes=prompt_fields()),
                                    SCHEMA, max_tokens=600, model=LABEL_MODEL)

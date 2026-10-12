@@ -35,7 +35,7 @@ def main():
         'layers (medium)': [lambda c=c: llm.complete_json(ms.LAYERS_PROMPT.format(claim=c), ms.LAYERS_SCHEMA, max_tokens=600,
                                                            model=ms.JUDGE_MODEL) for c in claims[2 * N:4 * N]],
         'show part (long)': [lambda ep=ep, ch=ch: llm.complete_json(
-            show_claims.PROMPT.format(show=ep['show'], kind=ep['kind'], title=ep['title'], text=ch['text']),
+            show_claims.PROMPT.format(show=ep['show'], kind=ep['kind'], title=ep['title'], text=ch['text'], wording=''),
             show_claims.SCHEMA, max_tokens=1000, model=show_claims.MODEL) for ep, ch in chunks],
     }
     llm.complete_json(ms.SHAPE_PROMPT.format(claim='warm up'), ms.SHAPE_SCHEMA, max_tokens=20, model=ms.JUDGE_MODEL)

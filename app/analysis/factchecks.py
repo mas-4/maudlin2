@@ -109,19 +109,6 @@ def load_labels() -> dict:
 
 
 ARTICLE_CHARS = 3500  # of the piece's text shown to the model (factcheck_text.py)
-EXAMPLES = 5  # of the person's corrections of claims shown as examples
-
-
-def correction_examples(index: dict | None = None, n: int = EXAMPLES) -> str:
-    """The person's latest corrections of claims' wording (motif checker ✎), as examples of what a claim should say:
-    who says it and in what setting, not a flattened headline (Oct 8: 46 of them)"""
-    from app.analysis import motif_index as mi
-    fixes = [(a, b) for a, b in (index if index is not None else mi.load()).get('corrections', {}).items()
-             if a != b and len(a) < 300 and len(b) < 300][-n:]
-    if not fixes:
-        return ''
-    return ('\nHow a person corrected claims worded too loosely before (do as they did):\n'
-            + '\n'.join(f'- "{a}" became "{b}"' for a, b in fixes))
 
 
 def waiting_for_text(item: dict, texts: dict) -> bool:
@@ -153,7 +140,8 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
         return labels
     schema = label_schema()
     index = mi.load()
-    examples = correction_examples(index)
+    from app.claim_wording import rules  # the Brothers Grimm's wording, Oct 12 (Cordelia): the rules, the short rule
+    examples = rules('fact-checks', index)  # and the person's corrections of fact-checks' claims, not of any source's
     read = {item['url']: ft.text_of(item['url'], texts) for item in todo}
 
     def ask(item):

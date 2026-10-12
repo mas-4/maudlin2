@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **Claims are written short and plain, by the rules read from the person's corrections.** Every prompt that writes a
+  claim (posts, shows, the Focus Group, fact-checks) now carries, after its own instruction, the rules read from the
+  person's corrections, a rule to write one short plain sentence (usually under 20 words, what is claimed, not who
+  reports it), and 8 of the person's corrections of claims from the same kind of source as examples (fact-checks had
+  the 5 latest of any source). This is the way the Brothers Grimm found closest to the person's wording on Oct 10
+  (0.784 alike against 0.758, and the one the blind judge preferred), never deployed until now. Claims written from
+  today may be shorter and worded differently from earlier ones of the same kind; measured weekly (Cordelia).
 - **The checker's "might fit better" suggestions come from filing's own shortlist.** For a weakly filed claim, the 12
   motifs the confidence model weighs as alternatives were ranked by the plain six-fact weights, while filing has used
   the learned shortlist since Oct 8. They are now ranked by the learned shortlist's weights whenever filing uses them
