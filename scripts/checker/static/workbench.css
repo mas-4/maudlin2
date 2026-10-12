@@ -312,9 +312,9 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .wb-posts q { display: block; margin: 4px 0; padding-bottom: 4px; border-bottom: 1px dashed #eee; }
 
 /* The shelf: groups and genres side by side above the three panes; each chip filters the list and takes dropped motifs */
-.wb-shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 6px 12px 8px; }
-.wb-shelfbox { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 12px;
-  background: var(--paper); max-height: var(--shelf-h, 6.4em); overflow-y: auto; }
+.wb-shelf { display: grid; grid-template-columns: minmax(0, 3fr) minmax(15em, 1fr); gap: 10px; padding: 6px 12px 8px; }  /* ~70 groups, ~10 genres */
+.wb-shelfbox { display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: 5px; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 12px;
+  background: var(--paper); max-height: var(--shelf-h, 8em); overflow-y: auto; }
 /* the bar under the shelf: drag it down for a taller shelf (both boxes), up for a shorter one */
 .wb-hsplit { grid-column: 1 / -1; height: 10px; margin: -4px 0 -6px; cursor: row-resize; position: relative; touch-action: none; }
 .wb-hsplit::after { content: ''; position: absolute; top: 3px; left: 40%; right: 40%; height: 4px; border-radius: 4px; background: #d6cfe8; }
