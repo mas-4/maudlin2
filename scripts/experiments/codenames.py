@@ -69,6 +69,7 @@ CODENAMES = {
     'F13': ('Persephone', 'the seed that comes back up: motifs with no claims let into the shortlist'),
     'F14': ('Tyche', 'Fortune: how much of a gain is chance'),
     'F15': ('Thumbelina', 'no bigger than a thumb: does the shortlist serve the small motifs'),
+    'F16': ('the Magic Mirror', 'asked each week whether the taught reranker is still the fairest'),
 }
 
 

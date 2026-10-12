@@ -9,8 +9,10 @@ Two products, both kept in FOLDER:
   - each decision's score from a model that never saw that claim (held_out.json, FOLDS folds by claim), for training
     the confidence model: scores from a reranker that learned those very decisions would look better than they are,
     and the confidence model would trust them too much.
-On the CPU (the card is the filing model's) at low priority, weekly (due()), started from the hourly run at night as a
-process of its own: about two and a half hours.
+The taught layers are kept only if, held out, they judge the decisions better than the untaught reranker on the same
+text (both AUCs and the choice in META); otherwise the untaught reranker is used until the next teaching. On the CPU
+(the card is the filing model's) at low priority, weekly (due()), started from the hourly run at night as a process of
+its own: about two and a half hours.
 
     python -m app.analysis.reranker_teach        # teach now"""
 import json
@@ -31,7 +33,7 @@ logger = get_logger(__name__)
 
 FOLDER = os.path.join(ms.FOLDER, 'reranker')
 TAUGHT = os.path.join(FOLDER, 'taught.pt')
-META = os.path.join(FOLDER, 'taught.json')  # {'at', 'examples', 'decisions'}
+META = os.path.join(FOLDER, 'taught.json')  # {'at', 'examples', 'decisions', 'taught_auc', 'base_auc', 'kept'}
 HELD_OUT = os.path.join(FOLDER, 'held_out.json')  # 'claim key|motif id' -> P(yes) from a model that never saw the claim
 TOP_LAYERS = 6
 EPOCHS = 2
@@ -129,8 +131,19 @@ def _score(tok, model, yes, no, rows, texts) -> dict:
     return out
 
 
+def _auc(rows: list, scores: dict) -> float | None:
+    """AUC of `scores` ('claim key|motif id' -> P(yes)) against the decisions in `rows`; None without both kinds"""
+    from sklearn.metrics import roc_auc_score
+    have = [(scores[f'{mi.key(c)}|{e}'], ok) for c, e, ok, _ in rows if f'{mi.key(c)}|{e}' in scores]
+    if len({ok for _, ok in have}) < 2:
+        return None
+    return round(float(roc_auc_score([ok for _, ok in have], [p for p, _ in have])), 4)
+
+
 def teach():
-    """Held-out scores for every decision (FOLDS models), then the taught layers from all of them"""
+    """Held-out scores for every decision (FOLDS models), the untaught reranker's on the same decisions, then the taught
+    layers from all of them, kept only if held out they judge the decisions better than the untaught reranker does
+    (Oct 12, the Magic Mirror: Goliath found the taught one worse alone, 0.737 against 0.749, and nothing checked)"""
     import torch
     torch.set_num_threads(max(1, (os.cpu_count() or 2) - 4))
     index = mi.load()
@@ -145,15 +158,25 @@ def teach():
     for f in range(FOLDS):
         test = [r for r in rows if fold[mi.key(r[0])] == f and r[3] == 'decision']
         held.update(_score(*_train([r for r in rows if fold[mi.key(r[0])] != f], texts, f), test, texts))
-    tok, model, _, _ = _train(rows, texts, FOLDS)
+    decided = [r for r in rows if r[3] == 'decision']
+    tok, model = _model()
+    model.eval()
+    base = _score(tok, model, tok.convert_tokens_to_ids('yes'), tok.convert_tokens_to_ids('no'), decided, texts)
+    taught_auc, base_auc = _auc(decided, held), _auc(decided, base)
+    keep = taught_auc is not None and (base_auc is None or taught_auc > base_auc)
     os.makedirs(FOLDER, exist_ok=True)
-    kept = {n: p.detach().half() for n, p in model.named_parameters() if p.requires_grad}
-    torch.save(kept, TAUGHT + '.tmp')
-    os.replace(TAUGHT + '.tmp', TAUGHT)
-    write_json(HELD_OUT, held)
-    decisions = sum(r[3] == 'decision' for r in rows)
-    write_json(META, {'at': dt.now().isoformat(timespec='seconds'), 'examples': len(rows), 'decisions': decisions})
-    logger.info("Reranker taught on %d examples (%d decisions); held-out scores for %d", len(rows), decisions, len(held))
+    if keep:
+        tok, model, _, _ = _train(rows, texts, FOLDS)
+        kept = {n: p.detach().half() for n, p in model.named_parameters() if p.requires_grad}
+        torch.save(kept, TAUGHT + '.tmp')
+        os.replace(TAUGHT + '.tmp', TAUGHT)
+        write_json(HELD_OUT, held)
+    elif os.path.exists(TAUGHT):  # the untaught reranker judges better: scores, and the confidence model, go back to it
+        os.remove(TAUGHT)
+    write_json(META, {'at': dt.now().isoformat(timespec='seconds'), 'examples': len(rows), 'decisions': len(decided),
+                      'taught_auc': taught_auc, 'base_auc': base_auc, 'kept': 'taught' if keep else 'base'})
+    logger.info("Reranker teaching on %d examples (%d decisions): held out, taught AUC %s against untaught %s; %s kept",
+                len(rows), len(decided), taught_auc, base_auc, 'taught' if keep else 'untaught')
 
 
 def load_into(model):

@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-12
+- **The taught reranker is kept only if it judges better than the untaught one.** Each weekly teaching of
+  Qwen3-Reranker-0.6B on the person's decisions now also scores the same decisions, on the same text, with the untaught
+  model, and keeps the taught layers only if their held-out AUC is higher; otherwise the untaught reranker is used
+  (and the confidence model retrains on its scores) until the next teaching. Both AUCs are kept with the teaching.
+  Measured first (the Magic Mirror): on Oct 8's teaching's own decisions the untaught one scored 0.776 against the
+  taught one's held-out 0.758, and on 838 decisions made since, 0.738 against 0.739: no sign the teaching helps, nor
+  that it hurts.
 - **Motifs count their occasions.** Each motif's kept claims are joined into occasions (alike by mxbai at 0.72, from
   one fact-check or show claim, or sharing a name found in at most 25 of the index's claims and not a common word);
   two or more occasions is attested, one is placed. Counted hourly after filing; the map draws placed motifs faint. On

@@ -104,6 +104,9 @@ REGISTRY = {
     'F15': ('Recall by motif size, and the alike floor', 'f15_thumbelina.py', 'answered', 'f15_thumbelina.json',
             'a leak: one-claim motifs found 100% held out; without it top 12 86.7% to 72.7% (84.8% on motifs of 2+); '
             'two-claim motifs 68%; the floor costs 0.7%'),
+    'F16': ('The taught reranker against the untaught, at each teaching and forward', 'f16_magic_mirror.py',
+            'in production', 'f16_magic_mirror.json; motifs/reranker/taught.json',
+            'no better: untaught 0.776 vs taught 0.758 held out, 0.738 vs 0.739 forward; teaching keeps the winner'),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
