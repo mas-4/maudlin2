@@ -506,10 +506,8 @@ def workbench_state() -> dict:
         e['watch'] = bool(entry.get('watch'))
         e['phrases'] = (entry.get('phrases') or [])[:6]
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
-    hand = hand_made()
-    state['second_look'] = sum(1 for e in mi.live(index) if 'done' in e for c in e['claims']
-                               if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
-                               and c['fit'] < SECOND_LINE and (mi.key(c['claim']), e['id']) not in hand)
+    hand, recent = hand_made(), recently_confirmed()
+    state['second_look'] = sum(1 for e in mi.live(index) for c in e['claims'] if doubted(e, c, hand, recent))
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
     state['facets'] = mi.facet_values(index)
     from app.analysis import motif_proposals as mp
@@ -555,19 +553,49 @@ def check_queue() -> list[dict]:
                                         abs((x['fit'] if x['fit'] is not None else 1.5) - 0.5)))
 
 
-SECOND_LINE = 0.5  # confirmed filings under this fit get a second look, the least likely first (the tab's count too:
-# on Oct 9 the list showed the 25 least likely whatever their fit, the tab counted those under the line, 3 against 25)
+SECOND_LINE = 0.3  # confirmed filings under this fit get a second look, the least likely first (the tab's count too:
+# on Oct 9 the list showed the 25 least likely whatever their fit, the tab counted those under the line, 3 against 25).
+# 0.5 until Oct 12: the person kept 62% of first decisions at fits of 0.35-0.5, so a confirmed filing there was
+# doubted on little more than a coin's say ("it doubts them as soon as i file them")
+SECOND_WAIT = 30  # days: a filing the person confirmed this lately isn't doubted (a second look is for old slips)
+
+
+def recently_confirmed(days: int = SECOND_WAIT) -> set[tuple[str, str]]:
+    """(claim key, motif id) for every filing the person checked ✓ or not sure in the last `days`, from the curation log"""
+    from app.analysis import curation_db, motif_index as mi
+    since = (dt.now() - td(days=days)).isoformat(timespec='seconds')
+    out = set()
+    try:
+        rows = curation_db.actions()
+    except Exception:  # noqa: BLE001 - no log: nothing counts as recent
+        return out
+    for r in rows:
+        if r['at'] < since:
+            continue
+        a = r['action']
+        for step in (a.get('steps') or []) if a.get('action') == 'batch' else [a]:
+            if isinstance(step, dict) and step.get('action') == 'check' and step.get('answer') in ('yes', 'unsure') \
+                    and isinstance(step.get('claim'), str) and step.get('id'):
+                out.add((mi.key(step['claim']), step['id']))
+    return out
+
+
+def doubted(e: dict, c: dict, hand: set, recent: set) -> bool:
+    """A confirmed filing to look at again: the model finds it unlikely, and the person neither filed it by hand nor
+    confirmed it lately, nor has looked again already"""
+    from app.analysis import motif_index as mi
+    k = (mi.key(c['claim']), e['id'])
+    return ('done' in e and c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
+            and c['fit'] < SECOND_LINE and k not in hand and k not in recent)
 
 
 def second_look() -> list[dict]:
     """The person's confirmed filings the confidence model finds least likely (an honest slip in 1,000 judgments
     teaches the models wrong): each to keep (✓ still fits, then off the list) or take out"""
     from app.analysis import motif_index as mi
-    hand = hand_made()
+    hand, recent = hand_made(), recently_confirmed()
     rows = [{'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''), 'fit': c['fit']}
-            for e in mi.live(mi.load()) if 'done' in e for c in e['claims']
-            if c.get('checked') == 'yes' and not c.get('rechecked') and c.get('fit') is not None
-            and c['fit'] < SECOND_LINE and (mi.key(c['claim']), e['id']) not in hand]
+            for e in mi.live(mi.load()) for c in e['claims'] if doubted(e, c, hand, recent)]
     rows = sorted(rows, key=lambda r: r['fit'])
     from app.analysis import filing_confidence as fc
     index = mi.load()

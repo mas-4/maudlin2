@@ -350,3 +350,19 @@ def test_the_workbench_marks_a_motif_as_a_watch_list(monkeypatch, tmp_path):
     assert mi.watched(mi.load()) == {'M001'} and validate.workbench_state()['entries'][0]['watch'] is True
     validate.workbench_action({'action': 'watch', 'id': 'M001', 'on': False})
     assert mi.watched(mi.load()) == set()
+
+
+def test_a_filing_confirmed_lately_or_only_mildly_doubted_isnt_looked_at_again(monkeypatch):
+    from app.analysis import curation_db
+    now = validate.dt.now().isoformat(timespec='seconds')
+    monkeypatch.setattr(curation_db, 'actions', lambda: [
+        {'at': now, 'by': None, 'before': None, 'action': {'action': 'batch', 'steps': [
+            {'action': 'check', 'claim': 'a firing squad is kinder', 'id': 'M459', 'answer': 'yes'}]}},
+        {'at': '2026-08-01T00:00:00', 'by': None, 'before': None,
+         'action': {'action': 'check', 'claim': 'old one', 'id': 'M459', 'answer': 'yes'}}])
+    recent = validate.recently_confirmed()
+    e = {'id': 'M459', 'done': []}
+    filing = lambda t, fit: {'claim': t, 'checked': 'yes', 'fit': fit}  # noqa: E731
+    assert not validate.doubted(e, filing('a firing squad is kinder', 0.1), set(), recent)  # confirmed today
+    assert validate.doubted(e, filing('old one', 0.1), set(), recent)  # confirmed long ago, strongly doubted
+    assert not validate.doubted(e, filing('old one', 0.42), set(), recent)  # only mildly
