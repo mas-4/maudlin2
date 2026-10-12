@@ -1790,8 +1790,16 @@
     const inp = document.createElement('input');
     inp.className = 'wb-relnote-in';
     inp.value = old;
-    inp.placeholder = 'how they’re related';
+    inp.placeholder = 'how they’re related (pick or type)';
+    // the three kinds of pair (the person's handoff, Oct 12), names written out so the direction reads from either side
+    const na = (S.by[a] || {}).name || a, nb = (S.by[b] || {}).name || b;
+    const list = document.createElement('datalist');
+    list.id = `rel-${a}-${b}`;
+    list.innerHTML = [`${na} answers ${nb}`, `${nb} answers ${na}`, `mirror: ${na} and ${nb}, the same move turned around`,
+      'sibling: the same shape, another topic', 'a case of it, not a sibling'].map((o) => `<option value="${esc(o)}"></option>`).join('');
+    inp.setAttribute('list', list.id);
     btn.replaceWith(inp);
+    inp.after(list);
     inp.focus();
     let over = false;
     const finish = (save) => {
