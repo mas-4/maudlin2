@@ -141,6 +141,7 @@ def load() -> dict:
 def save(index: dict):
     drop_dangling(index)
     drop_related_resting(index)
+    drop_loose_notes(index)
     write_json(INDEX, index, indent=1)
     from app.analysis import curation_db  # every state kept, to go back to (Oct 8)
     with open(INDEX) as f:
@@ -244,7 +245,7 @@ def name_claim(claim: str, shown: list[dict]) -> dict | None:
     if not shown:
         named = llm.complete_json(NAME_PROMPT.format(claim=claim, rules=NAME_RULES), NAME_SCHEMA, max_tokens=300, model=JUDGE_MODEL)
         return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)][:1]}
-    options = '\n'.join(f'{n}. {described(e)}\n' + '\n'.join(f'   - {c["claim"][:160]}' for c in e['claims'][-3:])
+    options = '\n'.join(f'{n}. {described(e)}{not_this(e)}\n' + '\n'.join(f'   - {c["claim"][:160]}' for c in e['claims'][-3:])
                         for n, e in enumerate(shown, 1))
     schema = {"type": "object", "properties": {
         "reason": {"type": "string", "maxLength": 1000},
@@ -529,6 +530,11 @@ def nightly(budget: float | None = None):
         snapshot_metrics()
     except Exception as e:  # noqa: BLE001 - the stats are extra
         logger.warning("Motif metrics: %s", e)
+    try:  # how many separate occasions each motif is told on (attested or placed)
+        from app.analysis import motif_told
+        motif_told.refresh()
+    except Exception as e:  # noqa: BLE001 - the count is extra; the next run tries again
+        logger.warning("Motif occasions: %s", e)
     # New motifs get the model's draft of a scope note (shown on the board to keep or edit; used in matching at once)
     gloss_missing(budget=None if budget is None else max(30, budget - (time.time() - started)))
     try:
@@ -622,6 +628,13 @@ def merge(source: str, target: str):
     src.update(claims=[], merged_into=target)
     index['related'] = [sorted([target if x == source else x for x in p]) for p in index.get('related', [])]
     index['related'] = [p for i, p in enumerate(index['related']) if p[0] != p[1] and p not in index['related'][:i]]
+    notes = {}  # the reasons for its related links come along; the target's own win
+    for pair, why in index.get('related_notes', {}).items():
+        a, b = sorted(target if x == source else x for x in pair.split('|'))
+        if a != b and (f'{a}|{b}' not in notes or source not in pair):
+            notes[f'{a}|{b}'] = why
+    if notes or 'related_notes' in index:
+        index['related_notes'] = notes
     for e in index['entries'].values():  # what rested on it rests on the motif it joined
         if source in parents_of(e):
             e['parents'] = [p for p in dict.fromkeys(target if p == source else p for p in parents_of(e)) if p != e['id']]
@@ -711,6 +724,23 @@ def set_fits(fits: dict, model_at: str):
             if f is not None:
                 c['fit'], c['fit_model'] = f, model_at
     save(index)
+
+
+@exclusive
+def set_told(told: dict):
+    """Each motif's occasions, worked out by motif_told.py from its kept claims"""
+    index = load()
+    for eid, t in told.items():
+        if eid in index['entries']:
+            index['entries'][eid]['told'] = t
+    save(index)
+
+
+def attested(entry: dict) -> bool:
+    """Told on two occasions or more (motif_told.py); placed, not yet attested, otherwise. Before the first count, a
+    motif with two kept claims or more counts as attested."""
+    t = entry.get('told')
+    return t['events'] >= 2 if t else sum(c.get('checked') == 'yes' for c in entry.get('claims', [])) >= 2
 
 
 @exclusive
@@ -1020,6 +1050,9 @@ def board() -> dict:
                 'parents': [p for p in parents_of(e) if p in index['entries'] and not index['entries'][p].get('merged_into')],
                 'related': sorted({x for p in index.get('related', []) if e['id'] in p for x in p
                                    if x != e['id'] and x in index['entries'] and not index['entries'][x].get('merged_into')}),
+                'related_notes': {x: why for pair, why in index.get('related_notes', {}).items() if e['id'] in pair.split('|')
+                                  for x in pair.split('|') if x != e['id']},
+                'not_this': e.get('not_this', ''), 'told': e.get('told'), 'attested': attested(e),
                 'first_seen': e.get('first_seen', ''), 'last_seen': e.get('last_seen', ''),
                 'facets': e.get('facets', {}), 'by_model': e.get('by_model', {}),
                 # In a motif marked done, the claims that came in since (the ones to look at)
@@ -1204,6 +1237,23 @@ def drop_dangling(index: dict) -> int:
     return gone
 
 
+def drop_loose_notes(index: dict) -> int:
+    """A related link's reason goes when the link does (taken away, dropped for a rests-on link, or dangling)"""
+    notes = index.get('related_notes')
+    if not notes:
+        return 0
+    links = {'|'.join(p) for p in index.get('related', [])}
+    loose = [pair for pair in notes if pair not in links]
+    for pair in loose:
+        del notes[pair]
+    return len(loose)
+
+
+def related_note(index: dict, a: str, b: str) -> str:
+    """The person's reason for a related link, if they gave one"""
+    return index.get('related_notes', {}).get('|'.join(sorted([a, b])), '')
+
+
 def genre_of(entry: dict) -> str | None:
     return (entry.get('facets') or {}).get('genre') or None
 
@@ -1261,9 +1311,11 @@ def shared_pairs(least: int = 2) -> list[dict]:
 
 # Related: two motifs that belong near each other without being one, or one a kind of the other ('Rape accusation
 # against men' and 'Campus sexual assault controversy' meet on some events and are different stories). Both ways.
+# A link can carry the person's reason ('a case of it, not a sibling'), kept beside the pairs in 'related_notes' so
+# everything that reads the pairs reads them as before (Fable, Oct 12).
 
 @exclusive
-def relate(a: str, b: str, related: bool = True):
+def relate(a: str, b: str, related: bool = True, note: str | None = None):
     index = load()
     entries = index['entries']
     if a == b or a not in entries or b not in entries:
@@ -1275,6 +1327,13 @@ def relate(a: str, b: str, related: bool = True):
             links.append(pair)
         if pair not in index.setdefault('not_same', []):  # related, so never suggested as one motif
             index['not_same'].append(pair)
+        if note is not None:  # an empty one takes the reason away
+            note = ' '.join(note.split())
+            notes = index.setdefault('related_notes', {})
+            if note:
+                notes['|'.join(pair)] = note
+            else:
+                notes.pop('|'.join(pair), None)
     else:
         index['related'] = [p for p in links if p != pair]
     save(index)
@@ -1492,6 +1551,26 @@ def set_note(eid: str, note: str):
         entry.pop('note', None)
         entry.pop('note_by', None)
     save(index)
+
+
+@exclusive
+def set_not_this(eid: str, text: str):
+    """What a motif isn't, though it looks like it ('not a scandal's cover-up, only the scandal'): a person's line,
+    shown to the filing model and the judge beside the note (motif_index.REUSE_PROMPT, motif_signals.judge_ask) and to
+    the element drafter; empty removes it"""
+    index = load()
+    text = ' '.join(text.split())
+    entry = index['entries'][eid]
+    if text:
+        entry['not_this'] = text
+    else:
+        entry.pop('not_this', None)
+    save(index)
+
+
+def not_this(entry: dict) -> str:
+    """The line the models read after a motif's description: what it isn't, or nothing"""
+    return f"\n   Not this: {entry['not_this']}" if entry.get('not_this') else ''
 
 
 def keep_note(eid: str):

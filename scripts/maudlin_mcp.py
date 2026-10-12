@@ -165,11 +165,13 @@ def _motif(index: dict, motif_id: str) -> dict | None:
             if n:
                 shared[name(o['id'])] = n
     return {
-        **_brief(e, index), 'note': e.get('note') or '',
+        **_brief(e, index), 'note': e.get('note') or '', 'not this': e.get('not_this') or '',
+        'occasions': (e.get('told') or {}).get('events'), 'attested': mi.attested(e),
         'merged_into': e.get('merged_into'), 'first_seen': e.get('first_seen'),
         'rests on': [name(p) for p in mi.parents_of(e)],
         'rest on it': [name(o['id']) for o in live if eid in mi.parents_of(o)],
-        'related': [name(x) for p in index.get('related', []) if eid in p for x in p if x != eid],
+        'related': [name(x) + (f" ({mi.related_note(index, eid, x)})" if mi.related_note(index, eid, x) else '')
+                    for p in index.get('related', []) if eid in p for x in p if x != eid],
         'shares claims with': dict(sorted(shared.items(), key=lambda kv: -kv[1])),
         'claims': [{'claim': c['claim'], 'source': c.get('source'), 'checked': c.get('checked'), 'date': c.get('date')}
                    for c in e['claims']]}
@@ -331,7 +333,8 @@ def checker_action(action: dict) -> str:
       add {name} (a motif with no claims yet: a seed) · rename {id, name} · note {id, note} · done {id} (mark done /
       unmark) · delete {id} · correct {claim, text} (reword a claim; its tellings stay)
       merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (id rests on parent)
-      relate / unrelate {a, b} · not_same {a, b}
+      relate / unrelate {a, b, note?} (relate with a note gives the link its reason; "" clears it) · not_same {a, b}
+      not_this {id, text} (what the motif isn't, though it looks like it; the filing model and judge read it; "" clears)
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}
       group_note {group, note} (what its motifs have in common; "" clears)
       facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value} · facet_note {facet: "genre", value, note} (what kind of thing

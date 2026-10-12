@@ -156,6 +156,10 @@
     const e = S.by[id];
     return e ? `<span class="wb-chip" data-drag="motif" data-id="${id}" data-drop="motif" data-open="${id}" title="${esc(e.note || e.name)} · ${id}">${esc(e.name)}<i>${e.claims.length}</i>${extra}</span>` : '';
   };
+  // how many separate occasions its kept claims come from (app/analysis/motif_told.py): attested at two or more
+  const told = (e) => !e.told ? '' : e.attested
+    ? ` · <span class="wb-told" title="its kept claims come from ${e.told.events} separate occasions (told about different events), ${esc((e.told.span || []).join(' to '))}">🗓 ${e.told.events} occasions</span>`
+    : ` · <span class="wb-told placed" title="its kept claims all come from one occasion: a shape placed, not yet seen told again about something else">📍 one occasion</span>`;
   const claimData = (c, source) => `data-drag="claim" data-claim="${esc(c.claim)}" data-source="${esc(source || '')}" data-src="${esc(c.source || '')}" data-ref="${esc(c.ref || '')}"`;
 
   // ---------- render: stats and views ----------
@@ -327,7 +331,7 @@
       <header class="wb-phead">
         <div class="wb-titlerow"><h2 class="wb-pname" data-drag="motif" data-id="${e.id}" title="click to rename · drag onto another motif or a group">${esc(e.name)}</h2>
           <button class="wb-btn wb-close" data-close="${i}" title="close this motif">✕</button></div>
-        <span class="wb-pid">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.curated ? ' · ✋ by hand' : ''}${e.first_seen ? ' · since ' + esc(e.first_seen.slice(0, 10)) : ''}</span>
+        <span class="wb-pid">${e.id} · ${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}${e.curated ? ' · ✋ by hand' : ''}${e.first_seen ? ' · since ' + esc(e.first_seen.slice(0, 10)) : ''}${told(e)}</span>
         <div class="wb-pbar">
           ${e.done === 'done' ? `<span class="wb-state done" title="you've looked over its claims; it can appear on the site">✅ Done</span><button class="wb-mini" data-done="${e.id}" title="it goes back to not done, and off the site">unmark done</button>`
             : e.done === 'new' ? `<span class="wb-state new" title="marked done, but claims came in since; the site shows only the ones you saw">🆕 Done, ${newCount(e)} new since</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked at the new claims too">mark done again</button>`
@@ -351,7 +355,10 @@
         <span class="wb-rlabel">⤷ rest on it</span>
         <div class="wb-rchips">${kids.map((k) => chip(k, `<button class="wb-x" data-unparent="${k}|${e.id}" title="doesn't rest on this">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
         <span class="wb-rlabel">↔ related</span>
-        <div class="wb-rchips">${e.related.map((r) => chip(r, `<button class="wb-x" data-unrelate="${e.id}|${r}" title="not related">✕</button>`)).join('') || '<span class="wb-faint">—</span>'}</div>
+        <div class="wb-rchips">${e.related.map((r) => {
+          const why = (e.related_notes || {})[r] || '';
+          return `<span class="wb-rel">${chip(r, `<button class="wb-x" data-unrelate="${e.id}|${r}" title="not related">✕</button>`)}<button class="wb-relnote${why ? ' has' : ''}" data-relnote="${e.id}|${r}" title="${why ? 'the reason: click to change it' : 'say how they\'re related (a case of it, a rival telling, told together…)'}">${why ? esc(why) : '✎ why?'}</button></span>`;
+        }).join('') || '<span class="wb-faint">—</span>'}</div>
         ${sharedIds.length ? `<span class="wb-rlabel">🤝 shares claims</span>
         <details class="wb-rchips wb-sharedfold"><summary>with ${sharedIds.length} motif${sharedIds.length === 1 ? '' : 's'}</summary>${sharedIds.map((o) => chip(o, `<b class="wb-shared">${shared[o]}</b>`)).join('')}</details>` : ''}
       </div>
@@ -359,6 +366,8 @@
         <label>📝 note <span class="wb-ntag">${ns === 'none' ? 'none yet' : ns === 'draft' ? '🤖 draft by ' + (e.note_by === 'claude' ? 'Claude' : 'the model') : 'yours'}</span></label>
         <textarea data-note="${e.id}" rows="2" placeholder="what this motif is, in a sentence (saves when you click away or press Enter; Shift+Enter for a new line)">${esc(e.note || '')}</textarea>
         ${ns === 'draft' ? `<div class="wb-nbtns"><button class="wb-btn" data-keepnote="${e.id}">✓ keep the draft</button></div>` : ''}
+        <label class="wb-notthis">🚫 not this <input data-notthis="${e.id}" value="${esc(e.not_this || '')}" placeholder="what it isn't, though it looks like it (the filing model and the judge read this)"
+          title="one line on what to keep out: saves when you click away or press Enter"></label>
       </div>
       ${sel.size ? `<div class="wb-selbar">☑️ <b>${sel.size}</b> selected: drag them anywhere, or
         <button class="wb-btn" data-bulk="unfile|${i}">🗑️ take out</button><button class="wb-btn" data-bulk="no_motif|${i}">∅ no motif</button>
@@ -1285,6 +1294,7 @@
     if ((v = d('delete'))) { const e = S.by[v]; return sure(t, `Delete “${e.name}”?${e.claims.length ? ` Its ${e.claims.length} claims won't be filed again.` : ''}`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: v}, `🗑️ deleted “${e.name}”`)); }
     if ((v = d('unparent'))) { const [c, p] = v.split('|'); return act({action: 'parent', id: c, parent: p, on: false}, `“${S.by[c].name}” no longer rests on “${S.by[p].name}”`); }
     if ((v = d('unrelate'))) { const [a, b] = v.split('|'); return act({action: 'unrelate', a, b}, '↔ unrelated'); }
+    if ((v = d('relnote'))) return editRelNote(t.closest('[data-relnote]'), v);
     if ((v = d('keepnote'))) return act({action: 'keep_note', id: v}, '✓ kept the draft note');
     if ((v = d('ungroup'))) { const [id, g] = v.split('|'); return act({action: 'group_member', id, group: g, on: false}, '📁 out of the group'); }
     if ((v = d('grename'))) { const g = S.data.groups.find((x) => x.id === v); return ask(t, 'Rename the group', g.name).then((name) => name && act({action: 'group_rename', group: v, name}, '✎ group renamed')); }
@@ -1432,11 +1442,13 @@
       [`${e.claims.length} claim${e.claims.length === 1 ? '' : 's'}`, e.done === 'done' ? 'done' : e.done === 'new' ? `done, ${newCount(e)} new since` : 'not done',
        e.curated ? 'made by hand' : 'made by the model', e.first_seen ? 'since ' + e.first_seen.slice(0, 10) : ''].filter(Boolean).join(' · '),
       `Note: ${e.note || 'none yet'}`,
+      e.not_this ? `Not this: ${e.not_this}` : '',
+      e.told ? `Told on ${e.told.events} occasion${e.told.events === 1 ? '' : 's'} (${e.attested ? 'attested' : 'placed'}), ${(e.told.span || []).join(' to ')}` : '',
       `Groups: ${groups.join(', ') || 'none'}`,
       `Genre: ${(e.facets || {}).genre || 'none'}`,
       list('Rests on', e.parents),
       list('Rest on it', S.kids[e.id] || []),
-      list('Related', e.related),
+      list('Related', e.related).split('\n').map((l, i) => i && (e.related_notes || {})[e.related[i - 1]] ? `${l} [related: ${e.related_notes[e.related[i - 1]]}]` : l).join('\n'),
       Object.keys(shared).length ? `Shares claims with (${Object.keys(shared).length}): ` + Object.keys(shared).sort((a, b) => shared[b] - shared[a])
         .map((o) => `${(S.by[o] || {}).name || o} (${shared[o]})`).join(', ') : '',
       `Claims (${e.claims.length}):\n` + e.claims.map((c) => `- ${c.checked === 'yes' ? '✓ ' : ''}${c.claim} [#${c.id}, ${SOURCE[c.source] || c.source || 'unknown'}]`).join('\n'),
@@ -1639,11 +1651,15 @@
   // A note saves as you leave it, like a title (there's no save button to forget)
   document.addEventListener('focusout', (ev) => {
     if (ev.target.dataset && ev.target.dataset.note !== undefined && ev.target.isConnected) saveNote(ev.target.dataset.note);
+    if (ev.target.dataset && ev.target.dataset.notthis !== undefined && ev.target.isConnected) {
+      const id = ev.target.dataset.notthis, v = ev.target.value.trim();
+      if (S.by[id] && v !== (S.by[id].not_this || '')) act({action: 'not_this', id, text: v}, v ? '🚫 saved what it isn\'t' : '🚫 taken away');
+    }
   });
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target.closest && ev.target.closest('input, textarea, select');
     if (ev.key === 'Escape') { if (drag) end(ev, true); hideMenu(); }
-    if (ev.target.dataset && ev.target.dataset.note !== undefined && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); ev.target.blur(); return; }
+    if (ev.target.dataset && (ev.target.dataset.note !== undefined || ev.target.dataset.notthis !== undefined) && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); ev.target.blur(); return; }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !typing) { ev.preventDefault(); undo(); return; }
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }
@@ -1717,6 +1733,30 @@
       over = true;
       const v = inp.value.trim();
       if (save && v && v !== e.name) act({action: 'rename', id, name: v}, `✎ renamed to “${v}”`);
+      else renderPanels();
+    };
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+      if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+    });
+    inp.addEventListener('blur', () => finish(true));
+  }
+  // a related link's reason, written in place of its ✎ (Enter or clicking away saves; empty takes it away)
+  function editRelNote(btn, pair) {
+    if (!btn) return;
+    const [a, b] = pair.split('|'), old = ((S.by[a] || {}).related_notes || {})[b] || '';
+    const inp = document.createElement('input');
+    inp.className = 'wb-relnote-in';
+    inp.value = old;
+    inp.placeholder = 'how they’re related';
+    btn.replaceWith(inp);
+    inp.focus();
+    let over = false;
+    const finish = (save) => {
+      if (over) return;
+      over = true;
+      const v = inp.value.trim();
+      if (save && v !== old) act({action: 'relate', a, b, note: v}, v ? '↔ reason saved' : '↔ reason taken away');
       else renderPanels();
     };
     inp.addEventListener('keydown', (ev) => {

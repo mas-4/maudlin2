@@ -131,6 +131,14 @@ details.wb-rchips { display: block; } details.wb-rchips[open] { display: flex; }
 .wb-gtag.wb-guess { border-style: dashed; opacity: .85; }
 .wb-note label { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; } .wb-ntag { color: #777; font-weight: 400; }
 .wb-note textarea { width: 100%; font: inherit; border: 1.5px solid #ccc; border-radius: 8px; padding: 4px 6px; resize: vertical; }
+.wb-note .wb-notthis { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.wb-note .wb-notthis input { flex: 1; min-width: 0; font: inherit; border: 1.5px solid #ccc; border-radius: 8px; padding: 2px 6px; }
+.wb-rel { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.wb-relnote { font-size: 12px; font-family: inherit; border: 0; background: none; color: #999; cursor: pointer; padding: 0 2px; text-align: left; }
+.wb-relnote.has { color: #555; font-style: italic; }
+.wb-relnote:hover { color: var(--ink); text-decoration: underline; }
+.wb-relnote-in { font-size: 12px; font-family: inherit; border: 1.5px solid #ccc; border-radius: 6px; padding: 1px 4px; width: 16em; }
+.wb-told { white-space: nowrap; } .wb-told.placed { color: #a06a00; }
 .wb-nbtns { display: flex; gap: 6px; margin-top: 3px; }
 .wb-selbar { position: sticky; top: -8px; z-index: 2; background: #fff4c2; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; margin: 6px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .wb-claims { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

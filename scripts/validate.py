@@ -443,7 +443,9 @@ def board_action(data: dict):
     elif act == 'no_motif' and text('claim'):
         mi.no_motif(data['claim'])
     elif act in ('relate', 'unrelate') and data.get('a') in live and data.get('b') in live:
-        mi.relate(data['a'], data['b'], act == 'relate')
+        mi.relate(data['a'], data['b'], act == 'relate', data['note'] if isinstance(data.get('note'), str) else None)
+    elif act == 'not_this' and data.get('id') in live and isinstance(data.get('text'), str):
+        mi.set_not_this(data['id'], data['text'])
     elif act == 'parent' and data.get('id') in live and data.get('parent') in live:
         mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
     elif act == 'file' and text('claim') and data.get('id') in live:

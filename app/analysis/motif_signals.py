@@ -69,7 +69,7 @@ ELEMENT_QUESTION = 'Does the new claim, as told, contain what a telling must con
 ELEMENT_PROMPT = """A motif in our index of recurring story shapes in what people tell about politics and public life:
 Name: {name}
 Genre: {genre}
-What it covers: {note}
+What it covers: {note}{not_this}
 
 In one sentence: what must a telling contain to be an instance of this motif, the part without which it would be a \
 different motif or none? Not its topic, people or place: the element itself (for "Passing the buck": something has \
@@ -556,6 +556,7 @@ class Signals:
         if JUDGE_DECIDER:
             need = self.element_of(e)
             text = (f"Motif: {e['name']}\nWhat it covers: {e.get('note') or '(no note yet)'}\n"
+                    + (f"Not this: {e['not_this']}\n" if e.get('not_this') else '')  # a person's line (motif_index.set_not_this)
                     + (f'{ELEMENT_LINE} {need}\n' if need else '') + "Claims filed under it:\n"
                     + '\n'.join(f'- {c[:300]}' for c in ex) + f'\n\nNew claim: {claim}')
             return pair_hash(JUDGE_DECIDER, text), text
@@ -582,7 +583,7 @@ class Signals:
 
     @staticmethod
     def element_source(e: dict) -> str:
-        return pair_hash(e['name'], mi.genre_of(e) or '', e.get('note') or '')
+        return pair_hash(e['name'], mi.genre_of(e) or '', e.get('note') or '', *([e['not_this']] if e.get('not_this') else []))
 
     def element_of(self, e: dict) -> str | None:
         """The motif's must-have element, if drafted from what it says now"""
@@ -601,7 +602,8 @@ class Signals:
 
         def one(e):
             a = llm.complete_json(ELEMENT_PROMPT.format(name=e['name'], genre=mi.genre_of(e) or 'none yet',
-                                                        note=e.get('note') or '(no note yet)'),
+                                                        note=e.get('note') or '(no note yet)',
+                                                        not_this=f"\nNot this: {e['not_this']}" if e.get('not_this') else ''),
                                   ELEMENT_SCHEMA, max_tokens=200, model=JUDGE_MODEL)
             return ' '.join(a['element'].split()) if a and a.get('element') else None
         made = 0

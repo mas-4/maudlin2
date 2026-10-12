@@ -47,6 +47,16 @@
     border-style: dashed;
 }
 
+/* told about one event so far (a shape placed, not yet attested): faint */
+.mm-dot.mm-placed,
+.mm-node.mm-placed circle {
+    opacity: 0.4;
+}
+
+.mm-why {
+    color: #666;
+}
+
 .mm-line {
     display: inline-block;
     width: 1.6em;

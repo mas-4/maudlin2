@@ -38,6 +38,8 @@ def graph(index: dict | None = None, screen: accusations.Screen | None = None) -
             'id': e['id'], 'name': e['name'], 'note': motif_index.public_note(e), 'count': len(claims),
             'first': e.get('first_seen', ''), 'groups': motif_index.person_groups(e),
             'genre': motif_index.person_genre(e) or '',
+            # told on one occasion so far (motif_told.py): a shape placed, drawn faint, not yet seen told again
+            'placed': not motif_index.attested(e), 'occasions': (e.get('told') or {}).get('events'),
             'claims': [{'claim': c['claim'], 'source': 'people online' if c['source'] == 'narrative' else c['source'],
                         'url': c.get('ref', '') if c['source'] not in ('narrative',) and str(c.get('ref', '')).startswith('http') else ''}
                        for c in claims[:CLAIMS_SHOWN]]}
@@ -50,7 +52,8 @@ def graph(index: dict | None = None, screen: accusations.Screen | None = None) -
     for pair in index.get('related', []):
         a, b = (motif_index.resolve(index, x) for x in pair)
         if a in motifs and b in motifs and a != b and frozenset((a, b)) not in seen:
-            links.append({'source': a, 'target': b, 'kind': 'related'})
+            links.append({'source': a, 'target': b, 'kind': 'related',
+                          **({'note': why} if (why := motif_index.related_note(index, *pair)) else {})})
             seen.add(frozenset((a, b)))
     shared = defaultdict(int)
     for ids in holders.values():

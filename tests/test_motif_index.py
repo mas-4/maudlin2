@@ -238,6 +238,40 @@ def test_two_motifs_can_be_related_without_being_one(monkeypatch, tmp_path):
     assert all(not e['related'] for e in mi.board()['entries'])
 
 
+def test_a_related_link_keeps_its_reason_until_the_link_goes(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 4, 'claims': {}, 'entries': {eid: {'id': eid, 'name': eid, 'claims': [claim(eid)]}
+                                                 for eid in ('M001', 'M002', 'M003')}})
+    mi.relate('M002', 'M001', note='  a case of it,   not a sibling ')
+    board = {e['id']: e for e in mi.board()['entries']}
+    assert board['M001']['related_notes'] == {'M002': 'a case of it, not a sibling'}
+    assert board['M002']['related_notes'] == {'M001': 'a case of it, not a sibling'}
+    mi.relate('M001', 'M002')  # relating again without a note keeps the reason
+    assert mi.related_note(mi.load(), 'M001', 'M002') == 'a case of it, not a sibling'
+    mi.merge('M002', 'M003')  # the reason follows a merged motif
+    assert mi.related_note(mi.load(), 'M003', 'M001') == 'a case of it, not a sibling'
+    mi.relate('M001', 'M003', False)  # and goes with the link
+    assert mi.load().get('related_notes') == {}
+
+
+def test_what_a_motif_is_not_reaches_the_filing_model(monkeypatch, tmp_path):
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'Graft', 'note': 'officials enrich themselves',
+                                                          'claims': [{'claim': 'the mayor took bribes', 'source': 's'}]}}})
+    mi.set_not_this('M001', ' a cover-up of the graft, which is its own motif ')
+    e = mi.load()['entries']['M001']
+    assert e['not_this'] == 'a cover-up of the graft, which is its own motif'
+    assert mi.board()['entries'][0]['not_this'] == e['not_this']
+    seen = {}
+    monkeypatch.setattr(llm, 'complete_json', lambda prompt, *a, **k: seen.setdefault('prompt', prompt) and {'reason': '', 'fits': [1]})
+    assert mi.name_claim('the senator sold his vote', [e])['existing'][0]['id'] == 'M001'
+    assert '1. Graft (officials enrich themselves)\n   Not this: a cover-up of the graft' in seen['prompt']
+    assert mi.described(e) == 'Graft (officials enrich themselves)'  # likeness stays on what it is
+    mi.set_not_this('M001', '')
+    assert 'not_this' not in mi.load()['entries']['M001'] and mi.not_this(mi.load()['entries']['M001']) == ''
+
+
 def test_a_corrected_summary_replaces_the_models_everywhere(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
     old = 'A video shows a large group of Muslims chanting in Dublin in September 2026.'
