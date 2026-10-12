@@ -344,7 +344,8 @@ class Signals:
         sims = dict(zip(ls, self.vec(list(ls.values())) @ self.note_vectors().T))
         best = np.max(np.stack(list(sims.values())), 0)
         if getattr(self, '_genre_layer', None) is None:
-            self._genre_layer = [GENRE_LAYER.get(mi.genre_of(e) or '') for e in self.entries]
+            # the person's genre only: the model's guess on a motif it made would misroute the signal (Fable, Oct 12)
+            self._genre_layer = [GENRE_LAYER.get(mi.person_genre(e) or '') for e in self.entries]
         of_genre = np.array([sims[g][i] if g in sims else -1.0 for i, g in enumerate(self._genre_layer)])
         return best, of_genre
 
