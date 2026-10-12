@@ -4,6 +4,15 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-12
+- **Stories get a second pass: cut where their words fall apart.** The person's idea (Oct 11), tested as Atropos and
+  Rumpelstiltskin: stories are still formed by meaning (mxbai embeddings, 0.80), then each story of 12+ outlets is
+  compared by its headlines' words (TF-IDF fitted on the story's own processed headlines) and split at the cleanest
+  normalized cut if it scores under 0.6, each side at least 6 outlets, up to three cuts deep; but only when Gemma 4 26B,
+  asked two ways, says the two sides report two events. On a week of stories, cuts under 0.6 confirmed that way were
+  two events 18 of 18 times; on the last day's stories the score alone would have cut 9, three of them one event, so
+  the confirmation stays. A story split this way keeps its id on the side holding most of its headlines.
+
 ## 2026-10-11
 - **The motif index is all rights reserved.** On the site, in its Markdown and SKOS exports, and in the footer of
   every page of the daily archive (the build gives kept pages today's footer; the 346 stored copies were rewritten

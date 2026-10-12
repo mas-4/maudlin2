@@ -12,7 +12,7 @@ import pytz
 import pandas as pd
 from sqlalchemy import func
 
-from app.analysis.clustering import story_similarity, headline_vectors, form_clusters, label_clusters, embed, \
+from app.analysis.clustering import story_similarity, headline_vectors, form_clusters, label_clusters, embed, split_seams, \
     unlink_money_conflicts
 from app.analysis.sagas import link_sagas
 from app.analysis import entities, factchecks, satire, trends_meter
@@ -446,6 +446,16 @@ class HeadlinesPage:
         logger.info("Story similarity from %s, threshold %.2f", model, threshold)
         clusters = form_clusters(similarity, n_samples_per_cluster, threshold)
         logger.info("%i clusters formed", len(clusters))
+        # The second pass: a story cut where its headlines' words fall into two (clustering.split_seams, Atropos)
+        from app.analysis.clustering import two_events
+        from app.utils.store import read_json, write_json
+        seam_cache_path = os.path.join(Config.data, 'story_seams.json')
+        seam_cache = read_json(seam_cache_path, {})
+        clusters, cut = split_seams(clusters, df['processed'].tolist(), df['agency'].tolist(), n_samples_per_cluster,
+                                    df['title'].tolist(), confirm=lambda a, b: two_events(a, b, seam_cache))
+        write_json(seam_cache_path, seam_cache)
+        for c in cut:
+            logger.info("Story seam (%.2f): %s | %s", c['ncut'], c['a'][0][:70], c['b'][0][:70])
 
         df = label_clusters(df, clusters)
         considered = df  # every headline, for sagas to pull in related ones that made no story

@@ -200,6 +200,124 @@ def story_similarity(texts) -> tuple[np.ndarray, float, str]:
         return prepare_embedding_cosine(texts), STORY_THRESHOLDS['potion-base-8M'], 'potion-base-8M'
 
 
+# The second pass (the person's idea, Oct 11; Atropos tested it): stories are formed by meaning (embeddings), then each
+# story's headlines are compared by their words (TF-IDF, fitted on the story's own headlines) and cut where they fall
+# into two groups that barely share words: a spectral bisection, the normalized cut. On 345 cuts of a week's stories,
+# judged by Gemma under two wordings, cuts scoring under 0.6 were two events 18 of 18 times (0.6-0.7: 69%; over 0.8:
+# almost never). Each side must be a story itself (SEAM_OUTLETS outlets); a side is cut again, SEAM_DEPTH deep.
+SEAM = 0.6
+SEAM_DEPTH = 3
+# A cut is made only when Gemma, asked both ways, says the sides are two events (Oct 12: on the last day's stories the
+# score alone cut 9, three of them one event, at the same scores as the right ones; Atropos's 18 of 18 were cuts the
+# judge had confirmed). The sides shown are each side's SEAM_SHOWN most central headlines; answers cached in SEAM_CACHE.
+SEAM_SHOWN = 6
+SEAM_MODEL = 'gemma4:26b'
+SEAM_ASK = ["""Two groups of news headlines, from one story on a news site:
+
+Group A:
+{a}
+
+Group B:
+{b}
+
+Do the two groups report one news event (the same announcement, incident, decision, ruling, report or game, perhaps
+with more details or reactions), or two different events (a separate incident, another person's action, a later
+development such as a new statement, a response, a vote or an arrest)? Go by what most headlines in each group report.
+
+reason: one sentence
+one_event: true or false""", """Group A:
+{a}
+
+Group B:
+{b}
+
+A news editor has these headlines on one story card. Should they stay on one card, because both groups report one
+event, or be two cards, because the groups report different events, even if one led to the other?
+
+reason: one sentence
+one_event: true if one card"""]
+SEAM_SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 400},
+                                                "one_event": {"type": "boolean"}}, "required": ["reason", "one_event"]}
+
+
+def two_events(a: list[str], b: list[str], cache: dict) -> bool:
+    """Gemma, asked both ways, says the two groups of headlines are two events; False when unsure or unasked"""
+    import hashlib
+    import json
+    from app.analysis import llm
+    key = hashlib.sha1(json.dumps([a, b]).encode()).hexdigest()
+    if key not in cache:
+        shown = {'a': '\n'.join(f'- {t}' for t in a), 'b': '\n'.join(f'- {t}' for t in b)}
+        answers = [llm.complete_json(q.format(**shown), SEAM_SCHEMA, max_tokens=300, model=SEAM_MODEL) for q in SEAM_ASK]
+        if any(x is None for x in answers):
+            return False  # not cached: asked again next run
+        cache[key] = [bool(x['one_event']) for x in answers] + [answers[0].get('reason', '')]
+    return not cache[key][0] and not cache[key][1]
+
+
+def central(idx: list[int], W: np.ndarray, titles: list[str], n: int = SEAM_SHOWN) -> list[str]:
+    """A side's most central headlines (most alike the rest of it), each once"""
+    out = []
+    for k in np.argsort(-W[np.ix_(idx, idx)].sum(1)):
+        t = ' '.join(titles[idx[k]].split())
+        if t not in out:
+            out.append(t)
+        if len(out) == n:
+            break
+    return out
+
+
+def best_cut(W: np.ndarray, outlets: list, min_outlets: int) -> tuple[float, np.ndarray] | None:
+    """(normalized cut, the mask of one side) for the cleanest cut of the likeness matrix W whose sides each have
+    min_outlets outlets, or None"""
+    W = W.copy()
+    np.fill_diagonal(W, 0)
+    d = W.sum(1) + 1e-9
+    L = np.eye(len(W)) - W / np.sqrt(np.outer(d, d))
+    _, vecs = np.linalg.eigh(L)
+    f = vecs[:, 1] / np.sqrt(d)
+    best = None
+    for cut in np.unique(np.quantile(f, np.linspace(0.05, 0.95, 37))):
+        A = f <= cut
+        if len({outlets[i] for i in np.flatnonzero(A)}) < min_outlets or \
+                len({outlets[i] for i in np.flatnonzero(~A)}) < min_outlets:
+            continue
+        c = W[np.ix_(A, ~A)].sum()
+        ncut = c / (W[A].sum() + 1e-9) + c / (W[~A].sum() + 1e-9)
+        if best is None or ncut < best[0]:
+            best = (float(ncut), A)
+    return best
+
+
+def split_seams(clusters: list, texts: list[str], outlets: list, min_outlets: int,
+                titles: list[str] | None = None, confirm=None) -> tuple[list, list[dict]]:
+    """The clusters with each cut where its headlines' words (texts: the processed headlines, as Atropos tested) fall
+    apart (a cut scoring under SEAM, and confirmed by `confirm(side a's titles, side b's)` if given); and the cuts made,
+    each {'ncut', 'sizes', 'a', 'b'} (each side's most central titles)"""
+    titles = titles or texts
+    out, made = [], []
+    todo = [(sorted(c), 0) for c in clusters]
+    while todo:
+        idx, depth = todo.pop()
+        if depth < SEAM_DEPTH and len({outlets[i] for i in idx}) >= 2 * min_outlets:
+            try:
+                T = TfidfVectorizer().fit_transform([texts[i] for i in idx])
+                W = (T @ T.T).toarray()
+                b = best_cut(W, [outlets[i] for i in idx], min_outlets)
+            except ValueError:  # no words left after the vectorizer's own cleaning
+                b = None
+            if b and b[0] < SEAM:
+                a_k, b_k = list(np.flatnonzero(b[1])), list(np.flatnonzero(~b[1]))
+                sides = central(a_k, W, [titles[i] for i in idx]), central(b_k, W, [titles[i] for i in idx])
+                if confirm is None or confirm(*sides):
+                    a_idx, b_idx = [idx[k] for k in a_k], [idx[k] for k in b_k]
+                    made.append({'ncut': round(b[0], 3), 'sizes': [len(a_idx), len(b_idx)], 'a': sides[0], 'b': sides[1]})
+                    todo += [(a_idx, depth + 1), (b_idx, depth + 1)]
+                    continue
+        out.append(set(idx))
+    return out, made
+
+
 def label_clusters(data, clusters):
     cluster_labels = [-1] * len(data)
     for cluster_id, cluster_indices in enumerate(clusters):
