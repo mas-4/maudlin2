@@ -112,6 +112,8 @@ REGISTRY = {
             '(+3.0 to +9.0); 4.7 of 12 change'),
     'F18': ("The Brothers Grimm's winning wording in every claim prompt, measured forward", '', 'running',
             'motif index (claims, corrections); app/claim_wording.py', ''),
+    'F19': ("A telling as its course of action, no topic (SemEval 2026 Task 4's recipe), beside Aesop",
+            'f4_abstract_tellings.py', 'queued', 'f4_abstract.sqlite; f4_abstract.json', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),

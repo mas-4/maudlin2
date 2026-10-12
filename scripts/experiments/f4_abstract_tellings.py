@@ -9,6 +9,10 @@ one motif: they share their topic's words. Three abstractions that drop the topi
                 court); their embeddings averaged, the topic washes out and the shape stays
     Hermagoras  (F6) a small fixed signature from rhetoric: the stasis (fact, definition, quality, jurisdiction), Burke's
                 driver (agent, scene, purpose, means, act), the time shape and the speech act
+    Theseus     (F19, added Oct 12 before any scoring) the telling's course of action and outcome, kinds of actors for
+                names and no topic words: SemEval 2026 Task 4's best embedding system (72%) embedded only such a
+                distilled course of action, while an embedder trained for story structure (story-emb, 63%) did worse
+                than its own base model (e5, 67%). The recipe, not a new model
 
 Two yardsticks, each against the plain claim:
     finding     for the person's confirmed filings, the right motif's rank when motifs are scored by the claim's likeness
@@ -59,18 +63,24 @@ driver: what it says drove what happened: agent (who they are), scene (the circu
 after), means (how it was done), or act (the deed itself).
 time: the time shape it tells: decline, revelation (it was so all along), prophecy (it will happen), repetition (again), \
 reversal (the tables turned), rise, or none.
-speech: what the teller is doing: warning, accusation, mockery, lament, boast, praise, demand, or report."""
+speech: what the teller is doing: warning, accusation, mockery, lament, boast, praise, demand, or report.
+course: what happens in this telling and how it turns out, in one or two sentences: a sequence of acts by kinds of \
+actors (an official, a rival, the public), with no names, places, dates or words about the subject."""
 SCHEMA = {"type": "object", "properties": {
     "proverb": {"type": "string", "maxLength": 120},
     "retellings": {"type": "array", "items": {"type": "string", "maxLength": 300}, "minItems": 3, "maxItems": 3},
-    **{k: {"type": "string", "enum": v} for k, v in LABELS.items()}},
-    "required": ["proverb", "retellings", *LABELS]}
+    **{k: {"type": "string", "enum": v} for k, v in LABELS.items()},
+    "course": {"type": "string", "maxLength": 400}},
+    "required": ["proverb", "retellings", *LABELS, "course"]}
+SPACES = ('plain', 'aesop', 'loki', 'theseus')
 
 
 def connect() -> sqlite3.Connection:
     con = sqlite3.connect(DB, timeout=60)
     con.execute('create table if not exists asked (key text primary key, claim text, proverb text, retellings text, '
                 'stasis text, driver text, time text, speech text)')
+    if 'course' not in [r[1] for r in con.execute('pragma table_info(asked)')]:  # Theseus, added after 160 were asked
+        con.execute('alter table asked add column course text')
     return con
 
 
@@ -97,7 +107,7 @@ def ask():
     index = mi.load()
     claims = list(dict.fromkeys([c for c, _ in confirmed(index)] + [t for r in replay() for t in r['texts']]))
     con = connect()
-    have = {k for (k,) in con.execute('select key from asked')}
+    have = {k for (k,) in con.execute('select key from asked where course is not null')}  # asked again for Theseus
     todo = [c for c in claims if mi.key(c) not in have]
     print(f'ask: {len(claims)} claims, {len(todo)} to ask', flush=True)
     subjects = '; '.join(SUBJECTS)
@@ -107,17 +117,18 @@ def ask():
                                                        model=MODEL), part)
         with con:
             for c, r in zip(part, got):
-                if r and r.get('proverb') and len(r.get('retellings') or []) == 3:
-                    con.execute('insert or replace into asked values (?, ?, ?, ?, ?, ?, ?, ?)',
+                if r and r.get('proverb') and len(r.get('retellings') or []) == 3 and r.get('course'):
+                    con.execute('insert or replace into asked values (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                 (mi.key(c), c, r['proverb'].strip(), json.dumps(r['retellings']),
-                                 *(r.get(k) for k in LABELS)))
+                                 *(r.get(k) for k in LABELS), r['course'].strip()))
         print(f'ask: {min(start + 32, len(todo))}/{len(todo)}', flush=True)
         if not any(got):  # Ollama down: stop, so the chain's next try waits for the lease again
             sys.exit('ask: no answer for a whole batch; Ollama down? stopping to try again')
 
 
 class Spaces:
-    """A claim in each space, unit vectors: plain (the claim), aesop (its proverb), loki (its retellings' mean)"""
+    """A claim in each space, unit vectors: plain (the claim), aesop (its proverb), loki (its retellings' mean),
+    theseus (its course of action)"""
 
     def __init__(self, rows: dict, vec):
         self.rows, self.vec, self.cache = rows, vec, {}
@@ -131,6 +142,8 @@ class Spaces:
                     v = self.vec([c])[0]
                 elif space == 'aesop':
                     v = self.vec([r['proverb']])[0]
+                elif space == 'theseus':
+                    v = self.vec([r['course']])[0]
                 else:
                     v = self.vec(r['retellings']).mean(0)
                 self.cache[(space, c)] = v / (np.linalg.norm(v) + 1e-9)
@@ -149,7 +162,7 @@ def finding(index: dict, rows: dict, sp: Spaces) -> dict:
                           if t in row])  # one line per (motif, claim) filing
     owner, member = np.array(owner), np.array(member)
     names, V = {}, {}
-    for space in ('plain', 'aesop', 'loki'):  # a motif's name is an idiom already: compared with each view of the claim
+    for space in SPACES:  # a motif's name is an idiom already: compared with each view of the claim
         v = sp.vec([mi.described(e) for e in entries])
         names[space] = v / (np.linalg.norm(v, axis=1, keepdims=True) + 1e-9)
         V[space] = sp(space, claims)
@@ -157,7 +170,7 @@ def finding(index: dict, rows: dict, sp: Spaces) -> dict:
     ranks = {}
     for i, (c, m) in enumerate(pairs):
         scores = {}
-        for space in ('plain', 'aesop', 'loki'):
+        for space in SPACES:
             q = V[space][row[c]]
             s = V[space] @ q
             s[row[c]] = -1.0  # the claim left out of its motifs
@@ -167,6 +180,7 @@ def finding(index: dict, rows: dict, sp: Spaces) -> dict:
         scores['plain + aesop'] = scores['plain'] + scores['aesop']
         scores['plain + loki'] = scores['plain'] + scores['loki']
         scores['all three'] = scores['plain'] + scores['aesop'] + scores['loki']
+        scores['plain + theseus'] = scores['plain'] + scores['theseus']
         for arm, sc in scores.items():
             ranks.setdefault(arm, []).append(int((sc > sc[at[m]]).sum()))
         if i % 500 == 0:
@@ -178,7 +192,7 @@ def seams(rows: dict, sp: Spaces) -> dict:
     """The Gordian Knot's odd one out in each space; and how far Hermagoras's labels hold together within a motif"""
     cases = [r for r in replay() if all(mi.key(t) in rows for t in r['texts'])]
     out, chance = {}, []
-    for space in ('plain', 'aesop', 'loki'):
+    for space in SPACES:
         first = []
         for r in cases:
             V = sp(space, r['texts'])
@@ -227,11 +241,12 @@ def coherence(index: dict, rows: dict) -> dict:
 def report():
     index = mi.load()
     con = connect()
-    rows = {k: {'claim': c, 'proverb': p, 'retellings': json.loads(r), 'stasis': s, 'driver': d, 'time': t, 'speech': sp}
-            for k, c, p, r, s, d, t, sp in con.execute('select * from asked')}
+    rows = {k: {'claim': c, 'proverb': p, 'retellings': json.loads(r), 'stasis': s, 'driver': d, 'time': t, 'speech': sp,
+                'course': co}
+            for k, c, p, r, s, d, t, sp, co in con.execute('select * from asked where course is not null')}
     vec = mr.Vectors()
     vec([r['claim'] for r in rows.values()] + [r['proverb'] for r in rows.values()]
-        + [t for r in rows.values() for t in r['retellings']])  # every text embedded in one go, then looked up
+        + [t for r in rows.values() for t in r['retellings']] + [r['course'] for r in rows.values()])  # every text embedded in one go, then looked up
     sp = Spaces(rows, vec)
     found = finding(index, rows, sp)
     seam = seams(rows, sp)
@@ -239,10 +254,11 @@ def report():
     json.dump({'finding': found, 'seams': seam, 'coherence': held}, open(DB.replace('.sqlite', '.json'), 'w'))
     top = lambda arm: f"{found[arm][8]:.0%}/{found[arm][12]:.0%}/{found[arm][40]:.0%}"  # noqa: E731
     lines = [
-        f"F4 Aesop and F5 Loki, finding: right motif in the top 8/12/40 of {found['n']} confirmed filings by plain likeness: "
+        f"F4 Aesop, F5 Loki and F19 Theseus, finding: right motif in the top 8/12/40 of {found['n']} confirmed filings by plain likeness: "
         + '; '.join(f'{arm} {top(arm)}' for arm in found if arm != 'n'),
         f"F4 Aesop and F5 Loki, seams: the carved claim its motif's odd one out ({seam['cases']} carved claims; chance "
-        f"{seam['chance']:.0%}): plain {seam['plain']:.0%}, Aesop {seam['aesop']:.0%}, Loki {seam['loki']:.0%}",
+        f"{seam['chance']:.0%}): plain {seam['plain']:.0%}, Aesop {seam['aesop']:.0%}, Loki {seam['loki']:.0%}, "
+        f"Theseus {seam['theseus']:.0%}",
         "F6 Hermagoras: two claims of one motif share the label, against two of different motifs: "
         + '; '.join(f'{k} {w:.0%} against {b:.0%}' for k, (w, b) in held.items())
         + '; the carved claim unlike its motif: '
