@@ -686,3 +686,10 @@ def test_carrying_words_are_kept_per_filing_and_gathered_per_motif(monkeypatch, 
     assert next(c for c in mi.board()['entries'][0]['claims'] if c['claim'] == 'a')['carrying'][0] == 'Religion of peace'
     mi.set_carrying('a', 'M001', '')
     assert 'carrying' not in mi.load()['entries']['M001']['claims'][0]
+
+
+def test_a_filing_record_keeps_the_telling_a_child_claim_was_split_from():
+    rec = mi.record({'claim': 'a child', 'source': 'narrative', 'ref': 'r', 'story': 4, 'split_from': 'the telling'},
+                    '2026-10-13')
+    assert rec['split_from'] == 'the telling' and rec['story'] == 4
+    assert 'split_from' not in mi.record({'claim': 'plain'}, '2026-10-13')

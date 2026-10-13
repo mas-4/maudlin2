@@ -297,13 +297,14 @@ def log_shortlist(index: dict, c: dict, shown: list[dict], named: dict):
 
 
 STORY_FIELDS = ('story', 'story_tie')  # carried onto the filing when the claim's source ties it to a story
+LINK_FIELDS = ('split_from',)  # a child claim's telling, the claim it was split from (claim_organizer.apply_split)
 
 
 def record(c: dict, today: str) -> dict:
     """A filing's claim record, with the story the claim was told about when its source ties it to one (see
-    story_motifs)"""
+    story_motifs), and the telling it was split from, if it was"""
     return {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'side': c.get('side'),
-            'date': c.get('date') or today, **{f: c[f] for f in STORY_FIELDS if c.get(f) is not None}}
+            'date': c.get('date') or today, **{f: c[f] for f in STORY_FIELDS + LINK_FIELDS if c.get(f) is not None}}
 
 
 class Shortlister:
