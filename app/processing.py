@@ -87,6 +87,12 @@ def process(limit: float, reserve: float = FILING_RESERVE, stop=None) -> None:
     from app.analysis import motif_index
     if (b := budget(MOTIF_BUDGET, 'Motif filing', keep=FIT_BUDGET)):
         motif_index.nightly(budget=b)
+        try:  # the children of a split the person approved that weren't filed then (claim_organizer)
+            from app.analysis import claim_organizer
+            if (b := budget(120, 'Split children', keep=FIT_BUDGET)):
+                claim_organizer.refile_pending(budget=b)
+        except Exception as e:  # noqa: BLE001 - the next run files them
+            logger.warning("Split children not filed: %s", e)
     # Plain news filed again against the grown index, weekly (or when a later day tells it again): a few minutes, in
     # the night's runs (watch_list.py)
     if dt.now().hour == REFILE_HOUR and not reported:
