@@ -48,8 +48,8 @@ server = MCPServer('maudlin', instructions=(
     "(rumor and narrative shapes) with their claims, genre (a layer of story: Archetypes, Plots, Theories...), groups "
     "(a separate axis), rests-on links (the only hierarchy: a motif only makes sense given the one it rests on, a kind of it or a case, argument or figure that tells it; across genres too) and related links. checker_action makes a "
     "change the person asked for through the checker (logged, undoable, marked by Claude); checker_undo takes back "
-    "Claude's own last change only. check_queue, second_look, unfiled_claims and claim_detail show the person's "
-    "work queues and where a claim came from."))
+    "Claude's own last change only. claims_to_judge (the 🎯 tab: each claim whole), check_queue, second_look, "
+    "unfiled_claims and claim_detail show the person's work queues and where a claim came from."))
 
 
 def _connect() -> sqlite3.Connection:
@@ -224,6 +224,81 @@ def check_queue(limit: int = 30) -> str:
     rows = list(claims.values())
     return json.dumps({'claims waiting': len(rows), 'filings': sum(len(r['motifs']) for r in rows),
                        'claims': rows[:max(1, min(limit, 200))]}, ensure_ascii=False)
+
+
+def _earlier_verdicts(index: dict, keys: set[str]) -> dict[str, list[str]]:
+    """Claim key -> what was said of the claim before, from the curation log: no motif, taken out of a motif (check no,
+    unfile, moved away), each dated, with by whom and why when the log has them"""
+    from app.analysis import curation_db
+    name = lambda i: f"{index['entries'][i]['name']} ({i})" if i in index['entries'] else i  # noqa: E731
+    out = {}
+    for r in curation_db.actions():
+        a = r['action']
+        for s in (a.get('steps') or []) if a.get('action') == 'batch' else [a]:
+            if not isinstance(s, dict) or not isinstance(s.get('claim'), str):
+                continue
+            k = mi.key(mi.corrected(s['claim'], index))
+            if k not in keys:
+                continue
+            what = {'no_motif': 'no motif', 'unfile': f"taken out of {name(s.get('id'))}",
+                    'move': f"moved from {name(s.get('source'))} to {name(s.get('target'))}"}.get(s.get('action'))
+            if s.get('action') == 'check' and s.get('answer') == 'no':
+                what = f"check no in {name(s.get('id'))}"
+            if what:
+                why = s.get('why') or a.get('why')
+                out.setdefault(k, []).append(f"{r['at'][:10]} {what}, by {r['by'] or 'the person'}"
+                                             + (f': "{why}"' if why else ''))
+    return out
+
+
+@server.tool()
+def claims_to_judge(limit: int = 10, offset: int = 0, refiled_only: bool = False) -> str:
+    """The workbench's 🎯 claims to judge: each claim once and whole, in the tab's order (the least sure first, the
+    doubted after), with every motif it's in. Each waiting filing says why it waits: 'unchecked' (with its fit, and
+    'sure' when it is past the sure line and may pass as sure: the tab's ticked fold) or 'doubted' (the person
+    confirmed it, the model now doubts it; 'better' is the fix it has ready). A filing the watch list refiled says so
+    (♻️ what the claim was and since when), and the claim then carries the person's earlier verdicts on it from the
+    curation log: a no restores what they said. `refiled_only` lists only claims with a refiled filing."""
+    from app.analysis import filing_confidence as fc
+    from app.utils.store import read_json
+    V = _validate()
+    index = mi.load()
+    m = read_json(fc.MODEL, None)
+    sure_at = m and m['test'].get('sure_at')
+    by_key = {}
+    for e in mi.live(index):
+        for c in e['claims']:
+            by_key.setdefault(mi.key(c['claim']), []).append((e, c))
+    rows = V.judge_queue()
+    if refiled_only:
+        rows = [r for r in rows if any(x.get('refiled') for x in r['reasons'])]
+    page = rows[max(0, offset):max(0, offset) + max(1, min(limit, 50))]
+    earlier = _earlier_verdicts(index, {mi.key(r['claim']) for r in page if any(x.get('refiled') for x in r['reasons'])})
+    out = []
+    for r in page:
+        k = mi.key(r['claim'])
+        waits = {x['id']: x for x in r['reasons']}
+        motifs = []
+        for e, c in by_key.get(k, []):
+            x = waits.get(e['id'])
+            row = {'id': e['id'], 'name': e['name'], 'genre': mi.genre_of(e), 'note': e.get('note') or '',
+                   **({'not this': e['not_this']} if e.get('not_this') else {}),
+                   'checked': c.get('checked')}
+            if x:
+                row['waits'] = x['kind']
+                row['fit'] = x.get('fit')
+                if x['kind'] == 'unchecked' and sure_at is not None and x.get('fit') is not None:
+                    row['sure'] = x['fit'] >= sure_at and e['id'] not in r['unsure']
+                if x.get('refiled'):
+                    row['refiled'] = f"was {'plain news' if x['refiled']['was'] == 'watched motif' else 'in no motif'}" \
+                                     f" until {x['refiled']['at']}"
+            motifs.append(row)
+        out.append({'claim': r['claim'], 'source': r.get('source'), 'motifs': motifs,
+                    **({'better': r['better']} if r.get('better') else {}),
+                    **({'said before': earlier[k]} if k in earlier else {})})
+    return json.dumps({'claims waiting': len(rows), 'sure line': sure_at,
+                       'refiled': sum(1 for r in rows if any(x.get('refiled') for x in r['reasons'])),
+                       'shown': f'{offset + 1}-{offset + len(out)}', 'claims': out}, ensure_ascii=False, default=str)
 
 
 @server.tool()
