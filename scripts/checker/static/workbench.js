@@ -369,6 +369,7 @@
         ${ns === 'draft' ? `<div class="wb-nbtns"><button class="wb-btn" data-keepnote="${e.id}">✓ keep the draft</button></div>` : ''}
         <label class="wb-notthis">🚫 not this <input data-notthis="${e.id}" value="${esc(e.not_this || '')}" placeholder="what it isn't, though it looks like it (the filing model and the judge read this)"
           title="one line on what to keep out: saves when you click away or press Enter"></label>
+        ${e.carrying && e.carrying.length ? `<p class="wb-carried" title="its phrase dictionary so far: the carrying words you've given its filings">🗣 tellers say: ${e.carrying.map(([p, n]) => `<b>“${esc(p)}”</b>${n > 1 ? ` ×${n}` : ''}`).join(' · ')}</p>` : ''}
       </div>
       ${sel.size ? `<div class="wb-selbar">☑️ <b>${sel.size}</b> selected: drag them anywhere, or
         <button class="wb-btn" data-bulk="unfile|${i}">🗑️ take out</button><button class="wb-btn" data-bulk="no_motif|${i}">∅ no motif</button>
@@ -385,7 +386,7 @@
     const tags = [c.new ? '<b class="b-new">NEW</b>' : '', c.checked === 'yes' ? '<b title="checked: belongs here">✓</b>' : c.checked === 'unsure' ? '<b title="checked: not sure">🤷</b>' : ''].join('');
     const ways = c.variants && c.variants.length ? `<b class="wb-ways" title="also told as: ${esc(c.variants.join(' · '))}">≡ ${c.variants.length + 1} ways</b>` : '';
     return `<li class="wb-claim${selected ? ' sel' : ''}" ${claimData(c, e.id)} data-drop="sameclaim">
-      <span class="wb-ctext" data-select="1">${tags}${ways}${esc(c.claim)}</span>
+      <span class="wb-ctext" data-select="1">${tags}${ways}${esc(c.claim)}${c.carrying ? ` <i class="wb-carrytag" title="carrying words">🗣 ${c.carrying.map((p) => '“' + esc(p) + '”').join(' ')}</i>` : ''}</span>
       <span class="wb-meta"><a class="wb-cid" data-inspect="1" title="open it on the right">#${c.id}</a> · ${esc(SOURCE[c.source] || c.source || '')}</span>
       <span class="wb-cbtns">
         <button class="wb-mini" data-inspect="1" title="open it on the right: its source and every motif it's in, to reassign">🔍</button>
@@ -722,7 +723,8 @@
       ${ins.map((e) => { const r = e.claims.find((x) => x.claim === c.claim), doubt = doubts(c.claim, e.id); return `<div class="wb-motifrow${r.checked === 'yes' && !doubt ? ' fits' : ''}${doubt ? ' doubt' : ''}">${chip(e.id)}
         ${e.note ? `<span class="wb-mnote">${esc(e.note)}</span>` : '<span class="wb-mnote wb-faint">no note yet</span>'}
         <span class="wb-sbtns">${(r.checked !== 'yes' || doubt) && S.fits && S.fits[c.claim + '|' + e.id] != null ? fitChip(S.fits[c.claim + '|' + e.id], S.unsure && S.unsure.has(c.claim + '|' + e.id)) : ''}${doubt ? `<button class="wb-btn yes" data-cl="check|${e.id}" title="you said it fits; the model now doubts it: does it still?">🧐 ✓ still fits</button>` : r.checked === 'yes' ? '<span class="wb-fits">✓ fits</span>' : `<button class="wb-btn yes" data-cl="check|${e.id}" title="it belongs here">✓ fits</button>`}
-        <button class="wb-btn no" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span></div>`; }).join('')
+        <button class="wb-btn no" data-cl="unfile|${e.id}" title="take it out of this motif">✕ take out</button></span>
+        <label class="wb-carry" title="the tellers' own words that carry this motif here (“religion of peace”): saves when you click away or press Enter; ; between phrases">🗣 <input data-carry="${e.id}" data-carryclaim="${esc(c.claim)}" value="${esc((r.carrying || []).join('; '))}" placeholder="carrying words, if the tellers have a phrase for it"></label></div>`; }).join('')
         || '<p class="wb-faint">📥 not in any motif</p>'}
       <div id="cl-better"></div>
       <h3>➕ add it to another motif</h3>
@@ -1699,11 +1701,16 @@
       const id = ev.target.dataset.notthis, v = ev.target.value.trim();
       if (S.by[id] && v !== (S.by[id].not_this || '')) act({action: 'not_this', id, text: v}, v ? '🚫 saved what it isn\'t' : '🚫 taken away');
     }
+    if (ev.target.dataset && ev.target.dataset.carry !== undefined && ev.target.isConnected) {
+      const id = ev.target.dataset.carry, claim = ev.target.dataset.carryclaim, v = ev.target.value.trim();
+      const r = S.by[id] && S.by[id].claims.find((x) => x.claim === claim);
+      if (r && v !== (r.carrying || []).join('; ')) act({action: 'carrying', claim, id, text: v}, v ? '🗣 carrying words saved' : '🗣 taken away');
+    }
   });
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target.closest && ev.target.closest('input, textarea, select');
     if (ev.key === 'Escape') { if (drag) end(ev, true); hideMenu(); }
-    if (ev.target.dataset && (ev.target.dataset.note !== undefined || ev.target.dataset.notthis !== undefined) && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); ev.target.blur(); return; }
+    if (ev.target.dataset && (ev.target.dataset.note !== undefined || ev.target.dataset.notthis !== undefined || ev.target.dataset.carry !== undefined) && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); ev.target.blur(); return; }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !typing) { ev.preventDefault(); undo(); return; }
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }

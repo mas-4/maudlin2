@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-13
+- **Carrying words.** A filing can now carry the tellers' own words that carry its motif ("religion of peace", said
+  sarcastically, under a crowd claim), written by the person in the checker (one phrase per ';'). Each motif gathers
+  them into a phrase dictionary, counted by filing. They are evidence of how a motif is told in the tellers' own terms;
+  they are kept, not yet read by any model. A phrase can belong to several motifs and means different things said
+  sincerely or sarcastically, so it will be a finder and a tracker, never the filer.
+
 ## 2026-10-12
 - **Bloomberg from its own feeds.** Its front page has answered every request with a captcha since Oct 11, 20:04, and
   we don't get around bot checks; its official section feeds (politics, markets, economics) still answer, so its

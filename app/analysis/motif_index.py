@@ -1202,6 +1202,7 @@ def board() -> dict:
                 'claims': [{'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''),
                             'id': key(c['claim'])[:6],  # shown as #3f9a2b, to name a claim in a screenshot or a search
                             'checked': c.get('checked'), 'new': 'done' in e and not seen(e, c),
+                            **({'carrying': c['carrying']} if c.get('carrying') else {}),
                             **({'variants': [v['claim'] for v in c['variants']]} if c.get('variants') else {})}
                            for c in e['claims']]}
                for e in live(index)]
@@ -1754,6 +1755,41 @@ def set_not_this(eid: str, text: str):
 def not_this(entry: dict) -> str:
     """The line the models read after a motif's description: what it isn't, or nothing"""
     return f"\n   Not this: {entry['not_this']}" if entry.get('not_this') else ''
+
+
+def phrases_in(text) -> list[str]:
+    """A person's carrying words as a list: one phrase per ';' or line, spaces tidied, each once"""
+    parts = text if isinstance(text, list) else str(text or '').replace('\n', ';').split(';')
+    return list(dict.fromkeys(p for p in (' '.join(str(x).split()).strip(' "“”') for x in parts) if p))
+
+
+@exclusive
+def set_carrying(claim: str, eid: str, text):
+    """The tellers' own words that carry the motif in this filing ("religion of peace", said sarcastically, under the
+    Dublin crowd claim): a person's, per filing (praxis rule 1's carrying words), the source of each motif's phrase
+    dictionary (carrying()). Oct 13, the person asked for it; empty takes them away"""
+    index = load()
+    found = next((c for c in index['entries'][eid]['claims'] if key(c['claim']) == key(claim)), None)
+    if found is None:
+        raise ValueError(f'no such filing: {eid} {claim[:60]}')
+    phrases = phrases_in(text)
+    if phrases:
+        found['carrying'] = phrases
+    else:
+        found.pop('carrying', None)
+    save(index)
+
+
+def carrying(entry: dict) -> list[tuple[str, int]]:
+    """A motif's phrase dictionary so far: the carrying words of its filings, each with how many filings carry it,
+    most first (case aside, the first spelling kept)"""
+    seen, count = {}, {}
+    for c in entry.get('claims', []):
+        for p in c.get('carrying') or []:
+            k = p.lower()
+            seen.setdefault(k, p)
+            count[k] = count.get(k, 0) + 1
+    return sorted(((seen[k], n) for k, n in count.items()), key=lambda x: (-x[1], x[0].lower()))
 
 
 def keep_note(eid: str):

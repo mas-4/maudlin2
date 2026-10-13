@@ -448,6 +448,8 @@ def board_action(data: dict):
         mi.relate(data['a'], data['b'], act == 'relate', data['note'] if isinstance(data.get('note'), str) else None)
     elif act == 'not_this' and data.get('id') in live and isinstance(data.get('text'), str):
         mi.set_not_this(data['id'], data['text'])
+    elif act == 'carrying' and text('claim') and data.get('id') in live and isinstance(data.get('text'), (str, list)):
+        mi.set_carrying(data['claim'], data['id'], data['text'])  # the tellers' words that carry it, per filing
     elif act == 'parent' and data.get('id') in live and data.get('parent') in live:
         mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
     elif act == 'file' and text('claim') and data.get('id') in live:
@@ -505,6 +507,7 @@ def workbench_state() -> dict:
         e['stands_alone'] = bool(entry.get('stands_alone'))
         e['watch'] = bool(entry.get('watch'))
         e['phrases'] = (entry.get('phrases') or [])[:6]
+        e['carrying'] = mi.carrying(entry)[:12]  # its phrase dictionary so far, from the filings' carrying words
     state['to_check'] = sum(1 for e in mi.live(index) for c in e['claims'] if not c.get('checked'))
     hand, recent = hand_made(), recently_confirmed()
     state['second_look'] = sum(1 for e in mi.live(index) for c in e['claims'] if doubted(e, c, hand, recent))

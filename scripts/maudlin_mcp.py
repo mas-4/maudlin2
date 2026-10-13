@@ -173,8 +173,9 @@ def _motif(index: dict, motif_id: str) -> dict | None:
         'related': [name(x) + (f" ({mi.related_note(index, eid, x)})" if mi.related_note(index, eid, x) else '')
                     for p in index.get('related', []) if eid in p for x in p if x != eid],
         'shares claims with': dict(sorted(shared.items(), key=lambda kv: -kv[1])),
-        'claims': [{'claim': c['claim'], 'source': c.get('source'), 'checked': c.get('checked'), 'date': c.get('date')}
-                   for c in e['claims']]}
+        'carrying words': dict(mi.carrying(e)),  # its phrase dictionary so far
+        'claims': [{'claim': c['claim'], 'source': c.get('source'), 'checked': c.get('checked'), 'date': c.get('date'),
+                    **({'carrying': c['carrying']} if c.get('carrying') else {})} for c in e['claims']]}
 
 
 @server.tool()
@@ -335,6 +336,8 @@ def checker_action(action: dict) -> str:
       merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (id rests on parent)
       relate / unrelate {a, b, note?} (relate with a note gives the link its reason; "" clears it) · not_same {a, b}
       not_this {id, text} (what the motif isn't, though it looks like it; the filing model and judge read it; "" clears)
+      carrying {claim, id, text} (the tellers' own words that carry the motif in this filing, phrases split on ';';
+        a motif's phrase dictionary is gathered from them; "" clears)
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}
       group_note {group, note} (what its motifs have in common; "" clears)
       facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value} · facet_note {facet: "genre", value, note} (what kind of thing

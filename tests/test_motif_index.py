@@ -670,3 +670,19 @@ def test_a_hand_filing_and_a_fold_keep_the_claims_story(monkeypatch, tmp_path):
     mi.same_claim('a new one', 'bribes for the mayor')
     kept = next(x for x in mi.load()['entries']['M002']['claims'] if x['claim'] == 'bribes for the mayor')
     assert kept['story'] == 9 and kept['variants'][0]['story'] == 9
+
+
+def test_carrying_words_are_kept_per_filing_and_gathered_per_motif(monkeypatch, tmp_path):
+    """The tellers' own words (Oct 13): a person's, on one filing; the motif's phrase dictionary counts them"""
+    fresh(monkeypatch, tmp_path)
+    claim = lambda t: {'claim': t, 'source': 's'}  # noqa: E731
+    mi.save({'next': 2, 'claims': {mi.key(t): ['M001'] for t in ('a', 'b')},
+             'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [claim('a'), claim('b')]}}})
+    mi.set_carrying('a', 'M001', ' “Religion of  peace”; mostly peaceful ;')
+    mi.set_carrying('b', 'M001', ['religion of peace'])
+    e = mi.load()['entries']['M001']
+    assert e['claims'][0]['carrying'] == ['Religion of peace', 'mostly peaceful']
+    assert mi.carrying(e) == [('Religion of peace', 2), ('mostly peaceful', 1)]
+    assert next(c for c in mi.board()['entries'][0]['claims'] if c['claim'] == 'a')['carrying'][0] == 'Religion of peace'
+    mi.set_carrying('a', 'M001', '')
+    assert 'carrying' not in mi.load()['entries']['M001']['claims'][0]
