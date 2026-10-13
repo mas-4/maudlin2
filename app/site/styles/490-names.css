@@ -1,34 +1,14 @@
-/* Who's in the news: the per-day bars */
-
-/* Who's in the news: a small bar per day, how many stories named the subject on the front pages that day */
-.name-days {
-    display: flex;
-    align-items: flex-end;
-    gap: 3px;
-    height: 3.4em;
-    margin: 0.3em 0 0.5em;
+/* Who's in the news today: a name's stories past the first few, folded */
+.name-more {
+    margin-top: 0.2em;
 }
 
-.name-day {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-    height: 100%;
-    max-width: 2.6em;
+.name-more summary {
+    cursor: pointer;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
 }
 
-.name-bar {
-    display: block;
-    width: 100%;
-    min-height: 2px;
-    background: var(--saga);
-    border: 1.5px solid #1f1f2e;
-    border-radius: 4px 4px 0 0;
-}
-
-.name-day-label {
-    font-size: 0.65em;
-    color: #666;
+.name-more[open] summary {
+    margin-bottom: 0.3em;
 }

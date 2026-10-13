@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-13
+- **Who's in the news, today only.** The names page shows the people, places and groups in today's stories (from
+  midnight ET), those in two or more stories or carried by 15 or more outlets, widest first, each with its first three
+  stories and the rest folded. A title before a full name is dropped when counting ("Rep. Ilhan Omar" is Ilhan Omar;
+  "General Motors" stays), and a name that is a common noun in WordNet and never written with a capital mid-sentence
+  in our headlines ("president", "senate") is not a name.
 - **A story split by one hour's clustering is joined again.** While both parts are on the front pages, the bigger
   keeps the story and the smaller starts a new one; when the two clusters joined again, the joined cluster went to
   whichever part held more of its headlines, often the young one, and the older story ended there (Christa Pike: eleven

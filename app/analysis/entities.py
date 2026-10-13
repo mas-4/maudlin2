@@ -46,6 +46,29 @@ SCHEMA = {"type": "object", "properties": {"names": {"type": "array", "maxItems"
 
 # On a US-centric front page nearly every story is about the United States: not a group worth a filter
 EVERYWHERE = {'united states', 'u.s', 'u.s.', 'us', 'usa', 'america', 'united states of america'}
+# Common nouns the model sometimes gives as names ('Worker', 'Researcher' from "Russian lab worker dies"): not who's in
+# the news, so left off the names page (Oct 12). WordNet tells most (generic()); these it gets wrong ('Man' is also the
+# Isle of Man)
+GENERIC = {'man', 'men', 'woman', 'women', 'people', 'children', 'kids', 'families', 'police'}
+
+
+def generic(name: str, labels: list[str] = ()) -> bool:
+    """A single word that's a common noun, not a name (the person, Oct 12: tell generic from proper nouns): one WordNet
+    knows only as a common noun (its noun lemmas all lower case: 'worker', unlike 'London'), unless the story labels
+    capitalize it mid-sentence ('Investors cheer Apple's results': Apple the company, not the fruit)"""
+    if ' ' in name.strip():
+        return False
+    word = name.strip().lower()
+    if word in GENERIC:
+        return True
+    try:
+        from nltk.corpus import wordnet as wn
+        lemmas = [x.name() for syn in wn.synsets(word, pos=wn.NOUN) for x in syn.lemmas() if x.name().lower() == word]
+    except LookupError:  # no WordNet: only the short list
+        return False
+    if not lemmas or any(x[:1].isupper() for x in lemmas):
+        return False
+    return not any(re.search(r'(?<![.!?:]\s)(?<!^)\b' + re.escape(name.strip()) + r'\b', lab or '') for lab in labels)
 FILLER = {'the', 'of', 'and', 'for', 'new', 'national', 'department', 'party', 'state', 'states', 'united', 'news'}
 
 
@@ -189,10 +212,26 @@ def saved_story_headlines() -> dict:
     return out
 
 
-def history(least: int = 2) -> list[dict]:
+TITLES = re.compile(r'^(?:former\s+|ex-)?(?:rep|sen|gov|lt\.?\s*gov|president|vice\s+president|senator|representative|'
+                    r'governor|congressman|congresswoman|mayor|speaker|attorney\s+general|ag|judge|dr|mr|mrs|ms|'
+                    r'prime\s+minister|pm|secretary(?:\s+of\s+\w+)?)\.?\s+', re.IGNORECASE)
+
+
+def untitled(name: str) -> str:
+    """A person's name without the title before it ('Rep. Ilhan Omar' -> 'Ilhan Omar', 'Speaker Mike Johnson' -> 'Mike
+    Johnson'), so the two are one name. Only when what's left is a full name, two capitalized words or more ('General
+    Motors' and 'Justice Department' stay); a pope's, king's or queen's title stays, it's how they're named"""
+    bare = TITLES.sub('', name).strip()
+    words = bare.split()
+    return bare if bare != name and len(words) >= 2 and all(w[:1].isupper() for w in words) else name
+
+
+def history(least: int = 2, since=None) -> list[dict]:
     """Each name over time, for the names page: every saved story that names it (by its canonical name) with when it
     was on the front pages and how many outlets had it, and the outlets on all of them by lean. Names in at least
-    `least` stories, most stories first. Uses the names already found (of_stories), asking the model nothing."""
+    `least` stories, most stories first. With `since` (naive UTC), only stories on the front pages since then (Oct 12:
+    the page shows today's). Titles are dropped before names are merged ('Rep. Ilhan Omar' is 'Ilhan Omar'). Uses the
+    names already found (of_stories), asking the model nothing."""
     from app.models import Session, Story, StoryHeadline, Headline, Article, Agency
     cache = read_json(CACHE)
     if cache is None:
@@ -212,7 +251,9 @@ def history(least: int = 2) -> list[dict]:
     for k, found in cache.items():
         if k not in stories:
             continue  # a cluster key, never saved as a story
-        for n in dict.fromkeys(canonical(x, aliases) for x in found):
+        if since is not None and stories[k]['last'] < since:
+            continue
+        for n in dict.fromkeys(canonical(untitled(canonical(x, aliases)), aliases) for x in found):
             if n.lower() in EVERYWHERE:
                 continue
             entry = names.setdefault(n.lower(), {'name': n, 'stories': [], 'outlets': {}})
@@ -221,7 +262,7 @@ def history(least: int = 2) -> list[dict]:
             entry['outlets'].update(outlets.get(k, {}))
     out = []
     for e in names.values():
-        if len(e['stories']) < least:
+        if len(e['stories']) < least or generic(e['name'], [st['label'] for st in e['stories']]):
             continue
         e['stories'].sort(key=lambda st: st['first'])
         sides = {side: sum(1 for v in e['outlets'].values() if v == side) for side in ('left', 'center', 'right', 'unrated')}

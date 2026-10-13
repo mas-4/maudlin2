@@ -132,7 +132,7 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(abtests, 'tests', lambda: [AB_TEST])
         mp.setattr(sagas, 'history', lambda: [dict(SAGA, parts=[dict(p) for p in SAGA['parts']])])
         from app.analysis import entities
-        mp.setattr(entities, 'history', lambda: [{'name': 'Donald <Trump>', 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 5, 13),
+        mp.setattr(entities, 'history', lambda **kw: [{'name': 'Donald <Trump>', 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 5, 13),
             'outlets': 66, 'left': 30, 'center': 10, 'right': 20, 'unrated': 6, 'stories': [
                 {'id': 26, 'label': 'Trump <rallies>', 'first': dt(2026, 10, 3, 12), 'last': dt(2026, 10, 4, 1), 'outlets': 20},
                 {'id': 70, 'label': 'Trump defends tariffs', 'first': dt(2026, 10, 4, 22), 'last': dt(2026, 10, 5, 13), 'outlets': 40}]}])
@@ -710,12 +710,13 @@ def test_saga_tracker_lays_out_parts_on_a_timeline(site):
     assert [s.get_text() for s in card.select('.saga-lean span')] == ['17', '12', '10']
 
 
-def test_names_page_tracks_each_name_day_by_day(site):
+def test_names_page_shows_who_is_in_the_news_today(site):
     card = site['soup']['names.html'].select_one('.name-card')
     assert card.select_one('h3').get_text() == '🗣️ Donald <Trump>' and card['data-now'] == '1'
     assert [li.select_one('.saga-part-title').get_text() for li in card.select('.saga-timeline li')] == \
-        ['Trump defends tariffs', 'Trump <rallies>']  # newest first, escaped
-    assert len(card.select('.name-day')) == 3  # Oct 3, 4 and 5
+        ['Trump defends tariffs', 'Trump <rallies>']  # on the front pages now first, then the widest; escaped
+    assert '66 outlets · 2 stories today' in card.select_one('.saga-facts').get_text()
+    assert not card.select('.name-day')  # no day-by-day bars any more (Oct 12)
 
 
 def test_radio_page_sets_each_newscast_beside_the_front_pages(site):
