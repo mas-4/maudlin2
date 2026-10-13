@@ -75,6 +75,7 @@ CODENAMES = {
     'F20': ('the Blind Men and the Elephant', 'each feels one part: the claim written from the most varied posts'),
     'F19': ('Theseus', "who followed the thread through the labyrinth: a telling as its course of action alone"),
     'F21': ('Charybdis', 'who swallows whatever sails near: Straight news as a sink for the claims that tell nothing'),
+    'F22': ('Psyche', "who sorted a heap of mixed grains: a claim's posts sorted into the tellings they hold"),
 }
 
 

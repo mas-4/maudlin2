@@ -10,6 +10,19 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   them into a phrase dictionary, counted by filing. They are evidence of how a motif is told in the tellers' own terms;
   they are kept, not yet read by any model. A phrase can belong to several motifs and means different things said
   sincerely or sarcastically, so it will be a finder and a tracker, never the filer.
+- **The claim organizer: a claim from posts can be split into the tellings it holds.** Claims from posts sit in 3+
+  motifs 30.5% of the time (Oct 13; 10-15% for the other sources), and the Chimera found their paraphrase groups
+  stitch tellings together. A second round now asks Gemma which of a claim's posts tell each of its motifs; when the
+  motifs fall on different posts (a motif across the whole group counts as a layer, not a telling), it drafts one
+  child claim per telling, each one side's assertion in its own voice, as a proposal for the person; no split is
+  kept with its reason. Nothing changes until the person approves. An approved split takes the claim out of its motifs
+  under a new curation-log action, `split`, which the confidence model doesn't learn from (an unfile would have read
+  as "not this motif"); the claim stays in the index as the telling (`tellings`), and its children are filed as new
+  claims with its source, story and a `split_from` link. From the first applied split, a claim from posts can leave
+  the 3+ count without any filing judged wrong, and the filings count gains its children. Psyche (in the experiments'
+  queue) runs it alongside the filing: on the Chimera's 160 claims against the person's filings, and forward on posts
+  claims since Oct 6, its splits going to the proposals for the checker. Watched against these baselines: posts
+  claims in 3+ motifs 30.5%, posts claims the person also filed elsewhere by hand 45.9%, sure share 44.7%.
 
 ## 2026-10-12
 - **Bloomberg from its own feeds.** Its front page has answered every request with a captcha since Oct 11, 20:04, and
