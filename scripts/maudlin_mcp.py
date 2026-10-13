@@ -309,6 +309,21 @@ def motif_proposals(kind: str = '', limit: int = 50) -> str:
     return json.dumps({'open': len(out), 'proposals': out[:max(1, min(limit, 300))]}, ensure_ascii=False)
 
 
+@server.tool()
+def claim_splits(limit: int = 20) -> str:
+    """The claim organizer's open splits (as the workbench's ✂️ tab lists them, most warning signs first): a claim whose
+    posts seem to tell several things, the motifs it's in, why it was looked at, and the claims it would split into,
+    each with the motifs its posts tell and a few of them. Carried out with checker_action split {proposal, children}
+    or turned down with split_reject {proposal}."""
+    from app.analysis import claim_organizer as co
+    out = [{'id': p['id'], 'claim': p['args']['claim'], 'in': [f"{f['name']} ({f['id']})" for f in p['filings']],
+            'looked at for': list(p['args'].get('triggers') or {}), 'posts read': p['args'].get('posts'),
+            'reason': p.get('reason'),
+            'children': [{'claim': c['claim'], 'tells': c.get('names'), 'posts': c.get('posts'), 'some posts': c.get('texts', [])[:3]}
+                         for c in p['children']]} for p in co.open_splits(texts=3)]
+    return json.dumps({'open': len(out), 'splits': out[:max(1, min(limit, 100))]}, ensure_ascii=False)
+
+
 # ---------- changes, through the checker (logged, undoable, marked by Claude) ----------
 CHECKER = 'http://localhost:8766'
 

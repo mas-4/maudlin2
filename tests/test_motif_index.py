@@ -693,3 +693,13 @@ def test_a_filing_record_keeps_the_telling_a_child_claim_was_split_from():
                     '2026-10-13')
     assert rec['split_from'] == 'the telling' and rec['story'] == 4
     assert 'split_from' not in mi.record({'claim': 'plain'}, '2026-10-13')
+
+
+def test_the_workbench_saves_carrying_words(monkeypatch, tmp_path):
+    """The checker's 'carrying' action reaches the index through the workbench (which passes it to the board's)"""
+    import scripts.validate as v
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']},
+             'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
+    v.workbench_action({'action': 'carrying', 'claim': 'a', 'id': 'M001', 'text': 'religion of peace'})
+    assert mi.load()['entries']['M001']['claims'][0]['carrying'] == ['religion of peace']
