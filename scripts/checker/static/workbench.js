@@ -422,9 +422,9 @@
   // The claims to judge, one claim at a time with everything about it (Oct 12, the person: they met the same claim in the
   // check, unchecked, second look and today tabs, each showing one of its motifs: "hard to judge a claim and its motifs
   // holistically"). Today keeps the motif-level decisions (new motifs to shape, proposals)
-  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), proposals: S.data.proposals, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), proposals: S.data.proposals, splits: S.data.splits, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
   }
   // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
@@ -583,6 +583,15 @@
           <p class="wb-faint">Most like these you've rejected. Skim them, untick any worth keeping, then <button class="wb-btn no" data-propfold="1">✕ reject the ticked</button></p>
           ${unlikely.map((p) => card(p).replace('data-propsel="', 'checked data-propsel="')).join('')}</details>` : ''}`
         : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>No proposals waiting. The proposer runs from <code>scripts/propose_motif_fixes.py</code>.</p></div>';
+    } else if (tab === 'splits') {
+      // the claim organizer's splits (Psyche): a claim whose posts tell several things, one new claim per telling
+      const q = await queue('splits');
+      if (S.tab !== tab) return;
+      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
+      const items = q.filter((p) => !S.decided.has('s:' + p.id));
+      S.splits = Object.fromEntries(items.map((p) => [p.id, p]));
+      box.innerHTML = items.length ? `<p class="wb-faint">✂️ Claims whose posts seem to tell several things. Each card splits one into a claim per telling: reword any (empty one drops it), then ✂️ split. The new claims are filed at the next hourly run and reach 🎯; the original stays as the telling. ✕ keeps it whole. Neither teaches the filer “wrong motif”.</p>${items.map(splitCard).join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">✂️</div><p>No splits proposed yet. The claim organizer proposes them while Psyche runs; you can also split a claim yourself with ✂️ in its pane.</p></div>';
     } else if (tab === 'singles') {
       const q = await queue('singles');
       if (S.tab !== tab) return;
@@ -716,7 +725,7 @@
     const backTo = !check && S.back ? (TABS.find(([k]) => k === S.back.tab) || [, 'the list'])[1] : null;
     box.innerHTML = (backTo ? `<button class="wb-btn wb-back" data-back="1" title="back to the list, where you were (or your browser's back)">← back to ${esc(backTo)}</button>` : '') + verdict + `<div class="wb-inspect" data-drop="claim">
       <blockquote class="wb-claim big" ${claimData({claim: c.claim, source: src, ref: (rec && rec.ref) || c.ref}, first ? first.id : '')}><span class="wb-bigtext" title="click to correct the wording">${esc(c.claim)}</span>
-        <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif · <button class="wb-mini" data-editclaim="1" title="correct the wording (our summary, not the source)">✎ correct wording</button></span></blockquote>
+        <span class="wb-meta">${rec ? '#' + rec.id + ' · ' : ''}${esc(SOURCE[src] || src)} · drag me onto a motif · <button class="wb-mini" data-editclaim="1" title="correct the wording (our summary, not the source)">✎ correct wording</button> <button class="wb-mini" data-handsplit="1" title="it tells several things: split it into one claim per telling (the original stays as the telling)">✂️ split</button></span></blockquote>
       ${rec && rec.variants && rec.variants.length ? `<p class="wb-faint">≡ also told as: ${rec.variants.map((v) => '“' + esc(v) + '”').join(' · ')}</p>` : ''}
       <h3>📜 where it came from</h3><div class="wb-detail" id="cl-detail">⏳</div>
       <h3>🧩 all its motifs <i>${ins.length}</i> <span class="wb-faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
@@ -1254,6 +1263,8 @@
       renderShelf();
       return renderTree();
     }
+    if ((v = d('split'))) { const [yes, id] = v.split('|'); return decideSplit(id, yes === 'yes'); }
+    if (t.closest('[data-handsplit]') && S.claim) return splitByHand(S.claim.claim);
     if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], ['seed', 'flip'].includes(yes) ? yes : yes === 'yes'); }
     if ((v = d('ck'))) {
       const [answer, id] = v.split('|'), claim = t.closest('[data-ckc]').dataset.ckc;
@@ -1531,8 +1542,39 @@
     while (i < x.length) out += `<del>${esc(x[i++])}</del>`;
     return out;
   }
+  function splitCard(p) {
+    const a = p.args, why = Object.keys(a.triggers || {});
+    return `<div class="wb-card wb-split"><p class="wb-split-claim">${esc(a.claim)}</p>
+      <div class="wb-faint">now in ${p.filings.map((f) => S.by[f.id] ? chip(f.id) : esc(f.name)).join(' ') || '—'} · ${a.posts || 0} posts read${why.length ? ' · looked at for: ' + why.map(esc).join(', ') : ''}</div>
+      <ol class="wb-children">${p.children.map((c, i) => `<li><textarea data-splitchild="${p.id}|${i}" rows="2" aria-label="new claim ${i + 1}">${esc(c.claim)}</textarea>
+        <span class="wb-faint">${c.names && c.names.length ? 'tells ' + c.names.map(esc).join(', ') + ' · ' : ''}${c.posts} post${c.posts === 1 ? '' : 's'}</span>
+        ${c.texts && c.texts.length ? `<details class="wb-childposts"><summary>its posts</summary><ul>${c.texts.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></details>` : ''}</li>`).join('')}</ol>
+      <span class="wb-sbtns"><button class="wb-btn yes" data-split="yes|${p.id}" title="split it into these claims (undoable)">✂️ split it so</button><button class="wb-btn no" data-split="no|${p.id}" title="it's one telling: keep it whole">✕ keep it whole</button></span>
+      ${p.reason ? `<div class="wb-faint">🤖 ${esc(p.reason)}</div>` : ''}</div>`;
+  }
+  async function decideSplit(id, yes) {
+    const p = S.splits && S.splits[id];
+    if (!p) return;
+    const children = $$(`[data-splitchild^="${id}|"]`).map((t) => t.value.trim()).filter(Boolean);
+    if (yes && !children.length) return toast('✂️ no claims left to split into', true);
+    S.decided.add('s:' + id);
+    const ok = await act(yes ? {action: 'split', proposal: id, children} : {action: 'split_reject', proposal: id}, yes ? `✂️ split into ${children.length}` : '✕ kept whole');
+    if (!ok) S.decided.delete('s:' + id);
+    if (S.tab === 'splits') renderInbox();
+    const edited = yes && children.join('\n') !== p.children.map((c) => c.claim).join('\n');
+    if (ok && (!yes || edited)) askWhy(p, yes ? 'split, reworded' : 'rejected');
+  }
+  // a claim split by hand: one new claim per line, each one side's assertion in its own voice; the original stays as
+  // the telling and the new ones are filed at the next hourly run
+  function splitByHand(claim) {
+    return ask(null, 'Split it: one claim per line, each one side’s assertion in its own voice', '', true).then((text) => {
+      const children = (text || '').split('\n').map((x) => x.trim()).filter(Boolean);
+      if (children.length) return act({action: 'split', claim, children}, `✂️ split into ${children.length}: filed at the next hourly run`);
+    });
+  }
   function proposalText(p) {
     const a = p.args;
+    if (p.kind === 'split') return `✂️ split “${esc(a.claim)}”`;
     if (p.kind === 'rename') return `✏️ rename ${chip(a.id)} to “${wordDiff(a.from, a.to)}”`;
     if (p.kind === 'note') return `📝 fix the note of ${chip(a.id)}: “${wordDiff(a.from, a.to)}”`;
     if (p.kind === 'parent') return `↳ ${chip(a.id)} rests on ${chip(a.parent)}`;

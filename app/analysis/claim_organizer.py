@@ -378,8 +378,10 @@ def organize_claims(claims: list[str] | None = None, budget: float | None = None
 
 def still_holds(p: dict, index: dict) -> bool:
     """An open split still makes sense: its claim still filed somewhere, and not split already"""
+    if p.get('kind') != 'split':  # the store holds every kind of proposal; only splits carry a claim in args
+        return False
     k = mi.key(p['args']['claim'])
-    return p['kind'] == 'split' and bool(mi._ids(index, k)) and k not in index.get('tellings', {})
+    return bool(mi._ids(index, k)) and k not in index.get('tellings', {})
 
 
 def split_action(p: dict) -> dict:

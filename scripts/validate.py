@@ -515,6 +515,8 @@ def workbench_state() -> dict:
     state['facets'] = mi.facet_values(index)
     from app.analysis import motif_proposals as mp
     state['proposals'] = len(mp.open_proposals())  # the 💡 tab's count
+    from app.analysis import claim_organizer as co
+    state['splits'] = sum(1 for p in mp.load().values() if p.get('status') == 'open' and co.still_holds(p, index))
     from app.analysis import filing_confidence as fc
     from app.utils.store import read_json
     m = read_json(fc.MODEL, None)  # how sure 'sure' is, as tested held out
@@ -743,6 +745,9 @@ def workbench_queue(kind: str):
         except Exception as e:  # noqa: BLE001 - the embeddings need Ollama
             similar, note = [], f'similar names unavailable: {type(e).__name__}'
         return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
+    if kind == 'splits':  # the claim organizer's open splits, with each child's posts
+        from app.analysis import claim_organizer as co
+        return co.open_splits()
     if kind == 'proposals':  # the correction proposer's open proposals, each with the action that carries it out
         from app.analysis import motif_proposals as mp
         return [{**p, 'do': mp.action(p)} for p in mp.open_proposals()]
@@ -786,6 +791,16 @@ def critique(data: dict) -> dict:
 def workbench_action(data: dict):
     from app.analysis import motif_index as mi
     act = data.get('action')
+    if act in ('split', 'split_reject'):  # the claim organizer's (claim_organizer.py), or a person's own split: its own
+        from app.analysis import claim_organizer as co  # action, never read as "not this motif"
+        why = data['why'].strip() if isinstance(data.get('why'), str) and data['why'].strip() else None
+        if act == 'split_reject':
+            co.reject_split(data.get('proposal', ''), why)
+        else:  # the children file at the next hourly run (refile_pending), into the claims to judge
+            done = co.apply_split(data.get('proposal') or None, data.get('children'), why,
+                                  claim=None if data.get('proposal') else data.get('claim'), refile=False)
+            data['ids'] = done.get('ids', [])  # the motifs the claim left, for the log
+        return
     if data.get('proposal'):  # a proposal approved (its own action, carried out as usual) or rejected
         from app.analysis import motif_proposals as mp
         if act != 'proposal_reject':

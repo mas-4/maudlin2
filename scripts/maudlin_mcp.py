@@ -336,6 +336,8 @@ def checker_action(action: dict) -> str:
       merge {source, target} (source folds into target) · parent {id, parent, on: true|false} (id rests on parent)
       relate / unrelate {a, b, note?} (relate with a note gives the link its reason; "" clears it) · not_same {a, b}
       not_this {id, text} (what the motif isn't, though it looks like it; the filing model and judge read it; "" clears)
+      split {claim, children: [words]} (a person's own split: the claim leaves its motifs as a telling, the children
+        file at the next hourly run; never read as "not this motif") · split {proposal, children} · split_reject {proposal}
       carrying {claim, id, text} (the tellers' own words that carry the motif in this filing, phrases split on ';';
         a motif's phrase dictionary is gathered from them; "" clears)
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}

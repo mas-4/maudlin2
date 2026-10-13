@@ -425,3 +425,11 @@ body.dragging .wb-schip { border-style: dashed; }
 .wb-why input { flex: 1; min-width: 14em; font: inherit; border: 1.5px solid #ccc; border-radius: 8px; padding: 3px 6px; }
 .wb-surego { font: inherit; text-align: left; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; }
 .wb-surego:hover { text-decoration: underline; }
+
+/* ✂️ splits: the claim organizer's proposals, each child claim editable */
+.wb-split-claim { margin: 0 0 4px; font-weight: 700; }
+.wb-children { margin: 6px 0; padding-left: 1.4em; }
+.wb-children li { margin-bottom: 6px; }
+.wb-children textarea { width: 100%; box-sizing: border-box; font: inherit; border: 1.5px solid #ccc; border-radius: 8px; padding: 3px 6px; }
+.wb-childposts ul { margin: 4px 0; padding-left: 1.2em; font-size: 12.5px; color: #444; }
+

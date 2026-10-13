@@ -178,3 +178,16 @@ def test_a_rejected_split_is_kept_and_a_telling_is_never_watched_as_plain(monkey
     co.apply_split(claim=PARENT, children=['a', 'b'], refile=False)
     index = mi.load()
     assert wl.state(index, mi.key(PARENT), set()) is None  # no motif, but a telling, not plain news
+
+
+def test_the_checker_splits_through_its_own_action(monkeypatch, tmp_path):
+    """The workbench's 'split' (a proposal, or a person's own) and 'split_reject' go to the organizer, never through
+    the generic proposal path; the log gets the motifs the claim left"""
+    import scripts.validate as v
+    i = proposed(monkeypatch, tmp_path)
+    data = {'action': 'split', 'proposal': i, 'children': ['Alberta separatists collude with Trump.']}
+    v.workbench_action(data)
+    assert data['ids'] == ['M001', 'M002', 'M003'] and mp.load()[i]['status'] == 'approved'
+    hand = {'action': 'split', 'claim': 'other', 'children': ['one part', 'another']}
+    v.workbench_action(hand)
+    assert hand['ids'] == ['M001'] and mi.key('other') in mi.load()['tellings']
