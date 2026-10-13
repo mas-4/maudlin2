@@ -46,6 +46,8 @@ def test_triggers_fire_by_name(monkeypatch, tmp_path):
     calm = co.triggers(PARENT, index, {'variety': 0.8, 'authors': 6}, {}, fits={'M001': 0.99, 'M002': 0.5, 'M003': 0.5})
     assert set(calm) == {'facing motifs', 'two of one genre'}  # one pick fits well: not middling
     assert co.triggers('other', index) == {}  # one motif, nothing else known
+    assert set(co.triggers('other', index, motifs=['M002', 'M001'], fits={'M001': 0.4, 'M002': 0.5})) == {
+        'facing motifs', 'two of one genre', 'middling scores'}  # an experiment's own picks
 
 
 def test_layers_stay_one_telling_and_motifs_on_different_posts_make_several():

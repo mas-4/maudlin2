@@ -191,11 +191,14 @@ def posts_of(keys: list[str], limit: int = POSTS) -> list[dict]:
 
 
 def triggers(claim: str, index: dict, group: dict | None = None, also: dict | None = None,
-             fits: dict | None = None) -> dict[str, str]:
+             fits: dict | None = None, motifs: list[str] | None = None) -> dict[str, str]:
     """The triggers that fire for a filed claim, name -> what fired it. `group` is its paraphrase group (variety,
-    authors) when it came from posts; `also` the person's hand filings (alsos()); `fits` motif id -> a score to read
-    instead of each filing's fit (an experiment's own picks)"""
+    authors) when it came from posts; `also` the person's hand filings (alsos()); `motifs` other picks than its
+    filings, and `fits` motif id -> a score to read instead of each filing's fit (an experiment's own picks)"""
     got = picks(index, claim)
+    if motifs is not None:
+        recs = {e['id']: rec for e, rec in got}
+        got = [(index['entries'][m], recs.get(m, {})) for m in motifs if m in index['entries']]
     fired = {}
     es = [e for e, _ in got]
     for n, a in enumerate(es):
