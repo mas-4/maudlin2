@@ -83,6 +83,9 @@ def ask():
         print(f'ask: {min(start + 32, len(todo))}/{len(todo)}', flush=True)
 
 
+CHUNK = 50  # claims asked about between saves
+
+
 def file():
     index = mi.load()
     state = saved()
@@ -92,7 +95,15 @@ def file():
     coef = np.array([m['weights'][f] for f in fc.FEATURES])
     scorer = fc.Scorer(index, mr.weights())
     claims = sorted({c for c in state['said'].values() if c})
-    scorer.signals.prepare(claims)
+    # the filing model's questions a chunk at a time, kept after each: the hourly run stops this step every hour, and
+    # prepare() keeps its answers only at the end (Oct 12-13: six tries, each lost at the hour, nothing filed)
+    for i in range(0, len(claims), CHUNK):
+        chunk = [c for c in claims[i:i + CHUNK] if mi.key(c) not in scorer.signals.layered]
+        if chunk:
+            scorer.signals.prepare(chunk)
+            scorer.signals.save()
+            print(f'file: asked {min(i + CHUNK, len(claims))}/{len(claims)}', flush=True)
+    scorer.signals.prepare(claims, ask=False)
     filed = state.setdefault('filed', {})
     for n, c in enumerate(claims):
         if c in filed:
