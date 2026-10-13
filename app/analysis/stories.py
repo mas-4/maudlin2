@@ -89,6 +89,18 @@ story. Go by what most headlines in each group report: a stray headline about so
 
 reason: one sentence
 verdict: "the same event" or "different events\""""
+# One running story can split in two for an hour's clustering while both parts are on the front pages (the bigger
+# keeps the story, the smaller starts a new one), and the two clusters join again later. The joined cluster then
+# continues whichever part holds more of its headlines, often the young one, and the older story ends there: Oct 13,
+# eleven days of Christa Pike ended at 7 AM and "discharged from hospital", split off at 1 AM, carried on, both parts
+# holding the same discharge headlines from Oct 10. A cluster holding headlines of two stories both live lately, the
+# lesser at least REJOIN_LEAST of them and REJOIN_SHARE of the cluster, is put to the model with this prompt: the same
+# event, and the older continues with the younger folded into it (merge_stories).
+REJOIN_LEAST = 3
+REJOIN_SHARE = 0.2
+REJOIN_PROMPT = SAME_EVENT_PROMPT.replace('The first left the front pages some hours before the second appeared.',
+                                          'Both were on the front pages at the same time.') \
+    .replace('Earlier:', 'One:').replace('Now:', 'The other:')
 SAME_EVENT_SCHEMA = {"type": "object", "properties": {
     "reason": {"type": "string", "maxLength": 600},
     "verdict": {"type": "string", "enum": ["the same event", "different events"]}}, "required": ["reason", "verdict"]}
@@ -101,13 +113,13 @@ def frequent_words(titles: list[str], share: float = 0.3) -> set[str]:
     return {w for w, n in counts.items() if n >= least}
 
 
-def same_event(earlier: list[str], now: list[str]) -> bool | None:
+def same_event(earlier: list[str], now: list[str], prompt: str = SAME_EVENT_PROMPT) -> bool | None:
     """The model's verdict on two groups of headlines (cached by the headlines shown); None without an answer"""
     a, b = [list(dict.fromkeys(t.strip() for t in ts))[:5] for ts in (earlier, now)]
-    key = hashlib.sha1(json.dumps([SAME_EVENT_PROMPT, a, b]).encode()).hexdigest()  # a reworded prompt asks afresh
+    key = hashlib.sha1(json.dumps([prompt, a, b]).encode()).hexdigest()  # a reworded prompt asks afresh
     cache = read_json(RETURNS, {})
     if key not in cache:
-        answer = llm.complete_json(SAME_EVENT_PROMPT.format(a='\n'.join(f'- {t}' for t in a), b='\n'.join(f'- {t}' for t in b)),
+        answer = llm.complete_json(prompt.format(a='\n'.join(f'- {t}' for t in a), b='\n'.join(f'- {t}' for t in b)),
                                    SAME_EVENT_SCHEMA, max_tokens=500, model=RETURN_MODEL)
         if not answer or answer.get('verdict') not in SAME_EVENT_SCHEMA['properties']['verdict']['enum']:
             return None
@@ -178,12 +190,27 @@ def merge_stories(keep: int, gone: int, why: str = ''):
     logger.info("Merged story %d into %d (%d headlines)", gone, keep, len(moved))
 
 
+def rejoined(s, a: Story, b: Story, lesser: int, size: int, now: dt) -> tuple[Story, Story] | None:
+    """(older, younger) when stories `a` and `b`, both on the front pages lately and both holding a fair part of one
+    cluster (the lesser `lesser` of its `size` headlines), tell the same event: one story split and joined again"""
+    if lesser < max(REJOIN_LEAST, REJOIN_SHARE * size) or min(a.last_seen, b.last_seen) < now - RETURN_GAP:
+        return None
+    older, younger = sorted((a, b), key=lambda x: x.first_seen)
+    titles = [[t for (t,) in s.query(Headline.title).join(StoryHeadline, StoryHeadline.headline_id == Headline.id)
+               .filter(StoryHeadline.story_id == x.id).order_by(Headline.first_accessed.desc()).limit(5)]
+              for x in (older, younger)]
+    if not all(titles) or not same_event(*titles, prompt=REJOIN_PROMPT):
+        return None
+    return older, younger
+
+
 def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
     """Map each cluster in `df` (one headline per outlet, with a `cluster` and `headline_id` column) to a
     persisted story, recording every headline's deviation from its story's mean sentiment."""
     now = dt.now(pytz.UTC).replace(tzinfo=None)
     stories = {}
     claimed = set()  # stories already continued by a cluster in this run
+    rejoins = []  # (kept, folded): one story split by an earlier hour's clustering, joined again now
     with Session() as s, SqlLock:
         # Biggest clusters first, so when one story's coverage splits into two clusters this hour, the bigger part
         # keeps the story (and its title) and the smaller becomes a story of its own, instead of both showing as
@@ -198,6 +225,11 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
             match = next((m for m in matches if m.story_id not in claimed), None)
             if match:
                 story = s.get(Story, match.story_id)
+                other = next((m for m in matches if m.story_id not in claimed and m.story_id != match.story_id), None)
+                if other and (pair := rejoined(s, story, s.get(Story, other.story_id), other.n, len(ids), now)):
+                    story = pair[0]
+                    rejoins.append((pair[0].id, pair[1].id))
+                    claimed.add(pair[1].id)  # folded in below: no other cluster continues it
             elif (back := returning(s, group['title'].tolist() if 'title' in group else
                                     [t for (t,) in s.query(Headline.title).filter(Headline.id.in_(ids))],
                                     claimed, now)) is not None:
@@ -224,6 +256,8 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
         for story in stories.values():
             s.refresh(story)
         s.expunge_all()
+    for keep, gone in rejoins:
+        merge_stories(keep, gone, 'one story split by an hour\'s clustering, joined again: the same event')
     logger.info("Synced %d clusters to stories", len(stories))
     return stories
 

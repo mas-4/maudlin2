@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-13
+- **A story split by one hour's clustering is joined again.** While both parts are on the front pages, the bigger
+  keeps the story and the smaller starts a new one; when the two clusters joined again, the joined cluster went to
+  whichever part held more of its headlines, often the young one, and the older story ended there (Christa Pike: eleven
+  days ended at 7 AM on Oct 13, and a part split off at 1 AM, holding the same discharge headlines from Oct 10, carried
+  on). Now a cluster holding a fair share of headlines from two stories both live lately is put to the model (the same
+  event or not, as for a story's return); the same event, and the older story continues with the younger folded in.
+  A new development (a resignation, a ruling) is still a story of its own in the saga.
 - **Carrying words.** A filing can now carry the tellers' own words that carry its motif ("religion of peace", said
   sarcastically, under a crowd claim), written by the person in the checker (one phrase per ';'). Each motif gathers
   them into a phrase dictionary, counted by filing. They are evidence of how a motif is told in the tellers' own terms;

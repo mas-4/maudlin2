@@ -102,3 +102,45 @@ def test_a_story_whose_news_moved_on_is_labeled_again_from_its_newest_headlines(
     assert len(shown) == 1 and shown[0].index('Pike leaves hospital') < shown[0].index('Inmate survives execution')
     stories.label_stories(df, found)
     assert len(shown) == 1  # labeled now: not again until it's old and has news
+
+
+def live(session, label, headline_ids, first):
+    """A story on the front pages until a moment ago, begun at `first`"""
+    import pytz
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
+    with session() as s:
+        story = Story(label=label, first_seen=first, last_seen=now)
+        s.add(story)
+        s.flush()
+        for h in headline_ids:
+            s.add(StoryHeadline(story_id=story.id, headline_id=h, sentiment=0.0, deviation=0.0, last_seen=now))
+        s.commit()
+        return story.id
+
+
+def test_a_story_split_and_joined_again_carries_on_as_the_older(db, monkeypatch, tmp_path):
+    """Oct 13: Christa Pike split at 1 AM, the halves joined at 8 and the young half carried on; now the older does,
+    with the younger folded in, when the model says they tell the same event"""
+    monkeypatch.setattr(stories, 'MERGES', str(tmp_path / 'merges.json'))
+    asked = []
+    monkeypatch.setattr(stories, 'rejoined', lambda s, a, b, lesser, size, now: asked.append((lesser, size)) or
+                        tuple(sorted((a, b), key=lambda x: x.first_seen)))
+    old = live(db, 'Christa Pike discharged from hospital', [1, 2, 3], dt(2026, 10, 2))
+    young = live(db, 'Christa Pike discharged after failed execution', [4, 5, 6, 7, 8], dt(2026, 10, 13))
+    out = stories.sync_stories(frame({0: [2, 3, 4, 5, 6, 7]}))
+    assert out[0].id == old and asked == [(2, 6)]
+    with db() as s:
+        assert s.get(Story, young) is None
+        assert {sh.story_id for sh in s.query(StoryHeadline)} == {old}  # the younger's other headlines came too
+    assert stories.merges() == {young: old}
+
+
+def test_two_live_stories_the_model_calls_different_stay_apart(db, monkeypatch, tmp_path):
+    monkeypatch.setattr(stories, 'MERGES', str(tmp_path / 'merges.json'))
+    monkeypatch.setattr(stories, 'same_event', lambda *a, **kw: False)
+    a = live(db, 'Game 1', [1, 2, 3, 4], dt(2026, 10, 2))
+    b = live(db, 'Game 2', [5, 6, 7], dt(2026, 10, 3))
+    out = stories.sync_stories(frame({0: [1, 2, 3, 4, 5, 6, 7]}))
+    assert out[0].id == a
+    with db() as s:
+        assert s.get(Story, b) is not None
