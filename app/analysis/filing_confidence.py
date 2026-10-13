@@ -88,6 +88,8 @@ def live(rows: list[dict] | None = None) -> list[dict]:
 def _decided(a: dict, out: dict, hand: bool = False):
     """The filings one logged action decides, into out: (claim key, motif id) -> kept"""
     act = a.get('action')
+    if act == 'split':  # the claim held several tellings and was split (claim_organizer): no verdict on its motifs
+        return
     if act == 'check' and a.get('answer') in ('yes', 'no'):
         out[(mi.key(a['claim']), a['id'])] = a['answer'] == 'yes'
     elif act in ('unfile', 'reject', 'not this motif') and a.get('claim') and a.get('id'):

@@ -23,6 +23,8 @@ one atomic change a person approves or rejects in the workbench's 💡 proposals
            a theory...), judged against examples of each genre from the person's own motifs
   unrelate two motifs linked as related aren't (a review of the links already made)
   unparent a motif linked as resting on another doesn't
+  split    a claim whose posts tell several things split into child claims (app/analysis/claim_organizer.py, Oct 13;
+           its own checklist, claim_organizer.open_splits: still_holds leaves it out of this one)
 
 Approving runs the same action the person would (logged, undoable); a decision is kept, so a rejected proposal never
 comes back. Candidates are found cheaply (motifs close in meaning, motifs sharing a claim, motifs near a group's
@@ -233,7 +235,9 @@ def action(p: dict) -> dict:
                                       'ref': c.get('ref', ''), 'mode': 'also'} for c in a.get('claims', [])]},
             'genre': {'action': 'facet', 'id': a.get('id'), 'facet': 'genre', 'value': a.get('genre')},
             'unrelate': {'action': 'unrelate', 'a': a.get('a'), 'b': a.get('b')},
-            'unparent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': False}}[p['kind']]
+            'unparent': {'action': 'parent', 'id': a.get('id'), 'parent': a.get('parent'), 'on': False},
+            'split': {'action': 'split', 'claim': a.get('claim'),  # carried out by claim_organizer.apply_split
+                      'children': [c['claim'] for c in a.get('children', [])]}}[p['kind']]
 
 
 # ---------- typos ----------
@@ -602,9 +606,10 @@ def misfits(index: dict) -> list[dict]:
     said_none = {mi.key(a['action'].get('claim', '')) for a in curation_db.actions()
                  if (a['action'] or {}).get('action') == 'no_motif'}
     out = {}
+    split = set(index.get('tellings', {}))  # a split claim is a telling now, its children filed (claim_organizer)
     for c in mi.searchable_claims():
         k = mi.key(c['claim'])
-        if not c.get('motifs') and k not in said_none:
+        if not c.get('motifs') and k not in said_none and k not in split:
             out[k] = {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'in': ''}
     alts = read_json(fc.ALTERNATIVES, {})
     for e in mi.live(index):

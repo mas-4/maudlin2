@@ -50,7 +50,7 @@ def save(store: dict):
 def state(index: dict, k: str, plain: set[str]) -> str | None:
     """'no motif', 'watched motif' (only in motifs marked watched, `plain`), or None: the claim tells something now,
     or has left the index"""
-    if k not in index['claims']:
+    if k not in index['claims'] or k in index.get('tellings', {}):  # a split claim tells through its children
         return None
     ids = {mi.resolve(index, i) for i in mi._ids(index, k)}
     if not ids:
