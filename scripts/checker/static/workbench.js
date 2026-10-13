@@ -452,7 +452,9 @@
     if (!x) return '';
     const fresh = x.reasons.filter((r) => r.kind === 'unchecked'), torn = fresh.filter((r) => r.fit != null && r.fit >= 0.2 && r.fit <= 0.8);
     const doubted = x.reasons.filter((r) => r.kind === 'doubted');
-    return [fresh.length ? `🤖 ${fresh.length} new filing${fresh.length === 1 ? '' : 's'}${torn.length ? ` (the model torn on ${torn.length})` : ''}` : '',
+    // filed again by the watch list (Charybdis): what it was, and since when
+    const refiled = fresh.filter((r) => r.refiled).map((r) => `♻️ refiled into ${S.by[r.id] ? '“' + esc(S.by[r.id].name) + '”' : r.id}: was ${r.refiled.was === 'watched motif' ? 'plain news' : 'in no motif'} until ${new Date(r.refiled.at + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`);
+    return [...refiled, fresh.length ? `🤖 ${fresh.length} new filing${fresh.length === 1 ? '' : 's'}${torn.length ? ` (the model torn on ${torn.length})` : ''}` : '',
       doubted.length ? `🧐 ${doubted.length} you confirmed that the model now doubts` : ''].filter(Boolean).join(' · ');
   }
   async function queue(kind) {

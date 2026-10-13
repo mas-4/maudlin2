@@ -703,3 +703,16 @@ def test_the_workbench_saves_carrying_words(monkeypatch, tmp_path):
              'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
     v.workbench_action({'action': 'carrying', 'claim': 'a', 'id': 'M001', 'text': 'religion of peace'})
     assert mi.load()['entries']['M001']['claims'][0]['carrying'] == ['religion of peace']
+
+
+def test_a_merge_keeps_the_watch_mark_and_the_not_this_line(monkeypatch, tmp_path):
+    """Charybdis (Oct 13): a watched motif merged into another leaves its claims watched; its not-this line comes too
+    when the target has none"""
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 3, 'claims': {mi.key('a'): ['M001'], mi.key('b'): ['M002']},
+             'entries': {'M001': {'id': 'M001', 'name': 'Straight news', 'watch': True, 'not_this': 'no telling',
+                                  'claims': [{'claim': 'a', 'source': 's'}]},
+                         'M002': {'id': 'M002', 'name': 'Plain reports', 'claims': [{'claim': 'b', 'source': 's'}]}}})
+    mi.merge('M001', 'M002')
+    e = mi.load()['entries']['M002']
+    assert e['watch'] is True and e['not_this'] == 'no telling'

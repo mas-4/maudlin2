@@ -710,9 +710,13 @@ def judge_queue() -> list[dict]:
                               'better': []}
             out.append(by[x['claim']])
         return by[x['claim']]
+    from app.analysis import motif_index as mi
+    index = mi.load()
+    refiled = {(mi.key(c['claim']), e['id']): c['refiled'] for e in mi.live(index) for c in e['claims'] if c.get('refiled')}
     for x in check_queue():
         e = entry(x)
-        e['reasons'].append({'kind': 'unchecked', 'id': x['id'], 'fit': x.get('fit')})
+        e['reasons'].append({'kind': 'unchecked', 'id': x['id'], 'fit': x.get('fit'),  # the watch list filed it again
+                             **({'refiled': refiled[(mi.key(x['claim']), x['id'])]} if (mi.key(x['claim']), x['id']) in refiled else {})})
         if x.get('fit') is not None:
             e['fits'][x['id']] = x['fit']
         if not x.get('can_be_sure', True):

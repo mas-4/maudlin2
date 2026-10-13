@@ -761,6 +761,10 @@ def merge(source: str, target: str):
         dst['note'], dst['note_by'] = src['note'], src.get('note_by', 'person')
     if 'done' in src and 'done' in dst:  # both looked over: what was seen in either stays seen
         dst['done'] = list(dict.fromkeys(dst['done'] + src['done']))
+    if src.get('watch'):  # a watched motif's claims stay watched where they go (Charybdis, the person's yes, Oct 13)
+        dst['watch'] = True
+    if src.get('not_this') and not dst.get('not_this'):
+        dst['not_this'] = src['not_this']
     index['not_same'] = [p for p in (sorted([target if x == source else x for x in p]) for p in index.get('not_same', []))
                          if p[0] != p[1]]
     index['not_same'] = [p for i, p in enumerate(index['not_same']) if p not in index['not_same'][:i]]
