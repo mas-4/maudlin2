@@ -19,15 +19,18 @@
 .nw-scroll {
     overflow-x: auto;
     direction: rtl;
+    clear: both;  /* below the full-screen button, not squeezed beside it */
 }
 
-.nw-scroll > svg {
+/* the stage is the wide thing, so it overflows to the left and the scroll opens at the latest hours; inside it the
+   chart reads left to right again */
+.nw-stage {
     direction: ltr;
+    min-width: 680px;
 }
 
 .nw-chart {
     display: block;
-    min-width: 720px;
     width: 100%;
     height: auto;
     font-family: 'Comic Neue', 'Comic Sans MS', cursive;
@@ -79,13 +82,18 @@
 }
 
 .nw-tick {
-    font-size: 13px;
+    font-size: 16px;
     fill: #555;
 }
 
 .nw-spike-label {
-    font-size: 13px;
+    font-size: 16px;
     fill: #1f1f2e;
+    /* a white halo: another spike's stem doesn't cut through the words */
+    paint-order: stroke;
+    stroke: white;
+    stroke-width: 5px;
+    stroke-linejoin: round;
 }
 
 a .nw-spike-label {
@@ -94,7 +102,7 @@ a .nw-spike-label {
 }
 
 .nw-figure figcaption {
-    font-size: 0.9em;
+    font-size: 1em;
     color: #555;
     margin: 0.4em 0.3em 0;
 }
@@ -102,7 +110,7 @@ a .nw-spike-label {
 .nw-spikes {
     margin: 0.5em 0.3em 0;
     padding-left: 1.2em;
-    font-size: 0.95em;
+    font-size: 1.05em;
 }
 
 .nw-faint {
@@ -154,6 +162,7 @@ a .nw-spike-label {
 .nw-open .nw-stage {
     position: absolute;
     inset: 0;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -162,7 +171,6 @@ a .nw-spike-label {
 }
 
 .nw-open .nw-chart {
-    min-width: 0;
     width: 100%;
     height: 100%;
 }

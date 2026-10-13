@@ -294,7 +294,7 @@ def saga_coverage(parts: list[dict], height: int = 140) -> dict | None:
             'peak': peak, 'from': _local(times[0]).strftime('%b %-d, %-I %p'), 'to': _local(times[-1]).strftime('%b %-d, %-I %p')}
 
 
-def newsiness(points: list[dict], spikes: list[dict], link_of, width: int = 900, height: int = 300) -> str | None:
+def newsiness(points: list[dict], spikes: list[dict], link_of, width: int = 760, height: int = 330) -> str | None:
     """How newsy each hourly run was (app/analysis/newsiness.py): the news-day score as a line, dashed where worked out
     afterwards from the database and solid where the build kept its own; the big and normal news-day lines as faint
     bands; each story's peak above the big line marked and labeled, linked to its page (link_of(point) -> href or
@@ -303,7 +303,7 @@ def newsiness(points: list[dict], spikes: list[dict], link_of, width: int = 900,
     if len(points) < 2:
         return None
     when = [datetime.fromisoformat(p['at']) for p in points]
-    left, right, top, bottom = 34, width - 6, 58, height - 24
+    left, right, top, bottom = 42, width - 8, 78, height - 30  # a small drawing scaled up: its text reads large
     axis = Axis(when[0], when[-1], left, right)
     hi = max(0.8, max(p['score'] for p in points) + 0.05)
 
@@ -311,13 +311,13 @@ def newsiness(points: list[dict], spikes: list[dict], link_of, width: int = 900,
         return bottom - (bottom - top) * v / hi
     parts = [f'<rect x="{left}" y="{y(hi):.1f}" width="{right - left}" height="{y(BIG) - y(hi):.1f}" class="nw-big"/>',
              f'<rect x="{left}" y="{y(BIG):.1f}" width="{right - left}" height="{y(NORMAL) - y(BIG):.1f}" class="nw-normal"/>']
-    for v, label, dy in ((BIG, '🚨 big news day', -4), (NORMAL, '📰 normal', 11)):  # normal under its line: the score is
+    for v, label, dy in ((BIG, '🚨 big news day', -5), (NORMAL, '📰 normal', 15)):  # normal under its line: the score is
         parts.append(f'<line x1="{left}" x2="{right}" y1="{y(v):.1f}" y2="{y(v):.1f}" class="nw-line-mark"/>'  # mostly above
                      f'<text x="{left + 4}" y="{y(v) + dy + (3 if dy > 0 else 0):.1f}" class="nw-tick">{label}</text>')  # left: peaks are recent
     for v in (0, 0.25, 0.5, 0.75):
         if v <= hi:
-            parts.append(f'<text x="{left - 5}" y="{y(v) + 4:.1f}" class="nw-tick" text-anchor="end">{v:g}</text>')
-    parts += [g.replace('class="sc-tick"', 'class="nw-tick"').replace(f'y="{bottom + 13}"', f'y="{bottom + 17}"')
+            parts.append(f'<text x="{left - 6}" y="{y(v) + 5:.1f}" class="nw-tick" text-anchor="end">{v:g}</text>')
+    parts += [g.replace('class="sc-tick"', 'class="nw-tick"').replace(f'y="{bottom + 13}"', f'y="{bottom + 22}"')
               for g in _grid(axis, top, bottom)]
     xy = [(axis.x(t), y(p['score'])) for t, p in zip(when, points)]
     area = ' '.join(f'{x:.1f},{yy:.1f}' for x, yy in xy)
@@ -333,20 +333,22 @@ def newsiness(points: list[dict], spikes: list[dict], link_of, width: int = 900,
         parts.append(f'<rect x="{x - step / 2:.1f}" y="{top}" width="{step:.1f}" height="{bottom - top}" class="nw-hit">'
                      f'<title>{escape(tip)}</title></rect>')
     placed = []  # (from, to, row) of the labels drawn: each label on the first row where it overlaps none
+    stems = len(parts)
     for p in spikes:
         x, yy = axis.x(datetime.fromisoformat(p['at'])), y(p['score'])
         label = p['label'] if len(p['label']) <= 44 else p['label'][:43] + '…'
-        w = 6.9 * len(label)  # about Comic Neue 700 at 13px
+        w = 8.6 * len(label)  # about Comic Neue 700 at 16px
         anchor = 'end' if x > right - w / 2 else 'start' if x < left + w / 2 else 'middle'
         x0 = x - w if anchor == 'end' else x if anchor == 'start' else x - w / 2
         row = next((r for r in range(3) if all(r != pr or x0 + w + 6 < a or x0 > b + 6 for a, b, pr in placed)), 2)
         placed.append((x0, x0 + w, row))
-        ty = top - 40 + 15 * row
+        ty = top - 52 + 19 * row
         text = (f'<text x="{x:.1f}" y="{ty}" class="nw-spike-label" text-anchor="{anchor}">{escape(label)}'
                 f'<title>{escape(p["label"])}: {p["score"]:.2f}</title></text>')
         href = link_of(p)
-        parts.append(f'<line x1="{x:.1f}" x2="{x:.1f}" y1="{ty + 3}" y2="{yy - 6:.1f}" class="nw-spike-stem"/>'
-                     + (f'<a href="{escape(href)}">{text}</a>' if href else text)
+        parts.insert(stems, f'<line x1="{x:.1f}" x2="{x:.1f}" y1="{ty + 3}" y2="{yy - 6:.1f}" class="nw-spike-stem"/>')
+        stems += 1  # every stem under every label
+        parts.append((f'<a href="{escape(href)}">{text}</a>' if href else text)
                      + f'<circle cx="{x:.1f}" cy="{yy:.1f}" r="5" class="nw-spike"/>')
     return (f'<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" class="nw-chart" role="img" '
             f'aria-label="How newsy each hour was">{"".join(parts)}</svg>')
