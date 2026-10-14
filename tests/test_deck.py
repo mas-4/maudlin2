@@ -21,7 +21,7 @@ def test_newborn_and_most_retold_motifs_today():
 
 
 def test_every_key_draws_with_or_without_data():
-    for state in ({}, {'news': {'kind': 'big', 'share': 61}, 'born': deck.newborn(index(), '2026-10-11'),
+    for state in ({}, {'news': {'kind': 'big', 'share': 61}, 'to_judge': 177,
                        'retold': deck.retold(index(), '2026-10-11'), 'mood': [('fear', 0.35)],
                        'gpu': ('worker', 80.0), 'party_until': time.time() + 10}):
         faces = deck.faces(state, (80, 80), time.time())
@@ -37,12 +37,9 @@ def test_the_unicorn_key_asks_the_lights_for_the_rainbow(monkeypatch, tmp_path):
     assert until == state['party_until'] and 25 < until - time.time() <= deck.PARTY_SECONDS
 
 
-def test_meeting_a_newborn_motif_marks_it_met(monkeypatch, tmp_path):
-    monkeypatch.setattr(deck.Config, 'data', str(tmp_path))
-    shown = []
-    monkeypatch.setattr(deck, 'card', lambda title, body, url=None, label='Open': shown.append(title))
-    state = {'born': deck.newborn(index(), '2026-10-11'), 'seen': set()}
-    deck.press(state, 1)
-    deck.press(state, 1)
-    assert shown == ['🧬 Born today: Not my president', '🧬 Born today: Cheap labor']  # oldest unmet first
-    assert json.loads((tmp_path / deck.SEEN).read_text()) == ['M10', 'M9']
+def test_the_claims_to_judge_key_counts_claims_with_an_unchecked_filing():
+    ix = index()
+    ix['entries']['M2']['claims'][0]['checked'] = 'yes'
+    ix['entries']['M9']['claims'].append({'claim': 'c'})  # c is in two motifs: one claim
+    assert deck.to_judge(ix) == 4  # a, c, d, e (b was checked)
+    assert deck.shame(0) == (50, 170, 90) and deck.shame(150) == deck.shame(400) == (220, 30, 40)

@@ -1,13 +1,14 @@
 """The Stream Deck Mini as a window on the news (Oct 11; the person picked this over a review pad, "i like idea 2 a lot
 more"). Six keys, each a little screen, redrawn every second from what's looked up every LOOK seconds:
 
-    📰 news day     🧬 newborn motif   🔝 most retold
+    📰 news day     🎯 claims to judge  🔝 most retold
     🌡 mood ring    🎛 the GPU          🦄 unicorn
 
 📰 the last hourly build's news-day meter (big, normal or slow; app/site/page_headlines.py saves it) and the top
    story's share of front pages; it flashes on a big news day. Press: the top story on bignews.day.
-🧬 motifs born today: how many, and the newest's name; it glows while there's one you haven't met here. Press: a
-   desktop card with its name, note and first claims, and a button to open the checker, where it's renamed or approved.
+🎯 how many claims wait in the checker's claims to judge (a filing nobody has checked), greener when few and redder
+   as they pile up (Oct 14, the person: "just say how many unresolved claims are stacking up so I can feel bad about
+   myself"; it showed the motifs born today before). Press: the checker.
 🔝 the motifs most retold today, one at a time. Press: its card.
 🌡 the strongest emotion in the headlines on front pages now, in its colour. Press: every emotion's share.
 🎛 who has the GPU and how hard it works, in the lights' colours (app/lights.py). Press: the desktop panel's text.
@@ -64,6 +65,20 @@ def newborn(index: dict, today: str) -> list[dict]:
     return sorted(born, key=lambda e: int(e['id'][1:]) if e['id'][1:].isdigit() else 0, reverse=True)
 
 
+def to_judge(index: dict) -> int:
+    """Claims with a filing nobody has checked yet: the checker's claims to judge (less the few it doubts again)"""
+    from app.analysis import motif_index as mi
+    split = index.get('tellings', {})
+    return len({mi.key(c['claim']) for e in mi.live(index) for c in e.get('claims', [])
+                if not c.get('checked') and mi.key(c['claim']) not in split})
+
+
+def shame(n: int) -> tuple:
+    """A pile's colour: green when it's cleared, through amber at 50, to red from 150"""
+    t = min(1.0, n / 150)
+    return tuple(round(a + (b - a) * t) for a, b in zip((50, 170, 90), (220, 30, 40))) if n else (50, 170, 90)
+
+
 def retold(index: dict, today: str, n: int = 3) -> list[tuple[dict, int]]:
     """The n motifs with the most claims dated today, and how many"""
     from app.analysis import motif_index as mi
@@ -112,7 +127,7 @@ def look_up(state: dict):
             logger.debug("Deck: %s: %s", name, e)
     try:
         index = mi.load()
-        state['born'], state['retold'] = newborn(index, today), retold(index, today)
+        state['to_judge'], state['retold'] = to_judge(index), retold(index, today)
     except Exception as e:  # noqa: BLE001
         logger.debug("Deck: motifs: %s", e)
 
@@ -208,13 +223,10 @@ def faces(state: dict, size: tuple, now: float) -> list:
         bg = dim(bg, 0.45)  # a big news day flashes
     out.append(key(size, bg, icon, ['news day'], f"{news['share']}%" if news.get('share') is not None else '?'))
 
-    born = state.get('born') or []
-    seen = state.get('seen', set())
-    fresh = bool(born) and born[0]['id'] not in seen
-    bg = (40, 40, 48)
-    if fresh:  # glows while there's one not met
-        bg = dim((0, 200, 120), 0.55 + 0.45 * abs((now % 2) - 1))
-    out.append(key(size, bg, '🧬', [born[0]['name']] if born else ['no new motif today'], str(len(born)) if born else None))
+    n = state.get('to_judge')
+    icon = '🎉' if n == 0 else '🎯' if (n or 0) < 50 else '😬' if n < 150 else '🔥'
+    out.append(key(size, shame(n or 0) if n is not None else (60, 60, 70), icon, ['to judge'],
+                   str(n) if n is not None else '?'))
 
     top = state.get('retold') or []
     if top:
@@ -273,12 +285,10 @@ def press(state: dict, n: int):
         card(f"{news.get('emoji', '📰')} {news.get('label', 'News day')}",
              escape(f"{news.get('story', '?')}: on {news.get('share', '?')}% of front pages, {news.get('age', '')}"),
              SITE + (f"#{news['anchor']}" if news.get('anchor') else ''), 'Open on bignews.day')
-    elif n == 1 and state.get('born'):
-        unseen = [e for e in state['born'] if e['id'] not in state.setdefault('seen', set())]
-        e = unseen[-1] if unseen else state['born'][0]  # the oldest you haven't met, else the newest
-        state['seen'].add(e['id'])
-        write_json(os.path.join(Config.data, SEEN), sorted(state['seen']))
-        motif_card(e, '🧬 Born today')
+    elif n == 1:
+        k = state.get('to_judge')
+        card('🎯 Claims to judge', escape(f"{k if k is not None else '?'} claims are waiting for you in 🎯."), CHECKER,
+             'Open the checker')
     elif n == 2 and state.get('retold'):
         e, k = state['retold'][int(now / 6) % len(state['retold'])]
         motif_card(e, f'🔝 Retold {k}× today')
