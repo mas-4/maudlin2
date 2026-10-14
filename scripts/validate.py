@@ -1022,6 +1022,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(lab.overview())
             return self.send_json(lab.paper(code) if self.path.startswith('/experiment-paper') else lab.cases(code))
         if self.path.startswith('/live.json'):  # 🧠 the filing pipeline as it runs (app/analysis/trace_view.py)
+            from urllib.parse import urlparse, parse_qs
             from app.analysis import trace_view
             return self.send_json(trace_view.view({k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}))
         if self.path.startswith('/flow.json'):  # 🌊 news stories into retellings over time (app/analysis/flow.py)
