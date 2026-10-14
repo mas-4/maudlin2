@@ -249,7 +249,47 @@ FIRST_JUDGED = {'M173|Chaos in the Streets', 'M173|Miracles and Wonders', 'M173|
                 'M173|The Great Replacement', 'M173|The Human Tragedy'}  # judged before the set was drawn
 
 
-CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora}
+def ptah() -> dict:
+    """Each case named both ways by the proposer: the blind pairs first, numbered and unlabelled (A and B in a fixed
+    random order, your own name hidden), then the rest with their orders and your name and note"""
+    import f23_ptah as f
+    s = _load('f23_ptah.json')
+    cases, answers = s.get('cases', {}), s.get('answers', {})
+    a, b = f.PROPOSER
+    blind = {p['case']: (n, p['first']) for n, p in enumerate(s.get('blind', []), 1)}
+
+    def shown(arm, k, label=''):
+        g = (answers.get(arm) or {}).get(k) or {}
+        return f"{label}{g.get('name') or '—'}: {g.get('note') or ''}" if g else ''
+
+    first, rest = {}, []
+    for k, c in cases.items():
+        if k not in answers.get(a, {}) or k not in answers.get(b, {}):
+            continue
+        claims = ' · '.join(c['claims'][:6])
+        if k in blind:
+            n, lead = blind[k]
+            one, two = (a, b) if lead == a else (b, a)
+            first[n] = {'kind': 'blind pair: which is better?',
+                        'cells': [f'blind {n}', claims, shown(one, k), shown(two, k), '(hidden)']}
+            continue
+        na, nb = (f.norm(answers[x][k].get('name') or '') for x in (a, b))
+        you = f.norm(c['answer']['name']) if c['answer'] else None
+        kind = ('you rejected these' if not c['answer'] else 'the same name both ways' if na == nb else
+                'note first gave your name' if nb == you else 'name first gave your name' if na == you else
+                'neither gave your name')
+        rest.append({'kind': kind, 'cells': [k, claims, shown(a, k, 'name first: '), shown(b, k, 'note first: '),
+                                             f"{c['answer']['name']}: {c['answer']['note']}" if c['answer'] else '—']})
+    rows = [first[n] for n in sorted(first)] + sorted(rest, key=lambda r: r['kind'])
+    return {'summary': Counter(r['kind'] for r in rows).most_common(),
+            'columns': ['case', 'the claims', 'A', 'B', 'your name and note'], 'rows': capped(rows),
+            'note': 'Gemma proposed a motif from the same claims twice: the name then the note (as today), and the note '
+                    'first, then a name for what the note describes. The first rows are a blind set: A and B in a '
+                    'random order and your own name hidden; say which is better on each (or neither) by its number. '
+                    'The rest show which order is which and what you named the motif.'}
+
+
+CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora, 'F23': ptah}
 
 
 def cases(code: str) -> dict:

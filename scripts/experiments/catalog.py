@@ -120,6 +120,8 @@ REGISTRY = {
             'f21_charybdis.py', 'queued', 'f21_charybdis.json', ''),
     'F22': ('The claim organizer alongside the filing: a claim split where its motifs fall on different posts',
             'f22_psyche.py', 'queued', 'f22_psyche.json; motif_proposals.json (kinds split, no_split)', ''),
+    'F23': ('The note first, then the name: new motifs named after their scope note is written', 'f23_ptah.py',
+            'queued', 'f23_ptah.json', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),

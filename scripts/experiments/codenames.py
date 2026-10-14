@@ -76,6 +76,7 @@ CODENAMES = {
     'F19': ('Theseus', "who followed the thread through the labyrinth: a telling as its course of action alone"),
     'F21': ('Charybdis', 'who swallows whatever sails near: Straight news as a sink for the claims that tell nothing'),
     'F22': ('Psyche', "who sorted a heap of mixed grains: a claim's posts sorted into the tellings they hold"),
+    'F23': ('Ptah', 'who conceived each thing in his heart before his tongue named it: the note first, then the name'),
 }
 
 
