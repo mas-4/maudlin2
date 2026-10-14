@@ -164,6 +164,7 @@ def shortlist(index: dict, claim: str, vec: Vectors, w: dict) -> list[dict]:
     top = order[:SHOWN]
     tree = _tree(entries, {e['id']: n for n, e in enumerate(entries)})
     more = sorted({x for m in top for x in tree[m] if x not in top and alike[x]}, key=lambda x: -score[x])[:TREE_MORE]
+    _keep(k, 'plain', entries, F, score, order, top, more, FACTS, [w['weights'][f] for f in FACTS], w['bias'])
     return [entries[i] for i in top + more] + seeds(index, claim, vec)
 
 
@@ -278,7 +279,12 @@ def learned_scores(sig, claim: str, w: dict, L: dict, leave_out: bool = False) -
     """(each of sig's motifs scored against the claim by the learned weights, the plain FACTS): the one formula filing's
     shortlist and the checker's suggestions (filing_confidence.Scorer.candidates) both rank by"""
     X, F = signal_rows(sig, claim, w, leave_out=leave_out)
-    return ((X - np.array(L['mu'])) / np.array(L['sd'])) @ np.array(L['coef']) + L['bias'], F
+    return weigh(X, L), F
+
+
+def weigh(X: np.ndarray, L: dict) -> np.ndarray:
+    """Signal rows scored by the learned weights"""
+    return ((X - np.array(L['mu'])) / np.array(L['sd'])) @ np.array(L['coef']) + L['bias']
 
 
 def learned_shortlist(index: dict, claim: str, sig, w: dict, L: dict) -> list[dict]:
@@ -287,13 +293,28 @@ def learned_shortlist(index: dict, claim: str, sig, w: dict, L: dict) -> list[di
     entries = sig.entries
     if not entries:
         return []
-    score, F = learned_scores(sig, claim, w, L)
+    X, F = signal_rows(sig, claim, w, leave_out=False)
+    score = weigh(X, L)
     alike = (F[:, :3].max(1) >= mi.SHOWN_FLOOR) & np.array([k not in e.get('not_claims', []) for e in entries])
     order = [int(i) for i in np.argsort(-score) if alike[i]]
     top = order[:SHOWN]
     tree = _tree(entries, {e['id']: n for n, e in enumerate(entries)})
     more = sorted({x for m in top for x in tree[m] if x not in top and alike[x]}, key=lambda x: -score[x])[:TREE_MORE]
+    _keep(k, 'learned', entries, X, score, order, top, more, L.get('features') or learned_features(), L['coef'],
+          L['bias'], L['mu'], L['sd'])
     return [entries[i] for i in top + more] + (seeds(index, claim, sig.vec) if getattr(sig, 'vec', None) else [])
+
+
+# The last shortlist drawn, as it was ranked (the arrays themselves, nothing copied): what the trace shows of it
+# (trace.shortlisted, from filing and the watch list's refiling; app/analysis/trace.py)
+last = {}
+
+
+def _keep(k, method, entries, X, score, order, top, more, features, coef, bias, mu=None, sd=None):
+    last.clear()
+    last.update(key=k, method=method, entries=entries, X=X, score=score, order=order, top=top, more=more,
+                features=list(features), coef=list(coef), bias=bias, mu=list(mu) if mu is not None else [0.0] * len(coef),
+                sd=list(sd) if sd is not None else [1.0] * len(coef))
 
 
 def describe() -> str:

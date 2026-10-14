@@ -11,6 +11,7 @@ at 0.56)."""
 import os
 from datetime import UTC, datetime as dt, timedelta as td
 
+from app.analysis import trace
 from app.analysis.ties import tie
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
@@ -175,6 +176,8 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
             if old and new.get('claim') != old and (mi.key(old) in index.get('claims', {}) or old in index.get('corrections', {})):
                 new['claim from the piece'], new['claim'] = new.get('claim'), old
             labels[item['url']] = new
+            trace.emit('written', new.get('claim') or '', source=item['source'], ref=item['url'], genre=new.get('genre'),
+                       read=new['read'])  # the 🧠 Live page's (app/analysis/trace.py)
     write_json(LABELS, labels)
     logger.info("Fact-checks: labeled %d (%d in all)", len(todo), len(labels))
     return labels

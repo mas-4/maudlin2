@@ -23,7 +23,7 @@ from datetime import datetime as dt
 
 import numpy as np
 
-from app.analysis import llm
+from app.analysis import llm, trace
 from app.utils import Config, get_logger, store
 from app.utils.store import read_json, write_json
 
@@ -257,7 +257,7 @@ def name_claim(claim: str, shown: list[dict]) -> dict | None:
         return None
     existing = [shown[n - 1] for n in dict.fromkeys(answer.get('fits', [])) if isinstance(n, int) and 1 <= n <= len(shown)][:3]
     if existing:
-        return {'existing': existing, 'new': []}
+        return {'existing': existing, 'new': [], 'reason': answer.get('reason')}
     schema = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
                                                "new": {"type": "array", "maxItems": 1, "items": {"type": "string", "maxLength": 60}}},
               "required": ["reason", "new"]}
@@ -265,7 +265,8 @@ def name_claim(claim: str, shown: list[dict]) -> dict | None:
                               max_tokens=500, model=JUDGE_MODEL)
     if named is None:
         return None
-    return {'existing': [], 'new': [m for m in map(clean, named.get('new', [])) if fits_name(m)]}
+    return {'existing': [], 'new': [m for m in map(clean, named.get('new', [])) if fits_name(m)],
+            'reason': answer.get('reason'), 'new_reason': named.get('reason')}
 
 
 def fits_name(name: str) -> bool:
@@ -372,6 +373,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             if key(c['claim']) in index['claims']:
                 continue
             shown = lister(index, c['claim'])
+            trace.shortlisted(c, shown, lister, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
             named = name_claim(c['claim'], shown)
             if not named:
                 continue
@@ -396,7 +398,9 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
                 entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
                 filed.append(eid)
             index['claims'][key(c['claim'])] = filed
-            made = sum(1 for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1)
+            new_ids = [eid for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1]
+            trace.picked(c['claim'], named, filed, new_ids)
+            made = len(new_ids)
             outcomes['none' if not filed else 'new' if made else 'matched'] += 1
             save(index)
     lister.save()  # the new claims' shapes and layers, asked once

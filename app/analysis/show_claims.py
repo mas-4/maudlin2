@@ -14,7 +14,7 @@ import time
 from datetime import datetime as dt
 from datetime import timedelta as td
 
-from app.analysis import focus_group, llm
+from app.analysis import focus_group, llm, trace
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 
@@ -123,7 +123,9 @@ def extract(budget: float | None = None) -> dict:
         return store
     calls = read_episodes(store, budget)
     if calls or not os.path.exists(RETOLD):
-        write_json(RETOLD, retold(store))
+        old, new = read_json(RETOLD, []), retold(store)
+        write_json(RETOLD, new)
+        trace.written_shows(old, new)  # the 🧠 Live page's (app/analysis/trace.py)
     return store
 
 

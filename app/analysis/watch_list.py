@@ -24,7 +24,7 @@ from collections import Counter
 from datetime import datetime as dt
 from datetime import timedelta as td
 
-from app.analysis import llm
+from app.analysis import llm, trace
 from app.analysis import motif_index as mi
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
@@ -196,6 +196,7 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
                 w['plain'] = False
                 continue
             shown = lister(index, w['claim'])
+            trace.shortlisted(w, shown, lister, refile=why, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
             named = mi.name_claim(w['claim'], shown)
             if not named:
                 continue
@@ -223,6 +224,8 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
             f.write(json.dumps({'at': at, 'key': k, 'claim': w['claim'], 'was': was, 'reported': w.get('date'),
                                 'story': w.get('story'), 'why': why, 'shown': [e['id'] for e in shown],
                                 'picked': picked, 'new': named['new'], 'filed': filed}) + '\n')
+        trace.emit('refiled', w['claim'], was=was, why=why, reported=w.get('date'), picked=picked, new=named['new'],
+                   filed=filed, outcome=outcome, reason=named.get('reason'))
     lister.save()
     save(store)
     logger.info("Watch list: %d plain claims filed again (%s), %d watched", sum(outcomes.values()), dict(outcomes),

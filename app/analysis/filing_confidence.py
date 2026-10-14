@@ -20,6 +20,7 @@ import numpy as np
 from app.analysis import motif_index as mi
 from app.analysis import motif_retriever as mr
 from app.analysis import motif_signals as ms
+from app.analysis import trace
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 
@@ -416,7 +417,9 @@ def score(index: dict | None = None, m: dict | None = None, skip: set | None = N
     for (claim, source), ids in todo.items():
         if budget is not None and time.time() - started > budget:
             break
-        z = scorer.rows(claim, ids, source) @ coef + m['bias']
+        rows = scorer.rows(claim, ids, source)
+        z = rows @ coef + m['bias']
+        trace.scored(claim, source, ids, rows, z, m, FEATURES, confirmed)  # the 🧠 Live page's (app/analysis/trace.py)
         for eid, v in zip(ids, z):
             out[(mi.key(claim), eid)] = round(float(1 / (1 + np.exp(-v))), 3)
     scorer.signals.save()

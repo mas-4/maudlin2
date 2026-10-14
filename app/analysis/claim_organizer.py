@@ -36,6 +36,7 @@ from datetime import datetime as dt
 from app.analysis import llm
 from app.analysis import motif_index as mi
 from app.analysis import motif_proposals as mp
+from app.analysis import trace
 from app.utils import get_logger
 
 logger = get_logger(__name__)
@@ -367,7 +368,11 @@ def organize_claims(claims: list[str] | None = None, budget: float | None = None
         group = group_of(claim, rec.get('ref', ''), groups)
         posts = posts_of((group or {}).get('keys') or [])
         result = organize(claim, [p['text'] for p in posts], motifs, index)
-        if propose(store, result, triggers(claim, index, group, also), [p['keys'] for p in posts]):
+        fired = triggers(claim, index, group, also)
+        if propose(store, result, fired, [p['keys'] for p in posts]):
+            trace.emit('split_proposed', claim, split=result['split'], motifs=motifs, posts=result.get('posts'),
+                       reason=result.get('reason'), children=[c['claim'] for c in result.get('children', [])],
+                       triggers=sorted(fired or {}))
             done['split' if result['split'] else 'no split'] += 1
             mp.save(store)
         else:
@@ -493,6 +498,7 @@ def apply_split(proposal_id: str | None = None, children=None, why: str | None =
         mi.save(index)
     done = {'action': ACTION, 'claim': claim, 'ids': was, 'children': kids, **({'proposal': proposal_id} if p else {}),
             **({'why': ' '.join(why.split())} if why and why.strip() else {})}
+    trace.emit('split', claim, ids=was, children=kids, by=index['tellings'][k]['by'], proposal=proposal_id, why=why)
     if p:
         mp.decide(proposal_id, 'approved', why, final={'action': ACTION, 'claim': claim, 'children': kids})
     if refile:

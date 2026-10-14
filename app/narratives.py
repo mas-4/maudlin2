@@ -574,6 +574,8 @@ def report(hours: float = 6) -> dict:
            'found': [{k: v for k, v in g.items() if k != 'members'} for g in found]}
     stamp = dt.now().strftime('%Y-%m-%d-%H%M')
     write_json(os.path.join(FOLDER, f'report-{stamp}.json'), out, indent=1)
+    from app.analysis import trace  # each narrative's claim, its posts by key, for the 🧠 Live page
+    trace.written_narratives(out)
     with open(os.path.join(FOLDER, f'report-{stamp}.md'), 'w') as f:
         f.write(markdown(out))
     logger.info("Narratives: %d groups (%s), %d labeled retold narratives; report-%s", len(found), out['kinds'],
