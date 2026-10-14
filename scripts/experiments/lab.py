@@ -270,7 +270,9 @@ def ptah() -> dict:
         if k in blind:
             n, lead = blind[k]
             one, two = (a, b) if lead == a else (b, a)
-            first[n] = {'kind': 'blind pair: which is better?',
+            picked = (s.get('verdicts') or {}).get(k)  # the person's pick, by arm: shown back as A or B
+            first[n] = {'kind': 'blind pair: which is better?', 'key': k,
+                        'verdict': 'A' if picked == one else 'B' if picked == two else picked,
                         'cells': [f'blind {n}', claims, shown(one, k), shown(two, k), '(hidden)']}
             continue
         na, nb = (f.norm(answers[x][k].get('name') or '') for x in (a, b))
@@ -281,12 +283,34 @@ def ptah() -> dict:
         rest.append({'kind': kind, 'cells': [k, claims, shown(a, k, 'name first: '), shown(b, k, 'note first: '),
                                              f"{c['answer']['name']}: {c['answer']['note']}" if c['answer'] else '—']})
     rows = [first[n] for n in sorted(first)] + sorted(rest, key=lambda r: r['kind'])
-    return {'summary': Counter(r['kind'] for r in rows).most_common(),
+    return {'summary': Counter(r['kind'] for r in rows).most_common(), 'judge': 'F23',
+            'choices': [['A', '🅰️ A is better'], ['B', '🅱️ B is better'], ['neither', '✕ neither']],
             'columns': ['case', 'the claims', 'A', 'B', 'your name and note'], 'rows': capped(rows),
             'note': 'Gemma proposed a motif from the same claims twice: the name then the note (as today), and the note '
                     'first, then a name for what the note describes. The first rows are a blind set: A and B in a '
-                    'random order and your own name hidden; say which is better on each (or neither) by its number. '
+                    'random order and your own name hidden; pick the better on each (or neither). '
                     'The rest show which order is which and what you named the motif.'}
+
+
+def _ptah_pick(key: str, value: str | None) -> dict:
+    import f23_ptah as f
+    if value not in ('A', 'B', 'neither', None):
+        raise ValueError('Ptah takes A, B or neither')
+    path = os.path.join(EXP, 'f23_ptah.json')
+    s = json.load(open(path))
+    pair = next((p for p in s.get('blind', []) if p['case'] == key), None)
+    if pair is None:
+        raise ValueError('not one of the blind pairs')
+    a, b = f.PROPOSER
+    other = b if pair['first'] == a else a
+    v = s.setdefault('verdicts', {})
+    if value is None:
+        v.pop(key, None)
+    else:
+        v[key] = pair['first'] if value == 'A' else other if value == 'B' else 'neither'
+    json.dump(s, open(path + '.tmp', 'w'), indent=1)
+    os.replace(path + '.tmp', path)
+    return {'ok': True, 'verdicts': len(v)}
 
 
 CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora, 'F23': ptah}
@@ -303,9 +327,12 @@ def cases(code: str) -> dict:
 
 
 def verdict(code: str, key: str, value: str | None) -> dict:
-    """The person's verdict on one of an experiment's items (Pandora's tellings: 'motif', 'already' or 'not')"""
+    """The person's verdict on one of an experiment's items: Pandora's tellings ('motif', 'already' or 'not'), or
+    Ptah's blind pairs ('A', 'B' or 'neither', kept as the arm it was, so the report counts orders, not letters)"""
+    if code == 'F23':
+        return _ptah_pick(key, value)
     if code != 'F10' or value not in ('motif', 'already', 'not', None):
-        raise ValueError('only Pandora takes verdicts: motif, already or not')
+        raise ValueError('Pandora takes motif, already or not; Ptah takes A, B or neither')
     path = os.path.join(EXP, 'f10_pandora.json')
     s = json.load(open(path))
     v = s.setdefault('verdicts', {})
