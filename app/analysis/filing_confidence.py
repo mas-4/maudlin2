@@ -266,8 +266,16 @@ def train(index: dict | None = None) -> dict | None:
         by_claim[(claim, source)].append((eid, ok))
     scorer.signals.prepare([c for c, _ in by_claim])
     X, y, groups = [], [], []
+    col = FEATURES.index('motifs of the claim')
     for (claim, source), items in by_claim.items():
-        X.extend(scorer.rows(claim, [eid for eid, _ in items], source))
+        rows = scorer.rows(claim, [eid for eid, _ in items], source)
+        # The claim's motifs as they stood when the person judged this filing, the judged one among them: counted as
+        # the index stands now, a filing taken out had already left the count, and the model learned part of the
+        # answer from the answer (the Danaids, Oct 12: about 0.01 of AUC). At scoring, an unchecked filing counts too
+        now = scorer.motifs_of.get(mi.key(claim), set())
+        for row, (eid, _) in zip(rows, items):
+            row[col] = len(now | {eid})
+        X.extend(rows)
         y.extend(ok for _, ok in items)
         groups.extend([mi.key(claim)] * len(items))
     scorer.signals.save()

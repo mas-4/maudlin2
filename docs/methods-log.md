@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-14
+- **The confidence model no longer learns from the answer.** One of its signals counts the motifs a claim is in. In
+  training it was counted as the index stands now, so a filing the person had taken out was already missing from the
+  count, and the model could partly read the person's verdict off it (the Danaids, Oct 12: worth about 0.01 of AUC;
+  the sure line held at 95% right). Training now counts the claim's motifs with the judged one among them, as they
+  stood when it was judged; at scoring an unchecked filing counts itself the same way. The model retrains on it daily.
+
 ## 2026-10-13
 - **Who's in the news, today only.** The names page shows the people, places and groups in today's stories (from
   midnight ET), those in two or more stories or carried by 15 or more outlets, widest first, each with its first three
