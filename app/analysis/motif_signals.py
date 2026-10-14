@@ -57,6 +57,7 @@ JUDGE_MODEL = 'gemma4:26b'
 # docs/filing-experiments.md; its 8-bit build is 9.5 GB, a little of it on the CPU: the 4-bit one that fits whole judged
 # worse, 0.797 against 0.818). None: Gemma 26B's yes or no (JUDGE_PROMPT) as before
 JUDGE_DECIDER = 'nimble:9b'
+ASK_CHUNK = 50  # claims asked about between saves in prepare(): a run stopped midway keeps what it asked
 JUDGE_QUESTION = ('Is the new claim an instance of this motif: the same shape of story, as its tellers tell it, as the '
                   'claims filed under it, not just the same topic, person or word?')
 # Each motif's must-have element, drafted by Gemma 26B from its name, genre and note (not its claims), and shown to the
@@ -436,11 +437,16 @@ class Signals:
         wait for the next run (Oct 8: a newly trained model's first scoring overran its budget by four minutes here)"""
         import time
         t0 = time.time()
-        if ask:  # the filing model's questions, PARALLEL at once (llm.parallel), each claim's two in turn
-            from app.analysis import llm
-            llm.parallel(lambda c: (self.shape_of(c, True), self.layers_of(c, True)), list(dict.fromkeys(claims)),
-                         budget=budget)
-            self.save()
+        if ask:  # the filing model's questions, PARALLEL at once (llm.parallel), each claim's two in turn, kept every
+            from app.analysis import llm  # ASK_CHUNK claims: a step stopped at the hour keeps what it asked (Oct 13-14:
+            todo = list(dict.fromkeys(claims))  # Isis, then Rip Van Winkle, lost hours of answers at every stop)
+            for i in range(0, len(todo), ASK_CHUNK):
+                left = None if budget is None else budget - (time.time() - t0)
+                if left is not None and left <= 0:
+                    break
+                llm.parallel(lambda c: (self.shape_of(c, True), self.layers_of(c, True)), todo[i:i + ASK_CHUNK],
+                             budget=left)
+                self.save()
         t1 = time.time()
         shapes = [self.shapes[mi.key(c)] for c in claims if mi.key(c) in self.shapes]
         layers = [t for c in claims for t in self.layers_of(c, False).values()]

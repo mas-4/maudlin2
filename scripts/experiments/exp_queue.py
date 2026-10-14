@@ -127,7 +127,10 @@ def run():
         with open(os.path.join(LOGS, f'{holder}.log'), 'a') as log:
             log.write(f'\n== {now()} step {sid}, try {tries + 1}: {" ".join(cmd)}\n')
             log.flush()
-            code = subprocess.run(full, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
+            # the reranker on the CPU, as production has it: loaded on a GPU free for a moment, it filled the card and
+            # Nimble had no room (Oct 13, Isis's last try: a 500 from Ollama); a step can still ask for the GPU itself
+            env = {**os.environ, 'MOTIF_RERANK_DEVICE': os.environ.get('MOTIF_RERANK_DEVICE', 'cpu')}
+            code = subprocess.run(full, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, env=env).returncode
         if code == 0:
             con.execute('update queue set status = ?, finished = ?, exit = 0 where id = ?', ('done', now(), sid))
         else:
