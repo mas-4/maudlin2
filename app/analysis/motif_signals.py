@@ -535,8 +535,10 @@ class Signals:
         import torch
         if self._reranker is None:
             from transformers import AutoModelForCausalLM, AutoTokenizer
-            free = torch.cuda.mem_get_info()[0] if torch.cuda.is_available() else 0
-            device = os.environ.get('MOTIF_RERANK_DEVICE') or ('cuda' if free > 3e9 else 'cpu')  # Gemma may hold the GPU
+            device = os.environ.get('MOTIF_RERANK_DEVICE')  # asked first: asking CUDA what's free opens a context on
+            if not device:  # the card, so a paused experiment held card memory and was restarted after all (Oct 14)
+                free = torch.cuda.mem_get_info()[0] if torch.cuda.is_available() else 0
+                device = 'cuda' if free > 3e9 else 'cpu'  # Gemma may hold the GPU
             tok = AutoTokenizer.from_pretrained(RERANKER, padding_side='left')
             from app.analysis import reranker_teach  # the layers taught the person's taste, if taught yet
             model = AutoModelForCausalLM.from_pretrained(RERANKER, dtype=torch.float16 if device == 'cuda' else torch.float32)
