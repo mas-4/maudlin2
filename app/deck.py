@@ -19,6 +19,7 @@ exits when the hourly run pulls new code so systemd starts it on that, and waits
 
 Run: python -m app.deck"""
 import colorsys
+import json
 import os
 import sqlite3
 import subprocess
@@ -43,7 +44,9 @@ NEWS_DAY = {'big': ('🚨', (220, 30, 40)), 'normal': ('📰', (238, 232, 214)),
 MOODS = {'fear': ('😨', (140, 60, 255)), 'anger': ('😠', (225, 35, 35)), 'surprise': ('😮', (255, 196, 0)),
          'hope': ('🌱', (50, 190, 90)), 'sadness': ('😢', (45, 105, 225)), 'joy': ('😄', (255, 165, 20)),
          'disgust': ('🤢', (125, 150, 35))}
-GPU_TINTS = {'worker': (0, 190, 170), 'experiment': (140, 60, 255), 'hourly': (255, 140, 0), 'idle': (40, 80, 200)}
+GPU_TINTS = {'worker': (0, 190, 170), 'experiment': (140, 60, 255), 'hourly': (255, 140, 0), 'idle': (40, 80, 200),
+             'alert': (220, 30, 40)}
+EXPERIMENT_ALERTS = os.path.join(Config.data, 'motifs', 'experiments', 'alerts.json')  # the queue's failed and stuck
 
 
 # What the keys show
@@ -82,8 +85,17 @@ def mood() -> list[tuple[str, float]]:
 
 
 def gpu() -> tuple[str, float, str]:
-    """(who has it, load, and for an experiment its figure: 'Isis')"""
+    """(who has it, load, and for an experiment its figure: 'Isis'); an experiment the queue gave up on (failed, or
+    stuck with no progress: scripts/experiments/exp_queue.py) shows instead, in red, until it's tried again (Oct 14:
+    two nights lost and nobody knew till morning)"""
     from app import desk, gpu_lease, lights
+    try:
+        with open(EXPERIMENT_ALERTS) as f:
+            alerts = json.load(f)
+    except (OSError, ValueError):
+        alerts = []
+    if alerts:
+        return 'alert', lights.card()[0], '⚠ ' + desk.figure_of(alerts[-1]['holder']).split(' · ')[0]
     who = lights.who()
     holder = (gpu_lease.held() or {}).get('holder') if who == 'experiment' else None
     return who, lights.card()[0], desk.figure_of(holder).split(' · ')[0] if holder else ''  # the figure, not the step: it fits

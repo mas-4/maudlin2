@@ -447,6 +447,8 @@ class Signals:
                 llm.parallel(lambda c: (self.shape_of(c, True), self.layers_of(c, True)), todo[i:i + ASK_CHUNK],
                              budget=left)
                 self.save()
+                if len(todo) > ASK_CHUNK:
+                    logger.info("Signals: asked %d/%d claims", min(i + ASK_CHUNK, len(todo)), len(todo))
         t1 = time.time()
         shapes = [self.shapes[mi.key(c)] for c in claims if mi.key(c) in self.shapes]
         layers = [t for c in claims for t in self.layers_of(c, False).values()]

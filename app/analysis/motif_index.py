@@ -360,9 +360,11 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     started = time.time()
     outcomes = Counter()  # for the metrics: each claim matched to motifs already there, given a new one, or none
     lister = Shortlister(index, [c['claim'] for c in todo], budget=None if budget is None else budget / 2)
-    for c in todo:
+    for n, c in enumerate(todo):
         if budget is not None and time.time() - started > budget:
             break  # the next run picks up where this one stopped
+        if n and n % 25 == 0:  # progress a watcher can read (the experiments' queue: a step that shows none is stuck)
+            logger.info("Motif filing: %d/%d claims", n, len(todo))
         # One claim at a time on a fresh read of the index, saved as it goes: a run cut short keeps what it filed,
         # and an edit made on the organizer pages meanwhile isn't lost
         with locked():

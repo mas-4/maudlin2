@@ -9,11 +9,16 @@ renewed while its holder lives), so an experiment that crashes can't keep produc
 `run` waits for the hourly run to be over first, takes the lease, waits for the worker to finish the step it's on (its
 models may still fill the card), holds the lease while the command runs, renews it every minute up to
 its minutes, and gives it back when the command ends (or the minutes are up: then the command is stopped). An hourly
-run that starts meanwhile goes first: the command is stopped, and started again once the run is over."""
+run that starts meanwhile goes first, and the worker gets a turn every TURN minutes: the command is paused (SIGSTOP)
+and goes on where it was once they're done (SIGCONT). Its models live in Ollama, not in its own process, so a paused
+command holds no card memory; one that holds some itself (torch on the GPU) is stopped instead, and started again.
+Until Oct 14 every command was stopped and started again at least once an hour, so a step that didn't keep its own
+progress started over each time: two nights of experiments (Isis, then Rip Van Winkle) ran for nothing."""
 import argparse
 import fcntl
 import json
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -124,69 +129,120 @@ def _worker_had_turn(since: float) -> bool:
     return worker.had_turn(since)
 
 
+def _signal(proc: subprocess.Popen, sig: int):
+    """`sig` to the command and everything it started (its own process group)"""
+    try:
+        os.killpg(proc.pid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
 def _stop(proc: subprocess.Popen):
-    proc.terminate()
+    _signal(proc, signal.SIGCONT)  # a paused command can't act on SIGTERM
+    _signal(proc, signal.SIGTERM)
     try:
         proc.wait(timeout=30)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        _signal(proc, signal.SIGKILL)
         proc.wait()
+
+
+def group_pids(pgid: int) -> list[int]:
+    """The processes of a process group, from /proc"""
+    out = []
+    for d in os.listdir('/proc'):
+        if d.isdigit():
+            try:
+                with open(f'/proc/{d}/stat') as f:
+                    stat = f.read()
+                if int(stat[stat.rindex(')') + 2:].split()[2]) == pgid:  # after the name: state, ppid, pgrp
+                    out.append(int(d))
+            except (OSError, ValueError, IndexError):
+                pass
+    return out
+
+
+def on_gpu(pids: list[int]) -> bool:
+    """Whether any of these processes holds card memory itself (nvidia-smi's compute apps); True when it can't tell"""
+    try:
+        out = subprocess.run(['nvidia-smi', '--query-compute-apps=pid', '--format=csv,noheader'],
+                             capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return True
+    return bool({int(x) for x in out.split() if x.strip().isdigit()} & set(pids))
 
 
 def run(command: list[str], minutes: float, holder: str | None = None) -> int:
     """The command under the lease, after the hourly run is over and the worker has finished its step; its exit
-    status. The hourly run comes first: if one starts while the command runs, the command is stopped and the lease
-    given back, and once the run is over it's started again (Oct 10: an experiment held the card through the 16:00 and
-    17:00 runs, whose headline judgments timed out and crashed them; the experiments resume from their caches).
+    status. The hourly run comes first: if one starts while the command runs, the command is paused and the lease
+    given back, and once the run is over it goes on (Oct 10: an experiment held the card through the 16:00 and 17:00
+    runs, whose headline judgments timed out and crashed them).
     Production's processing comes first too: the command starts once the worker has caught up (its last cycle
     found little to do) or has finished a whole cycle since the command began waiting, and every TURN minutes it's
-    stopped and the worker given the card for a cycle (Oct 11: an experiment's lease held from the afternoon through
+    paused and the worker given the card for a cycle (Oct 11: an experiment's lease held from the afternoon through
     the night left a day's claims unwritten; then, waiting for a short cycle, experiments waited all morning).
     `minutes` counts the command's own running time, not the waits"""
     left = min(float(minutes), MAX_MINUTES) * 60
     gave_way = 0.0  # when the command last gave the worker its turn
     waiting = time.time()  # since when it has waited for its first turn
-    while True:
+    proc = None  # started once; paused and resumed after (stopped and started again only if it holds card memory)
+    try:
         while True:
-            while _hourly_run_going() or held() is not None or not (
-                    _worker_caught_up(gave_way) or _worker_had_turn(gave_way or waiting)):
-                time.sleep(30)
-            h = Hold(holder or ' '.join(command)[:120], left / 60)
-            try:
-                h.take()
-                break
-            except RuntimeError:  # another waiter took it first: wait for that one
-                continue
-        with h:
-            if _worker_busy():  # it starts no new step now, but the one it's on may hold Gemma on the card (Oct 9: R1
-                print('gpu_lease: waiting for the worker to finish its step', flush=True)  # ran out of memory beside it)
-            while _worker_busy() and h.left() > 0:
-                time.sleep(15)
-            from app.worker import Awake  # an experiment keeps the machine awake while it runs (Oct 11-12: the night's
-            with Awake(after=0):  # experiments slept from 02:45; each hourly run woke the machine and put it back)
-                began = time.time()
-                proc = subprocess.Popen(command)
-                while proc.poll() is None:
-                    if h.left() <= 0:
+            while True:
+                while _hourly_run_going() or held() is not None or not (
+                        _worker_caught_up(gave_way) or _worker_had_turn(gave_way or waiting)):
+                    time.sleep(30)
+                h = Hold(holder or ' '.join(command)[:120], left / 60)
+                try:
+                    h.take()
+                    break
+                except RuntimeError:  # another waiter took it first: wait for that one
+                    continue
+            with h:
+                if _worker_busy():  # it starts no new step now, but the one it's on may hold Gemma on the card (Oct 9:
+                    print('gpu_lease: waiting for the worker to finish its step', flush=True)  # R1 ran out of memory)
+                while _worker_busy() and h.left() > 0:
+                    time.sleep(15)
+                from app.worker import Awake  # an experiment keeps the machine awake while it runs (Oct 11-12: the
+                with Awake(after=0):  # night's experiments slept from 02:45; each hourly run woke it and put it back)
+                    began = time.time()
+                    if proc is None:
+                        proc = subprocess.Popen(command, start_new_session=True)  # its own group: paused as one
+                    else:
+                        _signal(proc, signal.SIGCONT)
+                        print('gpu_lease: going on where it was', flush=True)
+                    why = None
+                    while proc.poll() is None:
+                        if h.left() <= 0:
+                            _stop(proc)
+                            print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
+                            return 124
+                        if _hourly_run_going():
+                            why = 'the hourly run started'
+                            break
+                        if time.time() - began >= TURN * 60:
+                            why = f'{TURN} minutes run; the worker gets its turn'
+                            break
+                        time.sleep(5)
+                    else:
+                        return proc.returncode
+                    if on_gpu(group_pids(proc.pid)):
                         _stop(proc)
-                        print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
-                        return 124
-                    if _hourly_run_going():
-                        _stop(proc)
-                        print('gpu_lease: the hourly run started; the command stopped, to start again after it', flush=True)
-                        break
-                    if time.time() - began >= TURN * 60:
-                        _stop(proc)
-                        print(f'gpu_lease: {TURN} minutes run; the worker gets its turn, the command starts again after',
-                              flush=True)
-                        break
-                    time.sleep(5)
-                else:
-                    return proc.returncode
-            left -= time.time() - began
-            gave_way = time.time()
-        if left <= 0:
-            return 124
+                        proc = None
+                        print(f'gpu_lease: {why}; the command holds card memory, so it was stopped, to start again '
+                              'after', flush=True)
+                    else:
+                        _signal(proc, signal.SIGSTOP)
+                        print(f'gpu_lease: {why}; the command paused, to go on after', flush=True)
+                left -= time.time() - began
+                gave_way = time.time()
+            if left <= 0:
+                if proc is not None:
+                    _stop(proc)
+                return 124
+    finally:
+        if proc is not None and proc.poll() is None:  # killed or interrupted itself: nothing left paused behind it
+            _stop(proc)
 
 
 def main(argv=None):

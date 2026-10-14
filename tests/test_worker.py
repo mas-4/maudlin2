@@ -115,8 +115,8 @@ def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatc
     assert len(tries) == 2 and gpu_lease.held() is None
 
 
-def test_run_steps_aside_for_an_hourly_run_and_starts_again(tmp_path, monkeypatch):
-    """Oct 10: an experiment held the card through two hourly runs, which crashed"""
+def test_run_steps_aside_for_an_hourly_run_and_goes_on_after(tmp_path, monkeypatch):
+    """Oct 10: an experiment held the card through two hourly runs, which crashed; since Oct 14 it pauses for them"""
     from app import gpu_lease
     monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
@@ -131,10 +131,10 @@ def test_run_steps_aside_for_an_hourly_run_and_starts_again(tmp_path, monkeypatc
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', hourly)
     real_sleep = time.sleep
     monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: real_sleep(0.05))
-    code = (f"import time; p = {str(runs)!r}; n = len(open(p).read()) if __import__('os').path.exists(p) else 0; "
-            "open(p, 'a').write('x'); time.sleep(30 if n == 0 else 0)")
+    monkeypatch.setattr(gpu_lease, 'on_gpu', lambda pids: False)
+    code = f"import time; open({str(runs)!r}, 'a').write('x'); time.sleep(1); open({str(runs)!r}, 'a').write('y')"
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
-    assert runs.read_text() == 'xx' and gpu_lease.held() is None  # stopped once, then run to the end
+    assert runs.read_text() == 'xy' and gpu_lease.held() is None  # paused once, then on to the end
 
 
 def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monkeypatch):
@@ -149,11 +149,11 @@ def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monke
     monkeypatch.setattr(gpu_lease, '_worker_had_turn', lambda since: False)
     real_sleep = time.sleep
     monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: real_sleep(0.05))
+    monkeypatch.setattr(gpu_lease, 'on_gpu', lambda pids: False)
     runs = tmp_path / 'runs'
-    code = (f"import time; p = {str(runs)!r}; n = len(open(p).read()) if __import__('os').path.exists(p) else 0; "
-            "open(p, 'a').write('x'); time.sleep(30 if n == 0 else 0)")
+    code = f"import time; open({str(runs)!r}, 'a').write('x'); time.sleep(1.5); open({str(runs)!r}, 'a').write('y')"
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
-    assert runs.read_text() == 'xx'  # stopped after its turn, run again once the worker caught up
+    assert runs.read_text() == 'xy'  # paused for the worker's turn, and went on where it was (Oct 14), not run again
     assert asked[0] == 0 and asked[-1] > 0  # waited for the worker first, and again after giving way
 
 
@@ -232,3 +232,37 @@ def test_the_worker_leaves_to_free_the_card_and_keeps_its_last_cycle(tmp_path, m
     worker.main()  # returns: systemd starts a fresh worker without the card
     beat = json.loads(path.read_text())
     assert beat['waiting'].startswith('an experiment') and beat['cycles'] == 4 and beat['last cycle']['minutes'] == 0.4
+
+
+def _interrupted_once(tmp_path, monkeypatch, holds_card):
+    """The command under the lease, the hourly run starting once while it runs"""
+    import time as real_time
+    from app import gpu_lease
+    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
+    out, started = tmp_path / 'out.txt', []
+
+    def hourly():  # starts once the command is under way, the first time only
+        if out.exists() and not started:
+            started.append(1)
+            return True
+        return False
+    monkeypatch.setattr(gpu_lease, '_hourly_run_going', hourly)
+    monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
+    monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
+    monkeypatch.setattr(gpu_lease, 'on_gpu', lambda pids: holds_card)
+    sleep = real_time.sleep
+    monkeypatch.setattr(gpu_lease.time, 'sleep', lambda s: sleep(0.05))
+    code = (f"import time; open({str(out)!r}, 'a').write('start\\n'); time.sleep(0.6); "
+            f"open({str(out)!r}, 'a').write('end\\n')")
+    return gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test'), out.read_text().split()
+
+
+def test_the_hourly_run_pauses_a_command_and_it_goes_on_where_it_was(tmp_path, monkeypatch):
+    """Oct 14: two nights of experiments started over at every hourly run; now they pause and go on"""
+    code, lines = _interrupted_once(tmp_path, monkeypatch, holds_card=False)
+    assert code == 0 and lines == ['start', 'end']
+
+
+def test_a_command_holding_card_memory_is_stopped_and_started_again(tmp_path, monkeypatch):
+    code, lines = _interrupted_once(tmp_path, monkeypatch, holds_card=True)
+    assert code == 0 and lines == ['start', 'start', 'end']
