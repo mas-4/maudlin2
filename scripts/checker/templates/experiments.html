@@ -43,6 +43,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
 .cases td { max-width: 420px; } .cases tr.k-ok td:first-child { border-left: 4px solid var(--leaf); } .cases tr.k-bad td:first-child { border-left: 4px solid var(--berry); }
 .verdict button { font: inherit; font-size: 12px; padding: 2px 8px; border: 2px solid var(--ink); border-radius: 999px; background: #fff; cursor: pointer; margin: 1px; }
 .verdict button.on { background: var(--sun); }
+tr.blind td:first-child { box-shadow: inset 5px 0 0 var(--sun); }  /* Pandora's blind twenty: judge these first */
 .bar { display: inline-block; height: 10px; background: var(--sky); border-radius: 3px; vertical-align: middle; }
 .empty { color: var(--muted); padding: 20px 0; }
 </style>{% endblock %}
@@ -157,7 +158,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 15px system
         <div class="kinds"><button data-kind="" class="${S.kind ? '' : 'on'}">all <b>${total}</b></button>${c.summary.map(([k, n]) =>
           `<button data-kind="${esc(k)}" class="${k === 'ok' ? 'ok' : ''}${k === S.kind ? ' on' : ''}">${esc(k)} <b>${n}</b> <span class="bar" style="width:${Math.round(60 * n / Math.max(1, total))}px"></span></button>`).join('')}</div>
         ${rows.length ? `<div class="cases"><table><tr>${c.judge ? '<th>your verdict</th>' : ''}${c.columns.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.map((r) =>
-          `<tr class="${r.kind === 'ok' ? 'k-ok' : 'k-bad'}">${c.judge ? `<td class="verdict" data-key="${esc(r.key)}">${[['motif', '✅ worth a motif'], ['already', '♻️ already one'], ['not', '✕ not a telling']].map(([v, n]) =>
+          `<tr class="${r.kind === 'ok' ? 'k-ok' : 'k-bad'}${r.blind ? ' blind' : ''}">${c.judge ? `<td class="verdict" data-key="${esc(r.key)}">${[['motif', '✅ worth a motif'], ['already', '♻️ already one'], ['not', '✕ not a telling']].map(([v, n]) =>
             `<button data-v="${v}" class="${r.verdict === v ? 'on' : ''}">${n}</button>`).join('')}</td>` : ''}${r.cells.map((x) => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></div>`
           : '<div class="empty">Nothing here yet.</div>'}`;
     }

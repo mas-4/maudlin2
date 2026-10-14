@@ -209,10 +209,44 @@ def pandora() -> dict:
             rows.append({'kind': verdicts.get(key, 'to judge'), 'key': key, 'verdict': verdicts.get(key),
                          'cells': [f"{m['name']} ({m['claims']})", g['name'], g['note'], len(g['claims']),
                                    ' · '.join(g['claims'][:6])]})
+    order = blind_twenty(rows)
+    left = set(order)
+    for r in rows:
+        r['blind'] = r['key'] in left  # each key once (two random groups of a motif can share a name)
+        left.discard(r['key'])
+    rows.sort(key=lambda r: (not r['blind'], order.index(r['key']) if r['blind'] else 0))  # the twenty first, mixed
+    done = [r for r in rows if r['blind'] and r['verdict']]
     return {'summary': Counter(r['kind'] for r in rows).most_common(), 'judge': 'F10',
             'columns': ['your motif (claims)', 'proposed telling', 'its shape', 'claims', 'its claims'], 'rows': rows,
-            'note': 'Gemma opened each of your motifs of 10+ claims and named the tellings inside. Judge each: worth a '
-                    'motif of its own (resting on yours), already a motif, or not a telling. Nothing changes your index.'}
+            'note': f'Gemma opened each of your motifs of 10+ claims and named the tellings inside. 🎯 Judge the first '
+                    f'{len(order)} ({len(done)} done): a blind set, ten of its tellings and ten random groups of the same '
+                    'motifs\' claims named the same way, mixed. That settles whether its splits beat a random cut. Judge '
+                    'each: worth a motif of its own (resting on yours), already a motif, or not a telling. Nothing '
+                    'changes your index.'}
+
+
+BLIND = 10  # of each: Gemma's tellings and the random controls
+
+
+def blind_twenty(rows: list[dict]) -> list[str]:
+    """Pandora's blind set (Oct 14, the person: "there's too much for me to evaluate"): BLIND controls and BLIND of
+    Gemma's tellings, one a motif, none the person had judged when it was drawn, mixed; the same every time"""
+    import random
+    rnd = random.Random(14)
+    ctl = sorted({r['key'] for r in rows if r['key'].startswith('ctl|')})
+    seen, tell = set(), []
+    for r in sorted(rows, key=lambda r: r['key']):
+        mid = r['key'].split('|')[0]
+        if not r['key'].startswith('ctl|') and mid not in seen and r['key'] not in FIRST_JUDGED:
+            seen.add(mid)
+            tell.append(r['key'])
+    picked = rnd.sample(ctl, min(BLIND, len(ctl))) + rnd.sample(tell, min(BLIND, len(tell)))
+    rnd.shuffle(picked)
+    return picked
+
+
+FIRST_JUDGED = {'M173|Chaos in the Streets', 'M173|Miracles and Wonders', 'M173|The Great Deception',
+                'M173|The Great Replacement', 'M173|The Human Tragedy'}  # judged before the set was drawn
 
 
 CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora}
