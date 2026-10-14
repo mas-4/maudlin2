@@ -33,7 +33,7 @@ SHARED_STATIC = {'motif-map-layout.js': os.path.join(os.path.dirname(CHECKER), '
 # then the other tools. The organizer, the singles page and the board were dropped Oct 7 (the workbench does their
 # work; the board's /motif-board.json and POST /motif-board stay, for the map and the other pages). (path, label, section)
 NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '🕸️ Motif map', 'main'),
-       ('/dashboard', '📈 Dashboard', 'main'), ('/experiments', '🧪 Experiments', 'main'), ('/flow', '🌊 Flow', 'main'),
+       ('/dashboard', '📈 Dashboard', 'main'), ('/experiments', '🧪 Experiments', 'main'), ('/flow', '🌊 Flow', 'main'), ('/live', '🧠 Live', 'main'),
        ('/motifs', '✅ check', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
        ('/motif-notes', '📝 notes', 'motifs'),
        ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
@@ -62,7 +62,7 @@ def render(template: str, here: str, undo: bool = True, **context) -> str:
 
 STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-empty': 'empty.html',
                 '/motif-notes': 'notes.html', '/dashboard': 'dashboard.html', '/experiments': 'experiments.html',
-                '/flow': 'flow.html'}
+                '/flow': 'flow.html', '/live': 'live.html'}
 STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
 
 
@@ -1005,6 +1005,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.path.startswith('/experiments.json'):
                 return self.send_json(lab.overview())
             return self.send_json(lab.paper(code) if self.path.startswith('/experiment-paper') else lab.cases(code))
+        if self.path.startswith('/live.json'):  # 🧠 the filing pipeline as it runs (app/analysis/trace_view.py)
+            from app.analysis import trace_view
+            return self.send_json(trace_view.view({k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}))
         if self.path.startswith('/flow.json'):  # 🌊 news stories into retellings over time (app/analysis/flow.py)
             from app.analysis import flow
             return self.send_json(flow.flow())
@@ -1052,7 +1055,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Location', '/motif-workbench')
             self.end_headers()
             return
-        body = (render(page_of, path, undo=page_of not in ('dashboard.html', 'experiments.html', 'flow.html')) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
+        body = (render(page_of, path, undo=page_of not in ('dashboard.html', 'experiments.html', 'flow.html', 'live.html')) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
                 else page())
         body = body.encode()
         self.send_response(200)
