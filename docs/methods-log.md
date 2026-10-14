@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-14
+- **Flabby motifs opened into their tellings.** Pandora's drafts (Gemma's reading of each of the person's motifs of 10+
+  claims: the distinct stories told inside it, each with a note and its claims) are in the checker's 🧩 tellings tab.
+  A telling the person makes a motif rests on the broader one and takes its ticked claims, which leave the broader one
+  (or stay in both); this is not read as "not this motif" by the confidence model, since the claims still tell the
+  broader shape, only more exactly. Each decision is also Pandora's verdict.
 - **A story is titled once more when it leaves the front pages.** Titles were written only while a story was live,
   from its newest headlines, and stood for good once it left; but headlines can move to another story afterwards, so a
   part could keep a title for news it no longer held (saga 48: "Senators Collins and Jackson debate in Maine" stood

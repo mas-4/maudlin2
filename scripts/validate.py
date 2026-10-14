@@ -517,6 +517,10 @@ def workbench_state() -> dict:
     state['proposals'] = len(mp.open_proposals())  # the 💡 tab's count
     from app.analysis import claim_organizer as co
     state['splits'] = sum(1 for p in mp.load().values() if p.get('status') == 'open' and co.still_holds(p, index))
+    from app.analysis import tellings
+    drafted = tellings.drafted(index)
+    state['tellings'] = sum(len(m['tellings']) for m in drafted)
+    state['tellings_of'] = {m['id']: len(m['tellings']) for m in drafted}  # a motif panel's 🧩 button
     from app.analysis import filing_confidence as fc
     from app.utils.store import read_json
     m = read_json(fc.MODEL, None)  # how sure 'sure' is, as tested held out
@@ -749,6 +753,9 @@ def workbench_queue(kind: str):
         except Exception as e:  # noqa: BLE001 - the embeddings need Ollama
             similar, note = [], f'similar names unavailable: {type(e).__name__}'
         return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
+    if kind == 'tellings':  # 🧩 Pandora's tellings of the flabby motifs, still to decide
+        from app.analysis import tellings
+        return tellings.drafted()
     if kind == 'splits':  # the claim organizer's open splits, with each child's posts
         from app.analysis import claim_organizer as co
         return co.open_splits()
@@ -795,6 +802,15 @@ def critique(data: dict) -> dict:
 def workbench_action(data: dict):
     from app.analysis import motif_index as mi
     act = data.get('action')
+    if act in ('telling', 'telling_reject'):  # 🧩 a flabby motif's telling made a motif of its own (tellings.py)
+        from app.analysis import tellings
+        if act == 'telling_reject':
+            tellings.reject(data.get('key'))
+        else:
+            claims = [c for c in data.get('claims') or [] if isinstance(c, str)]
+            data['id'] = tellings.make(data.get('parent', ''), data.get('name', ''), claims, data.get('note') or '',
+                                       data.get('move', True) is not False, data.get('key'))
+        return
     if act in ('split', 'split_reject'):  # the claim organizer's (claim_organizer.py), or a person's own split: its own
         from app.analysis import claim_organizer as co  # action, never read as "not this motif"
         why = data['why'].strip() if isinstance(data.get('why'), str) and data['why'].strip() else None

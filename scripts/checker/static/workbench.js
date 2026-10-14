@@ -338,6 +338,7 @@
             : `<span class="wb-state todo" title="not looked over yet; it stays off the site">⏳ Not done yet</span><button class="wb-btn yes" data-done="${e.id}" title="you've looked over its claims: it can go on the site">mark as done</button>`}
           <span class="wb-pbar-end">
             <button class="wb-mini" data-rename="${e.id}" title="rename">✎ rename</button>
+            ${(S.data.tellings_of || {})[e.id] ? `<button class="wb-mini" data-opentellings="${e.id}" title="the different stories told inside it, drafted by Gemma: make the good ones motifs of their own, resting on this one">🧩 ${S.data.tellings_of[e.id]} tellings</button>` : ''}
             <button class="wb-mini" data-copymotif="${e.id}" title="copy everything about it: name, note, groups, genre, what it rests on and what rests on it, related (with their notes) and every claim">📋 copy</button>
             ${isSingle(e) || e.stands_alone ? `<button class="wb-mini${e.stands_alone ? ' on' : ''}" data-alone="${e.id}" title="a single motif that needs no partner">🧍 ${e.stands_alone ? 'stands alone' : 'stands alone?'}</button>` : ''}
             <button class="wb-mini${e.watch ? ' on' : ''}" data-watch="${e.id}" title="${e.watch ? 'a watch list: its claims are plain reports, filed again each week as the index grows (click to stop)' : 'make it a watch list, like Straight news: its claims are plain reports, filed again each week in case they are later told as a motif'}">👁 ${e.watch ? 'watched' : 'watch?'}</button>
@@ -422,9 +423,9 @@
   // The claims to judge, one claim at a time with everything about it (Oct 12, the person: they met the same claim in the
   // check, unchecked, second look and today tabs, each showing one of its motifs: "hard to judge a claim and its motifs
   // holistically"). Today keeps the motif-level decisions (new motifs to shape, proposals)
-  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['tellings', '🧩 tellings'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), proposals: S.data.proposals, splits: S.data.splits, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), proposals: S.data.proposals, splits: S.data.splits, tellings: S.data.tellings, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
   }
   // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
@@ -585,6 +586,21 @@
           <p class="wb-faint">Most like these you've rejected. Skim them, untick any worth keeping, then <button class="wb-btn no" data-propfold="1">✕ reject the ticked</button></p>
           ${unlikely.map((p) => card(p).replace('data-propsel="', 'checked data-propsel="')).join('')}</details>` : ''}`
         : '<div class="wb-welcome"><div class="wb-big">🎉</div><p>No proposals waiting. The proposer runs from <code>scripts/propose_motif_fixes.py</code>.</p></div>';
+    } else if (tab === 'tellings') {
+      // 🧩 a flabby motif opened into the stories told inside it (Pandora): each one made a motif of its own, resting
+      // on it, its claims moving there; or kept as a seed; or turned down
+      const q = await queue('tellings');
+      if (S.tab !== tab) return;
+      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
+      S.tellings = {};
+      const motifs = q.filter((m) => S.by[m.id]).map((m) => ({...m, tellings: m.tellings.filter((t) => !S.decided.has('t:' + t.key))})).filter((m) => m.tellings.length);
+      motifs.forEach((m) => m.tellings.forEach((t) => { S.tellings[t.key] = {...t, parent: m.id}; }));
+      const first = S.tellingsFor && motifs.some((m) => m.id === S.tellingsFor) ? S.tellingsFor : (motifs[0] || {}).id;
+      box.innerHTML = motifs.length ? `<p class="wb-faint">🧩 Your biggest motifs, each opened into the different stories told inside it (Gemma's drafts). Make a good one a motif of its own: it rests on the broader one, and its ticked claims move there (untick “take them out” to keep them in both). Edit the name and note first if they're off. ✕ if it isn't a telling. Neither teaches the filer “wrong motif”.</p>
+        ${motifs.map((m) => `<details class="wb-tmotif" id="tm-${m.id}"${m.id === first ? ' open' : ''}><summary>${chip(m.id)} <b>${m.tellings.length}</b> telling${m.tellings.length === 1 ? '' : 's'} <span class="wb-faint">of ${m.claims} claims</span></summary>
+          ${m.note ? `<p class="wb-faint">${esc(m.note)}</p>` : ''}${m.tellings.map((t) => tellingCard(t, m)).join('')}</details>`).join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">🧩</div><p>No tellings waiting.</p></div>';
+      if (S.tellingsFor) { const el = $('#tm-' + S.tellingsFor); if (el) el.scrollIntoView({block: 'start'}); S.tellingsFor = null; }
     } else if (tab === 'splits') {
       // the claim organizer's splits (Psyche): a claim whose posts tell several things, one new claim per telling
       const q = await queue('splits');
@@ -1265,6 +1281,8 @@
       renderShelf();
       return renderTree();
     }
+    if ((v = d('telling'))) { const i = v.indexOf('|'); return decideTelling(v.slice(i + 1), v.slice(0, i)); }
+    if ((v = d('opentellings'))) { S.tellingsFor = v; S.queues.tellings = null; S.tab = 'tellings'; renderTabs(); return renderInbox(); }
     if ((v = d('split'))) { const [yes, id] = v.split('|'); return decideSplit(id, yes === 'yes'); }
     if (t.closest('[data-handsplit]') && S.claim) return splitByHand(S.claim.claim);
     if ((v = d('prop'))) { const [yes, id] = v.split('|'); return decideProposals([id], ['seed', 'flip'].includes(yes) ? yes : yes === 'yes'); }
@@ -1543,6 +1561,31 @@
     }
     while (i < x.length) out += `<del>${esc(x[i++])}</del>`;
     return out;
+  }
+  function tellingCard(t, m) {
+    const k = esc(t.key);
+    return `<div class="wb-card wb-motiftelling" data-tkey="${k}">
+      <input class="wb-tname" data-tname="${k}" value="${esc(t.name)}" aria-label="its name">
+      <textarea class="wb-tnote" data-tnote="${k}" rows="2" aria-label="its note">${esc(t.note)}</textarea>
+      <ul class="wb-propclaims">${t.claims.map((c, i) => `<li><label><input type="checkbox" checked data-tclaim="${k}|${i}"> ${esc(c)}</label></li>`).join('')}</ul>
+      <label class="wb-faint"><input type="checkbox" checked data-tmove="${k}"> take them out of ${chip(m.id)}</label>
+      <span class="wb-sbtns"><button class="wb-btn yes" data-telling="yes|${k}" title="make it a motif of its own, resting on ${esc(m.name)}, with the ticked claims">✓ make it</button><button class="wb-btn" data-telling="seed|${k}" title="make it a motif with no claims yet: the filing can find it for the next telling">🌱 seed</button><button class="wb-btn no" data-telling="no|${k}" title="not a telling of its own">✕</button></span></div>`;
+  }
+  async function decideTelling(key, how) {
+    const t = S.tellings && S.tellings[key];
+    if (!t) return;
+    const sel = (a) => $$(`[${a}]`).find((x) => x.getAttribute(a) === key);
+    const name = ((sel('data-tname') || {}).value || t.name).trim(), note = ((sel('data-tnote') || {}).value || '').trim();
+    const claims = how === 'seed' ? [] : t.claims.filter((_, i) => { const b = $$('[data-tclaim]').find((x) => x.dataset.tclaim === `${key}|${i}`); return !b || b.checked; });
+    const move = !sel('data-tmove') || sel('data-tmove').checked;
+    if (how === 'yes' && !claims.length) return toast('🧩 tick a claim, or keep it as a 🌱 seed', true);
+    S.decided.add('t:' + key);
+    const step = how === 'no' ? {action: 'telling_reject', key} : {action: 'telling', key, parent: t.parent, name, note, claims, move,
+      ...(name !== t.name || note !== t.note ? {draft: {name: t.name, note: t.note}} : {})};
+    const ok = await act(step, how === 'no' ? '✕ not a telling' : `🧩 “${name}” made a motif${claims.length ? `, ${claims.length} claim${claims.length === 1 ? '' : 's'}` : ' (a seed)'}`);
+    if (!ok) S.decided.delete('t:' + key);
+    S.queues.tellings = null;
+    if (S.tab === 'tellings') { S.tellingsFor = t.parent; renderInbox(); }
   }
   function splitCard(p) {
     const a = p.args, why = Object.keys(a.triggers || {});

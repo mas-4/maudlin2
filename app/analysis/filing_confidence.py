@@ -100,6 +100,10 @@ def _decided(a: dict, out: dict, hand: bool = False):
             out[(mi.key(a['claim']), a['target'])] = True
     elif hand and act == 'also' and a.get('claim') and a.get('target'):
         out[(mi.key(a['claim']), a['target'])] = True
+    elif hand and act == 'telling' and a.get('id'):  # a flabby motif's telling made a motif: its claims put there
+        for c in a.get('claims') or []:
+            if isinstance(c, str):
+                out[(mi.key(c), a['id'])] = True
     elif hand and act == 'file' and a.get('claim') and a.get('id'):
         out[(mi.key(a['claim']), a['id'])] = True
     elif act == 'new_with':  # a claim moved out of its motif into a new one: not that motif
