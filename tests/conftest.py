@@ -73,6 +73,52 @@ def pytest_sessionstart(session):
     sagas.ENDED = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-sagas-'), 'sagas_ended.json')
 
 
+# Every path into the shared data folder, pointed at a scratch copy (Oct 14: the list above missed the shortlist and
+# filing logs, and 81 test runs since Oct 12 wrote "Biden is too old to govern" and the like into the real ones, which
+# the weekly shortlist check reads). Not path by path: before each test, any module-level path under the data folder,
+# in any module loaded so far, and the data folder itself, now lead to the same place under a scratch folder.
+SCRATCH = tempfile.mkdtemp(prefix='maudlin-test-data-')
+_REAL = None
+_done = set()
+
+
+def _real_roots() -> tuple:
+    global _REAL
+    if _REAL is None:
+        _REAL = tuple({os.path.realpath(Config.data), os.path.abspath(Config.data)})
+    return _REAL
+
+
+def _scratch(path: str) -> str | None:
+    for root in _real_roots():
+        if path == root or path.startswith(root + os.sep):
+            new = SCRATCH + path[len(root):]
+            os.makedirs(os.path.dirname(new) if os.path.splitext(new)[1] else new, exist_ok=True)
+            return new
+    return None
+
+
+def _redirect_data_paths():
+    import sys
+    _real_roots()
+    if Config.data != SCRATCH:
+        Config.data = SCRATCH
+    for name, mod in list(sys.modules.items()):
+        if name in _done or not (name.startswith('app') or getattr(mod, '__file__', '') and
+                                 os.sep + 'scripts' + os.sep in (mod.__file__ or '')):
+            continue
+        _done.add(name)
+        for attr, val in list(vars(mod).items()):
+            if isinstance(val, str) and not val.endswith('.db') and (new := _scratch(os.path.abspath(val)) if val.startswith('/') else None):
+                setattr(mod, attr, new)
+
+
+@pytest.fixture(autouse=True)
+def _no_shared_data():
+    _redirect_data_paths()
+    yield
+
+
 @pytest.fixture(scope='session')
 def data_handler():
     return DataHandler()

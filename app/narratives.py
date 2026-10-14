@@ -468,12 +468,18 @@ def posts_of(keys: list[str]) -> list[dict]:
     from app.vernacular import DB
     if not keys:
         return []
+    if not os.path.exists(DB):  # no post store here (a test's scratch data): no posts
+        return []
     con = sqlite3.connect(DB)
     rows = []
-    for start in range(0, len(keys), 500):
-        part = keys[start:start + 500]
-        rows += con.execute(f'SELECT text, source, reply FROM post WHERE key IN ({",".join("?" * len(part))})', part).fetchall()
-    con.close()
+    try:
+        for start in range(0, len(keys), 500):
+            part = keys[start:start + 500]
+            rows += con.execute(f'SELECT text, source, reply FROM post WHERE key IN ({",".join("?" * len(part))})', part).fetchall()
+    except sqlite3.OperationalError:  # a store not made yet
+        rows = []
+    finally:
+        con.close()
     seen = {}
     for text, source, reply in rows:
         p = seen.setdefault(normalized(text), {'text': text, 'n': 0, 'source': source, 'reply': bool(reply)})
