@@ -481,6 +481,11 @@ class HeadlinesPage:
         # numbers change every run: an outside reader found #story-2 and story-10.html naming different stories)
         self.context['anchor_of'] = {int(k): f's-{sid}' for k, sid in self.story_of.items()}
         self.summarize(df, label_stories(df, stories))
+        try:  # stories that left the front pages: one last title, from the headlines they ended with
+            from app.analysis.stories import label_ended
+            label_ended()
+        except Exception as e:  # noqa: BLE001 - a title can wait for the next run
+            logger.warning("Final story titles failed: %s", e)
         grouped = df.groupby('cluster')
         clusters_list = [{'cluster': key, 'data': group.to_dict(orient='records')} for key, group in grouped]
         for cluster in clusters_list:

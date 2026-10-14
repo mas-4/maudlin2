@@ -144,3 +144,30 @@ def test_two_live_stories_the_model_calls_different_stay_apart(db, monkeypatch, 
     assert out[0].id == a
     with db() as s:
         assert s.get(Story, b) is not None
+
+
+def test_a_story_that_left_the_front_pages_is_titled_once_more_from_its_last_headlines(db, monkeypatch, tmp_path):
+    """Oct 14, saga 48: a part titled for the Maine debate held ten Georgia headlines once the Maine ones had gone"""
+    import pytz
+    from datetime import timedelta as td
+    from app.models import Headline
+    monkeypatch.setattr(stories, 'FINALS', str(tmp_path / 'finals.json'))
+    monkeypatch.setattr(stories, 'LABELED_AT', str(tmp_path / 'labeled_at.json'))
+    monkeypatch.setattr(stories.llm, 'backend', lambda: 'ollama')
+    asked = []
+    monkeypatch.setattr(stories.llm, 'complete_json', lambda prompt, *a, **kw: asked.append(prompt) or
+                        {'title': 'Ossoff and Collins clash in Georgia Senate debate'})
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
+    with db() as s:
+        gone = Story(label='Senators Collins and Jackson debate in Maine', first_seen=now - td(days=4), last_seen=now - td(days=3))
+        live = Story(label='On now', first_seen=now, last_seen=now)
+        s.add_all([gone, live])
+        s.flush()
+        for i, t in enumerate(['Ossoff, Collins clash in Georgia Senate debate', 'Five takeaways from the Georgia debate']):
+            s.add(Headline(id=i + 1, article_id=1, title=t, first_accessed=now - td(days=3), last_accessed=now - td(days=3)))
+            s.add(StoryHeadline(story_id=gone.id, headline_id=i + 1, sentiment=0.0, deviation=0.0, last_seen=now))
+        s.commit()
+        gone_id = gone.id
+    assert stories.label_ended(now) == {gone_id: 'Ossoff and Collins clash in Georgia Senate debate'}
+    assert 'Georgia debate' in asked[0] and len(asked) == 1  # the live story isn't touched
+    assert stories.label_ended(now) == {} and len(asked) == 1  # once only

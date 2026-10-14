@@ -276,7 +276,8 @@ LABEL_PROMPT = """These headlines from different news outlets all cover the same
 Write a short, neutral title (4 to 10 words) that states what happened, its latest development if the story has \
 moved on. Use plain factual language a wire \
 service would use: no outlet names, no loaded or emotive words, no opinion, and don't adopt any one \
-outlet's framing. Write it in sentence case: capitalize only the first word and proper nouns.
+outlet's framing. Give people only the titles and roles the headlines give them. Go by what most of the headlines \
+report, not a stray one. Write it in sentence case: capitalize only the first word and proper nouns.
 
 Examples of the style:
 - Senate passes stopgap bill to avert government shutdown
@@ -355,6 +356,58 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
         labeled_at[str(stories[cluster].id)] = now.isoformat(timespec='seconds')
     write_json(LABELED_AT, labeled_at)
     return labels
+
+
+# A story's title is written while it's on the front pages, from its newest headlines, and stood for good once it
+# left: but its headlines can move to another story after (a headline joins the story it clusters with now), so a part
+# could keep a title for news it no longer holds. Oct 14, saga 48: "Senators Collins and Jackson debate in Maine",
+# written while the cluster held both debates of that night, stood over ten Georgia headlines once the Maine ones had
+# gone. So a story that has left the front pages is titled once more, from the headlines it ended with.
+FINAL_AFTER = td(hours=2)  # off the front pages this long: it has left (RETURN_GAP is the shorter wait for a return)
+FINAL_WITHIN = td(days=7)  # stories that left in this window (sagas show their parts for a week: SAGA_MEMORY)
+FINAL_PER_RUN = 25  # about a week's ended stories within a day; saga parts first
+FINALS = os.path.join(Config.data, 'story_final_labels.json')  # story id -> {'at', 'from': the title it replaced}
+
+
+def label_ended(now: dt | None = None, limit: int = FINAL_PER_RUN) -> dict[int, str]:
+    """A last title for each story that left the front pages lately and has none written since it left: story id ->
+    its new title (written only when it differs)"""
+    if llm.backend() is None:
+        return {}
+    now = now or dt.now(pytz.UTC).replace(tzinfo=None)
+    done = read_json(FINALS, {})
+    labeled_at = read_json(LABELED_AT, {})
+    out = {}
+    with Session() as s:
+        ended = s.query(Story).filter(Story.last_seen < now - FINAL_AFTER, Story.last_seen >= now - FINAL_WITHIN) \
+            .order_by(Story.saga_id.is_(None), Story.last_seen.desc()).all()
+        todo = [x for x in ended if str(x.id) not in done][:limit]
+        titles = {x.id: [t for (t,) in s.query(Headline.title).join(StoryHeadline, StoryHeadline.headline_id == Headline.id)
+                         .filter(StoryHeadline.story_id == x.id).order_by(Headline.first_accessed.desc()).limit(LABEL_FROM)]
+                  for x in todo}
+        old = {x.id: x.label for x in todo}
+    for sid in old:
+        if not titles[sid]:
+            continue
+        result = llm.complete_json(LABEL_PROMPT.format(headlines='\n'.join(f'- {t}' for t in titles[sid])), LABEL_SCHEMA,
+                                   max_tokens=64)
+        label = (result or {}).get('title', '').strip().rstrip('.')
+        if not label:
+            continue
+        label = restore_case(label, titles[sid])
+        done[str(sid)] = {'at': now.isoformat(timespec='seconds'), 'from': old[sid]}
+        if label != old[sid]:
+            with Session() as s, SqlLock:
+                story = s.get(Story, sid)
+                if story is not None:
+                    story.label = label
+                    s.commit()
+            labeled_at[str(sid)] = now.isoformat(timespec='seconds')
+            out[sid] = label
+            logger.info("Story %d titled again as it ended: %s (was: %s)", sid, label, old[sid])
+    write_json(FINALS, done)
+    write_json(LABELED_AT, labeled_at)
+    return out
 
 
 def framing_scores() -> pd.DataFrame:

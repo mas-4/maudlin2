@@ -5,6 +5,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-14
+- **A story is titled once more when it leaves the front pages.** Titles were written only while a story was live,
+  from its newest headlines, and stood for good once it left; but headlines can move to another story afterwards, so a
+  part could keep a title for news it no longer held (saga 48: "Senators Collins and Jackson debate in Maine" stood
+  over ten Georgia headlines). Now, two hours after a story leaves, it is titled once from the headlines it ended with,
+  saga parts first, the past week's stories over the next day or so. The title prompt now also says to give people
+  only the roles the headlines give them (the titles had made Rep. Mike Collins a senator).
 - **The confidence model no longer learns from the answer.** One of its signals counts the motifs a claim is in. In
   training it was counted as the index stands now, so a filing the person had taken out was already missing from the
   count, and the model could partly read the person's verdict off it (the Danaids, Oct 12: worth about 0.01 of AUC;
