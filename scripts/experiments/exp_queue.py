@@ -31,6 +31,7 @@ from datetime import datetime as dt
 
 sys.path.insert(0, '/home/mas/Repos/maudlin2/scripts/experiments')
 import harness  # noqa: E402
+import lab_data  # noqa: E402
 
 ROOT = '/home/mas/Repos/maudlin2'
 DB = os.path.join(harness.EXP, 'experiments.sqlite')
@@ -188,6 +189,10 @@ def run():
             continue
         sid, holder, cmd, minutes, lease, _, tries = step
         cmd = json.loads(cmd)
+        # the step itself on the experiments' own copy of the data (lab_data.py: nothing it writes reaches
+        # production's); the lease around it stays on production's, where the hourly run and the worker are
+        fresh = con.execute('select started from queue where id = ?', (sid,)).fetchone()[0] is None
+        cmd = ['env', f'MAUDLIN_DATA={lab_data.LAB}', 'MAUDLIN_TRACE=off'] + cmd
         full = ([PY, '-m', 'app.gpu_lease', 'run', '--minutes', str(minutes), '--holder', holder, '--'] if lease else []) + cmd
         con.execute('update queue set status = ?, started = ? where id = ?', ('running', now(), sid))
         con.commit()
@@ -195,6 +200,11 @@ def run():
         before = open(path).read() if os.path.exists(path) else ''
         with open(path, 'a') as log:
             log.write(f'\n== {now()} step {sid}, try {tries + 1}: {" ".join(cmd)}\n')
+            if fresh:  # a step starting fresh gets production's data as it is now; a resumed one keeps its copy
+                try:
+                    log.write(f'lab_data: refreshed {lab_data.refresh()}\n')
+                except Exception as e:  # noqa: BLE001 - an older copy will do; say so
+                    log.write(f'lab_data: refresh failed ({e}); on the copy as it was\n')
             log.flush()
             # the reranker on the CPU, as production has it: loaded on a GPU free for a moment, it filled the card and
             # Nimble had no room (Oct 13, Isis's last try: a 500 from Ollama); a step can still ask for the GPU itself

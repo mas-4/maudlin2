@@ -18,7 +18,7 @@ from app.utils import Config, Constants, get_logger
 
 logger = get_logger(__name__)
 
-CACHE = os.path.join(Constants.Paths.ROOT, 'data', 'favicons')
+CACHE = os.path.join(Config.data, 'favicons')
 BUILD_DIR = 'icons'  # under the build
 MAX_AGE = 7 * 24 * 3600
 SIZE = 64

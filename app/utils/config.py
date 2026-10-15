@@ -57,7 +57,9 @@ class Config:
     exempted_foreign_media = ["The Economist", "BBC", "The Guardian", "Financial Times", "Reuters", "The Independent"]
     headline_cutoff = 128
 
-    data = os.path.join(Constants.Paths.ROOT, 'data')
+    # MAUDLIN_DATA: another data folder, the experiments' copy (scripts/experiments/lab_data.py), so a queued step
+    # can't write into production's whatever it forgets (Oct 15)
+    data = os.environ.get('MAUDLIN_DATA') or os.path.join(Constants.Paths.ROOT, 'data')
     log_file = os.environ.get('MAUDLIN_LOG_FILE') or f'{data}/app.log'  # tests send theirs elsewhere (conftest.py)
     if not os.path.exists(data):
         os.makedirs(data)
