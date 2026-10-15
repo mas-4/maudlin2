@@ -57,10 +57,20 @@ def _plain(x, digits: int = 4):
     return str(x)
 
 
+def live() -> bool:
+    """Whether this process files into the live index: an experiment's step (MAUDLIN_TRACE=off, set by the queue) or a
+    copy of the index (an experiment's sandbox) isn't the pipeline, and its filings stay out of the trace (the night of
+    Oct 14-15, Echo's 687 sandbox filings showed on the Live page as if real)"""
+    if os.environ.get('MAUDLIN_TRACE') == 'off':
+        return False
+    from app.analysis import motif_index as mi
+    return os.path.realpath(mi.INDEX) == os.path.realpath(os.path.join(Config.data, 'motif_index.json'))
+
+
 def emit(stage: str, claim: str, **data):
     """One event of a claim at a stage, appended to today's file. Never raises"""
     try:
-        if not isinstance(claim, str) or not claim.strip():
+        if not isinstance(claim, str) or not claim.strip() or not live():
             return
         now = dt.now()
         row = {'t': now.isoformat(timespec='seconds'), 's': stage, 'k': key(claim)}

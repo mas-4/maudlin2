@@ -198,7 +198,8 @@ def run():
             log.flush()
             # the reranker on the CPU, as production has it: loaded on a GPU free for a moment, it filled the card and
             # Nimble had no room (Oct 13, Isis's last try: a 500 from Ollama); a step can still ask for the GPU itself
-            env = {**os.environ, 'MOTIF_RERANK_DEVICE': os.environ.get('MOTIF_RERANK_DEVICE', 'cpu')}
+            env = {**os.environ, 'MOTIF_RERANK_DEVICE': os.environ.get('MOTIF_RERANK_DEVICE', 'cpu'),
+                   'MAUDLIN_TRACE': 'off'}  # an experiment's filings aren't the pipeline's: off the 🧠 Live page
             code = subprocess.run(full, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, env=env).returncode
         with open(path) as f:
             during = f.read()[len(before):]

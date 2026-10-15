@@ -153,7 +153,14 @@ def trace_events(days: int | None = None) -> list[dict]:
     if days is not None:
         cut = f'{dt.now() - td(days=days - 1):%Y-%m-%d}'
         paths = [p for p in paths if os.path.basename(p)[:10] >= cut]
-    return [e for p in paths for e in _read_file(p)]
+    events = [e for p in paths for e in _read_file(p)]
+    # Filings of claims that never reached the live index came from an experiment filing into a copy of it (the night
+    # of Oct 14-15, Echo's 687 sandbox filings, before experiments stopped tracing): not the pipeline's
+    known = set(_index().get('claims', {})) | set(_index().get('tellings', {}))
+    return [e for e in events if e.get('s') not in FILING_STAGES or e.get('k') in known]
+
+
+FILING_STAGES = {'shaped', 'shortlist', 'picked', 'scored'}
 
 
 def _index_stamp() -> tuple:

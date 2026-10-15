@@ -104,6 +104,7 @@ def logs(folder, tmp_path, monkeypatch):
     """An index, the shortlist and refile logs, the signals' caches and a curation log, as the pipeline left them"""
     from app.analysis import curation_db, filing_confidence as fc, motif_signals as ms, watch_list
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    monkeypatch.setattr(trace, 'live', lambda: True)  # this test's index stands for the live one
     monkeypatch.setattr(mi, 'SHORTLIST_LOG', str(tmp_path / 'shortlist.jsonl'))
     monkeypatch.setattr(watch_list, 'REFILE_LOG', str(tmp_path / 'refile.jsonl'))
     monkeypatch.setattr(ms, 'SHAPES', str(tmp_path / 'shapes.json'))
@@ -206,3 +207,14 @@ def test_the_view_says_what_went_wrong_instead_of_failing(monkeypatch):
 
 def test_tests_never_trace_into_the_real_data_folder():
     assert trace.FOLDER is None and 'maudlin-test-data' in trace.folder()  # Config.data, as conftest points it
+
+
+def test_an_experiments_filings_stay_out_of_the_trace(folder, monkeypatch, tmp_path):
+    """Oct 15: Echo filed 687 claims into a copy of the index overnight, and they showed as the pipeline's"""
+    assert trace.live()  # the suite's index is the data folder's own
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'sandbox' / 'motif_index.json'))  # an experiment's copy
+    trace.emit('shortlist', 'a claim', ids=['M1'])
+    assert not folder.exists() or not list(folder.iterdir())
+    monkeypatch.undo()
+    monkeypatch.setenv('MAUDLIN_TRACE', 'off')  # a queued step
+    assert not trace.live()
