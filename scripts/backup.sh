@@ -69,8 +69,15 @@ fi
 # GNU tar exits 1 when a file or folder changes while it's read, which the worker and checker cause most nights; the
 # archive is still whole (write_json replaces files by rename, so tar reads one version or the other; an appended log
 # may miss its last lines) and the warnings name what changed. 2 and up (unreadable file, full disk, gzip) is a failure.
+# The hourly copy is the hand curation only: until Oct 15 it carried the archive experiments' database (2.3G) and a
+# downloaded newspaper corpus (1G) every hour, 3.6G a copy and 170G for the 48 kept. The experiments' data, the taught
+# reranker and the pipeline's trace go in the nightly copy alone
+HOURLY_SKIP=()
+if [ "${1:-}" = "run" ]; then
+    HOURLY_SKIP=(--exclude=./archives --exclude=./motifs/experiments --exclude=./motifs/reranker --exclude=./motifs/trace)
+fi
 TAR_STATUS=0
-tar -czf "$FILES" -C "$DATA" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
+tar -czf "$FILES" -C "$DATA" "${HOURLY_SKIP[@]}" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
     --exclude='*embeddings.sqlite*' --exclude=./archives/american_stories \
     --exclude=./motifs/vectors.npy --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}" \
     || TAR_STATUS=$?
