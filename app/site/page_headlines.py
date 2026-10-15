@@ -475,12 +475,13 @@ class HeadlinesPage:
         sentiment = df['sentiment'] = headline_sentiment(df)
         df['deviation'] = mood_vs_others(sentiment, df['cluster'])
         stories = sync_stories(df)
+        labels = label_stories(df, stories)  # first: a story split at a new development (Sinbad) changes its cluster's story
         self.story_of = {int(k): story.id for k, story in stories.items()}  # cluster -> saved story, for sagas
         self.context['story_of'] = self.story_of  # stable ids for share links (cluster numbers change every run)
         # Every link to a story card uses the saved story's id (s-123), never the card's place this hour (cluster
         # numbers change every run: an outside reader found #story-2 and story-10.html naming different stories)
         self.context['anchor_of'] = {int(k): f's-{sid}' for k, sid in self.story_of.items()}
-        self.summarize(df, label_stories(df, stories))
+        self.summarize(df, labels)
         try:  # stories that left the front pages: one last title, from the headlines they ended with
             from app.analysis.stories import label_ended
             label_ended()
