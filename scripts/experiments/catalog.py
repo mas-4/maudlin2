@@ -74,6 +74,8 @@ REGISTRY = {
            'precision at equal coverage: TF-IDF 0.25-0.64, mxbai 0.88, hybrids 0.92-0.95; recall sample too small (3)'),
     'S4': ('Seams in stories: embeddings, then TF-IDF cuts', 's4_story_seams.py', 'answered', 's4_story_seams.json',
            'cuts scoring under 0.6 right 18 of 18, 0.6-0.7 69%, over 0.8 rarely'),
+    'S5': ('A long story split at each new development, replayed over every story of 36 hours or more',
+           's5_sinbad.py', 'queued', 's5_sinbad.json', ''),
     'F1': ('Splitting motifs where they hold two tellings: Atropos\'s word cut on motifs', 'f1_gordian_knot.py',
            'answered', 'f1_gordian_knot.json; curation.sqlite (the index\'s versions)',
            'no: words can\'t see it (odd one out 11% against chance 14%; cut AUC 0.67)'),

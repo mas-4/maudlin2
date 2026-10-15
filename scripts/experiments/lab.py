@@ -313,7 +313,68 @@ def _ptah_pick(key: str, value: str | None) -> dict:
     return {'ok': True, 'verdicts': len(v)}
 
 
-CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora, 'F23': ptah}
+def sinbad() -> dict:
+    """Each question the replay put to a long story: the blind set first (numbered, the model's answer and the story
+    hidden), then the known cases' (Fort Hood, Christa Pike), then the rest, splits first"""
+    import s5_sinbad as f
+    s = _load('s5_sinbad.json')
+    walks, S, person = s.get('walks', {}).get('last', {}), s.get('stories', {}), s.get('person', {})
+
+    def heads(xs):
+        return ' · '.join(xs)
+
+    def when(c):
+        return f"{c['since'][5:16].replace('T', ' ')} → {c['at'][5:16].replace('T', ' ')}"
+    blind = {x['key']: x['n'] for x in s.get('blind', [])}
+    first, rest = {}, []
+    for sid, checks in walks.items():
+        known = f.KNOWN_SAGAS.get(S[sid]['saga'])
+        for c in checks:
+            k = f.key_of('last', sid, c)
+            answer = 'two developments' if c['same'] is False else 'the same news' if c['same'] else 'no answer'
+            if k in blind:
+                first[blind[k]] = {'kind': 'blind: one development or two?', 'key': k, 'verdict': person.get(k),
+                                   'cells': [f'blind {blind[k]}', '(hidden)', when(c), heads(c['a']), heads(c['b']),
+                                             '(hidden)']}
+                continue
+            reason = (s.get('verdicts', {}).get(k) or {}).get('reason', '')
+            kind = f"{known}: {answer}" if known else 'a proposed split' if c['same'] is False else 'the same news'
+            rest.append({'kind': kind, 'cells': [sid, S[sid]['label'] or '', when(c), heads(c['a']), heads(c['b']),
+                                                 f'{answer}: {reason}']})
+    order = {'Fort Hood': 0, 'Christa Pike': 1, 'a proposed split': 2}
+    rest.sort(key=lambda r: (order.get(r['kind'].split(':')[0], 3), r['cells'][0], r['cells'][2]))
+    rows = [first[n] for n in sorted(first)] + rest
+    done = sum(1 for r in rows if r.get('key') and r['verdict'])
+    return {'summary': Counter(r['kind'] for r in rows).most_common(), 'judge': 'S5',
+            'choices': [['two', '✌️ two developments'], ['one', '☝️ the same news'], ['unsure', "🤷 can't tell"]],
+            'columns': ['item', 'story (its title now)', 'last title → new title due', 'earlier headlines',
+                        'newest headlines', 'the model'], 'rows': capped(rows),
+            'note': f'Each long story replayed as the hourly runs saw it: whenever a new title was due, Gemma was asked '
+                    f'whether the headlines since the last title report a new development or the same news told '
+                    f'again; a new development would start a part of its own. 🎯 Judge the first {len(first)} '
+                    f'({done} done): a blind set, some where Gemma split and some where it didn\'t, mixed. For each: '
+                    'do the newest headlines report a new development (two), or the earlier news told again (one)? '
+                    'Nothing changes the stories.'}
+
+
+def _sinbad_pick(key: str, value: str | None) -> dict:
+    if value not in ('two', 'one', 'unsure', None):
+        raise ValueError('Sinbad takes two, one or unsure')
+    path = os.path.join(EXP, 's5_sinbad.json')
+    s = json.load(open(path))
+    if key not in {x['key'] for x in s.get('blind', [])}:
+        raise ValueError('not one of the blind set')
+    v = s.setdefault('person', {})
+    if value is None:
+        v.pop(key, None)
+    else:
+        v[key] = value
+    json.dump(s, open(path + '.tmp', 'w'), indent=1)
+    os.replace(path + '.tmp', path)
+    return {'ok': True, 'verdicts': len(v)}
+
+
+CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora, 'F23': ptah, 'S5': sinbad}
 
 
 def cases(code: str) -> dict:
@@ -327,10 +388,13 @@ def cases(code: str) -> dict:
 
 
 def verdict(code: str, key: str, value: str | None) -> dict:
-    """The person's verdict on one of an experiment's items: Pandora's tellings ('motif', 'already' or 'not'), or
-    Ptah's blind pairs ('A', 'B' or 'neither', kept as the arm it was, so the report counts orders, not letters)"""
+    """The person's verdict on one of an experiment's items: Pandora's tellings ('motif', 'already' or 'not'), Ptah's
+    blind pairs ('A', 'B' or 'neither', kept as the arm it was, so the report counts orders, not letters), or Sinbad's
+    blind set ('two' developments, 'one', or 'unsure')"""
     if code == 'F23':
         return _ptah_pick(key, value)
+    if code == 'S5':
+        return _sinbad_pick(key, value)
     if code != 'F10' or value not in ('motif', 'already', 'not', None):
         raise ValueError('Pandora takes motif, already or not; Ptah takes A, B or neither')
     path = os.path.join(EXP, 'f10_pandora.json')
