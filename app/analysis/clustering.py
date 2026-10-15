@@ -114,7 +114,7 @@ def prepare_embedding_cosine(texts):
 STORY_MODEL = 'mxbai-embed-large'
 STORY_THRESHOLDS = {STORY_MODEL: 0.80, 'potion-base-8M': 0.70}
 STORY_CACHE_DAYS = 7  # cached vectors unused this long are dropped
-OLLAMA_URL = 'http://localhost:11434'
+OLLAMA_URL = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')  # as llm.OLLAMA_URL: an experiment's goes through its lease's gate
 
 
 def _story_cache(path: str = None):

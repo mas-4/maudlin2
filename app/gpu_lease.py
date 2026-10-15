@@ -13,9 +13,16 @@ run that starts meanwhile goes first, and the worker gets a turn every TURN minu
 and goes on where it was once they're done (SIGCONT). Its models live in Ollama, not in its own process, so a paused
 command holds no card memory; one that holds some itself (torch on the GPU) is stopped instead, and started again.
 Until Oct 14 every command was stopped and started again at least once an hour, so a step that didn't keep its own
-progress started over each time: two nights of experiments (Isis, then Rip Van Winkle) ran for nothing."""
+progress started over each time: two nights of experiments (Isis, then Rip Van Winkle) ran for nothing.
+
+A command reaches Ollama through a gate the lease keeps (Gate: OLLAMA_HOST pointed at it). To pause, the gate lets no new
+request through and waits for those under way to finish, and only then is the command frozen: on Oct 15 at 14:00 Rip
+Van Winkle was frozen in the middle of a batch of embeddings, Ollama couldn't hand over the answer or unload the model,
+and every call of the 16:00 hourly run timed out behind it for half an hour. A request that won't finish in DRAIN
+seconds is not waited for: the command is stopped instead, and started again."""
 import argparse
 import fcntl
+import http.client
 import json
 import os
 import signal
@@ -32,6 +39,8 @@ MAX_MINUTES = 120
 RENEW = 60  # seconds between renewals while the holder lives
 STALE = 3 * RENEW  # a lease not renewed this long is dropped (its holder died)
 TURN = 60  # minutes a command runs before it gives the worker its turn (production's claims come first)
+OLLAMA = ('127.0.0.1', 11434)
+DRAIN = 300  # seconds a pause waits for the command's requests under way to finish
 
 
 def held() -> dict | None:
@@ -129,6 +138,80 @@ def _worker_had_turn(since: float) -> bool:
     return worker.had_turn(since)
 
 
+class Gate:
+    """A pass-through to Ollama for one command, which can be shut: shut, a new request waits at the gate (never
+    reaching Ollama) until it opens again; drain() waits for the requests already through to be answered in full"""
+
+    def __init__(self, upstream: tuple = OLLAMA):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        self.upstream, self.open_ = upstream, threading.Event()
+        self.open_.set()
+        self.active, self.lock = 0, threading.Condition()
+        gate = self
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = 'HTTP/1.1'
+
+            def log_message(self, *args):
+                pass
+
+            def _pass(self):
+                gate.open_.wait()
+                with gate.lock:
+                    gate.active += 1
+                try:
+                    body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
+                    up = http.client.HTTPConnection(*gate.upstream, timeout=None)
+                    headers = {k: v for k, v in self.headers.items() if k.lower() not in ('host', 'connection')}
+                    up.request(self.command, self.path, body=body or None, headers=headers)
+                    r = up.getresponse()
+                    data = r.read()  # whole, then handed on: the reply is finished with Ollama before it's passed
+                    up.close()
+                    self.send_response(r.status)
+                    for k, v in r.getheaders():
+                        if k.lower() not in ('transfer-encoding', 'connection', 'content-length'):
+                            self.send_header(k, v)
+                    self.send_header('Content-Length', str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                except (OSError, http.client.HTTPException) as e:
+                    try:
+                        self.send_error(502, str(e)[:200])
+                    except OSError:
+                        pass
+                finally:
+                    with gate.lock:
+                        gate.active -= 1
+                        gate.lock.notify_all()
+
+            do_GET = do_POST = do_DELETE = do_HEAD = _pass
+
+        self.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        self.server.daemon_threads = True
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.url = f'http://127.0.0.1:{self.server.server_address[1]}'
+
+    def shut(self):
+        self.open_.clear()
+
+    def open(self):
+        self.open_.set()
+
+    def drain(self, seconds: float = DRAIN) -> bool:
+        """Whether every request under way was answered within `seconds`"""
+        end = time.time() + seconds
+        with self.lock:
+            while self.active and time.time() < end:
+                self.lock.wait(max(0.0, min(1.0, end - time.time())))
+            return not self.active
+
+    def close(self):
+        self.open_.set()
+        self.server.shutdown()
+        self.server.server_close()
+
+
 def _signal(proc: subprocess.Popen, sig: int):
     """`sig` to the command and everything it started (its own process group)"""
     try:
@@ -186,6 +269,7 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
     gave_way = 0.0  # when the command last gave the worker its turn
     waiting = time.time()  # since when it has waited for its first turn
     proc = None  # started once; paused and resumed after (stopped and started again only if it holds card memory)
+    gate = Gate()  # its way to Ollama: shut before it's paused, so nothing is left half-answered (Oct 15)
     try:
         while True:
             while True:
@@ -206,11 +290,12 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
                 from app.worker import Awake  # an experiment keeps the machine awake while it runs (Oct 11-12: the
                 with Awake(after=0):  # night's experiments slept from 02:45; each hourly run woke it and put it back)
                     began = time.time()
-                    if proc is None:
-                        proc = subprocess.Popen(command, start_new_session=True)  # its own group: paused as one
+                    if proc is None:  # its own group, paused as one; its Ollama through the gate
+                        proc = subprocess.Popen(command, start_new_session=True, env={**os.environ, 'OLLAMA_HOST': gate.url})
                     else:
                         _signal(proc, signal.SIGCONT)
                         print('gpu_lease: going on where it was', flush=True)
+                    gate.open()
                     why = None
                     while proc.poll() is None:
                         if h.left() <= 0:
@@ -226,11 +311,17 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
                         time.sleep(5)
                     else:
                         return proc.returncode
+                    gate.shut()  # no new request reaches Ollama; those under way are answered first
                     if on_gpu(group_pids(proc.pid)):
                         _stop(proc)
                         proc = None
                         print(f'gpu_lease: {why}; the command holds card memory, so it was stopped, to start again '
                               'after', flush=True)
+                    elif not gate.drain():
+                        _stop(proc)
+                        proc = None
+                        print(f'gpu_lease: {why}; a request to Ollama was still under way after {DRAIN} s, so the '
+                              'command was stopped, to start again after', flush=True)
                     else:
                         _signal(proc, signal.SIGSTOP)
                         print(f'gpu_lease: {why}; the command paused, to go on after', flush=True)
@@ -243,6 +334,7 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
     finally:
         if proc is not None and proc.poll() is None:  # killed or interrupted itself: nothing left paused behind it
             _stop(proc)
+        gate.close()
 
 
 def main(argv=None):

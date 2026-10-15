@@ -266,3 +266,47 @@ def test_the_hourly_run_pauses_a_command_and_it_goes_on_where_it_was(tmp_path, m
 def test_a_command_holding_card_memory_is_stopped_and_started_again(tmp_path, monkeypatch):
     code, lines = _interrupted_once(tmp_path, monkeypatch, holds_card=True)
     assert code == 0 and lines == ['start', 'start', 'end']
+
+
+def test_the_gate_lets_requests_finish_before_a_pause_and_holds_new_ones(tmp_path):
+    """Oct 15: an experiment frozen mid-request left Ollama unable to answer or unload; the lease's gate shuts, lets the
+    requests under way finish, and only then may the command be frozen"""
+    import threading
+    import urllib.request
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from app import gpu_lease
+
+    class Slow(BaseHTTPRequestHandler):  # a stand-in Ollama, half a second an answer
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            time.sleep(0.5)
+            body = b'{"ok": true}'
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+    up = ThreadingHTTPServer(('127.0.0.1', 0), Slow)
+    threading.Thread(target=up.serve_forever, daemon=True).start()
+    gate = gpu_lease.Gate(('127.0.0.1', up.server_address[1]))
+    got = []
+
+    def ask():
+        got.append(urllib.request.urlopen(urllib.request.Request(gate.url + '/api/embed', data=b'{}', method='POST'),
+                                          timeout=10).read())
+    first = threading.Thread(target=ask)
+    first.start()
+    time.sleep(0.1)  # under way
+    gate.shut()
+    second = threading.Thread(target=ask)
+    second.start()
+    assert gate.drain(5) and got == [b'{"ok": true}']  # the one under way answered in full before the pause
+    time.sleep(0.8)
+    assert len(got) == 1  # the new one waits at the shut gate, never reaching Ollama
+    gate.open()
+    second.join(5)
+    assert len(got) == 2
+    gate.close()
+    up.shutdown()
