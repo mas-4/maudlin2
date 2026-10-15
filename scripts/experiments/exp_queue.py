@@ -174,13 +174,25 @@ class Awake:
             self.proc = None
 
 
+def _code_stamp() -> tuple:
+    """When the queue's own code last changed (this file, the lab copier, the GPU lease)"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    paths = [os.path.join(here, 'exp_queue.py'), os.path.join(here, 'lab_data.py'), os.path.join(ROOT, 'app', 'gpu_lease.py')]
+    return tuple(os.path.getmtime(p) if os.path.exists(p) else 0 for p in paths)
+
+
 def run():
     os.makedirs(LOGS, exist_ok=True)
     awake = Awake()
     con = connect()
     con.execute('update queue set status = ? where status = ?', ('waiting', 'running'))  # killed mid-step: again
     con.commit()
+    code = _code_stamp()
     while True:
+        if _code_stamp() != code:  # its own code changed: leave between steps, and systemd starts it on the new code
+            print('exp_queue: new code; restarting between steps', flush=True)
+            awake.hold(False)
+            return
         pending = con.execute("select count(*) from queue where status in ('waiting', 'running')").fetchone()[0]
         awake.hold(pending > 0)
         step = next_step(con)
