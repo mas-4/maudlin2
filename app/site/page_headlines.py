@@ -514,7 +514,7 @@ class HeadlinesPage:
             saga['color'] = SAGA_COLORS[saga['id'] % len(SAGA_COLORS)]  # a saga keeps its color from run to run
             saga['lead'] = max(saga['clusters'], key=lambda k: (df['cluster'] == k).sum())  # its biggest story now
             saga['clusters'].sort(key=lambda k: -age[k])  # in the order they broke
-            # Part numbers count every part, earlier ones included, in the order they were first seen
+            # Part numbers count every part, earlier ones included, in the order of their latest news (sagas.PART_ORDER)
             saga['part_of'] = {p['cluster']: n for n, p in enumerate(saga['parts_all'], start=1) if p['cluster'] is not None}
         for cluster in clusters_list:
             sid = saga_of.get(cluster['cluster'])
@@ -535,13 +535,13 @@ class HeadlinesPage:
                 if k is not None and k in by_id:  # on the front pages now: links to its card
                     saga['parts'].append({'cluster': int(k), 'title': self.context['titles'][k], 'now': True,
                                           'outlets': by_id[k]['outlets'], 'age': age_text(by_id[k]['first'] / 3600),
-                                          'feelings': by_id[k]['feelings'][:1]})
+                                          'hours': by_id[k]['first'] / 3600, 'feelings': by_id[k]['feelings'][:1]})
                 else:  # a part that has left the front pages (not necessarily an older one)
                     saga['parts'].append({'cluster': None, 'title': part['label'] or 'An earlier part', 'now': False,
                                           'outlets': part['outlets'],
                                           'age': age_text((now - part['first_seen']).total_seconds() / 3600),
-                                          'feelings': []})
-            saga['started'] = saga['parts'][0]['age']
+                                          'hours': (now - part['first_seen']).total_seconds() / 3600, 'feelings': []})
+            saga['started'] = max(saga['parts'], key=lambda p: p['hours'])['age']  # its oldest part, wherever listed
             saga['runs'] = part_runs(saga['parts'])
         self.context['saga_list'] = sorted(sagas.values(), key=lambda s: -s['outlets'])
         df['group'] = df['cluster'].map(lambda k: saga_of.get(k, k))

@@ -419,7 +419,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
             s.query(Story).filter(Story.id.in_(story_ids)).update({'saga_id': saga.id})
             saga.last_seen = now
             saga.words = ','.join(sorted(group['words']))[:255]
-            parts = s.query(Story).filter(Story.saga_id == saga.id).order_by(Story.first_seen).all()
+            parts = s.query(Story).filter(Story.saga_id == saga.id).order_by(*PART_ORDER).all()
             if not saga.name or len(parts) >= RENAME_GROWTH * (saga.named_with or 1):
                 saga.name = name(stories, now_clusters)
                 saga.named_with = len(parts)
@@ -522,14 +522,21 @@ def ended() -> dict[int, dict]:
     return {int(k): v for k, v in read_json(ENDED, {}).items()}
 
 
+# A saga's parts in the order of their latest news, not the order they broke: a part's title tells its latest news
+# (stories.label_stories: a live story's title moves on with it, and one that leaves is titled from its last headlines),
+# so in the order they broke a long-running part, first to break, came first under today's title (Oct 15, the Fort
+# Hood saga: part 1, "Trump cancels livestream of Fort Hood shooter's execution", was the latest news, after part 5)
+PART_ORDER = (Story.last_seen, Story.first_seen)
+
+
 def history() -> list[dict]:
-    """Every saved saga, for the tracker page: its parts in the order they broke (each with when it was on the front
-    pages, its outlets and who had it first) and the outlets on any part by lean. Newest activity first. Times are
-    UTC, naive, as stored."""
+    """Every saved saga, for the tracker page: its parts in the order of their latest news (PART_ORDER), each with
+    when it was on the front pages, its outlets and who had it first, and the outlets on any part by lean. Newest
+    activity first. Times are UTC, naive, as stored."""
     with Session() as s:
         latest = s.query(Story.last_seen).order_by(Story.last_seen.desc()).limit(1).scalar()
         sagas = {g.id: g for g in s.query(Saga).all()}
-        parts = s.query(Story).filter(Story.saga_id.isnot(None)).order_by(Story.first_seen).all()
+        parts = s.query(Story).filter(Story.saga_id.isnot(None)).order_by(*PART_ORDER).all()
         rows = s.query(StoryHeadline.story_id, Headline.title, Headline.first_accessed, Agency.name, Agency._bias,
                        Agency.lean_rated).join(Headline, Headline.id == StoryHeadline.headline_id) \
             .join(Article, Article.id == Headline.article_id).join(Agency, Agency.id == Article.agency_id) \

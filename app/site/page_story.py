@@ -12,6 +12,7 @@ import pytz
 
 from app import bluesky_examples, chyrons
 from app.analysis import entities, running_order
+from app.analysis.sagas import PART_ORDER
 from app.analysis.stories import merges as story_merges
 from app.site import archive, page_tv, story_charts
 from app.site.common import TemplateHandler, chip_style, outlet_icon, short_name
@@ -71,7 +72,7 @@ def recent_stories(days: int = DAYS) -> list[dict]:
         if saga_ids:
             names = dict(s.query(Saga.id, Saga.name).filter(Saga.id.in_(list(saga_ids))))
             for i, label, first, saga in s.query(Story.id, Story.label, Story.first_seen, Story.saga_id) \
-                    .filter(Story.saga_id.in_(list(saga_ids))).order_by(Story.first_seen):
+                    .filter(Story.saga_id.in_(list(saga_ids))).order_by(*PART_ORDER):
                 sagas.setdefault(saga, {'id': saga, 'name': names.get(saga) or '', 'parts': []})['parts'].append(
                     {'id': i, 'label': label or '', 'when': eastern(first)})
     for st in stories.values():

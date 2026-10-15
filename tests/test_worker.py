@@ -298,11 +298,16 @@ def test_the_gate_lets_requests_finish_before_a_pause_and_holds_new_ones(tmp_pat
                                           timeout=10).read())
     first = threading.Thread(target=ask)
     first.start()
-    time.sleep(0.1)  # under way
+    for _ in range(200):  # under way: through the gate, at Ollama
+        if gate.active:
+            break
+        time.sleep(0.01)
     gate.shut()
     second = threading.Thread(target=ask)
     second.start()
-    assert gate.drain(5) and got == [b'{"ok": true}']  # the one under way answered in full before the pause
+    assert gate.drain(5)  # the one under way handed over in full before the pause...
+    first.join(5)
+    assert got == [b'{"ok": true}']  # ...and read by its caller
     time.sleep(0.8)
     assert len(got) == 1  # the new one waits at the shut gate, never reaching Ollama
     gate.open()

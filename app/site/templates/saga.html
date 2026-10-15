@@ -17,7 +17,7 @@
         front pages, joined to the others because our tools judged them one case, event or investigation as it
         developed. A part can be joined wrongly; the saga tracker says how they're made.</p>
 
-    <ol class="story-flow saga-journey" aria-label="Its parts, in the order they broke">
+    <ol class="story-flow saga-journey" aria-label="Its parts, in the order of their latest news">
         {% for p in parts %}<li style="background: color-mix(in srgb, {{ p.color|e }} 22%, white)"><span class="flow-emoji" aria-hidden="true">{{ loop.index }}</span><span class="flow-text"><span class="flow-when">{{ p.when }} ET · on the front pages {{ p.lasted }}</span>{% if p.page %}<a href="{{ p.page|e }}">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}</span></li>{% endfor %}
     </ol>
 
@@ -33,7 +33,7 @@
         {% if lanes %}
             <figure class="story-chart-figure">
                 {{ lanes|safe }}
-                <figcaption>Its parts in the order they broke, each from when we first saw it on a front page to when we last
+                <figcaption>Its parts in the order of their latest news, each from when we first saw it on a front page to when we last
                     did; beneath, the TV captions, radio newscasts and retellings, each in the color of the part it was
                     about. Hover for details.</figcaption>
             </figure>

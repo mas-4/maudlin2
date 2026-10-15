@@ -4,6 +4,12 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-15
+- **A saga's parts in the order of their latest news.** Parts were numbered in the order they broke, but a part's
+  title tells its latest news (a live story's title moves on with it), so a long-running part came first under today's
+  title: the Fort Hood saga's part 1, "Trump cancels livestream of Fort Hood shooter's execution", was its newest
+  development, after part 5. Saga pages, story pages and the front page's saga cards now order parts by when each was
+  last on the front pages; each still shows when it broke and how long it ran.
 ## 2026-10-14
 - **Flabby motifs opened into their tellings.** Pandora's drafts (Gemma's reading of each of the person's motifs of 10+
   claims: the distinct stories told inside it, each with a note and its claims) are in the checker's 🧩 tellings tab.
