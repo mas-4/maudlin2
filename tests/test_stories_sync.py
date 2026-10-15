@@ -171,3 +171,165 @@ def test_a_story_that_left_the_front_pages_is_titled_once_more_from_its_last_hea
     assert stories.label_ended(now) == {gone_id: 'Ossoff and Collins clash in Georgia Senate debate'}
     assert 'Georgia debate' in asked[0] and len(asked) == 1  # the live story isn't touched
     assert stories.label_ended(now) == {} and len(asked) == 1  # once only
+
+
+# ---------- a live story split where its news moved on to a new development (switched off: SPLIT_DEVELOPMENTS) ----------
+
+@pytest.fixture(autouse=True)
+def no_real_splits(monkeypatch, tmp_path):
+    """Never the data folder's record of splits: its story ids would be read against the test's"""
+    monkeypatch.setattr(stories, 'SPLITS', str(tmp_path / 'splits.json'))
+
+
+def running(session, tmp_path, monkeypatch, saga=True):
+    """Fort Hood, Oct 15: a story titled 13 hours ago for the livestream plan, four headlines since on its cancellation.
+    Returns (story id, the headlines' first sightings, the run's frame, its Story objects by cluster)"""
+    import pytz
+    from datetime import timedelta as td
+    from app.models import Headline, Saga
+    monkeypatch.setattr(stories, 'LABELED_AT', str(tmp_path / 'labeled_at.json'))
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
+    titles = ['Pentagon will livestream Fort Hood execution', 'Hegseth plans livestreamed execution',
+              'Backlash over livestream plan', 'Vance would not watch livestream',
+              'Trump cancels livestream of execution', "Trump says Pentagon won't livestream execution",
+              'Livestream called off after backlash', 'Trump scraps execution livestream']
+    ago = [td(days=3), td(days=2), td(hours=20), td(hours=14), td(hours=6), td(hours=3), td(hours=2), td(hours=1)]
+    with session() as s:
+        saga_id = None
+        if saga:
+            sg = Saga(name='Fort Hood shooter execution', first_seen=now - td(days=9), last_seen=now)
+            s.add(sg)
+            s.flush()
+            saga_id = sg.id
+        story = Story(label='Pentagon to livestream Fort Hood execution', labeled_with=4, first_seen=now - td(days=3),
+                      last_seen=now, saga_id=saga_id)
+        s.add(story)
+        s.flush()
+        for i, (t, a) in enumerate(zip(titles, ago), 1):
+            s.add(Headline(id=i, article_id=i, title=t, first_accessed=now - a, last_accessed=now))
+            s.add(StoryHeadline(story_id=story.id, headline_id=i, sentiment=0.0, deviation=0.0, last_seen=now))
+        s.commit()
+        sid = story.id
+        found = {0: s.get(Story, sid)}
+    stories.write_json(stories.LABELED_AT, {str(sid): (now - td(hours=13)).isoformat(timespec='seconds')})
+    rows = [(i, t, a) for i, (t, a) in enumerate(zip(titles, ago), 1) if a < td(hours=15)]  # on the front pages now
+    df = pd.DataFrame([{'cluster': 0, 'headline_id': i, 'agency': f'outlet {i}', 'title': t,
+                        'first_seen': pd.Timestamp(now - a, tz='UTC').tz_convert('US/Eastern')} for i, t, a in rows])
+    return sid, {i: now - a for i, a in enumerate(ago, 1)}, df, found
+
+
+def fake_model(monkeypatch, same: bool | None, title='Trump cancels livestream of Fort Hood execution'):
+    asked, shown = [], []
+    monkeypatch.setattr(stories.llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: asked.append((a, b, prompt)) or same)
+    monkeypatch.setattr(stories.llm, 'complete_json', lambda prompt, *a, **kw: shown.append(prompt) or {'title': title})
+    return asked, shown
+
+
+def test_a_story_whose_newest_headlines_are_a_new_development_splits(db, monkeypatch, tmp_path):
+    """Oct 15: the cancellation of the Fort Hood livestream became the tenth day of one story, not a part of its own"""
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    sid, first, df, found = running(db, tmp_path, monkeypatch)
+    asked, shown = fake_model(monkeypatch, same=False)
+    labels = stories.label_stories(df, found)
+    assert len(asked) == 1 and asked[0][2] == stories.SPLIT_PROMPT
+    assert asked[0][0][0] == 'Vance would not watch livestream'  # the earlier side, newest first
+    assert asked[0][1][0] == 'Trump scraps execution livestream'
+    new = found[0]
+    assert new.id != sid and labels == {0: 'Trump cancels livestream of Fort Hood execution'}
+    assert 'Vance' not in shown[0] and 'Trump scraps' in shown[0]  # titled from the new development alone
+    with db() as s:
+        old, made = s.get(Story, sid), s.get(Story, new.id)
+        held = {sh.headline_id: sh.story_id for sh in s.query(StoryHeadline)}
+        assert old.label == 'Pentagon to livestream Fort Hood execution'  # kept, for label_ended to write once more
+        assert old.last_seen == first[4]  # ended with its last kept headline
+        assert made.saga_id == old.saga_id is not None and made.label == labels[0]
+        assert made.first_seen == first[5]
+    assert held == {1: sid, 2: sid, 3: sid, 4: sid, 5: new.id, 6: new.id, 7: new.id, 8: new.id}
+    assert stories.splits() == {sid: new.id}
+
+
+def test_a_split_of_a_story_in_no_saga_makes_one_for_the_two(db, monkeypatch, tmp_path):
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    sid, _, df, found = running(db, tmp_path, monkeypatch, saga=False)
+    fake_model(monkeypatch, same=False)
+    stories.label_stories(df, found)
+    with db() as s:
+        assert s.get(Story, sid).saga_id is not None
+        assert s.get(Story, sid).saga_id == s.get(Story, found[0].id).saga_id
+
+
+@pytest.mark.parametrize('same', [True, None])
+def test_the_same_news_told_again_or_no_answer_only_retitles(db, monkeypatch, tmp_path, same):
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    sid, _, df, found = running(db, tmp_path, monkeypatch)
+    asked, _ = fake_model(monkeypatch, same=same)
+    labels = stories.label_stories(df, found)
+    assert len(asked) == 1 and found[0].id == sid and labels[0] == 'Trump cancels livestream of Fort Hood execution'
+    with db() as s:
+        assert {sh.story_id for sh in s.query(StoryHeadline)} == {sid}
+    assert stories.splits() == {}
+
+
+def test_switched_off_nothing_is_asked(db, monkeypatch, tmp_path):
+    assert stories.SPLIT_DEVELOPMENTS is False  # on only after Sinbad's result and the person's verdicts
+    assert 'one running news story' in stories.SPLIT_PROMPT and 'Newest:\n{b}' in stories.SPLIT_PROMPT  # reworded
+    sid, _, df, found = running(db, tmp_path, monkeypatch)
+    asked, _ = fake_model(monkeypatch, same=False)
+    stories.label_stories(df, found)
+    assert asked == [] and found[0].id == sid
+
+
+def test_the_next_run_goes_on_with_the_new_development_not_the_old_story(db, monkeypatch, tmp_path):
+    """The old development's headlines still on the front pages outnumber the new ones: the cluster still goes on as
+    the new story (the old one is never continued nor rejoined), and those headlines stay with the old story"""
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    monkeypatch.setattr(stories, 'MERGES', str(tmp_path / 'merges.json'))
+    sid, _, df, found = running(db, tmp_path, monkeypatch)
+    fake_model(monkeypatch, same=False)
+    stories.label_stories(df, found)
+    new = found[0].id
+    monkeypatch.setattr(stories, 'rejoined', lambda *a: pytest.fail('a split is never put to the rejoin rule'))
+    out = stories.sync_stories(frame({0: [1, 2, 3, 4, 5, 9]}))
+    assert out[0].id == new
+    with db() as s:
+        held = {sh.headline_id: sh.story_id for sh in s.query(StoryHeadline)}
+    assert held[1] == held[4] == sid and held[5] == held[9] == new
+
+
+def test_a_story_ended_by_a_split_is_not_a_return(db, monkeypatch, tmp_path):
+    import pytz
+    from datetime import timedelta as td
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    sid, _, df, found = running(db, tmp_path, monkeypatch)
+    fake_model(monkeypatch, same=False)
+    stories.label_stories(df, found)
+    monkeypatch.setattr(stories, 'same_event', lambda *a, **kw: True)  # told again: of the two, the new one returns
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
+    with db() as s:
+        back = stories.returning(s, ['Pentagon livestream execution plan', 'Hegseth livestream execution plan'],
+                                 set(), now + td(hours=3))
+        assert back is not None and back.id == found[0].id != sid
+
+
+def test_a_story_due_when_the_runs_questions_are_spent_waits_for_the_next_run(db, monkeypatch, tmp_path):
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    monkeypatch.setattr(stories, 'MAX_SPLIT_CHECKS', 0)
+    sid, _, df, found = running(db, tmp_path, monkeypatch)
+    asked, shown = fake_model(monkeypatch, same=False)
+    labels = stories.label_stories(df, found)
+    assert asked == shown == [] and labels == {0: 'Pentagon to livestream Fort Hood execution'}
+
+
+def test_a_story_whose_coverage_doubled_is_asked_too(db, monkeypatch, tmp_path):
+    """Oct 15: the cancellation took Fort Hood from 6 outlets to 35 in an hour, a coverage retitle, not a stale one"""
+    import pytz
+    from datetime import timedelta as td
+    monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
+    sid, _, df, found = running(db, tmp_path, monkeypatch)
+    now = dt.now(pytz.UTC).replace(tzinfo=None)
+    stories.write_json(stories.LABELED_AT, {str(sid): (now - td(hours=7)).isoformat(timespec='seconds')})
+    found[0].labeled_with = 2  # 4 outlets now
+    asked, _ = fake_model(monkeypatch, same=False)
+    stories.label_stories(df, found)
+    assert len(asked) == 1 and found[0].id != sid

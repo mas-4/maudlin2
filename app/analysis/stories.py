@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 import re
-from collections import Counter
+from collections import Counter, namedtuple
 from datetime import datetime as dt, timedelta as td
 
 import pandas as pd
@@ -101,6 +101,24 @@ REJOIN_SHARE = 0.2
 REJOIN_PROMPT = SAME_EVENT_PROMPT.replace('The first left the front pages some hours before the second appeared.',
                                           'Both were on the front pages at the same time.') \
     .replace('Earlier:', 'One:').replace('Now:', 'The other:')
+# A story kept for days absorbs every new development under a moving title (Oct 15, the person): the Fort Hood
+# shooter's story ran ten days, from Trump approving a firing squad through the livestream plan and its backlash to
+# "Trump cancels livestream of Fort Hood shooter's execution", 368 headlines in one part while the smaller developments
+# split off as parts of their own. So when a titled live story is due a new title, its news moved on (RELABEL_AGE) or
+# its coverage doubled (the cancellation took Fort Hood from 6 outlets to 35 in an hour: a big development comes as a
+# burst), the model is asked whether its newest headlines (those since its last title) report a new development or the
+# same event told again: a new development starts a new story in the same saga, and the old story keeps the headlines
+# up to its last title and ends (label_ended titles it once more). A story due when a run's questions are spent waits
+# for the next run's, title and all, so no development passes unasked. Off until the replay (Sinbad: ~/maudlin-data/papers
+# /sinbad.md, scripts/experiments/s5_sinbad.py) and the person's verdicts on it.
+SPLIT_DEVELOPMENTS = False
+SPLIT_LEAST = 3  # headlines on each side of a split, at least
+MAX_SPLIT_CHECKS = 5  # questions a run asks, at most (one per titled story due a new title, SPLIT_LEAST a side)
+SPLITS = os.path.join(Config.data, 'story_splits.json')  # {ended story id: {'into': new story id, 'at', ...}}
+SPLIT_PROMPT = SAME_EVENT_PROMPT.replace(
+    'Two groups of news headlines. The first left the front pages some hours before the second appeared.',
+    'Two groups of headlines from one running news story: its earlier headlines, and its newest, from the last \
+twelve hours or so.').replace('Now:', 'Newest:')
 SAME_EVENT_SCHEMA = {"type": "object", "properties": {
     "reason": {"type": "string", "maxLength": 600},
     "verdict": {"type": "string", "enum": ["the same event", "different events"]}}, "required": ["reason", "verdict"]}
@@ -140,14 +158,18 @@ def returning(s, titles: list[str], claimed: set[int], now: dt) -> Story | None:
         .join(Headline, Headline.id == StoryHeadline.headline_id) \
         .filter(Story.last_seen >= now - RETURN_WINDOW, Story.last_seen < now - RETURN_GAP).all()
     theirs = {}
+    ended = splits()  # a story ended at a new development returns as the story its news went on in, if at all
     for sid, title in rows:
-        if sid not in claimed:
+        if sid not in claimed and sid not in ended:
             theirs.setdefault(sid, []).append(title)
     alike = sorted(((len(words & frequent_words(ts)), sid) for sid, ts in theirs.items()), reverse=True)
     for shared, sid in alike[:RETURN_CANDIDATES]:
         if shared >= RETURN_WORDS and same_event(theirs[sid], titles):
             return s.get(Story, sid)
     return None
+
+
+Match = namedtuple('Match', 'story_id n')
 
 
 def merges() -> dict[int, int]:
@@ -190,6 +212,67 @@ def merge_stories(keep: int, gone: int, why: str = ''):
     logger.info("Merged story %d into %d (%d headlines)", gone, keep, len(moved))
 
 
+def splits() -> dict[int, int]:
+    """{story ended by a split: the story its newest headlines went on in}"""
+    return {int(k): int(v['into']) for k, v in read_json(SPLITS, {}).items()}
+
+
+def carried_on(sid: int, ended: dict[int, int]) -> int:
+    """The story a split-ended story's news went on in, followed to the end of any chain"""
+    seen = {sid}
+    while sid in ended and ended[sid] not in seen:
+        sid = ended[sid]
+        seen.add(sid)
+    return sid
+
+
+def development_sides(sid: int, since: dt) -> tuple[list, list]:
+    """Story `sid`'s headlines up to `since` (its last title) and after it, each newest first"""
+    with Session() as s:
+        rows = s.query(StoryHeadline.headline_id, Headline.title, Headline.first_accessed) \
+            .join(Headline, Headline.id == StoryHeadline.headline_id).filter(StoryHeadline.story_id == sid) \
+            .order_by(Headline.first_accessed.desc()).all()
+    return [r for r in rows if r.first_accessed <= since], [r for r in rows if r.first_accessed > since]
+
+
+def split_development(sid: int, since: dt, now: dt, sides: tuple[list, list] | None = None) -> Story | None:
+    """The new story when story `sid`'s headlines first seen after `since` (its last title) report a new development,
+    not the same event told again: they move to it, in the same saga (one is made for the two if the story had none),
+    and the old story ends with its last kept headline. None when there's no split."""
+    earlier, newest = sides or development_sides(sid, since)
+    if min(len(newest), len(earlier)) < SPLIT_LEAST:
+        return None
+    if same_event([r.title for r in earlier], [r.title for r in newest], prompt=SPLIT_PROMPT) is not False:
+        return None  # the same event told again, or no answer: the story goes on and is titled again
+    moved = [r.headline_id for r in newest]
+    with Session() as s, SqlLock:
+        old = s.get(Story, sid)
+        new = Story(first_seen=min(r.first_accessed for r in newest), last_seen=now, saga_id=old.saga_id)
+        if old.saga_id is None:
+            saga = Saga(first_seen=old.first_seen, last_seen=now)
+            s.add(saga)
+            s.flush()
+            old.saga_id = new.saga_id = saga.id
+        s.add(new)
+        s.flush()
+        s.query(StoryHeadline).filter(StoryHeadline.headline_id.in_(moved)).update({'story_id': new.id},
+                                                                                   synchronize_session=False)
+        # Off the front pages from its last kept headline: never put to the rejoin rule (both stories live), and
+        # label_ended titles it once more from the headlines it kept
+        old.last_seen = max(r.first_accessed for r in earlier)
+        label = old.label
+        s.commit()
+        s.refresh(new)
+        s.expunge(new)
+    done = read_json(SPLITS, {})
+    done[str(sid)] = {'into': new.id, 'label': label, 'since': since.isoformat(timespec='seconds'), 'headlines': moved,
+                      'at': now.isoformat(timespec='seconds')}
+    write_json(SPLITS, done)
+    logger.info("Story %d split at a new development: %d headlines since %s went on as story %d (%s)", sid, len(moved),
+                since, new.id, newest[0].title)
+    return new
+
+
 def rejoined(s, a: Story, b: Story, lesser: int, size: int, now: dt) -> tuple[Story, Story] | None:
     """(older, younger) when stories `a` and `b`, both on the front pages lately and both holding a fair part of one
     cluster (the lesser `lesser` of its `size` headlines), tell the same event: one story split and joined again"""
@@ -211,6 +294,10 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
     stories = {}
     claimed = set()  # stories already continued by a cluster in this run
     rejoins = []  # (kept, folded): one story split by an earlier hour's clustering, joined again now
+    # A story ended at a new development is never continued: the story its news went on in is (followed through
+    # merges too, should that one have been folded into another since)
+    ended = splits()
+    ended = {**merges(), **ended} if ended else {}
     with Session() as s, SqlLock:
         # Biggest clusters first, so when one story's coverage splits into two clusters this hour, the bigger part
         # keeps the story (and its title) and the smaller becomes a story of its own, instead of both showing as
@@ -222,6 +309,11 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
             matches = s.query(StoryHeadline.story_id, func.count().label('n')).filter(
                 StoryHeadline.headline_id.in_(ids)
             ).group_by(StoryHeadline.story_id).order_by(func.count().desc()).all()
+            if ended:  # its old headlines still on the front pages count for (but stay out of) the story it went on in
+                n = Counter()
+                for m in matches:
+                    n[carried_on(m.story_id, ended)] += m.n
+                matches = [Match(sid, k) for sid, k in n.most_common()]
             match = next((m for m in matches if m.story_id not in claimed), None)
             if match:
                 story = s.get(Story, match.story_id)
@@ -245,7 +337,8 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
             existing = {sh.headline_id: sh for sh in s.query(StoryHeadline).filter(StoryHeadline.headline_id.in_(ids))}
             for headline_id, value in zip(ids, sentiment):
                 member = existing.get(headline_id) or StoryHeadline(headline_id=headline_id)
-                member.story_id = story.id  # a headline can move to the story it now clusters with
+                if member.story_id not in ended:  # what a split left with the old development stays there
+                    member.story_id = story.id  # a headline can move to the story it now clusters with
                 member.sentiment = float(value)
                 member.deviation = float(value - mean)
                 member.last_seen = now
@@ -330,17 +423,36 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
         seen = seen.dt.tz_convert('UTC').dt.tz_localize(None) if seen.dt.tz is not None else seen
     newest = seen.groupby(df['cluster']).max() if seen is not None else None
 
+    def written(story) -> pd.Timestamp:
+        return pd.Timestamp(labeled_at.get(str(story.id)) or story.first_seen)
+
     def stale(cluster, story) -> bool:
         """Old, and headlines have come in since it was written (a story labeled before Oct 11 counts from its start)"""
-        at = pd.Timestamp(labeled_at.get(str(story.id)) or story.first_seen)
+        at = written(story)
         return newest is not None and now - at >= RELABEL_AGE and pd.Timestamp(newest[cluster]) > at
+
+    def grown(cluster, story) -> bool:
+        return outlets[cluster] >= RELABEL_GROWTH * (story.labeled_with or 0)
     todo = [cluster for cluster, story in stories.items()
-            if not story.label or outlets[cluster] >= RELABEL_GROWTH * (story.labeled_with or 0)
-            or stale(cluster, story)]
+            if not story.label or grown(cluster, story) or stale(cluster, story)]
+    checks = MAX_SPLIT_CHECKS
     for cluster in todo[:MAX_LABELS_PER_RUN]:
         part = df[df['cluster'] == cluster]
         if seen is not None:
             part = part.loc[seen[part.index].sort_values(ascending=False).index]
+        story = stories[cluster]
+        if SPLIT_DEVELOPMENTS and story.label:  # due a new title: a new development, or the same news?
+            since = written(story).to_pydatetime()
+            sides = development_sides(story.id, since)
+            if min(map(len, sides)) >= SPLIT_LEAST:
+                if not checks:
+                    continue  # the run's questions are spent: next run, title and all
+                checks -= 1
+                if (new := split_development(story.id, since, now, sides)) is not None:
+                    stories[cluster] = new  # the cluster goes on as the new story, titled from its newest headlines
+                    labels.pop(cluster, None)
+                    if seen is not None and (seen[part.index] > since).any():
+                        part = part[seen[part.index] > since]
         headlines = '\n'.join(f'- {title}' for title in part['title'][:LABEL_FROM])
         result = llm.complete_json(LABEL_PROMPT.format(headlines=headlines), LABEL_SCHEMA, max_tokens=64)
         label = (result or {}).get('title', '').strip().rstrip('.')
