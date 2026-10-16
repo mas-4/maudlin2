@@ -105,7 +105,11 @@ def retry(sid: int, minutes: float | None = None):
         con.execute('update queue set status = ?, tries = 0, stalls = 0, deferred = null where id = ?', ('waiting', sid))
         if minutes:
             con.execute('update queue set minutes = ? where id = ?', (minutes, sid))
-        con.execute("update queue set status = 'waiting' where after = ? and status = 'blocked'", (sid,))
+        follow = [sid]  # every step it blocked, down the whole chain (Oct 16: freeing only the next left the rest)
+        while follow:
+            nxt = [r[0] for r in con.execute("select id from queue where after = ? and status = 'blocked'", (follow.pop(),))]
+            con.executemany("update queue set status = 'waiting' where id = ?", [(i,) for i in nxt])
+            follow += nxt
     set_alert(sid)
 
 

@@ -57,3 +57,18 @@ def test_the_deck_shows_an_experiment_the_queue_gave_up_on(tmp_path, monkeypatch
     (tmp_path / 'alerts.json').write_text(json.dumps([{'id': 1, 'holder': 'isis-file', 'status': 'stuck'}]))
     who, load, label = deck.gpu()
     assert who == 'alert' and label.startswith('⚠') and 'Isis' in label
+
+
+def test_a_retry_frees_the_whole_chain_it_blocked(tmp_path, monkeypatch):
+    monkeypatch.setattr(q, 'DB', str(tmp_path / 'q.sqlite'))
+    monkeypatch.setattr(q, 'ALERTS', str(tmp_path / 'alerts.json'))
+    a = q.add('F1', 'a-file', ['true'])
+    b = q.add('F1', 'a-record', ['true'], after=a)
+    c = q.add('F1', 'a-report', ['true'], after=b)
+    con = q.connect()
+    con.execute("update queue set status = 'failed' where id = ?", (a,))
+    con.execute("update queue set status = 'blocked' where id in (?, ?)", (b, c))
+    con.commit()
+    q.retry(a)
+    assert [r[0] for r in con.execute('select status from queue order by id')] == ['waiting', 'waiting', 'waiting']
+
