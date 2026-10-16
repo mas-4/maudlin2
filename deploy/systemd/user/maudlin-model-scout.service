@@ -1,0 +1,9 @@
+[Unit]
+Description=Maudlin model scout: new models on Ollama and Hugging Face that fit the machine and do the jobs we use models for, into the notes (scripts/model_scout.py)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/mas/Repos/maudlin2
+ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python scripts/model_scout.py
+Nice=10
