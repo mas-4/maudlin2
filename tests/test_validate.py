@@ -366,3 +366,28 @@ def test_a_filing_confirmed_lately_or_only_mildly_doubted_isnt_looked_at_again(m
     assert not validate.doubted(e, filing('a firing squad is kinder', 0.1), set(), recent)  # confirmed today
     assert validate.doubted(e, filing('old one', 0.1), set(), recent)  # confirmed long ago, strongly doubted
     assert not validate.doubted(e, filing('old one', 0.42), set(), recent)  # only mildly
+
+
+def test_a_claim_on_hold_leaves_the_queues_for_the_held_tab(monkeypatch, tmp_path):
+    """⏸ hold (Oct 18): a claim kept aside to look at later, its filings still waiting, out of the claims to judge;
+    it stays held in new words or folded into another claim, and comes back when taken off hold"""
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001'], mi.key('b'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Rigged', 'claims': [{'claim': 'a', 'source': 'narrative'},
+                                                            {'claim': 'b', 'source': 'narrative'}]}}})
+    monkeypatch.setattr(validate, 'check_queue', lambda: [{'claim': c, 'id': 'M001', 'fit': 0.5, 'source': 'narrative'}
+                                                          for c in ('a', 'b')])
+    monkeypatch.setattr(validate, 'second_look', list)
+    validate.workbench_action({'action': 'hold', 'claim': 'a'})
+    assert [x['claim'] for x in validate.judge_queue()] == ['b']
+    assert validate.workbench_state()['held'] == ['a']
+    assert [(x['claim'], x['waiting']) for x in validate.workbench_queue('held')] == [('a', 1)]
+    mi.correct_claim('a', 'a, reworded')
+    assert validate.workbench_state()['held'] == ['a, reworded']
+    mi.same_claim('a, reworded', 'b')
+    assert validate.workbench_state()['held'] == ['b']
+    validate.workbench_action({'action': 'unhold', 'claim': 'b'})
+    assert validate.workbench_state()['held'] == [] and validate.workbench_queue('held') == []
+    with pytest.raises(ValueError):
+        validate.workbench_action({'action': 'hold', 'claim': 'never filed'})

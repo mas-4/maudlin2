@@ -829,6 +829,28 @@ def move(claim: str, source: str, target: str):
 
 
 @exclusive
+def hold(claim: str, on: bool = True):
+    """A claim put on hold, or taken off it (Oct 18, the person: "a thing to mark a post 'hold' because if i uncheck it
+    it will keep reappearing. Basically I want to examine the claim further later"). A held claim leaves the checker's
+    queues (🎯 claims to judge, ✅ sure, 🚫 misfits) for its own ⏸ held tab, its filings still waiting, until the person
+    takes it off hold or decides them. Nothing about its filings changes: a hold is no verdict"""
+    index = load()
+    k = key(claim)
+    if on:
+        if k not in index['claims']:
+            raise ValueError('no such claim in the index')
+        index.setdefault('held', {})[k] = {'claim': claim, 'at': dt.now().isoformat(timespec='seconds')}
+    elif k in index.get('held', {}):
+        index['held'].pop(k)
+    save(index)
+
+
+def held(index: dict | None = None) -> dict:
+    """The claims on hold: claim key -> {'claim', 'at'}"""
+    return (index if index is not None else load()).get('held', {})
+
+
+@exclusive
 def not_same(a: str, b: str):
     """Remember that two entries aren't the same motif, so they're not suggested again."""
     index = load()
@@ -1531,6 +1553,8 @@ def correct_claim(old: str, new: str):
         if current == old:
             fixes[original] = new
     fixes[old] = new
+    if ko in index.get('held', {}):  # a held claim stays held in its new words
+        index['held'][kn] = {**index['held'].pop(ko), 'claim': new}
     save(index)
 
 
@@ -1576,6 +1600,9 @@ def same_claim(variant: str, canonical: str):
             crec.setdefault('variants', []).append(told)
     index['claims'][kc] = list(dict.fromkeys(ids_c + ids_v))
     index['claims'].pop(kv, None)
+    if kv in index.get('held', {}):  # a held variant holds the kept claim
+        index['held'].setdefault(kc, {**index['held'][kv], 'claim': canonical})
+        index['held'].pop(kv)
     fixes = index.setdefault('corrections', {})
     for original, current in list(fixes.items()):  # earlier wordings of the variant lead to the kept claim now
         if current == variant:

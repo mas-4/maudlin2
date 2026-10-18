@@ -423,9 +423,9 @@
   // The claims to judge, one claim at a time with everything about it (Oct 12, the person: they met the same claim in the
   // check, unchecked, second look and today tabs, each showing one of its motifs: "hard to judge a claim and its motifs
   // holistically"). Today keeps the motif-level decisions (new motifs to shape, proposals)
-  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['sure', '✅ sure'], ['misfits', '🚫 misfits'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['tellings', '🧩 tellings'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['sure', '✅ sure'], ['misfits', '🚫 misfits'], ['held', '⏸ held'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['tellings', '🧩 tellings'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), sure: S.quickN && S.quickN.sure, misfits: S.quickN && S.quickN.out, proposals: S.data.proposals, splits: S.data.splits, tellings: S.data.tellings, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), sure: S.quickN && S.quickN.sure, misfits: S.quickN && S.quickN.out, held: (S.data.held || []).length, proposals: S.data.proposals, splits: S.data.splits, tellings: S.data.tellings, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
   }
   // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
@@ -496,6 +496,20 @@
       if (S.tab !== tab || !list) return;
       const conf = S.data.confidence;
       box.innerHTML = conf ? quickTab(tab === 'sure' ? 'sure' : 'out', conf) : '<p class="wb-faint">The confidence model hasn\'t been trained yet.</p>';
+      return;
+    }
+    if (tab === 'held') {
+      // ⏸ claims kept aside to look at later: out of the queues until taken off hold
+      const q = await queue('held');
+      if (S.tab !== tab) return;
+      if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
+      box.innerHTML = q.length ? `<p class="wb-faint">⏸ Claims you put on hold to look at later. They stay out of 🎯 claims to judge, ✅ sure and 🚫 misfits until you take them off hold. Open one with 🔍 to work on it.</p>
+        ${q.map((x) => `<div class="wb-sureline">
+          <button type="button" class="wb-surego" data-ckopen="${esc(x.claim)}" title="open it whole (← back comes back here)">${esc(x.claim)} 🔍</button>
+          <span class="wb-quickmotifs"><span class="wb-faint">held ${new Date(x.at).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} · ${x.waiting ? `${x.waiting} motif${x.waiting === 1 ? '' : 's'} waiting` : 'nothing waiting'}</span>
+          ${motifsOf(x.claim).map((e) => chip(e.id)).join(' ')}
+          <button class="wb-btn" data-unhold="${esc(x.claim)}" title="back into the queues">▶ take off hold</button></span></div>`).join('')}`
+        : '<div class="wb-welcome"><div class="wb-big">⏸</div><p>Nothing on hold. ⏸ hold a claim from its card, or from ✅ sure or 🚫 misfits, to look at it later without it coming back each time.</p></div>';
       return;
     }
     if (tab === 'judge') {
@@ -764,7 +778,8 @@
   const quickRow = (kind, r) => `<div class="wb-sureline">
       <button type="button" class="wb-surego" data-ckopen="${esc(r.claim)}" title="open it whole: every motif it's in, take one out, move it, reword it (← back comes back here)">${esc(r.claim)} 🔍</button>
       <span class="wb-quickmotifs">${r.ids.map((id) => `<label class="wb-quickmotif"><input type="checkbox"${kind === 'sure' ? ' checked' : ''} data-quick="${kind}" data-quickpair="${esc(r.claim + '|' + id)}">
-        ${fitChip(S.fits[r.claim + '|' + id])} ${chip(id)}</label>`).join('')}</span></div>`;
+        ${fitChip(S.fits[r.claim + '|' + id])} ${chip(id)}</label>`).join('')}
+      <button type="button" class="wb-mini" data-holdclaim="${esc(r.claim)}" title="keep it aside to look at later: out of the lists, into ⏸ held">⏸ hold</button></span></div>`;
   function quickTab(kind, conf) {
     const {sure, out} = quickLists();
     const pct = (x) => Math.round(x * 100);
@@ -797,6 +812,7 @@
         <span class="wb-checkbtns">
           <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
           <button class="wb-btn yes" data-verdict="allyes" title="every motif left fits: tick them all and go on">✓ all fit, next <kbd>Y</kbd></button>
+          <button class="wb-btn" data-verdict="hold" title="keep it aside to look at later: out of the claims to judge, into ⏸ held">⏸ hold <kbd>H</kbd></button>
           <button class="wb-btn" data-verdict="next" title="leave it for now">next ▶ <kbd>→</kbd></button>
         </span></div>` : '';
     box.classList.toggle('checking', !!check);
@@ -820,6 +836,8 @@
       <div class="wb-sbtns wb-clacts">
         <button class="wb-btn" data-cl="new|">✨ new motif with it</button>
         ${ins.length ? '<button class="wb-btn" data-cl="nomotif|">∅ no motif</button>' : ''}
+        ${(S.data.held || []).includes(c.claim) ? `<button class="wb-btn" data-unhold="${esc(c.claim)}" title="on hold: back into the queues">⏸ on hold · ▶ take off</button>`
+          : ins.length && !check ? `<button class="wb-btn" data-holdclaim="${esc(c.claim)}" title="keep it aside to look at later: out of the queues, into ⏸ held">⏸ hold</button>` : ''}
       </div>
       <h3>≡ claims like this one <span class="wb-faint">closest in meaning; fold one in if it's the same claim told another way</span></h3>
       <ul class="wb-claims" id="cl-similar"><li class="wb-faint">⏳</li></ul>
@@ -1118,6 +1136,11 @@
         sure(t, `Delete “${A.name}”? Its ${A.claims.length} claims won't be filed again.`, '🗑️ delete it').then((ok) => ok && act({action: 'delete', id: a}, `🗑️ deleted “${A.name}”`))}];
     }
     return [];
+  }
+  // A claim put on hold or taken off it: the queues that list it read again
+  function holdClaim(claim, on) {
+    S.queues.judge = S.queues.held = null;
+    return act({action: on ? 'hold' : 'unhold', claim}, on ? '⏸ on hold: in ⏸ held' : '▶ off hold: back in the queues');
   }
   // The quick lists' decisions, in one undoable step: [['claim|motif', 'yes' or 'out']]
   function quickDecide(pairs, done) {
@@ -1425,6 +1448,8 @@
       if (v === 'out') boxes.filter((b) => !b.checked).forEach((b) => S.quickSkip.add(b.dataset.quickpair));  // looked at, left: for its card
       return quickDecide([...out, ...keep], [out.length ? `✕ took out ${out.length}` : '', keep.length ? `✓ ${keep.length} fit` : ''].filter(Boolean).join(', '));
     }
+    if ((v = d('holdclaim'))) return holdClaim(v, true);
+    if ((v = d('unhold'))) return holdClaim(v, false);
     if ((v = d('quickpage'))) { const [kind, page] = v.split('|'); S.quickPage[kind] = Math.max(0, +page); return renderInbox(); }
     if ((v = d('similar'))) { const [id, i] = v.split('|'); S.extra[id] = {kind: 'similar', items: await getJSON('/motif-similar.json?id=' + id).catch(() => [])}; return fillExtra(id, +i); }
     if ((v = d('closeextra'))) { delete S.extra[v]; return renderPanels(); }
@@ -1759,6 +1784,11 @@
       }
       return renderInbox();
     }
+    if (answer === 'hold') {  // kept aside: the next claim slides into its place
+      if (!S.checkBack) { S.checkTrail.push(x.claim); S.checkHere = null; }
+      else S.checkBack = (S.checkForward || []).pop() || null;
+      return holdClaim(x.claim, true);
+    }
     if (answer === 'prev') {
       if (!S.checkTrail.length) { toast('◀ that’s the first one you’ve seen'); return; }
       S.checkForward = S.checkForward || [];
@@ -1872,7 +1902,7 @@
     if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); return; }
     if (S.tab === 'judge' && $('#inbox').dataset.check) {
-      const k = {y: 'allyes', arrowright: 'next', j: 'next', s: 'next', arrowleft: 'prev', k: 'prev'}[ev.key.toLowerCase()];
+      const k = {y: 'allyes', h: 'hold', arrowright: 'next', j: 'next', s: 'next', arrowleft: 'prev', k: 'prev'}[ev.key.toLowerCase()];
       if (k) { ev.preventDefault(); verdict(k); return; }
       const move = ev.key.toLowerCase() === 'm' && $('#cl-better [data-move]');  // m: out of the doubted motif, into its best fit
       if (move) { ev.preventDefault(); move.click(); }

@@ -430,6 +430,8 @@ def checker_action(action: dict) -> str:
         file at the next hourly run; never read as "not this motif") · split {proposal, children} · split_reject {proposal}
       carrying {claim, id, text} (the tellers' own words that carry the motif in this filing, phrases split on ';';
         a motif's phrase dictionary is gathered from them; "" clears)
+      hold {claim} · unhold {claim} (a claim kept aside to look at later: out of claims_to_judge, its filings still
+        waiting; no verdict)
       group_member {id, group, on} · group_assign {id, group|null} · group_new {name, id?} · group_rename {group, name}
       group_note {group, note} (what its motifs have in common; "" clears)
       facet {id, facet: "genre", value|null} · facet_value {facet: "genre", value} · facet_note {facet: "genre", value, note} (what kind of thing

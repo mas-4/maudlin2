@@ -513,6 +513,9 @@ def workbench_state() -> dict:
     state['second_look'] = sum(1 for e in mi.live(index) for c in e['claims'] if doubted(e, c, hand, recent))
     state['not_same'] = [sorted(p) for p in index.get('not_same', [])]
     state['facets'] = mi.facet_values(index)
+    # the claims on hold, in the words their filings carry now: out of the queues, in the ⏸ held tab
+    held = mi.held(index)
+    state['held'] = sorted({c['claim'] for e in mi.live(index) for c in e['claims'] if mi.key(c['claim']) in held})
     from app.analysis import motif_proposals as mp
     state['proposals'] = len(mp.open_proposals())  # the 💡 tab's count
     from app.analysis import claim_organizer as co
@@ -708,7 +711,8 @@ def judge_queue() -> list[dict]:
     times ... it's hard to judge a claim and its motifs holistically"; the check, unchecked, second look and today tabs
     each showed one filing of a claim at a time, so a claim in three motifs came up again and again). Each claim with
     why it's here: its filings nobody has checked (each with its fit), and its filings the person confirmed that the
-    model now doubts (the second look). In the check queue's order (the least sure first: E6), the doubted after"""
+    model now doubts (the second look). In the check queue's order (the least sure first: E6), the doubted after.
+    Claims on hold (⏸, Oct 18) are left out"""
     out, by = [], {}
 
     def entry(x):
@@ -720,7 +724,10 @@ def judge_queue() -> list[dict]:
     from app.analysis import motif_index as mi
     index = mi.load()
     refiled = {(mi.key(c['claim']), e['id']): c['refiled'] for e in mi.live(index) for c in e['claims'] if c.get('refiled')}
+    held = mi.held(index)  # ⏸ on hold: in the held tab, not here
     for x in check_queue():
+        if mi.key(x['claim']) in held:
+            continue
         e = entry(x)
         e['reasons'].append({'kind': 'unchecked', 'id': x['id'], 'fit': x.get('fit'),  # the watch list filed it again
                              **({'refiled': refiled[(mi.key(x['claim']), x['id'])]} if (mi.key(x['claim']), x['id']) in refiled else {})})
@@ -729,6 +736,8 @@ def judge_queue() -> list[dict]:
         if not x.get('can_be_sure', True):
             e['unsure'].append(x['id'])
     for x in sorted(second_look(), key=lambda r: r['fit']):
+        if mi.key(x['claim']) in held:
+            continue
         e = entry(x)
         e['reasons'].append({'kind': 'doubted', 'id': x['id'], 'fit': x['fit']})
         e['fits'][x['id']] = x['fit']
@@ -756,6 +765,17 @@ def workbench_queue(kind: str):
         except Exception as e:  # noqa: BLE001 - the embeddings need Ollama
             similar, note = [], f'similar names unavailable: {type(e).__name__}'
         return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
+    if kind == 'held':  # ⏸ the claims on hold, the latest held first, with how many filings still wait on each
+        index = mi.load()
+        held, waiting = mi.held(index), {}
+        for e in mi.live(index):
+            for c in e['claims']:
+                k = mi.key(c['claim'])
+                if k in held:
+                    x = waiting.setdefault(k, {'claim': c['claim'], 'at': held[k]['at'], 'waiting': set()})
+                    if not c.get('checked'):  # motifs, not records: a claim told by two sources is two records
+                        x['waiting'].add(e['id'])
+        return sorted(({**x, 'waiting': len(x['waiting'])} for x in waiting.values()), key=lambda x: x['at'], reverse=True)
     if kind == 'tellings':  # 🧩 Pandora's tellings of the flabby motifs, still to decide
         from app.analysis import tellings
         return tellings.drafted()
@@ -846,6 +866,10 @@ def workbench_action(data: dict):
                 e.done = steps[:n]  # the steps that ran stay done: the caller logs them
                 raise
             made += sorted(set(mi.load()['entries']) - had)
+    elif act in ('hold', 'unhold'):  # a claim kept aside to look at later, out of the queues; no verdict
+        if not isinstance(data.get('claim'), str) or not data['claim'].strip():
+            raise ValueError(f'{act}: a claim')
+        mi.hold(data['claim'], act == 'hold')
     elif act == 'not_same':
         live = {e['id'] for e in mi.live(mi.load())}
         if data.get('a') not in live or data.get('b') not in live or data['a'] == data['b']:

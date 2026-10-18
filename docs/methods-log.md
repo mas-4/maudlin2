@@ -13,6 +13,9 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   out 74% of the filings under 30%, and 86% even under 10%. So the person ticks what to take out; what's left on the
   page either waits for its card or is checked as fitting. The model's held-out test now records how often the
   filings under that line were taken out.
+- **⏸ Hold.** A claim can be put on hold, to look at later: it leaves the claims to judge, ✅ sure and 🚫 misfits for
+  a ⏸ held tab, its filings still waiting, until it is taken off hold. Before, a sure claim left unticked came back
+  each time the list loaded. A hold is no verdict: the confidence model doesn't read it.
 
 ## 2026-10-15
 - **A saga's parts in the order of their latest news.** Parts were numbered in the order they broke, but a part's
