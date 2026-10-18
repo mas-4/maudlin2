@@ -355,6 +355,9 @@ body.dragging .wb-schip { border-style: dashed; }
     background: #eafbe6;
 }
 
+/* the likely misfits: none ticked, to take out quickly */
+.wb-sure.wb-misfits { background: #fff0f2; }
+
 .wb-sure summary {
     cursor: pointer;
     font-weight: 700;
@@ -440,3 +443,12 @@ body.dragging .wb-schip { border-style: dashed; }
 .wb-motiftelling .wb-tname { font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; border: 1.5px solid #ccc; border-radius: 8px; padding: 2px 6px; }
 .wb-motiftelling .wb-tnote { font: inherit; font-size: 13px; border: 1.5px solid #ccc; border-radius: 8px; padding: 2px 6px; resize: vertical; }
 
+
+/* a quick list's claim: its text, then each waiting motif with its tick */
+.wb-quickmotifs { display: flex; flex-wrap: wrap; gap: 0.3em 0.8em; width: 100%; }
+.wb-quickmotif { display: inline-flex; gap: 0.3em; align-items: baseline; cursor: pointer; }
+
+/* a quick list's pages */
+.wb-pager { display: flex; flex-wrap: wrap; gap: 0.5em; align-items: center; padding: 0.3em 0; }
+.wb-pager button[disabled] { opacity: 0.4; cursor: default; }
+.wb-pager label { margin-left: auto; }

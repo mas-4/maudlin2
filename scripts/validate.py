@@ -526,7 +526,10 @@ def workbench_state() -> dict:
     m = read_json(fc.MODEL, None)  # how sure 'sure' is, as tested held out
     sure = m and m['test'].get('sure_at')
     state['confidence'] = {'sure_at': sure, 'auc': m['test']['auc'],
-                           'at_sure': next((t for t in m['test']['thresholds'] if t['at'] == sure), None)} if sure else None
+                           'at_sure': next((t for t in m['test']['thresholds'] if t['at'] == sure), None),
+                           # the likely-out line, and how often the person took out what fell under it (from the
+                           # model trained after Oct 18; the line alone before)
+                           'out_at': fc.OUT_AT, 'at_out': m['test'].get('at_out')} if sure else None
     return state
 
 

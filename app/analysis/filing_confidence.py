@@ -52,6 +52,10 @@ CANDIDATES = 12
 BETTER_SHOWN = 3
 BETTER_MIN = 0.3
 SURE = 0.95  # precision the 'sure' threshold has to reach, held out
+# Under this fit a filing is likely out: the checker lists them to take out quickly, none ticked (Oct 18, the person:
+# "sure, can pass quickly" and "not sure, can reject quickly"). Never sure: held out, of the 229 filings under 0.3 the
+# person took out 74%, and of the 22 under 0.1 still 86%, so a no can't pass in bulk as a yes does
+OUT_AT = 0.3
 
 
 def record(model: str, **numbers):
@@ -252,6 +256,9 @@ def evaluate(X: np.ndarray, y: np.ndarray, groups: list[str], folds: int = 5) ->
                                   'precision': round(float(y[passed].mean()), 3) if passed.any() else None})
     sure = [r for r in out['thresholds'] if r['precision'] is not None and r['precision'] >= SURE and r['passes'] >= 20]
     out['sure_at'] = sure[0]['at'] if sure else None
+    under = p < OUT_AT  # how often the person took out what the model put under the likely-out line
+    out['at_out'] = {'at': OUT_AT, 'under': int(under.sum()), 'of removed': round(float(under[~y].mean()), 3) if (~y).any() else None,
+                     'removed': round(float(1 - y[under].mean()), 3) if under.any() else None}
     out['p'] = p
     return out
 

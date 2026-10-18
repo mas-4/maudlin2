@@ -22,6 +22,19 @@
         "8799"
       ],
       "port": 8799
+    },
+    {
+      "name": "checker-lab",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "MAUDLIN_DATA=/home/mas/maudlin-lab/data",
+        "MAUDLIN_TRACE=off",
+        ".venv/bin/python",
+        "scripts/validate.py",
+        "--port",
+        "8798"
+      ],
+      "port": 8798
     }
   ]
 }

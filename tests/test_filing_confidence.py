@@ -131,3 +131,11 @@ def test_suggestions_rank_by_the_learned_shortlist_while_filing_uses_it_else_by_
     scorer.learned = {'coef': []}
     assert scorer.candidates('c') == ['M2', 'M3'] and seen == [True]  # the claim held out, as before
     assert scorer.candidates('c', n=1) == ['M2']
+
+
+def test_the_held_out_test_says_how_often_the_likely_out_were_taken_out():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(400, 2))
+    y = X[:, 0] + 0.3 * rng.normal(size=400) > -0.8
+    out = fc.evaluate(X, y, [str(i % 97) for i in range(400)])['at_out']
+    assert out['at'] == fc.OUT_AT and out['under'] > 0 and out['removed'] > 0.5 and 0 < out['of removed'] <= 1

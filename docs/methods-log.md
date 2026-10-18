@@ -4,6 +4,16 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-18
+- **The checker's quick lists: sure claims and likely misfits.** The claims to judge listed every sure filing in one
+  fold, 418 on Oct 18, and passing one filing of a claim left the claim to come back for the rest. Now there are two
+  lists, a claim a row, a page at a time (10-100 rows a page). The sure list has only claims whose every waiting
+  filing is past the sure line (277 of 582), so passing a row finishes the claim. The likely-misfit list has filings
+  the confidence model puts under 30%, none ticked. The model is never sure of a no: held out, the person took out
+  74% of the filings under 30%, and 86% even under 10%. So the person ticks what to take out; what's left on the page
+  either waits for its card or is checked as fitting. The model's held-out test now records how often the filings
+  under that line were taken out.
+
 ## 2026-10-15
 - **A saga's parts in the order of their latest news.** Parts were numbered in the order they broke, but a part's
   title tells its latest news (a live story's title moves on with it), so a long-running part came first under today's

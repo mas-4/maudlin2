@@ -14,7 +14,7 @@
 
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
-    decided: new Set(), rejected: new Set(), claimCache: {detail: {}, similar: {}, better: {}},  // this session's decisions ('claim|motif', 'p:proposal'; ✕'d suggestions)
+    decided: new Set(), rejected: new Set(), quickSkip: new Set(), claimCache: {detail: {}, similar: {}, better: {}},  // this session's decisions ('claim|motif', 'p:proposal'; ✕'d suggestions)
     q: '', sel: [], last: [], msel: new Set(), mlast: null, active: 0, tab: ({check: 'judge', unchecked: 'judge', second: 'judge'})[store.get('tab', 'judge')] || store.get('tab', 'judge'), queues: {}, folded: new Set(store.get('folded', [])),
     checkAt: 0, extra: {}, claimHits: [], groupBy: store.get('groupby', 'group'),
   };
@@ -706,17 +706,78 @@
   }
   // A filing's fit as a chip, as the proposals' best fit
   const fitChip = (fit, unsure) => `<b class="wb-fit" style="--fit: ${Math.round(fit * 100)}%" title="fit: the chance you keep this filing, learned from your own checks${unsure ? '. Never passed as sure: its motif was made for this claim alone, or too few of your checks have tested claims from where it came from' : ''}">🎯 ${Math.round(fit * 100)}%${unsure ? ' ⚠️' : ''}</b>`;
-  // Unchecked filings the confidence model is sure of (at or over the threshold its held-out test set)
-  function sureFilings() {
-    const at = S.data.confidence && S.data.confidence.sure_at;
-    if (!at || !S.fits) return [];
-    return Object.entries(S.fits).filter(([k, f]) => f >= at && !(S.unsure && S.unsure.has(k))).map(([k]) => {
-      const i = k.lastIndexOf('|');
-      return {claim: k.slice(0, i), id: k.slice(i + 1)};
-    }).filter((x) => S.by[x.id] && S.by[x.id].claims.some((c) => c.claim === x.claim && !c.checked));
+  // The quick lists above the claim on screen (Oct 18, the person: the sure fold of 418 filings was "way too long", and
+  // passing one filing of a claim still left the claim to come back for the rest). Two lists, a claim a row, a page at
+  // a time:
+  //   sure        claims whose every waiting filing is past the sure line: passing a row finishes the claim. A claim
+  //               with any filing short of it isn't here (its card shows each filing's fit)
+  //   likely out  filings under the likely-out line, none ticked: the model is never sure of a no (held out, about 3
+  //               in 4 under the line were taken out), so you tick the ones that don't fit
+  // Filings the model can't be sure of (a motif made for the claim alone, an untested source) and ones you confirmed
+  // that it now doubts are in neither: those want the card
+  const QUICK_PER = [10, 25, 50, 100];
+  function quickLists() {
+    const conf = S.data.confidence || {}, sureAt = conf.sure_at, outAt = conf.out_at;
+    const sure = [], out = [];
+    if (!S.fits || !S.why) return {sure, out};
+    for (const claim of Object.keys(S.why)) {
+      const left = waiting(claim);
+      if (!left.length) continue;
+      const fit = (id) => S.fits[claim + '|' + id];
+      const plain = (id) => fit(id) != null && !doubts(claim, id) && !S.unsure.has(claim + '|' + id) && !S.quickSkip.has(claim + '|' + id);
+      if (sureAt && left.every((id) => plain(id) && fit(id) >= sureAt)) sure.push({claim, ids: left, at: Math.min(...left.map(fit))});
+      const low = outAt ? left.filter((id) => plain(id) && fit(id) < outAt) : [];
+      if (low.length) out.push({claim, ids: low, at: Math.min(...low.map(fit))});
+    }
+    sure.sort((a, b) => b.at - a.at);  // the surest first
+    out.sort((a, b) => a.at - b.at);  // the least likely first
+    return {sure, out};
   }
-  // the sure fold stays open across re-renders once you open it
-  document.addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('wb-sure')) S.sureOpen = ev.target.open; }, true);
+  // a list's page: the rows on it, and the pager (◀ page ▶, rows a page)
+  function quickPage(kind, rows) {
+    const per = store.get('quickper', 25), pages = Math.max(1, Math.ceil(rows.length / per));
+    S.quickPage = S.quickPage || {};
+    const page = Math.min(S.quickPage[kind] || 0, pages - 1);
+    S.quickPage[kind] = page;
+    const pager = `<div class="wb-pager">
+      <button type="button" class="wb-btn" data-quickpage="${kind}|${page - 1}"${page ? '' : ' disabled'}>◀</button>
+      <span>page ${page + 1} of ${pages}</span>
+      <button type="button" class="wb-btn" data-quickpage="${kind}|${page + 1}"${page < pages - 1 ? '' : ' disabled'}>▶</button>
+      <label class="wb-faint">rows a page <select data-quickper="1">${QUICK_PER.map((n) => `<option${n === per ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`;
+    return {rows: rows.slice(page * per, (page + 1) * per), pager};
+  }
+  const quickRow = (kind, r) => `<div class="wb-sureline">
+      <button type="button" class="wb-surego" data-surego="${esc(r.claim)}" title="open it here, whole: every motif it's in, take one out, move it, reword it">${esc(r.claim)} 🔍</button>
+      <span class="wb-quickmotifs">${r.ids.map((id) => `<label class="wb-quickmotif"><input type="checkbox"${kind === 'sure' ? ' checked' : ''} data-quick="${kind}" data-quickpair="${esc(r.claim + '|' + id)}">
+        ${fitChip(S.fits[r.claim + '|' + id])} ${chip(id)}</label>`).join('')}</span></div>`;
+  function quickFolds(conf) {
+    const {sure, out} = quickLists();
+    const pct = (x) => Math.round(x * 100);
+    let html = '';
+    if (sure.length) {
+      const pg = quickPage('sure', sure);
+      html += `<details class="wb-sure"${S.sureOpen ? ' open' : ''} data-quickfold="sure"><summary title="Claims whose every waiting filing is at ${pct(conf.sure_at)}% or more. Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings that sure were ones you kept">🎯 ${sure.length} sure claim${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${pct(conf.at_sure.precision)}% right when tested): pass them quickly</span></summary>
+        <p class="wb-faint">Every motif waiting on these claims is past the sure line. Untick any that don't fit, then pass the page: a claim passed whole is done. An unticked motif stays for its card.</p>
+        ${pg.pager}${pg.rows.map((r) => quickRow('sure', r)).join('')}
+        <button class="wb-btn yes" data-passsure="1">✓ pass the ticked on this page</button></details>`;
+    }
+    if (out.length) {
+      const pg = quickPage('out', out), o = conf.at_out;
+      const tested = o && o.removed != null ? `held out, you took out ${pct(o.removed)}% of filings under ${pct(conf.out_at)}%` : `under ${pct(conf.out_at)}%`;
+      html += `<details class="wb-sure wb-misfits"${S.outOpen ? ' open' : ''} data-quickfold="out"><summary title="Filings the model gives under ${pct(conf.out_at)}%. It's never sure of a no: ${tested}, so none come ticked">🚫 ${out.length} claim${out.length === 1 ? '' : 's'} with a likely misfit <span class="wb-faint">(${tested}): take them out quickly</span></summary>
+        <p class="wb-faint">Tick the motifs that don't fit. Take out the ticked, and leave the rest for their cards; or take out the ticked and say the rest fit.</p>
+        ${pg.pager}${pg.rows.map((r) => quickRow('out', r)).join('')}
+        <button class="wb-btn no" data-takeout="out">✕ take out the ticked</button>
+        <button class="wb-btn" data-takeout="keep" title="the ticked out, every unticked one on this page checked as fitting">✕ take out the ticked, ✓ the rest fit</button></details>`;
+    }
+    return html;
+  }
+  // the folds stay open across re-renders once you open them
+  document.addEventListener('toggle', (ev) => {
+    const f = ev.target.dataset && ev.target.dataset.quickfold;
+    if (f === 'sure') S.sureOpen = ev.target.open;
+    if (f === 'out') S.outOpen = ev.target.open;
+  }, true);
   function renderClaim(box, check, left) {
     const c = S.claim;
     if (!c) {
@@ -726,14 +787,10 @@
     const ins = motifsOf(c.claim);
     const first = ins[0], rec = first && first.claims.find((x) => x.claim === c.claim);
     const src = (rec && rec.source) || c.src || '';
-    const conf = S.data.confidence, sure = conf ? sureFilings() : [];
+    const conf = S.data.confidence;
     const verdict = check ? `<div class="wb-checkbar">
         <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to judge${whyHere(c.claim) ? ' · here for: ' + whyHere(c.claim) : ''} · judge it whole: tick each motif that fits, take out the rest, add what's missing, then ✓ all fit</span>
-        ${sure.length ? `<details class="wb-sure"${S.sureOpen ? ' open' : ''}><summary title="Filings at ${Math.round(conf.sure_at * 100)}% or more. Tested on your past checks, held out: ${Math.round(conf.at_sure.precision * 100)}% of those were ones you kept">🎯 ${sure.length} sure one${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${Math.round(conf.at_sure.precision * 100)}% right when tested): look them over</span></summary>
-          <p class="wb-faint">Untick any that don't fit, then pass the rest (one undoable step). An unticked one stays to check.</p>
-          ${sure.map((x) => `<label class="wb-sureline"><input type="checkbox" checked data-suresel="${esc(x.claim + '|' + x.id)}">
-            ${fitChip(S.fits[x.claim + '|' + x.id])} ${chip(x.id)} <button type="button" class="wb-surego" data-surego="${esc(x.claim)}" title="open it here, whole: every motif it's in, take this one out, move it, reword it">${esc(x.claim)} 🔍</button></label>`).join('')}
-          <button class="wb-btn yes" data-passsure="1">✓ pass the ticked</button></details>` : ''}
+        ${conf ? quickFolds(conf) : ''}
         <span class="wb-checkbtns">
           <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
           <button class="wb-btn yes" data-verdict="allyes" title="every motif left fits: tick them all and go on">✓ all fit, next <kbd>Y</kbd></button>
@@ -1059,6 +1116,17 @@
     }
     return [];
   }
+  // The quick lists' decisions, in one undoable step: [['claim|motif', 'yes' or 'out']]
+  function quickDecide(pairs, done) {
+    const steps = pairs.map(([k, answer]) => {
+      const i = k.lastIndexOf('|'), claim = k.slice(0, i), id = k.slice(i + 1);
+      S.decided.add(k);
+      return answer === 'yes' ? {action: 'check', claim, id, answer: 'yes'} : {action: 'unfile', claim, id};
+    });
+    S.queues.judge = null;
+    S.checkHere = null;
+    return batch(steps, done);
+  }
   function batch(steps, done) {
     steps = steps.filter(Boolean);
     if (!steps.length) return;
@@ -1346,17 +1414,23 @@
       if (S.checkHere && S.checkHere.claim !== v) { S.checkTrail = S.checkTrail || []; S.checkTrail.push(S.checkHere.claim); }
       S.checkBack = null;
       S.checkHere = {claim: v, source: ((motifsOf(v)[0] || {claims: []}).claims.find((c) => c.claim === v) || {}).source || ''};
-      S.sureOpen = false;
+      S.sureOpen = S.outOpen = false;
       return renderInbox();
     }
-    if (d('passsure')) {  // the sure filings still ticked in the fold, passed in one undoable step
-      const ticked = new Set([...document.querySelectorAll('[data-suresel]:checked')].map((b) => b.dataset.suresel));
-      const sure = sureFilings().filter((x) => ticked.has(x.claim + '|' + x.id));
-      if (!sure.length) { toast('nothing ticked'); return; }
-      S.queues.judge = null;
-      S.checkHere = null;
-      return batch(sure.map((x) => ({action: 'check', claim: x.claim, id: x.id, answer: 'yes'})), `🎯 passed ${sure.length} sure filing${sure.length === 1 ? '' : 's'}`);
+    if (d('passsure')) {  // the sure claims' ticked motifs on the page, passed in one undoable step
+      const pairs = $$('[data-quick="sure"]:checked').map((b) => b.dataset.quickpair);
+      if (!pairs.length) { toast('nothing ticked'); return; }
+      $$('[data-quick="sure"]:not(:checked)').forEach((b) => S.quickSkip.add(b.dataset.quickpair));  // unticked: for its card
+      return quickDecide(pairs.map((k) => [k, 'yes']), `🎯 passed ${pairs.length} sure filing${pairs.length === 1 ? '' : 's'}`);
     }
+    if ((v = d('takeout'))) {  // the likely misfits ticked on the page taken out; with 'keep', the unticked said to fit
+      const boxes = $$('[data-quick="out"]'), out = boxes.filter((b) => b.checked).map((b) => [b.dataset.quickpair, 'out']);
+      const keep = v === 'keep' ? boxes.filter((b) => !b.checked).map((b) => [b.dataset.quickpair, 'yes']) : [];
+      if (!out.length && !keep.length) { toast('nothing ticked'); return; }
+      if (v === 'out') boxes.filter((b) => !b.checked).forEach((b) => S.quickSkip.add(b.dataset.quickpair));  // looked at, left: for its card
+      return quickDecide([...out, ...keep], [out.length ? `✕ took out ${out.length}` : '', keep.length ? `✓ ${keep.length} fit` : ''].filter(Boolean).join(', '));
+    }
+    if ((v = d('quickpage'))) { const [kind, page] = v.split('|'); S.quickPage[kind] = Math.max(0, +page); return renderInbox(); }
     if ((v = d('similar'))) { const [id, i] = v.split('|'); S.extra[id] = {kind: 'similar', items: await getJSON('/motif-similar.json?id=' + id).catch(() => [])}; return fillExtra(id, +i); }
     if ((v = d('closeextra'))) { delete S.extra[v]; return renderPanels(); }
     if ((v = d('bulk'))) return bulk(...v.split('|'));
@@ -1780,6 +1854,7 @@
     if (t.dataset.groupadd !== undefined) addToGroup(t, false);
     if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
     if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); renderTree(); }
+    if (t.dataset.quickper !== undefined) { store.set('quickper', +t.value); S.quickPage = {}; renderInbox(); }
   });
   // A note saves as you leave it, like a title (there's no save button to forget)
   document.addEventListener('focusout', (ev) => {
