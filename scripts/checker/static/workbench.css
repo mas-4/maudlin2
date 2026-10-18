@@ -454,3 +454,22 @@ body.dragging .wb-schip { border-style: dashed; }
 
 /* ✅ sure's tally: how the sure claims have fared with the person */
 .wb-tally { margin: 0 0 0.4em; font-weight: 700; }
+
+/* 📈 pace: the day's judged claims against what arrives */
+.wb-pace { position: relative; }
+.wb-pace summary { list-style: none; }
+.wb-pace summary::-webkit-details-marker { display: none; }
+.wb-pace-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; background: white; border: 3px solid var(--ink);
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--yellow); padding: 8px 12px 10px; width: min(500px, 92vw); }
+.wb-pace-pop.wb-pace-left { right: auto; left: 0; }
+.wb-pace-big { font: 400 16px 'Comic Neue', 'Comic Sans MS', cursive; margin: 2px 0 4px; }
+.wb-pace-svg { width: 100%; height: auto; display: block; margin: 4px 0; }
+.wb-pace-grid { stroke: #e3e3ea; stroke-width: 1; }
+.wb-pace-steady { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.wb-pace-axis { font: 11px system-ui, sans-serif; fill: #5c5c6e; }
+.wb-pace-num { font: 700 10px system-ui, sans-serif; fill: var(--ink); }
+.wb-pace-key { display: flex; gap: 1em; margin: 2px 0; font-size: 12px; }
+.wb-pace-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.wb-pace-key .wb-pace-dash { width: 16px; height: 0; border-top: 2px dashed var(--ink); border-radius: 0; vertical-align: 3px; }
+.wb-pace-table table { font-size: 12px; border-collapse: collapse; }
+.wb-pace-table td, .wb-pace-table th { padding: 1px 8px; text-align: right; }

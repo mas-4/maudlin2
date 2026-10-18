@@ -1,5 +1,6 @@
 """scripts/validate.py: a label check's verdict goes straight onto the headline as hand labels."""
 import importlib.util
+import json
 import os
 
 import pytest
@@ -414,3 +415,26 @@ def test_the_sure_tally_counts_unticks_take_outs_and_holds_as_needing_the_person
          'before': before, 'by': 'claude'}]
     monkeypatch.setattr(curation_db, 'actions', lambda: rows)
     assert validate.sure_tally() == [{'day': day, 'clean': 1, 'needed': 3}]
+
+
+def test_pace_counts_arrivals_and_judged_claims_and_the_steady_target(monkeypatch, tmp_path):
+    """📈 pace (Oct 18): arrivals from the shortlist log (a claim's first filing), claims judged from the curation log,
+    the steady target the median of the last week's full days (a one-off refile doesn't set it)"""
+    from datetime import timedelta
+    from app.analysis import filing_confidence as fc, motif_index as mi
+    now = validate.dt.now()
+    day = lambda n: (now - timedelta(days=n)).strftime('%Y-%m-%dT10:00:00')  # noqa: E731
+    log = tmp_path / 'shortlist.jsonl'
+    rows = [{'at': day(n), 'key': f'{n}-{i}', 'picked': ['M1']} for n, count in ((3, 10), (2, 500), (1, 20)) for i in range(count)]
+    rows += [{'at': day(1), 'key': '1-0', 'picked': ['M2']}, {'at': day(1), 'key': 'x', 'picked': [], 'new': None}]
+    log.write_text(''.join(json.dumps(r) + '\n' for r in rows))
+    monkeypatch.setattr(mi, 'SHORTLIST_LOG', str(log))
+    monkeypatch.setattr(fc, 'log_rows', lambda: [
+        {'at': day(0), 'action': {'action': 'batch', 'steps': [{'action': 'check', 'claim': 'a', 'id': 'M1', 'answer': 'yes'},
+                                                             {'action': 'unfile', 'claim': 'a', 'id': 'M2'},
+                                                             {'action': 'check', 'claim': 'b', 'id': 'M1', 'answer': 'yes'}]}},
+        {'at': day(0), 'action': {'action': 'hold', 'claim': 'c'}}])
+    monkeypatch.setattr(validate, 'judge_queue', lambda: [{}] * 28)
+    p = validate.pace()
+    assert [d['arrived'] for d in p['days'][-4:]] == [10, 500, 20, 0] and p['days'][0]['arrived'] is None
+    assert p['today'] == 2 and p['steady'] == 20 and p['waiting'] == 28 and p['clear_in_14'] == 22

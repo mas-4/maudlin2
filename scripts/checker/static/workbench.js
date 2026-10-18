@@ -2179,6 +2179,51 @@
 
 // The 📦 export menu opens toward the side with room (the button wraps to the left on a narrow window), and closes on a
 // pick or a click anywhere else
+// 📈 pace (Oct 18, the person: "how many am i at? ... a graph overview and how many to finish to hold steady"): the
+// claims you judged a day against the claims that arrived, and the day's target. Read fresh each time it opens
+const PACE = {arrived: '#e8590c', judged: '#1c7ed6'};  // validated for colour blindness (dataviz validate_palette)
+function paceChart(p) {
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const days = p.days, W = 460, H = 170, L = 30, B = 22, T = 10, slot = (W - L) / days.length, bw = Math.max(4, slot / 2 - 3);
+  // a one-off day (the Oct 15 refile, 755) would flatten the rest: the scale stops at 2.5 times the steady pace
+  const top = Math.max(10, Math.ceil((p.steady || 10) * 2.5), ...days.map((d) => d.judged));
+  const y = (v) => T + (H - T - B) * (1 - Math.min(v, top) / top);
+  const bar = (x, v, color, what, day) => v == null ? '' : `<rect x="${x}" y="${y(v)}" width="${bw}" height="${Math.max(0, y(0) - y(v))}" rx="2" fill="${color}"><title>${day}: ${v} ${what}</title></rect>`
+    + (v > top ? `<text x="${x + bw / 2}" y="${T + 9}" text-anchor="middle" class="wb-pace-num">${v}↑</text>` : '');
+  const ticks = [0, Math.round(top / 2), top].map((v) => `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" class="wb-pace-grid"/><text x="${L - 4}" y="${y(v) + 4}" text-anchor="end" class="wb-pace-axis">${v}</text>`).join('');
+  const bars = days.map((d, i) => {
+    const x = L + i * slot + 2, label = d.day.slice(5).replace('-', '/');
+    return bar(x, d.arrived, PACE.arrived, 'claims arrived', label) + bar(x + bw + 1, d.judged, PACE.judged, 'claims you judged', label)
+      + (i % 2 === days.length % 2 ? '' : `<text x="${x + bw}" y="${H - 6}" text-anchor="middle" class="wb-pace-axis">${label}</text>`);
+  }).join('');
+  const steady = p.steady != null ? `<line x1="${L}" x2="${W}" y1="${y(p.steady)}" y2="${y(p.steady)}" class="wb-pace-steady"/><text x="${W}" y="${y(p.steady) - 4}" text-anchor="end" class="wb-pace-axis">hold steady ${p.steady}</text>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" class="wb-pace-svg" role="img" aria-label="claims arrived and judged a day, last ${days.length} days">${ticks}${bars}${steady}</svg>`;
+}
+async function renderPace() {
+  const box = document.getElementById('pace-pop');
+  let p;
+  try { p = await (await fetch('/pace.json')).json(); } catch (e) { box.innerHTML = '<p>😬 couldn’t count</p>'; return; }
+  const left = p.steady != null ? p.steady - p.today : null;
+  const head = left == null ? '' : left > 0 ? `<b>${left}</b> more to hold steady today` : `🎉 steady: <b>${-left}</b> over today's ${p.steady}`;
+  box.innerHTML = `<p class="wb-pace-big">Today: <b>${p.today}</b> judged · ${head}</p>
+    <p class="wb-faint">${p.waiting} claims waiting.${p.clear_in_14 ? ` About ${p.clear_in_14} a day clears them in two weeks.` : ''} Steady is the median of claims arriving a day over the last week.</p>
+    ${paceChart(p)}
+    <p class="wb-pace-key"><span><i style="background:${PACE.arrived}"></i> arrived</span> <span><i style="background:${PACE.judged}"></i> you judged</span> <span><i class="wb-pace-dash"></i> hold steady</span></p>
+    <details class="wb-pace-table"><summary class="wb-faint">as a table</summary><table><tr><th>day</th><th>arrived</th><th>judged</th></tr>
+      ${p.days.slice().reverse().map((d) => `<tr><td>${d.day}</td><td>${d.arrived ?? '–'}</td><td>${d.judged}</td></tr>`).join('')}</table></details>`;
+}
+document.getElementById('pace')?.addEventListener('toggle', (e) => {
+  const pop = document.getElementById('pace-pop');
+  pop.classList.remove('wb-pace-left');  // toward the side with room, as the export menu
+  if (!e.target.open) return;
+  if (pop.getBoundingClientRect().left < 0) pop.classList.add('wb-pace-left');
+  renderPace();
+});
+document.addEventListener('click', (e) => {  // closes when you click elsewhere, as the export menu does
+  const pace = document.getElementById('pace');
+  if (pace && pace.open && !(e.target instanceof Element && e.target.closest('#pace'))) pace.open = false;
+});
+
 document.querySelector('.wb-export')?.addEventListener('toggle', e => {
   const menu = e.target.querySelector('.wb-export-menu');
   menu.classList.remove('wb-export-left');

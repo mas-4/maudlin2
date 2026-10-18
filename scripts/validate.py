@@ -661,6 +661,49 @@ def sure_tally_claims(days: int = SURE_TALLY_DAYS) -> dict:
     return out
 
 
+PACE_DAYS = 14  # days the 📈 pace chart shows
+PACE_STEADY_OVER = 7  # days whose arrivals set the pace that holds the queue steady
+
+
+def pace(days: int = PACE_DAYS) -> dict:
+    """The 📈 pace pop-up (Oct 18, the person: "how many am i at? ... a graph overview and how many to finish to hold
+    steady"): a day at a time, the claims that arrived in the claims to judge (the filing's shortlist log: a claim
+    filed in a motif for the first time) and the claims the person judged (their last word on any filing of it, through
+    the checker or a slate applied on their word); how many wait now; and the day's target, the median arrivals of the
+    last PACE_STEADY_OVER full days (median: the Oct 15 refile of 755 plain-news claims was a one-off)"""
+    import statistics
+    from app.analysis import filing_confidence as fc, motif_index as mi
+    today = dt.now().strftime('%Y-%m-%d')
+    since = (dt.now() - td(days=days - 1)).strftime('%Y-%m-%d')
+    arrived, seen, first = {}, set(), None
+    try:
+        with open(mi.SHORTLIST_LOG) as f:
+            for line in f:
+                r = json.loads(line)
+                first = first or r['at'][:10]
+                if (r.get('picked') or r.get('new')) and r['key'] not in seen:
+                    seen.add(r['key'])
+                    arrived[r['at'][:10]] = arrived.get(r['at'][:10], 0) + 1
+    except (OSError, ValueError):
+        pass
+    judged = {}
+    for r in fc.log_rows():
+        if isinstance(r.get('action'), dict) and r['at'][:10] >= since:
+            d = {}
+            fc._decided(r['action'], d)
+            judged.setdefault(r['at'][:10], set()).update(k for k, _ in d)
+    out = []
+    for n in range(days):
+        day = (dt.now() - td(days=days - 1 - n)).strftime('%Y-%m-%d')
+        out.append({'day': day, 'arrived': arrived.get(day, 0) if first and day >= first else None,
+                    'judged': len(judged.get(day, ()))})
+    full = [d['arrived'] for d in out if d['arrived'] is not None and d['day'] != today][-PACE_STEADY_OVER:]
+    steady = round(statistics.median(full)) if full else None
+    waiting = len(judge_queue())
+    return {'days': out, 'today': out[-1]['judged'], 'steady': steady, 'waiting': waiting,
+            'clear_in_14': steady + -(-waiting // 14) if steady is not None else None}
+
+
 def index_sure_at() -> float | None:
     from app.analysis import filing_confidence as fc
     from app.utils.store import read_json
@@ -1120,6 +1163,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path.startswith('/experiments.json'):
                 return self.send_json(lab.overview())
             return self.send_json(lab.paper(code) if self.path.startswith('/experiment-paper') else lab.cases(code))
+        if self.path.startswith('/pace.json'):  # 📈 the person's pace against what arrives (pace())
+            return self.send_json(pace())
         if self.path.startswith('/live.json'):  # 🧠 the filing pipeline as it runs (app/analysis/trace_view.py)
             from urllib.parse import urlparse, parse_qs
             from app.analysis import trace_view
