@@ -10,7 +10,9 @@ sure fold counted for less:
                  where asked; the rest asked for these two only): the claim is a report; its speech act and stasis
                  agree with the commonest among its motif's other claims
     Nimble       the decision model asked whether the claim is a plain report of events (its probability)
-    bulk         decisions made in a batch of 5 or more ✓ steps all past the sure line then, weighted 0.3
+    bulk         decisions made in a batch of more than 100 ✓ steps, all past the sure line then, weighted 0.3: the
+                 old sure fold's passes of 230 at once (Oct 10); a page of the ✅ sure tab (at most 100, 10-30 in use)
+                 is looked over (the person: "if i pass 10 at a time they're inspected")
 
 The paper is ~/maudlin-data/papers/munchausen.md (hypotheses and the decision rule written before the run).
 
@@ -42,7 +44,7 @@ F4 = os.path.join(harness.EXP, 'f4_abstract.sqlite')
 DAY = '2026-10-18'
 MODEL = 'gemma4:26b'
 NIMBLE = 'nimble:9b'
-BULK_AT, BULK_WEIGHT = 5, 0.3
+BULK_AT, BULK_WEIGHT = 101, 0.3  # more steps than the ✅ sure tab's largest page
 CHUNK = 50  # claims asked, then saved
 SPEECH = ['warning', 'accusation', 'mockery', 'lament', 'boast', 'praise', 'demand', 'report']
 STASIS = ['fact', 'definition', 'quality', 'jurisdiction']
