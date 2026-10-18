@@ -605,20 +605,33 @@ def sure_tally(days: int = SURE_TALLY_DAYS) -> list[dict]:
     counts only filings passed or taken out, and that day 9 of about 95 sure claims were held). A sure claim is clean
     when all of it passed; it needed the person when one of its sure filings was unticked, taken out, or the claim held.
     Holds logged before the ✅ sure tab marked its own count when all the claim's filings are sure now"""
+    by = sure_tally_claims(days)
+    return [{'day': d, 'clean': len(by[d]['clean']), 'needed': len(by[d]['needed'])} for d in sorted(by, reverse=True)]
+
+
+def sure_tally_claims(days: int = SURE_TALLY_DAYS) -> dict:
+    """sure_tally's claims: {day: {'clean' and 'needed': {claim key: {'claim', 'ids': the sure filings' motifs}}}}
+    (Baron Munchausen, F24, scores them again)"""
     from app.analysis import curation_db, motif_index as mi
     since = (dt.now() - td(days=days)).strftime('%Y-%m-%d')
     index = mi.load()
-    least = {}  # claim key -> its least fit now, over the filings still waiting
+    least, waiting = {}, {}  # claim key -> its least fit now, over the filings still waiting; and those filings
     for e in mi.live(index):
         for c in e['claims']:
             if not c.get('checked') and c.get('fit') is not None:
                 k = mi.key(c['claim'])
                 least[k] = min(least.get(k, 1.0), c['fit'])
+                waiting.setdefault(k, {'claim': c['claim'], 'ids': set()})['ids'].add(e['id'])
     clean, needed, now_sure = {}, {}, index_sure_at() or 1.0
     try:
         rows = curation_db.actions()
     except Exception:  # noqa: BLE001 - no log: no tally
-        return []
+        return {}
+
+    def put(where, day, claim, eid=None):
+        x = where.setdefault(day, {}).setdefault(mi.key(claim), {'claim': claim, 'ids': set()})
+        if eid:
+            x['ids'].add(eid)
     for r in rows:
         if r['at'] < since or r.get('by'):
             continue
@@ -626,7 +639,8 @@ def sure_tally(days: int = SURE_TALLY_DAYS) -> list[dict]:
         fits, sure_at = before.get('fits') or {}, before.get('sure_at')
         steps = (a.get('steps') or []) if a.get('action') == 'batch' else [a]
         for k in a.get('unticked') or []:
-            needed.setdefault(day, set()).add(mi.key(k.rsplit('|', 1)[0]))
+            claim, _, eid = k.rpartition('|')
+            put(needed, day, claim, eid)
         for x in steps:
             if not isinstance(x, dict) or not isinstance(x.get('claim'), str):
                 continue
@@ -634,13 +648,16 @@ def sure_tally(days: int = SURE_TALLY_DAYS) -> list[dict]:
             sure = sure_at is not None and fit is not None and fit >= sure_at
             held_sure = x.get('action') == 'hold' and (x.get('from') == 'sure' or ('from' not in x and least.get(ck, 0) >= now_sure))
             if x.get('action') == 'check' and x.get('answer') == 'yes' and sure:
-                clean.setdefault(day, set()).add(ck)
-            elif (x.get('action') == 'unfile' and sure) or held_sure:
-                needed.setdefault(day, set()).add(ck)
-    out = []
-    for day in sorted(set(clean) | set(needed), reverse=True):
-        n = needed.get(day, set())
-        out.append({'day': day, 'clean': len(clean.get(day, set()) - n), 'needed': len(n)})
+                put(clean, day, x['claim'], x['id'])
+            elif x.get('action') == 'unfile' and sure:
+                put(needed, day, x['claim'], x['id'])
+            elif held_sure:
+                put(needed, day, x['claim'])
+                needed[day][ck]['ids'] |= waiting.get(ck, {}).get('ids', set())
+    out = {}
+    for day in set(clean) | set(needed):
+        n = needed.get(day, {})
+        out[day] = {'clean': {k: v for k, v in clean.get(day, {}).items() if k not in n}, 'needed': n}
     return out
 
 

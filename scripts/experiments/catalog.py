@@ -129,6 +129,8 @@ REGISTRY = {
     'F23': ('The note first, then the name: new motifs named after their scope note is written', 'f23_ptah.py',
             'answered', 'f23_ptah.json',
             'no clear gain: names +0.008 likeness, near matches +3.4 points, but 7 points more abstract labels; blind pairs pending'),
+    'F24': ('A telling, not a report: a report-or-telling signal and bulk passes counted for less, in the confidence model',
+            'f24_munchausen.py', 'queued', 'f24_munchausen.sqlite', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
