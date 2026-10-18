@@ -423,9 +423,9 @@
   // The claims to judge, one claim at a time with everything about it (Oct 12, the person: they met the same claim in the
   // check, unchecked, second look and today tabs, each showing one of its motifs: "hard to judge a claim and its motifs
   // holistically"). Today keeps the motif-level decisions (new motifs to shape, proposals)
-  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['tellings', '🧩 tellings'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
+  const TABS = [['stats', '📊'], ['judge', '🎯 claims to judge'], ['sure', '✅ sure'], ['misfits', '🚫 misfits'], ['today', '✨ to shape'], ['find', '🔎 claims'], ['claim', '🔍 claim'], ['pairs', '🔗 pairs'], ['singles', '1️⃣ singles'], ['proposals', '💡 proposals'], ['splits', '✂️ splits'], ['tellings', '🧩 tellings'], ['claims', '📥 unfiled'], ['empty', '🫙 empty']];
   function renderTabs() {
-    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), proposals: S.data.proposals, splits: S.data.splits, tellings: S.data.tellings, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
+    const counts = {judge: S.judgeLeft ?? (S.data.to_check + S.data.second_look), sure: S.quickN && S.quickN.sure, misfits: S.quickN && S.quickN.out, proposals: S.data.proposals, splits: S.data.splits, tellings: S.data.tellings, singles: motifs().filter(isSingle).length, empty: motifs().filter(isEmpty).length};
     $('#tabs').innerHTML = TABS.map(([k, label]) => `<button role="tab" class="wb-tab${S.tab === k ? ' on' : ''}" data-tab="${k}">${label}${counts[k] !== undefined ? ` <i>${counts[k]}</i>` : ''}</button>`).join('');
   }
   // Every claim the model filed that nobody has checked yet, with the motifs it's waiting in (newest filings first)
@@ -465,30 +465,45 @@
     }
     return S.queues[kind];
   }
+  // The claims to judge, loaded once for the three tabs that read them (🎯 claims to judge, ✅ sure, 🚫 misfits): each
+  // filing's fit (the chance you keep it, learned from your own checks), the ones never passed as sure (a motif made
+  // for this claim alone, or a source too few of your checks have tested), the doubted, and why each claim is here
+  async function loadJudge() {
+    const tab = S.tab, q = await queue('judge');
+    if (S.tab !== tab) return null;
+    const list = q.error ? [] : q;
+    S.fits = {}; S.unsure = new Set(); S.doubted = new Set(); S.why = {};
+    for (const x of list) {
+      for (const [id, f] of Object.entries(x.fits)) S.fits[x.claim + '|' + id] = f;
+      x.unsure.forEach((id) => S.unsure.add(x.claim + '|' + id));
+      x.reasons.filter((r) => r.kind === 'doubted').forEach((r) => S.doubted.add(x.claim + '|' + r.id));
+      S.why[x.claim] = x;
+    }
+    S.judgeLeft = list.filter((x) => waiting(x.claim).length).length;
+    const quick = S.data.confidence ? quickLists() : {sure: [], out: []};
+    S.quickN = {sure: quick.sure.length, out: quick.out.length};
+    renderTabs();
+    return list;
+  }
   async function renderInbox() {
     const box = $('#inbox');
     const tab = S.tab;
     delete box.dataset.check;
     if (tab === 'claim') return renderClaim(box);
     if (tab === 'stats') return renderStats(box);
+    if (tab === 'sure' || tab === 'misfits') {
+      const list = await loadJudge();
+      if (S.tab !== tab || !list) return;
+      const conf = S.data.confidence;
+      box.innerHTML = conf ? quickTab(tab === 'sure' ? 'sure' : 'out', conf) : '<p class="wb-faint">The confidence model hasn\'t been trained yet.</p>';
+      return;
+    }
     if (tab === 'judge') {
-      const q = await queue('judge');
-      if (S.tab !== tab) return;
       // One claim at a time, once: every motif it's in, why it's here (filings nobody has checked; ones you confirmed
       // that the model now doubts), where it came from and where else it might belong
-      const list = q.error ? [] : q;
-      // each filing's fit: the chance you keep it, learned from your own checks; never passed as sure: a motif made for
-      // this claim alone, or a source too few of your checks have tested
-      S.fits = {}; S.unsure = new Set(); S.doubted = new Set(); S.why = {};
-      for (const x of list) {
-        for (const [id, f] of Object.entries(x.fits)) S.fits[x.claim + '|' + id] = f;
-        x.unsure.forEach((id) => S.unsure.add(x.claim + '|' + id));
-        x.reasons.filter((r) => r.kind === 'doubted').forEach((r) => S.doubted.add(x.claim + '|' + r.id));
-        S.why[x.claim] = x;
-      }
+      const list = await loadJudge();
+      if (S.tab !== tab || !list) return;
       const items = list.filter((x) => waiting(x.claim).length);
-      S.judgeLeft = items.length;
-      renderTabs();
       // ◀ goes back along the claims you've seen (even one you've finished, which has left the list)
       // The claim on screen stays until next ▶ or ✓ all fit: ticking or taking out its last motif, adding one, or
       // rewording it leaves it here for the next edit (it used to jump to the next claim)
@@ -706,9 +721,9 @@
   }
   // A filing's fit as a chip, as the proposals' best fit
   const fitChip = (fit, unsure) => `<b class="wb-fit" style="--fit: ${Math.round(fit * 100)}%" title="fit: the chance you keep this filing, learned from your own checks${unsure ? '. Never passed as sure: its motif was made for this claim alone, or too few of your checks have tested claims from where it came from' : ''}">🎯 ${Math.round(fit * 100)}%${unsure ? ' ⚠️' : ''}</b>`;
-  // The quick lists above the claim on screen (Oct 18, the person: the sure fold of 418 filings was "way too long", and
-  // passing one filing of a claim still left the claim to come back for the rest). Two lists, a claim a row, a page at
-  // a time:
+  // The quick tabs, ✅ sure and 🚫 misfits (Oct 18, the person: the sure fold above the claim of 418 filings was "way
+  // too long" and scrolled oddly, and passing one filing of a claim still left the claim to come back for the rest).
+  // Two lists, a claim a row, a page at a time:
   //   sure        claims whose every waiting filing is past the sure line: passing a row finishes the claim. A claim
   //               with any filing short of it isn't here (its card shows each filing's fit)
   //   likely out  filings under the likely-out line, none ticked: the model is never sure of a no (held out, about 3
@@ -747,37 +762,27 @@
     return {rows: rows.slice(page * per, (page + 1) * per), pager};
   }
   const quickRow = (kind, r) => `<div class="wb-sureline">
-      <button type="button" class="wb-surego" data-surego="${esc(r.claim)}" title="open it here, whole: every motif it's in, take one out, move it, reword it">${esc(r.claim)} 🔍</button>
+      <button type="button" class="wb-surego" data-ckopen="${esc(r.claim)}" title="open it whole: every motif it's in, take one out, move it, reword it (← back comes back here)">${esc(r.claim)} 🔍</button>
       <span class="wb-quickmotifs">${r.ids.map((id) => `<label class="wb-quickmotif"><input type="checkbox"${kind === 'sure' ? ' checked' : ''} data-quick="${kind}" data-quickpair="${esc(r.claim + '|' + id)}">
         ${fitChip(S.fits[r.claim + '|' + id])} ${chip(id)}</label>`).join('')}</span></div>`;
-  function quickFolds(conf) {
+  function quickTab(kind, conf) {
     const {sure, out} = quickLists();
     const pct = (x) => Math.round(x * 100);
-    let html = '';
-    if (sure.length) {
+    if (kind === 'sure') {
+      if (!sure.length) return '<div class="wb-welcome"><div class="wb-big">✅</div><p>No sure claims waiting.</p></div>';
       const pg = quickPage('sure', sure);
-      html += `<details class="wb-sure"${S.sureOpen ? ' open' : ''} data-quickfold="sure"><summary title="Claims whose every waiting filing is at ${pct(conf.sure_at)}% or more. Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings that sure were ones you kept">🎯 ${sure.length} sure claim${sure.length === 1 ? '' : 's'} <span class="wb-faint">(${pct(conf.at_sure.precision)}% right when tested): pass them quickly</span></summary>
-        <p class="wb-faint">Every motif waiting on these claims is past the sure line. Untick any that don't fit, then pass the page: a claim passed whole is done. An unticked motif stays for its card.</p>
-        ${pg.pager}${pg.rows.map((r) => quickRow('sure', r)).join('')}
-        <button class="wb-btn yes" data-passsure="1">✓ pass the ticked on this page</button></details>`;
+      return `<p class="wb-faint" title="Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings at ${pct(conf.sure_at)}% or more were ones you kept">✅ <b>${sure.length} sure claim${sure.length === 1 ? '' : 's'}</b> (${pct(conf.at_sure.precision)}% right when tested): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: a claim passed whole is done. An unticked motif goes to 🎯 claims to judge.</p>
+        ${pg.pager}<div class="wb-quicklist">${pg.rows.map((r) => quickRow('sure', r)).join('')}</div>
+        <div class="wb-quickbar"><button class="wb-btn yes" data-passsure="1">✓ pass the ticked on this page</button></div>`;
     }
-    if (out.length) {
-      const pg = quickPage('out', out), o = conf.at_out;
-      const tested = o && o.removed != null ? `held out, you took out ${pct(o.removed)}% of filings under ${pct(conf.out_at)}%` : `under ${pct(conf.out_at)}%`;
-      html += `<details class="wb-sure wb-misfits"${S.outOpen ? ' open' : ''} data-quickfold="out"><summary title="Filings the model gives under ${pct(conf.out_at)}%. It's never sure of a no: ${tested}, so none come ticked">🚫 ${out.length} claim${out.length === 1 ? '' : 's'} with a likely misfit <span class="wb-faint">(${tested}): take them out quickly</span></summary>
-        <p class="wb-faint">Tick the motifs that don't fit. Take out the ticked, and leave the rest for their cards; or take out the ticked and say the rest fit.</p>
-        ${pg.pager}${pg.rows.map((r) => quickRow('out', r)).join('')}
-        <button class="wb-btn no" data-takeout="out">✕ take out the ticked</button>
-        <button class="wb-btn" data-takeout="keep" title="the ticked out, every unticked one on this page checked as fitting">✕ take out the ticked, ✓ the rest fit</button></details>`;
-    }
-    return html;
+    if (!out.length) return '<div class="wb-welcome"><div class="wb-big">🚫</div><p>No likely misfits waiting.</p></div>';
+    const pg = quickPage('out', out), o = conf.at_out;
+    const tested = o && o.removed != null ? `held out, you took out ${pct(o.removed)}% of filings under ${pct(conf.out_at)}%` : `under ${pct(conf.out_at)}%`;
+    return `<p class="wb-faint">🚫 <b>${out.length} claim${out.length === 1 ? '' : 's'} with a likely misfit</b> (${tested}). The model is never sure of a no, so none come ticked: tick the motifs that don't fit. Take out the ticked and leave the rest for 🎯 claims to judge, or take out the ticked and say the rest fit.</p>
+      ${pg.pager}<div class="wb-quicklist">${pg.rows.map((r) => quickRow('out', r)).join('')}</div>
+      <div class="wb-quickbar"><button class="wb-btn no" data-takeout="out">✕ take out the ticked</button>
+      <button class="wb-btn" data-takeout="keep" title="the ticked out, every unticked one on this page checked as fitting">✕ take out the ticked, ✓ the rest fit</button></div>`;
   }
-  // the folds stay open across re-renders once you open them
-  document.addEventListener('toggle', (ev) => {
-    const f = ev.target.dataset && ev.target.dataset.quickfold;
-    if (f === 'sure') S.sureOpen = ev.target.open;
-    if (f === 'out') S.outOpen = ev.target.open;
-  }, true);
   function renderClaim(box, check, left) {
     const c = S.claim;
     if (!c) {
@@ -787,10 +792,8 @@
     const ins = motifsOf(c.claim);
     const first = ins[0], rec = first && first.claims.find((x) => x.claim === c.claim);
     const src = (rec && rec.source) || c.src || '';
-    const conf = S.data.confidence;
     const verdict = check ? `<div class="wb-checkbar">
         <span class="wb-faint">${left} claim${left === 1 ? '' : 's'} to judge${whyHere(c.claim) ? ' · here for: ' + whyHere(c.claim) : ''} · judge it whole: tick each motif that fits, take out the rest, add what's missing, then ✓ all fit</span>
-        ${conf ? quickFolds(conf) : ''}
         <span class="wb-checkbtns">
           <button class="wb-btn" data-verdict="prev" title="the claim before">◀ <kbd>←</kbd></button>
           <button class="wb-btn yes" data-verdict="allyes" title="every motif left fits: tick them all and go on">✓ all fit, next <kbd>Y</kbd></button>
@@ -1409,14 +1412,6 @@
       return act(body, say);
     }
     if ((v = d('verdict'))) return verdict(v);
-    if ((v = d('surego'))) {  // a sure one opened whole, in place of the claim on screen (← comes back to that one)
-      ev.preventDefault();
-      if (S.checkHere && S.checkHere.claim !== v) { S.checkTrail = S.checkTrail || []; S.checkTrail.push(S.checkHere.claim); }
-      S.checkBack = null;
-      S.checkHere = {claim: v, source: ((motifsOf(v)[0] || {claims: []}).claims.find((c) => c.claim === v) || {}).source || ''};
-      S.sureOpen = S.outOpen = false;
-      return renderInbox();
-    }
     if (d('passsure')) {  // the sure claims' ticked motifs on the page, passed in one undoable step
       const pairs = $$('[data-quick="sure"]:checked').map((b) => b.dataset.quickpair);
       if (!pairs.length) { toast('nothing ticked'); return; }

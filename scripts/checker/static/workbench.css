@@ -346,21 +346,17 @@ body.dragging .wb-schip { border-style: dashed; }
     border-top: 1px dashed #c9c9d4;
 }
 
-/* The check list's sure filings, folded: each with a tick to pass it or keep it for checking */
-.wb-sure {
-    margin: 0.3em 0;
-    padding: 0.3em 0.6em;
-    border: 2px solid #1f1f2e;
-    border-radius: 10px;
-    background: #eafbe6;
-}
-
-/* the likely misfits: none ticked, to take out quickly */
-.wb-sure.wb-misfits { background: #fff0f2; }
-
-.wb-sure summary {
-    cursor: pointer;
-    font-weight: 700;
+/* The quick tabs (✅ sure, 🚫 misfits): a claim a row, its waiting motifs ticked or not, the page's buttons kept in
+   view at the foot of the list */
+.wb-quickbar {
+    position: sticky;
+    bottom: -8px;  /* the scroll box's own padding */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    padding: 0.5em 0;
+    background: white;
+    border-top: 2px solid #1f1f2e;
 }
 
 .wb-sureline {
