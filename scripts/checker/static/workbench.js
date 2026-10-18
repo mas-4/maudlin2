@@ -160,6 +160,19 @@
   const told = (e) => !e.told ? '' : e.attested
     ? ` · <span class="wb-told" title="its kept claims come from ${e.told.events} separate occasions (told about different events), ${esc((e.told.span || []).join(' to '))}">🗓 ${e.told.events} occasions</span>`
     : ` · <span class="wb-told placed" title="its kept claims all come from one occasion: a shape placed, not yet seen told again about something else">📍 one occasion</span>`;
+  // A claim or motif as a link of its own (Oct 18, the person: "the ability to open new tabs with these links"): the
+  // workbench opened at it. A click works in place as before; ↗, a middle click, or Ctrl/⌘-click on ↗ opens a new tab
+  const claimLink = (claim) => `${location.pathname}?claim=${encodeURIComponent(claim)}`;
+  const motifLink = (id) => `${location.pathname}?motif=${encodeURIComponent(id)}`;
+  // A claim in a list, as its row's head: its words (click to open it whole, or drag onto a motif to file it there too
+  // or move it) and ↗ for a new tab. The row carries the drag: the claim from the first motif it waits in
+  function claimHead(claim, ids) {
+    const from = (ids || []).find((id) => S.by[id]) || (motifsOf(claim)[0] || {}).id || '';
+    const rec = from && S.by[from] ? S.by[from].claims.find((c) => c.claim === claim) || {claim} : {claim};
+    return {data: claimData({claim, source: rec.source, ref: rec.ref}, from),
+      html: `<span class="wb-quicktext" data-ckopen="${esc(claim)}" title="click to open it whole (← back comes back here); drag it onto a motif to file it there too, or move it">${esc(claim)}</span>
+      <a class="wb-newtab" href="${claimLink(claim)}" target="_blank" title="open it in a new tab">↗</a>`};
+  }
   const claimData = (c, source) => `data-drag="claim" data-claim="${esc(c.claim)}" data-source="${esc(source || '')}" data-src="${esc(c.source || '')}" data-ref="${esc(c.ref || '')}"`;
 
   // ---------- render: stats and views ----------
@@ -503,12 +516,12 @@
       const q = await queue('held');
       if (S.tab !== tab) return;
       if (q.error) { box.innerHTML = `<p class="wb-faint">😬 ${esc(q.error)}</p>`; return; }
-      box.innerHTML = q.length ? `<p class="wb-faint">⏸ Claims you put on hold to look at later. They stay out of 🎯 claims to judge, ✅ sure and 🚫 misfits until you take them off hold. Open one with 🔍 to work on it.</p>
-        ${q.map((x) => `<div class="wb-sureline">
-          <button type="button" class="wb-surego" data-ckopen="${esc(x.claim)}" title="open it whole (← back comes back here)">${esc(x.claim)} 🔍</button>
+      box.innerHTML = q.length ? `<p class="wb-faint">⏸ Claims you put on hold to look at later. They stay out of 🎯 claims to judge, ✅ sure and 🚫 misfits until you take them off hold. Click one to work on it, or drag it onto a motif.</p>
+        ${q.map((x) => { const h = claimHead(x.claim); return `<div class="wb-sureline" ${h.data}>
+          <span>${h.html}</span>
           <span class="wb-quickmotifs"><span class="wb-faint">held ${new Date(x.at).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} · ${x.waiting ? `${x.waiting} motif${x.waiting === 1 ? '' : 's'} waiting` : 'nothing waiting'}</span>
           ${motifsOf(x.claim).map((e) => chip(e.id)).join(' ')}
-          <button class="wb-btn" data-unhold="${esc(x.claim)}" title="back into the queues">▶ take off hold</button></span></div>`).join('')}`
+          <button class="wb-btn" data-unhold="${esc(x.claim)}" title="back into the queues">▶ take off hold</button></span></div>`; }).join('')}`
         : '<div class="wb-welcome"><div class="wb-big">⏸</div><p>Nothing on hold. ⏸ hold a claim from its card, or from ✅ sure or 🚫 misfits, to look at it later without it coming back each time.</p></div>';
       return;
     }
@@ -775,11 +788,11 @@
       <label class="wb-faint">rows a page <select data-quickper="1">${QUICK_PER.map((n) => `<option${n === per ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`;
     return {rows: rows.slice(page * per, (page + 1) * per), pager};
   }
-  const quickRow = (kind, r) => `<div class="wb-sureline">
-      <button type="button" class="wb-surego" data-ckopen="${esc(r.claim)}" title="open it whole: every motif it's in, take one out, move it, reword it (← back comes back here)">${esc(r.claim)} 🔍</button>
+  const quickRow = (kind, r) => { const h = claimHead(r.claim, r.ids); return `<div class="wb-sureline" ${h.data}>
+      <span>${h.html}</span>
       <span class="wb-quickmotifs">${r.ids.map((id) => `<label class="wb-quickmotif"><input type="checkbox"${kind === 'sure' ? ' checked' : ''} data-quick="${kind}" data-quickpair="${esc(r.claim + '|' + id)}">
         ${fitChip(S.fits[r.claim + '|' + id])} ${chip(id)}</label>`).join('')}
-      <button type="button" class="wb-mini" data-holdclaim="${esc(r.claim)}" title="keep it aside to look at later: out of the lists, into ⏸ held">⏸ hold</button></span></div>`;
+      <button type="button" class="wb-mini" data-holdclaim="${esc(r.claim)}" title="keep it aside to look at later: out of the lists, into ⏸ held">⏸ hold</button></span></div>`; };
   function quickTab(kind, conf) {
     const {sure, out} = quickLists();
     const pct = (x) => Math.round(x * 100);
@@ -1326,6 +1339,16 @@
     hideMenu();
     if (run) run.run();
   });
+
+  // A middle click on a claim or a motif chip opens it in a new tab
+  document.addEventListener('auxclick', (ev) => {
+    if (ev.button !== 1) return;
+    const c = ev.target.closest('[data-ckopen]'), m = !c && ev.target.closest('[data-open]');
+    if (!c && !m) return;
+    ev.preventDefault();
+    window.open(c ? claimLink(c.dataset.ckopen) : motifLink(m.dataset.open), '_blank');
+  });
+  document.addEventListener('mousedown', (ev) => { if (ev.button === 1 && ev.target.closest('[data-ckopen], [data-open]')) ev.preventDefault(); });  // no autoscroll
 
   // ---------- clicks ----------
   document.addEventListener('click', async (ev) => {
@@ -2135,7 +2158,16 @@
   }
 
   $('#groupby').value = S.groupBy;
-  reload().catch((e) => { $('#panels').innerHTML = `<p class="wb-faint">😬 couldn’t load the index: ${esc(e.message)}</p>`; });
+  reload().then(() => {  // opened from a link (↗, a middle click): the claim or motif it names
+    const p = new URLSearchParams(location.search);
+    if (p.get('motif') && S.by[p.get('motif')]) openMotif(p.get('motif'));
+    if (p.get('claim')) {
+      S.claim = {claim: p.get('claim'), src: null, from: null};
+      S.tab = 'claim';  // not remembered: the tab you came from keeps its own
+      renderTabs();
+      renderInbox();
+    }
+  }).catch((e) => { $('#panels').innerHTML = `<p class="wb-faint">😬 couldn’t load the index: ${esc(e.message)}</p>`; });
 })();
 
 // The 📦 export menu opens toward the side with room (the button wraps to the left on a narrow window), and closes on a
