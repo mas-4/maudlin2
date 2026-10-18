@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-18
+- **News briefings' presenters aren't tellers.** In the outlets' daily news briefings (BBC Global News, Reuters World
+  News, WSJ What's News, Up First, CNN 5 Things, Morning Wire, NBC's Top Story), what the presenter reads out is the
+  news, so it no longer counts toward a show claim being retold, and doesn't reach the motif index. The clips they play
+  and the guests they talk to still count, as on any show. The hourly newscasts were already left out.
 - **The checker's quick tabs: ✅ sure claims and 🚫 likely misfits.** The claims to judge listed every sure filing in one
   fold above the claim, 418 on Oct 18, and passing one filing of a claim left the claim to come back for the rest.
   Now two tabs of their own list them, a claim a row, a page at a time (10-100 rows a page). ✅ sure has only claims
