@@ -27,6 +27,11 @@ CHUNK = 6000  # characters of transcript a call
 DAYS = 7  # episodes published this recently
 SKIP = {'focusgroup', 'nprnewsnow', 'abcupdate', 'bloombergnow'}  # read elsewhere (focus_group.py, running_order.py), or
 # an hourly news bulletin: what it reports is the news, not what people tell
+# The news outlets' daily briefings (Oct 18, the person, of Ukraine's account of a strike read out on the BBC's: "dealing
+# with something that i shouldn't even have to judge"): their presenters read the news, which is a report, not a
+# telling; the clips they play and the guests they talk to are tellers, as on any show. So a presenter's claims there
+# never count as told (retold), and never reach the motif index or the claims to judge
+BRIEFINGS = {'reutersworld', 'bbcglobal', 'wsjwhatsnews', 'upfirst', 'cnn5things', 'morningwire', 'nbctopstory'}
 KINDS = {'call-in': 'a call-in radio show', 'podcast': 'a podcast', 'video': 'a video show'}
 SPEAKERS = ['host', 'guest', 'caller', 'clip']
 PROMPT = """This is part of an episode of {show}, {kind} ("{title}"). The transcript has no speaker names and may \
@@ -155,6 +160,11 @@ def read_episodes(store: dict, budget: float | None) -> int:
     return calls
 
 
+def presenter_news(episode: dict, claim: dict) -> bool:
+    """A claim a news briefing's presenter read out (BRIEFINGS): the news, not a telling"""
+    return episode.get('source') in BRIEFINGS and claim.get('speaker') in ('host', '')
+
+
 def kept_retold() -> list[dict]:
     """What the last run found retold (retold()), without embedding anything: for the site build"""
     return read_json(RETOLD, [])
@@ -177,7 +187,7 @@ def retold(store: dict | None = None) -> list[dict]:
     store = store if store is not None else load()
     kinds = episode_kind.load()
     rows = [dict(c, show=e['show'], url=url, date=e['date'], lean=e.get('lean'), evergreen=episode_kind.evergreen(url, kinds))
-            for url, e in store.items() for c in e['claims']]
+            for url, e in store.items() for c in e['claims'] if not presenter_news(e, c)]
     if len(rows) < 2:
         return []
     out = []

@@ -45,3 +45,15 @@ def test_only_retold_claims_reach_the_index(monkeypatch):
     assert len(got) == 1 and got[0]['shows'] == ['Show A', 'Show B'] and got[0]['tellings'] == 2  # the Fed: one show only
     sc.save(store)
     assert [x['source'] for x in sc.claims()] == [sc.SOURCE]
+
+
+def test_a_news_briefings_presenter_is_not_a_teller(monkeypatch):
+    """Oct 18: a briefing's presenter reads the news; its clips and guests still tell"""
+    import app.narratives
+    monkeypatch.setattr(app.narratives, 'embed', lambda texts: np.array([[1.0] + [0.0] * 7 for _ in texts]))
+    c = lambda speaker: {'claim': 'Russia broke the energy ceasefire.', 'quote': 'q', 'speaker': speaker, 'at': 0}  # noqa: E731
+    ep = lambda source, show, speaker: {'source': source, 'show': show, 'date': '2026-10-15', 'lean': 'center',  # noqa: E731
+                                        'claims': [c(speaker)]}
+    assert sc.retold({'u1': ep('bbcglobal', 'BBC', 'host'), 'u2': ep('cnn5things', 'CNN', 'host')}) == []
+    got = sc.retold({'u1': ep('bbcglobal', 'BBC', 'clip'), 'u2': ep('cnn5things', 'CNN', 'guest')})
+    assert len(got) == 1 and got[0]['shows'] == ['BBC', 'CNN']
