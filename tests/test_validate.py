@@ -391,3 +391,26 @@ def test_a_claim_on_hold_leaves_the_queues_for_the_held_tab(monkeypatch, tmp_pat
     assert validate.workbench_state()['held'] == [] and validate.workbench_queue('held') == []
     with pytest.raises(ValueError):
         validate.workbench_action({'action': 'hold', 'claim': 'never filed'})
+
+
+def test_the_sure_tally_counts_unticks_take_outs_and_holds_as_needing_the_person(monkeypatch, tmp_path):
+    """Oct 18: the held-out test counts only filings passed or taken out; the tally counts every sure claim"""
+    from app.analysis import curation_db, motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    mi.save({'next': 2, 'claims': {mi.key('d'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Rigged', 'claims': [{'claim': 'd', 'source': 'narrative', 'fit': 0.99}]}}})
+    monkeypatch.setattr(validate, 'index_sure_at', lambda: 0.8)
+    day = validate.dt.now().strftime('%Y-%m-%d')
+    fits = {f'{mi.key(c)}|M001': f for c, f in (('a', 0.95), ('b', 0.9), ('c', 0.85), ('e', 0.5))}
+    before = {'fits': fits, 'sure_at': 0.8}
+    rows = [
+        {'at': f'{day}T10:00:00', 'action': {'action': 'batch', 'quick': 'sure', 'unticked': ['b|M001'], 'steps': [
+            {'action': 'check', 'claim': 'a', 'id': 'M001', 'answer': 'yes'},
+            {'action': 'check', 'claim': 'e', 'id': 'M001', 'answer': 'yes'}]}, 'before': before},  # e: not sure
+        {'at': f'{day}T10:05:00', 'action': {'action': 'unfile', 'claim': 'c', 'id': 'M001'}, 'before': before},
+        {'at': f'{day}T10:06:00', 'action': {'action': 'hold', 'claim': 'd'}, 'before': {}},  # before the marker: sure now
+        {'at': f'{day}T10:07:00', 'action': {'action': 'hold', 'claim': 'x', 'from': 'judge'}, 'before': {}},
+        {'at': f'{day}T10:08:00', 'action': {'action': 'check', 'claim': 'a', 'id': 'M001', 'answer': 'yes'},
+         'before': before, 'by': 'claude'}]
+    monkeypatch.setattr(curation_db, 'actions', lambda: rows)
+    assert validate.sure_tally() == [{'day': day, 'clean': 1, 'needed': 3}]

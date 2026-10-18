@@ -799,7 +799,11 @@
     if (kind === 'sure') {
       if (!sure.length) return '<div class="wb-welcome"><div class="wb-big">✅</div><p>No sure claims waiting.</p></div>';
       const pg = quickPage('sure', sure);
-      return `<p class="wb-faint" title="Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings at ${pct(conf.sure_at)}% or more were ones you kept">✅ <b>${sure.length} sure claim${sure.length === 1 ? '' : 's'}</b> (${pct(conf.at_sure.precision)}% right when tested): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: a claim passed whole is done. An unticked motif goes to 🎯 claims to judge.</p>
+      // how the sure claims have really fared with you: clean, or needing you (an untick, a take-out, a hold)
+      const t = conf.tally || [], week = t.reduce((n, d) => ({clean: n.clean + d.clean, needed: n.needed + d.needed}), {clean: 0, needed: 0});
+      const fared = (d) => `${d.clean} of ${d.clean + d.needed} passed clean (${pct(d.clean / (d.clean + d.needed))}%)`;
+      const tally = t.length ? `<p class="wb-tally">📏 With you: ${t[0].day === new Date().toLocaleDateString('en-CA') ? 'today' : t[0].day} ${fared(t[0])}${t.length > 1 ? `; the last week ${fared(week)}` : ''}. Every untick, take-out or hold counts as needing you.</p>` : '';
+      return `${tally}<p class="wb-faint" title="Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings at ${pct(conf.sure_at)}% or more were ones you kept; holds and unticks don't count there">✅ <b>${sure.length} sure claim${sure.length === 1 ? '' : 's'}</b> (${pct(conf.at_sure.precision)}% right in the model's own test): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: a claim passed whole is done. An unticked motif goes to 🎯 claims to judge.</p>
         ${pg.pager}<div class="wb-quicklist">${pg.rows.map((r) => quickRow('sure', r)).join('')}</div>
         <div class="wb-quickbar"><button class="wb-btn yes" data-passsure="1">✓ pass the ticked on this page</button></div>`;
     }
@@ -1152,11 +1156,12 @@
   }
   // A claim put on hold or taken off it: the queues that list it read again
   function holdClaim(claim, on) {
+    const from = S.tab === 'sure' ? {from: 'sure'} : {};  // held from ✅ sure: the tab's tally counts it as needing you
     S.queues.judge = S.queues.held = null;
-    return act({action: on ? 'hold' : 'unhold', claim}, on ? '⏸ on hold: in ⏸ held' : '▶ off hold: back in the queues');
+    return act({action: on ? 'hold' : 'unhold', claim, ...from}, on ? '⏸ on hold: in ⏸ held' : '▶ off hold: back in the queues');
   }
   // The quick lists' decisions, in one undoable step: [['claim|motif', 'yes' or 'out']]
-  function quickDecide(pairs, done) {
+  function quickDecide(pairs, done, extra) {
     const steps = pairs.map(([k, answer]) => {
       const i = k.lastIndexOf('|'), claim = k.slice(0, i), id = k.slice(i + 1);
       S.decided.add(k);
@@ -1164,7 +1169,7 @@
     });
     S.queues.judge = null;
     S.checkHere = null;
-    return batch(steps, done);
+    return extra ? act({action: 'batch', steps, ...extra}, done) : batch(steps, done);
   }
   function batch(steps, done) {
     steps = steps.filter(Boolean);
@@ -1461,8 +1466,10 @@
     if (d('passsure')) {  // the sure claims' ticked motifs on the page, passed in one undoable step
       const pairs = $$('[data-quick="sure"]:checked').map((b) => b.dataset.quickpair);
       if (!pairs.length) { toast('nothing ticked'); return; }
-      $$('[data-quick="sure"]:not(:checked)').forEach((b) => S.quickSkip.add(b.dataset.quickpair));  // unticked: for its card
-      return quickDecide(pairs.map((k) => [k, 'yes']), `🎯 passed ${pairs.length} sure filing${pairs.length === 1 ? '' : 's'}`);
+      const unticked = $$('[data-quick="sure"]:not(:checked)').map((b) => b.dataset.quickpair);
+      unticked.forEach((k) => S.quickSkip.add(k));  // unticked: for its card
+      // the unticked go in the log too: the tab's tally counts them as needing you (sure_tally)
+      return quickDecide(pairs.map((k) => [k, 'yes']), `🎯 passed ${pairs.length} sure filing${pairs.length === 1 ? '' : 's'}`, {quick: 'sure', unticked});
     }
     if ((v = d('takeout'))) {  // the likely misfits ticked on the page taken out; with 'keep', the unticked said to fit
       const boxes = $$('[data-quick="out"]'), out = boxes.filter((b) => b.checked).map((b) => [b.dataset.quickpair, 'out']);

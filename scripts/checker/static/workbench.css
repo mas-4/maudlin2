@@ -451,3 +451,6 @@ body.dragging .wb-schip { border-style: dashed; }
 .wb-pager { display: flex; flex-wrap: wrap; gap: 0.5em; align-items: center; padding: 0.3em 0; }
 .wb-pager button[disabled] { opacity: 0.4; cursor: default; }
 .wb-pager label { margin-left: auto; }
+
+/* ✅ sure's tally: how the sure claims have fared with the person */
+.wb-tally { margin: 0 0 0.4em; font-weight: 700; }

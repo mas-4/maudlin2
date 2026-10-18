@@ -532,7 +532,8 @@ def workbench_state() -> dict:
                            'at_sure': next((t for t in m['test']['thresholds'] if t['at'] == sure), None),
                            # the likely-out line, and how often the person took out what fell under it (from the
                            # model trained after Oct 18; the line alone before)
-                           'out_at': fc.OUT_AT, 'at_out': m['test'].get('at_out')} if sure else None
+                           'out_at': fc.OUT_AT, 'at_out': m['test'].get('at_out'),
+                           'tally': sure_tally()} if sure else None
     return state
 
 
@@ -593,6 +594,60 @@ def recently_confirmed(days: int = SECOND_WAIT) -> set[tuple[str, str]]:
                     and isinstance(step.get('claim'), str) and step.get('id'):
                 out.add((mi.key(step['claim']), step['id']))
     return out
+
+
+SURE_TALLY_DAYS = 7
+
+
+def sure_tally(days: int = SURE_TALLY_DAYS) -> list[dict]:
+    """How the sure claims fared with the person, a day at a time, newest first: [{'day', 'clean', 'needed'}] (Oct 18,
+    the person: "I feel like I'm having to heavily police the sure claims"; the held-out test said 95% right, but it
+    counts only filings passed or taken out, and that day 9 of about 95 sure claims were held). A sure claim is clean
+    when all of it passed; it needed the person when one of its sure filings was unticked, taken out, or the claim held.
+    Holds logged before the ✅ sure tab marked its own count when all the claim's filings are sure now"""
+    from app.analysis import curation_db, motif_index as mi
+    since = (dt.now() - td(days=days)).strftime('%Y-%m-%d')
+    index = mi.load()
+    least = {}  # claim key -> its least fit now, over the filings still waiting
+    for e in mi.live(index):
+        for c in e['claims']:
+            if not c.get('checked') and c.get('fit') is not None:
+                k = mi.key(c['claim'])
+                least[k] = min(least.get(k, 1.0), c['fit'])
+    clean, needed, now_sure = {}, {}, index_sure_at() or 1.0
+    try:
+        rows = curation_db.actions()
+    except Exception:  # noqa: BLE001 - no log: no tally
+        return []
+    for r in rows:
+        if r['at'] < since or r.get('by'):
+            continue
+        day, a, before = r['at'][:10], r['action'], r.get('before') or {}
+        fits, sure_at = before.get('fits') or {}, before.get('sure_at')
+        steps = (a.get('steps') or []) if a.get('action') == 'batch' else [a]
+        for k in a.get('unticked') or []:
+            needed.setdefault(day, set()).add(mi.key(k.rsplit('|', 1)[0]))
+        for x in steps:
+            if not isinstance(x, dict) or not isinstance(x.get('claim'), str):
+                continue
+            ck, fit = mi.key(x['claim']), fits.get(f"{mi.key(x['claim'])}|{x.get('id')}")
+            sure = sure_at is not None and fit is not None and fit >= sure_at
+            held_sure = x.get('action') == 'hold' and (x.get('from') == 'sure' or ('from' not in x and least.get(ck, 0) >= now_sure))
+            if x.get('action') == 'check' and x.get('answer') == 'yes' and sure:
+                clean.setdefault(day, set()).add(ck)
+            elif (x.get('action') == 'unfile' and sure) or held_sure:
+                needed.setdefault(day, set()).add(ck)
+    out = []
+    for day in sorted(set(clean) | set(needed), reverse=True):
+        n = needed.get(day, set())
+        out.append({'day': day, 'clean': len(clean.get(day, set()) - n), 'needed': len(n)})
+    return out
+
+
+def index_sure_at() -> float | None:
+    from app.analysis import filing_confidence as fc
+    from app.utils.store import read_json
+    return ((read_json(fc.MODEL, None) or {}).get('test') or {}).get('sure_at')
 
 
 def doubted(e: dict, c: dict, hand: set, recent: set) -> bool:
