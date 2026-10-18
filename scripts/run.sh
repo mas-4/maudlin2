@@ -2,7 +2,8 @@
 # One scrape and build. Production (the clone systemd runs, ~/maudlin-prod) first pulls main, so what runs is what was
 # pushed: commits pass the test suite in a pre-commit hook and CI runs a smoke check. When the pull brings new
 # requirements or C code it reinstalls or rebuilds, and it applies any database migrations. If the pull fails, it runs
-# the code it already has. The working tree is left alone when it has uncommitted changes (a dev checkout).
+# the code it already has. The working tree is left alone when it has uncommitted changes (a dev checkout). To bring
+# production up to main between runs: scripts/update_prod.sh.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
