@@ -1,0 +1,17 @@
+#!/bin/sh
+# Before any sleep, set the hardware clock to wake the machine for the next hourly run (Oct 19). The hourly timer's
+# WakeSystem=true should set it, and did for 9 sleeps of 10 the night before; but at 10:59 the desktop's idle timer put
+# the machine to sleep and no alarm was set for 11:00 (the clock's alarm still read the 9:00 one), so the run waited for
+# a press of the power button. Whatever sends it to sleep, this sets the alarm; the kernel wakes at whichever is sooner.
+#
+# Installed by hand (root): sudo install -m 755 deploy/system-sleep/maudlin-wake /usr/lib/systemd/system-sleep/
+# systemd-sleep calls it with "pre suspend" before sleeping and "post suspend" after.
+[ "$1" = pre ] || exit 0
+RTC=/sys/class/rtc/rtc0/wakealarm
+[ -w "$RTC" ] || exit 0
+now=$(date +%s)
+next=$(( (now / 3600 + 1) * 3600 + 2 ))   # two seconds past the next full hour, when the timer fires
+[ $(( next - now )) -lt 20 ] && next=$(( now + 20 ))   # too close to set safely: twenty seconds on (the missed run starts on waking)
+echo 0 > "$RTC"
+echo "$next" > "$RTC"
+logger -t maudlin-wake "wake alarm set for $(date -d @"$next" '+%H:%M:%S')"
