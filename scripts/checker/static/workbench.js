@@ -33,8 +33,23 @@
     S.open = S.open.filter((id) => S.by[id]);
     resetSelection();
   }
+  // While a change is saving, the button pressed shows it (⏳, dimmed) and the page's cursor too, and another press is
+  // ignored (Oct 19, the person: "I can't tell right now and it leads me to click multiple times")
+  let pressed = null;
+  document.addEventListener('pointerdown', (ev) => { pressed = ev.target.closest && ev.target.closest('button, .wb-btn'); }, true);
   async function act(body, done) {
-    const r = await fetch('/workbench', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    const btn = pressed && pressed.isConnected ? pressed : null;
+    S.acting = true;
+    document.body.classList.add('wb-acting');
+    if (btn) btn.classList.add('wb-busy');
+    let r;
+    try {
+      r = await fetch('/workbench', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    } finally {
+      S.acting = false;
+      document.body.classList.remove('wb-acting');
+      if (btn) btn.classList.remove('wb-busy');
+    }
     const out = await r.json().catch(() => ({error: r.statusText}));
     if (!r.ok) { toast('😬 ' + (out.error || 'that didn’t work'), true); await reload(); return false; }
     setData(out);
@@ -1359,6 +1374,7 @@
   document.addEventListener('click', async (ev) => {
     if (Date.now() - lastDragEnd < 250) { ev.preventDefault(); ev.stopPropagation(); return; }
     const t = ev.target;
+    if (S.acting && t.closest('button, .wb-btn') && !t.closest('.wb-tab')) { toast('⏳ still saving the last change…'); return; }
     if (t.closest('.wb-ask')) return;
     lastAnchor = t;
     if (pinned && !t.closest('.dz-menu')) { hideMenu(); return; }

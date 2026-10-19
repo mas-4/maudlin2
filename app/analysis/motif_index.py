@@ -13,12 +13,14 @@ Refined by hand on the label-check page (rename, merge), where the entries' name
 A claim can carry up to three motifs (a story is often several shapes at once: who's blamed, what's feared, what's
 hoped), each filed on its own. Stored in data/motif_index.json:
 {'next': 3, 'entries': {'M001': {...}}, 'claims': {claim key: [entry ids]}} (an empty list: filed, no motif kept)."""
+import contextlib
 import functools
 import json
 from collections import Counter, defaultdict
 import hashlib
 import os
 import re
+import threading
 from datetime import datetime as dt
 
 import numpy as np
@@ -135,6 +137,10 @@ def key(claim: str) -> str:
 
 
 def load() -> dict:
+    if getattr(_batch, 'on', False):  # inside batched(): the batch's own copy, changed step by step
+        if _batch.index is None:
+            _batch.index = read_json(INDEX, {'next': 1, 'entries': {}, 'claims': {}})
+        return _batch.index
     return read_json(INDEX, {'next': 1, 'entries': {}, 'claims': {}})
 
 
@@ -142,6 +148,13 @@ def save(index: dict):
     drop_dangling(index)
     drop_related_resting(index)
     drop_loose_notes(index)
+    if getattr(_batch, 'on', False):  # written once, when the batch ends
+        _batch.index, _batch.dirty = index, True
+        return
+    _write(index)
+
+
+def _write(index: dict):
     write_json(INDEX, index, indent=1)
     from app.analysis import curation_db  # every state kept, to go back to (Oct 8)
     with open(INDEX) as f:
@@ -154,9 +167,36 @@ def locked():
     return store.locked(INDEX)
 
 
+# A batch of changes (the checker's batch: a page of sure claims passed, a multi-select drag) saved once at the end
+# (Oct 19: each of a 29-filing pass saved the whole 1.7 MB index and kept a version of it, ten seconds idle and over a
+# minute while the hourly run worked; the person pressed again, not knowing it had registered). Per thread: the
+# checker serves requests on threads
+_batch = threading.local()
+
+
+@contextlib.contextmanager
+def batched():
+    """Every load and save inside the block works on one copy of the index, under the lock, written (and kept as one
+    version) when the block ends, also if a step fails: the steps before it stay done, as they did step by step"""
+    if getattr(_batch, 'on', False):
+        yield
+        return
+    with locked():
+        _batch.on, _batch.index, _batch.dirty = True, None, False
+        try:
+            yield
+        finally:
+            index, dirty = _batch.index, _batch.dirty
+            _batch.on, _batch.index, _batch.dirty = False, None, False
+            if dirty:
+                _write(index)
+
+
 def exclusive(fn):
     @functools.wraps(fn)
     def run(*args, **kwargs):
+        if getattr(_batch, 'on', False):  # the batch holds the lock already (it isn't reentrant)
+            return fn(*args, **kwargs)
         with locked():
             return fn(*args, **kwargs)
     return run

@@ -716,3 +716,22 @@ def test_a_merge_keeps_the_watch_mark_and_the_not_this_line(monkeypatch, tmp_pat
     mi.merge('M001', 'M002')
     e = mi.load()['entries']['M002']
     assert e['watch'] is True and e['not_this'] == 'no telling'
+
+
+def test_a_batch_saves_the_index_once_and_keeps_the_steps_before_a_failure(monkeypatch, tmp_path):
+    """Oct 19: a 29-filing pass saved the whole index 29 times; now once, the steps before a failing one kept"""
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001'], mi.key('b'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Rigged', 'claims': [{'claim': 'a', 'source': 'x'}, {'claim': 'b', 'source': 'x'}]}}})
+    writes = []
+    real = mi._write
+    monkeypatch.setattr(mi, '_write', lambda index: (writes.append(1), real(index)))
+    with mi.batched():
+        mi.check('a', 'M001', 'yes')
+        mi.check('b', 'M001', 'yes')
+        assert not writes  # nothing on disk until the batch ends...
+    assert len(writes) == 1 and {c['checked'] for c in mi.load()['entries']['M001']['claims']} == {'yes'}
+    with pytest.raises(ValueError), mi.batched():
+        mi.check('a', 'M001', 'unsure')
+        raise ValueError('a later step fails')
+    assert len(writes) == 2 and mi.load()['entries']['M001']['claims'][0]['checked'] == 'unsure'  # ...the first step kept

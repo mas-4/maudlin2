@@ -972,15 +972,16 @@ def workbench_action(data: dict):
         if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) or x.get('action') == 'batch' for x in steps):
             raise ValueError('a batch is a list of actions')
         made = []  # motifs made by earlier steps: later steps name them "$1", "$2"… (Oct 9, for the MCP)
-        for n, step in enumerate(steps):
-            steps[n] = step = _with_made(step, made)  # the real ids, so the log has them
-            had = set(mi.load()['entries'])
-            try:
-                workbench_action(step)
-            except (ValueError, KeyError) as e:
-                e.done = steps[:n]  # the steps that ran stay done: the caller logs them
-                raise
-            made += sorted(set(mi.load()['entries']) - had)
+        with mi.batched():  # the index saved once at the end, not once a step (Oct 19: 29 steps took over a minute)
+            for n, step in enumerate(steps):
+                steps[n] = step = _with_made(step, made)  # the real ids, so the log has them
+                had = set(mi.load()['entries'])
+                try:
+                    workbench_action(step)
+                except (ValueError, KeyError) as e:
+                    e.done = steps[:n]  # the steps that ran stay done: the caller logs them
+                    raise
+                made += sorted(set(mi.load()['entries']) - had)
     elif act in ('hold', 'unhold'):  # a claim kept aside to look at later, out of the queues; no verdict
         if not isinstance(data.get('claim'), str) or not data['claim'].strip():
             raise ValueError(f'{act}: a claim')
