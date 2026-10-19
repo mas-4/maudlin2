@@ -49,6 +49,12 @@ def _backup(src: str, dst: str):
     finally:
         target.close()
         source.close()
+    # the old copy's write-ahead log and index go with it: left beside the new file, SQLite reads them as the new
+    # file's and the copy comes out malformed (Oct 18: the lab's narrative embeddings, 3.7 GB, copied in again while a
+    # step that had it open crashed and restarted, broke Baron Munchausen's report three times)
+    for side in ('-wal', '-shm'):
+        if os.path.exists(dst + side):
+            os.remove(dst + side)
     os.replace(tmp, dst)
     shutil.copystat(src, dst)
 

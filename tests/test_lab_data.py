@@ -31,3 +31,24 @@ def test_the_lab_is_a_copy_with_the_experiments_folders_shared(tmp_path):
     assert lab_data.refresh(str(prod), str(lab))['copied'] == 1  # the next fresh step starts from production's again
     assert (lab / 'motif_index.json').read_text() == '{"entries": {}}'
     assert lab_data.refresh(str(prod), str(lab)) | {'seconds': 0} == {'copied': 0, 'databases': 0, 'seconds': 0}
+
+
+def test_a_database_copied_again_leaves_no_old_write_ahead_log_beside_it(tmp_path):
+    """Oct 18: the old copy's -wal and -shm, left beside a new copy, made it malformed"""
+    prod, lab = tmp_path / 'prod', tmp_path / 'lab'
+    prod.mkdir()
+    con = sqlite3.connect(prod / 'cache.sqlite')
+    con.execute('create table vec (k text)')
+    con.commit()
+    con.close()
+    lab_data.refresh(str(prod), str(lab))
+    (lab / 'cache.sqlite-wal').write_bytes(b'stale frames of the old copy')
+    (lab / 'cache.sqlite-shm').write_bytes(b'stale index')
+    con = sqlite3.connect(prod / 'cache.sqlite')
+    con.execute("insert into vec values ('new')")
+    con.commit()
+    con.close()
+    os.utime(prod / 'cache.sqlite', (os.path.getmtime(lab / 'cache.sqlite') + 10,) * 2)
+    assert lab_data.refresh(str(prod), str(lab))['databases'] == 1
+    assert not (lab / 'cache.sqlite-wal').exists() and not (lab / 'cache.sqlite-shm').exists()
+    assert sqlite3.connect(lab / 'cache.sqlite').execute('pragma quick_check').fetchone() == ('ok',)
