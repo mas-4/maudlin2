@@ -163,7 +163,11 @@ def _write(index: dict):
 
 def locked():
     """One writer at a time: the hourly filing and the organizer and motif check pages each read, change and save the
-    whole index, so without this an edit made while a run was filing was lost when the run saved."""
+    whole index, so without this an edit made while a run was filing was lost when the run saved. Inside this thread's
+    batch the batch holds it already: taking it again (a split in a batch, claim_organizer.apply_split) waited on itself
+    forever, and every write to the checker after it hung (Oct 19)"""
+    if getattr(_batch, 'on', False):
+        return contextlib.nullcontext()
     return store.locked(INDEX)
 
 

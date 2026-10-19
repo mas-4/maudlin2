@@ -735,3 +735,29 @@ def test_a_batch_saves_the_index_once_and_keeps_the_steps_before_a_failure(monke
         mi.check('a', 'M001', 'unsure')
         raise ValueError('a later step fails')
     assert len(writes) == 2 and mi.load()['entries']['M001']['claims'][0]['checked'] == 'unsure'  # ...the first step kept
+
+
+def test_a_split_inside_a_batch_does_not_wait_on_the_batchs_own_lock(monkeypatch, tmp_path):
+    """Oct 19: a checker batch with a ✂️ split step hung for good (the split took the index lock the batch held), and
+    every write to the checker after it hung too"""
+    import threading
+
+    from app.analysis import claim_organizer as co
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']},
+             'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
+    done = []
+
+    def run():
+        with mi.batched():
+            mi.check('a', 'M001', 'yes')
+            co.apply_split(children=['a one', 'a two'], claim='a', refile=False)
+        done.append(1)
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(10)
+    assert done, 'the batch waited on its own lock'
+    index = mi.load()
+    assert index['tellings'][mi.key('a')]['children'] == ['a one', 'a two'] and index['claims'][mi.key('a')] == []
+    with mi.locked():  # and the lock is free again afterwards
+        pass
