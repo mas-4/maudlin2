@@ -179,6 +179,7 @@ def show(device, effect: str, colour: tuple, speed: int, brightness: int):
 
 def main():
     from openrgb import OpenRGBClient
+    from openrgb.utils import OpenRGBDisconnected
     client = None
     while client is None:
         try:
@@ -216,6 +217,10 @@ def main():
                 if board is not None:  # the fans: one colour, no effects worth having
                     show(board, 'Static', now[1] if now[3] else DARK, 0, 0)
                 shown, shown_at = now, time.time()
+        except OpenRGBDisconnected:  # the server dropped us (a slow start after boot, Oct 18 and 19): every look after
+            # fails the same way, so start afresh at once, and systemd connects again
+            logger.warning("Lights: OpenRGB disconnected; exiting so systemd connects them again")
+            return
         except Exception as e:  # noqa: BLE001 - a missed look keeps the last lights; the next one tries again
             # its kind and where, the first time (Oct 18: a bare str(e) logged an empty line every 2 s all day, and the
             # lights stayed lit into the night)
