@@ -43,6 +43,7 @@ DAY, NIGHT = 8, 23  # hours: the lights work from DAY until NIGHT, until PLACE i
 PLACE = 'lights_place.json'  # {'lat', 'lon'} in the data folder, not the repo: where the sun sets for the lights
 BLIND_WAIT = 60  # seconds: with no devices, wait this long, restart OpenRGB and start again
 LOOK = 2.0  # seconds between looks at the GPU and the machine's state
+STUCK = 120  # seconds of failed looks before the lights exit for systemd to start them afresh
 LOG, LOG_KEEP = 'lights_log.csv', 1440  # who had the GPU each minute, the last day of it
 HOT, LIMIT = 85, 93  # degrees C: the card runs at ~83 under load; its slowdown limit is 93
 PARTY = 'lights_party.json'  # {'until': epoch seconds}: the Stream Deck's 🦄 key asks for the rainbow until then
@@ -219,7 +220,10 @@ def main():
             # its kind and where, the first time (Oct 18: a bare str(e) logged an empty line every 2 s all day, and the
             # lights stayed lit into the night)
             logger.warning("Lights: %s: %r", type(e).__name__, e, exc_info=not failing)
-            failing = True
+            failing = failing or time.time()
+            if time.time() - failing > STUCK:  # a fresh process got through where this one failed all day (Oct 18)
+                logger.warning("Lights: failing for %d s; exiting so systemd starts them afresh", STUCK)
+                return
         else:
             failing = False
         time.sleep(LOOK)
