@@ -14,7 +14,7 @@
 
   const S = {
     data: null, by: {}, kids: {}, open: store.get('open', []), view: store.get('view', 'all'), sort: store.get('sort', 'size'),
-    decided: new Set(), rejected: new Set(), quickSkip: new Set(), claimCache: {detail: {}, similar: {}, better: {}},  // this session's decisions ('claim|motif', 'p:proposal'; ✕'d suggestions)
+    decided: new Set(), rejected: new Set(), quickSkip: new Set(), unticked: new Set(), outTicked: new Set(), claimCache: {detail: {}, similar: {}, better: {}},  // this session's decisions ('claim|motif', 'p:proposal'; ✕'d suggestions)
     q: '', sel: [], last: [], msel: new Set(), mlast: null, active: 0, tab: ({check: 'judge', unchecked: 'judge', second: 'judge'})[store.get('tab', 'judge')] || store.get('tab', 'judge'), queues: {}, folded: new Set(store.get('folded', [])),
     checkAt: 0, extra: {}, claimHits: [], groupBy: store.get('groupby', 'group'),
   };
@@ -803,11 +803,14 @@
       <label class="wb-faint">rows a page <select data-quickper="1">${QUICK_PER.map((n) => `<option${n === per ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`;
     return {rows: rows.slice(page * per, (page + 1) * per), pager};
   }
+  // A tick is remembered across pages and redraws (Oct 19, the person: a hold redrew the page and reset the ticks):
+  // ✅ sure's unticked and 🚫 misfits' ticked, by claim|motif
+  const ticked = (kind, k) => (kind === 'sure' ? !S.unticked.has(k) : S.outTicked.has(k));
   const quickRow = (kind, r) => { const h = claimHead(r.claim, r.ids); return `<div class="wb-sureline" ${h.data}>
       <span>${h.html}</span>
-      <span class="wb-quickmotifs">${r.ids.map((id) => `<label class="wb-quickmotif"><input type="checkbox"${kind === 'sure' ? ' checked' : ''} data-quick="${kind}" data-quickpair="${esc(r.claim + '|' + id)}">
+      <span class="wb-quickmotifs">${r.ids.map((id) => `<label class="wb-quickmotif"><input type="checkbox"${ticked(kind, r.claim + '|' + id) ? ' checked' : ''} data-quick="${kind}" data-quickpair="${esc(r.claim + '|' + id)}">
         ${fitChip(S.fits[r.claim + '|' + id])} ${chip(id)}</label>`).join('')}
-      <button type="button" class="wb-mini" data-holdclaim="${esc(r.claim)}" title="keep it aside to look at later: out of the lists, into ⏸ held">⏸ hold</button></span></div>`; };
+      ${kind === 'sure' ? '' : `<button type="button" class="wb-mini" data-holdclaim="${esc(r.claim)}" title="keep it aside to look at later: out of the lists, into ⏸ held">⏸ hold</button>`}</span></div>`; };
   function quickTab(kind, conf) {
     const {sure, out} = quickLists();
     const pct = (x) => Math.round(x * 100);
@@ -818,9 +821,9 @@
       const t = conf.tally || [], week = t.reduce((n, d) => ({clean: n.clean + d.clean, needed: n.needed + d.needed}), {clean: 0, needed: 0});
       const fared = (d) => `${d.clean} of ${d.clean + d.needed} passed clean (${pct(d.clean / (d.clean + d.needed))}%)`;
       const tally = t.length ? `<p class="wb-tally">📏 With you: ${t[0].day === new Date().toLocaleDateString('en-CA') ? 'today' : t[0].day} ${fared(t[0])}${t.length > 1 ? `; the last week ${fared(week)}` : ''}. Every untick, take-out or hold counts as needing you.</p>` : '';
-      return `${tally}<p class="wb-faint" title="Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings at ${pct(conf.sure_at)}% or more were ones you kept; holds and unticks don't count there">✅ <b>${sure.length} sure claim${sure.length === 1 ? '' : 's'}</b> (${pct(conf.at_sure.precision)}% right in the model's own test): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: a claim passed whole is done. An unticked motif goes to 🎯 claims to judge.</p>
+      return `${tally}<p class="wb-faint" title="Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings at ${pct(conf.sure_at)}% or more were ones you kept; holds and unticks don't count there">✅ <b>${sure.length} sure claim${sure.length === 1 ? '' : 's'}</b> (${pct(conf.at_sure.precision)}% right in the model's own test): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: the ticked pass, and a claim with any motif unticked goes to ⏸ held, to look at later. Your ticks stay as you leave them when you turn the page.</p>
         ${pg.pager}<div class="wb-quicklist">${pg.rows.map((r) => quickRow('sure', r)).join('')}</div>
-        <div class="wb-quickbar"><button class="wb-btn yes" data-passsure="1">✓ pass the ticked on this page</button></div>`;
+        <div class="wb-quickbar"><button class="wb-btn yes" data-passsure="1" title="the ticked pass; a claim with any motif unticked goes to ⏸ held">✓ pass the ticked, ⏸ hold the rest</button></div>`;
     }
     if (!out.length) return '<div class="wb-welcome"><div class="wb-big">🚫</div><p>No likely misfits waiting.</p></div>';
     const pg = quickPage('out', out), o = conf.at_out;
@@ -1176,13 +1179,14 @@
     return act({action: on ? 'hold' : 'unhold', claim, ...from}, on ? '⏸ on hold: in ⏸ held' : '▶ off hold: back in the queues');
   }
   // The quick lists' decisions, in one undoable step: [['claim|motif', 'yes' or 'out']]
-  function quickDecide(pairs, done, extra) {
+  function quickDecide(pairs, done, extra, more = []) {
     const steps = pairs.map(([k, answer]) => {
       const i = k.lastIndexOf('|'), claim = k.slice(0, i), id = k.slice(i + 1);
       S.decided.add(k);
       return answer === 'yes' ? {action: 'check', claim, id, answer: 'yes'} : {action: 'unfile', claim, id};
     });
-    S.queues.judge = null;
+    steps.push(...more);
+    S.queues.judge = S.queues.held = null;
     S.checkHere = null;
     return extra ? act({action: 'batch', steps, ...extra}, done) : batch(steps, done);
   }
@@ -1481,17 +1485,21 @@
     if ((v = d('verdict'))) return verdict(v);
     if (d('passsure')) {  // the sure claims' ticked motifs on the page, passed in one undoable step
       const pairs = $$('[data-quick="sure"]:checked').map((b) => b.dataset.quickpair);
-      if (!pairs.length) { toast('nothing ticked'); return; }
       const unticked = $$('[data-quick="sure"]:not(:checked)').map((b) => b.dataset.quickpair);
-      unticked.forEach((k) => S.quickSkip.add(k));  // unticked: for its card
-      // the unticked go in the log too: the tab's tally counts them as needing you (sure_tally)
-      return quickDecide(pairs.map((k) => [k, 'yes']), `🎯 passed ${pairs.length} sure filing${pairs.length === 1 ? '' : 's'}`, {quick: 'sure', unticked});
+      if (!pairs.length && !unticked.length) { toast('nothing on this page'); return; }
+      // a claim with a motif unticked is held, to look at later, in the same undoable step (Oct 19, the person: "it
+      // automatically holds the unchecked ones"); the unticked go in the log too, for the tab's tally (sure_tally)
+      const held = [...new Set(unticked.map((k) => k.slice(0, k.lastIndexOf('|'))))];
+      unticked.forEach((k) => S.unticked.delete(k));
+      return quickDecide(pairs.map((k) => [k, 'yes']), [`🎯 passed ${pairs.length} sure filing${pairs.length === 1 ? '' : 's'}`, held.length ? `⏸ held ${held.length}` : ''].filter(Boolean).join(', '),
+        {quick: 'sure', unticked}, held.map((claim) => ({action: 'hold', claim, from: 'sure'})));
     }
     if ((v = d('takeout'))) {  // the likely misfits ticked on the page taken out; with 'keep', the unticked said to fit
       const boxes = $$('[data-quick="out"]'), out = boxes.filter((b) => b.checked).map((b) => [b.dataset.quickpair, 'out']);
       const keep = v === 'keep' ? boxes.filter((b) => !b.checked).map((b) => [b.dataset.quickpair, 'yes']) : [];
       if (!out.length && !keep.length) { toast('nothing ticked'); return; }
       if (v === 'out') boxes.filter((b) => !b.checked).forEach((b) => S.quickSkip.add(b.dataset.quickpair));  // looked at, left: for its card
+      boxes.forEach((b) => S.outTicked.delete(b.dataset.quickpair));
       return quickDecide([...out, ...keep], [out.length ? `✕ took out ${out.length}` : '', keep.length ? `✓ ${keep.length} fit` : ''].filter(Boolean).join(', '));
     }
     if ((v = d('holdclaim'))) return holdClaim(v, true);
@@ -1925,6 +1933,8 @@
     if (t.dataset.groupadd !== undefined) addToGroup(t, false);
     if (t.dataset.genre !== undefined) act({action: 'facet', id: t.dataset.genre, facet: 'genre', value: t.value || null}, `🎭 ${t.value || 'no genre'}`);
     if (t.id === 'groupby') { S.groupBy = t.value; store.set('groupby', S.groupBy); renderTree(); }
+    if (t.dataset.quick === 'sure') S.unticked[t.checked ? 'delete' : 'add'](t.dataset.quickpair);
+    if (t.dataset.quick === 'out') S.outTicked[t.checked ? 'add' : 'delete'](t.dataset.quickpair);
     if (t.dataset.quickper !== undefined) { store.set('quickper', +t.value); S.quickPage = {}; renderInbox(); }
   });
   // A note saves as you leave it, like a title (there's no save button to forget)
