@@ -2205,6 +2205,27 @@
 
 // The 📦 export menu opens toward the side with room (the button wraps to the left on a narrow window), and closes on a
 // pick or a click anywhere else
+// A tab left open across an update runs the old script (Oct 19: all morning, so the day's fixes never reached the
+// person): it checks the checker's code each minute and, when it has changed, says so with a reload button
+(() => {
+  let mine = null;
+  const look = async () => {
+    try {
+      const v = (await (await fetch('/version.json', {cache: 'no-store'})).json()).version;
+      if (mine === null) mine = v;
+      else if (v !== mine && !document.getElementById('wb-update')) {
+        const bar = document.createElement('div');
+        bar.id = 'wb-update';
+        bar.innerHTML = '🔄 The checker has been updated. <button class="wb-btn yes" type="button">reload now</button> <span>(ticks on a page you haven\'t passed are lost on reload)</span>';
+        bar.querySelector('button').addEventListener('click', () => location.reload());
+        document.body.prepend(bar);
+      }
+    } catch (e) { /* the checker restarting: the next look sees it */ }
+  };
+  look();
+  setInterval(look, 60000);
+})();
+
 // 📈 pace (Oct 18, the person: "how many am i at? ... a graph overview and how many to finish to hold steady"): the
 // claims you judged a day against the claims that arrived, and the day's target. Read fresh each time it opens
 const PACE = {arrived: '#e8590c', judged: '#1c7ed6'};  // validated for colour blindness (dataviz validate_palette)

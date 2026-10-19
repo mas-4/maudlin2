@@ -478,3 +478,8 @@ body.dragging .wb-schip { border-style: dashed; }
 .wb-pace-key .wb-pace-dash { width: 16px; height: 0; border-top: 2px dashed var(--ink); border-radius: 0; vertical-align: 3px; }
 .wb-pace-table table { font-size: 12px; border-collapse: collapse; }
 .wb-pace-table td, .wb-pace-table th { padding: 1px 8px; text-align: right; }
+
+/* the checker updated under an open tab: reload */
+#wb-update { position: sticky; top: 0; z-index: 100; background: #fff4c2; border-bottom: 3px solid var(--ink); padding: 6px 12px;
+  font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; display: flex; gap: 0.6em; align-items: center; }
+#wb-update span { font-weight: 400; font-size: 13px; }

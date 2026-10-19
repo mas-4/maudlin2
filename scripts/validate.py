@@ -704,6 +704,20 @@ def pace(days: int = PACE_DAYS) -> dict:
             'clear_in_14': steady + -(-waiting // 14) if steady is not None else None}
 
 
+def code_version() -> str:
+    """A fingerprint of the workbench's page code (its template, script and styles): an open tab that loaded another
+    one shows a reload banner (Oct 19: a tab left open from the day before ran the old script all morning, so none of
+    the day's fixes reached the person, and claims they had unticked came back)"""
+    h = hashlib.sha1()
+    for part in ('templates/workbench.html', 'static/workbench.js', 'static/workbench.css'):
+        try:
+            with open(os.path.join(CHECKER, part), 'rb') as f:
+                h.update(f.read())
+        except OSError:
+            pass
+    return h.hexdigest()[:12]
+
+
 def index_sure_at() -> float | None:
     from app.analysis import filing_confidence as fc
     from app.utils.store import read_json
@@ -1164,6 +1178,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path.startswith('/experiments.json'):
                 return self.send_json(lab.overview())
             return self.send_json(lab.paper(code) if self.path.startswith('/experiment-paper') else lab.cases(code))
+        if self.path.startswith('/version.json'):  # the workbench's own code now: an open tab compares (code_version())
+            return self.send_json({'version': code_version()})
         if self.path.startswith('/pace.json'):  # 📈 the person's pace against what arrives (pace())
             return self.send_json(pace())
         if self.path.startswith('/live.json'):  # 🧠 the filing pipeline as it runs (app/analysis/trace_view.py)
