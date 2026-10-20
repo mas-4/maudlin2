@@ -44,6 +44,10 @@ def test_only_retold_claims_reach_the_index(monkeypatch):
     got = sc.retold(store)
     assert len(got) == 1 and got[0]['shows'] == ['Show A', 'Show B'] and got[0]['tellings'] == 2  # the Fed: one show only
     sc.save(store)
+    assert sc.claims() == []  # filing and the checker read what the last run kept (RETOLD), not worked out again
+    monkeypatch.setattr(sc.llm, 'backend', lambda: 'test')
+    monkeypatch.setattr(sc, 'read_episodes', lambda store, budget: 0)
+    sc.extract()  # a run with no RETOLD yet keeps one
     assert [x['source'] for x in sc.claims()] == [sc.SOURCE]
 
 

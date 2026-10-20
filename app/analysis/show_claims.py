@@ -209,8 +209,11 @@ def retold(store: dict | None = None) -> list[dict]:
 
 
 def claims() -> list[dict]:
-    """The retold claims, for the motif index's filing (source SOURCE; the first episode that told it as its ref)"""
-    return [{'claim': r['claim'], 'source': SOURCE, 'ref': r['ref'], 'date': r['date']} for r in retold()]
+    """The retold claims, for the motif index's filing and the checker's search (source SOURCE; the first episode that
+    told it as its ref): as the last run found them (RETOLD, kept_retold), not worked out again (Oct 20: retold() embeds
+    and regroups every show claim, 390 passes over the 3.7 GB embedding cache, and the checker's "claims like this one"
+    took two and a half minutes)"""
+    return [{'claim': r['claim'], 'source': SOURCE, 'ref': r['ref'], 'date': r['date']} for r in kept_retold()]
 
 
 def backlog() -> dict:
