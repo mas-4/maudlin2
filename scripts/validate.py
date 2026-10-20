@@ -310,6 +310,25 @@ def undo() -> str:
     return snap['what']
 
 
+SHOW_NEAR = 0.8  # likeness (mxbai) for a show claim to count as a telling of a claim filed in other words
+
+
+def nearest_tellings(words: set[str], n: int = 5) -> list[dict]:
+    """The show claims closest in meaning to a claim's words, at SHOW_NEAR or above (the retold groups' own
+    likeness), when none matches them word for word"""
+    import numpy as np
+    from app.analysis import show_claims
+    from app.narratives import embed
+    told = [dict(c, show=e['show'], url=url) for url, e in show_claims.load().items() for c in e.get('claims', [])]
+    if not told or not words:
+        return []
+    v = embed(sorted(words) + [t['claim'] for t in told])
+    q, rest = v[:len(words)], v[len(words):]
+    best = (rest @ q.T).max(1)
+    order = [i for i in np.argsort(-best)[:n] if best[i] >= SHOW_NEAR]
+    return [told[i] for i in order]
+
+
 def show_tellings(words: set[str]) -> list[dict]:
     """Every telling of a claim retold across the shows (show_claims.kept_retold, the group whose claim is one of
     `words`): the show, its lean, the episode, who said it, about when, the quote and the transcript around it"""
@@ -318,6 +337,8 @@ def show_tellings(words: set[str]) -> list[dict]:
     if group is None:  # not in the last run's groups: its own episode's claims, at least
         group = {'told': [dict(c, show=e['show'], url=url) for url, e in show_claims.load().items()
                           for c in e.get('claims', []) if c['claim'] in words]}
+    if not group['told']:  # filed in one telling's words or reworded, and its group since gone (Oct 20: "The left
+        group = {'told': nearest_tellings(words)}  # should adopt the identity of a fighter" showed no origin at all)
     episodes = show_claims.load()
     out = []
     for t in group.get('told', []):

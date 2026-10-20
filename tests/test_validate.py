@@ -442,3 +442,20 @@ def test_pace_counts_arrivals_and_judged_claims_and_the_steady_target(monkeypatc
     p = validate.pace()
     assert [d['arrived'] for d in p['days'][-4:]] == [10, 500, 20, 0] and p['days'][0]['arrived'] is None
     assert p['today'] == 2 and p['steady'] == 20 and p['waiting'] == 28 and p['clear_in_14'] == 22
+
+
+def test_a_show_claim_filed_in_other_words_still_shows_its_tellings(monkeypatch):
+    """Oct 20: a claim filed in reworded form, its group gone from the last run, showed no origin"""
+    import numpy as np
+    import app.narratives
+    from app.analysis import show_claims
+    store = {'u1': {'show': 'Surrounded', 'claims': [{'claim': 'The left should adopt a fighter identity.', 'quote': 'q'},
+                                                     {'claim': 'Gas is cheap.', 'quote': 'q'}]}}
+    monkeypatch.setattr(show_claims, 'load', lambda: store)
+    monkeypatch.setattr(show_claims, 'kept_retold', list)
+    vecs = {'The left should adopt the identity of a fighter.': [1, 0], 'The left should adopt a fighter identity.': [0.9, 0.1],
+            'Gas is cheap.': [0, 1]}
+    monkeypatch.setattr(app.narratives, 'embed', lambda texts: np.array([vecs[t] for t in texts], dtype=float) /
+                        np.linalg.norm(np.array([vecs[t] for t in texts], dtype=float), axis=1, keepdims=True))
+    got = validate.show_tellings({'The left should adopt the identity of a fighter.'})
+    assert [t['claim'] for t in got] == ['The left should adopt a fighter identity.']
