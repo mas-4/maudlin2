@@ -1,8 +1,9 @@
 """The experiments' own data folder (Oct 15; the person: "you can copy the current data from the prod stuff but it
 should run separate please"). Until now experiments ran production's code on production's data folder and fenced
 themselves off file by file (each its own sandbox() of redirected paths); every file one forgot leaked into production:
-the test suite's fake filings in the shortlist log (624 rows), Echo's 687 sandbox filings on the 🧠 Live page. Now each
-queued step runs with MAUDLIN_DATA pointing here (app/utils/config.py), so whatever it writes stays here.
+the test suite's fake filings in the shortlist log (624 rows), Rip Van Winkle's 687 sandbox filings on the 🧠 Live
+page and in the shortlist log. Now each queued step runs with MAUDLIN_DATA pointing here (app/utils/config.py), so
+whatever it writes stays here.
 
     ~/maudlin-lab/data     a copy of production's data folder, refreshed before each step that starts fresh: files
                            copied when production's are newer or a different size, databases by SQLite's backup (a

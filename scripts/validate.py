@@ -676,8 +676,8 @@ def pace(days: int = PACE_DAYS) -> dict:
     today = dt.now().strftime('%Y-%m-%d')
     since = (dt.now() - td(days=days - 1)).strftime('%Y-%m-%d')
     arrived, seen, first = {}, set(), None
-    # only claims that reached the index or a decision of the person's: Echo's 687 practice filings of 1898 newspapers
-    # leaked into the log on Oct 15, before experiments had their own data, and showed as a day of 755 arrivals
+    # only claims that reached the index or a decision of the person's: Rip Van Winkle's 687 practice filings of 1896
+    # newspapers leaked into the log on Oct 15, before experiments had their own data, and showed as 755 arrivals
     real = set(mi.load()['claims'])
     for r in fc.log_rows():
         if isinstance(r.get('action'), dict):

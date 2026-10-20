@@ -374,7 +374,44 @@ def _sinbad_pick(key: str, value: str | None) -> dict:
     return {'ok': True, 'verdicts': len(v)}
 
 
-CASES = {'A1': scheherazade, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora, 'F23': ptah, 'S5': sinbad}
+def rip_van_winkle() -> dict:
+    """The 1896 spot-check (Oct 20, the person: "I also have no idea where to find these 50 samples to verify"): 50
+    sure filings of 1896 claims, each with the quote, the motif's note and the page scan at the Library of Congress,
+    for the person's word: right, wrong, or unsure"""
+    s = _load('a2_newspapers.json')
+    v = s.get('spot_verdicts', {})
+    rows = [{'kind': 'ok' if v.get(str(i)) == 'right' else v.get(str(i), 'to read'), 'key': str(i),
+             'verdict': v.get(str(i)),
+             'cells': [x['claim'], x['quote'], f"{x['motif']}: {x.get('note') or ''}", f"{x['fit']:.0%}",
+                       f"{x['paper']} {x['date']}, {x.get('headline') or ''}", x['url']]}
+            for i, x in enumerate(s.get('spot_check', []))]
+    summary = Counter(v.get(r['key'], 'to read') for r in rows)
+    return {'summary': summary.most_common(), 'judge': True,
+            'choices': [['right', '✅ right'], ['wrong', '✕ wrong motif'], ['unsure', '🤷 unsure']],
+            'columns': ['1896 claim', 'the quote', 'filed in (and its note)', 'fit', 'paper', 'page scan'], 'rows': rows,
+            'note': 'Sure filings of claims from 1896 newspapers, chosen at random. Read the quote (and the page if the '
+                    'quote is garbled) and say whether the motif fits. This is the check on how well today\'s index '
+                    'reads 1896: 80% or more right was expected.'}
+
+
+def _rvw_pick(key: str, value: str | None) -> dict:
+    if value not in ('right', 'wrong', 'unsure', None):
+        raise ValueError('the spot-check takes right, wrong or unsure')
+    path = os.path.join(EXP, 'a2_newspapers.json')
+    s = json.load(open(path))
+    if not key.isdigit() or int(key) >= len(s.get('spot_check', [])):
+        raise ValueError('not one of the spot-check')
+    v = s.setdefault('spot_verdicts', {})
+    if value is None:
+        v.pop(key, None)
+    else:
+        v[key] = value
+    json.dump(s, open(path + '.tmp', 'w'))
+    os.replace(path + '.tmp', path)
+    return {'ok': True, 'verdicts': len(v)}
+
+
+CASES = {'A1': scheherazade, 'A2': rip_van_winkle, 'S4': atropos, 'F1': gordian_knot, 'F8': chimera, 'F10': pandora, 'F23': ptah, 'S5': sinbad}
 
 
 def cases(code: str) -> dict:
@@ -395,6 +432,8 @@ def verdict(code: str, key: str, value: str | None) -> dict:
         return _ptah_pick(key, value)
     if code == 'S5':
         return _sinbad_pick(key, value)
+    if code == 'A2':
+        return _rvw_pick(key, value)
     if code != 'F10' or value not in ('motif', 'already', 'not', None):
         raise ValueError('Pandora takes motif, already or not; Ptah takes A, B or neither')
     path = os.path.join(EXP, 'f10_pandora.json')

@@ -17,3 +17,16 @@ def test_a_blind_pick_is_kept_as_the_order_it_was(tmp_path, monkeypatch):
     lab.verdict('F23', 'c2', None)
     lab.verdict('F23', 'c2', 'neither')
     assert json.loads((tmp_path / 'f23_ptah.json').read_text())['verdicts'] == {'c1': b, 'c2': 'neither'}
+
+
+def test_the_1896_spot_check_takes_right_wrong_or_unsure(tmp_path, monkeypatch):
+    """Oct 20: Rip Van Winkle's 50 sure filings, read by the person on the experiments page"""
+    import pytest
+    monkeypatch.setattr(lab, 'EXP', str(tmp_path))
+    (tmp_path / 'a2_newspapers.json').write_text(json.dumps({'spot_check': [{'claim': 'a'}, {'claim': 'b'}]}))
+    lab.verdict('A2', '0', 'right')
+    lab.verdict('A2', '1', 'wrong')
+    lab.verdict('A2', '1', None)
+    assert json.loads((tmp_path / 'a2_newspapers.json').read_text())['spot_verdicts'] == {'0': 'right'}
+    with pytest.raises(ValueError):
+        lab.verdict('A2', '7', 'right')

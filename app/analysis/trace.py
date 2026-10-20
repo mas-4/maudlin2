@@ -60,7 +60,7 @@ def _plain(x, digits: int = 4):
 def live() -> bool:
     """Whether this process files into the live index: an experiment's step (MAUDLIN_TRACE=off, set by the queue) or a
     copy of the index (an experiment's sandbox) isn't the pipeline, and its filings stay out of the trace (the night of
-    Oct 14-15, Echo's 687 sandbox filings showed on the Live page as if real)"""
+    Oct 14-15, Rip Van Winkle's 687 sandbox filings showed on the Live page as if real)"""
     if os.environ.get('MAUDLIN_TRACE') == 'off':
         return False
     from app.analysis import motif_index as mi

@@ -249,6 +249,7 @@ def file():
     state = saved()
     arts = state['articles']
     state['retold'] = retold(state)
+    state.setdefault('file_started', time.strftime('%Y-%m-%d'))  # filing runs for days, resumed: new motifs date from here
     save(state)
     todo = [{'claim': c['claim'], 'source': SOURCE, 'ref': k, 'date': arts[k]['date']}
             for k, cs in state['claims'].items() for c in cs]
@@ -261,9 +262,7 @@ def file():
     fits = fc.score(index, m, skip=skip)
     state['filed'] = {k: [{'motif': eid, 'name': index['entries'][eid]['name'], 'fit': fits.get((k, eid))}
                           for eid in index['claims'].get(k, [])] for k in mine}
-    state['new_motifs'] = {e['id']: {'name': e['name'], 'claims': [c['claim'] for c in e['claims']]}
-                           for e in mi.live(index) if e.get('first_seen') == time.strftime('%Y-%m-%d')
-                           and all(mi.key(c['claim']) in mine for c in e['claims'])}
+    state['new_motifs'] = new_motifs(index, state, mine)
     state['sure_at'] = (m or {}).get('test', {}).get('sure_at')
     save(state)
     print(f"file: {sum(1 for v in state['filed'].values() if v)} of {len(mine)} claims filed, "
@@ -311,6 +310,16 @@ def record():
 SPOT = 50  # sure filings for the person to check against the page scans
 
 
+def new_motifs(index: dict, state: dict, mine: set) -> dict:
+    """The motifs this filing named: made since it started, holding only its claims. (Until Oct 20 only those dated the
+    day filing finished counted: it ran Oct 13-16, named 24 motifs on Oct 15, and the report said none)"""
+    from app.analysis import motif_index as mi
+    since = state.get('file_started', '2026-10-13')
+    return {e['id']: {'name': e['name'], 'claims': [c['claim'] for c in e['claims']]}
+            for e in mi.live(index) if e['claims'] and (e.get('first_seen') or '') >= since
+            and all(mi.key(c['claim']) in mine for c in e['claims'])}
+
+
 def report():
     """The numbers (claims kept and dropped, filed, sure, retold against one-off, the controls' motifs, new motifs),
     into the experiments' log; and the spot-check list: SPOT sure filings with their quote and page scan"""
@@ -322,6 +331,7 @@ def report():
     arts, claims_of, filed = state['articles'], state.get('claims', {}), state.get('filed', {})
     sure = state.get('sure_at') or 0.8
     index = mi.load()
+    state['new_motifs'] = new_motifs(index, state, {mi.key(c['claim']) for cs in claims_of.values() for c in cs})
     rows = []  # (article id, claim, quote, motif, fit)
     for k, cs in claims_of.items():
         for c in cs:

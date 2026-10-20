@@ -39,7 +39,7 @@ REGISTRY = {
            'a1_folktales.json; archives/trilogy', 'right type in the shortlist ~9 in 10, picked 4 in 5, judge AUC 0.93-0.95'),
     'A2': ('The 1896 newspapers: does filing hold up off-distribution; controls', 'a2_newspapers.py', 'answered',
            f'{ARCHIVES} (american_stories_1896: 413,186 articles; claims, filings); a2_newspapers.json (resume state)',
-           '96% filed, 40% sure; no new motifs; banker-conspiracy controls read as class conflict; spot-check pending'),
+           '96% filed, 40% sure; 24 new motifs (5% of filings); conspiracy controls read as class conflict; spot-check pending'),
     'A3': ('Viral Texts: do reprints of one piece file alike?', 'a3_viral_texts.py', 'answered',
            f'{ARCHIVES} (viral_texts_1836_1861: 49,999 reprints); a3_viral_texts.json (resume state)',
            'copies of one piece file alike: Jaccard 0.32 within against 0.03 between; a shared motif in 59%'),

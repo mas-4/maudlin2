@@ -159,7 +159,7 @@ tr.blind td:first-child { box-shadow: inset 5px 0 0 var(--sun); }  /* Pandora's 
           `<button data-kind="${esc(k)}" class="${k === 'ok' ? 'ok' : ''}${k === S.kind ? ' on' : ''}">${esc(k)} <b>${n}</b> <span class="bar" style="width:${Math.round(60 * n / Math.max(1, total))}px"></span></button>`).join('')}</div>
         ${rows.length ? `<div class="cases"><table><tr>${c.judge ? '<th>your verdict</th>' : ''}${c.columns.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.map((r) =>
           `<tr class="${r.kind === 'ok' ? 'k-ok' : 'k-bad'}${r.blind ? ' blind' : ''}">${c.judge ? (r.key ? `<td class="verdict" data-key="${esc(r.key)}">${(c.choices || [['motif', '✅ worth a motif'], ['already', '♻️ already one'], ['not', '✕ not a telling']]).map(([v, n]) =>
-            `<button data-v="${v}" class="${r.verdict === v ? 'on' : ''}">${n}</button>`).join('')}</td>` : '<td></td>') : ''}${r.cells.map((x) => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></div>`
+            `<button data-v="${v}" class="${r.verdict === v ? 'on' : ''}">${n}</button>`).join('')}</td>` : '<td></td>') : ''}${r.cells.map((x) => `<td>${/^https?:\/\//.test(String(x)) ? `<a href="${esc(x)}" target="_blank" rel="noopener">scan ↗</a>` : esc(x)}</td>`).join('')}</tr>`).join('')}</table></div>`
           : '<div class="empty">Nothing here yet.</div>'}`;
     }
   }

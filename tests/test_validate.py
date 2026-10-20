@@ -429,7 +429,7 @@ def test_pace_counts_arrivals_and_judged_claims_and_the_steady_target(monkeypatc
     rows += [{'at': day(1), 'key': '1-0', 'picked': ['M2']}, {'at': day(1), 'key': 'x', 'picked': [], 'new': None}]
     log.write_text(''.join(json.dumps(r) + '\n' for r in rows))
     monkeypatch.setattr(mi, 'SHORTLIST_LOG', str(log))
-    # a claim counts once it reached the index (or a decision): 'leak' never did, like Echo's 1898 filings on Oct 15
+    # a claim counts once it reached the index (or a decision): 'leak' never did, like Rip Van Winkle's 1896 filings on Oct 15
     rows.append({'at': day(1), 'key': 'leak', 'picked': ['M1']})
     log.write_text(''.join(json.dumps(r) + '\n' for r in rows))
     monkeypatch.setattr(mi, 'load', lambda: {'claims': {r['key']: ['M1'] for r in rows if r['key'] != 'leak'}, 'entries': {}})
