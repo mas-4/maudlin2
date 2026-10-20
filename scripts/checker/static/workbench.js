@@ -1672,6 +1672,7 @@
     const lab = x.label || {};
     return [
       `<button class="wb-mini wb-copy" data-copy="${esc(detailText(x, claim))}" title="copy the claim, where it came from and every post">📋 copy</button><b>${esc(x.kind)}</b>`,
+      x.split_from ? `<span class="wb-faint">✂️ split from: “${esc(x.split_from)}”</span>` : '',
       x.title ? (x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)) : '',
       x.context ? `<div class="wb-transcript">🗣️ ${esc(x.context.before)}<mark>${esc(x.context.quote)}</mark>${esc(x.context.after)}${x.side ? ` <span class="wb-faint">· the voter: ${esc(x.side)}</span>` : ''}</div>`
         : x.quote ? `🗣️ “${esc(x.quote)}”${x.side ? ' · ' + esc(x.side) : ''}` : '',

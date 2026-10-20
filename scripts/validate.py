@@ -389,6 +389,9 @@ def claim_detail(claim: str) -> dict:
     words = mi.originals(claim, index)
     filed = next((c for e in mi.live(index) for c in e['claims'] if c['claim'] == claim), {})
     out = {'claim': claim, 'source': filed.get('source', ''), 'model_words': sorted(words - {claim})}
+    if filed.get('split_from'):  # one telling (a side) split out of a claim: where it came from is where that came
+        out['split_from'] = filed['split_from']  # from (Oct 20: the Biden side of a dispute showed "report is gone")
+        words = words | mi.originals(filed['split_from'], index)
     if filed.get('source') == 'Focus Group':
         from app.analysis import focus_group
         ep = focus_group.load().get(filed.get('ref', ''), {})

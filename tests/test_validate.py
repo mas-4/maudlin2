@@ -459,3 +459,19 @@ def test_a_show_claim_filed_in_other_words_still_shows_its_tellings(monkeypatch)
                         np.linalg.norm(np.array([vecs[t] for t in texts], dtype=float), axis=1, keepdims=True))
     got = validate.show_tellings({'The left should adopt the identity of a fighter.'})
     assert [t['claim'] for t in got] == ['The left should adopt a fighter identity.']
+
+
+def test_a_side_split_from_a_dispute_finds_the_disputes_report(monkeypatch, tmp_path):
+    """Oct 20: a side split out of a dispute claim showed "its report is gone": the report names the dispute"""
+    import app.narratives
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
+    dispute, side = 'Arguments exist over whether X failed.', 'X brought the country back.'
+    mi.save({'next': 2, 'claims': {mi.key(side): ['M001']}, 'entries': {'M001': {'id': 'M001', 'name': 'Recovery', 'claims': [
+        {'claim': side, 'source': 'narrative', 'ref': '2026-10-15T04:55', 'split_from': dispute}]}}})
+    monkeypatch.setattr(app.narratives, 'FOLDER', str(tmp_path))
+    monkeypatch.setattr(app.narratives, 'posts_of', lambda keys: [])
+    (tmp_path / 'report-2026-10-15-0455.json').write_text(json.dumps({'made': 'm', 'found': [
+        {'authors': 6, 'posts': 6, 'label': {'narrative': dispute}}]}))
+    d = validate.claim_detail(side)
+    assert d['kind'] == 'folklore' and d['people'] == 6 and d['split_from'] == dispute
