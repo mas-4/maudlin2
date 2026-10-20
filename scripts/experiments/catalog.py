@@ -134,6 +134,8 @@ REGISTRY = {
     'F24': ('A telling, not a report: a report-or-telling signal and bulk passes counted for less, in the confidence model',
             'f24_munchausen.py', 'answered', 'f24_munchausen.sqlite',
             'not kept: report signals moved nothing (AUC within 0.002); past decisions kept reports 68% vs 74%'),
+    'F25': ("Each motif mirrored in 20 versions (other casts, settings, voices) for the shortlist to catch claims by",
+            'f25_indras_net.py', 'queued', 'f25_indras_net.sqlite', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),

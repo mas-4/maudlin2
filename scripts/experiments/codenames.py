@@ -79,6 +79,7 @@ CODENAMES = {
     'F22': ('Psyche', "who sorted a heap of mixed grains: a claim's posts sorted into the tellings they hold"),
     'F23': ('Ptah', 'who conceived each thing in his heart before his tongue named it: the note first, then the name'),
     'F24': ('Baron Munchausen', 'the teller of tall tales: a telling, not a report'),
+    'F25': ("Indra's Net", 'every jewel reflects all the others: each motif mirrored in many versions for the shortlist'),
 }
 
 
