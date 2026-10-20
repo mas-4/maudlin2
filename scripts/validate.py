@@ -676,12 +676,20 @@ def pace(days: int = PACE_DAYS) -> dict:
     today = dt.now().strftime('%Y-%m-%d')
     since = (dt.now() - td(days=days - 1)).strftime('%Y-%m-%d')
     arrived, seen, first = {}, set(), None
+    # only claims that reached the index or a decision of the person's: Echo's 687 practice filings of 1898 newspapers
+    # leaked into the log on Oct 15, before experiments had their own data, and showed as a day of 755 arrivals
+    real = set(mi.load()['claims'])
+    for r in fc.log_rows():
+        if isinstance(r.get('action'), dict):
+            d = {}
+            fc._decided(r['action'], d)
+            real.update(k for k, _ in d)
     try:
         with open(mi.SHORTLIST_LOG) as f:
             for line in f:
                 r = json.loads(line)
                 first = first or r['at'][:10]
-                if (r.get('picked') or r.get('new')) and r['key'] not in seen:
+                if (r.get('picked') or r.get('new')) and r['key'] not in seen and r['key'] in real:
                     seen.add(r['key'])
                     arrived[r['at'][:10]] = arrived.get(r['at'][:10], 0) + 1
     except (OSError, ValueError):
