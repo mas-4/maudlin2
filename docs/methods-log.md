@@ -4,6 +4,13 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-20
+- **Transcripts without Whisper's repetition loops.** Whisper decoded each stretch of audio with the text before it as
+  context, its default, and a repeated phrase fed itself: "it is all happening, it is all happening…". 951 of 2,016
+  transcripts held a loop of five or more repeats, a median 12% of their text, and the speech under a loop was lost.
+  From Oct 20 each stretch is decoded on its own (condition_on_previous_text off), and transcripts carry the label
+  "no-carryover". Claims from shows before then may miss what was said under a loop.
+
 ## 2026-10-18
 - **News briefings' presenters aren't tellers.** In the outlets' daily news briefings (BBC Global News, Reuters World
   News, WSJ What's News, Up First, CNN 5 Things, Morning Wire, NBC's Top Story), what the presenter reads out is the

@@ -26,7 +26,11 @@ logger = get_logger(__name__)
 
 MODEL = 'large-v3-turbo'
 COMPUTE = 'int8_float16'
-JUDGE = f'faster-whisper {MODEL} {COMPUTE}'
+# Each window decoded without the text before it (Oct 20: with it, the default, a repeated phrase fed itself, "it is
+# all happening, it is all happening..."; 951 of 2,016 transcripts held a loop of five or more, a median 12% of their
+# text, the speech under it lost). The label says so, to compare the loops before and after
+CARRY = False
+JUDGE = f'faster-whisper {MODEL} {COMPUTE}' + ('' if CARRY else ' no-carryover')
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 MAX_BYTES = 250 * 1024 * 1024  # skip anything bigger (multi-hour streams)
 RECENT = td(days=3)  # only items this new; no backfilling the archive's history
@@ -293,7 +297,8 @@ def transcribe_pending(budget: float = 600) -> int:
                     logger.info("Transcribe: %s too big, skipped", item.title)
                     save(item.id, [], 0, model='skipped: over the size limit')  # so it isn't downloaded again
                     continue
-                segments, info = model().transcribe(audio, language='en', vad_filter=True, beam_size=1, hotwords=words)
+                segments, info = model().transcribe(audio, language='en', vad_filter=True, beam_size=1, hotwords=words,
+                                                     condition_on_previous_text=CARRY)
                 kept = trim_ads([{'start': round(s.start, 1), 'end': round(s.end, 1), 'text': fix_text(s.text.strip())}
                                  for s in segments])
                 save(item.id, kept, len(audio) / 16000)
