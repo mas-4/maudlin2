@@ -64,3 +64,17 @@ kbd { font-size: 10px; border: 1px solid #999; border-radius: 4px; padding: 0 3p
 .ask-card input, .ask-card textarea { font: 15px system-ui, sans-serif; border: 2px solid var(--ink); border-radius: 8px; padding: 4px 8px; width: 100%; }
 .ask-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 body.acting, body.acting * { cursor: progress !important; }
+
+/* 💾 saved states, beside undo in the nav */
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.nav-right .nav-undo { margin-left: 0; padding-left: 0; }
+.saved-wrap { position: relative; }
+.nav-states { font: inherit; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 999px; background: white; cursor: pointer; }
+.saved { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: min(440px, 92vw); max-height: 70vh; overflow: auto;
+  background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--teal); padding: 10px 12px;
+  font: 13.5px system-ui, sans-serif; white-space: normal; }
+.saved-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font: var(--talk); font-size: 15px; }
+.saved-form { display: flex; gap: 6px; margin-bottom: 8px; }
+.saved-form input { flex: 1; font: inherit; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; }
+.saved-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1.5px dashed #ddd; }
+.saved-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; justify-content: flex-end; }

@@ -10,7 +10,7 @@ export function Undo() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !t?.closest('input, textarea, select, [contenteditable]')) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !t?.closest?.('input, textarea, select, [contenteditable]')) {
         e.preventDefault()
         if (what) void undo()
       }

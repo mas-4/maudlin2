@@ -91,14 +91,21 @@ def stats() -> dict:
     return out
 
 
+def state() -> dict:
+    """What the page shows: a batch of headlines, the running agreement, and the choices for each measure. The old
+    page renders it; the React app reads it as /labels.json (in JSON, the moods' and spices' keys become strings)."""
+    return {'items': batch(), 'stats': stats(), 'moods': MOODS, 'spices': SPICES, 'feelings': FEELINGS,
+            'emoji': EMOTION_EMOJI}
+
+
 def page(render) -> str:
-    items = batch()
-    st = stats()
+    s = state()
+    items, st = s['items'], s['stats']
     for it in items:
         it['model_json'] = json.dumps({k: it[k] for k in ('mood', 'spice', 'feelings')})
     pct = lambda k: f"{100 * st[k][0] / st[k][1]:.0f}% of {st[k][1]}" if st[k][1] else '—'  # noqa: E731
-    return render('label.html', '/', undo=False, items=items, st=st, pct=pct, moods=MOODS, spices=SPICES,
-                  feelings=FEELINGS, emoji=EMOTION_EMOJI)
+    return render('label.html', '/', undo=False, items=items, st=st, pct=pct, moods=s['moods'], spices=s['spices'],
+                  feelings=s['feelings'], emoji=s['emoji'])
 
 
 

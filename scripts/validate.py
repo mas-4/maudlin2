@@ -859,9 +859,10 @@ def workbench_action(data: dict):
     motif_actions.apply(data, on_check=record_check)
 
 
-def entities_page() -> str:
-    """The names organizer (#165): one name per subject for the 'mentioned:' filters. Suggested merges first (a name
-    inside another), then every subject with the names that point to it."""
+def entities_state() -> dict:
+    """The names organizer's data (#165): suggested merges (a name inside another, the first 40, each with both
+    subjects' story counts), every subject with its story count and the other names that point to it (most stories
+    first), and how many names there are. The old page renders it; the React app reads it as /entities.json."""
     from app.analysis import entities
     book = entities.load_aliases()
     counts = entities.all_names()
@@ -875,10 +876,20 @@ def entities_page() -> str:
     for alias, name in book['aliases'].items():  # aliases a person made, even before any story uses them
         if alias != name.lower() and name in subjects:
             subjects[name]['names'].add(alias)
-    pairs = entities.suggestions()
-    return render('names.html', '/entities', pairs=pairs[:40], name_count=len(counts),
-                  subjects=sorted(subjects.items(), key=lambda kv: (-kv[1]['stories'], kv[0].lower())),
-                  stories_of=lambda name: subjects.get(name, {}).get('stories', 0))
+    stories_of = lambda name: subjects.get(name, {}).get('stories', 0)  # noqa: E731
+    return {'pairs': [{'a': a, 'b': b, 'a_stories': stories_of(a), 'b_stories': stories_of(b)}
+                      for a, b in entities.suggestions()[:40]],
+            'name_count': len(counts),
+            'subjects': [{'name': name, 'stories': e['stories'], 'names': sorted(e['names'])}
+                         for name, e in sorted(subjects.items(), key=lambda kv: (-kv[1]['stories'], kv[0].lower()))]}
+
+
+def entities_page() -> str:
+    """The names organizer's old page, from entities_state()"""
+    s = entities_state()
+    return render('names.html', '/entities', pairs=[(p['a'], p['b']) for p in s['pairs']], name_count=s['name_count'],
+                  subjects=[(e['name'], e) for e in s['subjects']],
+                  stories_of=lambda name: next((e['stories'] for e in s['subjects'] if e['name'] == name), 0))
 
 
 def entities_action(data: dict):
@@ -997,6 +1008,8 @@ GET_JSON = {
     '/experiments.json': lambda q: experiments_lab().overview(),
     '/experiment-paper.json': lambda q: experiments_lab().paper(q.get('code', '')),
     '/experiment-cases.json': lambda q: experiments_lab().cases(q.get('code', '')),
+    '/entities.json': lambda q: entities_state(),  # 👥 the names organizer
+    '/labels.json': lambda q: labels.state(),  # 🏷️ a fresh batch for the label check, with the running agreement
 }
 
 

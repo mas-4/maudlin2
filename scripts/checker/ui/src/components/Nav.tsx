@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { PAGES } from '../lib/routes'
+import { SavedStates } from './SavedStates'
 import { Undo } from './Undo'
 import { VersionWatch } from './VersionWatch'
 
@@ -22,7 +23,10 @@ export function Nav() {
         )
       })}
       <VersionWatch />
-      <Undo />
+      <span className="nav-right">
+        <SavedStates />
+        <Undo />
+      </span>
     </nav>
   )
 }

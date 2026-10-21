@@ -1,0 +1,74 @@
+/* 🌊 Flow: the style book's cards (ink outline, hard pop shadow), Comic Neue to talk. Every class starts flow- so the
+   workbench's .card, .chip and .row rules (loaded once that page has been opened) never reach this page. */
+.flow-page { max-width: 1700px; margin: 0 auto; padding: 8px 16px 60px; }
+.flow-title { font: 22px 'Bungee', 'Comic Neue', sans-serif; margin: 8px 0 4px; }
+.flow-sub { color: #555; font-size: 13px; line-height: 1.5; margin: 0 0 12px; max-width: 1100px; }
+.flow-card { background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--purple); padding: 10px 14px; min-width: 0; }
+.flow-card h3 { margin: 0 0 6px; font: 700 17px 'Comic Neue', 'Comic Sans MS', cursive; }
+.flow-bad { box-shadow: 6px 6px 0 #e0102e; }
+.flow-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; margin-bottom: 12px; }
+.flow-top > .flow-card:nth-child(1) { box-shadow: 6px 6px 0 var(--pink); }
+.flow-top > .flow-card:nth-child(2) { box-shadow: 6px 6px 0 var(--yellow); }
+.flow-top > .flow-card:nth-child(3) { box-shadow: 6px 6px 0 var(--teal); }
+.flow-big { font: 700 28px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); }
+
+/* the lag histogram: a bar per day, ≤0 to 8+ */
+.flow-lagbars { display: flex; align-items: flex-end; gap: 2px; height: 70px; margin-top: 4px; }
+.flow-lagbars div { flex: 1; background: var(--teal); border: 1.5px solid var(--ink); border-bottom: 0; border-radius: 4px 4px 0 0; min-height: 1px; position: relative; }
+.flow-lagbars span { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center; font: 700 10px 'Comic Neue', 'Comic Sans MS', cursive; color: #666; }
+.flow-lagnote { margin: 20px 0 0; }
+
+/* the filters */
+.flow-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.flow-bar input[type=search], .flow-bar select { font: inherit; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 999px; background: white; min-height: 32px; }
+.flow-bar input[type=search] { width: min(22em, 100%); }
+.flow-bar label { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; white-space: nowrap; cursor: pointer; }
+.flow-key { display: inline-flex; flex-wrap: wrap; gap: 2px 8px; }
+.flow-key span { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+.flow-key i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--ink); }
+
+/* a motif: a chip outlined in its genre's colour */
+.flow-chip { display: inline-block; padding: 0 7px; border: 2px solid var(--ink); border-radius: 999px; font: 12px system-ui, sans-serif;
+  background: #f6f6fb; margin: 1px 2px; white-space: nowrap; cursor: pointer; color: var(--ink); }
+.flow-chip:hover { background: var(--soft-yellow); }
+
+/* the chart: full width, scrolling both ways inside its card; story names pinned left, days pinned on top */
+.flow-chart { overflow: auto; max-height: 78vh; padding: 0; }
+.flow-none { font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; color: #777; padding: 10px 14px; margin: 0; }
+.flow-grid { display: flex; flex-direction: column; width: max-content; }
+.flow-head { display: flex; position: sticky; top: 0; z-index: 3; }
+.flow-body { display: flex; }
+.flow-corner { flex: none; position: sticky; left: 0; z-index: 4; background: white; border-bottom: 1px solid #eee; border-right: 1px solid #eee; }
+.flow-axis { background: white; display: block; border-bottom: 1px solid #eee; }
+.flow-axis text { font: 700 11px 'Comic Neue', 'Comic Sans MS', cursive; fill: #666; }
+.flow-axis line { stroke: #ccc; }
+.flow-labels { flex: none; position: sticky; left: 0; z-index: 2; background: white; border-right: 1px solid #eee; min-width: 0; }
+.flow-plot { display: block; }
+.flow-lab { display: block; width: 100%; box-sizing: border-box; padding: 0 8px; border: 0; background: none; text-align: left; color: var(--ink);
+  font: 12px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.flow-lab:hover, .flow-lab.on { font-weight: 700; }
+.flow-lab.on { background: var(--soft-yellow); }
+.flow-dim { opacity: .18; }
+.flow-daygrid line { stroke: #e6e6ee; }
+.flow-today { stroke: var(--yellow); stroke-width: 2; }
+.flow-life { fill: #d9d4ea; }
+.flow-dot { cursor: pointer; stroke: var(--ink); stroke-width: 1.2; }
+.flow-dot.plain { stroke: #9a9aa8; stroke-dasharray: 2 1.5; }
+.flow-dot.unchecked { stroke-dasharray: 2 1.5; }
+.flow-dot.on { stroke-width: 3; }
+
+/* the panel: a card over everything, closed with ✕ or Esc */
+.flow-pop { position: fixed; right: 24px; top: 84px; width: min(430px, calc(100vw - 32px)); max-height: calc(100vh - 110px); overflow: auto;
+  z-index: 40; background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--ink); padding: 10px 14px; }
+.flow-pop h2 { font: 700 21px 'Comic Neue', 'Comic Sans MS', cursive; margin: 0 0 4px; }
+.flow-pop ol { padding-left: 20px; margin: 6px 0; }
+.flow-pop li { margin: 6px 0; font-size: 13px; }
+.flow-pop a { text-decoration: none; }
+.flow-close { position: sticky; top: 0; float: right; font: 700 15px system-ui, sans-serif; border: 2px solid var(--ink); border-radius: 999px;
+  background: var(--yellow); width: 30px; height: 30px; cursor: pointer; color: var(--ink); }
+.flow-link { border: 0; background: none; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; cursor: pointer; text-align: left; }
+@media (max-width: 700px) { .flow-pop { right: 16px; left: 16px; width: auto; top: 70px; } }
+
+/* the tooltip over a dot */
+.flow-tip { position: fixed; pointer-events: none; background: white; border: 2px solid var(--ink); border-radius: 10px; padding: 6px 9px; font-size: 12px;
+  max-width: 360px; box-shadow: 3px 3px 0 var(--ink); z-index: 60; }

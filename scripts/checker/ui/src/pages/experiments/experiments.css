@@ -1,0 +1,118 @@
+/* 🧪 Experiments (Experiments.tsx), in the style book's look: ink outlines, hard pop shadows, Bungee to shout, Comic
+   Neue to talk. Every class starts ex-, since all the pages' stylesheets are loaded together */
+.ex-page { max-width: 1500px; margin: 0 auto; padding: 8px 16px 60px; }
+.ex-head { margin: 6px 0 12px; }
+.ex-head h1 { display: inline-block; margin: 4px 0 8px; padding: 2px 16px; font: 26px 'Bungee', 'Comic Neue', sans-serif; background: var(--yellow);
+  border: 3px solid var(--ink); border-radius: 999px; box-shadow: 4px 4px 0 var(--ink); transform: rotate(-1.5deg); }
+.ex-sub { margin: 0 0 2px; max-width: 60em; font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; color: #555; }
+
+/* cards: white, an ink outline and a hard shadow in the card's pop (--pop) */
+.ex-card { --pop: var(--pink); background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--pop);
+  padding: 10px 14px; min-width: 0; }
+.ex-hop { transition: transform .15s, box-shadow .15s; }
+.ex-hop:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--pop); }
+.ex-card h3 { margin: 0 0 6px; font: 700 17px 'Comic Neue', 'Comic Sans MS', cursive; }
+.ex-top { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 1fr)); gap: 14px; margin-bottom: 18px; align-items: start; }
+.ex-top .ex-card { max-height: 340px; overflow: auto; } /* the stories cut can run long: it scrolls in its card, not down the page */
+.ex-top .ex-card:nth-child(odd) { transform: rotate(-.4deg); } .ex-top .ex-card:nth-child(even) { transform: rotate(.4deg); }
+.ex-top .ex-card:hover { transform: translate(-2px, -2px); }
+.ex-qstep, .ex-seam { margin: 3px 0; }
+.ex-scroll { overflow-x: auto; }
+
+/* status chips: the same colour for a status wherever it shows */
+.ex-chip { display: inline-block; padding: 0 8px; border: 2px solid var(--ink); border-radius: 999px; font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive;
+  background: #f6f6fb; margin: 1px 2px; white-space: nowrap; vertical-align: 1px; }
+.ex-s-running { background: var(--yellow); }
+.ex-s-done, .ex-s-answered, .ex-s-in-production { background: #c8f2dd; }
+.ex-s-failed, .ex-s-blocked, .ex-s-not-kept { background: #ffd0d8; }
+.ex-s-waiting, .ex-s-queued, .ex-s-planned { background: #e6eeff; }
+.ex-s-your-call { background: color-mix(in srgb, var(--purple) 22%, white); }
+.ex-s-unproven, .ex-s-not-yet { background: color-mix(in srgb, var(--orange) 18%, white); }
+
+/* tables in the cards and the cases */
+.ex-table, .ex-cases table, .ex-md table { border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+.ex-table th, .ex-table td, .ex-cases th, .ex-cases td, .ex-md th, .ex-md td { border-bottom: 1px dotted #bbb; padding: 4px 8px; text-align: left; vertical-align: top; }
+.ex-table th, .ex-cases th, .ex-md th { border-bottom: 2px solid var(--ink); background: white; font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; }
+
+/* the list and the detail */
+.ex-main { display: grid; grid-template-columns: minmax(250px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .ex-main { grid-template-columns: minmax(0, 1fr); } }
+.ex-list { --pop: var(--teal); max-height: 78vh; overflow: auto; padding: 8px; }
+.ex-find { width: 100%; font: inherit; padding: 6px 12px; border: 2px solid var(--ink); border-radius: 999px; margin-bottom: 6px; background: var(--paper); }
+.ex-find:focus { outline: none; box-shadow: 2px 2px 0 var(--ink); background: white; }
+.ex-list h4 { margin: 12px 4px 4px; font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; text-transform: uppercase; letter-spacing: .05em; color: #666; }
+.ex-item { display: block; width: 100%; text-align: left; font: inherit; background: none; border: 2px solid transparent; border-radius: 12px;
+  padding: 5px 8px; cursor: pointer; color: inherit; min-height: 40px; transition: transform .1s; }
+.ex-item:hover { border-color: var(--ink); background: var(--soft-yellow); transform: translate(-1px, -1px); }
+.ex-item.on { border-color: var(--ink); background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.ex-item b { display: block; font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; }
+.ex-item > span { display: block; font-size: 12px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-detail { min-height: 60vh; scroll-margin-top: 56px; }
+.ex-detail h2 { margin: 2px 0; font: 24px 'Bungee', 'Comic Neue', sans-serif; }
+.ex-question, .ex-result { margin-top: 6px; }
+.ex-tabs { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+.ex-tabs button { font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); padding: 4px 14px; border: 2px solid var(--ink); border-radius: 999px;
+  background: white; cursor: pointer; min-height: 32px; }
+.ex-tabs button:hover { background: var(--soft-yellow); }
+.ex-tabs button.on { background: var(--teal); box-shadow: 2px 2px 0 var(--ink); }
+.ex-tabs button:active { transform: translate(1px, 2px); }
+.ex-empty { color: #666; padding: 14px 16px; margin: 8px 0; border: 2px dashed #bbb; border-radius: 12px; font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; }
+.ex-pick { margin-top: 20vh; text-align: center; border: none; font-size: 18px; }
+.ex-loading { color: #666; padding: 12px 0; font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; }
+
+/* 📈 results */
+.ex-lines { padding-left: 20px; }
+.ex-lines li { margin: 5px 0; font-size: 14px; line-height: 1.45; }
+.ex-lines time { color: #666; font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; margin-right: 8px; }
+
+/* 📄 papers */
+.ex-md { line-height: 1.55; max-width: 900px; color: #333; overflow-wrap: anywhere; }
+.ex-md .ex-md-h1 { font: 700 24px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); }
+.ex-md .ex-md-h2 { font: 700 19px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); border-bottom: 2px dashed var(--ink); margin-top: 22px; }
+.ex-md .ex-md-h3 { font-size: 16px; color: var(--ink); }
+.ex-md .ex-md-h4, .ex-md .ex-md-h5, .ex-md .ex-md-h6 { font-size: 14px; color: var(--ink); }
+.ex-md code { background: #f0f0f6; padding: 0 4px; border-radius: 4px; font-size: 13px; overflow-wrap: anywhere; }
+.ex-md pre { background: #f6f6fb; border: 2px solid var(--ink); border-radius: 10px; padding: 8px 12px; overflow-x: auto; }
+.ex-md pre code { background: none; padding: 0; overflow-wrap: normal; }
+.ex-md blockquote { margin: 8px 0; padding: 2px 12px; border-left: 5px solid var(--purple); background: color-mix(in srgb, var(--purple) 8%, white); border-radius: 0 10px 10px 0; }
+.ex-md hr { border: none; border-top: 2px dashed var(--ink); margin: 16px 0; }
+.ex-md li { margin: 3px 0; }
+.ex-md a { color: #d6336c; }
+.ex-md-table { overflow-x: auto; }
+
+/* 🔍 cases */
+.ex-note { margin: 0 0 6px; color: #555; max-width: 900px; }
+.ex-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.ex-kind { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); padding: 3px 10px; border: 2px solid var(--ink); border-radius: 12px;
+  background: white; cursor: pointer; min-height: 30px; }
+.ex-kind:hover { background: var(--soft-yellow); }
+.ex-kind.on { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.ex-kind.ok { background: #e3f8ee; } .ex-kind.ok.on { background: #2ec27e; color: white; }
+.ex-kind b { font-variant-numeric: tabular-nums; }
+.ex-bar { display: inline-block; height: 10px; background: var(--blue); border-radius: 3px; vertical-align: middle; }
+.ex-cases { max-height: 70vh; overflow: auto; border-radius: 8px; }
+.ex-cases th { position: sticky; top: 0; z-index: 1; }
+.ex-cases td { max-width: 420px; overflow-wrap: anywhere; }
+.ex-cases tr.ex-k-ok td:first-child { border-left: 4px solid #2ec27e; }
+.ex-cases tr.ex-k-bad td:first-child { border-left: 4px solid #ff4d6d; }
+.ex-cases tr.ex-blind td:first-child { box-shadow: inset 5px 0 0 var(--yellow); } /* the blind set: judge these first */
+.ex-cases tr.ex-blind { background: color-mix(in srgb, var(--yellow) 10%, white); }
+.ex-verdict { white-space: nowrap; }
+.ex-verdict button { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); padding: 2px 8px; border: 2px solid var(--ink); border-radius: 999px;
+  background: white; cursor: pointer; margin: 1px; display: block; width: 100%; text-align: left; min-height: 28px; }
+.ex-verdict button:hover { background: var(--soft-yellow); }
+.ex-verdict button.on { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.ex-verdict button.busy { opacity: .55; cursor: progress; }
+.ex-verdict button.busy::after { content: ' ⏳'; }
+.ex-verdict button:active { transform: translate(1px, 2px); }
+
+@media (max-width: 700px) {
+  .ex-page { padding: 6px 10px 40px; }
+  .ex-item, .ex-tabs button, .ex-kind, .ex-verdict button { min-height: 40px; }
+  .ex-list { max-height: 50vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex-hop, .ex-item { transition: none; }
+  .ex-hop:hover, .ex-item:hover, .ex-top .ex-card:hover { transform: none; }
+  .ex-head h1, .ex-top .ex-card:nth-child(n) { transform: none; }
+}

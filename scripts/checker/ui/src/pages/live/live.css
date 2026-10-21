@@ -1,0 +1,139 @@
+/* 🧠 Live, the old page's look (scripts/checker/templates/live.html) on the app's tokens. Every class is lv- and sits
+   under .lv: Vite bundles all pages' CSS into one file, so nothing here may leak into another page */
+.lv { --coral: #ff6b6b; --soft: #f6f6fb; --muted: #6b6b7a; --talk-font: 'Comic Neue', 'Comic Sans MS', cursive;
+  max-width: 1500px; margin: 0 auto; padding: 4px 16px 80px; background: var(--paper); min-height: calc(100vh - 44px); }
+.lv h1 { font: 700 30px var(--talk-font); margin: 8px 0 2px; }
+.lv .lv-sub { color: var(--muted); font-size: 13px; margin: 0 0 10px; max-width: 1100px; }
+.lv a { color: #3b46c4; }
+.lv details summary { cursor: pointer; font-size: 13px; }
+
+.lv .lv-card { background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--teal); padding: 10px 14px; min-width: 0; }
+.lv .lv-card h3 { margin: 0 0 6px; font: 700 18px var(--talk-font); }
+.lv .lv-two > .lv-card:first-child { box-shadow: 5px 5px 0 var(--yellow); }
+.lv .lv-two > .lv-card:last-child { box-shadow: 5px 5px 0 var(--pink); }
+
+.lv .lv-chip { display: inline-block; padding: 0 8px; border: 2px solid var(--ink); border-radius: 999px; font: 12px system-ui, sans-serif; color: var(--ink);
+  background: var(--soft); margin: 2px; white-space: nowrap; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  vertical-align: middle; text-decoration: none; line-height: 1.5; }
+.lv .lv-chip:hover { background: var(--soft-yellow); }
+.lv .lv-chip.on { background: var(--yellow); }
+.lv .lv-chip.kept { border-color: #1e9e57; background: #e3f8eb; }
+.lv .lv-chip.out { border-color: var(--coral); background: #ffe9e9; text-decoration: line-through; }
+.lv .lv-chip.picked { box-shadow: 0 0 0 2px var(--yellow); }
+.lv .lv-chip .faint { font-size: 11px; }
+
+/* the pipeline: stages left to right, lighting up as events arrive */
+.lv .lv-pipe { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 18px; margin: 4px 0; }
+.lv .lv-stage { position: relative; border: 3px solid var(--ink); border-radius: 14px; padding: 8px 8px 6px; background: var(--soft); text-align: center;
+  cursor: pointer; transition: background .4s, transform .4s; }
+.lv .lv-stage:not(:last-child)::after { content: '➜'; position: absolute; right: -19px; top: 34%; font-size: 16px; color: var(--ink); }
+.lv .lv-stage:hover { transform: translate(-1px, -1px); }
+.lv .lv-stage:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.lv .lv-stage .emo { font-size: 26px; line-height: 1.1; }
+.lv .lv-stage b { display: block; font: 700 14px var(--talk-font); }
+.lv .lv-stage .n { font: 700 22px var(--talk-font); }
+.lv .lv-stage .spark { display: flex; align-items: flex-end; gap: 1px; height: 26px; margin: 4px 2px 0; }
+.lv .lv-stage .spark i { flex: 1; background: var(--teal); min-height: 1px; border-radius: 2px 2px 0 0; }
+.lv .lv-stage.active { background: #fff6d0; }
+.lv .lv-stage.sel { outline: 3px dashed var(--yellow); outline-offset: 2px; }
+.lv .lv-pipenote { margin-top: 6px; }
+
+.lv .lv-two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; margin: 14px 0; }
+.lv .lv-status { font: 12px system-ui, sans-serif; color: #1e7d47; }
+.lv .lv-status.off { color: #c43c3c; }
+.lv .lv-filter { margin-bottom: 4px; }
+.lv .lv-feed { max-height: 460px; overflow: auto; }
+.lv .lv-ev { display: grid; grid-template-columns: 44px 26px minmax(0, 1fr); gap: 4px; padding: 5px 4px; border-bottom: 1px solid #eee; cursor: pointer; border-radius: 8px; }
+.lv .lv-ev:hover { background: var(--soft); }
+.lv .lv-ev.new { animation: lv-flash 2s ease-out; }
+@keyframes lv-flash { 0% { background: #fff1b3; } 100% { background: transparent; } }
+.lv .lv-ev .t { font-size: 11px; color: var(--muted); padding-top: 2px; }
+.lv .lv-ev .c { font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lv .lv-ev .l { font-size: 12px; color: #3a3a4a; display: block; }
+.lv .lv-ev.kept .l { color: #1e7d47; }
+.lv .lv-ev.out .l { color: #c43c3c; }
+.lv .lv-search { display: flex; gap: 6px; margin-bottom: 8px; }
+.lv .lv-search input { flex: 1; min-width: 0; font: inherit; padding: 5px 12px; border: 2px solid var(--ink); border-radius: 999px; background: white; }
+.lv .lv-claimline { padding: 6px 4px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; border-radius: 8px; }
+.lv .lv-claimline:hover { background: var(--soft); }
+
+/* the journey: one card a stage, down a dotted road */
+.lv .lv-journey { margin-top: 18px; scroll-margin-top: 56px; }
+.lv .lv-jhead { position: relative; box-shadow: 5px 5px 0 var(--purple); }
+.lv .lv-jhead h2 { font: 700 23px var(--talk-font); margin: 4px 36px 4px 0; }
+.lv .lv-close { position: absolute; right: 10px; top: 10px; font: 700 15px system-ui; border: 2px solid var(--ink); border-radius: 999px; background: var(--yellow);
+  width: 30px; height: 30px; cursor: pointer; }
+.lv .lv-steps { position: relative; margin: 12px 0 0 18px; padding-left: 26px; border-left: 4px dotted var(--ink); }
+.lv .lv-step { position: relative; margin: 0 0 16px; }
+.lv .lv-step .lv-card { box-shadow: 4px 4px 0 var(--ink); }
+.lv .lv-dot { position: absolute; left: -48px; top: 6px; width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--ink); background: var(--yellow);
+  display: grid; place-items: center; font-size: 18px; }
+.lv .lv-step h3 small { font: 12px system-ui; color: var(--muted); margin-left: 6px; }
+.lv .lv-step p { margin: 6px 0; }
+.lv .lv-quote { border-left: 4px solid var(--yellow); padding: 4px 10px; margin: 6px 0; background: #fffbe8; border-radius: 0 8px 8px 0; font-size: 13px; }
+.lv .lv-claimlink { display: block; width: 100%; text-align: left; font: inherit; font-size: 13px; color: inherit; border-top: 0; border-right: 0; border-bottom: 0;
+  cursor: pointer; }
+.lv .lv-claimlink:hover { background: var(--soft-yellow); }
+.lv .lv-claimlink.lv-inline { display: inline; width: auto; border: 0; background: none; padding: 0; }
+.lv .lv-shape { font: 700 17px var(--talk-font); background: #e9fbf7; border: 2px solid var(--teal); border-radius: 12px; padding: 6px 10px; margin: 4px 0 8px; }
+.lv .lv-layers { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; font-size: 13px; }
+.lv .lv-layer { display: contents; }
+.lv .lv-layers .none { color: var(--muted); font-style: italic; }
+.lv .lv-missing { background: var(--soft); border: 2px dashed #b9b9c8; border-radius: 10px; padding: 6px 10px; font-size: 12px; color: var(--muted); margin: 6px 0; }
+.lv .lv-badge { display: inline-block; font: 11px system-ui, sans-serif; padding: 0 6px; border-radius: 999px; border: 1.5px solid var(--ink); background: white;
+  margin-left: 4px; vertical-align: middle; }
+.lv .lv-badge.traced { background: #e3f8eb; }
+.lv .lv-badge.rebuilt { background: #fff1d6; }
+
+/* the neuron grid: shortlisted motifs (rows) × signals (columns) */
+.lv .lv-gridwrap { overflow-x: auto; margin: 6px 0; border: 2px solid #eee; border-radius: 10px; }
+.lv table.lv-neurons { border-collapse: separate; border-spacing: 2px; font-size: 12px; }
+.lv .lv-neurons th { font-weight: 600; }
+.lv .lv-neurons th.f { height: 130px; vertical-align: bottom; width: 24px; padding: 0; }
+.lv .lv-neurons th.f div { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: 11px; margin: 0 auto; cursor: help; }
+.lv .lv-neurons td.cell { width: 24px; min-width: 24px; height: 24px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, .08); cursor: help; }
+.lv .lv-neurons td.m { white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; position: sticky; left: 0;
+  background: white; z-index: 1; }
+.lv .lv-neurons tr.picked td.m { font-weight: 700; }
+.lv .lv-neurons tr.kept td.m { box-shadow: inset 4px 0 0 #1e9e57; }
+.lv .lv-neurons tr.out td.m { box-shadow: inset 4px 0 0 var(--coral); }
+.lv .lv-neurons td.sc { font-variant-numeric: tabular-nums; text-align: right; padding: 0 6px; }
+.lv .lv-neurons tr.w td { height: 30px; vertical-align: bottom; padding: 0; }
+.lv .lv-wbar { width: 18px; margin: 0 auto; border: 1.5px solid var(--ink); border-radius: 3px 3px 0 0; }
+.lv .lv-legend { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); }
+.lv .lv-ramp { display: inline-block; width: 120px; height: 12px; border-radius: 6px; border: 1px solid #ccc; vertical-align: middle;
+  background: linear-gradient(90deg, rgb(255, 107, 107), white, rgb(0, 194, 168)); }
+
+/* fits */
+.lv .lv-fit { margin: 8px 0 12px; }
+.lv .lv-fitbar { position: relative; height: 18px; background: var(--soft); border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; margin: 3px 0; }
+.lv .lv-fitbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--teal); }
+.lv .lv-fitbar .sure { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 3px dashed var(--ink); }
+.lv .lv-pushes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 16px; font-size: 13px; }
+.lv .lv-pushes h4 { margin: 4px 0 2px; font-size: 13px; }
+.lv .lv-push { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 6px; align-items: baseline; margin: 2px 0; }
+.lv .lv-push .v { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+.lv .lv-push.up .v { color: #1e7d47; }
+.lv .lv-push.down .v { color: #c43c3c; }
+.lv table.lv-all { border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.lv table.lv-all td { padding: 1px 8px; border-bottom: 1px solid #eee; }
+.lv .lv-dec { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+.lv .lv-glossary { margin-top: 6px; box-shadow: 5px 5px 0 var(--orange); }
+.lv .lv-glossary dt { font-weight: 700; font-size: 13px; margin-top: 4px; }
+.lv .lv-glossary dd { margin: 0 0 0 12px; font-size: 12px; color: #3a3a4a; }
+
+@media (max-width: 900px) {
+  .lv .lv-pipe { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .lv .lv-stage:not(:last-child)::after { display: none; }
+  .lv .lv-two { grid-template-columns: minmax(0, 1fr); }
+  .lv .lv-pushes { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .lv .lv-pipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lv .lv-steps { margin-left: 4px; padding-left: 18px; }
+  .lv .lv-dot { left: -36px; width: 28px; height: 28px; font-size: 14px; }
+  .lv h1 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv .lv-ev.new { animation: none; }
+}

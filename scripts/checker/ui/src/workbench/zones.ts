@@ -11,7 +11,21 @@ export function claimsName(cs: Carried[] | { claim: string }[]) {
   return cs.length === 1 ? '“' + cs[0].claim.slice(0, 60) + '…”' : cs.length + ' claims'
 }
 
+/** A page's own drop targets and choices (the map's 📌 desk, ＋ new group…), asked first. It is handed the workbench's
+ * choices for the same drop, to keep or adjust; null leaves the drop to them as they are */
+export type ZoneExtra = (item: DragItem, t: HTMLElement, base: () => Zone[]) => Zone[] | null
+let extra: ZoneExtra | null = null
+/** Add a page's choices while it is shown; the function returned takes them away again */
+export function extendZones(fn: ZoneExtra) {
+  extra = fn
+  return () => { if (extra === fn) extra = null }
+}
+
 export function zones(item: DragItem, t: HTMLElement): Zone[] {
+  return (extra && extra(item, t, () => workbenchZones(item, t))) ?? workbenchZones(item, t)
+}
+
+function workbenchZones(item: DragItem, t: HTMLElement): Zone[] {
   const m = currentModel()
   if (!m) return []
   const drop = t.dataset.drop

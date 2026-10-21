@@ -487,3 +487,36 @@ def test_the_react_app_is_served_and_nothing_outside_it():
     built = next(f for f in os.listdir(os.path.join(validate.UI, 'assets')) if f.endswith('.js'))
     assert validate.ui_file(f'/ui/assets/{built}') == (os.path.realpath(os.path.join(validate.UI, 'assets', built)), True)
     assert validate.ui_file('/ui/assets/../../../validate.py') is None and validate.ui_file('/ui/assets/nope.js') is None
+
+
+def test_the_names_and_label_check_pages_data_is_served_as_json(monkeypatch, tmp_path):
+    """Oct 21: /entities.json and /labels.json, for the React app's 👥 names and 🏷️ label check, give what the old
+    pages render"""
+    import threading
+    import urllib.request
+    from app.analysis import entities
+    monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
+    monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
+    (tmp_path / 'e.json').write_text(json.dumps({'s1': ['Trump', 'Biden'], 's2': ['Donald Trump', 'Joe Biden'],
+                                                 's3': ['Joe Biden']}))
+    monkeypatch.setattr(validate.labels, 'batch', lambda n=12: [{'headline_id': 1, 'title': 'Storm hits coast',
+                                                                 'agency': 'AP', 'mood': -1, 'spice': 1,
+                                                                 'feelings': ['fear'], 'url': 'u'}])
+    monkeypatch.setattr(validate.labels, 'VERDICTS', str(tmp_path / 'verdicts.jsonl'))
+    server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    get = lambda p: json.loads(urllib.request.urlopen(f'http://127.0.0.1:{server.server_port}{p}').read())  # noqa: E731
+    try:
+        names, label = get('/entities.json'), get('/labels.json')
+    finally:
+        server.shutdown()
+    assert names['name_count'] == 4
+    assert names['pairs'] == [{'a': 'Biden', 'b': 'Joe Biden', 'a_stories': 1, 'b_stories': 2}]
+    trump = next(e for e in names['subjects'] if e['name'] == 'Donald Trump')
+    assert trump['stories'] == 2 and 'Trump' in trump['names'] and trump['names'] == sorted(trump['names'])
+    assert [e['name'] for e in names['subjects']][:2] in (['Donald Trump', 'Joe Biden'], ['Joe Biden', 'Donald Trump'])
+    assert label['items'][0]['headline_id'] == 1 and 'model_json' not in label['items'][0]
+    assert label['moods']['-2'] == ['⛈️', 'grim+'] and label['spices']['0'] == ['🍞', 'plain']
+    assert 'neutral' not in label['feelings'] and label['emoji']['fear'] == '😱'
+    assert label['stats'] == {'headlines': 0, 'mood': [0, 0], 'spice': [0, 0], 'feelings': [0, 0], 'mood_misses': []}
+    assert "Biden" in validate.entities_page()  # the old page still renders from the same data

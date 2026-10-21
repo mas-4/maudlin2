@@ -1,0 +1,44 @@
+/* 👥 names: every class here starts nm- (Vite puts every page's CSS in one file, so names never clash) */
+.nm-page { max-width: 900px; margin: 0 auto; }
+.nm-intro { margin: 6px 0 14px; box-shadow: 5px 5px 0 var(--yellow); }
+.nm-intro p { margin: 0; color: #555; line-height: 1.5; }
+.nm-head { font: var(--shout); font-size: 17px; margin: 22px 0 6px; }
+.nm-none { font: var(--talk); font-size: 14px; color: #777; border: 2px dashed #bbb; border-radius: 12px; padding: 10px 14px; background: white; }
+.nm-pair, .nm-subject { margin: 10px 0; padding: 8px 14px; box-shadow: 4px 4px 0 var(--teal); }
+.nm-pair { box-shadow: 4px 4px 0 var(--pink); }
+.nm-pair p, .nm-subject p { margin: .3em 0; }
+.nm-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.nm-said { font-size: .85em; color: #555; }
+.nm-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: .4em 0; }
+.nm-name { font: inherit; padding: 3px 8px; border: 2px solid var(--ink); border-radius: 8px; width: min(26em, 100%); }
+.nm-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 8px; }
+.nm-tools input, .nm-tools select { font: inherit; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; background: white; }
+.nm-tools input { width: min(26em, 100%); }
+
+/* what drags: a subject's name line and its other names; held still on a touch, they don't select text or open menus */
+.nm-grip { font: var(--talk); font-size: 15px; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.nm-alias-wrap { white-space: nowrap; margin-right: 6px; display: inline-flex; gap: 3px; align-items: center; }
+.nm-alias { border: 1.5px dashed #999; border-radius: 6px; padding: 0 5px; cursor: grab; background: white; user-select: none;
+  -webkit-user-select: none; -webkit-touch-callout: none; }
+.nm-alias:hover, .nm-grip:hover { background: var(--soft-yellow); }
+.nm-subject.nm-target { outline: 3px solid var(--orange); outline-offset: 1px; background: #fff1c2; }
+body.nm-dragging, body.nm-dragging * { cursor: grabbing !important; user-select: none; }
+
+/* the carried name, and the choices beside the pointer (the workbench's look) */
+.nm-ghost { position: fixed; z-index: 1000; pointer-events: none; transform: translateX(-100%); max-width: 22em; padding: 4px 10px;
+  border: 2px solid var(--ink); border-radius: 10px; background: white; box-shadow: 3px 3px 0 var(--pink); font: var(--talk);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm-menu { position: fixed; z-index: 1001; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--paper);
+  border: 3px solid var(--ink); border-radius: 12px; box-shadow: 4px 4px 0 var(--orange); min-width: 13em; max-width: min(26em, 92vw); }
+.nm-menu-title { font: 11px system-ui; color: #777; text-transform: uppercase; letter-spacing: .04em; padding: 0 4px; }
+.nm-zone { text-align: left; font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; padding: 6px 10px; border: 2px solid var(--ink);
+  border-radius: 10px; background: white; cursor: pointer; color: var(--ink); display: grid; gap: 2px; }
+.nm-zone span { font: 12.5px system-ui, sans-serif; color: #555; }
+.nm-zone.hot, .nm-zone:hover { background: var(--yellow); transform: translateX(3px); }
+.nm-cancel { font-weight: 400; color: #777; border-style: dashed; }
+
+@media (max-width: 640px) {
+  .nm-two { grid-template-columns: 1fr; }
+  .nm-row .btn { min-height: 36px; }
+}
+@media (prefers-reduced-motion: reduce) { .nm-zone.hot, .nm-zone:hover { transform: none; } }

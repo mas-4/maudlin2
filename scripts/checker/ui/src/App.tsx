@@ -6,10 +6,22 @@ import { PAGES } from './lib/routes'
 import { Boundary } from './components/Boundary'
 import { Feedback } from './components/Feedback'
 import { Workbench } from './workbench/Workbench'
+import { Dashboard } from './pages/dashboard/Dashboard'
+import { Experiments } from './pages/experiments/Experiments'
+import { Flow } from './pages/flow/Flow'
+import { Labels } from './pages/labels/Labels'
+import { Live } from './pages/live/Live'
+import { Names } from './pages/names/Names'
 
 // Each ported page, by its path; the rest show where the old page is
 const PORTED: Record<string, () => ReactNode> = {
   '/workbench': () => <Workbench />,
+  '/dashboard': () => <Dashboard />,
+  '/experiments': () => <Experiments />,
+  '/flow': () => <Flow />,
+  '/live': () => <Live />,
+  '/names': () => <Names />,
+  '/labels': () => <Labels />,
 }
 
 export function App() {

@@ -3,7 +3,8 @@
 // open, so crossing other targets on the way doesn't swap it. Letting go on a choice runs it; on the target itself, its
 // only choice runs, or the menu stays pinned to click. The pane under the pointer scrolls near its edges. Esc cancels.
 // Sources carry data-drag (motif, group, claim), targets data-drop (motif, claim, sameclaim, group, facet, newmotif,
-// nomotif, trash), as the old workbench did, so the choices (zones.ts) read the same attributes.
+// nomotif, trash), as the old workbench did, so the choices (zones.ts) read the same attributes. A page may add targets
+// of its own (the map's desk and newgroup) with extendZones().
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { itemOf, label, zones, zoneText } from './zones'
 import type { DragItem, Zone } from './types'

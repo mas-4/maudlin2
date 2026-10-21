@@ -1,0 +1,78 @@
+/* 📈 The dashboard, in the style book's look: ink outlines, hard pop shadows (no blur), Bungee banners and numbers,
+   Comic Neue for titles, labels and chart text, stickers tilted a little. Every class starts dash- */
+.dash { max-width: 1400px; margin: 0 auto; padding: 8px 16px 60px; background: var(--paper); min-height: calc(100vh - 44px); }
+.dash-title { font: 26px 'Bungee', 'Comic Neue', sans-serif; margin: 8px 0 4px; transform: rotate(-1deg); transform-origin: left; display: inline-block; }
+.dash-sub { color: #666; font-size: 13px; }
+.dash-status { margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font: var(--talk); }
+.dash-refresh { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.dash-refresh:hover:not(:disabled) { background: var(--yellow); transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+
+/* a section banner: a Bungee label in a tilted pill on a thick ink rule */
+.dash-section { margin-top: 30px; }
+.dash-banner { position: relative; margin: 0 0 16px; text-align: left; }
+.dash-banner::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 4px solid var(--ink); }
+.dash-banner span { position: relative; display: inline-block; font: 17px 'Bungee', 'Comic Neue', sans-serif; padding: 4px 16px; margin-left: 12px;
+  background: color-mix(in srgb, var(--teal) 70%, white); border: 3px solid var(--ink); border-radius: 999px; box-shadow: 3px 3px 0 var(--ink); transform: rotate(-2deg); }
+.dash-section:nth-of-type(6n+2) .dash-banner span { background: color-mix(in srgb, var(--yellow) 70%, white); transform: rotate(1.5deg); }
+.dash-section:nth-of-type(6n+3) .dash-banner span { background: color-mix(in srgb, var(--pink) 70%, white); }
+.dash-section:nth-of-type(6n+4) .dash-banner span { background: color-mix(in srgb, var(--blue) 60%, white); transform: rotate(1.5deg); }
+.dash-section:nth-of-type(6n+5) .dash-banner span { background: color-mix(in srgb, var(--orange) 65%, white); }
+.dash-section:nth-of-type(6n+6) .dash-banner span { background: color-mix(in srgb, var(--purple) 55%, white); transform: rotate(1.5deg); }
+
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+.dash-card { --pop: var(--pink); background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--pop); padding: 12px 14px;
+  min-width: 0; transition: transform .12s, box-shadow .12s; }
+.dash-card:nth-child(6n+2) { --pop: var(--yellow); }
+.dash-card:nth-child(6n+3) { --pop: var(--teal); }
+.dash-card:nth-child(6n+4) { --pop: var(--blue); }
+.dash-card:nth-child(6n+5) { --pop: var(--orange); }
+.dash-card:nth-child(6n+6) { --pop: var(--purple); }
+.dash-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--pop); }
+.dash-card h3 { margin: 0 0 8px; font: 700 16px 'Comic Neue', 'Comic Sans MS', cursive; }
+.dash-card.wide { grid-column: 1 / -1; }
+.dash-card p { margin: 6px 0; }
+.dash-card.dash-sick { border-color: #ff4d6d; background: #fff3ef; }
+
+/* stickers: a big emoji and number, a Comic Neue label, alternately tilted */
+.dash-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 6px; }
+.dash-tile { border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; background: var(--tint, #f6f6fb); box-shadow: 3px 3px 0 var(--ink);
+  transform: rotate(-1deg); }
+.dash-tile:nth-child(even) { transform: rotate(1deg); }
+.dash-tile b { display: block; font: 20px 'Bungee', 'Comic Neue', sans-serif; line-height: 1.2; overflow-wrap: anywhere; }
+.dash-tile > span { display: block; font: var(--talk); font-size: 12px; color: #444; margin-top: 2px; }
+
+/* charts: drawn at their box's width; under 240px wide they scroll sideways inside the card, never the page */
+.dash-plot { width: 100%; min-height: 60px; overflow-x: auto; }
+.dash-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.dash-chart text { font: 700 11px 'Comic Neue', 'Comic Sans MS', cursive; fill: #555; }
+.dash-chart rect { stroke: var(--ink); stroke-width: .5; }
+.dash-chart .dash-grid-line { stroke: #e6e6ee; }
+.dash-chart .dash-limit text { fill: #e0102e; }
+.dash-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font: var(--talk); margin-top: 8px; }
+.dash-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--ink); }
+
+.dash-list { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.dash-list li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dotted #ccc; }
+.dash-list li b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dash-mono { font: 12px ui-monospace, monospace; white-space: pre-wrap; max-height: 260px; overflow: auto; background: #f6f6fb; padding: 8px; border-radius: 8px; border: 2px dashed #bbb; }
+.dash-err { color: #e0102e; font: var(--talk); }
+
+.dash-table-wrap { overflow-x: auto; }
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dash-table th { text-align: left; font: var(--talk); color: #555; border-bottom: 2px solid var(--ink); padding: 4px 6px; }
+.dash-table td { padding: 4px 6px; border-bottom: 1px dotted #ccc; vertical-align: middle; }
+.dash-lean { display: inline-flex; width: 110px; height: 12px; border: 1px solid var(--ink); border-radius: 6px; overflow: hidden; vertical-align: middle; }
+.dash-lean i { display: block; height: 100%; }
+
+@media (max-width: 500px) {
+  .dash { padding: 6px 12px 40px; }
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-tile b { font-size: 17px; }
+  .dash-table th:nth-child(5), .dash-table td:nth-child(5) { display: none; }
+  .dash-lean { width: 70px; }
+  .dash-refresh { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-card { transition: none; }
+  .dash-card:hover { transform: none; }
+}
