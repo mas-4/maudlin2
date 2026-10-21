@@ -41,3 +41,26 @@ a { color: var(--ink); }
 .btn:disabled { opacity: .4; cursor: default; }
 .btn.on { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
 .not-ported { max-width: 40em; margin: 24px auto; }
+
+/* small shared pieces */
+.faint { color: #777; font-size: 12.5px; }
+.empty { color: #777; padding: 8px; }
+.mini { font: 12px system-ui, sans-serif; border: 1.5px solid #bbb; background: white; border-radius: 8px; padding: 0 5px; cursor: pointer; color: var(--ink); }
+.mini:hover { border-color: var(--ink); background: var(--soft-yellow); }
+.mini.on { background: var(--yellow); border-color: var(--ink); }
+.btn.yes { background: #c8f7c5; } .btn.no { background: #ffd0d6; }
+.btn.busy, .mini.busy { opacity: .55; cursor: progress; }
+.btn.busy::after, .mini.busy::after { content: ' ⏳'; }
+.mini:active { transform: translate(1px, 2px); filter: brightness(.9); }
+kbd { font-size: 10px; border: 1px solid #999; border-radius: 4px; padding: 0 3px; background: #fafafa; }
+
+/* the toast after each change, and the in-page ask and confirm cards */
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 1002; padding: 8px 14px; background: white; border: 3px solid var(--ink);
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--teal); font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; max-width: 90vw; display: flex; gap: 8px; align-items: center; }
+.toast.bad { box-shadow: 4px 4px 0 #e0102e; }
+.ask-card { position: fixed; z-index: 1004; width: min(26em, 90vw); padding: 10px 12px; background: var(--paper); border: 3px solid var(--ink);
+  border-radius: 12px; box-shadow: 4px 4px 0 var(--teal); display: grid; gap: 6px; }
+.ask-card label, .ask-card p { font: 700 14px 'Comic Neue', 'Comic Sans MS', cursive; margin: 0; }
+.ask-card input, .ask-card textarea { font: 15px system-ui, sans-serif; border: 2px solid var(--ink); border-radius: 8px; padding: 4px 8px; width: 100%; }
+.ask-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+body.acting, body.acting * { cursor: progress !important; }

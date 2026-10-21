@@ -1,33 +1,29 @@
-// ↶ undo: the newest change to the index (or the names), from the checker's undo stack. Ctrl+Z outside a text field.
-// The server refuses when the index changed since (an hourly run filing claims): the reason is shown, nothing lost.
+// ↶ undo in the nav: what the newest change was, and Ctrl/⌘+Z outside a text field. The server refuses when the
+// index changed since (an hourly run filing claims): the reason is shown, nothing lost
 import { useEffect } from 'react'
-import { useJSON, useWrite } from '../lib/queries'
+import { useJSON } from '../lib/queries'
+import { undo } from '../lib/undo'
 
 export function Undo() {
   const { data } = useJSON<{ what: string | null }>('/undo.json')
-  const undo = useWrite<Record<string, never>, { undid: string }>('/undo')
   const what = data?.what
-  const run = () => {
-    if (!what || undo.isPending) return
-    undo.mutate({}, { onError: (e) => alert(`Can’t undo: ${e.message}`) })
-  }
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !t?.closest('input, textarea, [contenteditable]')) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !t?.closest('input, textarea, select, [contenteditable]')) {
         e.preventDefault()
-        run()
+        if (what) void undo()
       }
     }
     addEventListener('keydown', key)
     return () => removeEventListener('keydown', key)
-  })
+  }, [what])
   return (
     <span className="nav-undo">
-      <button disabled={!what || undo.isPending} onClick={run} title="undo your last change (Ctrl+Z)">
-        {undo.isPending ? '⏳' : '↶'} undo
+      <button disabled={!what} onClick={() => void undo()} title="undo your last change (Ctrl+Z)">
+        ↶ undo
       </button>
-      {what && <span title={what}>undo: {what}</span>}
+      {what && <span title={what}>last: {what}</span>}
     </span>
   )
 }

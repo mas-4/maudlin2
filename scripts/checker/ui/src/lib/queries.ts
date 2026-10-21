@@ -6,7 +6,7 @@ export const client = new QueryClient({
 })
 
 /** One GET route, cached by its path and parameters */
-export function useJSON<T>(path: string, params?: Record<string, string | number | boolean | undefined | null>, options?: { enabled?: boolean; refetchInterval?: number }) {
+export function useJSON<T>(path: string, params?: Record<string, string | number | boolean | undefined | null>, options?: { enabled?: boolean; refetchInterval?: number | false; staleTime?: number; refetchOnWindowFocus?: boolean }) {
   return useQuery<T>({ queryKey: [path, params ?? {}], queryFn: () => getJSON<T>(path, params), ...options })
 }
 
