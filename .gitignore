@@ -170,3 +170,4 @@ _build
 
 # the checker's React app is served from its committed build (scripts/checker/ui/vite.config.ts)
 !scripts/checker/ui/dist/
+!scripts/checker/ui/src/lib/
