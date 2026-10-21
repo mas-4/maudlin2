@@ -147,9 +147,11 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
         snapshot = sorted(glob.glob(os.path.expanduser(
             '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
-        if clustering._embedder is None and snapshot:
+        from app.analysis import embeddings
+        loaded = clustering.EMBEDDING_MODEL in embeddings._static
+        if not loaded and snapshot:
             mp.setattr(clustering, 'EMBEDDING_MODEL', os.path.dirname(snapshot[-1]))
-        elif clustering._embedder is None:
+        elif not loaded:
             for module in (ph, sagas):
                 mp.setattr(module, 'embed', stand_in_embed)
             mp.setattr(ph, 'prepare_embedding_cosine',

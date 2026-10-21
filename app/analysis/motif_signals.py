@@ -364,10 +364,9 @@ class Signals:
         return out / total if total else out
 
     def _nomic(self, texts: list[str], kind: str) -> np.ndarray:
-        from app.analysis.clustering import ollama_embed
-        from app.narratives import FOLDER as NFOLDER
-        return ollama_embed([f'{kind}: {t}' for t in texts], model=NOMIC, cache=os.path.join(NFOLDER, 'embeddings.sqlite'),
-                            keep_days=30)
+        from app.analysis import embeddings
+        return embeddings.ollama([f'{kind}: {t}' for t in texts], model=NOMIC, cache_path=embeddings.text_cache_path(),
+                                 keep_days=30)
 
     def nomic(self, claim: str, leave_out: bool) -> tuple[np.ndarray, np.ndarray]:
         if getattr(self, '_nomic_desc', None) is None:
@@ -475,12 +474,11 @@ class Signals:
                 'group': self.group(claim, leave_out), **self.embedders(claim, leave_out)}
 
     def _embed(self, key: str, texts: list[str], query: bool) -> np.ndarray:
-        from app.analysis.clustering import ollama_embed
-        from app.narratives import FOLDER as NFOLDER
+        from app.analysis import embeddings
         model, qp, dp = EMBEDDERS[key]
         # the 8B is slow on the CPU: any batch worth it goes to the GPU (BULK there is for the small embedders)
-        return ollama_embed([(qp if query else dp) + t for t in texts], model=model, keep_days=30, bulk=50,
-                            cache=os.path.join(NFOLDER, 'embeddings.sqlite'))
+        return embeddings.ollama([(qp if query else dp) + t for t in texts], model=model, keep_days=30, bulk=50,
+                                 cache_path=embeddings.text_cache_path())
 
     def embedders(self, claim: str, leave_out: bool) -> dict[str, np.ndarray]:
         """EMBEDDERS' signals: the claim against each motif's name and note, and against its nearest claim (itself

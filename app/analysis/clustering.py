@@ -1,4 +1,3 @@
-import os
 import re
 from collections import deque
 
@@ -89,17 +88,13 @@ def unlink_money_conflicts(cosine_sim: np.ndarray, titles) -> np.ndarray:
 
 
 EMBEDDING_MODEL = 'minishlab/potion-base-8M'
-_embedder = None
 
 
 def embed(texts: list[str]) -> np.ndarray:
     """Static sentence embeddings (model2vec). Matches headlines by meaning rather than shared words, so
     differently worded coverage of one story still clusters. Numpy only, a few ms per thousand headlines."""
-    global _embedder
-    if _embedder is None:
-        from model2vec import StaticModel
-        _embedder = StaticModel.from_pretrained(EMBEDDING_MODEL)
-    return _embedder.encode(list(texts))
+    from app.analysis import embeddings
+    return embeddings.static(texts, EMBEDDING_MODEL)
 
 
 def prepare_embedding_cosine(texts):
@@ -112,65 +107,16 @@ def prepare_embedding_cosine(texts):
 # embed, stories fall back to the static model at its threshold. Vectors are cached by headline text, so a run only
 # embeds the headlines it hasn't seen (a few hundred an hour instead of the day's thousands).
 STORY_MODEL = 'mxbai-embed-large'
-STORY_THRESHOLDS = {STORY_MODEL: 0.80, 'potion-base-8M': 0.70}
-STORY_CACHE_DAYS = 7  # cached vectors unused this long are dropped
-OLLAMA_URL = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')  # as llm.OLLAMA_URL: an experiment's goes through its lease's gate
+STORY_THRESHOLDS = {STORY_MODEL: 0.80, 'potion-base-8M': 0.70}  # the vectors and their cache: embeddings.py
 
 
-def _story_cache(path: str = None):
-    import sqlite3
-    from app.utils import Config
-    # Several processes embed at once (the hourly run, the reranker teaching, experiments): wait for another's write
-    # rather than fail, which sent embed() to its fallback model mid-run (Oct 8: vectors of two sizes in one run)
-    con = sqlite3.connect(path or os.path.join(Config.data, 'story_embeddings.sqlite'), timeout=120)
-    con.execute('PRAGMA journal_mode=WAL')
-    con.execute('CREATE TABLE IF NOT EXISTS vec (key TEXT PRIMARY KEY, model TEXT, used REAL, v BLOB)')
-    return con
-
-
-# Embeddings on the CPU (Oct 8): on the GPU, each embedding model loaded beside the filing model pushed it out of the
-# card's memory, and it was loaded again a moment later (in six hours that day, gemma4:26b 242 times, mxbai 236 and
-# nomic 130: about nine minutes an hour of loading). On the 24 cores, mxbai embeds 27 texts a second and nomic 61:
-# a run's new texts in well under a minute (most are cached anyway). But not a bulk job: on Oct 9 the 4 AM narrative
-# report's 101,520 posts would have taken an hour on the CPU, and the run was stopped at its 45-minute limit. A call
-# with BULK or more texts to embed uses the GPU (one load of the embedder, then the filing model loads again once).
-EMBED_OPTIONS = {'num_gpu': 0}
-BULK = 2000
-
-
-def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None,
-                 keep_days: float = STORY_CACHE_DAYS, bulk: int = BULK) -> np.ndarray:
-    """Unit vectors for `texts` from the local Ollama, cached by text and model (in `cache`, a SQLite file; the
-    stories' own by default), unused vectors dropped after `keep_days`. `bulk` or more texts to embed: on the GPU."""
-    import hashlib
-    import time
-    import requests as rq
-    keys = [hashlib.sha1(f'{model}\n{t}'.encode()).hexdigest() for t in texts]
-    con = _story_cache(cache)
-    try:
-        found = {}
-        for i in range(0, len(keys), 500):
-            chunk = keys[i:i + 500]
-            rows = con.execute(f"SELECT key, v FROM vec WHERE key IN ({','.join('?' * len(chunk))})", chunk).fetchall()
-            found.update({k: np.frombuffer(v, dtype=np.float32) for k, v in rows})
-        missing = [i for i, k in enumerate(keys) if k not in found]
-        options = EMBED_OPTIONS if len(missing) < bulk else {}
-        for start in range(0, len(missing), 256):
-            batch = missing[start:start + 256]
-            r = rq.post(f'{OLLAMA_URL}/api/embed', json={'model': model, 'input': [texts[i] for i in batch],
-                                                          'options': options}, timeout=600)
-            r.raise_for_status()
-            for i, v in zip(batch, r.json()['embeddings']):
-                v = np.asarray(v, dtype=np.float32)
-                found[keys[i]] = v / max(float(np.linalg.norm(v)), 1e-12)
-        now = time.time()
-        con.executemany('INSERT OR REPLACE INTO vec VALUES (?, ?, ?, ?)',
-                        [(k, model, now, found[k].tobytes()) for k in dict.fromkeys(keys)])
-        con.execute('DELETE FROM vec WHERE used < ?', (now - keep_days * 86400,))
-        con.commit()
-        return np.vstack([found[k] for k in keys])
-    finally:
-        con.close()
+def ollama_embed(texts: list[str], model: str = STORY_MODEL, cache: str = None, keep_days: float | None = None,
+                 bulk: int | None = None) -> np.ndarray:
+    """embeddings.ollama, the stories' cache by default"""
+    from app.analysis import embeddings
+    return embeddings.ollama(texts, model=model, cache_path=cache,
+                             keep_days=embeddings.STORY_CACHE_DAYS if keep_days is None else keep_days,
+                             bulk=embeddings.BULK if bulk is None else bulk)
 
 
 def headline_vectors(texts) -> tuple[np.ndarray, str]:
