@@ -11,3 +11,5 @@ ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python -m app.gpu_lease run --minut
 Nice=5
 # and the week's forward shortlist log against the person's final word (Prometheus, Persephone; CPU)
 ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/f12_prometheus.py 7
+# and Cordelia's measure of the claim wording, from the logs alone (no model; added Oct 21, the measure had been forgotten)
+ExecStart=/home/mas/Repos/maudlin2/.venv/bin/python scripts/experiments/cordelia_measure.py --log
