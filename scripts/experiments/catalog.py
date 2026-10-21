@@ -138,7 +138,7 @@ REGISTRY = {
             'no clear gain: names +0.008 likeness, near matches +3.4 points, but 7 points more abstract labels; blind pairs pending'),
     'F24': ('A telling, not a report: a report-or-telling signal and bulk passes counted for less, in the confidence model',
             'f24_munchausen.py', 'answered', 'f24_munchausen.sqlite',
-            'not kept: report signals moved nothing (AUC within 0.002); past decisions kept reports 68% vs 74%'),
+            'not kept: report signals moved nothing (AUC within 0.002); the gate, blind on Oct 19-20, caught 24% (40% asked)'),
     'F25': ("Each motif mirrored in 20 versions (other casts, settings, voices) for the shortlist to catch claims by",
             'f25_indras_net.py', 'answered', 'f25_indras_net.sqlite',
             'not kept: top-12 +0.3 (87.5% to 87.8%); folktales +1.9; versions point right (66%) but say what the note says'),
