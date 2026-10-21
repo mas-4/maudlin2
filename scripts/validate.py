@@ -33,7 +33,7 @@ NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '�
        ('/dashboard', '📈 Dashboard', 'main'), ('/experiments', '🧪 Experiments', 'main'), ('/flow', '🌊 Flow', 'main'), ('/live', '🧠 Live', 'main'),
        ('/motifs', '✅ check', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
        ('/motif-notes', '📝 notes', 'motifs'),
-       ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other')]
+       ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other'), ('/ui/', '⚛️ new checker', 'other')]
 _templates = None
 
 
@@ -1005,9 +1005,43 @@ def query(path: str) -> dict:
     return {k: v[0] for k, v in parse_qs(urlparse(path).query).items()}
 
 
+UI = os.path.join(CHECKER, 'ui', 'dist')  # the checker's React app (scripts/checker/ui), built; served at /ui/ (Oct 21)
+UI_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8',
+            '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
+            '.woff2': 'font/woff2', '.map': 'application/json'}
+
+
+def ui_file(path: str) -> tuple[str, bool] | None:
+    """The built app's file for a /ui/ path, and whether it may be cached for good (its name carries its hash); any
+    other path under /ui/ is the app's own page (index.html), which routes it"""
+    rel = path[len('/ui'):].lstrip('/')
+    if rel.startswith('assets/'):
+        file = os.path.realpath(os.path.join(UI, rel))
+        if file.startswith(os.path.realpath(UI) + os.sep) and os.path.isfile(file):
+            return file, True
+        return None
+    index = os.path.join(UI, 'index.html')
+    return (index, False) if os.path.isfile(index) else None
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split('?')[0]
+        if path == '/ui' or path.startswith('/ui/'):
+            found = ui_file(path)
+            if not found:
+                self.send_error(404)
+                return
+            file, forever = found
+            with open(file, 'rb') as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header('Content-Type', UI_TYPES.get(os.path.splitext(file)[1], 'application/octet-stream'))
+            self.send_header('Cache-Control', 'public, max-age=31536000, immutable' if forever else 'no-store')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if path in GET_JSON:
             try:
                 return self.send_json(GET_JSON[path](query(self.path)))

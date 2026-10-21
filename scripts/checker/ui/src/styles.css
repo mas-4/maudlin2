@@ -1,0 +1,43 @@
+/* The checker's look, from the site's style book (docs/style-book.md): ink outlines, hard pop shadows, Bungee to shout,
+   Comic Neue to talk, emoji everywhere, light only */
+:root {
+  --ink: #1f1f2e; --pink: #ff4fa3; --yellow: #ffc400; --teal: #00c2a8; --blue: #3a86ff; --orange: #ff6b1a;
+  --purple: #8a5cff; --paper: #fffdf5; --wash: #f6f3ff; --soft-yellow: #fff4c2;
+  --talk: 700 13px 'Comic Neue', 'Comic Sans MS', cursive;
+  --shout: 20px 'Bungee', 'Comic Neue', sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; max-width: 100vw; overflow-x: hidden; }
+body { background: var(--wash); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+a { color: var(--ink); }
+
+/* the nav every page shares */
+.nav { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+  background: var(--paper); border-bottom: 3px solid var(--ink); font: 15px system-ui, sans-serif; flex-wrap: wrap; row-gap: 4px; }
+@media (max-width: 700px) { .nav { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; } }
+.nav-item { display: contents; }
+.nav a { padding: 3px 9px; border-radius: 999px; text-decoration: none; border: 2px solid transparent; }
+.nav a:hover { border-color: var(--ink); background: white; }
+.nav a.active { background: var(--yellow); border-color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+.nav a.nav-main { font-weight: 700; border-color: var(--ink); background: var(--teal); box-shadow: 3px 3px 0 var(--ink); margin-right: 6px; }
+.nav a.nav-main.active { background: var(--yellow); }
+.nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #777; margin-left: 10px; }
+.nav-undo { margin-left: auto; padding-left: 12px; display: flex; align-items: center; gap: 6px; }
+.nav-undo button, .nav-new { font: inherit; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 999px; background: white; cursor: pointer; }
+.nav-undo button:disabled { opacity: .45; cursor: default; }
+.nav-undo span { font-size: 12px; color: #555; max-width: 22em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-new { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); margin-left: auto; }
+
+/* shared pieces */
+.page { padding: 12px; }
+.card { background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--pink); padding: 14px 18px; }
+.card h1 { margin: 0 0 8px; font: var(--shout); }
+.btn { font: var(--talk); color: var(--ink); background: white; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px;
+  cursor: pointer; text-decoration: none; display: inline-block; }
+.btn:hover { background: var(--soft-yellow); }
+.btn:active { transform: translate(1px, 2px); filter: brightness(.9); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.on { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.not-ported { max-width: 40em; margin: 24px auto; }

@@ -475,3 +475,15 @@ def test_a_side_split_from_a_dispute_finds_the_disputes_report(monkeypatch, tmp_
         {'authors': 6, 'posts': 6, 'label': {'narrative': dispute}}]}))
     d = validate.claim_detail(side)
     assert d['kind'] == 'folklore' and d['people'] == 6 and d['split_from'] == dispute
+
+
+def test_the_react_app_is_served_and_nothing_outside_it():
+    """Oct 21: the checker's React app (scripts/checker/ui) at /ui/: its built files, its page for every other /ui/ path"""
+    import os
+    if not os.path.isfile(os.path.join(validate.UI, 'index.html')):
+        return  # not built in this checkout
+    assert validate.ui_file('/ui/') == (os.path.join(validate.UI, 'index.html'), False)
+    assert validate.ui_file('/ui/workbench/judge')[0].endswith('index.html')
+    built = next(f for f in os.listdir(os.path.join(validate.UI, 'assets')) if f.endswith('.js'))
+    assert validate.ui_file(f'/ui/assets/{built}') == (os.path.realpath(os.path.join(validate.UI, 'assets', built)), True)
+    assert validate.ui_file('/ui/assets/../../../validate.py') is None and validate.ui_file('/ui/assets/nope.js') is None
