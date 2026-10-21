@@ -440,6 +440,13 @@ def checker_action(action: dict) -> str:
       check {claim, id, answer: yes|no|unsure} · no_motif {claim} · new_with {name, claims: [{claim, source?}]}
       batch {steps: [actions]} (one undo step; a step can name a motif an earlier step made as "$1", "$2"…, e.g.
       new_with then group_member {id: "$1"} and check {id: "$1"})
+      Less used: file {claim, id} (file by hand) · reject {claim, id} · move_new / also_new {claim, source, name}
+      (into a new motif) · same_claim {variant, canonical} (one claim told two ways) · keep_note {id} (keep the
+      model's drafted note) · stands_alone {id, alone} · watch {id, on} (a sink whose claims are filed again) ·
+      reset_done {} · group_add {name} · group_delete {group} · facet_rename {facet, value, to} · facet_remove {facet,
+      value} · telling {parent, name, claims, note?, key?} / telling_reject {key} (Pandora's tellings) ·
+      proposal_reject {proposal} (and any action carrying "proposal" approves that proposal). The full table, with
+      each action's fields: app/analysis/motif_actions.py
     Any action may carry "why": the person's own words on what was wrong with the model's draft it corrects (a
     proposal, a drafted name or note). Pass it whenever they gave one: kept with the draft and the result in the
     curation log, it teaches the proposer and namer and shows which wording is the person's (app/analysis/critiques.py).

@@ -21,7 +21,7 @@ def db(monkeypatch):
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)
-    monkeypatch.setattr(validate, 'Session', session)
+    monkeypatch.setattr(validate.labels, 'Session', session)
     with session() as s:
         agency = Agency(name='AP', url='x', _bias=0, _credibility=0, _country=0)
         h = Headline(title='Storm hits coast', article=Article(url='u', agency=agency), event_score=-1.0,
@@ -33,7 +33,7 @@ def db(monkeypatch):
 
 def test_a_correction_becomes_the_headlines_hand_labels(db):
     session, hid = db
-    validate.apply_label({'headline_id': hid, 'model': {'mood': -1, 'spice': 1, 'feelings': ['fear', 'sadness']},
+    validate.labels.apply_label({'headline_id': hid, 'model': {'mood': -1, 'spice': 1, 'feelings': ['fear', 'sadness']},
                           'mood': {'ok': False, 'should': -2}, 'spice': {'ok': True},
                           'feelings': {'ok': False, 'should': ['sadness', 'surprise']}})
     with session() as s:
@@ -45,7 +45,7 @@ def test_a_correction_becomes_the_headlines_hand_labels(db):
 def test_an_incomplete_verdict_changes_nothing(db):
     session, hid = db
     with pytest.raises(ValueError):
-        validate.apply_label({'headline_id': hid, 'model': {'mood': -1, 'spice': 1, 'feelings': []},
+        validate.labels.apply_label({'headline_id': hid, 'model': {'mood': -1, 'spice': 1, 'feelings': []},
                               'mood': {'ok': True}})
     with session() as s:
         assert s.get(Headline, hid).scored_by == 'qwen3:8b rubric:x'
@@ -98,10 +98,10 @@ def test_every_checker_pages_script_parses(monkeypatch, tmp_path):
     monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
     monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
     monkeypatch.setattr(validate, 'MOTIF_VERDICTS', str(tmp_path / 'v.jsonl'))
-    monkeypatch.setattr(validate, 'batch', lambda n=12: [{'headline_id': 1, 'title': "It's <a> headline", 'agency': 'AP',
+    monkeypatch.setattr(validate.labels, 'batch', lambda n=12: [{'headline_id': 1, 'title': "It's <a> headline", 'agency': 'AP',
                                                           'mood': 0, 'spice': 1, 'feelings': ['fear'], 'url': ''}])
-    monkeypatch.setattr(validate, 'VERDICTS', str(tmp_path / 'verdicts.jsonl'))
-    pages = {'label check': validate.page(), 'motif check': validate.motif_page(),
+    monkeypatch.setattr(validate.labels, 'VERDICTS', str(tmp_path / 'verdicts.jsonl'))
+    pages = {'label check': validate.labels.page(validate.render), 'motif check': validate.motif_page(),
              'names': validate.entities_page()}
     pages.update({f: validate.render(f, '/x') for f in validate.STATIC_PAGES.values()})
     scripts = [(name, js) for name, html in pages.items() for js in re.findall(r'<script>(.*?)</script>', html, re.S)]

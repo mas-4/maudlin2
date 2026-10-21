@@ -1,27 +1,24 @@
-"""Check the language model's headline labels by eye (#121): a small local page, never part of the site or deployed.
+"""The checker: the person's workbench for the motif index, and the other curation pages, on a small local server
+that is never part of the site or deployed (#121; it began as a headline label check, now scripts/checker/labels.py).
 
-Run it, open http://<this machine>:8766 on any device on the network, and for each headline mark the model's mood,
-spice (loaded wording) and feelings right, or pick what they should be. Verdicts are appended to
-data/validation/verdicts.jsonl (one line per headline, with the model's labels at the time), and the page's footer
-keeps a running agreement count. Headlines are drawn from the last two days, spread evenly over the model's mood and
-spice values so the rare ones (very grim, very loaded) get checked as often as the common ones.
+Run as a service (deploy/systemd/maudlin-checker.service), or by hand, and open http://<this machine>:8766 on any
+device on the network. Pages are Jinja templates in scripts/checker/templates with shared scripts in
+scripts/checker/static. Every change to the motif index comes in as a named action (app/analysis/motif_actions.py),
+is logged with what it replaced (validation/curation_log.jsonl) and can be undone. GET_JSON lists the data each page
+reads.
 
-    .venv/bin/python scripts/validate.py [--port 8766]
+    .venv/bin/python scripts/validate.py [--port 8766] [--follow-code]
 """
 import argparse
 import hashlib
 import json
 import os
-import random
 import sys
-from collections import Counter
 from datetime import datetime as dt, timedelta as td
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI  # noqa: E402
-from app.models import Session, Headline, Article, Agency  # noqa: E402
 from app.utils import Config  # noqa: E402
 
 # The pages: Jinja templates in checker/templates (one base with the shared nav and undo), shared scripts and styles
@@ -67,90 +64,21 @@ STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; char
 
 
 FOLDER = os.path.join(Config.data, 'validation')
-VERDICTS = os.path.join(FOLDER, 'verdicts.jsonl')
-BATCH = 12
-MOODS = {-2: ('⛈️', 'grim+'), -1: ('🌧️', 'grim'), 0: ('🍞', 'plain'), 1: ('🌤️', 'upbeat'), 2: ('☀️', 'upbeat+')}
-SPICES = {0: ('🍞', 'plain'), 1: ('🌶️', 'loaded'), 2: ('🌶️🌶️', 'loaded+')}
-FEELINGS = [e for e in EMOTIONS if e != 'neutral']
 
 
-def judged() -> list[dict]:
-    try:
-        with open(VERDICTS) as f:
-            return [json.loads(line) for line in f if line.strip()]
-    except OSError:
-        return []
+def _checker_module(name: str):
+    """A module of the checker's own (scripts/checker/<name>.py), loaded by path like this file is"""
+    import importlib.util
+    if name not in _modules:
+        spec = importlib.util.spec_from_file_location(f'checker_{name}', os.path.join(CHECKER, f'{name}.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _modules[name] = module
+    return _modules[name]
 
 
-def batch(n: int = BATCH) -> list[dict]:
-    """Headlines not yet judged, from the last two days, spread over the model's mood and spice values."""
-    done = {v['headline_id'] for v in judged()}
-    since = dt.utcnow() - td(days=2)
-    with Session() as s:
-        rows = s.query(Headline.id, Headline.processed, Agency.name, Headline.event_score, Headline.loaded_score,
-                       Headline.emotion_ranks, Article.url).join(Headline.article).join(Article.agency).filter(
-            Headline.first_accessed > since, Headline.event_score.isnot(None), Headline.loaded_score.isnot(None),
-        ).all()
-    pool = {}
-    for hid, title, agency, mood, loaded, ranks, url in rows:
-        if hid in done or not title:
-            continue
-        item = {'headline_id': hid, 'title': title.strip(), 'agency': agency, 'mood': int(mood),
-                'spice': int(loaded), 'feelings': [e for e in (ranks or '').split(',') if e in FEELINGS][:3],
-                'url': url}
-        pool.setdefault((item['mood'], item['spice']), []).append(item)
-    rng = random.Random()
-    cells = list(pool)
-    rng.shuffle(cells)
-    out = []
-    while len(out) < n and any(pool.values()):
-        for cell in cells:
-            if pool[cell] and len(out) < n:
-                out.append(pool[cell].pop(rng.randrange(len(pool[cell]))))
-    return out
-
-
-def apply_label(data: dict):
-    """A checked headline's labels become hand labels, on the headline itself: the corrected mood, spice and feelings
-    where the model was wrong, its own where it was right; marked so no rescore replaces them."""
-    from app.analysis.newsfilter import HAND_JUDGE, ranked
-    model = data.get('model') or {}
-    pick = lambda m: model.get(m) if (data.get(m) or {}).get('ok') else (data.get(m) or {}).get('should')  # noqa: E731
-    mood, spice, feelings = pick('mood'), pick('spice'), pick('feelings')
-    if not isinstance(mood, int) or not isinstance(spice, int) or not isinstance(feelings, list):
-        raise ValueError('a verdict needs mood, spice and feelings')
-    # The model's order for feelings it also had, then the ones added
-    feelings = [e for e in model.get('feelings', []) if e in feelings] + [e for e in feelings if e not in model.get('feelings', [])]
-    with Session() as s:
-        h = s.get(Headline, data['headline_id'])
-        if h is None:
-            raise ValueError('no such headline')
-        h.event_score, h.loaded_score = float(mood), float(spice)
-        for k, v in ranked(feelings).items():
-            setattr(h, k, v)
-        h.scored_by, h.scored_at = HAND_JUDGE, dt.utcnow()
-        s.commit()
-
-
-def stats() -> dict:
-    rows = judged()
-    out = {'headlines': len(rows)}
-    for measure in ('mood', 'spice', 'feelings'):
-        marks = [r[measure]['ok'] for r in rows if measure in r]
-        out[measure] = (sum(marks), len(marks))
-    off = Counter((r['model']['mood'], r['mood'].get('should')) for r in rows if not r.get('mood', {}).get('ok', True))
-    out['mood_misses'] = off.most_common(3)
-    return out
-
-
-def page() -> str:
-    items = batch()
-    st = stats()
-    for it in items:
-        it['model_json'] = json.dumps({k: it[k] for k in ('mood', 'spice', 'feelings')})
-    pct = lambda k: f"{100 * st[k][0] / st[k][1]:.0f}% of {st[k][1]}" if st[k][1] else '—'  # noqa: E731
-    return render('label.html', '/', undo=False, items=items, st=st, pct=pct, moods=MOODS, spices=SPICES,
-                  feelings=FEELINGS, emoji=EMOTION_EMOJI)
+_modules = {}
+labels = _checker_module('labels')  # 🏷️ the headline label check, the page this tool began as (#121)
 
 
 MOTIF_VERDICTS = os.path.join(FOLDER, 'motif_verdicts.jsonl')  # a record of every answer, for agreement scores
@@ -226,7 +154,7 @@ UNDO_KEEP = 50
 
 def undo_paths() -> dict:
     from app.analysis import entities, motif_index
-    return {'/motif-board': motif_index.INDEX, '/motif-index': motif_index.INDEX, '/motif-verdict': motif_index.INDEX,
+    return {'/motif-board': motif_index.INDEX, '/motif-verdict': motif_index.INDEX,
             '/workbench': motif_index.INDEX,
             '/entities': entities.ALIASES}
 
@@ -450,73 +378,8 @@ def claim_detail(claim: str) -> dict:
 
 
 def board_action(data: dict):
-    """One change from the motif board, applied to the index at once (under its lock)."""
-    from app.analysis import motif_index as mi
-    index = mi.load()
-    live = {e['id'] for e in mi.live(index)}
-    text = lambda k: isinstance(data.get(k), str) and data[k].strip()  # noqa: E731
-    act = data.get('action')
-    if act == 'move' and text('claim') and data.get('source') in live and data.get('target') in live:
-        mi.move(data['claim'], data['source'], data['target'])
-    elif act == 'also' and text('claim') and data.get('source') in live and data.get('target') in live:
-        mi.also_file(data['claim'], data['source'], data['target'])
-    elif act == 'also_new' and text('claim') and data.get('source') in live and text('name'):
-        mi.also_file(data['claim'], data['source'], mi.add(data['name']))
-    elif act == 'move_new' and text('claim') and data.get('source') in live and text('name'):
-        mi.move(data['claim'], data['source'], mi.add(data['name']))
-    elif act == 'unfile' and text('claim') and data.get('id') in live:
-        mi.unfile(data['claim'], data['id'])
-    elif act == 'no_motif' and text('claim'):
-        mi.no_motif(data['claim'])
-    elif act in ('relate', 'unrelate') and data.get('a') in live and data.get('b') in live:
-        mi.relate(data['a'], data['b'], act == 'relate', data['note'] if isinstance(data.get('note'), str) else None)
-    elif act == 'not_this' and data.get('id') in live and isinstance(data.get('text'), str):
-        mi.set_not_this(data['id'], data['text'])
-    elif act == 'carrying' and text('claim') and data.get('id') in live and isinstance(data.get('text'), (str, list)):
-        mi.set_carrying(data['claim'], data['id'], data['text'])  # the tellers' words that carry it, per filing
-    elif act == 'parent' and data.get('id') in live and data.get('parent') in live:
-        mi.set_parent(data['id'], data['parent'], data.get('on', True) is not False)
-    elif act == 'file' and text('claim') and data.get('id') in live:
-        mi.file_by_hand({'claim': data['claim'].strip(), 'source': data.get('source', ''), 'ref': data.get('ref', '')}, data['id'])
-    elif act == 'note' and data.get('id') in live and isinstance(data.get('note'), str):
-        mi.set_note(data['id'], data['note'])
-    elif act == 'keep_note' and data.get('id') in live:
-        mi.keep_note(data['id'])
-    elif act == 'stands_alone' and data.get('id') in live:
-        mi.stands_alone(data['id'], data.get('alone', True) is not False)
-    elif act == 'watch' and data.get('id') in live:  # a sink for plain reports, its claims watched (Straight news)
-        mi.set_watch(data['id'], data.get('on', True) is not False)
-    elif act == 'correct' and text('claim') and text('text'):
-        mi.correct_claim(data['claim'], data['text'])
-    elif act == 'reject' and text('claim') and data.get('id') in live:
-        mi.reject(data['claim'], data['id'])
-    elif act == 'done' and data.get('id') in live:
-        mi.mark_done(data['id'], bool(data.get('done', True)))
-    elif act == 'reset_done':
-        mi.reset_done()
-    elif act == 'group_add' and text('name'):
-        mi.group_add(data['name'])
-    elif act == 'group_new' and text('name'):  # a new group, with a first motif in it if one is given (one undo step)
-        gid = mi.group_add(data['name'])
-        for eid in [data.get('id')] + list(data.get('ids') or []):  # its first motif, or a proposed family's
-            if eid in live:
-                mi.group_member(eid, gid)
-    elif act == 'group_rename' and data.get('group') in index.get('groups', {}) and text('name'):
-        mi.group_rename(data['group'], data['name'])
-    elif act == 'group_note' and data.get('group') in index.get('groups', {}):
-        mi.group_note(data['group'], data.get('note') or '')
-    elif act == 'facet_note' and isinstance(data.get('facet'), str) and isinstance(data.get('value'), str):
-        mi.facet_note(data['facet'], data['value'], data.get('note') or '')
-    elif act == 'group_delete' and data.get('group') in index.get('groups', {}):
-        mi.group_delete(data['group'])
-    elif act == 'group_assign' and data.get('id') in live:
-        mi.group_assign(data['id'], data.get('group') or None)
-    elif act == 'group_member' and data.get('id') in live and data.get('group') in index.get('groups', {}):
-        mi.group_member(data['id'], data['group'], data.get('on', True) is not False)
-    elif act in ('rename', 'merge', 'delete', 'add'):
-        organizer_action(data)
-    else:
-        raise ValueError(f'unknown action: {data}')
+    """One change from the motif board, the map or the notes page: the same actions as the workbench's"""
+    workbench_action(data)
 
 
 # The motif workbench (workbench.html): one page for everything the motif pages do. Its state is the board's plus
@@ -956,19 +819,6 @@ def record_check(data: dict):
                             'at': dt.now().isoformat(timespec='seconds')}) + '\n')
 
 
-def _with_made(x, made: list[str]):
-    """A batch step with "$1", "$2"… replaced by the motifs the batch's earlier steps made"""
-    if isinstance(x, dict):
-        return {k: _with_made(v, made) for k, v in x.items()}
-    if isinstance(x, list):
-        return [_with_made(v, made) for v in x]
-    if isinstance(x, str) and x[:1] == '$' and x[1:].isdigit():
-        if not 0 < int(x[1:]) <= len(made):
-            raise ValueError(f'{x}: no motif made that early in the batch')
-        return made[int(x[1:]) - 1]
-    return x
-
-
 def critique(data: dict) -> dict:
     """The person's words on what was wrong with a proposal they decided, kept on the proposal and in the curation log:
     the model's draft, the critique and the final version together, examples for the proposer and the namer, and the
@@ -984,109 +834,9 @@ def critique(data: dict) -> dict:
 
 
 def workbench_action(data: dict):
-    from app.analysis import motif_index as mi
-    act = data.get('action')
-    if act in ('telling', 'telling_reject'):  # 🧩 a flabby motif's telling made a motif of its own (tellings.py)
-        from app.analysis import tellings
-        if act == 'telling_reject':
-            tellings.reject(data.get('key'))
-        else:
-            claims = [c for c in data.get('claims') or [] if isinstance(c, str)]
-            data['id'] = tellings.make(data.get('parent', ''), data.get('name', ''), claims, data.get('note') or '',
-                                       data.get('move', True) is not False, data.get('key'))
-        return
-    if act in ('split', 'split_reject'):  # the claim organizer's (claim_organizer.py), or a person's own split: its own
-        from app.analysis import claim_organizer as co  # action, never read as "not this motif"
-        why = data['why'].strip() if isinstance(data.get('why'), str) and data['why'].strip() else None
-        if act == 'split_reject':
-            co.reject_split(data.get('proposal', ''), why)
-        else:  # the children file at the next hourly run (refile_pending), into the claims to judge
-            done = co.apply_split(data.get('proposal') or None, data.get('children'), why,
-                                  claim=None if data.get('proposal') else data.get('claim'), refile=False)
-            data['ids'] = done.get('ids', [])  # the motifs the claim left, for the log
-        return
-    if data.get('proposal'):  # a proposal approved (its own action, carried out as usual) or rejected
-        from app.analysis import motif_proposals as mp
-        if act != 'proposal_reject':
-            workbench_action({**{k: v for k, v in data.items() if k != 'proposal'}, 'proposed': True})
-        mp.decide(data['proposal'], 'rejected' if act == 'proposal_reject' else 'approved',
-                  data['why'] if isinstance(data.get('why'), str) else None,
-                  None if act == 'proposal_reject' else {k: v for k, v in data.items() if k not in ('proposal', 'why')})
-        return
-    if act == 'batch':
-        steps = data.get('steps')
-        if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) or x.get('action') == 'batch' for x in steps):
-            raise ValueError('a batch is a list of actions')
-        made = []  # motifs made by earlier steps: later steps name them "$1", "$2"… (Oct 9, for the MCP)
-        with mi.batched():  # the index saved once at the end, not once a step (Oct 19: 29 steps took over a minute)
-            for n, step in enumerate(steps):
-                steps[n] = step = _with_made(step, made)  # the real ids, so the log has them
-                had = set(mi.load()['entries'])
-                try:
-                    workbench_action(step)
-                except (ValueError, KeyError) as e:
-                    e.done = steps[:n]  # the steps that ran stay done: the caller logs them
-                    raise
-                made += sorted(set(mi.load()['entries']) - had)
-    elif act in ('hold', 'unhold'):  # a claim kept aside to look at later, out of the queues; no verdict
-        if not isinstance(data.get('claim'), str) or not data['claim'].strip():
-            raise ValueError(f'{act}: a claim')
-        mi.hold(data['claim'], act == 'hold')
-    elif act == 'not_same':
-        live = {e['id'] for e in mi.live(mi.load())}
-        if data.get('a') not in live or data.get('b') not in live or data['a'] == data['b']:
-            raise ValueError('not the same: two motifs')
-        mi.not_same(data['a'], data['b'])
-    elif act == 'check':
-        if data.get('answer') not in ('yes', 'no', 'unsure'):
-            raise ValueError('a check is yes, no or unsure')
-        mi.check(data.get('claim', ''), data.get('id', ''), data['answer'])
-        record_check(data)
-    elif act == 'facet':  # a motif's genre (or none)
-        live = {e['id'] for e in mi.live(mi.load())}
-        if data.get('id') not in live or not isinstance(data.get('facet'), str):
-            raise ValueError('facet: a motif and a facet')
-        mi.set_facet(data['id'], data['facet'], data.get('value') or None)
-    elif act in ('facet_rename', 'facet_remove'):  # a genre renamed, or gone from every motif
-        if not (data.get('facet') in mi.FACETS and isinstance(data.get('value'), str) and data['value'].strip()):
-            raise ValueError(f'{act}: a facet and a value')
-        if act == 'facet_rename':
-            if not (isinstance(data.get('to'), str) and data['to'].strip()):
-                raise ValueError('facet_rename: the new name')
-            mi.facet_rename(data['facet'], data['value'], data['to'])
-        else:
-            mi.facet_remove(data['facet'], data['value'])
-    elif act == 'facet_value':  # a new genre to sort by
-        if not (isinstance(data.get('facet'), str) and isinstance(data.get('value'), str) and data['value'].strip()):
-            raise ValueError('facet_value: a facet and a value')
-        mi.add_facet_value(data['facet'], data['value'])
-    elif act == 'same_claim':  # one claim told two ways: the variant folds into the kept one
-        if not all(isinstance(data.get(k), str) and data[k].strip() for k in ('variant', 'canonical')):
-            raise ValueError('same_claim: a variant and the claim to keep')
-        mi.same_claim(data['variant'].strip(), data['canonical'].strip())
-    elif act == 'new_with':  # a new motif made from claims dropped on it: each moved or copied from its motif, or filed
-        name, claims = data.get('name'), data.get('claims')
-        # no claims at all: a proposed motif kept as a seed, its claims not fitting (Oct 12)
-        if not (isinstance(name, str) and name.strip() and isinstance(claims, list) and (claims or data.get('proposed'))):
-            raise ValueError('new_with: a name and claims')
-        live = {e['id'] for e in mi.live(mi.load())}
-        eid = mi.add(name)
-        for c in claims:
-            text, source = (c.get('claim') or '').strip(), c.get('source')
-            if not text:
-                continue
-            if source in live and c.get('mode') == 'move':
-                mi.move(text, source, eid)
-            elif source in live:
-                mi.also_file(text, source, eid)
-            else:
-                mi.file_by_hand({'claim': text, 'source': c.get('src', ''), 'ref': c.get('ref', '')}, eid)
-        if (data.get('note') or '').strip():  # a 💡 proposed motif comes with its note and genre
-            mi.set_note(eid, data['note'])
-        if data.get('genre'):
-            mi.set_facet(eid, 'genre', data['genre'])
-    else:
-        board_action(data)
+    """One action (motif_actions.py), the person's checks recorded for agreement scores"""
+    from app.analysis import motif_actions
+    motif_actions.apply(data, on_check=record_check)
 
 
 def entities_page() -> str:
@@ -1126,72 +876,127 @@ def entities_action(data: dict):
         raise ValueError(f'unknown action: {data}')
 
 
-def organizer_action(data: dict):
-    """Apply one organizer action; raises on anything unknown or missing."""
+class NotFound(Exception):
+    pass
+
+
+def _claims(q: dict):
     from app.analysis import motif_index
-    index = motif_index.load()
-    known = lambda eid: eid in index['entries'] and not index['entries'][eid].get('merged_into')
-    act = data.get('action')
-    if act == 'rename' and known(data.get('id')) and data.get('name', '').strip():
-        motif_index.rename(data['id'], data['name'])
-    elif act == 'merge' and known(data.get('source')) and known(data.get('target')):
-        motif_index.merge(data['source'], data['target'])
-    elif act == 'related' and known(data.get('a')) and known(data.get('b')):
-        motif_index.relate(data['a'], data['b'])
-    elif act == 'kind_of' and known(data.get('child')) and known(data.get('parent')):
-        motif_index.set_parent(data['child'], data['parent'])
-    elif act == 'not_same' and known(data.get('a')) and known(data.get('b')):
-        motif_index.not_same(data['a'], data['b'])
-    elif act == 'delete' and known(data.get('id')):
-        motif_index.delete(data['id'])
-    elif act == 'move' and data.get('claim') and known(data.get('source')) \
-            and (data.get('target') == 'new' or known(data.get('target'))):
-        motif_index.move(data['claim'], data['source'], data['target'])
-    elif act == 'add' and data.get('name', '').strip():
-        motif_index.add(data['name'])
-    else:
-        raise ValueError(f'unknown action or motif: {data}')
+    words = q.get('q', '').lower().split()
+    found = [c for c in motif_index.searchable_claims() if all(w in c['claim'].lower() for w in words)]
+    return sorted(found, key=lambda c: (bool(c['motifs']), c['claim']))[:60]
+
+
+def _better(q: dict):  # where a weakly filed claim might belong instead
+    from app.analysis import filing_confidence as fc, motif_index
+    return fc.better(motif_index.load(), q.get('claim', ''))
+
+
+def _motif_similar(q: dict):
+    from app.analysis import motif_index
+    eid = q.get('id', '')
+    if eid not in {e['id'] for e in motif_index.live(motif_index.load())}:
+        raise NotFound(f'no such motif: {eid}')
+    return motif_index.similar(eid)
+
+
+def _claim_similar(q: dict):
+    from app.analysis import motif_index
+    return motif_index.similar_claims(q.get('claim', ''))
+
+
+def _live(q: dict):  # 🧠 the filing pipeline as it runs (app/analysis/trace_view.py)
+    from app.analysis import trace_view
+    return trace_view.view(q)
+
+
+def _flow(q: dict):  # 🌊 news stories into retellings over time (app/analysis/flow.py)
+    from app.analysis import flow
+    return flow.flow()
+
+
+def _dashboard(q: dict):  # 📈 everything at a glance (app/dashboard.py)
+    from app import dashboard
+    return dashboard.gather(fresh=q.get('fresh') == '1')
+
+
+def _workbench_metrics(q: dict):
+    from app import health
+    from app.analysis import motif_index
+    from app.utils.store import read_json
+    return {**motif_index.metrics_history(), 'health': read_json(health.HEALTH, None)}
+
+
+def _workbench_queue(q: dict):
+    try:
+        return workbench_queue(q.get('kind', ''))
+    except ValueError as e:
+        raise NotFound(str(e)) from e
+
+
+def _claim_map(q: dict):  # the map's 🧲 claims mode
+    from app.analysis import claim_map
+    return claim_map.cached()
+
+
+def _board(q: dict):
+    from app.analysis import motif_index
+    return motif_index.board()
+
+
+def _checkpoints(q: dict):
+    from app.analysis import curation_db
+    return curation_db.checkpoints()
+
+
+def _undo_next(q: dict):
+    found = last_undo()
+    return {'what': found[1]['what'] if found else None}
+
+
+# The data each page reads: path -> its JSON, from the query string's values. 🧪 the experiments page's three come from
+# scripts/experiments/lab.py
+GET_JSON = {
+    '/workbench.json': lambda q: workbench_state(),
+    '/workbench-queue.json': _workbench_queue,
+    '/workbench-metrics.json': _workbench_metrics,
+    '/motif-board.json': _board,
+    '/motif-claim-map.json': _claim_map,
+    '/claims.json': _claims,
+    '/claim-detail.json': lambda q: claim_detail(q.get('claim', '')),
+    '/better.json': _better,
+    '/motif-similar.json': _motif_similar,
+    '/claim-similar.json': _claim_similar,
+    '/checkpoints.json': _checkpoints,
+    '/undo.json': _undo_next,
+    '/version.json': lambda q: {'version': code_version()},  # the workbench's own code now: an open tab compares
+    '/pace.json': lambda q: pace(),  # 📈 the person's pace against what arrives
+    '/live.json': _live,
+    '/flow.json': _flow,
+    '/dashboard.json': _dashboard,
+    '/experiments.json': lambda q: experiments_lab().overview(),
+    '/experiment-paper.json': lambda q: experiments_lab().paper(q.get('code', '')),
+    '/experiment-cases.json': lambda q: experiments_lab().cases(q.get('code', '')),
+}
+
+
+def query(path: str) -> dict:
+    from urllib.parse import parse_qs, urlparse
+    return {k: v[0] for k, v in parse_qs(urlparse(path).query).items()}
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path.startswith('/checkpoints.json'):
-            from app.analysis import curation_db
-            return self.send_json(curation_db.checkpoints())
-        if self.path.startswith('/undo.json'):
-            found = last_undo()
-            return self.send_json({'what': found[1]['what'] if found else None})
-        if self.path.startswith('/claims.json'):
-            from urllib.parse import urlparse, parse_qs
-            from app.analysis import motif_index
-            q = parse_qs(urlparse(self.path).query).get('q', [''])[0].lower().split()
-            found = [c for c in motif_index.searchable_claims() if all(w in c['claim'].lower() for w in q)]
-            return self.send_json(sorted(found, key=lambda c: (bool(c['motifs']), c['claim']))[:60])
-        if self.path.startswith('/better.json'):  # where a weakly filed claim might belong instead
-            from urllib.parse import urlparse, parse_qs
-            from app.analysis import filing_confidence as fc, motif_index
-            claim = parse_qs(urlparse(self.path).query).get('claim', [''])[0]
-            return self.send_json(fc.better(motif_index.load(), claim))
-        if self.path.startswith('/claim-detail.json'):
-            from urllib.parse import urlparse, parse_qs
-            return self.send_json(claim_detail(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))
-        if self.path.startswith('/motif-similar.json'):
-            from urllib.parse import urlparse, parse_qs
-            from app.analysis import motif_index
-            eid = parse_qs(urlparse(self.path).query).get('id', [''])[0]
-            if eid not in {e['id'] for e in motif_index.live(motif_index.load())}:
-                self.send_error(404)
-                return
-            return self.send_json(motif_index.similar(eid))
-        if self.path.startswith('/claim-similar.json'):
-            from urllib.parse import urlparse, parse_qs
-            from app.analysis import motif_index
-            return self.send_json(motif_index.similar_claims(parse_qs(urlparse(self.path).query).get('claim', [''])[0]))
-        if self.path.startswith('/motif-export'):  # ?format=json|csv|md|ttl&scope=verified|all, as a download
-            from urllib.parse import urlparse, parse_qs
+        path = self.path.split('?')[0]
+        if path in GET_JSON:
+            try:
+                return self.send_json(GET_JSON[path](query(self.path)))
+            except NotFound as e:
+                return self.send_json_error(404, str(e))
+        if path == '/motif-export':  # ?format=json|csv|md|ttl&scope=verified|all, as a download
             from app.analysis import motif_export
-            q = parse_qs(urlparse(self.path).query)
-            fmt, scope = q.get('format', ['json'])[0], q.get('scope', ['verified'])[0]
+            q = query(self.path)
+            fmt, scope = q.get('format', 'json'), q.get('scope', 'verified')
             if fmt not in motif_export.FORMATS or scope not in motif_export.SCOPES:
                 return self.send_json_error(400, f'format: {sorted(motif_export.FORMATS)}; scope: {motif_export.SCOPES}')
             text, media, name = motif_export.export(fmt, scope)
@@ -1203,47 +1008,6 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if self.path.startswith(('/experiments.json', '/experiment-paper.json', '/experiment-cases.json')):
-            from urllib.parse import urlparse, parse_qs
-            lab = experiments_lab()  # 🧪 the experiments page (scripts/experiments/lab.py)
-            code = parse_qs(urlparse(self.path).query).get('code', [''])[0]
-            if self.path.startswith('/experiments.json'):
-                return self.send_json(lab.overview())
-            return self.send_json(lab.paper(code) if self.path.startswith('/experiment-paper') else lab.cases(code))
-        if self.path.startswith('/version.json'):  # the workbench's own code now: an open tab compares (code_version())
-            return self.send_json({'version': code_version()})
-        if self.path.startswith('/pace.json'):  # 📈 the person's pace against what arrives (pace())
-            return self.send_json(pace())
-        if self.path.startswith('/live.json'):  # 🧠 the filing pipeline as it runs (app/analysis/trace_view.py)
-            from urllib.parse import urlparse, parse_qs
-            from app.analysis import trace_view
-            return self.send_json(trace_view.view({k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}))
-        if self.path.startswith('/flow.json'):  # 🌊 news stories into retellings over time (app/analysis/flow.py)
-            from app.analysis import flow
-            return self.send_json(flow.flow())
-        if self.path.startswith('/dashboard.json'):  # 📈 everything at a glance (app/dashboard.py)
-            from app import dashboard
-            return self.send_json(dashboard.gather(fresh='fresh=1' in self.path))
-        if self.path.startswith('/workbench-metrics.json'):
-            from app.analysis import motif_index
-            from app import health
-            from app.utils.store import read_json
-            return self.send_json({**motif_index.metrics_history(), 'health': read_json(health.HEALTH, None)})
-        if self.path.startswith('/workbench.json'):
-            return self.send_json(workbench_state())
-        if self.path.startswith('/workbench-queue.json'):
-            from urllib.parse import urlparse, parse_qs
-            try:
-                return self.send_json(workbench_queue(parse_qs(urlparse(self.path).query).get('kind', [''])[0]))
-            except ValueError as e:
-                return self.send_json_error(404, str(e))
-        if self.path.startswith('/motif-claim-map.json'):  # the map's 🧲 claims mode
-            from app.analysis import claim_map
-            return self.send_json(claim_map.cached())
-        if self.path.startswith('/motif-board.json'):
-            from app.analysis import motif_index
-            return self.send_json(motif_index.board())
-        path = self.path.split('?')[0]
         if path.startswith('/checker/static/'):
             name = os.path.basename(path)
             file = SHARED_STATIC.get(name) or os.path.join(CHECKER, 'static', name)
@@ -1266,7 +1030,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         body = (render(page_of, path, undo=page_of not in ('dashboard.html', 'experiments.html', 'flow.html', 'live.html')) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
-                else page())
+                else labels.page(render))
         body = body.encode()
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
@@ -1358,41 +1122,31 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(400, str(e)[:200])
                 return
             return self.send_json(motif_index.board())
-        if self.path in ('/motif-index', '/entities'):
+        if self.path == '/entities':
             try:
-                if self.path == '/motif-index':
-                    before = motif_context(data)
-                    before.update(decision_fits(data))
-                    organizer_action(data)
-                    log_curation('motif organizer', data, before)
-                    self.remember(data, before)
-                else:
-                    from app.analysis import entities
-                    before = {'aliases': {k: v for k, v in entities.load_aliases()['aliases'].items()
-                                          if any(isinstance(x, str) and x.lower() in (k, v.lower()) for x in data.values())}}
-                    entities_action(data)
-                    log_curation('names', data, before)
-                    self.remember(data, {})
+                from app.analysis import entities
+                before = {'aliases': {k: v for k, v in entities.load_aliases()['aliases'].items()
+                                      if any(isinstance(x, str) and x.lower() in (k, v.lower()) for x in data.values())}}
+                entities_action(data)
+                log_curation('names', data, before)
+                self.remember(data, {})
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
             self.send_response(204)
             self.end_headers()
             return
-        if self.path == '/motif-verdict':
-            from app.analysis import motif_index
+        if self.path == '/motif-verdict':  # the ✅ check page: a check, recorded like the workbench's
+            data['action'] = 'check'
             try:
                 before = motif_context(data)
                 before.update(decision_fits(data))
-                motif_index.check(data.get('claim', ''), data.get('id', ''), data.get('answer', ''))
+                workbench_action(data)
                 log_curation('motif check', data, before)
                 self.remember(data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
-            data['at'] = dt.now().isoformat(timespec='seconds')
-            with open(MOTIF_VERDICTS, 'a') as f:
-                f.write(json.dumps({k: data[k] for k in ('claim', 'id', 'answer', 'at')}) + '\n')
             self.send_response(204)
             self.end_headers()
             return
@@ -1403,14 +1157,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(400)
             return
         try:
-            apply_label(data)  # straight onto the headline; the file keeps the record for agreement scores
+            labels.record(data)  # straight onto the headline; the file keeps the record for agreement scores
         except (ValueError, KeyError) as e:
             self.send_error(400, str(e)[:200])
             return
-        data['at'] = dt.now().isoformat(timespec='seconds')
-        os.makedirs(FOLDER, exist_ok=True)
-        with open(VERDICTS, 'a') as f:
-            f.write(json.dumps(data) + '\n')
         self.send_response(204)
         self.end_headers()
 
