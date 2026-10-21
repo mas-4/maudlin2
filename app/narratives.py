@@ -61,11 +61,6 @@ GENRES = ['rumor', 'contemporary legend', 'conspiracy theory', 'folk belief', 'p
           'cautionary tale', 'atrocity story', 'trickster tale', 'joke formula or meme', 'proverb or catchphrase',
           'personal testimony', 'news report or shared reaction',
           'none: a shared topic, not a retold narrative']
-MOTIF_CHAPTERS = ['A Mythological motifs', 'B Animals', 'C Tabu', 'D Magic', 'E The dead', 'F Marvels', 'G Ogres',
-                  'H Tests', 'J The wise and the foolish', 'K Deceptions', 'L Reversal of fortune',
-                  'M Ordaining the future', 'N Chance and fate', 'P Society', 'Q Rewards and punishments',
-                  'R Captives and fugitives', 'S Unnatural cruelty', 'T Sex', 'U The nature of life',
-                  'V Religion', 'W Traits of character', 'X Humor', 'Z Miscellaneous groups of motifs', 'none']
 PROMPT = """These posts were written by different people:
 {posts}
 
@@ -77,7 +72,6 @@ news. A claim made in only one or two of the posts is not their narrative. Answe
 narrative: the claim or story most of the posts share, in one plain sentence, or "" if there is none{wording}
 retold: true if most of the posts retell that one narrative, false if they only share a topic
 genre: one of {genres}
-motif_chapter: the chapter of Thompson's Motif-Index it fits best, one of {chapters}
 motif: the specific motif in a few words of your own, describing these posts, or ""
 {shapes}
 politics: true if it is about politics or public life
@@ -86,10 +80,10 @@ from app.analysis.rumor_shapes import SCHEMA_FIELDS as SHAPE_FIELDS, prompt_fiel
 
 SCHEMA = {"type": "object", "properties": {
     "narrative": {"type": "string"}, "retold": {"type": "boolean"}, "genre": {"type": "string", "enum": GENRES},
-    "motif_chapter": {"type": "string", "enum": MOTIF_CHAPTERS}, "motif": {"type": "string"},
+    "motif": {"type": "string"},
     "politics": {"type": "boolean"}, "side": {"type": "string", "enum": ['left', 'right', 'both', 'none']},
     **SHAPE_FIELDS},
-    "required": ["narrative", "retold", "genre", "motif_chapter", "motif", *SHAPE_FIELDS, "politics", "side"]}
+    "required": ["narrative", "retold", "genre", "motif", *SHAPE_FIELDS, "politics", "side"]}
 # A narrative counts only if at least this share of its sampled posts are about its claim (telling it or arguing
 # over it alike). Oct 4: a group of trans people talking about their own gender was labeled with an anti-trans claim
 # one of them had quoted
@@ -239,7 +233,7 @@ def label(group: dict, cache: dict) -> dict | None:
     if key not in cache:
         from app.claim_wording import rules  # the Brothers Grimm's wording, Oct 12 (Cordelia)
         answer = llm.complete_json(PROMPT.format(posts='\n'.join(f'- {t[:280]}' for t in shown), wording=rules('posts'),
-                                                 genres='; '.join(GENRES), chapters='; '.join(MOTIF_CHAPTERS),
+                                                 genres='; '.join(GENRES),
                                                  shapes=prompt_fields()),
                                    SCHEMA, max_tokens=600, model=LABEL_MODEL)
         if not answer:
@@ -593,7 +587,7 @@ def markdown(out: dict) -> str:
         lab = g['label']
         lines.append(f"### {lab['narrative']}")
         lines.append(f"{g['authors']} people, {g['posts']} posts, wording variety {g['variety']} ({g['kind']}); "
-                     f"{lab['genre']}; motif {lab['motif_chapter']}: {lab['motif'] or '-'}; "
+                     f"{lab['genre']}; motif: {lab['motif'] or '-'}; "
                      f"politics: {lab['politics']} ({lab['side']})")
         for a in g.get('articles') or []:
             lines.append(f"Sharing ({a['shares']}x): {a['title']} ({a['outlet']}) {a['url']}"

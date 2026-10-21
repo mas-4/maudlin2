@@ -22,8 +22,8 @@ def test_every_claim_prompt_takes_the_wording():
     from app import narratives
     from app.analysis import factchecks, focus_group, show_claims
     w = cw.rules('posts', {'entries': {}, 'corrections': {}})
-    assert cw.SHORT in narratives.PROMPT.format(posts='', genres='', chapters='', shapes='', wording=w)
+    assert cw.SHORT in narratives.PROMPT.format(posts='', genres='', shapes='', wording=w)
     assert cw.SHORT in show_claims.PROMPT.format(show='', kind='', title='', text='', wording=w)
     assert cw.SHORT in focus_group.PROMPT.format(title='', text='', wording=w)
     assert cw.SHORT in factchecks.LABEL_PROMPT.format(source='', title='', summary='', article='', examples=w, genres='',
-                                                      chapters='', shapes='')
+                                                      shapes='')

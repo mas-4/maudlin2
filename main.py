@@ -17,7 +17,7 @@ from app.sidefeeds import fetch_sidefeeds
 from app.polling import fetch_polls, fetch_aggregates
 from app.builder import build
 from app.utils import Config, get_logger
-from utils.emailer import send_notification
+from app.emailer import send_notification
 import threading
 
 logger = get_logger(__name__)

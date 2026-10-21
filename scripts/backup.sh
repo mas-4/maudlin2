@@ -79,7 +79,7 @@ fi
 TAR_STATUS=0
 tar -czf "$FILES" -C "$DATA" "${HOURLY_SKIP[@]}" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
     --exclude='*embeddings.sqlite*' --exclude=./archives/american_stories \
-    --exclude=./motifs/vectors.npy --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}" \
+    --exclude=./attic --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}" \
     || TAR_STATUS=$?
 if [ "$TAR_STATUS" -gt 1 ]; then
     echo "tar failed (exit $TAR_STATUS); $FILES is incomplete" >&2

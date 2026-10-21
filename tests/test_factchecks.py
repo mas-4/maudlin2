@@ -42,9 +42,9 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
         prompts.append(prompt)
         assert model == factchecks.LABEL_MODEL
         return {'claim': 'Posts on X claim the governor banned prayer', 'context': 'Viral posts; nothing of the kind.',
-                'genre': schema['properties']['genre']['enum'][0], 'motif_chapter': schema['properties']['motif_chapter']['enum'][0],
+                'genre': schema['properties']['genre']['enum'][0],
                 'motif': '', 'politics': True, **{k: '' for k in schema['required'] if k not in ('claim', 'context', 'genre',
-                                                                                              'motif_chapter', 'motif', 'politics')}}
+                                                                                              'motif', 'politics')}}
     monkeypatch.setattr(llm, 'complete_json', answer)
     now = '2026-10-08T12:00:00+00:00'
     items = [{'url': f'https://a.example/{n}', 'title': 'Did the governor ban prayer?', 'summary': '', 'source': 'Snopes',
