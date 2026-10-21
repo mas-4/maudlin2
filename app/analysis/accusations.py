@@ -25,13 +25,14 @@ from app.utils.store import read_json, write_json
 
 import hashlib
 import os
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
 CACHE = os.path.join(Config.data, 'accusations.json')  # claim key -> what the model said
 NEVER_NAMED = os.path.join(Config.data, 'never_named.json')  # by hand: {"Jacob Geller": "a YouTuber", ...}
 ALWAYS_NAMED = os.path.join(Config.data, 'always_named.json')  # by hand: ["Don Huffines", ...]
-MODEL = 'gemma4:26b'
+MODEL = local_models.BIG
 IN_THE_NEWS = 3  # front-page articles whose headlines name a person for them to stay named
 PER_BUILD = 40  # claims read in one build at most; the rest are held back until a later one reads them
 FACT_CHECKERS = {'Snopes', 'Lead Stories', 'PolitiFact', 'NewsGuard Reality Check', 'Full Fact', 'FactCheck.org',

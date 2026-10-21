@@ -36,6 +36,7 @@ import numpy as np
 
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -71,7 +72,7 @@ SAMPLE = 10  # versions shown to the model
 # The model that reads each group's posts and checks which are about its claim: Gemma 4 26B since Oct 10 (Qwen3 8B
 # before). On the person's corrected claims it wrote closer to their wording from posts (W1: 0.799 against 0.775 alike)
 # and didn't loop or invent; both questions on one model, so the nightly report doesn't swap models group by group
-LABEL_MODEL = 'gemma4:26b'
+LABEL_MODEL = local_models.BIG
 LABEL_TOP = 150  # biggest candidate groups labeled per report
 FOLK_VARIETY = 0.5  # wording at least this varied: told, not pasted
 COPY_VARIETY = 0.2  # under this: the same words
@@ -263,7 +264,7 @@ CANDIDATES = 3  # nearest stories or passages the model is asked about
 # Oct 7: on the 346 story links the small model had made, gemma4:26b differed on 42; read by hand, it was right on
 # about 25 to the small model's 11, joined 5 wrongly to its 7 (the small model put "Jacob Geller is a rapist" on the
 # Cornell case, Will Smith's slap on Rick Ross's arrest) and missed 3 to its ~20 (the Nobel, the Gulf storm)
-STORY_MODEL = 'gemma4:26b'
+STORY_MODEL = local_models.BIG
 STORY_PROMPT = """People online are retelling this: {claim}
 For example: {example}
 

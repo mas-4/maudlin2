@@ -38,10 +38,11 @@ from app.analysis import motif_index as mi
 from app.analysis import motif_proposals as mp
 from app.analysis import trace
 from app.utils import get_logger
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-MODEL = 'gemma4:26b'  # the filing model, as the Chimera and the Blind Men read posts
+MODEL = local_models.BIG  # the filing model, as the Chimera and the Blind Men read posts
 ACTION = 'split'  # the curation log's action for an applied split
 POSTS = 40  # of a group's posts read, the most posted first (the Chimera's)
 SHOWN = 280  # characters of each post shown

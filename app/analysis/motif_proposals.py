@@ -53,17 +53,18 @@ from app.analysis import llm
 from app.analysis import motif_index as mi
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
 PROPOSALS = os.path.join(Config.data, 'motif_proposals.json')  # {id: proposal}, decided ones kept for good
 RUNS = os.path.join(Config.data, 'motif_proposals_runs.json')  # {'done': last day finished, 'typos': {motif: mark}}
 NIGHT_BUDGET = 480  # seconds the nightly run may spend; what's left waits for the next hour's run
-MODEL = 'gemma4:26b'
+MODEL = local_models.BIG
 # The judge of related and rests-on proposals since Oct 9 (P1 in docs/filing-experiments.md): Nimble 9B's yes or no,
 # a probability in one pass, made best fit 0.772 against 0.755 with Gemma's 0-10 score (20 fold splits, ahead in all);
 # None: Gemma's score (JUDGE_PROMPT) as before
-JUDGE_DECIDER = 'nimble:9b'
+JUDGE_DECIDER = local_models.DECIDER
 TYPO_BATCH = 12  # motifs read in one call for typos
 LINK_NEIGHBORS = 5  # each motif's closest motifs considered for a link
 LINK_FLOOR = 0.7  # ...at least this alike (mxbai, over name, note and claims)

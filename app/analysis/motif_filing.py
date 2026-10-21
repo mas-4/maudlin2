@@ -14,6 +14,7 @@ from app.analysis import llm, trace
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 from app.analysis import motif_index as mi
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -22,7 +23,7 @@ logger = get_logger(__name__)
 # the filing uses, so it no longer trades places on the card with Qwen3 30B for this one question. On the person's 33
 # merges and 44 "not the same" verdicts it found 20 of the merges against the 30B's 18, joined 4 not-same pairs as the
 # 30B did, and took 12.9 s a call against 17.6 (M1 in docs/filing-experiments.md)
-MODEL = 'gemma4:26b'
+MODEL = local_models.BIG
 CANDIDATES = 5
 # Entries less alike than this aren't offered. Oct 5, with the 8B judging: good merges' phrases were 0.77-0.86 alike,
 # most bad ones 0.71-0.75 (0.6 let vague early entries snowball). Oct 6, the 30B judging against a person's 31 merges
@@ -38,7 +39,7 @@ SHOWN = 8  # existing motifs shown when filing a claim, the closest to it (the u
 # Filing judges the closest motifs side by side (Oct 6, after a bake-off on 60 of the user's settled claims: the old
 # pick-or-name call to the 30B chose their motif for 37%; side by side, Gemma 4 26B for 57% with 54% of its picks
 # theirs, at 2.4 s a claim; methods log and docs/models.md)
-JUDGE_MODEL = 'gemma4:26b'
+JUDGE_MODEL = local_models.BIG
 SHOWN_FLOOR = 0.45  # ...if at least this alike
 
 # How a new motif is named (docs/motif-praxis.md, "Naming a proposed motif", Oct 10): the person renamed or rejected

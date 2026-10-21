@@ -12,6 +12,7 @@ import pytz
 from app.analysis.clustering import headline_vectors
 from app.models import Session, Headline, Article, Agency
 from app.utils import get_logger
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -20,7 +21,7 @@ WINDOW_DAYS = 7
 WIRE_WORDS = 0.7  # share of words in common (Jaccard), so a rewrite of the wire story doesn't count
 # And cosine for "nearly the same headline", per model. Oct 5: of 339 pairs with 0.7 of their words in common (a week),
 # all copies, potion-base-8M at 0.9 kept 258 and mxbai at 0.85 all 339 (methods log)
-WIRE_MATCH = {'mxbai-embed-large': 0.85, 'potion-base-8M': 0.9}
+WIRE_MATCH = {local_models.MXBAI: 0.85, 'potion-base-8M': 0.9}
 MIN_HEADLINES = 10
 WORD = re.compile(r"[\w$%'’]+")
 

@@ -15,6 +15,7 @@ import numpy as np
 from app.analysis import llm
 from app.utils import get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -22,7 +23,7 @@ WINDOW = 14  # days a thread waits to be told again
 CANDIDATE = 0.7  # a thread at least this alike (mxbai) is put to the model
 CANDIDATES = 3
 MIN_HOURS = 6  # reports covering less (early trials) aren't a day
-MODEL = 'gemma4:26b'  # Oct 6 test: 18 of 21 retold found, 1 of 9 wrongly joined, the same both runs (30B: 15-17, 1)
+MODEL = local_models.BIG  # Oct 6 test: 18 of 21 retold found, 1 of 9 wrongly joined, the same both runs (30B: 15-17, 1)
 PROMPT = """Two claims that many people retold in their own words online, on different days:
 
 Earlier: {a}

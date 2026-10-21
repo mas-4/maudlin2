@@ -32,6 +32,7 @@ from app.site.graphing import bias_colors, bias_ink
 from app.utils import Config, Country, get_logger
 from app.registry import Scrapers
 from app.trends import current_trends, match_text
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -59,7 +60,7 @@ AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political
 # An aggregator's headline this close to one of a story's headlines links to that story, per model. Oct 5, on 200
 # aggregator headlines judged by the 30B: potion-base-8M at 0.7 made 46 right links of 60, mxbai at 0.8 60 of 75
 STORY_EXTRAS = os.path.join(Config.data, 'story_extras.json')  # saved story id -> what was found around it, for its page
-CURATOR_MATCH = {'mxbai-embed-large': 0.8, 'potion-base-8M': 0.7}
+CURATOR_MATCH = {local_models.MXBAI: 0.8, 'potion-base-8M': 0.7}
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
 BREAK_WINDOW_MINUTES = 75  # "within the hour" across two hourly scrapes, with slack for scrape timing

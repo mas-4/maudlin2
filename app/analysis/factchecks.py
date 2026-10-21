@@ -15,6 +15,7 @@ from app.analysis import trace
 from app.analysis.ties import tie
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -89,7 +90,7 @@ LABEL_DAYS = 30
 MAX_LABELS = 40  # model calls a run, at most
 # Gemma 4 26B since Oct 10 (Qwen3 8B before): on the person's corrected fact-check claims it wrote closer to their
 # wording (W1: 0.791 against 0.746 alike), with fewer verdicts slipped in
-LABEL_MODEL = 'gemma4:26b'
+LABEL_MODEL = local_models.BIG
 LABEL_PROMPT = """{source}, a fact-checker, published this:
 {title}
 {summary}

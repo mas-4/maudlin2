@@ -8,6 +8,7 @@ from datetime import datetime as dt
 from app.analysis import llm
 from app.utils import get_logger
 from app.analysis import motif_index as mi
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -32,7 +33,7 @@ GLOSS_CLAIMS = 8  # claims shown when drafting a note
 # Oct 6, drafts for the 49 motifs whose notes a person wrote, compared with theirs: gemma4:26b drafted all 49, closest
 # to the person's (0.73 by meaning), describing the kind of story; qwen3:30b-a3b gave up on 10 (judged or named
 # people three times) and restated single claims (0.71)
-GLOSS_MODEL = 'gemma4:26b'
+GLOSS_MODEL = local_models.BIG
 GLOSS_MIN = 3  # claims a motif needs before the model drafts its note: with one or two it restated them (Oct 5)
 
 

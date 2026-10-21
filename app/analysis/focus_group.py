@@ -14,13 +14,14 @@ import time
 from app.analysis import llm
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
 STORE = os.path.join(Config.data, 'focus_group_claims.json')  # episode url -> its claims, filled chunk by chunk
 # Gemma 4 26B since Oct 6: on 12 transcript parts its claims were the voters' own, each with its side; Qwen3 30B-A3B
 # took a host's analysis for a voter's, and Qwen3.5 35B found more but left every side blank (docs/models.md)
-MODEL = 'gemma4:26b'
+MODEL = local_models.BIG
 CHUNK = 6000  # characters of transcript a call
 SOURCE = 'Focus Group'
 FOUND = 0.6  # a quote counts as the voter's words if this share of its four-word runs is in the transcript part
@@ -146,7 +147,7 @@ def checked(claims: list[dict], text: str) -> tuple[list[dict], list[dict]]:
     return kept, dropped
 
 
-SUPPORT_MODEL = 'gemma4:26b'
+SUPPORT_MODEL = local_models.BIG
 SUPPORT_PROMPT = """{who} said:
 "{quote}"
 

@@ -39,6 +39,7 @@ import numpy as np
 from app.analysis import motif_index as mi
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -48,15 +49,15 @@ RERANKS = os.path.join(FOLDER, 'rerank_cache.json')  # pair hash -> the reranker
 JUDGED = os.path.join(FOLDER, 'pair_judge_cache.json')
 ELEMENTS = os.path.join(FOLDER, 'motif_elements.json')  # motif id -> {'element': its must-have, 'from': what it was drafted from}
 LAYERED = os.path.join(FOLDER, 'claim_layers.json')  # claim key -> {layer: its generic sentence or 'none'}  # pair hash -> the filing model's P(yes)
-NOMIC = 'nomic-embed-text'
-RERANKER = 'Qwen/Qwen3-Reranker-0.6B'
-JUDGE_MODEL = 'gemma4:26b'
+NOMIC = local_models.NOMIC
+RERANKER = local_models.RERANKER
+JUDGE_MODEL = local_models.BIG
 # The yes or no on a (claim, motif) pair, for the confidence model: Bespoke Labs' Nimble 9B, a decision model (one pass,
 # a probability, no text; Ollama's /v1/systemone), since Oct 9: on the person's 817 decided filings it judged as well
 # as Gemma 26B (AUC 0.824 alone, 0.895 in the confidence model, against 0.818 and 0.894) at 0.22 s a pair (J1 in
 # docs/filing-experiments.md; its 8-bit build is 9.5 GB, a little of it on the CPU: the 4-bit one that fits whole judged
 # worse, 0.797 against 0.818). None: Gemma 26B's yes or no (JUDGE_PROMPT) as before
-JUDGE_DECIDER = 'nimble:9b'
+JUDGE_DECIDER = local_models.DECIDER
 ASK_CHUNK = 50  # claims asked about between saves in prepare(): a run stopped midway keeps what it asked
 JUDGE_QUESTION = ('Is the new claim an instance of this motif: the same shape of story, as its tellers tell it, as the '
                   'claims filed under it, not just the same topic, person or word?')
@@ -93,9 +94,9 @@ WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
 # top 12 from 82.3% to 85.2%): each the claim against each motif's name and note, and against its nearest claim. Its
 # query and document prefixes, as its model card says
 EMBEDDERS = {
-    'qwen3 8b': ('qwen3-embedding:8b', 'Instruct: Given a claim people tell about politics or public life, find the '
+    'qwen3 8b': (local_models.QWEN3_EMBED, 'Instruct: Given a claim people tell about politics or public life, find the '
                  'recurring story motif it is an instance of\nQuery: ', ''),
-    'arctic2': ('snowflake-arctic-embed2', 'query: ', ''),
+    'arctic2': (local_models.ARCTIC, 'query: ', ''),
 }
 CHEAP = ['keywords', 'note', 'shape', 'votes', 'nomic desc', 'nomic near', 'group', 'news out note', 'news out near',
          'layers best', 'layer of its genre'] + [f'{k} {x}' for k in EMBEDDERS for x in ('note', 'near')]

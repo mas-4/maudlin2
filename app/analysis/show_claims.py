@@ -17,12 +17,13 @@ from datetime import timedelta as td
 from app.analysis import focus_group, llm, trace
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
 STORE = os.path.join(Config.data, 'show_claims.json')  # episode url -> its claims, filled chunk by chunk
 RETOLD = os.path.join(Config.data, 'show_claims_retold.json')  # retold(), kept each run for the folklore page
-MODEL = 'gemma4:26b'
+MODEL = local_models.BIG
 CHUNK = 6000  # characters of transcript a call
 DAYS = 7  # episodes published this recently
 SKIP = {'focusgroup', 'nprnewsnow', 'abcupdate', 'bloombergnow'}  # read elsewhere (focus_group.py, running_order.py), or

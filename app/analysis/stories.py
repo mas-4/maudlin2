@@ -16,6 +16,7 @@ from app.analysis import llm
 from app.models import Session, SqlLock, Saga, Story, StoryHeadline, StorySnapshot, Headline, Article, Agency
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -67,7 +68,7 @@ RETURN_WINDOW = td(hours=48)
 RETURN_GAP = td(minutes=90)  # a story last seen longer ago than this has left the front pages
 RETURN_WORDS = 2
 RETURN_CANDIDATES = 2  # the most alike stories put to the model, the closest first
-RETURN_MODEL = 'gemma4:26b'
+RETURN_MODEL = local_models.BIG
 RETURNS = os.path.join(Config.data, 'story_returns.json')  # the model's verdicts, by the headlines shown
 MERGES = os.path.join(Config.data, 'story_merges.json')  # a story found to be another's return: {gone id: kept id}
 LABELED_AT = os.path.join(Config.data, 'story_labeled_at.json')  # story id -> when its label was written (ISO)

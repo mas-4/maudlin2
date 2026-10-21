@@ -10,10 +10,11 @@ import numpy as np
 from app.analysis import llm
 from app.utils import get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-EMBEDDINGS = 'mxbai-embed-large'  # the floors are calibrated on this model's scale
+EMBEDDINGS = local_models.MXBAI  # the floors are calibrated on this model's scale
 
 
 def tie(items: list[dict], targets: dict, prompt: str, cache_path: str, floor: float, name: str,

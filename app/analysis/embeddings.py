@@ -25,10 +25,11 @@ import time
 import numpy as np
 
 from app.utils import get_logger
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-STORY_MODEL = 'mxbai-embed-large'
+STORY_MODEL = local_models.MXBAI
 STORY_CACHE_DAYS = 7  # cached vectors unused this long are dropped
 TEXT_CACHE_DAYS = 4  # narratives and the motif index
 TEXT_FALLBACK = 'minishlab/potion-base-32M'

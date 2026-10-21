@@ -16,6 +16,7 @@ import requests as rq
 
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -291,7 +292,7 @@ def headlines_of(day: str) -> list[dict]:
 
 
 MATCHES = os.path.join(FOLDER, 'matches.json')  # channel|hour|caption -> story id (0: none), as the model answered
-MATCH_MODEL = 'gemma4:26b'
+MATCH_MODEL = local_models.BIG
 MATCH_FRONT = 80  # the front pages' stories offered to the model (an hour has about 65; at 40 a stabbing story ranked 47th was missed)
 MATCH_BATCH = 40  # captions a call
 MATCH_PROMPT = """Captions (chyrons) {channel} showed at the bottom of the screen during one hour, numbered:

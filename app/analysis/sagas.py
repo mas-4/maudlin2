@@ -26,6 +26,7 @@ from app.analysis.clustering import embed
 from app.models import Session, SqlLock, Saga, Story, StoryHeadline, Headline, Article, Agency
 from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
+from app.analysis import local_models
 
 logger = get_logger(__name__)
 
@@ -57,7 +58,7 @@ _names: dict[frozenset, str] = {}
 # Iranian nationals both passed the word rule on Oct 4). Verdicts are cached by the headlines shown.
 JUDGMENTS = os.path.join(Config.data, 'saga_judgments.json')
 JUDGE_SAMPLE = 4  # headlines shown from each side
-JUDGE_MODEL = 'gemma4:26b'  # Oct 6 test against 46 labeled pairs: no wrong joins, 2 s a pair (the 30B 33 s); see docs/models.md
+JUDGE_MODEL = local_models.BIG  # Oct 6 test against 46 labeled pairs: no wrong joins, 2 s a pair (the 30B 33 s); see docs/models.md
 JUDGE_VERSION = 4  # verdicts cached under an older judge are asked again (hand verdicts are kept); 3: gemma4:26b;
 # 4: different angles, consequences and reactions count as one story (Oct 6: version 3 refused a resignation over a
 # failed execution, and two speakers at one rally, as 'a different focus')

@@ -14,6 +14,7 @@ import time
 from datetime import datetime as dt
 
 from app.utils import Config
+from app.analysis import local_models
 
 WIDTH = 64
 LOOKS = {  # app/lights.py's looks, in words
@@ -164,7 +165,7 @@ def hourly_words() -> str:
     return f"{'ok' if m.group(3) == 'ok' else 'failed'} at {m.group(1)} · {nxt}"
 
 
-NEEDED = ('gemma4:26b', 'nimble:9b', 'qwen3:8b')  # what the hourly run and the worker ask Ollama for
+NEEDED = (local_models.BIG, local_models.DECIDER, 'qwen3:8b')  # what the hourly run and the worker ask Ollama for
 
 
 def ollama_words() -> str:

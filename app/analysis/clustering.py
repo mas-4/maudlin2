@@ -4,6 +4,7 @@ from collections import deque
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from app.analysis import local_models
 
 
 # Function to form clusters
@@ -106,7 +107,7 @@ def prepare_embedding_cosine(texts):
 # coverage (methods log). Each model has its own similarity scale, so each has its own threshold; if Ollama can't
 # embed, stories fall back to the static model at its threshold. Vectors are cached by headline text, so a run only
 # embeds the headlines it hasn't seen (a few hundred an hour instead of the day's thousands).
-STORY_MODEL = 'mxbai-embed-large'
+STORY_MODEL = local_models.MXBAI
 STORY_THRESHOLDS = {STORY_MODEL: 0.80, 'potion-base-8M': 0.70}  # the vectors and their cache: embeddings.py
 
 
@@ -157,7 +158,7 @@ SEAM_DEPTH = 3
 # score alone cut 9, three of them one event, at the same scores as the right ones; Atropos's 18 of 18 were cuts the
 # judge had confirmed). The sides shown are each side's SEAM_SHOWN most central headlines; answers cached in SEAM_CACHE.
 SEAM_SHOWN = 6
-SEAM_MODEL = 'gemma4:26b'
+SEAM_MODEL = local_models.BIG
 SEAM_ASK = ["""Two groups of news headlines, from one story on a news site:
 
 Group A:
