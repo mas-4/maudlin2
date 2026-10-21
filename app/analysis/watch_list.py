@@ -188,22 +188,30 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
     for w, why in todo:
         if budget is not None and time.time() - started > budget:
             break  # the rest wait for the next pass
+        # The models asked on an unlocked read, the change made under the lock on the index as it is then (Oct 21: held
+        # through the models, the checker waited on every claim)
+        index = mi.load()
+        k, plain = w['key'], mi.watched(index)
+        was = state(index, k, plain)
+        if was is None:  # filed meanwhile
+            w['plain'] = False
+            continue
+        shown = lister(index, w['claim'])
+        trace.shortlisted(w, shown, lister, refile=why, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
+        named = mi.name_claim(w['claim'], shown)
+        if not named:
+            continue
+        at = dt.now().isoformat(timespec='seconds')
+        picked = [e['id'] for e in named['existing']]
+        filed = []
         with mi.locked():
             index = mi.load()
-            k, plain = w['key'], mi.watched(index)
-            was = state(index, k, plain)
-            if was is None:  # filed meanwhile
+            plain = mi.watched(index)
+            if state(index, k, plain) is None:  # filed meanwhile
                 w['plain'] = False
                 continue
-            shown = lister(index, w['claim'])
-            trace.shortlisted(w, shown, lister, refile=why, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
-            named = mi.name_claim(w['claim'], shown)
-            if not named:
-                continue
-            at = dt.now().isoformat(timespec='seconds')
-            picked = [e['id'] for e in named['existing']]
-            filed = []
             for eid in picked:
+                eid = mi.resolve(index, eid)  # merged meanwhile: where it went
                 entry = index['entries'].get(eid)
                 if eid in plain or entry is None or entry.get('merged_into') or k in entry.get('not_claims', []) \
                         or any(mi.key(c['claim']) == k for c in entry['claims']):
@@ -211,7 +219,7 @@ def refile(budget: float | None = BUDGET, limit: int = MAX) -> dict:
                 rec = mi.record(w, at[:10])
                 rec['refiled'] = {'at': at[:10], 'was': was}
                 entry['claims'].append(rec)
-                entry['last_seen'] = max(entry.get('last_seen', ''), rec['date'])
+                entry['last_seen'] = max(entry.get('last_seen') or '', rec['date'])
                 filed.append(eid)
             if filed:
                 index['claims'][k] = list(dict.fromkeys(mi._ids(index, k) + filed))

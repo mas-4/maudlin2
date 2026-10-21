@@ -761,3 +761,33 @@ def test_a_split_inside_a_batch_does_not_wait_on_the_batchs_own_lock(monkeypatch
     assert index['tellings'][mi.key('a')]['children'] == ['a one', 'a two'] and index['claims'][mi.key('a')] == []
     with mi.locked():  # and the lock is free again afterwards
         pass
+
+
+def test_filing_asks_the_models_without_holding_the_index(monkeypatch, tmp_path):
+    """Oct 21: the lock was held through the shortlist, the naming and the matching of every claim, so each click in
+    the checker waited while a run filed. Now the models are asked on an unlocked read, and a motif merged meanwhile
+    gets the filing where it went"""
+    import fcntl
+    fresh(monkeypatch, tmp_path)
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    mi.save({'next': 3, 'claims': {}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'Rigged count', 'claims': [{'claim': 'old', 'source': 's'}]},
+        'M002': {'id': 'M002', 'name': 'Stolen votes', 'claims': [{'claim': 'older', 'source': 's'}]}}})
+    free = []
+
+    def name_claim(claim, shown):
+        with open(mi.INDEX + '.lock', 'w') as f:  # what the checker would do now: take the lock, not wait for it
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                free.append(True)
+                fcntl.flock(f, fcntl.LOCK_UN)
+            except BlockingIOError:
+                free.append(False)
+        mi.merge('M001', 'M002')  # a person merges the picked motif while the model answers
+        return {'existing': [{'id': 'M001'}], 'new': [], 'reason': ''}
+    monkeypatch.setattr('app.analysis.motif_filing.closest', lambda index, claim: [])
+    monkeypatch.setattr('app.analysis.motif_filing.name_claim', name_claim)
+    index = mi.file_claims([{'claim': 'The count was rigged', 'source': 'narrative', 'date': '2026-10-21'}])
+    assert free == [True]
+    assert [e['id'] for e in mi.entries_of(index, 'The count was rigged')] == ['M002']
+    assert 'The count was rigged' in [c['claim'] for c in index['entries']['M002']['claims']]

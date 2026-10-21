@@ -72,7 +72,14 @@ def locked():
     """One writer at a time: the hourly filing and the organizer and motif check pages each read, change and save the
     whole index, so without this an edit made while a run was filing was lost when the run saved. Inside this thread's
     batch the batch holds it already: taking it again (a split in a batch, claim_organizer.apply_split) waited on itself
-    forever, and every write to the checker after it hung (Oct 19)"""
+    forever, and every write to the checker after it hung (Oct 19).
+
+    Hold it only to apply a change: ask the models first, on an unlocked read, then take the lock, read again and
+    apply what still holds (motif_filing.file_claims, watch_list.refile, motif_notes). Until Oct 21 the filing held it
+    through each claim's model calls and the checker waited on every click while a run filed. Fable's review proposed
+    making the checker the only writer, with the runs posting their changes to it; that was not done, because
+    experiments run the same filing code against their own copy of the data (MAUDLIN_DATA) and would have posted into
+    production's checker."""
     if getattr(_batch, 'on', False):
         return contextlib.nullcontext()
     return store.locked(INDEX)

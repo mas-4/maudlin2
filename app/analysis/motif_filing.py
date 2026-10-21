@@ -277,25 +277,38 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
             break  # the next run picks up where this one stopped
         if n and n % 25 == 0:  # progress a watcher can read (the experiments' queue: a step that shows none is stuck)
             logger.info("Motif filing: %d/%d claims", n, len(todo))
-        # One claim at a time on a fresh read of the index, saved as it goes: a run cut short keeps what it filed,
-        # and an edit made on the organizer pages meanwhile isn't lost
+        # One claim at a time on a fresh read of the index, saved as it goes: a run cut short keeps what it filed, and
+        # an edit made in the checker meanwhile isn't lost. The models (the shortlist, the naming, matching a new name)
+        # are asked on an unlocked read; only the change takes the lock, on the index as it is then (Oct 21: held
+        # through the models' seconds for each claim, every click in the checker waited while a run filed)
+        index = mi.load()
+        if mi.key(c['claim']) in index['claims']:
+            continue
+        shown = lister(index, c['claim'])
+        trace.shortlisted(c, shown, lister, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
+        named = name_claim(c['claim'], shown)
+        if not named:
+            continue
+        coined = [(phrase, same_name(index, phrase) or match(index, phrase, c['claim']))
+                  for phrase in named['new'][:max(0, 3 - len(named['existing']))]]
         with mi.locked():
             index = mi.load()
-            if mi.key(c['claim']) in index['claims']:
-                continue
-            shown = lister(index, c['claim'])
-            trace.shortlisted(c, shown, lister, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
-            named = name_claim(c['claim'], shown)
-            if not named:
+            if mi.key(c['claim']) in index['claims']:  # filed meanwhile (a person, or another run)
                 continue
             log_shortlist(index, c, shown, named)
-            filed = [e['id'] for e in named['existing']]
+            filed = []
             for e in named['existing']:
-                entry = index['entries'][e['id']]
+                eid = mi.resolve(index, e['id'])  # merged meanwhile: where it went
+                entry = index['entries'].get(eid)
+                if entry is None or eid in filed:  # deleted meanwhile
+                    continue
                 entry['claims'].append(record(c, today))
-                entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
-            for phrase in named['new'][:max(0, 3 - len(filed))]:
-                eid = same_name(index, phrase) or match(index, phrase, c['claim'])
+                entry['last_seen'] = max(entry.get('last_seen') or '', c.get('date') or today)
+                filed.append(eid)
+            for phrase, eid in coined:
+                eid = same_name(index, phrase) or (mi.resolve(index, eid) if eid else None)  # one named so meanwhile
+                if eid is not None and eid not in index['entries']:
+                    eid = None
                 if eid in filed:
                     continue
                 if eid is None:
@@ -306,7 +319,7 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
                 entry = index['entries'][eid]
                 entry['claims'].append(record(c, today))
                 entry['phrases'] = (entry.get('phrases', []) + [phrase])[-20:]
-                entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
+                entry['last_seen'] = max(entry.get('last_seen') or '', c.get('date') or today)
                 filed.append(eid)
             index['claims'][mi.key(c['claim'])] = filed
             new_ids = [eid for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1]
