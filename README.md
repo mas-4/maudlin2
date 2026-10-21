@@ -1,10 +1,24 @@
 # maudlin
 
-Maudlin is a news aggregator, sentiment analyzer, and topic tracker (so far!). It scrapes the front page of most news sites and analyzes the headlines for insights about events and the election and the way the news is talking about them.
+The code behind [bignews.day](https://bignews.day): an hourly reading of the news and of what people retell about it.
 
-The current app is available at https://maudlin.news.
+- **The news:** the front pages of about 140 outlets every hour (mostly their RSS feeds), grouped into stories and
+  sagas, with an LLM's reading of each headline's mood and framing, outlet pages and the archive of past days.
+- **The folklore:** claims people tell and argue over, from Bluesky posts, fact-checkers, talk radio and podcasts
+  (transcribed locally) and a focus-group podcast, filed in a motif index: the recurring stories and arguments, in
+  genres and groups, built bottom-up by a folklorist's reading with machine help.
+- **Local models:** everything runs on one machine (an RTX 3080) with open models through Ollama: Gemma 4 26B for
+  claims and filing, Nimble 9B as the filing's judge, Whisper for transcription, mxbai for likeness.
+- **Where things are:** `app/` the pipeline and site builder; `scripts/validate.py` and `scripts/checker/` the motif
+  workbench (the person's curation tool, on port 8766); `scripts/experiments/` the experiments, each with a paper;
+  `deploy/systemd/` the services and timers; `docs/methods-log.md` every change to how things are collected or
+  measured, dated.
 
-## Basic Premise
+## 2024: the first rebuild
+
+The current app was available at https://maudlin.news.
+
+### Basic Premise
 
 The idea I'm working with is a successor to the first Maudlin (now defunct) that can be found here: https://github.com/mas-4/maudlin. Its problems were manifold, chief among them that it was a web app! It generated pages on access instead of just generating a static site, which this new version does. It also used Flask and Scrapy and this new one is 90% rolled by me. (tech stack below)
 
@@ -12,7 +26,7 @@ The biggest change from the earlier version besides the flask system is now we d
 
 I am using www.mediabiasfactcheck.com to get a partisan score and a factuality score which will allow me to do some more interesting metrics. And I'm trying my best to remove useless words.
 
-## Tech Stack
+### Tech Stack
 
 I'm using requests, selenium with headless Firefox, and BeautifulSoup to do all my scraping. I built my own spider framework basically and I think its shockingly clean! It runs all the spiders at once in a multithreaded environment. The scrape and build is kicked off every half hour last time I updated this README.
 
@@ -61,7 +75,9 @@ Oh! And the site is hosted on netlify. It's just a bunch of flat files I upload 
 
 ## Testing
 
-Not really sure how to do testing. I guess the site builder could be tested but meh. I'm a pretty TDD guy but kinda hard to test scrapers. I had a test suite and have abandoned it. Sites change, scrapers have to be updated. I'd rather add in some features to get a good sense of what's going wrong. I have a daily report system that gets emailed to me every morning and I keep extensive logs and daily backups. Over the weekend (end of March) my entire machine went down so I missed a day of articles. But that's what happens when you run this thing out of your garage.
+Now: about 1,200 tests (`pytest`), run before every commit by the pre-commit hook, with ruff.
+
+In 2024: Not really sure how to do testing. I guess the site builder could be tested but meh. I'm a pretty TDD guy but kinda hard to test scrapers. I had a test suite and have abandoned it. Sites change, scrapers have to be updated. I'd rather add in some features to get a good sense of what's going wrong. I have a daily report system that gets emailed to me every morning and I keep extensive logs and daily backups. Over the weekend (end of March) my entire machine went down so I missed a day of articles. But that's what happens when you run this thing out of your garage.
 
 ## License
 
