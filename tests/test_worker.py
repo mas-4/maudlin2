@@ -315,3 +315,31 @@ def test_the_gate_lets_requests_finish_before_a_pause_and_holds_new_ones(tmp_pat
     assert len(got) == 2
     gate.close()
     up.shutdown()
+
+
+def test_the_schedule_runs_each_step_in_its_hours_and_skips_the_long_ones_after_the_report(monkeypatch):
+    """Oct 21: the schedule as a table (processing.STEPS) in place of hour tests spread through one function"""
+    from datetime import datetime
+    from app import processing
+
+    class At(datetime):
+        hour_now = 4
+
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 21, cls.hour_now, 30)
+    monkeypatch.setattr(processing, 'dt', At)
+    ran = []
+
+    def step(name, **kw):
+        return processing.Step(name, lambda budget: ran.append((name, round(budget))), **kw)
+    steps = [step('first', want=100), step('report', want=None, hours=(4, 24), due=lambda: True, report=True),
+             step('long', want=100, in_report_cycle=False), step('night', want=50, hours=(1, 2)),
+             step('broken', want=10), step('last', want=1000, keep=0)]
+    steps[4].run = lambda budget: 1 / 0  # a step that fails: logged, and the next one runs
+    processing.process(limit=3600, steps=steps)
+    assert [n for n, _ in ran] == ['first', 'report', 'last']
+    ran.clear()
+    At.hour_now = 1
+    processing.process(limit=650, steps=steps)  # 600 kept back for filing: 50 left, so a step wanting more gets less
+    assert ran == [('first', 50), ('long', 50), ('night', 50), ('last', 650)]  # no report this hour: the long one runs
