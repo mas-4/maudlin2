@@ -19,7 +19,14 @@ The paper is ~/maudlin-data/papers/munchausen.md (hypotheses and the decision ru
     f24_munchausen.py freeze    the Oct 18 sure claims (clean, and needing the person) kept as they stand
     f24_munchausen.py ask       under the GPU lease: Gemma's labels and Nimble's answer for every claim in a motif;
                                 resumes from what it saved
-    f24_munchausen.py report    the arms held out, the Oct 18 claims scored again, and the decision rule"""
+    f24_munchausen.py report    the arms held out, the Oct 18 claims scored again, and the decision rule
+
+The report gate, blind (Oct 21; the paper's follow-up): keep claims Nimble calls a plain report (over GATE) out of ✅
+sure, tested on the sure claims of the days after Oct 18:
+
+    f24_munchausen.py gate freeze   the later days' sure claims (clean, and needing the person) kept as they stand
+    f24_munchausen.py gate ask      under the GPU lease: Nimble's answer for those it hasn't answered
+    f24_munchausen.py gate report   the gate on every answered claim, with the answers given before the day apart"""
 import json
 import os
 import sqlite3
@@ -293,5 +300,78 @@ def report():
                                      else 'no arm passes the rule; production stays as it is'))
 
 
+GATE = 0.5  # fixed in the paper's discussion, Oct 19, 09:52
+GATE_DAYS = ('2026-10-19', '2026-10-20')  # the days after the Oct 18 set, whole when the test was written
+ASKED_AT = '2026-10-18T17:23'  # Nimble's first answers: given before any decision on these days
+
+
+def gate_freeze():
+    import validate
+    con = connect()
+    tally = validate.sure_tally_claims(days=14)
+    for day in GATE_DAYS:
+        for kind in ('clean', 'needed'):
+            for k, v in tally.get(day, {}).get(kind, {}).items():
+                con.execute('insert or ignore into frozen values (?, ?, ?, ?, ?)',
+                            (day, kind, k, v['claim'], json.dumps(sorted(v['ids']))))
+    con.commit()
+    print({day: {kind: con.execute('select count(*) from frozen where day = ? and kind = ?', (day, kind)).fetchone()[0]
+                 for kind in ('clean', 'needed')} for day in GATE_DAYS})
+
+
+def _gate_claims(con) -> list[tuple[str, str, str, str]]:
+    """(day, kind, key, claim) for the gate's days"""
+    marks = ','.join('?' * len(GATE_DAYS))
+    return con.execute(f'select day, kind, key, claim from frozen where day in ({marks})', GATE_DAYS).fetchall()
+
+
+def _nimble(c: str) -> float:
+    r = rq.post(f'{llm.OLLAMA_URL}/v1/systemone', timeout=300, json={
+        'model': NIMBLE, 'state': f'Claim: {c}', 'questions': {'report': {'type': 'noul', 'instructions': REPORT_Q}}})
+    r.raise_for_status()
+    a = r.json()['answers']['report']
+    return float(a.get('noul', a.get('probability')) if isinstance(a, dict) else a)
+
+
+def gate_ask():
+    con = connect()
+    con.execute('create table if not exists nimble_late (key text primary key, claim text, p real, at text)')
+    have = {k for (k,) in con.execute('select key from nimble')} | {k for (k,) in con.execute('select key from nimble_late')}
+    todo = [(k, c) for _d, _kind, k, c in _gate_claims(con) if k not in have]
+    print(f'Nimble: {len(todo)} of the gate days\' claims to ask', flush=True)
+    from datetime import datetime
+    for n in range(0, len(todo), CHUNK):
+        part = todo[n:n + CHUNK]
+        for (k, c), p in zip(part, llm.parallel(lambda kc: _nimble(kc[1]), part)):
+            if p is not None:
+                con.execute('insert or replace into nimble_late values (?, ?, ?, ?)',
+                            (k, c, p, datetime.now().isoformat(timespec='seconds')))
+        con.commit()
+
+
+def gate_report():
+    con = connect()
+    con.execute('create table if not exists nimble_late (key text primary key, claim text, p real, at text)')
+    early = dict(con.execute('select key, p from nimble'))
+    late = dict(con.execute('select key, p from nimble_late'))
+    rows = _gate_claims(con)
+    for label, answers in (('answered before the day', early), ('all answered', {**late, **early})):
+        got = {kind: [answers[k] for _d, kd, k, _c in rows if kd == kind and k in answers] for kind in ('clean', 'needed')}
+        need, clean = got['needed'], got['clean']
+        out = sum(p > GATE for p in need)
+        kept = sum(p <= GATE for p in clean)
+        total = {kind: sum(1 for r in rows if r[1] == kind) for kind in ('clean', 'needed')}
+        harness.note(f"F24 gate ({label}): {out} of {len(need)} needing the person out of sure "
+                     f"({out / max(1, len(need)):.0%}), {kept} of {len(clean)} clean kept in ({kept / max(1, len(clean)):.0%}); "
+                     f"answered {len(need)} of {total['needed']} needed, {len(clean)} of {total['clean']} clean")
+    for _d, kind, k, c in sorted(rows, key=lambda r: -({**late, **early}.get(r[2]) or 0)):
+        p = {**late, **early}.get(k)
+        if kind == 'needed' and p is not None:
+            print(f'  needed  {p:.2f}  {c[:120]}')
+
+
 if __name__ == '__main__':
-    {'freeze': freeze, 'ask': ask, 'report': report}[sys.argv[1]]()
+    if sys.argv[1] == 'gate':
+        {'freeze': gate_freeze, 'ask': gate_ask, 'report': gate_report}[sys.argv[2]]()
+    else:
+        {'freeze': freeze, 'ask': ask, 'report': report}[sys.argv[1]]()
