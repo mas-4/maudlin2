@@ -80,8 +80,9 @@ def _get_file_handler() -> RotatingFileHandler:
     -------
     RotatingFileHandler
     """
-    # we keep it infinite because otherwise in some pipelines it errors
-    file_handler = RotatingFileHandler(Config.log_file)
+    # 25 MB, three old ones kept (Oct 20, Fable's architecture review: kept infinite, it had reached 93 MB in eighteen
+    # days; nothing reads it but a person debugging, and every process also logs to the journal)
+    file_handler = RotatingFileHandler(Config.log_file, maxBytes=25_000_000, backupCount=3)
     file_handler.setFormatter(StreamFormatter(False))
     return file_handler
 

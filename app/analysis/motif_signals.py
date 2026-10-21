@@ -25,7 +25,7 @@ that one way of seeing missed, nothing else caught it. Each signal here reads a 
 
 The cheap ones are worked out against every motif (to find candidates); rerank and judge only for a shortlist. With
 leave_out the claim is taken out of its own motifs first, so a claim already filed is tested as if it were new.
-motif_combiner.py weighs them."""
+The confidence model (filing_confidence.py) weighs them."""
 import hashlib
 import json
 import math
