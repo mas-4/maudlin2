@@ -5,7 +5,7 @@
 // Sources carry data-drag (motif, group, claim), targets data-drop (motif, claim, sameclaim, group, facet, newmotif,
 // nomotif, trash), as the old workbench did, so the choices (zones.ts) read the same attributes. A page may add targets
 // of its own (the map's desk and newgroup) with extendZones().
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { itemOf, label, zones, zoneText } from './zones'
 import type { DragItem, Zone } from './types'
 
@@ -191,10 +191,14 @@ export function DragLayer() {
     }
   }, [])
 
-  // the menu beside the pointer, moved left of it near the window's right edge (measured once drawn)
-  useEffect(() => {
+  // the menu beside the pointer, moved left of it near the window's right edge (measured once drawn, at its own width:
+  // squeezed against the edge it measured narrow and landed under the pointer, so letting go hit the menu, not the
+  // target; the map's 📌 desk sits in that corner)
+  useLayoutEffect(() => {
     const el = menuEl.current
     if (!el || !menu) return
+    el.style.left = '0px'
+    el.style.top = '0px'
     const r = el.getBoundingClientRect()
     let x = menu.from.x + 16, y = menu.from.y - 14
     if (x + r.width > innerWidth - 8) x = Math.max(8, menu.from.x - r.width - 16)

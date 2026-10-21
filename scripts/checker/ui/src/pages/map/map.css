@@ -1,0 +1,142 @@
+/* 🕸️ The motif map, in the site's look (docs/style-book.md): ink outlines, hard pop shadows, Comic Neue for talking.
+   Ported from scripts/checker/templates/map.html. Everything is under .mm (every page's CSS is one file) */
+body.mm-page { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+body.mm-page #root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mm { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--paper); }
+
+/* a quieter map (Oct 8, the person: "it's so busy now it's hard to work with"): one slim bar; the chips and the key fold away */
+.mm .mm-bar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding: 6px 12px; background: white; border-bottom: 3px solid var(--ink); font-size: 13px; }
+.mm .mm-search { font: inherit; padding: 3px 12px; border: 2.5px solid var(--ink); border-radius: 999px; min-width: 16em; background: var(--paper); box-shadow: 3px 3px 0 var(--teal); }
+.mm .mm-key { display: inline-flex; align-items: center; gap: 4px; }
+.mm .mm-key svg { vertical-align: middle; }
+.mm .mm-bar select { font: inherit; border: 2px solid var(--ink); border-radius: 999px; padding: 0 6px; background: white; }
+.mm .mm-drops { display: inline-flex; gap: 6px; margin-left: auto; }
+.mm .mm-drop { font: var(--talk); padding: 3px 10px; border: 2.5px dashed var(--ink); border-radius: 12px; background: white; }
+.mm .mm-drop[data-drop="newmotif"] { background: var(--soft-yellow); }
+.mm .mm-drop[data-drop="nomotif"] { background: #eef0f4; }
+.mm .mm-drop[data-drop="trash"] { background: #ffe3e7; }
+body.dragging .mm .mm-drop { border-style: solid; transform: rotate(-1.5deg); box-shadow: 3px 3px 0 var(--ink); }
+.mm .mm-drop.dz-target { outline: 3px solid var(--orange); }
+
+/* groups, genres and clusters: small one-line pills in a wrapping row, like the workbench shelf's */
+.mm .mm-chips { border-bottom: 2px dashed var(--ink); padding-top: 4px; padding-bottom: 4px; background: var(--paper); }
+.mm .mm-chips.folded { display: none; }
+body.dragging .mm .mm-chips.folded { display: flex; } /* open by themselves while dragging, to drop on */
+.mm .mm-chiprow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; }
+.mm .mm-chip { font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; white-space: nowrap; border: 2px solid var(--g); border-radius: 999px; padding: 1px 9px;
+  background: color-mix(in srgb, var(--g) 14%, white); cursor: pointer; user-select: none; }
+.mm .mm-chip i { font-style: normal; font-size: 11px; color: #666; }
+.mm .mm-chip.on { background: var(--g); color: white; box-shadow: 2px 2px 0 var(--ink); }
+.mm .mm-chip.on i { color: white; }
+.mm .mm-chip.off { opacity: .45; border-style: dashed; background: white; }
+body.dragging .mm .mm-chip { border-style: dashed; }
+.mm .mm-chip.dz-target { outline: 3px dashed var(--ink); border-style: solid; }
+.mm .mm-keyrow { border-bottom: 2px dashed var(--ink); }
+
+.mm .mm-main { flex: 1; min-height: 0; display: flex; }
+
+/* the list on the left */
+.mm .mm-list { width: 300px; flex: none; overflow: auto; border-right: 3px solid var(--ink); padding: 8px 10px; font-size: 13px; background: white; }
+.mm .mm-list h3 { margin: .5em 0 .2em; font: var(--talk); font-size: 14px; }
+.mm .mm-list p { margin: 0 0 4px; }
+.mm .mm-lgroup { margin-bottom: 4px; }
+.mm .mm-lgroup > b { font: var(--talk); }
+.mm .mm-row { display: flex; align-items: baseline; gap: 4px; padding: 1px 4px 1px calc(4px + var(--depth, 0) * 16px); border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+.mm .mm-row:hover, .mm .mm-row.on { background: #c8f7c5; }
+.mm .mm-row.dz-target { outline: 3px solid var(--orange); background: #fff1c2; }
+.mm .mm-rname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm .mm-row .faint { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the map */
+.mm .mm-graph { flex: 1; position: relative; min-width: 0; }
+.mm .mm-net { width: 100%; height: 100%; display: block; cursor: grab; }
+.mm .mm-wait { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); font: var(--talk); font-size: 16px; }
+.mm-net .mm-node circle { stroke: var(--ink); stroke-width: 1.5px; cursor: pointer; }
+.mm-net .mm-node.broad circle { stroke-width: 4.5px; }
+.mm-net .mm-node.sub circle { stroke-dasharray: 3 2; stroke-width: 2.2px; }
+.mm-net .mm-node text { font-size: 11px; pointer-events: none; paint-order: stroke; stroke: var(--paper); stroke-width: 3px; fill: var(--ink); }
+.mm-net .mm-node.gdim, .mm-net .mm-node.cdim { opacity: .15; }
+.mm-net .mm-node.hit circle { stroke: var(--pink); stroke-width: 4px; }
+.mm-net .mm-node.msel circle { stroke: var(--pink); stroke-width: 4.5px; stroke-dasharray: none; }
+.mm-net .mm-node.dz-target circle { stroke: var(--teal); stroke-width: 5px; stroke-dasharray: 3 2; }
+.mm-net .mm-node text.lbl-off { display: none; }
+.mm-net .mm-node:hover text.lbl-off, .mm-net .mm-node.hit text.lbl-off, .mm-net .mm-node.near-focus text.lbl-off { display: inline; }
+.mm-net .mm-node.far { opacity: .07; }
+.mm-net .mm-link.far { opacity: .04; }
+.mm-net .mm-link.k-kind { stroke: #0a8f7e; stroke-width: 2px; }
+.mm-net .mm-link.k-related { stroke: var(--pink); stroke-width: 1.8px; stroke-dasharray: 5 4; }
+.mm-net .mm-link.k-shared { stroke: #9aa0a6; opacity: .45; }
+.mm-net .mm-link.k-alike { stroke: #9b7fd4; opacity: .14; }
+.mm-net .mm-link.k-alike.apart, .mm-net .mm-link.k-shared.apart { opacity: .06; }
+.mm-net.related-focus .mm-link.k-related { display: none; }
+.mm-net.related-focus .mm-link.k-related.near { display: inline; }
+.mm-net .mm-blob { opacity: .16; pointer-events: none; }
+.mm-net .mm-blob circle { stroke: none; }
+.mm-net .mm-glabel { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; pointer-events: none; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; }
+.mm-net.claim-mode .mm-blob, .mm-net.claim-mode .mm-glabel { display: none; }
+.mm-net.focusing .mm-blob { opacity: .05; }
+.mm-net.focusing .mm-glabel { opacity: .25; }
+.mm-net.tree-mode .mm-node.tree-off, .mm-net.tree-mode .mm-link.tree-off { display: none; }
+.mm-net.tree-mode .mm-blob, .mm-net.tree-mode .mm-glabel { display: none; }
+.mm-net.tree-mode .mm-node text.lbl-off { display: inline; }
+/* 🫧 group bubbles: a closed group as one bubble, its motifs hidden until it's opened */
+.mm-net .mm-node.in-bubble, .mm-net .mm-link.in-bubble { display: none; }
+.mm-net .mm-bubble { cursor: pointer; }
+.mm-net .mm-bubble circle { stroke-width: 3px; }
+.mm-net .mm-bubble.open circle { fill-opacity: .06; stroke-dasharray: 6 4; }
+.mm-net .mm-bubble text { font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; fill: var(--ink); pointer-events: none; }
+.mm-net .mm-bubble.dz-target circle { stroke-dasharray: 3 2; stroke-width: 5px; }
+.mm-net .mm-node.bubble-dim { opacity: .25; }
+.mm-net .mm-node.bubble-mate text.lbl-off { display: inline; }
+.mm-net .mm-box { fill: rgba(255, 79, 163, .08); stroke: var(--pink); stroke-dasharray: 4 3; pointer-events: none; }
+
+.mm .mm-selbar { position: absolute; left: 50%; transform: translateX(-50%); top: 6px; z-index: 6; background: var(--soft-yellow); border: 2px solid var(--ink);
+  border-radius: 999px; padding: 2px 12px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); white-space: nowrap; }
+
+/* the details box, following the picked motif, and the desk: a circle at the top right to drop motifs on; each stays open
+   as a card in a stack down the right */
+.mm .mm-info { position: absolute; right: 10px; top: 66px; width: 360px; max-height: calc(100% - 76px); overflow: auto; background: white; border: 3px solid var(--ink);
+  border-radius: 14px; box-shadow: 5px 5px 0 var(--teal); padding: 8px 12px; font-size: 13px; z-index: 3; }
+.mm .desk-open .mm-info { right: 382px; }
+.mm .mm-deskdrop { position: absolute; right: 14px; top: 10px; width: 46px; height: 46px; border-radius: 50%; border: 2.5px dashed var(--ink);
+  background: white; display: grid; place-items: center; font-size: 1.3em; z-index: 4; box-shadow: 3px 3px 0 var(--yellow); }
+body.dragging .mm .mm-deskdrop { background: #fff6cc; transform: scale(1.12); }
+.mm .mm-deskdrop.dz-target { outline: 3px solid var(--orange); }
+.mm .mm-deskdrop i { position: absolute; right: -4px; bottom: -4px; font: 700 11px system-ui; font-style: normal; background: var(--ink); color: white; border-radius: 999px; padding: 0 5px; }
+.mm .mm-desk { position: absolute; right: 10px; top: 66px; bottom: 10px; width: 360px; overflow: auto; display: flex; flex-direction: column; gap: 10px; z-index: 2; padding: 2px 6px 6px 2px; }
+.mm .mm-dcard { background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--yellow); padding: 6px 10px; font-size: 12.5px; flex: none; }
+.mm .mm-x { float: right; cursor: pointer; border: 0; background: none; font-size: 1.05em; padding: 0 3px; }
+@media (max-width: 1000px) {
+  .mm .mm-list { width: 200px; }
+  .mm .mm-info, .mm .mm-desk { width: min(360px, 70vw); }
+  .mm .desk-open .mm-info { right: 10px; z-index: 5; }
+}
+@media (max-width: 700px) {
+  .mm .mm-list { display: none; }
+  .mm .mm-search { min-width: 0; flex: 1 1 10em; }
+  .mm .mm-drops { margin-left: 0; }
+}
+
+/* a motif's card */
+.mm .mm-chead { display: flex; align-items: flex-start; gap: 4px; margin: .1em 0; font-size: 1em; padding: 2px 4px; border-radius: 8px; }
+.mm .mm-chead.dz-target { outline: 3px solid var(--orange); background: #fff1c2; }
+.mm .mm-grip { cursor: grab; }
+.mm .mm-cname { font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); border: 1.5px solid transparent; border-radius: 6px; padding: 1px 4px; flex: 1; min-width: 0;
+  background: transparent; resize: none; overflow: hidden; }
+.mm .mm-cname:hover, .mm .mm-cname:focus { border-color: var(--ink); background: white; outline: none; }
+.mm .mm-cfacts { color: #555; font-size: 12px; margin: 2px 0 4px; display: flex; flex-wrap: wrap; gap: 3px 8px; }
+.mm .mm-gtag { border: 1.5px solid var(--g); border-radius: 999px; padding: 0 6px; background: color-mix(in srgb, var(--g) 15%, white); }
+.mm .mm-cnote { display: block; width: 100%; font: italic 13px system-ui, sans-serif; color: #444; border: 1.5px dashed #ccc; border-radius: 6px; padding: 3px 6px; margin: 3px 0;
+  resize: none; overflow: hidden; background: var(--paper); }
+.mm .mm-cnote:focus { border: 1.5px solid var(--ink); outline: none; background: white; }
+.mm .mm-crow { margin: 4px 0; line-height: 1.7; }
+.mm .mm-crow .chip { font-size: 12px; margin-right: 3px; }
+.mm .mm-unlink { border: 0; background: none; cursor: pointer; color: #c0392b; font-size: 11px; padding: 0 0 0 3px; }
+.mm .mm-unlink:hover { background: #ffe3e7; border-radius: 4px; }
+.mm .mm-addlink { border: 1.5px dashed var(--ink); border-radius: 999px; background: white; cursor: pointer; font-size: 11px; padding: 0 6px; }
+.mm .mm-linkname { font: inherit; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 8px; width: 15em; }
+.mm .mm-linkname.bad { border-color: #c0392b; }
+.mm .mm-claims { padding-left: 1.2em; margin: .2em 0 .5em; }
+.mm .mm-claims li { padding: 1px 3px; border-radius: 6px; cursor: grab; }
+.mm .mm-claims li:hover { background: #f3eeff; }
+.mm .mm-csrc { color: #777; font-size: 11.5px; white-space: nowrap; }

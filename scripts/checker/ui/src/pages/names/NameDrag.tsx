@@ -5,7 +5,7 @@
 // only choice runs, or the menu stays pinned to click. The window scrolls near its top and bottom edges. Esc cancels.
 // Sources carry data-nm-drag (a subject's name line, or one of its other names), targets data-nm-drop (a subject's
 // card), so the workbench's engine, keyed on data-drag and data-drop, never picks them up.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /** What is carried: a subject (by its name line), or one of a subject's other names */
 export interface NameItem { name: string; alias: boolean; of: string }
@@ -182,9 +182,11 @@ export function NameDrag({ choices }: { choices: (item: NameItem, target: string
   }, [])
 
   // the menu beside the pointer, moved left of it near the window's right edge (measured once drawn)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = menuEl.current
     if (!el || !menu) return
+    el.style.left = '0px' // measured at its own width: squeezed against the edge it measures narrow
+    el.style.top = '0px'
     const r = el.getBoundingClientRect()
     let x = menu.from.x + 16, y = menu.from.y - 14
     if (x + r.width > innerWidth - 8) x = Math.max(8, menu.from.x - r.width - 16)

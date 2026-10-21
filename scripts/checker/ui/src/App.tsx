@@ -11,11 +11,13 @@ import { Experiments } from './pages/experiments/Experiments'
 import { Flow } from './pages/flow/Flow'
 import { Labels } from './pages/labels/Labels'
 import { Live } from './pages/live/Live'
+import { MotifMap } from './pages/map/Map'
 import { Names } from './pages/names/Names'
 
 // Each ported page, by its path; the rest show where the old page is
 const PORTED: Record<string, () => ReactNode> = {
   '/workbench': () => <Workbench />,
+  '/map': () => <MotifMap />,
   '/dashboard': () => <Dashboard />,
   '/experiments': () => <Experiments />,
   '/flow': () => <Flow />,
