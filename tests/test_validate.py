@@ -428,7 +428,7 @@ def test_pace_counts_arrivals_and_judged_claims_and_the_steady_target(monkeypatc
     rows = [{'at': day(n), 'key': f'{n}-{i}', 'picked': ['M1']} for n, count in ((3, 10), (2, 500), (1, 20)) for i in range(count)]
     rows += [{'at': day(1), 'key': '1-0', 'picked': ['M2']}, {'at': day(1), 'key': 'x', 'picked': [], 'new': None}]
     log.write_text(''.join(json.dumps(r) + '\n' for r in rows))
-    monkeypatch.setattr(mi, 'SHORTLIST_LOG', str(log))
+    monkeypatch.setattr('app.analysis.motif_filing.SHORTLIST_LOG', str(log))
     # a claim counts once it reached the index (or a decision): 'leak' never did, like Rip Van Winkle's 1896 filings on Oct 15
     rows.append({'at': day(1), 'key': 'leak', 'picked': ['M1']})
     log.write_text(''.join(json.dumps(r) + '\n' for r in rows))

@@ -60,9 +60,9 @@ def test_a_plain_report_later_told_as_a_motif_is_filed_unchecked_and_dated(monke
 
         def save(self):
             pass
-    monkeypatch.setattr(mi, 'Shortlister', Lister)
+    monkeypatch.setattr('app.analysis.motif_filing.Shortlister', Lister)
     picks = {'Polls closed at eight': ['M001'], 'The Senate met': ['M002'], 'The House met': ['M002']}
-    monkeypatch.setattr(mi, 'name_claim', lambda claim, shown: {
+    monkeypatch.setattr('app.analysis.motif_filing.name_claim', lambda claim, shown: {
         'existing': [e for e in shown if e['id'] in picks[claim]], 'new': []})
     assert wl.refile(budget=None) == {'still plain': 1, 'told': 1, 'none': 1}
     index = mi.load()

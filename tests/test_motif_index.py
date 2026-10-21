@@ -345,7 +345,7 @@ def test_the_model_drafts_notes_a_person_keeps_or_replaces(monkeypatch, tmp_path
         'M004': {'id': 'M004', 'name': 'Too small', 'claims': [{'claim': 'c', 'source': 's'}]},
         'M002': {'id': 'M002', 'name': 'Mine', 'note': 'what a person wrote', 'claims': [{'claim': 'b', 'source': 's'}]},
         'M003': {'id': 'M003', 'name': 'Empty', 'claims': []}}})
-    monkeypatch.setattr(mi.llm, 'complete_json', lambda prompt, *a, **k: {'common': 'looks', 'note': " A public figure's looks  are taken as proof of bad character. "}
+    monkeypatch.setattr('app.analysis.llm.complete_json', lambda prompt, *a, **k: {'common': 'looks', 'note': " A public figure's looks  are taken as proof of bad character. "}
                         if 'Punchable face' in prompt and 'smirk' in prompt else None)
     assert mi.gloss_missing() == 1  # a person's note is never replaced; motifs under GLOSS_MIN claims wait
     index = mi.load()
@@ -369,7 +369,7 @@ def test_a_draft_that_judges_or_names_is_asked_for_again(monkeypatch, tmp_path):
     answers = iter([{'common': 'x', 'note': 'Politicians are falsely accused of taking bribes.'},
                     {'common': 'x', 'note': 'Senator Smith takes bribes from donors.'},
                     {'common': 'x', 'note': 'Politicians take bribes from wealthy donors.'}])
-    monkeypatch.setattr(mi.llm, 'complete_json', lambda *a, **k: next(answers))
+    monkeypatch.setattr('app.analysis.llm.complete_json', lambda *a, **k: next(answers))
     entry = {'id': 'M1', 'name': 'Political bribes', 'claims': [{'claim': 'a'}]}
     assert mi.gloss(entry) == 'Politicians take bribes from wealthy donors.'
     # A named narrative keeps its own names; a note about the task itself is never kept
@@ -393,7 +393,7 @@ def test_a_person_can_say_a_claim_tells_no_story(monkeypatch, tmp_path):
 def test_the_model_may_file_a_claim_under_no_motif(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
-    monkeypatch.setattr(mi, 'closest', lambda index, claim: [])
+    monkeypatch.setattr('app.analysis.motif_filing.closest', lambda index, claim: [])
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'motifs': []})  # a plain report: no story
     index = mi.file_claims([{'claim': 'The Senate passed the budget on Tuesday.', 'source': 'narrative'}])
     assert index['claims'][mi.key('The Senate passed the budget on Tuesday.')] == [] and mi.live(index) == []
@@ -489,8 +489,8 @@ def test_a_claim_a_person_files_is_already_checked(monkeypatch, tmp_path):
 
 def test_metrics_say_how_the_catalog_is_shaped_and_keep_a_day_by_day_history(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
-    monkeypatch.setattr(mi, 'METRICS', str(tmp_path / 'metrics.json'))
-    monkeypatch.setattr(mi, 'FILING_LOG', str(tmp_path / 'filing.jsonl'))
+    monkeypatch.setattr('app.analysis.motif_filing.METRICS', str(tmp_path / 'metrics.json'))
+    monkeypatch.setattr('app.analysis.motif_filing.FILING_LOG', str(tmp_path / 'filing.jsonl'))
     monkeypatch.setattr(mi.Config, 'data', str(tmp_path))
     mi.save({'next': 4, 'claims': {mi.key('a'): ['M001', 'M002'], mi.key('b'): ['M002'], mi.key('c'): []}, 'entries': {
         'M001': {'id': 'M001', 'name': 'one', 'first_seen': '2026-10-05', 'claims': [{'claim': 'a', 'checked': 'yes'}],
@@ -516,7 +516,7 @@ def test_a_new_motif_gets_the_models_note_genre_and_groups_as_drafts(monkeypatch
             for i in range(1, 5)}
     new = {'id': 'M009', 'name': 'Tax cut for the few', 'curated': False, 'claims': [c('The cut helps only the rich')]}
     mi.save({'next': 10, 'claims': {}, 'groups': {'G01': {'name': 'Who rules'}}, 'entries': {**mine, 'M009': new}})
-    monkeypatch.setattr(mi, 'gloss', lambda e: 'A party cuts a tax that only the wealthy pay.')
+    monkeypatch.setattr('app.analysis.motif_notes.gloss', lambda e: 'A party cuts a tax that only the wealthy pay.')
     asked = {}
     monkeypatch.setattr(mp, 'ask_genre', lambda e, ex, notes=None: asked.setdefault('genre', (e['note'], sorted(ex))) and ('Plots', 'why'))
     monkeypatch.setattr(mp, 'ask_groups', lambda e, ix: ['G01'])
@@ -595,7 +595,7 @@ def test_a_filing_keeps_the_story_its_claim_was_told_about(monkeypatch, tmp_path
     """Oct 12: 'which motifs is story S told in, in time order' is a join on the filings"""
     fresh(monkeypatch, tmp_path)
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
-    monkeypatch.setattr(mi, 'closest', lambda index, claim: [])
+    monkeypatch.setattr('app.analysis.motif_filing.closest', lambda index, claim: [])
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'motifs': ['Rigged count']})
     index = mi.file_claims([{'claim': 'The count was rigged in Maricopa', 'source': 'narrative', 'story': 41,
                              'story_tie': 'same event', 'date': '2026-10-10'},

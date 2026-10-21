@@ -57,8 +57,8 @@ def test_filing_falls_back_to_the_closest_without_weights(tmp_path, monkeypatch)
     monkeypatch.setattr(mr, 'MIN_FILINGS', 10 ** 6)
     assert mr.weights() is None
     seen = []
-    monkeypatch.setattr(mi, 'closest', lambda index, claim: seen.append(claim) or [])
-    monkeypatch.setattr(mi, 'name_claim', lambda claim, shown: None)
+    monkeypatch.setattr('app.analysis.motif_filing.closest', lambda index, claim: seen.append(claim) or [])
+    monkeypatch.setattr('app.analysis.motif_filing.name_claim', lambda claim, shown: None)
     from app.analysis import llm
     monkeypatch.setattr(llm, 'backend', lambda: 'test')
     mi.file_claims([{'claim': 'A brand new storm claim', 'source': 'narrative'}])

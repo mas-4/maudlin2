@@ -12,119 +12,26 @@ Refined by hand on the label-check page (rename, merge), where the entries' name
 
 A claim can carry up to three motifs (a story is often several shapes at once: who's blamed, what's feared, what's
 hoped), each filed on its own. Stored in data/motif_index.json:
-{'next': 3, 'entries': {'M001': {...}}, 'claims': {claim key: [entry ids]}} (an empty list: filed, no motif kept)."""
+{'next': 3, 'entries': {'M001': {...}}, 'claims': {claim key: [entry ids]}} (an empty list: filed, no motif kept).
+
+This file is the index's store (load, save, the lock, batches) and its reading: lookups, queries and the small helpers
+the rest share. Filing is in motif_filing.py, the verbs in motif_edit.py, the model's drafted notes in motif_notes.py,
+all reached through here (see _MOVED at the end)."""
 import contextlib
 import functools
-import json
-from collections import Counter, defaultdict
 import hashlib
 import os
 import re
 import threading
-from datetime import datetime as dt
 
 import numpy as np
 
-from app.analysis import llm, trace
 from app.utils import Config, get_logger, store
 from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
 INDEX = os.path.join(Config.data, 'motif_index.json')
-# Whether a newly named shape is one the index has already (match()): Gemma 4 26B since Oct 10, the model the rest of
-# the filing uses, so it no longer trades places on the card with Qwen3 30B for this one question. On the person's 33
-# merges and 44 "not the same" verdicts it found 20 of the merges against the 30B's 18, joined 4 not-same pairs as the
-# 30B did, and took 12.9 s a call against 17.6 (M1 in docs/filing-experiments.md)
-MODEL = 'gemma4:26b'
-CANDIDATES = 5
-# Entries less alike than this aren't offered. Oct 5, with the 8B judging: good merges' phrases were 0.77-0.86 alike,
-# most bad ones 0.71-0.75 (0.6 let vague early entries snowball). Oct 6, the 30B judging against a person's 31 merges
-# and 45 "not the same" verdicts: at 0.7 the merged motif reached it for 7 merges (it found all 7) and 1 of 11
-# not-same pairs was joined; at 0.6, 14 found of 20 reaching it, 2 of 26 joined: twice the duplicates caught, at the
-# same rate of wrong joins (docs/models.md)
-MATCH_FLOOR = 0.6
-MAX_NEW = 200  # claims filed a run, at most
-# Naming sees the index first (Oct 5): named one claim at a time without it, 223 of 259 motifs held one claim
-# ('Smug smirk', 'Houthi territorial expansion') and the same name was coined three times as separate entries
-SHOWN = 8  # existing motifs shown when filing a claim, the closest to it (the user's motif was among the closest 8 for
-# 77% of their settled claims, Oct 5)
-# Filing judges the closest motifs side by side (Oct 6, after a bake-off on 60 of the user's settled claims: the old
-# pick-or-name call to the 30B chose their motif for 37%; side by side, Gemma 4 26B for 57% with 54% of its picks
-# theirs, at 2.4 s a claim; methods log and docs/models.md)
-JUDGE_MODEL = 'gemma4:26b'
-SHOWN_FLOOR = 0.45  # ...if at least this alike
-
-# How a new motif is named (docs/motif-praxis.md, "Naming a proposed motif", Oct 10): the person renamed or rejected
-# every name the model gave in the old style ("three to seven words, terse like a folklorist's label"). With these
-# rules (P2, Oct 10) abstract labels went from 51% of names to 10% and five words to three, and the person judged the
-# names "way, way better"; on 101 motifs none copied an example. Not told about "The" (the praxis keeps it for
-# Archetypes): told so, the model began 80% of names with it, every genre alike, up from 62% (P2b, Oct 10). Filled
-# into NAME_PROMPT, NEW_PROMPT and the proposer's NEW_MOTIF_PROMPT
-NAME_RULES = """in one to five words that make sense alone on a chip:
-- say it the way people say it: an idiom, a catchphrase or the tellers' own words (They're pouring in!, Shocked, \
-shocked!, I could shoot someone on Fifth Avenue, The hospitals will close, Wealth without well-being, Gaslit);
-- or a well-known story whose plot is the shape, when the reference lands (Camp of the Saints, Five O'Clock Follies, \
-Hoist by his own petard, Sholay, Human centipede, No second acts, Bread and circuses); not Latin for its own sake;
-- no abstract nominalizations ("X of Y via Z"), no academic labels, no topic labels ("Trump's influence on \
-candidates" became Dead weight president);
-- name the shape, not the case: general enough for the next story (Driven off the land, not the settlers); a kind of \
-person is an Archetype and sounds like one (RINO, Champagne socialist, Culture warrior, Equivocator)"""
-NAME_PROMPT = """A claim people are telling or arguing over:
-{claim}
-
-Name the recurring rumor or narrative shapes it is an instance of: none to three, each named {rules}; without \
-hedges such as "a claim that" or "is accused of": a shape that would fit the same kind of story told about \
-other people, places or years. A story often \
-carries more than one shape (who is blamed, what is feared, what is hoped); give each separately, the main one \
-first, and don't pad: most claims have one or two. No names of people, places, organizations or dates. A framing \
-people contest can name both sides of the dispute in one label. Judge the shapes as the tellers tell the story, not whether it's true. \
-Check each name: would it still fit if the people and the event were different? If it only describes this one \
-event, make it more general; if it would fit almost any story, make it more specific. A claim that only reports an \
-event or states a fact, with no story told around it, has none: give an empty list rather than force one."""
-NAME_SCHEMA = {"type": "object", "properties": {"motifs": {"type": "array", "minItems": 0, "maxItems": 3,
-                                                          "items": {"type": "string", "maxLength": 60}}},
-               "required": ["motifs"]}
-REUSE_PROMPT = """Today is {today}. A claim people are telling or arguing over:
-{claim}
-
-Motifs in our index of recurring rumor and narrative shapes, each with some of the claims filed under it:
-{options}
-
-Which of these motifs is this claim clearly another instance of: the same kind of story as the claims filed under it, \
-told about other people, places or years? Judge by what a motif's claims have in common, not by details only some of \
-them share; a shared topic, person or place alone isn't enough. Most claims fit one or two; if none fits clearly, \
-give none.
-
-reason: a sentence or two
-fits: the numbers of the motifs it clearly fits (none to three)"""
-
-# Asked only when no motif fits: one question at a time (offering a new name in the same call as the judging made the
-# judge pick the user's motif for 50% of their claims instead of 57%, Oct 6)
-NEW_PROMPT = """A claim people are telling or arguing over:
-{claim}
-
-None of the motifs in our index of recurring rumor and narrative shapes fits it; the closest were: {closest}.
-
-Does the claim tell a recurring story, the kind told again about other people, places or years? If it does, name it \
-as a new motif, {rules}; no names of people, places, organizations or dates. If it only reports an event or states a fact, with no story told around it, \
-give no name: don't force one.
-
-reason: a sentence
-new: the new motif's name, or nothing"""
-
-MATCH_PROMPT = """A rumor shape: {phrase}
-(from the claim: {claim})
-
-Motifs already in our index, each with claims filed under it:
-{options}
-
-Is it the same motif as one of these: the same specific recurring shape, even if told about different people or \
-events? A similar theme or a shared subject isn't enough: the claims should be the same kind of story. Give its \
-number, or "new" if none of them is the same shape."""
-
-
-MAX_WORDS = 7  # a longer 'name' is a sentence, usually the claim itself (an LAX kidnapping claim became one, Oct 5)
 
 
 def clean(name: str) -> str:
@@ -243,395 +150,7 @@ def live(index: dict) -> list[dict]:
     return [e for e in index['entries'].values() if not e.get('merged_into')]
 
 
-def match(index: dict, phrase: str, claim: str) -> str | None:
-    """The existing entry this shape is the same motif as, or None: the closest few by meaning, then the model's
-    forced choice with "new" on offer."""
-    from app.narratives import embed
-    entries = [e for e in live(index) if key(claim) not in e.get('not_claims', [])]  # a person said it isn't
-    if not entries:
-        return None
-    # Each entry by its name and its claims' phrases together, so a curated name still matches its kind
-    texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) for e in entries]
-    v = embed([phrase] + texts)
-    sims = v[1:] @ v[0]
-    top = [int(i) for i in np.argsort(-sims)[:CANDIDATES] if sims[i] >= MATCH_FLOOR]
-    if not top:
-        return None
-    options = '\n'.join(f'{n}. {described(entries[i])} (e.g. ' + '; '.join(
-        f'"{x["claim"][:110]}"' for x in entries[i]['claims'][-2:]) + ')' for n, i in enumerate(top, 1))
-    schema = {"type": "object", "properties": {
-        "reason": {"type": "string", "maxLength": 1000},  # cut off mid-reason, the 30B answers no (as with sagas)
-        "pick": {"type": "string", "enum": [str(n) for n in range(1, len(top) + 1)] + ['new']}},
-        "required": ["reason", "pick"]}
-    answer = llm.complete_json(MATCH_PROMPT.format(phrase=phrase, claim=claim, options=options), schema,
-                               max_tokens=500, model=MODEL)
-    return entries[top[int(answer['pick']) - 1]]['id'] if answer and answer['pick'] != 'new' else None
-
-
-def closest(index: dict, claim: str) -> list[dict]:
-    """The existing entries most like a claim, by meaning (its name, phrases and claims together), for naming it."""
-    from app.narratives import embed
-    entries = [e for e in live(index) if key(claim) not in e.get('not_claims', [])]  # a person said it isn't
-    if not entries:
-        return []
-    texts = [described(e) + '. ' + '; '.join(e.get('phrases', [])[:5]) + '. ' + '; '.join(x['claim'][:120] for x in e['claims'][-2:])
-             for e in entries]
-    v = embed([claim] + texts)
-    sims = v[1:] @ v[0]
-    return [entries[int(i)] for i in np.argsort(-sims)[:SHOWN] if sims[i] >= SHOWN_FLOOR]
-
-
-def name_claim(claim: str, shown: list[dict]) -> dict | None:
-    """{'existing': [entries the judge filed it under], 'new': [a name for a shape none of them covers]}, or None.
-    The closest motifs are judged side by side, each by its name, scope note and three of its claims; the picks come
-    back as numbers (Qwen3.5 under Ollama returned an empty list of fixed strings, Oct 5)."""
-    from datetime import datetime
-    if not shown:
-        named = llm.complete_json(NAME_PROMPT.format(claim=claim, rules=NAME_RULES), NAME_SCHEMA, max_tokens=300, model=JUDGE_MODEL)
-        return named and {'existing': [], 'new': [m for m in map(clean, named.get('motifs', [])) if fits_name(m)][:1]}
-    options = '\n'.join(f'{n}. {described(e)}{not_this(e)}\n' + '\n'.join(f'   - {c["claim"][:160]}' for c in e['claims'][-3:])
-                        for n, e in enumerate(shown, 1))
-    schema = {"type": "object", "properties": {
-        "reason": {"type": "string", "maxLength": 1000},
-        "fits": {"type": "array", "maxItems": 3, "items": {"type": "integer", "minimum": 1, "maximum": len(shown)}}},
-        "required": ["reason", "fits"]}
-    answer = llm.complete_json(REUSE_PROMPT.format(today=datetime.now().strftime('%B %-d, %Y'), claim=claim,
-                                                   options=options), schema, max_tokens=900, model=JUDGE_MODEL)
-    if not answer:
-        return None
-    existing = [shown[n - 1] for n in dict.fromkeys(answer.get('fits', [])) if isinstance(n, int) and 1 <= n <= len(shown)][:3]
-    if existing:
-        return {'existing': existing, 'new': [], 'reason': answer.get('reason')}
-    schema = {"type": "object", "properties": {"reason": {"type": "string", "maxLength": 600},
-                                               "new": {"type": "array", "maxItems": 1, "items": {"type": "string", "maxLength": 60}}},
-              "required": ["reason", "new"]}
-    named = llm.complete_json(NEW_PROMPT.format(claim=claim, rules=NAME_RULES, closest='; '.join(e['name'] for e in shown[:5])), schema,
-                              max_tokens=500, model=JUDGE_MODEL)
-    if named is None:
-        return None
-    return {'existing': [], 'new': [m for m in map(clean, named.get('new', [])) if fits_name(m)],
-            'reason': answer.get('reason'), 'new_reason': named.get('reason')}
-
-
-def fits_name(name: str) -> bool:
-    return bool(name) and len(name.split()) <= MAX_WORDS
-
-
-def same_name(index: dict, phrase: str) -> str | None:
-    """An entry already called this (case and punctuation aside): one name, one motif"""
-    norm = lambda t: re.sub(r'[^a-z0-9 ]', ' ', t.lower()).split()  # noqa: E731
-    return next((e['id'] for e in live(index) if norm(e['name']) == norm(phrase)), None)
-
-
-SHORTLIST_LOG = os.path.join(Config.data, 'motifs', 'shortlist_log.jsonl')
-
-
-def log_shortlist(index: dict, c: dict, shown: list[dict], named: dict):
-    """What a new claim was shown and what the filing model made of it, before anyone judged it (Oct 12, Prometheus,
-    from Fable's review: the shortlist's held-out recall is measured on filings it already found; this is the forward
-    record, scored weekly against the person's final word). 'next' is the next motif number then, so a motif the
-    person makes later is told from one that existed but wasn't shown. Never stops a filing"""
-    try:
-        with open(SHORTLIST_LOG, 'a') as f:
-            f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'key': key(c['claim']), 'claim': c['claim'],
-                                'source': c.get('source', ''), 'next': index['next'],
-                                'shown': [e['id'] for e in shown], 'seeds': [e['id'] for e in shown if not e['claims']],
-                                'picked': [e['id'] for e in named['existing']], 'new': named['new']}) + '\n')
-    except (OSError, KeyError, TypeError) as e:
-        logger.warning("Shortlist log: %s", e)
-
-
 STORY_FIELDS = ('story', 'story_tie')  # carried onto the filing when the claim's source ties it to a story
-LINK_FIELDS = ('split_from',)  # a child claim's telling, the claim it was split from (claim_organizer.apply_split)
-
-
-def record(c: dict, today: str) -> dict:
-    """A filing's claim record, with the story the claim was told about when its source ties it to one (see
-    story_motifs), and the telling it was split from, if it was"""
-    return {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'side': c.get('side'),
-            'date': c.get('date') or today, **{f: c[f] for f in STORY_FIELDS + LINK_FIELDS if c.get(f) is not None}}
-
-
-class Shortlister:
-    """The motifs filing shows the judge for a claim: the learned shortlist (motif_retriever: every signal weighed, when
-    it tests better), the plain weights' without it, the closest 8 without either. Each claim's shape and layers are
-    asked first for all the claims at once, llm.PARALLEL at a time, and kept (save()). Shared by file_claims and the
-    watch list's refiling (watch_list.py)"""
-
-    def __init__(self, index: dict, claims: list[str], budget: float | None = None):
-        from app.analysis import motif_retriever
-        self.weights, self.vectors = motif_retriever.weights(), motif_retriever.Vectors()
-        self.learned = motif_retriever.learned() if self.weights else None
-        self.sig = None
-        if self.learned:
-            try:
-                from app.analysis import motif_signals
-                self.sig = motif_signals.Signals(index, self.vectors)
-                self.sig.prepare(claims, budget=budget)
-            except Exception as e:  # noqa: BLE001 - each claim asks its own
-                logger.warning("Motif filing: preparing the shortlists failed (%s)", e)
-                self.sig = None
-
-    def __call__(self, index: dict, claim: str) -> list[dict]:
-        from app.analysis import motif_retriever
-        if self.weights:
-            try:
-                if self.learned:
-                    ids = [e['id'] for e in live(index) if e['claims']]
-                    if self.sig is None or [e['id'] for e in self.sig.entries] != ids:  # a motif made or gone meanwhile
-                        from app.analysis import motif_signals
-                        self.sig = motif_signals.Signals(index, self.vectors)
-                    return motif_retriever.learned_shortlist(index, claim, self.sig, self.weights, self.learned)
-                return motif_retriever.shortlist(index, claim, self.vectors, self.weights)
-            except Exception as e:  # noqa: BLE001 - the closest 8 will do
-                logger.warning("Motif retriever failed (%s); the closest motifs instead", e)
-        return closest(index, claim)
-
-    def save(self):
-        if self.sig is not None:
-            self.sig.save()
-
-
-def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None = None) -> dict:
-    """File each claim ({'claim', 'source': 'narrative' or a fact-checker's name, 'ref', 'side', and 'story' and
-    'story_tie' when known}) under a motif, creating entries as needed. Claims already filed are left where they are.
-    Returns the index."""
-    index = load()
-    todo = [c for c in claims if c.get('claim') and key(c['claim']) not in index['claims']][:limit]
-    if not todo or llm.backend() is None:
-        return index
-    today = dt.now().strftime('%Y-%m-%d')
-    import time
-    started = time.time()
-    outcomes = Counter()  # for the metrics: each claim matched to motifs already there, given a new one, or none
-    lister = Shortlister(index, [c['claim'] for c in todo], budget=None if budget is None else budget / 2)
-    for n, c in enumerate(todo):
-        if budget is not None and time.time() - started > budget:
-            break  # the next run picks up where this one stopped
-        if n and n % 25 == 0:  # progress a watcher can read (the experiments' queue: a step that shows none is stuck)
-            logger.info("Motif filing: %d/%d claims", n, len(todo))
-        # One claim at a time on a fresh read of the index, saved as it goes: a run cut short keeps what it filed,
-        # and an edit made on the organizer pages meanwhile isn't lost
-        with locked():
-            index = load()
-            if key(c['claim']) in index['claims']:
-                continue
-            shown = lister(index, c['claim'])
-            trace.shortlisted(c, shown, lister, next_motif=index['next'])  # the 🧠 Live page's view of it (app/analysis/trace.py)
-            named = name_claim(c['claim'], shown)
-            if not named:
-                continue
-            log_shortlist(index, c, shown, named)
-            filed = [e['id'] for e in named['existing']]
-            for e in named['existing']:
-                entry = index['entries'][e['id']]
-                entry['claims'].append(record(c, today))
-                entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
-            for phrase in named['new'][:max(0, 3 - len(filed))]:
-                eid = same_name(index, phrase) or match(index, phrase, c['claim'])
-                if eid in filed:
-                    continue
-                if eid is None:
-                    eid = f"M{index['next']:03d}"
-                    index['next'] += 1
-                    index['entries'][eid] = {'id': eid, 'name': phrase, 'curated': False, 'first_seen': today,
-                                             'claims': [], 'phrases': []}
-                entry = index['entries'][eid]
-                entry['claims'].append(record(c, today))
-                entry['phrases'] = (entry.get('phrases', []) + [phrase])[-20:]
-                entry['last_seen'] = max(entry.get('last_seen', ''), c.get('date') or today)
-                filed.append(eid)
-            index['claims'][key(c['claim'])] = filed
-            new_ids = [eid for eid in filed if index['entries'][eid].get('first_seen') == today and len(index['entries'][eid]['claims']) == 1]
-            trace.picked(c['claim'], named, filed, new_ids)
-            made = len(new_ids)
-            outcomes['none' if not filed else 'new' if made else 'matched'] += 1
-            save(index)
-    lister.save()  # the new claims' shapes and layers, asked once
-    if outcomes:
-        os.makedirs(os.path.dirname(FILING_LOG), exist_ok=True)
-        with open(FILING_LOG, 'a') as f:
-            f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), **outcomes}) + '\n')
-    logger.info("Motif index: filed %d claims (%s); %d motifs", len(todo), dict(outcomes), len(live(index)))
-    return index
-
-
-# The index's shape over time (for the workbench's stats): a snapshot a day, the latest of the day kept; and each
-# filing run's outcomes. What came before Oct 6 is rebuilt where it can be (new motifs from first_seen, a person's
-# work from the curation log and the motif checks)
-METRICS = os.path.join(Config.data, 'motifs', 'metrics.json')
-FILING_LOG = os.path.join(Config.data, 'motifs', 'filing_log.jsonl')
-
-
-def metrics(index: dict | None = None) -> dict:
-    """How the catalog looks now: its size, how much of it is single claims, how much is organized (kinds, genres,
-    groups), how much a person has been through (done, notes, checks)"""
-    index = index if index is not None else load()
-    es = live(index)
-    n = max(1, len(es))
-    kids = {p for e in es for p in parents_of(e)}
-    sizes = [len(e['claims']) for e in es]
-    filings = sum(sizes)
-    share = lambda k: round(100 * k / n, 1)  # noqa: E731
-    return {
-        'motifs': len(es), 'claims': sum(1 for ids in index['claims'].values() if ids), 'filings': filings,
-        'no_motif': sum(1 for ids in index['claims'].values() if not ids),
-        'per_motif': round(filings / n, 2),
-        'singles': share(sum(1 for k in sizes if k == 1)), 'two_plus': share(sum(1 for k in sizes if k >= 2)),
-        'in_tree': share(sum(1 for e in es if parents_of(e) or e['id'] in kids)),
-        'with_genre': share(sum(1 for e in es if (e.get('facets') or {}).get('genre'))),
-        'in_group': share(sum(1 for e in es if groups_of(e))),
-        'done': share(sum(1 for e in es if 'done' in e)),
-        'your_notes': share(sum(1 for e in es if e.get('note') and e.get('note_by') not in DRAFTS)),
-        'checked': round(100 * sum(1 for e in es for c in e['claims'] if c.get('checked')) / max(1, filings), 1),
-        'variants': sum(len(c.get('variants', [])) for e in es for c in e['claims']),
-        **sure_share(es),
-    }
-
-
-def sure_share(es: list[dict]) -> dict:
-    """The person's workload (Oct 11, the person: "are we going to be able to see if/when that 85% right number climbs
-    over time?"): of the day's filings in their motifs, how many the confidence model puts past its sure line, as the
-    day's snapshot keeps it (the model of that day). As it climbs while the sure ones stay as right, there's less to
-    look at and correct"""
-    from app.analysis import filing_confidence as fc
-    sure_at = next((r['sure_at'] for r in reversed(fc.history()) if r.get('model') == 'confidence' and r.get('sure_at')), None)
-    today = dt.now().strftime('%Y-%m-%d')
-    fits = [c['fit'] for e in es if 'done' in e for c in e['claims'] if c.get('fit') is not None and c.get('date', '')[:10] == today]
-    if not sure_at or not fits:
-        return {}
-    return {'filed_today': len(fits), 'sure_share': round(100 * sum(f >= sure_at for f in fits) / len(fits), 1)}
-
-
-def snapshot_metrics():
-    """Today's metrics into the history (the latest of the day wins)"""
-    from app.utils.store import read_json, write_json
-    history = read_json(METRICS, {})
-    history[dt.now().strftime('%Y-%m-%d')] = metrics()
-    write_json(METRICS, history)
-
-
-def metrics_history() -> dict:
-    """Per day: the snapshots, new motifs (from first_seen; merged ones count, they were made), the filing runs'
-    outcomes, and a person's work (curation actions, motif checks)"""
-    from app.utils.store import read_json
-    index = load()
-    days = defaultdict(lambda: defaultdict(int))
-    for e in index['entries'].values():
-        if e.get('first_seen'):
-            days[e['first_seen'][:10]]['new_motifs'] += 1
-    try:
-        with open(FILING_LOG) as f:
-            for line in f:
-                r = json.loads(line)
-                for k in ('matched', 'new', 'none'):
-                    days[r['at'][:10]]['filed_' + k] += r.get(k, 0)
-    except OSError:
-        pass
-    folder = os.path.join(Config.data, 'validation')
-    for name, field in (('curation_log.jsonl', 'actions'), ('motif_verdicts.jsonl', 'checks')):
-        try:
-            with open(os.path.join(folder, name)) as f:
-                for line in f:
-                    r = json.loads(line)
-                    day = (r.get('at') or '')[:10]
-                    if not day:
-                        continue
-                    if field == 'checks':
-                        days[day]['checks_' + ('yes' if r.get('answer') == 'yes' else 'no' if r.get('answer') == 'no' else 'unsure')] += 1
-                    elif (r.get('action') or {}).get('action') not in (None, 'undo'):
-                        days[day]['actions'] += 1
-        except (OSError, ValueError):
-            pass
-    snaps = read_json(METRICS, {})
-    out = []
-    for day in sorted(set(days) | set(snaps)):
-        if day < '2026-10-01':
-            continue
-        out.append({'day': day, **days.get(day, {}), **({'shape': snaps[day]} if day in snaps else {})})
-    return {'now': metrics(index), 'days': out, 'models': model_days()}
-
-
-def model_days() -> list[dict]:
-    """The models' held-out tests (filing_confidence.HISTORY), the day's last of each model: how good the machine is,
-    measured on the person's checks it didn't learn from, so it doesn't move with what they choose to check"""
-    from app.analysis import filing_confidence as fc
-    days = defaultdict(dict)
-    for r in fc.history():
-        d = days[r['at'][:10]]
-        if r.get('model') == 'confidence':
-            d.update({k: r[k] for k in ('auc', 'right_when_sure', 'sure_at', 'decisions') if r.get(k) is not None})
-        elif r.get('model') == 'shortlist':
-            d.update({k: r[k] for k in ('top12', 'plain_top12') if r.get(k) is not None})
-    return [{'day': day, **d} for day, d in sorted(days.items())]
-
-
-def nightly(budget: float | None = None):
-    """File the latest report's narratives and the last 30 days' fact-checked claims not filed yet, for at most
-    `budget` seconds."""
-    from app.analysis import factchecks
-    from app.site.page_folklore import latest_report
-    claims = []
-    from app.site.page_folklore import NOT_STORIES, withheld
-    report = latest_report() or {}
-    pulled = withheld()
-    index = load()  # for corrected summaries
-    for g in report.get('found', []):
-        lab = g.get('label') or {}
-        if lab.get('retold') and lab.get('narrative') and lab['narrative'] not in pulled and fits(lab):
-            claims.append({'claim': corrected(lab['narrative'], index), 'source': 'narrative', 'ref': report.get('made', ''),
-                           'side': g.get('shared_side'), 'date': (report.get('made') or '')[:10], **story_of_group(g)})
-    labels = factchecks.load_labels()
-    checked = factchecks.stories_of()
-    for item in factchecks._items(factchecks.LABEL_DAYS):
-        lab = labels.get(item['url']) or {}
-        if lab.get('claim') and lab.get('genre') not in NOT_STORIES:  # a roundup or explainer checks no rumor
-            claims.append({'claim': corrected(lab['claim'], index), 'source': item['source'], 'ref': item['url'],
-                           'date': item['published'][:10],
-                           **({'story': checked[item['url']]} if item['url'] in checked else {})})
-    # The Focus Group's and the shows' claims carry no story: an episode covers several, and nothing cheap says which
-    # one a claim is about
-    from app.analysis import focus_group  # what voters say in focus groups: a source of its own
-    claims += [{**c, 'claim': corrected(c['claim'], index)} for c in focus_group.claims()]
-    from app.analysis import show_claims  # what's retold across the shows we transcribe
-    claims += [{**c, 'claim': corrected(c['claim'], index)} for c in show_claims.claims()]
-    import time
-    started = time.time()
-    try:  # the learned shortlist, retrained when a day old
-        from app.analysis import motif_retriever
-        motif_retriever.learned(retrain=True)
-    except Exception as e:  # noqa: BLE001 - filing goes on with the plain weights
-        logger.warning("Motif shortlist: %s", e)
-    index = file_claims(claims, budget=None if budget is None else max(60, budget - (time.time() - started)))
-    try:
-        snapshot_metrics()
-    except Exception as e:  # noqa: BLE001 - the stats are extra
-        logger.warning("Motif metrics: %s", e)
-    try:  # how many separate occasions each motif is told on (attested or placed)
-        from app.analysis import motif_told
-        motif_told.refresh()
-    except Exception as e:  # noqa: BLE001 - the count is extra; the next run tries again
-        logger.warning("Motif occasions: %s", e)
-    # New motifs get the model's draft of a scope note (shown on the board to keep or edit; used in matching at once)
-    gloss_missing(budget=None if budget is None else max(30, budget - (time.time() - started)))
-    try:
-        draft_missing(budget=None if budget is None else max(60, budget - (time.time() - started)))
-    except Exception as e:  # noqa: BLE001 - drafts are extra; the next run tries again
-        logger.warning("Motif drafts: %s", e)
-    return index
-
-
-def fits(label: dict) -> bool:
-    """Whether a folklore group's claim belongs in the index. Political ones do, news included: news is powerful when it
-    confirms a story people already tell (a Russian lab worker's plague death, told as a bioweapon). Other folklore
-    does when it has a subject (contamination scares, legends), but not a shared topic, a sports pick or a game
-    result (a Valkyries semifinal 'prophecy' got 'Valkyries to defeat Aces', Oct 5)."""
-    from app.site.page_folklore import NOT_STORIES
-    if label.get('genre') == 'none: a shared topic, not a retold narrative':
-        return False
-    if label.get('politics'):
-        return True
-    return label.get('genre') not in NOT_STORIES and label.get('family') not in (None, '', 'none')
 
 
 # Stories (Oct 12, the person's decision on Straight news): a filing keeps the story its claim was told about, so
@@ -650,22 +169,6 @@ def watched(index: dict) -> set[str]:
     """The motifs a person marked as watch lists (set_watch): a sink for plain reports, Straight news first of all,
     whose claims are watched and filed again (watch_list.py)"""
     return {e['id'] for e in live(index) if e.get('watch')}
-
-
-@exclusive
-def set_watch(eid: str, on: bool = True):
-    """A person marks a motif as a watch list, or not: its claims are plain reports, not tellings of a shape; each
-    is watched and filed again as the index grows (watch_list.py), and a story's filings in it are its baseline
-    (story_motifs). Straight news, by the person's decision of Oct 12: a sink and a watch list, not a Perennial"""
-    index = load()
-    entry = index['entries'][eid]
-    if entry.get('merged_into'):
-        raise ValueError(f'{eid} is gone')
-    if on:
-        entry['watch'] = True
-    else:
-        entry.pop('watch', None)
-    save(index)
 
 
 def story_of_group(g: dict) -> dict:
@@ -701,56 +204,6 @@ def story_motifs(story_id: int, index: dict | None = None) -> list[dict]:
                          'story_tie': w.get('story_tie'), 'motif': None, 'name': None, 'checked': None, 'plain': True})
     return sorted(rows, key=lambda r: (r['date'], r['claim'], r['motif'] or ''))
 
-
-def report_stories(index: dict) -> dict[str, dict[str, dict]]:
-    """Each saved narrative report's story ties, by the report's time (a narrative filing's ref): {made: {claim, in the
-    model's words and as corrected since: story fields}}"""
-    import glob
-    from app import narratives
-    out = {}
-    reports = [read_json(path, {}) for path in glob.glob(os.path.join(narratives.FOLDER, 'report-*.json'))]
-    try:  # a group the model left untied takes the story its posts link to (narratives.linked_story, Oct 12)
-        known = narratives.articles(sorted({u for r in reports for g in r.get('found', []) for u, _ in g.get('shared') or []}))
-    except Exception as e:  # noqa: BLE001 - the model's ties alone
-        logger.warning("Motif index: shared links unread (%s)", e)
-        known = {}
-    for report in reports:
-        ties = out.setdefault(report.get('made', ''), {})
-        for g in report.get('found', []):
-            if not g.get('story'):
-                g = {**g, 'story': narratives.linked_story(
-                    {'articles': [{**known[u], 'shares': n} for u, n in g.get('shared') or [] if u in known]})}
-            lab, st = g.get('label') or {}, story_of_group(g)
-            if lab.get('narrative') and st:
-                ties[lab['narrative']] = ties[corrected(lab['narrative'], index)] = st
-    return out
-
-
-@exclusive
-def backfill_stories() -> dict:
-    """Story ids for the filings made before filings kept them (Oct 12): a narrative's from the report it came in (its
-    ref is the report's time), a fact-check's from factchecks.stories_of(). Only adds: a filing's story is never
-    changed. How many records got one, by kind"""
-    from app.analysis import factchecks
-    index = load()
-    reports, checked = report_stories(index), factchecks.stories_of()
-    done = Counter()
-    for e in index['entries'].values():
-        for c in e.get('claims', []):
-            if c.get('story') is not None:
-                continue
-            if c.get('source') == 'narrative':
-                st = reports.get(c.get('ref', ''), {}).get(c['claim'])
-            else:
-                st = {'story': checked[c['ref']]} if c.get('ref') in checked else None
-            if st:
-                c.update(st)
-                done['narrative' if c.get('source') == 'narrative' else 'fact-check'] += 1
-    if done:
-        save(index)
-    logger.info("Motif index: story ids backfilled on %s", dict(done))
-    return dict(done)
-
 # Curation, from the organizer on the label-check page (scripts/validate.py). A curated name is kept as given; a
 # merged entry points to the one it joined, so its number still resolves; a deleted entry's claims are marked
 # dropped (None), so the nightly filing leaves them out rather than filing them again.
@@ -758,148 +211,9 @@ SUGGEST = 0.72  # entry names at least this alike are suggested as merges
 SUGGESTED = 15
 
 
-@exclusive
-def rename(eid: str, name: str):
-    index = load()
-    index['entries'][eid].update(name=clean(name), curated=True)
-    done_by_note(index['entries'][eid])
-    save(index)
-
-
-def _add(name: str) -> str:
-    index = load()
-    eid = f"M{index['next']:03d}"
-    index['next'] += 1
-    index['entries'][eid] = {'id': eid, 'name': clean(name), 'curated': True, 'claims': [], 'phrases': [],
-                             'first_seen': dt.now().strftime('%Y-%m-%d')}
-    save(index)
-    return eid
-
-
-@exclusive
-def add(name: str) -> str:
-    return _add(name)
-
-
-@exclusive
-def merge(source: str, target: str):
-    """Fold `source` into `target`: its claims and phrases move over (a claim in both counts once), and its number
-    points to `target`. Everything else it had comes along too (Oct 7; until then its broader motifs, groups, genre,
-    note and 'not the same' verdicts were lost): its related links, what rests on it and what it rests on, its groups, its
-    genre and note where the target has none, the claims a person saw when marking it done, and 'not the same'
-    verdicts."""
-    index = load()
-    if source == target:
-        return
-    src, dst = index['entries'][source], index['entries'][target]
-    # what it rests on, unless that would make the target rest on itself or on something resting on it
-    below = {target}
-    while True:
-        more = {e['id'] for e in index['entries'].values() if set(parents_of(e)) & below} - below
-        if not more:
-            break
-        below |= more
-    ups = [p for p in parents_of(dst) + parents_of(src) if p != source and p not in below]
-    if ups or 'parents' in dst or 'parent' in dst:
-        dst.pop('parent', None)
-        dst['parents'] = list(dict.fromkeys(ups))
-    _set_groups(dst, list(dict.fromkeys(groups_of(dst) + person_groups(src))))
-    for k, v in (src.get('facets') or {}).items():
-        if not (k == 'genre' and person_genre(src) is None):  # the model's draft stays behind
-            dst.setdefault('facets', {}).setdefault(k, v)
-    if src.get('note') and not dst.get('note'):
-        dst['note'], dst['note_by'] = src['note'], src.get('note_by', 'person')
-    if 'done' in src and 'done' in dst:  # both looked over: what was seen in either stays seen
-        dst['done'] = list(dict.fromkeys(dst['done'] + src['done']))
-    if src.get('watch'):  # a watched motif's claims stay watched where they go (Charybdis, the person's yes, Oct 13)
-        dst['watch'] = True
-    if src.get('not_this') and not dst.get('not_this'):
-        dst['not_this'] = src['not_this']
-    index['not_same'] = [p for p in (sorted([target if x == source else x for x in p]) for p in index.get('not_same', []))
-                         if p[0] != p[1]]
-    index['not_same'] = [p for i, p in enumerate(index['not_same']) if p not in index['not_same'][:i]]
-    have = {key(c['claim']) for c in dst['claims']}
-    dst['claims'] += [c for c in src['claims'] if key(c['claim']) not in have]
-    dst['phrases'] = (dst.get('phrases', []) + src.get('phrases', []))[-20:]
-    dst['first_seen'] = min(filter(None, [dst.get('first_seen'), src.get('first_seen')]), default=None)
-    dst['last_seen'] = max(filter(None, [dst.get('last_seen'), src.get('last_seen')]), default=None)
-    src.update(claims=[], merged_into=target)
-    index['related'] = [sorted([target if x == source else x for x in p]) for p in index.get('related', [])]
-    index['related'] = [p for i, p in enumerate(index['related']) if p[0] != p[1] and p not in index['related'][:i]]
-    notes = {}  # the reasons for its related links come along; the target's own win
-    for pair, why in index.get('related_notes', {}).items():
-        a, b = sorted(target if x == source else x for x in pair.split('|'))
-        if a != b and (f'{a}|{b}' not in notes or source not in pair):
-            notes[f'{a}|{b}'] = why
-    if notes or 'related_notes' in index:
-        index['related_notes'] = notes
-    for e in index['entries'].values():  # what rested on it rests on the motif it joined
-        if source in parents_of(e):
-            e['parents'] = [p for p in dict.fromkeys(target if p == source else p for p in parents_of(e)) if p != e['id']]
-            e.pop('parent', None)
-    for k in index['claims']:
-        ids = [target if i == source else i for i in _ids(index, k)]
-        index['claims'][k] = list(dict.fromkeys(ids))
-    save(index)
-
-
-@exclusive
-def delete(eid: str):
-    """Drop an entry: its claims keep their other motifs, and aren't filed again."""
-    index = load()
-    for k in index['claims']:
-        index['claims'][k] = [i for i in _ids(index, k) if i != eid]
-    del index['entries'][eid]
-    save(index)
-
-
-@exclusive
-def move(claim: str, source: str, target: str):
-    """Move one claim out of `source` into another entry (or a new one, target 'new')."""
-    if target == 'new':
-        target = _add(claim[:80])  # already holding the lock
-    index = load()
-    k = key(claim)
-    entry = index['entries'][source]
-    moved = [c for c in entry['claims'] if key(c['claim']) == k]
-    entry['claims'] = [c for c in entry['claims'] if key(c['claim']) != k]
-    entry.setdefault('not_claims', []).append(k)  # moved out by hand: it isn't this motif
-    if not any(key(c['claim']) == k for c in index['entries'][target]['claims']):  # moved there by a person: checked
-        index['entries'][target]['claims'] += [{**c, 'checked': 'yes'} for c in moved]
-    index['claims'][k] = list(dict.fromkeys([target if i == source else i for i in _ids(index, k)] + [target]))
-    if not entry['claims'] and not entry.get('curated'):  # emptied: a motif the model made goes; one a person made stays
-        del index['entries'][source]
-    save(index)
-
-
-@exclusive
-def hold(claim: str, on: bool = True):
-    """A claim put on hold, or taken off it (Oct 18, the person: "a thing to mark a post 'hold' because if i uncheck it
-    it will keep reappearing. Basically I want to examine the claim further later"). A held claim leaves the checker's
-    queues (🎯 claims to judge, ✅ sure, 🚫 misfits) for its own ⏸ held tab, its filings still waiting, until the person
-    takes it off hold or decides them. Nothing about its filings changes: a hold is no verdict"""
-    index = load()
-    k = key(claim)
-    if on:
-        if k not in index['claims']:
-            raise ValueError('no such claim in the index')
-        index.setdefault('held', {})[k] = {'claim': claim, 'at': dt.now().isoformat(timespec='seconds')}
-    elif k in index.get('held', {}):
-        index['held'].pop(k)
-    save(index)
-
-
 def held(index: dict | None = None) -> dict:
     """The claims on hold: claim key -> {'claim', 'at'}"""
     return (index if index is not None else load()).get('held', {})
-
-
-@exclusive
-def not_same(a: str, b: str):
-    """Remember that two entries aren't the same motif, so they're not suggested again."""
-    index = load()
-    index.setdefault('not_same', []).append(sorted([a, b]))
-    save(index)
 
 
 def suggestions(limit: int = SUGGESTED) -> list[tuple[str, str, float]]:
@@ -933,59 +247,11 @@ def to_check(limit: int | None = None) -> list[dict]:
     return out[:limit] if limit else out
 
 
-@exclusive
-def set_fits(fits: dict, model_at: str):
-    """Each filing's fit, (claim key, motif id) -> the chance the person keeps it (filing_confidence.py), kept on the
-    filing with the model that gave it"""
-    index = load()
-    for e in index['entries'].values():
-        for c in e.get('claims', []):
-            f = fits.get((key(c['claim']), e['id']))
-            if f is not None:
-                c['fit'], c['fit_model'] = f, model_at
-    save(index)
-
-
-@exclusive
-def set_told(told: dict):
-    """Each motif's occasions, worked out by motif_told.py from its kept claims"""
-    index = load()
-    for eid, t in told.items():
-        if eid in index['entries']:
-            index['entries'][eid]['told'] = t
-    save(index)
-
-
 def attested(entry: dict) -> bool:
     """Told on two occasions or more (motif_told.py); placed, not yet attested, otherwise. Before the first count, a
     motif with two kept claims or more counts as attested."""
     t = entry.get('told')
     return t['events'] >= 2 if t else sum(c.get('checked') == 'yes' for c in entry.get('claims', [])) >= 2
-
-
-@exclusive
-def check(claim: str, eid: str, answer: str):
-    """A person's answer to 'is this claim an instance of this motif?', applied at once. Yes or not sure is noted on
-    the filing. No takes the claim out of the motif and keeps it out; a motif the model made left with no claims goes
-    (one a person named stays). A claim left with no motif stays without one: not every claim tells a recurring story,
-    and filing it again forced it into some other motif (until Oct 5)."""
-    index = load()
-    entry = index['entries'].get(eid)
-    found = next((c for c in (entry or {}).get('claims', []) if c['claim'] == claim), None)
-    if found is None or answer not in ('yes', 'no', 'unsure'):
-        raise ValueError(f'no such filing or answer: {eid} {answer}')
-    if answer != 'no':
-        if answer == 'yes' and found.get('checked') == 'yes':  # a second look: still fits (off that list)
-            found['rechecked'] = dt.now().strftime('%Y-%m-%d')
-        found['checked'] = answer
-    else:
-        k = key(claim)
-        entry['claims'].remove(found)
-        entry.setdefault('not_claims', []).append(k)
-        index['claims'][k] = [i for i in _ids(index, k) if i != eid]  # an empty list: no motif, and never refiled
-        if not entry['claims'] and not entry.get('curated'):  # a model's motif emptied goes; one a person named stays
-            del index['entries'][eid]
-    save(index)
 
 
 # Groups: a person's own chapters over the motifs (as Thompson grouped his into chapters), made on the motif board.
@@ -1039,69 +305,6 @@ def person_groups(entry: dict) -> list[str]:
     drafted = set((entry.get('by_model') or {}).get('groups', []))
     return [g for g in groups_of(entry) if g not in drafted]
 
-@exclusive
-def group_add(name: str) -> str:
-    index = load()
-    groups = index.setdefault('groups', {})
-    gid = f"G{max([int(g[1:]) for g in groups] + [0]) + 1:02d}"
-    groups[gid] = {'id': gid, 'name': clean(name) or gid}
-    save(index)
-    return gid
-
-
-@exclusive
-def group_rename(gid: str, name: str):
-    index = load()
-    index['groups'][gid]['name'] = clean(name) or gid
-    save(index)
-
-
-@exclusive
-def group_note(gid: str, note: str):
-    """What the group's motifs have in common, in a sentence or two (the person's; the models read it), or none"""
-    index = load()
-    note = ' '.join((note or '').split())
-    if note:
-        index['groups'][gid]['note'] = note
-    else:
-        index['groups'][gid].pop('note', None)
-    save(index)
-
-
-@exclusive
-def group_delete(gid: str):
-    """The group goes; its motifs stay, ungrouped"""
-    index = load()
-    index.get('groups', {}).pop(gid, None)
-    for e in index['entries'].values():
-        if gid in groups_of(e):
-            _set_groups(e, [g for g in groups_of(e) if g != gid])
-    save(index)
-
-
-@exclusive
-def group_assign(eid: str, gid: str | None):
-    """In this group only (or in none)"""
-    index = load()
-    if gid and gid not in index.get('groups', {}):
-        raise ValueError(f'no such group: {gid}')
-    _set_groups(index['entries'][eid], [gid] if gid else [])
-    _drafts(index['entries'][eid], groups=None)
-    save(index)
-
-
-@exclusive
-def group_member(eid: str, gid: str, on: bool = True):
-    """Into a group as well (keeping its others), or out of one"""
-    index = load()
-    if gid not in index.get('groups', {}):
-        raise ValueError(f'no such group: {gid}')
-    entry = index['entries'][eid]
-    _set_groups(entry, groups_of(entry) + [gid] if on else [g for g in groups_of(entry) if g != gid])
-    if on:
-        _drafts(entry, groups=[g for g in (entry.get('by_model') or {}).get('groups', []) if g != gid])
-    save(index)
-
 
 # Facets: ways of sorting motifs that cut across the rests-on links, one value per motif in each. Genre first, its
 # starting values the genres the narrative labeler uses; a person adds more. (Later, perhaps: Barkun's conspiracy scope,
@@ -1122,143 +325,9 @@ def facet_values(index: dict | None = None) -> dict[str, list[str]]:
     return out
 
 
-@exclusive
-def facet_rename(facet: str, old: str, new: str):
-    """A facet value renamed (a genre), on every motif that has it"""
-    if facet not in FACETS:
-        raise ValueError(f'no such facet: {facet}')
-    new = ' '.join(new.split())
-    if not new or new == old:
-        return
-    index = load()
-    for e in live(index):
-        if (e.get('facets') or {}).get(facet) == old:
-            e['facets'][facet] = new
-    values = index.setdefault('facet_values', {}).setdefault(facet, [])
-    index['facet_values'][facet] = [new if v == old else v for v in values] if old in values else values + [new]
-    if old in FACETS[facet]:
-        index.setdefault('facet_hidden', {}).setdefault(facet, []).append(old)
-    notes = index.get('facet_notes', {}).get(facet, {})
-    if old in notes:
-        notes[new] = notes.pop(old)
-    save(index)
-
-
-@exclusive
-def facet_remove(facet: str, value: str):
-    """A facet value gone (a genre): the motifs that had it have none"""
-    if facet not in FACETS:
-        raise ValueError(f'no such facet: {facet}')
-    index = load()
-    for e in live(index):
-        if (e.get('facets') or {}).get(facet) == value:
-            e['facets'].pop(facet)
-            if not e['facets']:
-                e.pop('facets')
-    values = index.setdefault('facet_values', {})  # (made here: the right side ran first and found none, Oct 7)
-    values[facet] = [v for v in values.get(facet, []) if v != value]
-    if value in FACETS[facet]:
-        index.setdefault('facet_hidden', {}).setdefault(facet, []).append(value)
-    index.get('facet_notes', {}).get(facet, {}).pop(value, None)
-    save(index)
-
-
 def facet_notes(index: dict | None = None) -> dict[str, dict[str, str]]:
     """Each facet value's description (a genre's: what kind of thing its motifs are), where the person wrote one"""
     return (index if index is not None else load()).get('facet_notes', {})
-
-
-@exclusive
-def facet_note(facet: str, value: str, note: str):
-    """A facet value's description (a genre's), or none"""
-    if facet not in FACETS:
-        raise ValueError(f'no such facet: {facet}')
-    index = load()
-    if value not in facet_values(index)[facet]:
-        raise ValueError(f'no such {facet}: {value}')
-    note = ' '.join((note or '').split())
-    notes = index.setdefault('facet_notes', {}).setdefault(facet, {})
-    if note:
-        notes[value] = note
-    else:
-        notes.pop(value, None)
-    save(index)
-
-
-@exclusive
-def set_facet(eid: str, facet: str, value: str | None):
-    """A motif's value in a facet (its genre), or none"""
-    if facet not in FACETS:
-        raise ValueError(f'no such facet: {facet}')
-    index = load()
-    entry = index['entries'][eid]
-    value = ' '.join((value or '').split())
-    if facet == 'genre':
-        _drafts(entry, genre=None)
-    if value:
-        entry.setdefault('facets', {})[facet] = value
-    else:
-        entry.get('facets', {}).pop(facet, None)
-        if not entry.get('facets'):
-            entry.pop('facets', None)
-    save(index)
-
-
-@exclusive
-def add_facet_value(facet: str, value: str):
-    if facet not in FACETS:
-        raise ValueError(f'no such facet: {facet}')
-    value = ' '.join(value.split())
-    index = load()
-    values = index.setdefault('facet_values', {}).setdefault(facet, [])
-    if value and value not in values and value not in FACETS[facet]:
-        values.append(value)
-    save(index)
-
-
-@exclusive
-def no_motif(claim: str):
-    """A person says this claim tells no recurring story: out of every motif it was in, kept out, and never filed
-    again (an empty filing). A model's motif left empty goes, as on a 'no' in the motif check."""
-    index = load()
-    k = key(claim)
-    for eid in list(_ids(index, k)):
-        entry = index['entries'].get(eid)
-        if not entry:
-            continue
-        entry['claims'] = [c for c in entry['claims'] if c['claim'] != claim]
-        entry.setdefault('not_claims', []).append(k)
-        if not entry['claims'] and not entry.get('curated'):
-            del index['entries'][eid]
-    index['claims'][k] = []
-    save(index)
-
-
-@exclusive
-def withdraw(claim: str) -> list[str]:
-    """Its source took the claim back (a Focus Group quote that doesn't support it): out of every motif and the claim
-    list, so it isn't filed again or shown. A model's motif left empty goes. Returns the motifs it was in."""
-    index = load()
-    k = key(claim)
-    was = []
-    for eid in list(_ids(index, k)):
-        entry = index['entries'].get(eid)
-        if not entry:
-            continue
-        was.append(eid)
-        entry['claims'] = [c for c in entry['claims'] if key(c['claim']) != k]
-        entry['done'] = [d for d in entry.get('done', []) if d != k]
-        if not entry['claims'] and not entry.get('curated'):
-            del index['entries'][eid]
-    index['claims'].pop(k, None)
-    save(index)
-    return was
-
-
-@exclusive
-def unfile(claim: str, eid: str):
-    """Take a claim out of a motif for good (as a no on the motif check)"""
-    check.__wrapped__(claim, eid, 'no')
 
 
 def board() -> dict:
@@ -1287,39 +356,6 @@ def board() -> dict:
     return {'groups': groups, 'entries': entries, 'facets': facet_values(index), 'facet_notes': facet_notes(index)}
 
 
-@exclusive
-def also_file(claim: str, source: str, target: str):
-    """File a claim under another motif as well, keeping it where it is (a person's choice on the motif board)"""
-    index = load()
-    k = key(claim)
-    found = next((c for c in index['entries'][source]['claims'] if key(c['claim']) == k), None)
-    entry = index['entries'][target]
-    if found is None or entry.get('merged_into'):
-        raise ValueError(f'no such claim in {source}, or {target} is gone')
-    if not any(key(c['claim']) == k for c in entry['claims']):  # a person filed it here: already checked
-        entry['claims'].append({**{kk: v for kk, v in found.items() if kk != 'checked'}, 'checked': 'yes'})
-    entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
-    index['claims'][k] = list(dict.fromkeys(_ids(index, k) + [target]))
-    save(index)
-
-
-# Done marks from the motif board: a person working through the index hides each motif once they've looked it over.
-# A motif is done while every claim it holds was there when it was marked; a new claim brings it back.
-
-@exclusive
-def mark_done(eid: str, done: bool = True):
-    index = load()
-    entry = index['entries'][eid]
-    if done:
-        entry['done'] = sorted(key(c['claim']) for c in entry['claims'])
-        entry.pop('not_done', None)
-        entry.pop('by_model', None)  # looked over: its genre and groups are the person's now
-    else:
-        entry.pop('done', None)
-        entry['not_done'] = True  # unmarked by hand: a note saved later doesn't mark it done again
-    save(index)
-
-
 def done_by_note(entry: dict) -> bool:
     """A motif a person made (or renamed) with a note of theirs is done: writing the note was the looking over (Oct 7:
     'if I create a motif and give it a note it's done'). Marks it done, with the claims it holds now, unless it's done
@@ -1329,14 +365,6 @@ def done_by_note(entry: dict) -> bool:
         return False
     entry['done'] = sorted(key(c['claim']) for c in entry['claims'])
     return True
-
-
-@exclusive
-def reset_done():
-    index = load()
-    for entry in index['entries'].values():
-        entry.pop('done', None)
-    save(index)
 
 
 def seen(entry: dict, claim: dict) -> bool:
@@ -1398,17 +426,6 @@ def similar_claims(claim: str, n: int = 8) -> list[dict]:
     for c, s in zip(items, v[1:] @ v[0]):
         c['score'] = round(float(s), 3)
     return sorted(items, key=lambda c: -c['score'])[:n]
-
-
-@exclusive
-def reject(claim: str, eid: str):
-    """A person says this claim isn't this motif: it's never suggested for it, or filed under it by the model"""
-    index = load()
-    entry = index['entries'][eid]
-    k = key(claim)
-    if k not in entry.setdefault('not_claims', []):
-        entry['not_claims'].append(k)
-    save(index)
 
 
 # Rests on: a motif can rest on others, only making sense given them: a kind of them ('Pedophile cabal' rests on 'Elite
@@ -1479,34 +496,6 @@ def genre_of(entry: dict) -> str | None:
     return (entry.get('facets') or {}).get('genre') or None
 
 
-@exclusive
-def set_parent(eid: str, parent: str, on: bool = True):
-    """`eid` rests (on) or doesn't rest (off) on `parent`. Refuses a loop."""
-    index = load()
-    entries = index['entries']
-    parents = parents_of(entries[eid])
-    if on:
-        if parent not in entries or entries[parent].get('merged_into') or parent == eid:
-            raise ValueError(f'no such motif: {parent}')
-        todo, seen = [parent], set()
-        while todo:  # everything above the new parent must not include eid
-            p = todo.pop()
-            if p == eid:
-                raise ValueError(f'{parent} already rests on {eid}')
-            if p not in seen:
-                seen.add(p)
-                todo += parents_of(entries.get(p, {}))
-        parents = list(dict.fromkeys(parents + [parent]))
-        pair = sorted([eid, parent])  # related, so never suggested as a merge again
-        if pair not in index.setdefault('not_same', []):
-            index['not_same'].append(pair)
-    else:
-        parents = [p for p in parents if p != parent]
-    entries[eid]['parents'] = parents
-    entries[eid].pop('parent', None)
-    save(index)
-
-
 def shared_pairs(least: int = 2) -> list[dict]:
     """Motifs filed together on at least `least` of the same claims: candidates for being one motif (or one a kind of
     the other), judged by what they hold rather than by their names. Pairs a person kept apart, or linked as kinds,
@@ -1530,36 +519,6 @@ def shared_pairs(least: int = 2) -> list[dict]:
     return sorted(out, key=lambda p: (-len(p['shared']), p['a']))
 
 
-# Related: two motifs that belong near each other without being one, or one a kind of the other ('Rape accusation
-# against men' and 'Campus sexual assault controversy' meet on some events and are different stories). Both ways.
-# A link can carry the person's reason ('a case of it, not a sibling'), kept beside the pairs in 'related_notes' so
-# everything that reads the pairs reads them as before (Fable, Oct 12).
-
-@exclusive
-def relate(a: str, b: str, related: bool = True, note: str | None = None):
-    index = load()
-    entries = index['entries']
-    if a == b or a not in entries or b not in entries:
-        raise ValueError(f'no such pair: {a} {b}')
-    pair = sorted([a, b])
-    links = index.setdefault('related', [])
-    if related:
-        if pair not in links:
-            links.append(pair)
-        if pair not in index.setdefault('not_same', []):  # related, so never suggested as one motif
-            index['not_same'].append(pair)
-        if note is not None:  # an empty one takes the reason away
-            note = ' '.join(note.split())
-            notes = index.setdefault('related_notes', {})
-            if note:
-                notes['|'.join(pair)] = note
-            else:
-                notes.pop('|'.join(pair), None)
-    else:
-        index['related'] = [p for p in links if p != pair]
-    save(index)
-
-
 # Corrected summaries: a person rewrites the model's one-line summary of a claim on the motif board. Kept in the index
 # ('corrections': the model's wording -> the person's), so undo covers them, and applied wherever claims are read
 # (the nightly filing, the Folklore and Rumors pages), so a corrected claim is never filed again in the old words.
@@ -1571,88 +530,6 @@ def corrected(text: str, index: dict | None = None) -> str:
         seen.add(text)
         text = fixes[text]
     return text
-
-
-@exclusive
-def correct_claim(old: str, new: str):
-    new = ' '.join(new.split())
-    index = load()
-    ko, kn = key(old), key(new)
-    if not new or new == old:
-        return
-    if ko not in index['claims']:
-        raise ValueError('no such claim in the index')
-    for e in index['entries'].values():
-        for c in e['claims']:
-            if key(c['claim']) == ko:
-                c['claim'] = new
-        if ko in e.get('not_claims', []):
-            e['not_claims'] = [kn if k == ko else k for k in e['not_claims']]
-        if ko in e.get('done', []):
-            e['done'] = sorted({kn if k == ko else k for k in e['done']})
-    ids = index['claims'].pop(ko)
-    index['claims'][kn] = list(dict.fromkeys(index['claims'].get(kn, []) + ids))
-    fixes = index.setdefault('corrections', {})
-    for original, current in list(fixes.items()):  # an earlier correction of this claim now leads to the new words
-        if current == old:
-            fixes[original] = new
-    fixes[old] = new
-    if ko in index.get('held', {}):  # a held claim stays held in its new words
-        index['held'][kn] = {**index['held'].pop(ko), 'claim': new}
-    save(index)
-
-
-@exclusive
-def same_claim(variant: str, canonical: str):
-    """A person says two claims are one claim told two ways. The variant folds into the kept claim in every motif either
-    was in; its words are kept on the kept claim's record as a variant (with where they came from); and later tellings
-    in exactly its words are filed as the kept claim (through the corrections). The variant may be one not filed yet."""
-    index = load()
-    kv, kc = key(variant), key(canonical)
-    if kv == kc:
-        raise ValueError('that is the same claim')
-    if kc not in index['claims']:
-        raise ValueError('the claim to keep is not in the index')
-    entries = index['entries']
-    ids_v, ids_c = _ids(index, kv), _ids(index, kc)
-    template = next((c for eid in ids_c if eid in entries for c in entries[eid]['claims'] if key(c['claim']) == kc), None)
-    told = {'claim': variant}
-    for eid in dict.fromkeys(ids_v + ids_c):
-        e = entries.get(eid)
-        if not e:
-            continue
-        vrec = next((c for c in e['claims'] if key(c['claim']) == kv), None)
-        crec = next((c for c in e['claims'] if key(c['claim']) == kc), None)
-        if vrec:
-            e['claims'].remove(vrec)
-            told = {k: vrec[k] for k in ('claim', 'source', 'ref', 'date') if vrec.get(k)}
-            if crec is None:
-                crec = {k: v for k, v in (template or vrec).items() if k not in ('variants', 'checked')}
-                crec['claim'] = canonical
-                e['claims'].append(crec)
-            crec['variants'] = crec.get('variants', []) + vrec.get('variants', [])
-            if crec.get('story') is None and vrec.get('story') is not None:  # the variant's story, if the kept has none
-                crec.update({f: vrec[f] for f in STORY_FIELDS if vrec.get(f) is not None})
-            told.update({f: vrec[f] for f in STORY_FIELDS if vrec.get(f) is not None})
-        if e.get('done') and kv in e['done']:
-            e['done'] = sorted((set(e['done']) - {kv}) | {kc})
-        if kv in e.get('not_claims', []):
-            e['not_claims'] = list(dict.fromkeys(kc if k == kv else k for k in e['not_claims']))
-    for eid in dict.fromkeys(ids_c + ids_v):  # the variant's words on every record of the kept claim
-        crec = next((c for c in entries.get(eid, {}).get('claims', []) if key(c['claim']) == kc), None)
-        if crec is not None and all(v.get('claim') != variant for v in crec.get('variants', [])):
-            crec.setdefault('variants', []).append(told)
-    index['claims'][kc] = list(dict.fromkeys(ids_c + ids_v))
-    index['claims'].pop(kv, None)
-    if kv in index.get('held', {}):  # a held variant holds the kept claim
-        index['held'].setdefault(kc, {**index['held'][kv], 'claim': canonical})
-        index['held'].pop(kv)
-    fixes = index.setdefault('corrections', {})
-    for original, current in list(fixes.items()):  # earlier wordings of the variant lead to the kept claim now
-        if current == variant:
-            fixes[original] = canonical
-    fixes[variant] = canonical
-    save(index)
 
 
 def originals(text: str, index: dict) -> set[str]:
@@ -1670,7 +547,7 @@ def searchable_claims() -> list[dict]:
     """Every claim a person might file by hand: those in the index (with their motifs) and those the nightly filing
     would take but hasn't (the latest folklore report's, the last LABEL_DAYS of fact-checks), in today's words."""
     from app.analysis import factchecks
-    from app.site.page_folklore import latest_report, withheld
+    from app.narratives import latest_report, withheld
     index = load()
     out = {}
     for e in live(index):
@@ -1700,59 +577,6 @@ def searchable_claims() -> list[dict]:
         text = corrected(c['claim'], index)
         out.setdefault(key(text), {'claim': text, 'source': c['source'], 'ref': c['ref'], 'motifs': []})
     return list(out.values())
-
-
-@exclusive
-def story_for(claim: dict, index: dict) -> dict:
-    """A claim's story fields for a filing made by hand (the curation session, Oct 12: hand filings and 💡 new motifs
-    dropped them): from the claim given, else another filing of it, else the watch list, else (a posts claim) the
-    report it came in, its ref being the report's time"""
-    have = {f: claim[f] for f in STORY_FIELDS if claim.get(f) is not None}
-    if have:
-        return have
-    k = key(claim['claim'])
-    for eid in _ids(index, k):
-        for c in index['entries'].get(eid, {}).get('claims', []):
-            if key(c['claim']) == k and c.get('story') is not None:
-                return {f: c[f] for f in STORY_FIELDS if c.get(f) is not None}
-    try:
-        from app.analysis import watch_list
-        w = watch_list.load()['claims'].get(k) or {}
-        if w.get('story') is not None:
-            return {'story': w['story'], **({'story_tie': w['story_tie']} if w.get('story_tie') else {})}
-    except Exception:  # noqa: BLE001 - no watch list yet
-        pass
-    ref = claim.get('ref') or ''
-    if claim.get('source') == 'narrative' and ref:
-        import glob
-        from app import narratives
-        name = f'report-{ref[:10]}-{ref[11:13]}{ref[14:16]}*.json'  # 2026-10-05T08:17 -> report-2026-10-05-0817.json
-        for path in glob.glob(os.path.join(narratives.FOLDER, name)):
-            for g in read_json(path, {}).get('found', []):
-                said = (g.get('label') or {}).get('narrative')
-                if said and k in (key(said), key(corrected(said, index))):
-                    if not g.get('story'):  # the model left it untied: the story its posts link to
-                        known = narratives.articles([u for u, _ in g.get('shared') or []])
-                        g = {**g, 'story': narratives.linked_story(
-                            {'articles': [{**known[u], 'shares': n} for u, n in g.get('shared') or [] if u in known]})}
-                    return story_of_group(g)
-    return {}
-
-
-def file_by_hand(claim: dict, eid: str):
-    """File a claim (one not in the index yet, or already elsewhere) under a motif a person chose"""
-    index = load()
-    entry = index['entries'][eid]
-    if entry.get('merged_into'):
-        raise ValueError(f'{eid} is gone')
-    k = key(claim['claim'])
-    if not any(key(c['claim']) == k for c in entry['claims']):
-        entry['claims'].append({'claim': claim['claim'], 'source': claim.get('source', ''), 'ref': claim.get('ref', ''),
-                                'date': dt.now().strftime('%Y-%m-%d'), 'checked': 'yes',  # a person's filing
-                                **story_for(claim, index)})
-    entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
-    index['claims'][k] = list(dict.fromkeys(index['claims'].get(k, []) + [eid]))
-    save(index)
 
 
 def single_suggestions(n: int = 5) -> list[dict]:
@@ -1792,48 +616,6 @@ def single_suggestions(n: int = 5) -> list[dict]:
     return sorted(out, key=lambda s: -(s['suggest'][0]['score'] if s['suggest'] else 0))
 
 
-@exclusive
-def stands_alone(eid: str, alone: bool = True):
-    """A person says this single-claim motif is right on its own: it leaves the singles list"""
-    index = load()
-    if alone:
-        index['entries'][eid]['stands_alone'] = True
-    else:
-        index['entries'][eid].pop('stands_alone', None)
-    save(index)
-
-
-@exclusive
-def set_note(eid: str, note: str):
-    """A person's scope note for a motif: one plain line on what it covers, beside its name (used in matching and
-    shown on the site); empty removes it"""
-    index = load()
-    note = ' '.join(note.split())
-    entry = index['entries'][eid]
-    if note:
-        entry['note'], entry['note_by'] = note, 'person'
-        done_by_note(entry)
-    else:
-        entry.pop('note', None)
-        entry.pop('note_by', None)
-    save(index)
-
-
-@exclusive
-def set_not_this(eid: str, text: str):
-    """What a motif isn't, though it looks like it ('not a scandal's cover-up, only the scandal'): a person's line,
-    shown to the filing model and the judge beside the note (motif_index.REUSE_PROMPT, motif_signals.judge_ask) and to
-    the element drafter; empty removes it"""
-    index = load()
-    text = ' '.join(text.split())
-    entry = index['entries'][eid]
-    if text:
-        entry['not_this'] = text
-    else:
-        entry.pop('not_this', None)
-    save(index)
-
-
 def not_this(entry: dict) -> str:
     """The line the models read after a motif's description: what it isn't, or nothing"""
     return f"\n   Not this: {entry['not_this']}" if entry.get('not_this') else ''
@@ -1843,23 +625,6 @@ def phrases_in(text) -> list[str]:
     """A person's carrying words as a list: one phrase per ';' or line, spaces tidied, each once"""
     parts = text if isinstance(text, list) else str(text or '').replace('\n', ';').split(';')
     return list(dict.fromkeys(p for p in (' '.join(str(x).split()).strip(' "“”') for x in parts) if p))
-
-
-@exclusive
-def set_carrying(claim: str, eid: str, text):
-    """The tellers' own words that carry the motif in this filing ("religion of peace", said sarcastically, under the
-    Dublin crowd claim): a person's, per filing (praxis rule 1's carrying words), the source of each motif's phrase
-    dictionary (carrying()). Oct 13, the person asked for it; empty takes them away"""
-    index = load()
-    found = next((c for c in index['entries'][eid]['claims'] if key(c['claim']) == key(claim)), None)
-    if found is None:
-        raise ValueError(f'no such filing: {eid} {claim[:60]}')
-    phrases = phrases_in(text)
-    if phrases:
-        found['carrying'] = phrases
-    else:
-        found.pop('carrying', None)
-    save(index)
 
 
 def carrying(entry: dict) -> list[tuple[str, int]]:
@@ -1872,15 +637,6 @@ def carrying(entry: dict) -> list[tuple[str, int]]:
             seen.setdefault(k, p)
             count[k] = count.get(k, 0) + 1
     return sorted(((seen[k], n) for k, n in count.items()), key=lambda x: (-x[1], x[0].lower()))
-
-
-def keep_note(eid: str):
-    """A person keeps the model's drafted note as it is: it's theirs now, and shown on the site"""
-    index = load()
-    if index['entries'][eid].get('note'):
-        index['entries'][eid]['note_by'] = 'person'
-        done_by_note(index['entries'][eid])
-        save(index)
 
 
 DRAFTS = ('model', 'claude')  # notes drafted, not yet kept: the local model's, or the Oct 5 one-off backfill by Claude
@@ -1903,148 +659,37 @@ def public_note(entry: dict) -> str:
     return entry.get('note', '') if entry.get('note') and entry.get('note_by') not in DRAFTS else ''
 
 
-GLOSS_PROMPT = """A motif in our index of recurring rumor and narrative shapes: {name}
-Claims people are telling that are filed under it:
-{claims}
-
-common: first, in a sentence or two, what these claims have in common as stories: who does what to whom, as the \
-people telling them tell it. Look past the particular events to the kind of story. The motif's name is the main \
-guide (a person chose many of them): with only one or two claims, take the kind of story from the name, and use the \
-claims only to see how it is told.
-note: then the motif's scope note: one plain sentence saying what kind of story this motif covers, built from what \
-they have in common. Write it the way its tellers tell it, as if it were so; never judge it (no "false", \
-"misleading", "debunked", "claims that" or "alleged"). Use kinds of people and places, not particular ones, unless \
-the motif's own name names them: then it is a named narrative, and the note keeps that name. Start with what \
-happens, not with the motif's name, "This motif", "A motif" or "Stories"."""
-GLOSS_SCHEMA = {"type": "object", "properties": {"common": {"type": "string", "maxLength": 500},
-                                                 "note": {"type": "string", "maxLength": 320}},
-                "required": ["common", "note"]}
-GLOSS_CLAIMS = 8  # claims shown when drafting a note
-# Oct 6, drafts for the 49 motifs whose notes a person wrote, compared with theirs: gemma4:26b drafted all 49, closest
-# to the person's (0.73 by meaning), describing the kind of story; qwen3:30b-a3b gave up on 10 (judged or named
-# people three times) and restated single claims (0.71)
-GLOSS_MODEL = 'gemma4:26b'
-GLOSS_MIN = 3  # claims a motif needs before the model drafts its note: with one or two it restated them (Oct 5)
-
-
-VERDICT_WORDS = re.compile(r"\b(false|falsely|misleading|debunked|unfounded|baseless|claims? that|alleged(ly)?|"
-                           r"misinformation|disinformation|conspiracy theor)", re.I)
-
-
-def gloss(entry: dict) -> str | None:
-    """The model's draft of a motif's scope note, from its name and claims: the story as its tellers tell it. A draft
-    that judges the story (fact-check summaries pull it toward "falsely attributed") or names people or places is
-    asked for again, twice at most, then left for a person. Motifs whose names are themselves about falsehood (Fake news) may say so: their name is the story."""
-    claims = '\n'.join(f'- {c["claim"][:180]}' for c in entry['claims'][-GLOSS_CLAIMS:]) or '(none yet)'
-    prompt = GLOSS_PROMPT.format(name=entry['name'], claims=claims)
-    about_falsehood = re.search(r'\b(fake|false|lie|lies|hoax|disinformation|misinformation|propaganda)\b', entry['name'], re.I)
-    for _attempt in range(3):
-        answer = llm.complete_json(prompt, GLOSS_SCHEMA, max_tokens=600, model=GLOSS_MODEL)
-        note = ' '.join((answer or {}).get('note', '').split())
-        if not note or note[-1] not in '.!?"\u201d':
-            continue  # none, or cut off at the length limit mid-sentence
-        if re.search(r'\b(the user|scope note|motif)\b', note, re.I):
-            continue  # the model talking about the task, not answering it
-        judged = VERDICT_WORDS.search(note) and not about_falsehood
-        own = {w.lower() for w in re.findall(r"[\w'-]+", entry['name'])}  # a named narrative keeps its names
-        named = [w for w in names_in(note) if w.lower() not in own]
-        # A draft opening with the motif's own name ("Breaking ranks occurs when...") defines a word instead of telling
-        # what happens (17 of 49 Gemma drafts did, Oct 6)
-        echoed = note.lower().startswith(entry['name'].lower())
-        if not judged and not named and not echoed:
-            return note
-        prompt += ('\n\nYour last answer: "' + note + '". ' + ('It judged the story: say only what the people telling '
-                   'it say happens. ' if judged else '') + (f'It named {", ".join(named)}: say what they are instead. '
-                                                            if named else '')
-                   + ('It began with the motif\'s name: begin with who does what instead.' if echoed else ''))
-    return None
+# The index's filing, its verbs and its note drafting live in modules of their own (Oct 21, Fable's architecture
+# review: this file had grown to 2,050 lines). They are reached through here as before (mi.file_claims, mi.add,
+# mi.gloss), looked up when first asked for, so those modules can import this one without a cycle. A test stands in
+# for one where it lives (motif_filing.closest), since the moved code calls its neighbours directly.
+_MOVED = {
+    'motif_filing': (
+        'CANDIDATES', 'FILING_LOG', 'JUDGE_MODEL', 'LINK_FIELDS', 'MATCH_FLOOR', 'MATCH_PROMPT', 'MAX_NEW',
+        'MAX_WORDS', 'METRICS', 'MODEL', 'NAME_PROMPT', 'NAME_RULES', 'NAME_SCHEMA', 'NEW_PROMPT', 'REUSE_PROMPT',
+        'SHORTLIST_LOG', 'SHOWN', 'SHOWN_FLOOR', 'Shortlister', 'backfill_stories', 'closest', 'file_claims', 'fits',
+        'fits_name', 'log_shortlist', 'match', 'metrics', 'metrics_history', 'model_days', 'name_claim', 'nightly',
+        'record', 'report_stories', 'same_name', 'snapshot_metrics', 'sure_share',
+    ),
+    'motif_edit': (
+        '_add', 'add', 'add_facet_value', 'also_file', 'check', 'correct_claim', 'delete', 'facet_note',
+        'facet_remove', 'facet_rename', 'file_by_hand', 'group_add', 'group_assign', 'group_delete', 'group_member',
+        'group_note', 'group_rename', 'hold', 'keep_note', 'mark_done', 'merge', 'move', 'no_motif', 'not_same',
+        'reject', 'relate', 'rename', 'reset_done', 'same_claim', 'set_carrying', 'set_facet', 'set_fits',
+        'set_not_this', 'set_note', 'set_parent', 'set_told', 'set_watch', 'stands_alone', 'story_for', 'unfile',
+        'withdraw',
+    ),
+    'motif_notes': (
+        'GLOSS_CLAIMS', 'GLOSS_MIN', 'GLOSS_MODEL', 'GLOSS_PROMPT', 'GLOSS_SCHEMA', 'VERDICT_WORDS', 'draft_missing',
+        'gloss', 'gloss_missing', 'names_in', 'needs_drafts', 'needs_gloss',
+    ),
+}
+_HOME = {name: module for module, names in _MOVED.items() for name in names}
 
 
-def names_in(text: str) -> list[str]:
-    """Capitalized words past the first that aren't sentence starts: names, which a scope note shouldn't have"""
-    words = re.findall(r"[A-Za-z][\w'-]*", text)
-    return [w for i, w in enumerate(words[1:], 1) if w[0].isupper() and w not in ('I',)
-            and not re.search(r'[.!?]\s+' + re.escape(w), text)]
-
-
-def needs_gloss(entry: dict) -> bool:
-    """A motif with GLOSS_MIN claims and no note, or a model draft from when it held half as many claims or fewer.
-    A person's note (written or kept) is never redrafted."""
-    n = len(entry['claims'])
-    if n < GLOSS_MIN:
-        return False
-    if not entry.get('note'):
-        return True
-    return entry.get('note_by') == 'model' and n >= 2 * entry.get('note_claims', n)
-
-
-def needs_drafts(entry: dict) -> bool:
-    """A motif the model made that nobody has looked over and the model hasn't drafted for yet"""
-    return bool(entry['claims']) and not entry.get('curated') and 'done' not in entry and not entry.get('drafted')
-
-
-def draft_missing(budget: float | None = None) -> int:
-    """The model's note, genre and groups for each motif it made since the last run (needs_drafts), for at most
-    `budget` seconds, each only where the motif has none; how many motifs got drafts"""
-    import time
-
-    from app.analysis import motif_proposals as mp
-    started, done = time.time(), 0
-    index = load()
-    todo = [e['id'] for e in live(index) if needs_drafts(e)]
-    if not todo:
-        return 0
-    examples = mp.genre_examples(index)
-    for eid in todo:
-        if budget is not None and time.time() - started > budget:
-            break
-        entry = load()['entries'][eid]
-        note = None if entry.get('note') else gloss(entry)
-        drafted = dict(entry, note=note or entry.get('note', ''))
-        genre = None
-        if not genre_of(entry) and len(examples) >= 2:
-            got = mp.ask_genre(drafted, examples, facet_notes(index).get('genre'))
-            genre = got and got[0]
-        groups = [] if groups_of(entry) else mp.ask_groups(drafted, index)
-        with locked():
-            index = load()
-            e = index['entries'].get(eid)
-            if not e or not needs_drafts(e):
-                continue  # a person got there first
-            if note and not e.get('note'):
-                e['note'], e['note_by'], e['note_claims'] = note, 'model', len(e['claims'])
-            if genre and not genre_of(e):
-                e.setdefault('facets', {})['genre'] = genre
-                _drafts(e, genre=genre)
-            if groups and not groups_of(e):
-                _set_groups(e, groups)
-                _drafts(e, groups=groups)
-            e['drafted'] = dt.now().strftime('%Y-%m-%d')
-            save(index)
-            done += 1
-    if done:
-        logger.info("Motif index: drafted note, genre and groups for %d new motifs", done)
-    return done
-
-
-def gloss_missing(budget: float | None = None) -> int:
-    """Draft notes for the motifs that need one (needs_gloss), for at most `budget` seconds; how many were drafted"""
-    import time
-    started, done = time.time(), 0
-    for eid in [e['id'] for e in live(load()) if needs_gloss(e)]:
-        if budget is not None and time.time() - started > budget:
-            break
-        entry = load()['entries'][eid]
-        note = gloss(entry)
-        if not note:
-            continue
-        with locked():
-            index = load()
-            e = index['entries'].get(eid)
-            if e and needs_gloss(e):  # a person may have written one meanwhile
-                e['note'], e['note_by'], e['note_claims'] = note, 'model', len(e['claims'])
-                save(index)
-                done += 1
-    if done:
-        logger.info("Motif index: drafted %d scope notes", done)
-    return done
+def __getattr__(name: str):
+    home = _HOME.get(name)
+    if home is None:
+        raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+    import importlib
+    return getattr(importlib.import_module(f'app.analysis.{home}'), name)

@@ -143,7 +143,7 @@ def prepared() -> dict:
     first (the same reports the Folklore page and the story pages show)"""
     global _cache
     if _cache is None:
-        from app.site.page_folklore import latest_report
+        from app.narratives import latest_report
         from app.site.page_story import reports_by_day
         reports = [latest_report() or {}] + reports_by_day()
         uris = [u for r in reports for g in r.get('found', []) if (g.get('label') or {}).get('retold')

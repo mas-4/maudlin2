@@ -19,12 +19,12 @@ Only values already worked out are written: tracing never asks a model anything.
 (the model's or the person's) are kept; posts' texts never are. Nothing here may stop the pipeline: every failure is
 swallowed. Files older than KEEP_DAYS are deleted."""
 import fcntl
-import hashlib
 import json
 import os
 from datetime import datetime as dt
 from datetime import timedelta as td
 
+from app.analysis.motif_index import key  # noqa: F401 - the claim key, as trace.key for the trace's readers
 from app.utils import Config
 
 KEEP_DAYS = 14
@@ -35,11 +35,6 @@ _pruned = {'day': None}
 
 def folder() -> str:
     return FOLDER or os.path.join(Config.data, 'motifs', 'trace')
-
-
-def key(claim: str) -> str:
-    """motif_index.key, without importing it (it imports this)"""
-    return hashlib.sha1(claim.strip().lower().encode()).hexdigest()[:16]
 
 
 def _plain(x, digits: int = 4):

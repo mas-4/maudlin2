@@ -105,7 +105,7 @@ def logs(folder, tmp_path, monkeypatch):
     from app.analysis import curation_db, filing_confidence as fc, motif_signals as ms, watch_list
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
     monkeypatch.setattr(trace, 'live', lambda: True)  # this test's index stands for the live one
-    monkeypatch.setattr(mi, 'SHORTLIST_LOG', str(tmp_path / 'shortlist.jsonl'))
+    monkeypatch.setattr('app.analysis.motif_filing.SHORTLIST_LOG', str(tmp_path / 'shortlist.jsonl'))
     monkeypatch.setattr(watch_list, 'REFILE_LOG', str(tmp_path / 'refile.jsonl'))
     monkeypatch.setattr(ms, 'SHAPES', str(tmp_path / 'shapes.json'))
     monkeypatch.setattr(ms, 'LAYERED', str(tmp_path / 'layers.json'))

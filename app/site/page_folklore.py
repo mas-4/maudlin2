@@ -13,8 +13,6 @@ our motif index, and the person's genres of those motifs.
 People's own posts are never shown on the published site, only the model's summary of what they share: even without
 handles, a quoted post can be searched back to its author. Local preview builds (debug) show a few versions, so the
 research can be checked."""
-import glob
-import json
 import os
 from collections import Counter
 from datetime import date
@@ -25,7 +23,9 @@ from app.analysis import accusations, circulation, factchecks, motif_index, narr
 from app.site.common import TemplateHandler
 from app.site.page_motifs import catalog
 from app.utils import Config, get_logger
-from app.utils.store import read_json
+
+# The reports' reading lives with the reports (narratives.py); the names stay here for this page and its tests
+from app.narratives import NOT_STORIES, WITHHELD, latest_report, withheld  # noqa: E402, F401
 
 logger = get_logger(__name__)
 
@@ -34,17 +34,7 @@ FOLDER = os.path.join(Config.data, 'narratives')
 # handful reacting to the same news, not a story people retell. The floor grows with the sample, 1 in PEOPLE_SHARE.
 MIN_PEOPLE = 10
 PEOPLE_SHARE = 2500
-NOT_STORIES = {'news report or shared reaction', 'none: a shared topic, not a retold narrative'}  # no cast or motif
 SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#8a8f98'}
-
-
-WITHHELD = os.path.join(FOLDER, 'withheld.json')  # narratives pulled by hand: [{claim, reason, at}]
-
-
-def withheld() -> set[str]:
-    """Claims withheld from the page by hand after a misreading (Oct 4: a group of trans people talking about their
-    own identity was labeled as spreading an anti-trans claim one of them had quoted)."""
-    return {w['claim'] for w in read_json(WITHHELD, [])}
 
 
 FOCUS_EPISODES = 4  # Focus Group episodes shown, the latest
@@ -151,14 +141,6 @@ def told_before(threads: dict, report: str, claim: str, index: dict) -> list[dic
     return [{'day': date.fromisoformat(d['date']).strftime('%b %-d'), 'people': d['people'],
              'claim': motif_index.corrected(d['claim'], index)}
             for d in reversed(thread['days']) if d['report'] != report]
-
-
-def latest_report() -> dict | None:
-    reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')))
-    if not reports:
-        return None
-    with open(reports[-1]) as f:
-        return dict(json.load(f), file=os.path.basename(reports[-1]))
 
 
 class FolklorePage:

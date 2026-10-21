@@ -41,6 +41,26 @@ logger = get_logger(__name__)
 
 FOLDER = os.path.join(Config.data, 'narratives')
 JUDGMENTS = os.path.join(FOLDER, 'judgments.json')
+# What the filing and the folklore page read of the reports (here since Oct 21; before, the motif index read them from
+# the page builder, site/page_folklore.py)
+NOT_STORIES = {'news report or shared reaction', 'none: a shared topic, not a retold narrative'}  # no cast or motif
+WITHHELD = os.path.join(FOLDER, 'withheld.json')  # narratives pulled by hand: [{claim, reason, at}]
+
+
+def withheld() -> set[str]:
+    """Claims withheld from the page by hand after a misreading (Oct 4: a group of trans people talking about their
+    own identity was labeled as spreading an anti-trans claim one of them had quoted)."""
+    return {w['claim'] for w in read_json(WITHHELD, [])}
+
+
+def latest_report() -> dict | None:
+    reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')))
+    if not reports:
+        return None
+    with open(reports[-1]) as f:
+        return dict(json.load(f), file=os.path.basename(reports[-1]))
+
+
 SIMILARITY = 0.78  # mutual neighbours this alike (mxbai) are versions of one thing
 NEIGHBOURS = 15
 MIN_AUTHORS = 5
