@@ -56,6 +56,18 @@ dst.close(); src.close()
 PY
     EXTRA+=(-C "$TMP" curation.sqlite)
 fi
+# The motif index, a database since Oct 21 (it was motif_index.json, in the tar below): the person's curation, in every
+# copy, hourly and nightly, copied whole by SQLite so a save in progress can't tear it
+if [ -f "$DATA/motif_index.sqlite" ]; then
+    "$ROOT/.venv/bin/python" - "$DATA/motif_index.sqlite" "$TMP/motif_index.sqlite" <<'PY'
+import sqlite3, sys
+src, dst = sqlite3.connect(sys.argv[1]), sqlite3.connect(sys.argv[2])
+with dst:
+    src.backup(dst)
+dst.close(); src.close()
+PY
+    EXTRA+=(-C "$TMP" motif_index.sqlite)
+fi
 if [ "${1:-}" != "run" ] && [ -f "$DATA/vernacular.sqlite" ]; then
     "$ROOT/.venv/bin/python" - "$DATA/vernacular.sqlite" "$TMP/vernacular.sqlite" <<'PY'
 import sqlite3, sys
@@ -77,7 +89,7 @@ if [ "${1:-}" = "run" ]; then
     HOURLY_SKIP=(--exclude=./archives --exclude=./motifs/experiments --exclude=./motifs/reranker --exclude=./motifs/trace)
 fi
 TAR_STATUS=0
-tar -czf "$FILES" -C "$DATA" "${HOURLY_SKIP[@]}" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' \
+tar -czf "$FILES" -C "$DATA" "${HOURLY_SKIP[@]}" --exclude=./data.db --exclude=./vernacular.sqlite --exclude='./curation.sqlite*' --exclude='./motif_index.sqlite*' \
     --exclude='*embeddings.sqlite*' --exclude=./archives/american_stories \
     --exclude=./attic --exclude='./app.log*' --exclude='*.lock' --exclude='*.tmp' . "${EXTRA[@]}" \
     || TAR_STATUS=$?

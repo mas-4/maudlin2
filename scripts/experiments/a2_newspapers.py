@@ -222,7 +222,6 @@ def sandbox():
     from app.analysis import motif_proposals as mp
     from app.analysis import motif_retriever as mr
     from app.analysis import motif_signals as ms
-    from app.utils.store import write_json
     box = os.path.join(WORK, 'sandbox')
     os.makedirs(os.path.join(box, 'motifs'), exist_ok=True)
     moves = [(mi, 'INDEX'), (mi, 'METRICS'), (mi, 'FILING_LOG'), (ms, 'SHAPES'), (ms, 'RERANKS'), (ms, 'JUDGED'),
@@ -233,9 +232,16 @@ def sandbox():
         new = os.path.join(box, os.path.relpath(old, Config.data))
         os.makedirs(os.path.dirname(new), exist_ok=True)
         if not os.path.exists(new) and os.path.exists(old):
-            shutil.copy2(old, new)
+            if old.endswith('.sqlite'):  # a database (the index, since Oct 21): copied whole by SQLite, not torn
+                import sqlite3
+                src, dst = sqlite3.connect(old), sqlite3.connect(new)
+                src.backup(dst)
+                dst.close(), src.close()
+            else:
+                shutil.copy2(old, new)
         setattr(mod, name, new)
-    mi.save = lambda index: write_json(mi.INDEX, index, indent=1)  # no versions into production's curation database
+    # (until Oct 21 mi.save was replaced here to keep whole copies out of production's curation database; the index is
+    # a database of its own now, its history kept in its own file)
     return box
 
 

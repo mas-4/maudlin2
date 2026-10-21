@@ -53,13 +53,12 @@ def save(state: dict):
 
 def sandbox(corpus: str):
     """A2's sandbox (every file the filing machinery writes, in its own folder), its index emptied the first time"""
-    from app.utils.store import write_json
     a2.WORK = os.path.join(ROOT, corpus)
     box = a2.sandbox()
     from app.analysis import motif_index as mi
     marker = os.path.join(box, 'emptied')
     if not os.path.exists(marker):
-        write_json(mi.INDEX, {'next': 1, 'entries': {}, 'claims': {}})
+        mi.save({'next': 1, 'entries': {}, 'claims': {}})
         open(marker, 'w').write('the index started empty: U1')
     return box
 
@@ -67,8 +66,8 @@ def sandbox(corpus: str):
 def curated() -> dict[str, list[str]]:
     """The person's own: claim -> the done motifs it's confirmed in, from production's index file (read only; by its
     path, as a sandbox points motif_index at an empty copy)"""
-    from app.utils.store import read_json
-    index = read_json(os.path.join(Config.data, 'motif_index.json'), {'entries': {}})
+    from app.analysis import motif_index as mi
+    index = mi.load_from(os.path.join(Config.data, 'motif_index.sqlite'))
     out = defaultdict(list)
     for e in index['entries'].values():
         if e.get('merged_into'):
@@ -84,8 +83,8 @@ def gold() -> dict[str, set]:
     """The person's motifs for each claim to score against, Straight news left out (Oct 12, the person's decision (c):
     Straight news and no motif are one "nothing fit" population, so its claims aren't a group the machine should
     match). curated() itself is unchanged: the sample is drawn from it"""
-    from app.utils.store import read_json
-    index = read_json(os.path.join(Config.data, 'motif_index.json'), {'entries': {}})
+    from app.analysis import motif_index as mi
+    index = mi.load_from(os.path.join(Config.data, 'motif_index.sqlite'))
     sink = {eid for eid, e in index['entries'].items() if not e.get('merged_into')
             and e.get('name', '').strip().lower() == 'straight news'}
     return {c: set(ms) - sink for c, ms in curated().items()}

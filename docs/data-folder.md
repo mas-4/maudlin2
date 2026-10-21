@@ -19,8 +19,8 @@ Kinds of file:
 
 | File | Owner | What it holds |
 |---|---|---|
-| `motif_index.json` | `analysis/motif_index.py` | Motifs, filings, links, groups, genres, corrections, tellings and held claims. Every write is locked (`.lock`). |
-| `curation.sqlite` | `analysis/curation_db.py` | Every version of the motif index, the saved states, and a copy of the curation log. |
+| `motif_index.sqlite` | `analysis/motif_db.py`, `analysis/motif_index.py` | The motif index, a database since Oct 21: motifs, filings, links, groups, genres, corrections, tellings and held claims, with every row each save changed (`changes`). Backed up hourly through SQLite. Writes take the lock `motif_index.sqlite.lock`. |
+| `curation.sqlite` | `analysis/curation_db.py` | The saved states, and a copy of the curation log. Its `versions` table, whole copies of the index on every save, stopped on Oct 21. |
 | `motif_proposals.json` | `analysis/motif_proposals.py` | The machine's proposals, with the person's decisions and critiques. Decided ones are kept for good. |
 | `validation/curation_log.jsonl` | `scripts/validate.py` | Every change made in the checker, with what it replaced. The models learn from it. |
 | `validation/motif_verdicts.jsonl` | `scripts/validate.py` | Answers given on the claims-to-judge page. |

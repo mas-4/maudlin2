@@ -167,6 +167,28 @@ def read_text(path: str) -> str | None:
         return None
 
 
+def state(path: str) -> str | None:
+    """What a step's undo keeps of a file it manages: the file's text, or for the motif index (a database since Oct 21)
+    the number of its last save ('txn:41'), since undo takes back the rows changed after it"""
+    from app.analysis import motif_index as mi
+    if path == mi.INDEX:
+        return f'txn:{mi.version()}' if not mi._json_mode() else read_text(mi.legacy())
+    return read_text(path)
+
+
+def restore(path: str, before: str | None):
+    """Put a managed file back as `state` found it (the caller holds the index's lock)"""
+    from app.analysis import motif_index as mi, motif_db
+    if path == mi.INDEX and (before or '').startswith('txn:'):
+        motif_db.revert(mi.INDEX, int(before[4:]))
+        return
+    if path == mi.INDEX:
+        path = mi.legacy()
+    with open(path + '.tmp', 'w') as f:
+        f.write(before or '')
+    os.replace(path + '.tmp', path)
+
+
 def describe(data: dict, before: dict) -> str:
     """'merge “Government deception” into “False flag operation”' and the like, for the undo button"""
     name = lambda k: (before.get(k) or {}).get('name') or data.get(k)  # noqa: E731
@@ -187,7 +209,7 @@ def describe(data: dict, before: dict) -> str:
 def push_undo(path: str, before_text: str | None, what: str, proposals: list[str] | None = None):
     """A step to undo: the file as it was, and the proposals the step decided (reopened on undo; a rejection changes
     no file but is a step all the same; until Oct 7 undo skipped it, and undoing an approval left it decided)"""
-    after = read_text(path)
+    after = state(path)
     if after == before_text and not proposals:
         return
     os.makedirs(UNDO, exist_ok=True)
@@ -223,13 +245,11 @@ def undo() -> str:
         raise ValueError('nothing to undo')
     snap_path, snap = found
     with motif_index.locked():
-        now = read_text(snap['path']) or ''
+        now = state(snap['path']) or ''
         if hashlib.sha1(now.encode()).hexdigest() != snap['after_sha']:
             raise ValueError('the index has changed since that edit (an hourly run filing claims?), so undoing it '
                              'would lose those changes: fix it by hand instead')
-        with open(snap['path'] + '.tmp', 'w') as f:
-            f.write(snap['before'] or '')
-        os.replace(snap['path'] + '.tmp', snap['path'])
+        restore(snap['path'], snap['before'])
     os.remove(snap_path)
     if snap.get('proposals'):
         from app.analysis import motif_proposals
@@ -285,7 +305,7 @@ def save_checkpoint(name: str, kind: str = 'manual') -> dict:
     """The motif index and the proposals as they are now, saved by name in the curation database, to go back to"""
     from app.analysis import curation_db, motif_index as mi, motif_proposals as mp
     with mi.locked():
-        return curation_db.checkpoint(name, read_text(mi.INDEX) or '{}', read_text(mp.PROPOSALS), kind)
+        return curation_db.checkpoint(name, mi.export_text(), read_text(mp.PROPOSALS), kind)
 
 
 def go_back(cid: int) -> dict:
@@ -296,14 +316,14 @@ def go_back(cid: int) -> dict:
     from app.utils.store import write_json
     cp, index_text, proposals_text = curation_db.restore(cid)
     with mi.locked():
-        now_index, now_proposals = read_text(mi.INDEX), read_text(mp.PROPOSALS)
-        before = curation_db.checkpoint(f'before going back to “{cp["name"]}”', now_index or '{}', now_proposals,
+        now_state, now_proposals = state(mi.INDEX), read_text(mp.PROPOSALS)
+        before = curation_db.checkpoint(f'before going back to “{cp["name"]}”', mi.export_text(), now_proposals,
                                         kind='before going back')
         mi.save(json.loads(index_text))
         if proposals_text is not None:
             write_json(mp.PROPOSALS, json.loads(proposals_text))
     undone = curation_db.set_reverted(cp)
-    push_undo(mi.INDEX, now_index, f'go back to “{cp["name"]}”')
+    push_undo(mi.INDEX, now_state, f'go back to “{cp["name"]}”')
     log_curation('checkpoints', {'action': 'go back', 'to': cid, 'name': cp['name'], 'reverted': undone,
                                  'saved_first': before['id']}, {})
     return {'to': cp, 'reverted': undone, 'saved_first': before}
@@ -1089,7 +1109,7 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, KeyError) as e:
                 return self.send_json_error(400, str(e))
         undo_path = undo_paths().get(self.path)
-        self._undo = (undo_path, read_text(undo_path)) if undo_path else None
+        self._undo = (undo_path, state(undo_path)) if undo_path else None
         if self.path == '/workbench':
             by = data.pop('by', None)  # an action someone else made at the person's request (claude, by MCP)
             by = by if by in BY else None

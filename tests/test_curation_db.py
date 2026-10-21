@@ -1,4 +1,4 @@
-"""app/analysis/curation_db.py and the checker's checkpoints: every save of the motif index is kept; a state saved by
+"""app/analysis/curation_db.py and the checker's checkpoints: every save of the motif index is logged; a state saved by
 name can be gone back to, saving what was there first; the changes taken back stay in the log, marked, and the models
 stop learning from them."""
 import importlib.util
@@ -26,14 +26,23 @@ def setup(tmp_path, monkeypatch):
     (tmp_path / 'proposals.json').write_text(json.dumps({'p1': {'id': 'p1', 'status': 'open'}}))
 
 
-def test_every_save_is_kept_once(tmp_path, monkeypatch):
+def test_every_save_is_kept_once_as_the_rows_it_changed(tmp_path, monkeypatch):
+    """Since Oct 21 the index is a database: a save logs the rows it changed, not a copy of the whole index"""
+    import sqlite3
     setup(tmp_path, monkeypatch)
+    first = mi.version()
     index = mi.load()
-    mi.save(index)  # the same state: not kept again
+    mi.save(index)  # the same state: nothing kept again
+    assert mi.version() == first
     index['entries']['M001']['name'] = 'Empty suits'
     mi.save(index)
+    assert mi.version() == first + 1
+    con = sqlite3.connect(mi.INDEX)
+    changed = con.execute('SELECT tbl, key, old, new FROM changes WHERE txn = ?', (first + 1,)).fetchall()
+    assert [(t, k) for t, k, _o, _n in changed] == [('motifs', 'M001')]
+    assert '"Empty suit"' in changed[0][2] and '"Empty suits"' in changed[0][3]
     with curation_db.connect() as con:
-        assert con.execute('SELECT COUNT(*) FROM versions').fetchone()[0] == 2
+        assert con.execute('SELECT COUNT(*) FROM versions').fetchone()[0] == 0  # no whole copies any more
 
 
 def test_going_back_to_a_saved_state(tmp_path, monkeypatch):

@@ -59,7 +59,7 @@ def live() -> bool:
     if os.environ.get('MAUDLIN_TRACE') == 'off':
         return False
     from app.analysis import motif_index as mi
-    return os.path.realpath(mi.INDEX) == os.path.realpath(os.path.join(Config.data, 'motif_index.json'))
+    return os.path.realpath(mi.INDEX) == os.path.realpath(os.path.join(Config.data, 'motif_index.sqlite'))
 
 
 def emit(stage: str, claim: str, **data):

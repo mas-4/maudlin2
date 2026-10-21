@@ -19,6 +19,7 @@ the rest share. Filing is in motif_filing.py, the verbs in motif_edit.py, the mo
 all reached through here (see _MOVED at the end)."""
 import contextlib
 import functools
+import json
 import hashlib
 import os
 import re
@@ -31,7 +32,17 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-INDEX = os.path.join(Config.data, 'motif_index.json')
+INDEX = os.path.join(Config.data, 'motif_index.sqlite')  # the index's database (motif_db.py), since Oct 21
+
+
+def legacy() -> str | None:
+    """The JSON file the index lived in until Oct 21, read and written in its place until it's moved in (migrate)"""
+    return INDEX[:-len('.sqlite')] + '.json' if INDEX.endswith('.sqlite') else None
+
+
+def _json_mode() -> bool:
+    lg = legacy()
+    return not os.path.exists(INDEX) and lg is not None and os.path.exists(lg)
 
 
 def clean(name: str) -> str:
@@ -43,12 +54,19 @@ def key(claim: str) -> str:
     return hashlib.sha1(claim.strip().lower().encode()).hexdigest()[:16]
 
 
+def _read() -> dict:
+    from app.analysis import motif_db
+    if _json_mode():
+        return read_json(legacy(), {'next': 1, 'entries': {}, 'claims': {}})
+    return motif_db.read(INDEX)
+
+
 def load() -> dict:
     if getattr(_batch, 'on', False):  # inside batched(): the batch's own copy, changed step by step
         if _batch.index is None:
-            _batch.index = read_json(INDEX, {'next': 1, 'entries': {}, 'claims': {}})
+            _batch.index = _read()
         return _batch.index
-    return read_json(INDEX, {'next': 1, 'entries': {}, 'claims': {}})
+    return _read()
 
 
 def save(index: dict):
@@ -62,10 +80,57 @@ def save(index: dict):
 
 
 def _write(index: dict):
-    write_json(INDEX, index, indent=1)
-    from app.analysis import curation_db  # every state kept, to go back to (Oct 8)
-    with open(INDEX) as f:
-        curation_db.record_version(f.read())
+    """Only the rows that changed, each logged with its old value (motif_db.py); before the move, the whole JSON file
+    and a copy of it in curation.sqlite, as it was until Oct 21"""
+    from app.analysis import motif_db
+    if _json_mode():
+        write_json(legacy(), index, indent=1)
+        from app.analysis import curation_db
+        with open(legacy()) as f:
+            curation_db.record_version(f.read())
+        return
+    motif_db.write(INDEX, index)
+
+
+def version() -> int | float:
+    """Changes whenever the index does: the last save's number (a cache's stamp)"""
+    from app.analysis import motif_db
+    if _json_mode():
+        return os.path.getmtime(legacy())
+    return motif_db.txn(INDEX)
+
+
+def export_text(index: dict | None = None) -> str:
+    """The index as JSON text: what a saved state (curation_db.checkpoint) keeps"""
+    return json.dumps(index if index is not None else load(), ensure_ascii=False, indent=1)
+
+
+def revert_to(txn: int):
+    """The index put back as it was after save `txn` (the checker's undo), under the lock, as a save of its own"""
+    from app.analysis import motif_db
+    with locked():
+        motif_db.revert(INDEX, txn)
+
+
+def load_from(path: str) -> dict:
+    """Another copy of the index, by its path: a database, or a JSON file from before the move"""
+    from app.analysis import motif_db
+    if path.endswith('.json') and os.path.exists(path):
+        return read_json(path, {'next': 1, 'entries': {}, 'claims': {}})
+    if not os.path.exists(path) and path.endswith('.sqlite') and os.path.exists(path[:-len('.sqlite')] + '.json'):
+        return read_json(path[:-len('.sqlite')] + '.json', {'next': 1, 'entries': {}, 'claims': {}})
+    return motif_db.read(path)
+
+
+def migrate() -> dict:
+    """Move the index from its JSON file into the database, under the lock: run once, when every process is on the
+    new code (see motif_db.py)"""
+    from app.analysis import motif_db
+    lg = legacy()
+    if not lg or not os.path.exists(lg):
+        raise ValueError('no JSON index to move')
+    with locked():
+        return motif_db.migrate(lg, INDEX)
 
 
 def locked():
@@ -79,10 +144,25 @@ def locked():
     through each claim's model calls and the checker waited on every click while a run filed. Fable's review proposed
     making the checker the only writer, with the runs posting their changes to it; that was not done, because
     experiments run the same filing code against their own copy of the data (MAUDLIN_DATA) and would have posted into
-    production's checker."""
+    production's checker.
+
+    The lock is the database's (INDEX + '.lock'). Until the index is moved in (migrate), the JSON file's lock is taken
+    too, after it: code from before Oct 21 takes only that one, and a worker finishing a cycle on it must not write
+    beside the new code."""
     if getattr(_batch, 'on', False):
         return contextlib.nullcontext()
-    return store.locked(INDEX)
+    return _both_locks()
+
+
+@contextlib.contextmanager
+def _both_locks():
+    with store.locked(INDEX):
+        lg = legacy()
+        if lg and os.path.exists(lg):
+            with store.locked(lg):
+                yield
+        else:
+            yield
 
 
 # A batch of changes (the checker's batch: a page of sure claims passed, a multi-select drag) saved once at the end

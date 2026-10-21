@@ -291,7 +291,7 @@ def curation(days: int = DAYS) -> dict:
 def machine() -> dict:
     disk = shutil.disk_usage(Config.data)
     sizes = {}
-    for name in ('data.db', 'curation.sqlite', 'motif_index.json'):
+    for name in ('data.db', 'curation.sqlite', 'motif_index.sqlite'):
         p = os.path.join(Config.data, name)
         if os.path.exists(p):
             sizes[name] = round(os.path.getsize(p) / 1e6, 1)

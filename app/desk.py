@@ -111,9 +111,9 @@ def experiment_lines() -> list[str]:
 
 def claims_line() -> str:
     try:
-        with open(os.path.join(Config.data, 'motif_index.json')) as f:
-            index = json.load(f)
-    except (OSError, ValueError):
+        from app.analysis import motif_index
+        index = motif_index.load()
+    except Exception:  # noqa: BLE001 - the panel says so and shows the rest
         return '🗂 claims: index unreadable'
     today = dt.now().strftime('%Y-%m-%d')
     dates = [c.get('date', '') for e in index.get('entries', {}).values() if not e.get('merged_into')
@@ -209,9 +209,9 @@ def worker_words() -> str:
 def claims_words() -> str:
     from datetime import timedelta as td
     try:
-        with open(os.path.join(Config.data, 'motif_index.json')) as f:
-            index = json.load(f)
-    except (OSError, ValueError):
+        from app.analysis import motif_index
+        index = motif_index.load()
+    except Exception:  # noqa: BLE001 - the panel says so and shows the rest
         return 'unreadable'
     dates = [c.get('date', '') for e in index.get('entries', {}).values() if not e.get('merged_into')
              for c in e.get('claims', [])]

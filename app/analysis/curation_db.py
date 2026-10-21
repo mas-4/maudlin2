@@ -2,8 +2,8 @@
 a state and go back to it). maudlin-data/curation.sqlite, separate from data.db so the hourly scrape's writes never hold
 up a save in the checker, and backed up with it.
 
-  versions     every save of the motif index, compressed (motif_index.save): its whole history, not just the last 50
-               undo steps
+  versions     every save of the motif index, compressed, until Oct 21; since then the index is a database of its own
+               (motif_db.py) whose changes table keeps each save's changed rows. Still written for a saved state
   checkpoints  a state the person saved by name (or one saved before a revert), to go back to: the motif index version
                and the proposals file as they were
   curation     the curation log (every change made in the checker, with what it touched before), mirrored from

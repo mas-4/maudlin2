@@ -165,7 +165,7 @@ FILING_STAGES = {'shaped', 'shortlist', 'picked', 'scored'}
 
 def _index_stamp() -> tuple:
     from app.analysis import motif_index as mi
-    return _stamp(mi.INDEX)
+    return (mi.version(),)
 
 
 def _index() -> dict:

@@ -4,7 +4,6 @@ links: two motifs are drawn together when they hold the same claims (told togeth
 or when their claims read alike (each motif the mean of its claims' embeddings, the same ones the narratives use; its
 NEAREST closest by that, above FLOOR). Clusters are found in that graph alone (Louvain), each named by its motifs with
 the most claims. Worked out again when the index changes."""
-import os
 
 import numpy as np
 
@@ -70,7 +69,7 @@ def build(index: dict | None = None) -> dict:
 
 def cached() -> dict:
     """build(), again only when the index has changed since"""
-    stamp = os.path.getmtime(mi.INDEX) if os.path.exists(mi.INDEX) else 0
+    stamp = mi.version()
     if _memo.get('stamp') != stamp:
         _memo.update(stamp=stamp, map=build())
     return _memo['map']

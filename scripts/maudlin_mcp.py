@@ -44,7 +44,9 @@ CELL = 600  # characters of a text cell shown
 
 server = MCPServer('maudlin', instructions=(
     "Read-only access to bignews.day's data. db_schema and db_query read the site's SQLite database (headlines, "
-    "articles, agencies, stories, side feeds and their transcripts...). The motif_* tools read the motif index: motifs "
+    "articles, agencies, stories, side feeds and their transcripts...) and the motif index's, attached as motif "
+    "(motif.motifs: id, name, merged_into, data as JSON; motif.filings: motif, claim, data; motif.parts; "
+    "motif.changes: every row each save changed). The motif_* tools read the motif index: motifs "
     "(rumor and narrative shapes) with their claims, genre (a layer of story: Archetypes, Plots, Theories...), groups "
     "(a separate axis), rests-on links (the only hierarchy: a motif only makes sense given the one it rests on, a kind of it or a case, argument or figure that tells it; across genres too) and related links. checker_action makes a "
     "change the person asked for through the checker (logged, undoable, marked by Claude); checker_undo takes back "
@@ -52,8 +54,13 @@ server = MCPServer('maudlin', instructions=(
     "unfiled_claims and claim_detail show the person's work queues and where a claim came from."))
 
 
+MOTIFS = os.path.join(Config.data, 'motif_index.sqlite')  # the motif index's database, attached as "motif" (Oct 21)
+
+
 def _connect() -> sqlite3.Connection:
     con = sqlite3.connect(f'file:{DB}?mode=ro', uri=True, timeout=10)
+    if os.path.exists(MOTIFS):
+        con.execute(f"ATTACH DATABASE 'file:{MOTIFS}?mode=ro' AS motif")
     con.execute('PRAGMA query_only = ON')
     return con
 
@@ -72,20 +79,25 @@ def db_schema(table: str = '') -> str:
     with _connect() as con:
         if not table:
             names = [r[0] for r in con.execute("select name from sqlite_master where type='table' and name not like 'sqlite_%' order by name")]
+            if os.path.exists(MOTIFS):
+                names += ['motif.' + r[0] for r in con.execute("select name from motif.sqlite_master where type='table' order by name")]
             return '\n'.join(f'{n}: {con.execute(f"select count(*) from {n}").fetchone()[0]} rows' for n in names)
-        if not re.fullmatch(r'\w+', table):
+        if not re.fullmatch(r'(motif\.)?\w+', table):
             return 'no such table'
-        cols = con.execute(f'pragma table_info({table})').fetchall()
+        schema, _, name = table.rpartition('.')
+        prefix = f'{schema}.' if schema else ''
+        cols = con.execute(f'pragma {prefix}table_info({name})').fetchall()
         if not cols:
             return 'no such table'
-        idx = [r[1] for r in con.execute(f'pragma index_list({table})')]
+        idx = [r[1] for r in con.execute(f'pragma {prefix}index_list({name})')]
         return '\n'.join(f'{c[1]} {c[2]}{" primary key" if c[5] else ""}' for c in cols) + (f'\nindexes: {", ".join(idx)}' if idx else '')
 
 
 @server.tool()
 def db_query(sql: str, limit: int = 50) -> str:
-    """Run one read-only SQL query (SELECT or WITH) on the site's database; at most `limit` rows (up to 200), long
-    text cut. The connection is read-only: writes fail."""
+    """Run one read-only SQL query (SELECT or WITH) on the site's database, with the motif index's attached as motif
+    (e.g. select name, json_extract(data, '$.note') from motif.motifs where merged_into is null); at most `limit` rows
+    (up to 200), long text cut. The connection is read-only: writes fail."""
     if not re.match(r'\s*(select|with|pragma\s+table_info|explain)\b', sql, re.I):
         return 'read-only: a SELECT or WITH query, please'
     limit = max(1, min(int(limit), ROWS))
