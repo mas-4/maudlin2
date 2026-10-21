@@ -243,9 +243,10 @@ def label(group: dict, cache: dict) -> dict | None:
     return cache[key]
 
 
-def about(group: dict, claim: str, cache: dict) -> float:
+def about(group: dict, claim: str, cache: dict) -> float | None:
     """The share of the group's sampled posts that are about its claim, asked one post at a time (small models lose
-    track of numbered lists)."""
+    track of numbered lists); None when no answer came back (Oct 21: an outage scored as 0.0 marks the group misread
+    and drops it from the night's report, as the Blind Men's run showed for its own copy of this question)."""
     from app.analysis import llm
     votes = []
     for post in group['examples']:
@@ -257,7 +258,7 @@ def about(group: dict, claim: str, cache: dict) -> float:
                 continue
             cache[key] = answer['about']
         votes.append(cache[key] == 'the claim')
-    return sum(votes) / len(votes) if votes else 0.0
+    return sum(votes) / len(votes) if votes else None
 
 
 CANDIDATES = 3  # nearest stories or passages the model is asked about
@@ -502,8 +503,9 @@ def report(hours: float = 6) -> dict:
         g['label'] = label(g, cache)
         lab = g['label']
         if lab and lab.get('retold') and lab.get('narrative'):
-            g['about'] = round(about(g, lab['narrative'], cache), 2)
-            if g['about'] < ABOUT_SHARE:  # most posts aren't about it: a topic with one post's claim, not a narrative
+            share = about(g, lab['narrative'], cache)
+            g['about'] = None if share is None else round(share, 2)  # None: not asked (the model didn't answer)
+            if share is not None and share < ABOUT_SHARE:  # most posts aren't about it: a topic with one post's claim, not a narrative
                 g['label'] = {**lab, 'retold': False, 'misread': True}
     write_json(JUDGMENTS, cache)
     # Cross-checks, by embedding each narrative's claim (or its versions) against voters' words and today's stories

@@ -80,3 +80,13 @@ def test_a_group_is_tied_to_the_story_its_posts_link_to():
                       {'url': 'c', 'story': None, 'story_id': None, 'shares': 9}]}
     assert n.linked_story(g) == {'label': 'Mayor resigns', 'relation': 'same event', 'id': 9, 'via': 'link'}
     assert n.linked_story({'articles': [{'url': 'c', 'story': None, 'story_id': None, 'shares': 1}]}) is None
+
+
+def test_a_group_with_no_answers_about_its_claim_is_unknown_not_off_topic(monkeypatch):
+    """Oct 21: an outage scored as 0.0 would mark every group misread and drop it from the night's report"""
+    from app import narratives
+    from app.analysis import llm
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: None)
+    assert narratives.about({'examples': ['a post', 'another']}, 'a claim', {}) is None
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'about': 'the claim'})
+    assert narratives.about({'examples': ['a post', 'another']}, 'a claim', {}) == 1.0
