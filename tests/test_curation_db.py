@@ -1,15 +1,12 @@
 """app/analysis/curation_db.py and the checker's checkpoints: every save of the motif index is logged; a state saved by
 name can be gone back to, saving what was there first; the changes taken back stay in the log, marked, and the models
 stop learning from them."""
-import importlib.util
 import json
-import os
 
 from app.analysis import curation_db, filing_confidence as fc, motif_index as mi, motif_proposals as mp
+from tests.load import script
 
-spec = importlib.util.spec_from_file_location('validate', os.path.join(os.path.dirname(__file__), '..', 'scripts', 'validate.py'))
-validate = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(validate)
+validate = script('validate')
 
 
 def setup(tmp_path, monkeypatch):

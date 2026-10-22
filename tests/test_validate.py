@@ -1,5 +1,4 @@
 """scripts/validate.py: a label check's verdict goes straight onto the headline as hand labels."""
-import importlib.util
 import json
 import os
 
@@ -10,10 +9,9 @@ from sqlalchemy.pool import StaticPool
 
 from app.analysis import newsfilter
 from app.models import Agency, Article, Base, Headline
+from tests.load import script
 
-spec = importlib.util.spec_from_file_location('validate', os.path.join(os.path.dirname(__file__), '..', 'scripts', 'validate.py'))
-validate = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(validate)
+validate = script('validate')
 
 
 @pytest.fixture

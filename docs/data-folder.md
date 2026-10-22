@@ -105,6 +105,7 @@ is. The backups skip it.
 These are left by one-off jobs, and nothing in the pipeline reads them. Delete them once you're sure:
 
 - `motifs/*.with-test-rows-2026-10-14.jsonl`: the copies `scripts/drop_test_rows.py` kept.
+- `validation/motif_verdicts.with-test-rows-2026-10-22.jsonl`: the same, for the verdict log's 408 test rows.
 - `motifs/glean.json` and `glean_score.log`: from `scripts/glean_filings.py`. The Tell-Tale Hat experiment reads
   `glean.json`.
 - `narratives/backup-before-keys-2026-10-06/`.

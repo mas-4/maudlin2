@@ -89,6 +89,9 @@ def _real_roots() -> tuple:
     return _REAL
 
 
+_real_roots()  # now, while Config.data is still the real folder
+
+
 def _scratch(path: str) -> str | None:
     for root in _real_roots():
         if path == root or path.startswith(root + os.sep):
@@ -117,6 +120,29 @@ def _redirect_data_paths():
 def _no_shared_data():
     _redirect_data_paths()
     yield
+
+
+# And a backstop for what the redirect can't see (Oct 22: scripts/validate.py, loaded by file and never registered as a
+# module, kept its real verdict log, and 408 fake "no" answers from test_curation_db reached the person's dashboard):
+# any file opened for writing under the real data folder fails the test that opens it, naming the file
+_open = open
+
+
+def _guarded_open(file, mode='r', *args, **kwargs):
+    if isinstance(file, (str, os.PathLike)) and any(c in mode for c in 'wax+'):
+        path = os.path.realpath(os.fspath(file))
+        if any(path == root or path.startswith(root + os.sep) for root in _real_roots()):
+            raise PermissionError(f'a test wrote into the real data folder: {path}')
+    return _open(file, mode, *args, **kwargs)
+
+
+@pytest.fixture(autouse=True, scope='session')
+def _no_writes_to_shared_data():
+    import builtins
+    import io
+    builtins.open, io.open = _guarded_open, _guarded_open
+    yield
+    builtins.open, io.open = _open, _open
 
 
 @pytest.fixture(scope='session')

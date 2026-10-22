@@ -1,12 +1,9 @@
 """scripts/maudlin_mcp.py: the read-only data server. Queries answer; writes can't happen, plain or hidden in a WITH."""
-import importlib.util
 import json
-import os
 import sqlite3
+from tests.load import script
 
-spec = importlib.util.spec_from_file_location('maudlin_mcp', os.path.join(os.path.dirname(__file__), '..', 'scripts', 'maudlin_mcp.py'))
-server = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(server)
+server = script('maudlin_mcp')
 
 
 def test_queries_answer_and_writes_cannot(tmp_path, monkeypatch):
@@ -30,9 +27,7 @@ def test_changes_go_through_the_checker_marked_and_only_claudes_are_undone(tmp_p
     from http.server import ThreadingHTTPServer
 
     from app.analysis import motif_index as mi
-    spec2 = importlib.util.spec_from_file_location('validate', os.path.join(os.path.dirname(__file__), '..', 'scripts', 'validate.py'))
-    validate = importlib.util.module_from_spec(spec2)
-    spec2.loader.exec_module(validate)
+    validate = script('validate')
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
     for k, v in (('FOLDER', tmp_path), ('CURATION_LOG', tmp_path / 'log.jsonl'), ('UNDO', tmp_path / 'undo')):
         monkeypatch.setattr(validate, k, str(v))  # never the real log or undo folder
@@ -66,9 +61,7 @@ def test_undo_takes_back_a_proposal_decision_too(tmp_path, monkeypatch):
     from app.analysis import motif_index as mi
     from app.analysis import motif_proposals as mp
     from app.utils.store import write_json
-    spec2 = importlib.util.spec_from_file_location('validate', os.path.join(os.path.dirname(__file__), '..', 'scripts', 'validate.py'))
-    validate = importlib.util.module_from_spec(spec2)
-    spec2.loader.exec_module(validate)
+    validate = script('validate')
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
     monkeypatch.setattr(mp, 'PROPOSALS', str(tmp_path / 'proposals.json'))
     for k, v in (('FOLDER', tmp_path), ('CURATION_LOG', tmp_path / 'log.jsonl'), ('UNDO', tmp_path / 'undo')):

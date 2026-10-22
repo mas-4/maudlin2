@@ -4,6 +4,10 @@ one with 'next' (the index's next motif number) of 2 or less, where the real ind
 log's rows written in the same seconds. Each log is copied whole beside itself first (*.with-test-rows-<day>.jsonl).
 Filing-log rows from before Oct 12, when the shortlist log began, can't be told apart and stay.
 
+Oct 22: and the checker's verdict log (validation/motif_verdicts.jsonl), where test_curation_db wrote a "no" for claim
+"a" in motif M001 on every run from Oct 8 (408 rows; tests/conftest.py now fails any test that writes into the data
+folder). No real claim is one letter long.
+
     python scripts/drop_test_rows.py           what it would take out
     python scripts/drop_test_rows.py --apply   take them out"""
 import json
@@ -30,6 +34,7 @@ def main(apply: bool):
     print(f'shortlist log: {len(short)} rows, {len(short) - len(keep_short)} from tests')
     print(f'filing log: {len(filing)} rows, {len(filing) - len(keep_filing)} from tests')
     if not apply:
+        drop_verdicts(apply=False)
         print('nothing changed: run with --apply to take them out')
         return
     for path, keep in ((mi.SHORTLIST_LOG, keep_short), (mi.FILING_LOG, keep_filing)):
@@ -37,7 +42,27 @@ def main(apply: bool):
         with open(path + '.tmp', 'w') as f:
             f.writelines(keep)
         os.replace(path + '.tmp', path)
+    drop_verdicts()
     print('done; the originals are kept beside them')
+
+
+def test_verdict(r: dict) -> bool:
+    return r.get('claim') == 'a' and r.get('id') == 'M001'
+
+
+def drop_verdicts(apply: bool = True):
+    from app.utils.config import Config
+    path = os.path.join(Config.data, 'validation', 'motif_verdicts.jsonl')
+    with open(path) as f:
+        lines = f.readlines()
+    keep = [line for line in lines if not test_verdict(json.loads(line))]
+    print(f'verdict log: {len(lines)} rows, {len(lines) - len(keep)} from tests')
+    if not apply or len(keep) == len(lines):
+        return
+    shutil.copy2(path, path.replace('.jsonl', f'.with-test-rows-{date.today()}.jsonl'))
+    with open(path + '.tmp', 'w') as f:
+        f.writelines(keep)
+    os.replace(path + '.tmp', path)
 
 
 if __name__ == '__main__':

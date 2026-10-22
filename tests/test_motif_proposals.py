@@ -1,18 +1,15 @@
 """The correction proposer (app/analysis/motif_proposals.py): proposals are atomic, never made twice, dropped once the
 change is made or overtaken, approved through the workbench's own actions, and a rejection sticks."""
-import importlib.util
 
 import numpy as np
-import os
 
 from app.analysis import llm
 from app.analysis import motif_index as mi
 from app.analysis import motif_proposals as mp
 from app.utils.store import write_json
+from tests.load import script
 
-spec = importlib.util.spec_from_file_location('validate', os.path.join(os.path.dirname(__file__), '..', 'scripts', 'validate.py'))
-validate = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(validate)
+validate = script('validate')
 
 
 def index_with(tmp_path, monkeypatch):
