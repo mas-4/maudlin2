@@ -1,8 +1,9 @@
 """A data folder to try the checker's writes in, without touching the person's (Oct 21, for the React port).
 
 Everything is linked from the real data folder for reading, except what the checker writes, which is copied: the
-motif index, the proposals, the names, the curation log and undo stack (validation/), Pandora's tellings, and the
-experiments' verdicts. The curation database gets the person's decisions only, not the old index versions. Then run a second checker on it:
+motif index, the proposals, the names, the curation log and undo stack (validation/), the site's database (the label
+check writes onto headlines), and the files the experiments page writes verdicts into (Pandora, Psyche, Ptah, Sinbad,
+Rip Van Winkle). The curation database gets the person's decisions only, not the old index versions. Then run a second checker on it:
 
     .venv/bin/python scripts/checker/ui/sandbox.py /path/to/sandbox
     MAUDLIN_DATA=/path/to/sandbox MAUDLIN_TRACE=off .venv/bin/python scripts/validate.py --port 8799
@@ -18,7 +19,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 REAL = os.path.realpath(os.path.join(ROOT, 'data'))
 # Copied, not linked: what the checker's writes change (paths relative to the data folder)
 COPY = ['motif_index.sqlite', 'motif_index.json', 'motif_proposals.json', 'motif_proposals_runs.json', 'entity_aliases.json',
-        'validation', 'motifs/experiments/f10_pandora.json', 'motifs/experiments/f22_psyche.json']
+        'validation', 'data.db',  # the label check's saves go onto the headlines (Oct 22: linked until then)
+        'motifs/experiments/f10_pandora.json', 'motifs/experiments/f22_psyche.json',  # the experiments page's verdicts:
+        'motifs/experiments/f23_ptah.json', 'motifs/experiments/s5_sinbad.json', 'motifs/experiments/a2_newspapers.json']
 SKIP = {'curation.sqlite', 'app.log', 'gpu_lease.json', 'worker.json'}  # made apart (_curation), or the real processes' own
 
 
@@ -72,7 +75,8 @@ def _mirror(src: str, dst: str, copy: list[str]):
 def _copy(src: str, dst: str):
     if os.path.isdir(src):
         shutil.copytree(src, dst, ignore=shutil.ignore_patterns('undo'))
-    elif src.endswith('.sqlite'):  # a database: whole, through SQLite
+    elif src.endswith(('.sqlite', '.db')):  # a database: whole and consistent, through SQLite (a plain copy of one being
+        # written, data.db by the worker, can come out torn)
         a, b = sqlite3.connect(src), sqlite3.connect(dst)
         a.backup(b)
         b.close(), a.close()
