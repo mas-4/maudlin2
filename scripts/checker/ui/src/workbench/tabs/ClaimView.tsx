@@ -276,6 +276,7 @@ export function JudgeTab({ j }: { j: Judging | null }) {
   // rewording it leaves it here for the next edit
   useEffect(() => {
     if (x && !back && !here) setWB({ checkHere: x })
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- by the claim's words: x is a fresh object every render
   }, [x?.claim, back, here])
   // The next two claims' sources and better fits, read while this one is judged, so each card comes up whole
   useEffect(() => {
@@ -285,6 +286,7 @@ export function JudgeTab({ j }: { j: Judging | null }) {
       void client.prefetchQuery({ queryKey: ['/claim-detail.json', { claim: next.claim }], queryFn: () => getJSON('/claim-detail.json', { claim: next.claim }), staleTime: 60_000 })
       void client.prefetchQuery({ queryKey: ['/better.json', { claim: next.claim }], queryFn: () => getJSON('/better.json', { claim: next.claim }), staleTime: Infinity })
     }
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- by the claim's words: x is a fresh object every render
   }, [j, x?.claim])
   useEffect(() => { // the keys, while judging (not while typing)
     const key = (ev: KeyboardEvent) => {

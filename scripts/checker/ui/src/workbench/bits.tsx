@@ -125,7 +125,7 @@ export function HoverCard() {
 /** A typo fix or reworded note, word by word: what went (struck) and what came (marked) */
 export function WordDiff({ a, b }: { a: string; b: string }) {
   const x = a.split(/(\s+)/), y = b.split(/(\s+)/)
-  const L = Array.from({ length: x.length + 1 }, () => new Array<number>(y.length + 1).fill(0))
+  const L = Array.from({ length: x.length + 1 }, () => Array.from({ length: y.length + 1 }, () => 0))
   for (let i = x.length - 1; i >= 0; i--) for (let j = y.length - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1])
   const out: ReactNode[] = []
   let i = 0, j = 0
