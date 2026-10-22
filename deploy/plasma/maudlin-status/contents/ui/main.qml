@@ -14,8 +14,10 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: root
     readonly property int interval: 15000
-    // the production checkout, else the working one (a new app/desk.py reaches production at the next hourly run)
-    readonly property string command: "cd /home/mas/maudlin-prod && .venv/bin/python -m app.desk --json 2>/dev/null || (cd /home/mas/Repos/maudlin2 && .venv/bin/python -m app.desk --json)"
+    // the production checkout, else the working one (a new app/desk.py reaches production at the next hourly run).
+    // Each run is cut off at 30 s: the engine won't start a run while the last is pending, so one that hung (Oct 20, on
+    // a network call at startup) froze the card on that night's dimmed state for two days
+    readonly property string command: "cd /home/mas/maudlin-prod && timeout 30 .venv/bin/python -m app.desk --json 2>/dev/null || (cd /home/mas/Repos/maudlin2 && timeout 30 .venv/bin/python -m app.desk --json)"
     property var d: ({})
     property string error: ""
 
