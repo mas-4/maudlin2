@@ -143,7 +143,10 @@ REGISTRY = {
             'f25_indras_net.py', 'answered', 'f25_indras_net.sqlite',
             'not kept: top-12 +0.3 (87.5% to 87.8%); folktales +1.9; versions point right (66%) but say what the note says'),
     'F26': ('The point a teller makes (what they mean, not why), written by Gemma from the claim and from its sources, '
-            'as shortlist signals', 'f26_tiresias.py', 'queued', 'f26_tiresias.sqlite', ''),
+            'as shortlist signals', 'f26_tiresias.py', 'answered', 'f26_tiresias.sqlite',
+            'not kept: top-12 +0.3% with sources (interval from -0.0%), +0.0% bare; moves +0.5%; 9 of 159 hard misses back'),
+    'F27': ("The tellers' own words: each motif's phrases by weighted log-odds over its tellings, names out, as "
+            'shortlist signals', 'f27_ali_baba.py', 'queued', 'f27_ali_baba.sqlite', ''),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
