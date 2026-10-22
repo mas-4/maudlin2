@@ -24,7 +24,7 @@ import os
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 
 import joblib
 import numpy as np
@@ -124,6 +124,7 @@ HAND_JUDGE = 'hand'  # labels a person set on the label-check page: no rescore r
 EMPTY = {'news_score': None, 'event_score': None, 'loaded_score': None, 'emotion': None, 'emotion_ranks': None,
          'scored_by': None, 'scored_at': None, 'affected': None}
 PARALLEL_REQUESTS = 4
+DEFER = False  # gaming mode's hourly run (main.py --gaming): headlines kept unjudged, for score_deferred() after
 
 
 def ranked(emotions: list[str]) -> dict:
@@ -243,6 +244,8 @@ def assess(titles: list[str], agency: str) -> list[dict]:
     and the model's 'affected' note)."""
     if not len(titles):
         return []
+    if DEFER:  # the card is the person's (app/gaming.py): judged by the first run after
+        return [dict(EMPTY) for _ in titles]
     now = dt.now(pytz.UTC).replace(tzinfo=None)
     if llm.backend() is not None:
         # Several requests at once let the server batch them on the gpu (needs OLLAMA_NUM_PARALLEL > 1)
@@ -259,6 +262,37 @@ def assess(titles: list[str], agency: str) -> list[dict]:
     probabilities = model['model'].predict_proba(embed(titles))[:, 1]
     return [{**EMPTY, 'news_score': float(p >= model['threshold']), 'scored_by': FALLBACK_JUDGE, 'scored_at': now}
             for p in probabilities]
+
+
+def score_deferred(days: int = 3, budget: float = 900) -> int:
+    """Judge the headlines kept unjudged while gaming mode was on (app/gaming.py), the newest first, within `budget`
+    seconds: how many. Run by the first hourly run after, before its build, so the site counts them right"""
+    from app.models import Session, Headline, Article, Agency
+    if llm.backend() is None:
+        return 0
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
+    with Session() as s:
+        rows = s.query(Headline.id, Headline.title, Agency.name).join(Headline.article).join(Article.agency) \
+            .filter(Headline.scored_by.is_(None), Headline.news_score.is_(None), Headline.last_accessed >= since) \
+            .order_by(Headline.last_accessed.desc()).all()
+    t, done = time.time(), 0
+    for start in range(0, len(rows), RESCORE_CHUNK // 4):
+        if time.time() - t > budget:
+            break
+        chunk = rows[start:start + RESCORE_CHUNK // 4]
+        by_agency = {}
+        for i, title, agency in chunk:
+            by_agency.setdefault(agency, []).append((i, title))
+        updates = []
+        for agency, items in by_agency.items():
+            updates += [{'id': int(i), **r} for (i, _), r in zip(items, assess([t_ for _, t_ in items], agency))]
+        with Session() as s:
+            s.execute(update(Headline), updates)
+            s.commit()
+        done += len(chunk)
+    if rows:
+        logger.info("Headlines kept unjudged in gaming mode: %d of %d judged (%.0fs)", done, len(rows), time.time() - t)
+    return done
 
 
 SCORE_ARCHIVE = os.path.join(Config.data, 'archive', 'scores-before-rescore.csv')

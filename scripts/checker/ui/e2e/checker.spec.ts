@@ -108,7 +108,11 @@ test('a claim dragged onto a motif offers its choices, and the folded shelf open
   if (!(await page.locator('.shelf.folded').count())) await fold.click()
   await expect(page.locator('.shelfboxes')).toBeHidden()
   const claim = await page.locator('.inspect .claim.big').boundingBox()
-  const row = await page.locator('.tree-pane .row[data-drop]').nth(3).boundingBox()
+  const own = await page.locator('.inspect .motifrow .chip[data-id]').evaluateAll((cs) => cs.map((c) => (c as HTMLElement).dataset.id))
+  const rows = page.locator('.tree-pane .row[data-drop]')
+  let at = 0 // a motif the claim isn't in: dropping on its own offers nothing
+  while (own.includes((await rows.nth(at).getAttribute('data-id')) ?? '')) at++
+  const row = await rows.nth(at).boundingBox()
   await page.mouse.move(claim!.x + 30, claim!.y + 20)
   await page.mouse.down()
   await page.mouse.move(claim!.x + 60, claim!.y + 40, { steps: 5 })
@@ -136,10 +140,10 @@ test('a sure claim: middle-click opens it in a new tab, a plain click on the rig
   await expect(page.locator('.inspect .bigtext')).toHaveText(words) // a plain click: opened on the right
   await page.locator('.back').click()
   const from = await page.locator('.sureline .claimlink').first().boundingBox()
-  const row = await page.locator('.tree-pane .row[data-drop]').nth(3).boundingBox()
+  const drop = await page.locator('.drop[data-drop="newmotif"]').boundingBox() // always a choice (a tree row may be its own motif)
   await page.mouse.move(from!.x + 20, from!.y + 6)
   await page.mouse.down()
-  await page.mouse.move(row!.x + 60, row!.y + row!.height / 2, { steps: 15 })
+  await page.mouse.move(drop!.x + drop!.width / 2, drop!.y + drop!.height / 2, { steps: 15 })
   await expect(page.locator('.dz-menu')).toBeVisible()
   await page.keyboard.press('Escape')
   await page.mouse.up()

@@ -5,8 +5,8 @@ While it's on:
 - the worker starts no step and exits to give the card back (app/worker.py yielding; systemd starts it again, and it
   waits without the card);
 - an experiment under the GPU lease is paused, as for the hourly run, and none starts (app/gpu_lease.py);
-- the hourly run is skipped (scripts/run.sh): it asks the language model too, and its scrapers drive a browser; the
-  site catches up at the first run after;
+- the hourly run still scrapes (a front page missed is gone for good), but judges nothing, builds and publishes
+  nothing (scripts/run.sh, main.py --gaming): the first run after judges the headlines kept and catches the site up;
 - the models Ollama holds are let go of the card when it's turned on, and after an hourly run that was under way.
 
 It turns itself off after MAX_HOURS, so a forgotten one can't hold the project back for days.
@@ -87,8 +87,8 @@ def describe(on: dict | None) -> str:
     if not on:
         return 'Gaming mode is off: the machine works for bignews.day as usual.'
     left = (on['until'] - time.time()) / 3600
-    return (f"🎮 Gaming mode is on since {dt.fromtimestamp(on['since']):%H:%M}: the worker, experiments and hourly runs "
-            f"wait. It turns itself off in {left:.1f} h at the latest.")
+    return (f"🎮 Gaming mode is on since {dt.fromtimestamp(on['since']):%H:%M}: the worker and experiments wait, and the "
+            f"hourly runs only scrape. It turns itself off in {left:.1f} h at the latest.")
 
 
 def main(argv: list[str]) -> int:
@@ -99,11 +99,11 @@ def main(argv: list[str]) -> int:
         on = turn_on(float(argv[1]) if len(argv) > 1 else None)
         freed = on.get('freed')
         print(describe(on) + (f" Let go of {', '.join(freed)}." if freed else ''))
-        notify('🎮 Gaming mode on', 'The worker, experiments and hourly runs wait until you turn it off.')
+        notify('🎮 Gaming mode on', 'The worker and experiments wait, and the hourly runs only scrape, until you turn it off.')
         return 0
     if what == 'off':
         print('Gaming mode off: the machine goes back to work.' if turn_off() else 'Gaming mode was already off.')
-        notify('🎮 Gaming mode off', 'The worker picks up where it left off; the next hourly run catches the site up.')
+        notify('🎮 Gaming mode off', 'The worker picks up where it left off; the next hourly run judges what was scraped and catches the site up.')
         return 0
     if what == 'free':  # scripts/run.sh, at the end of a run that was under way when gaming mode came on
         if active():

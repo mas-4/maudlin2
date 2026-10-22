@@ -1,10 +1,11 @@
 [Desktop Entry]
-# Gaming mode on or off (app/gaming.py): the worker, experiments and hourly runs wait while it's on, 12 hours at most.
+# Gaming mode on or off (app/gaming.py): the worker and experiments wait, and the hourly runs only scrape, while it's on
+# (12 hours at most).
 # Installed with: cp deploy/desktop/bignews-gaming.desktop ~/.local/share/applications/
 Type=Application
 Name=Gaming mode (bignews.day)
 GenericName=Gaming mode on or off
-Comment=Give the GPU and the machine to games; the worker, experiments and hourly runs wait until it's off again
+Comment=Give the GPU to games; the worker and experiments wait, and the hourly runs only scrape, until it's off again
 Exec=sh -c "cd /home/mas/maudlin-prod && .venv/bin/python -m app.gaming toggle"
 Icon=input-gaming
 Terminal=false

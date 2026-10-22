@@ -151,6 +151,12 @@ def main(args: argparse.Namespace):
         with open(Config.newsletter) as f:
             send_notification(f.read())
         return
+    # Gaming mode (app/gaming.py, scripts/run.sh passes --gaming): still scrape, since a front page missed is gone for
+    # good, but nothing on the card: headlines kept unjudged (judged by the first run after, before its build), no
+    # episode labels, no build or publish, no processing
+    gaming = getattr(args, 'gaming', False)
+    if gaming:
+        newsfilter.DEFER = True
     # What people say on Bluesky and Mastodon (research only, #153): sampled on a thread of its own while the outlets are
     # scraped and the site builds, so it adds no time to the run
     listening = None
@@ -166,9 +172,10 @@ def main(args: argparse.Namespace):
             fetch_investigations()
             wiki.refresh()  # weekly: each outlet's Wikipedia opening and Wikidata facts
             fetch_sidefeeds()  # newsletters, podcasts and political video channels, each at most every 2 hours
-            try:  # the shows' new episodes: on the news, or evergreen (history, life stories)
-                from app import episode_kind
-                episode_kind.label_new()
+            try:  # the shows' new episodes: on the news, or evergreen (history, life stories); the model, so not gaming
+                if not gaming:
+                    from app import episode_kind
+                    episode_kind.label_new()
             except Exception as e:  # noqa: BLE001 - unlabeled episodes count as news
                 logger.warning("Episode labels failed: %s", e)
             try:  # fact-checks' own text, for reading their claims from the piece, not the headline
@@ -186,6 +193,16 @@ def main(args: argparse.Namespace):
             fetch_chyrons()  # TV news chyrons from the Internet Archive: one request a run (today so far, UTC)
             fetch_polls()
             fetch_aggregates()
+    if gaming:
+        if listening is not None:
+            listening.join(timeout=10 * 60)
+        logger.info("Gaming mode: scraped only; judging, the build and the site wait for the next run")
+        return
+    if not args.skip_scrape and not args.scraper and not Config.debug:
+        try:  # headlines kept unjudged while gaming mode was on: judged before the build counts them
+            newsfilter.score_deferred()
+        except Exception as e:  # noqa: BLE001 - unjudged headlines count as news, as before
+            logger.warning("Judging the headlines kept in gaming mode failed: %s", e)
     # The upload runs beside the GPU steps (they never write the built site); joined before the run ends
     upload = build(upload_aside=not args.skip_scrape and not args.scraper and not Config.debug)
     if listening is not None:
@@ -207,6 +224,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--scraper', type=str, default=None)
     parser.add_argument('--email-newsletter', action='store_true')
     parser.add_argument('--run-selenium', action='store_true')
+    parser.add_argument('--gaming', action='store_true', help='gaming mode (app/gaming.py): scrape only, nothing on the GPU')
     parser.add_argument('--analyze-topics', action='store_true')
     parser.add_argument('--analyze-sentiment', action='store', type=str)
     parser.add_argument('--reprocess', action='store', type=str)

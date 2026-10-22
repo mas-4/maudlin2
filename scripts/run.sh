@@ -28,11 +28,12 @@ if git diff --quiet && git diff --cached --quiet; then
     fi
 fi
 
-# Gaming mode (app/gaming.py): the card and the machine are the person's; this run is skipped, and the next after it
-# catches the site up
+# Gaming mode (app/gaming.py): the card is the person's. The run still scrapes (a front page missed is gone for good),
+# but judges nothing, builds and publishes nothing: the first run after catches all of it up
+gaming=""
 if .venv/bin/python -m app.gaming status >/dev/null 2>&1; then
-    echo "Gaming mode is on: this hourly run is skipped"
-    exit 0
+    gaming="--gaming"
+    echo "Gaming mode is on: this run only scrapes"
 fi
 
 # Did the timer wake the machine for this run? (the kernel logs the resume just before the timer fires)
@@ -55,9 +56,9 @@ echo 1 > "$status_file"
 bus="/run/user/$(id -u)/bus"
 if [ -S "$bus" ] && command -v kde-inhibit >/dev/null; then
     DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" kde-inhibit --power \
-        sh -c '.venv/bin/python main.py --run-selenium; echo $? > "$1"' sh "$status_file"
+        sh -c '.venv/bin/python main.py --run-selenium $2; echo $? > "$1"' sh "$status_file" "$gaming"
 else
-    .venv/bin/python main.py --run-selenium
+    .venv/bin/python main.py --run-selenium $gaming
     echo $? > "$status_file"
 fi
 status=$(cat "$status_file")

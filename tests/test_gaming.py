@@ -25,3 +25,14 @@ def test_gaming_mode_turns_itself_off_at_most_after_max_hours(monkeypatch, tmp_p
     assert on['until'] - on['since'] == gaming.MAX_HOURS * 3600
     monkeypatch.setattr(time, 'time', lambda: on['until'] + 1)
     assert gaming.active() is None  # past its time: off, though the flag is still there
+
+
+def test_in_gaming_mode_the_hourly_run_scrapes_but_judges_nothing(monkeypatch):
+    """main.py --gaming: headlines kept unjudged, never a call to the model (judged by the first run after)"""
+    from app.analysis import llm, newsfilter
+    asked = []
+    monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
+    monkeypatch.setattr(newsfilter, 'judge', lambda title, agency: asked.append(title))
+    monkeypatch.setattr(newsfilter, 'DEFER', True)
+    got = newsfilter.assess(['Senate passes the budget', 'Ten best pies'], 'AP')
+    assert asked == [] and all(r['news_score'] is None and r['scored_by'] is None for r in got)
