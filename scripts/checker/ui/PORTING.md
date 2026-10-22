@@ -22,6 +22,12 @@ Every page below is ported, and everything listed is in the code. What was tried
 - **Names:** a merge and its undo, a drag of one subject onto another.
 - **Label check:** the batch draws. Saving was not tried: it writes the real database.
 
+**Browser tests (Oct 22).** `npm run e2e` (Playwright, e2e/checker.spec.ts) builds the app, makes a fresh copy of the
+data, starts a checker on it at port 8798 and runs through it as the person would: every page draws without an error,
+the old addresses redirect, the five tabs, a verdict and its undo, quick presses never refused, the sure page's pass
+and hold, a misfit taken out, a claim dragged onto a motif. The pre-commit hook runs them when a commit touches the
+checker. They found on their first run that a second undo in a row was refused (fixed the same day).
+
 **Oct 22: done.** The person retired the old pages. Their templates and scripts are gone; every old address leads to
 the React page doing its work (validate.py OLD_PAGES), and the checker's front page is the workbench. ✅ check, 🫙 empty
 and 📝 notes went too: their work is the workbench's 🎯 judge tab, its 🫙 empty part and its 📝 and 🗒️ views. The old

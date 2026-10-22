@@ -230,6 +230,12 @@ def state_at(path: str, at_txn: int) -> dict:
     return index_of(r)
 
 
+def reads_as(path: str, txn: int) -> bool:
+    """Whether the index reads now as save `txn` left it, whatever saves came between (an undo putting it back is a save
+    of its own: Oct 22, the checker's second undo in a row was refused, as if the index had changed since)"""
+    return canonical(read(path)) == canonical(state_at(path, txn))
+
+
 def revert(path: str, to_txn: int) -> int:
     """Put the index back as it was after save `to_txn`, as a new save of its own (so it can be taken back too)"""
     return write(path, state_at(path, to_txn))

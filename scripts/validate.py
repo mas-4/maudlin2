@@ -199,6 +199,7 @@ def push_undo(path: str, before_text: str | None, what: str, proposals: list[str
     stamp = dt.now().strftime('%Y%m%d-%H%M%S-%f')
     with open(os.path.join(UNDO, stamp + '.json'), 'w') as f:
         json.dump({'path': path, 'before': before_text, 'after_sha': hashlib.sha1((after or '').encode()).hexdigest(),
+                   **({'after': after} if (after or '').startswith('txn:') else {}),  # the index's save number after it
                    'what': what, 'at': stamp, **({'proposals': proposals} if proposals else {})}, f)
     for old in sorted(os.listdir(UNDO))[:-UNDO_KEEP]:
         os.remove(os.path.join(UNDO, old))
@@ -229,7 +230,13 @@ def undo() -> str:
     snap_path, snap = found
     with motif_index.locked():
         now = state(snap['path']) or ''
-        if hashlib.sha1(now.encode()).hexdigest() != snap['after_sha']:
+        same = hashlib.sha1(now.encode()).hexdigest() == snap['after_sha']
+        if not same and now.startswith('txn:') and snap.get('after', '').startswith('txn:'):
+            # the index's number moved, but it may read just as that change left it: an undo of a later change is a
+            # save of its own, and must not stop the next undo
+            from app.analysis import motif_db
+            same = motif_db.reads_as(snap['path'], int(snap['after'][4:]))
+        if not same:
             raise ValueError('the index has changed since that edit (an hourly run filing claims?), so undoing it '
                              'would lose those changes: fix it by hand instead')
         restore(snap['path'], snap['before'])

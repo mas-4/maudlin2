@@ -163,6 +163,31 @@ def test_undo_steps_back_but_never_over_a_runs_filing(monkeypatch, tmp_path):
         server.shutdown()
 
 
+def test_undo_steps_back_again_and_again(monkeypatch, tmp_path):
+    """Oct 22: since the index is a database, each undo is a save of its own, and the second undo in a row was refused
+    as if an hourly run had changed the index"""
+    import json
+    import threading
+    import urllib.request
+    from app.analysis import motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.sqlite'))
+    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl', 'UNDO': tmp_path / 'undo'}.items():
+        monkeypatch.setattr(validate, k, str(v))
+    mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
+    server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    post = lambda path, body=None: json.loads(urllib.request.urlopen(urllib.request.Request(  # noqa: E731
+        f'http://127.0.0.1:{server.server_port}{path}', json.dumps(body or {}).encode(), {'Content-Type': 'application/json'})).read())
+    try:
+        post('/workbench', {'action': 'rename', 'id': 'M001', 'name': 'one'})
+        post('/workbench', {'action': 'rename', 'id': 'M001', 'name': 'two'})
+        post('/workbench', {'action': 'add', 'name': 'three'})
+        assert [post('/undo')['undid'] for _ in range(3)] == ['add as “three”', 'rename “one” as “two”', 'rename “x” as “one”']
+        assert [e['name'] for e in mi.live(mi.load())] == ['x']
+    finally:
+        server.shutdown()
+
+
 def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path):
     from app.analysis import motif_index as mi
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))

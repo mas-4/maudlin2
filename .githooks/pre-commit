@@ -1,9 +1,15 @@
 #!/bin/bash
 # Lint (ruff, under a second; rules in ruff.toml) and run the test suite before every commit (about a minute; it uses
-# the local database).
+# the local database), and the checker's browser tests when the checker changed.
 # Installed with: git config core.hooksPath .githooks    Skip once with: git commit --no-verify
 set -e
 cd "$(git rev-parse --show-toplevel)"
 .venv/bin/ruff check --quiet . || { echo "ruff found problems (.venv/bin/ruff check . --fix fixes the simple ones)"; exit 1; }
 .venv/bin/python -m pytest -q -x 2>&1 | tail -3
-exit "${PIPESTATUS[0]}"
+[ "${PIPESTATUS[0]}" = 0 ] || exit 1
+# The checker's browser tests (Playwright, about 35 s), when a commit touches the checker: its React app (as built in
+# dist), its server, or the actions it runs. They run on a fresh copy of the data at port 8798, never the live checker
+if git diff --cached --name-only | grep -qE '^scripts/(checker/|validate\.py)|^app/analysis/(motif_actions|motif_index|motif_db)\.py'; then
+    (set -o pipefail; cd scripts/checker/ui && npx playwright test --reporter=line 2>&1 | { grep -vE '^\[WebServer\]|^npm notice' || true; } | tail -4)
+    exit $?
+fi
