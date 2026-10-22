@@ -25,16 +25,6 @@ from app.utils import Config  # noqa: E402
 # in checker/static (the drag-with-drop-zones and undo code), served at /checker/static/
 CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
 # files the checker shares with the site, served from the site's static folder (the motif maps' layout)
-SHARED_STATIC = {'motif-map-layout.js': os.path.join(os.path.dirname(CHECKER), '..', 'app', 'site', 'static', 'motif-map-layout.js')}
-# The nav: the workbench and the map first (the two the person works in), then the older single-purpose motif pages,
-# then the other tools. The organizer, the singles page and the board were dropped Oct 7 (the workbench does their
-# work; the board's /motif-board.json and POST /motif-board stay, for the map and the other pages). (path, label, section)
-NAV = [('/motif-workbench', '🧰 Motif workbench', 'main'), ('/motif-map', '🕸️ Motif map', 'main'),
-       ('/dashboard', '📈 Dashboard', 'main'), ('/experiments', '🧪 Experiments', 'main'), ('/flow', '🌊 Flow', 'main'), ('/live', '🧠 Live', 'main'),
-       ('/motifs', '✅ check', 'motifs'), ('/motif-empty', '🫙 empty', 'motifs'),
-       ('/motif-notes', '📝 notes', 'motifs'),
-       ('/', '🏷️ label check', 'other'), ('/entities', '👥 names', 'other'), ('/ui/', '⚛️ new checker', 'other')]
-_templates = None
 
 
 def experiments_lab():
@@ -47,20 +37,21 @@ def experiments_lab():
     return lab
 
 
-def render(template: str, here: str, undo: bool = True, **context) -> str:
-    """A checker page from its template: `here` is its path in the nav; `undo` adds the undo button (every
-    organizer page; the label check writes the database instead)."""
-    global _templates
-    if _templates is None:
-        from jinja2 import Environment, FileSystemLoader
-        _templates = Environment(loader=FileSystemLoader(os.path.join(CHECKER, 'templates')), autoescape=True)
-    return _templates.get_template(template).render(nav=NAV, here=here, undo=undo, **context)
+# The old pages (Jinja templates and their scripts) were retired on Oct 22, the React app (scripts/checker/ui) having
+# done everything they did since Oct 21: each old address now leads to the React page that does its work, so bookmarks
+# and links still land somewhere (the person: "old pages should retire")
+OLD_PAGES = {'/motif-workbench': '/ui/workbench', '/motif-map': '/ui/map', '/dashboard': '/ui/dashboard',
+             '/experiments': '/ui/experiments', '/flow': '/ui/flow', '/live': '/ui/live', '/entities': '/ui/names',
+             '/labels': '/ui/labels', '/motifs': '/ui/workbench', '/motif-empty': '/ui/workbench',
+             '/motif-notes': '/ui/workbench', '/motif-index': '/ui/workbench', '/motif-singles': '/ui/workbench',
+             '/motif-board': '/ui/workbench'}
 
 
-STATIC_PAGES = {'/motif-workbench': 'workbench.html', '/motif-map': 'map.html', '/motif-empty': 'empty.html',
-                '/motif-notes': 'notes.html', '/dashboard': 'dashboard.html', '/experiments': 'experiments.html',
-                '/flow': 'flow.html', '/live': 'live.html'}
-STATIC_TYPES = {'.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'}
+def new_address(path: str, query_string: str = '') -> str:
+    """Where an address outside the API and the React app leads now: its React page, the front page (/) being the
+    workbench; a query (?motif=M12) goes along"""
+    to = next((new for old, new in OLD_PAGES.items() if path == old or path.startswith(old + '/')), '/ui/workbench')
+    return to + ('?' + query_string if query_string else '')
 
 
 FOLDER = os.path.join(Config.data, 'validation')
@@ -82,13 +73,6 @@ labels = _checker_module('labels')  # 🏷️ the headline label check, the page
 
 
 MOTIF_VERDICTS = os.path.join(FOLDER, 'motif_verdicts.jsonl')  # a record of every answer, for agreement scores
-MOTIF_BATCH = 10
-
-
-def motif_page() -> str:
-    """The motif check: is each claim filed in our motif index an instance of its motif? Answers apply at once."""
-    from app.analysis import motif_index
-    return render('motif_check.html', '/motifs', todo=motif_index.to_check(), batch=MOTIF_BATCH)
 
 
 CURATION_LOG = os.path.join(FOLDER, 'curation_log.jsonl')  # every correction, with what the model had proposed
@@ -154,8 +138,7 @@ UNDO_KEEP = 50
 
 def undo_paths() -> dict:
     from app.analysis import entities, motif_index
-    return {'/motif-board': motif_index.INDEX, '/motif-verdict': motif_index.INDEX,
-            '/workbench': motif_index.INDEX,
+    return {'/workbench': motif_index.INDEX,
             '/entities': entities.ALIASES}
 
 
@@ -395,11 +378,6 @@ def claim_detail(claim: str) -> dict:
     else:
         out['kind'] = 'folklore (its report is gone)'
     return out
-
-
-def board_action(data: dict):
-    """One change from the motif board, the map or the notes page: the same actions as the workbench's"""
-    workbench_action(data)
 
 
 # The motif workbench (workbench.html): one page for everything the motif pages do. Its state is the board's plus
@@ -864,7 +842,7 @@ def workbench_action(data: dict):
 def entities_state() -> dict:
     """The names organizer's data (#165): suggested merges (a name inside another, the first 40, each with both
     subjects' story counts), every subject with its story count and the other names that point to it (most stories
-    first), and how many names there are. The old page renders it; the React app reads it as /entities.json."""
+    first), and how many names there are. The React app reads it as /entities.json."""
     from app.analysis import entities
     book = entities.load_aliases()
     counts = entities.all_names()
@@ -884,14 +862,6 @@ def entities_state() -> dict:
             'name_count': len(counts),
             'subjects': [{'name': name, 'stories': e['stories'], 'names': sorted(e['names'])}
                          for name, e in sorted(subjects.items(), key=lambda kv: (-kv[1]['stories'], kv[0].lower()))]}
-
-
-def entities_page() -> str:
-    """The names organizer's old page, from entities_state()"""
-    s = entities_state()
-    return render('names.html', '/entities', pairs=[(p['a'], p['b']) for p in s['pairs']], name_count=s['name_count'],
-                  subjects=[(e['name'], e) for e in s['subjects']],
-                  stories_of=lambda name: next((e['stories'] for e in s['subjects'] if e['name'] == name), 0))
 
 
 def entities_action(data: dict):
@@ -977,11 +947,6 @@ def _claim_map(q: dict):  # the map's 🧲 claims mode
     return claim_map.cached()
 
 
-def _board(q: dict):
-    from app.analysis import motif_index
-    return motif_index.board()
-
-
 def _checkpoints(q: dict):
     from app.analysis import curation_db
     return curation_db.checkpoints()
@@ -998,7 +963,6 @@ GET_JSON = {
     '/workbench.json': lambda q: workbench_state(),
     '/workbench-queue.json': _workbench_queue,
     '/workbench-metrics.json': _workbench_metrics,
-    '/motif-board.json': _board,
     '/motif-claim-map.json': _claim_map,
     '/claims.json': _claims,
     '/claim-detail.json': lambda q: claim_detail(q.get('claim', '')),
@@ -1083,36 +1047,9 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if path.startswith('/checker/static/'):
-            name = os.path.basename(path)
-            file = SHARED_STATIC.get(name) or os.path.join(CHECKER, 'static', name)
-            if os.path.splitext(name)[1] not in STATIC_TYPES or not os.path.isfile(file):
-                self.send_error(404)
-                return
-            with open(file, 'rb') as f:
-                body = f.read()
-            self.send_response(200)
-            self.send_header('Content-Type', STATIC_TYPES[os.path.splitext(name)[1]])
-            self.send_header('Cache-Control', 'no-store')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-            return
-        page_of = next((f for prefix, f in STATIC_PAGES.items() if path.startswith(prefix)), None)
-        if path.startswith(('/motif-index', '/motif-singles')) or path == '/motif-board':  # dropped pages: to the workbench
-            self.send_response(302)
-            self.send_header('Location', '/motif-workbench')
-            self.end_headers()
-            return
-        body = (render(page_of, path, undo=page_of not in ('dashboard.html', 'experiments.html', 'flow.html', 'live.html')) if page_of else motif_page() if path.startswith('/motifs') else entities_page() if path.startswith('/entities')
-                else labels.page(render))
-        body = body.encode()
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/html; charset=utf-8')
-        self.send_header('Cache-Control', 'no-store')  # a page changed under an open tab shows on reload, never stale
-        self.send_header('Content-Length', str(len(body)))
+        self.send_response(302)  # an old page's address, or the front page: to the React page that does its work
+        self.send_header('Location', new_address(path, self.path.partition('?')[2]))
         self.end_headers()
-        self.wfile.write(body)
 
     def remember(self, data: dict, before: dict, by: str | None = None, proposals: list[str] | None = None):
         if getattr(self, '_undo', None):
@@ -1185,18 +1122,6 @@ class Handler(BaseHTTPRequestHandler):
                 self.remember({'action': 'part of a change that failed'}, {}, by)
                 return self.send_json_error(400, str(e))
             return self.send_json(workbench_state())
-        if self.path == '/motif-board':
-            from app.analysis import motif_index
-            try:
-                before = motif_context(data)
-                before.update(decision_fits(data))
-                board_action(data)
-                log_curation('motif board', data, before)
-                self.remember(data, before)
-            except (ValueError, KeyError) as e:
-                self.send_error(400, str(e)[:200])
-                return
-            return self.send_json(motif_index.board())
         if self.path == '/entities':
             try:
                 from app.analysis import entities
@@ -1205,20 +1130,6 @@ class Handler(BaseHTTPRequestHandler):
                 entities_action(data)
                 log_curation('names', data, before)
                 self.remember(data, {})
-            except (ValueError, KeyError) as e:
-                self.send_error(400, str(e)[:200])
-                return
-            self.send_response(204)
-            self.end_headers()
-            return
-        if self.path == '/motif-verdict':  # the ✅ check page: a check, recorded like the workbench's
-            data['action'] = 'check'
-            try:
-                before = motif_context(data)
-                before.update(decision_fits(data))
-                workbench_action(data)
-                log_curation('motif check', data, before)
-                self.remember(data, before)
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return

@@ -22,12 +22,14 @@ Every page below is ported, and everything listed is in the code. What was tried
 - **Names:** a merge and its undo, a drag of one subject onto another.
 - **Label check:** the batch draws. Saving was not tried: it writes the real database.
 
-Still the person's call: dropping ✅ check, 🫙 empty and 📝 notes (below), and making /ui/ the checker's front page in
-place of the old templates.
+**Oct 22: done.** The person retired the old pages. Their templates and scripts are gone; every old address leads to
+the React page doing its work (validate.py OLD_PAGES), and the checker's front page is the workbench. ✅ check, 🫙 empty
+and 📝 notes went too: their work is the workbench's 🎯 judge tab, its 🫙 empty part and its 📝 and 🗒️ views. The old
+POST /motif-board and /motif-verdict routes went with them. The paths below (WB, T/) name files that no longer exist;
+git history has them.
 
 Decisions for the port:
-- **One write route.** Every motif change goes to POST /workbench as a named action (app/analysis/motif_actions.py). The
-  old /motif-board and /motif-verdict routes stay for the old pages until those go.
+- **One write route.** Every motif change goes to POST /workbench as a named action (app/analysis/motif_actions.py).
 - **One drag engine.** The workbench's: hovering a target opens a menu of choices beside the pointer, each saying in
   full what it does. drag.js (map, names) is replaced by it.
 - **One way to ask and confirm.** An in-page card for both; no `alert`, `confirm` or `prompt`. One toast with an undo

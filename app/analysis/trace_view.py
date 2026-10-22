@@ -1,4 +1,4 @@
-"""What the checker's 🧠 Live page shows (scripts/checker/templates/live.html; served at /live.json): the filing
+"""What the checker's 🧠 Live page shows (scripts/checker/ui/src/pages/live; served at /live.json): the filing
 pipeline as it runs, from its trace (app/analysis/trace.py), and each claim's whole journey through it with the real
 data at every stage.
 

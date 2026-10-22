@@ -6,8 +6,6 @@ import { Saving } from './Saving'
 import { Undo } from './Undo'
 import { VersionWatch } from './VersionWatch'
 
-const LABELS = { motifs: 'motif pages', other: 'other tools' } as const
-
 // The nav, on one line (Oct 22: two lines on a laptop, with the judging card left 311 px of 768): the main pages as
 // pills, the rest under ⋯ more
 export function Nav() {
@@ -31,16 +29,14 @@ export function Nav() {
       <details className="nav-more" ref={more}>
         <summary className={here ? 'active' : ''}>{here ? `${here.emoji} ${here.name}` : '⋯ more'}</summary>
         <div className="nav-menu">
-          {(['motifs', 'other'] as const).map((sec) => (
-            <div key={sec}>
-              <span className="nav-label">{LABELS[sec]}</span>
-              {rest.filter((p) => p.section === sec).map((p) => (
-                <NavLink key={p.path} to={p.path}>
-                  {p.emoji} {p.name}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+          <div>
+            <span className="nav-label">other tools</span>
+            {rest.map((p) => (
+              <NavLink key={p.path} to={p.path}>
+                {p.emoji} {p.name}
+              </NavLink>
+            ))}
+          </div>
         </div>
       </details>
       <VersionWatch />

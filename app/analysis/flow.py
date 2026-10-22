@@ -9,7 +9,7 @@ story card), so a story's life in the news and the motifs it was later told as a
               in days from the story's first day in the news to the filing
     motifs    every motif those filings are in, with its genre and how many stories fed it
 
-Read only; the checker's 🌊 flow page draws it (scripts/checker/templates/flow.html)."""
+Read only; the checker's 🌊 flow page draws it (scripts/checker/ui/src/pages/flow)."""
 from collections import defaultdict
 from datetime import datetime as dt
 

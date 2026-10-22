@@ -1,6 +1,6 @@
 """The filing pipeline's trace (Oct 14, the person: "show the process as it works", the way some tools show which
 neurons fire in a language model): each stage a claim passes through, appended as it happens to a day's file of JSON
-lines, for the checker's 🧠 Live page (app/analysis/trace_view.py, scripts/checker/templates/live.html).
+lines, for the checker's 🧠 Live page (app/analysis/trace_view.py, scripts/checker/ui/src/pages/live).
 
     written      a claim written from its source: people's posts (narratives.py: the posts' keys and count), a
                  fact-check (factchecks.py), the shows (show_claims.py)

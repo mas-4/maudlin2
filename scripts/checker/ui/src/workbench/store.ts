@@ -3,7 +3,7 @@
 // there opens here.
 import { useSyncExternalStore } from 'react'
 
-const KEEP = ['open', 'view', 'sort', 'tab', 'folded', 'groupby', 'quickper', 'cols', 'shelf', 'similarOpen', 'shelfFolded'] as const
+const KEEP = ['open', 'view', 'sort', 'tab', 'folded', 'groupby', 'quickper', 'cols', 'shelf', 'similarOpen', 'shelfFolded', 'lastPart'] as const
 
 function read<T>(k: string, d: T): T {
   try {
@@ -34,6 +34,7 @@ export interface WB {
   cols: { left: number; right: number } | null
   shelf: number | null // the shelf's height
   shelfFolded: boolean // the shelf down to one line (it opens by itself while something is dragged)
+  lastPart: Record<string, string> // the part of each inbox tab last opened (Inbox.tsx GROUPS)
   shelfFilter: Shelf | null
   q: string
   msel: string[]
@@ -76,6 +77,7 @@ let state: WB = {
   cols: read('cols', null),
   shelf: read('shelf', null),
   shelfFolded: read('shelfFolded', false),
+  lastPart: read<Record<string, string>>('lastPart', {}),
   shelfFilter: null,
   q: '',
   msel: [],

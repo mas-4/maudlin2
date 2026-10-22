@@ -12,7 +12,6 @@ ROOT = os.path.join(os.path.dirname(__file__), '..')
 
 # Repeats that are meant: later partials adjusting the component, or a page's own variant (as of Oct 6)
 KNOWN = {
-    'workbench': {'.wb-pname', '.wb-tree-tools'},
     'site': {'.cloud-detail', '.cloud-word', '.court-meta', '.court-story', '.edit-chip', '.emotion-tile',
              '.emotion-tile-emoji', '.emotion-tile-label', '.emotion-tile-share', '.emotion-tiles', '.flow-when',
              '.metric-name', '.metric-value', '.newsday-sticker', '.outlet-card', '.outlet-rewrite', '.quote-chip',
@@ -36,8 +35,8 @@ def repeats(files: list[str]) -> set[str]:
 
 
 def test_no_new_class_is_defined_twice():
-    groups = {'workbench': [os.path.join(ROOT, 'scripts/checker/static/workbench.css')],
-              'site': sorted(glob.glob(os.path.join(ROOT, 'app/site/styles/*.css')))}
+    groups = {'site': sorted(glob.glob(os.path.join(ROOT, 'app/site/styles/*.css')))}  # the checker's React styles are
+    # each scoped to their page (scripts/checker/ui), and its old stylesheet retired on Oct 22
     for name, files in groups.items():
         new = repeats(files) - KNOWN[name]
         assert not new, (f'{name}: {sorted(new)} defined more than once: does the name already belong to another '

@@ -3,8 +3,9 @@ claims, joined to the motifs it rests on (only makes sense given: a kind of them
 tells them; 'kind of' until Oct 8), to the motifs a person marked related, and to motifs that
 share a claim; a person's groups drawn as colored areas around their motifs, a dot's fill its genre. The checker's map
 (scripts/checker) is the private working copy, where motifs are moved and joined; this one only shows what the motifs
-page shows: motifs a person verified, and their claims as the accusations screen lets them through. Both draw through
-static/motif-map-layout.js (where groups sit, their blobs, the colors), so they look alike."""
+page shows: motifs a person verified, and their claims as the accusations screen lets them through. This one draws
+through static/motif-map-layout.js (where groups sit, their blobs, the colors), the checker's through its TypeScript
+copy (scripts/checker/ui/src/pages/map/layout.ts), kept in step, so they look alike."""
 import json
 from collections import defaultdict
 from itertools import combinations

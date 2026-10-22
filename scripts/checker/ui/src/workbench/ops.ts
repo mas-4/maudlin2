@@ -180,6 +180,11 @@ export function copyText(text: string) {
 
 /** Open an inbox tab; its list is read fresh */
 export function setTab(tab: string) {
-  setWB({ back: null, tab })
+  setWB((s) => ({ back: null, tab, lastPart: { ...s.lastPart, [partGroup(tab)]: tab } }))
   void client.invalidateQueries({ queryKey: ['/workbench-queue.json', { kind: tab }] })
 }
+
+/** Which of the inbox's five tabs a part is in (Inbox.tsx GROUPS), for remembering the part last used in each */
+const PART_GROUP: Record<string, string> = { judge: 'judge', sure: 'judge', misfits: 'judge', held: 'judge', today: 'shape', proposals: 'shape',
+  splits: 'shape', tellings: 'shape', pairs: 'tidy', singles: 'tidy', empty: 'tidy', claims: 'tidy', find: 'find', claim: 'find', stats: 'stats' }
+export const partGroup = (tab: string) => PART_GROUP[tab] ?? 'judge'

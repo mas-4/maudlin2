@@ -370,3 +370,13 @@ body.dragging .wb .shelf.folded .shelfboxes { display: grid; position: absolute;
   .cl-detail.open .detail { max-height: none; }
 }
 @media (max-width: 1500px) { .wb .wb-bar h1 .t { display: none; } }
+
+/* The inbox's five tabs, and the open one's parts beneath */
+.wb {
+  .parts { display: flex; gap: 4px; margin-top: 5px; overflow-x: auto; scrollbar-width: thin; }
+  .part { flex: none; white-space: nowrap; font: 700 12px 'Comic Neue', 'Comic Sans MS', cursive; color: var(--ink); background: var(--paper);
+    border: 1.5px solid #bbb; border-radius: 999px; padding: 1px 9px; cursor: pointer; }
+  .part:hover { border-color: var(--ink); }
+  .part.on { background: var(--soft-yellow); border-color: var(--ink); }
+  .part i { font-style: normal; color: #666; }
+}
