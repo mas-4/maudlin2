@@ -80,3 +80,38 @@ def test_the_json_index_moves_in_whole(tmp_path, monkeypatch):
     index['entries']['M002']['name'] = 'Rigged count'
     mi.save(index)
     assert mi.version() == 2 and mi.load()['entries']['M002']['name'] == 'Rigged count'  # the move was save 1
+
+
+def test_a_snapshot_is_read_once_a_save(tmp_path, monkeypatch):
+    """mi.snapshot(): the checker's views share one parse of the index until the next save (Oct 22)"""
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.sqlite'))
+    claim = {'claim': 'a', 'source': 'narrative'}
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']}, 'entries': {'M001': {'id': 'M001', 'name': 'Empty suit', 'claims': [claim]}}})
+    first = mi.snapshot()
+    assert mi.snapshot() is first  # no save between: the same parse
+    index = mi.load()
+    assert index is not first  # load() is still a copy of one's own
+    index['entries']['M001']['name'] = 'Empty suits'
+    mi.save(index)
+    assert mi.snapshot()['entries']['M001']['name'] == 'Empty suits'  # a save: read again
+    assert first['entries']['M001']['name'] == 'Empty suit'
+
+
+def test_the_curation_log_is_parsed_again_only_when_it_changes(tmp_path, monkeypatch):
+    from app.analysis import curation_db
+    monkeypatch.setattr(curation_db, 'DB', str(tmp_path / 'curation.sqlite'))
+    with curation_db.connect() as con:
+        for n in range(4):
+            con.execute('INSERT INTO curation (at, page, by, action) VALUES (?, ?, ?, ?)', (f'2026-10-22T0{n}', 'p', None, json.dumps({'action': 'note', 'n': n})))
+    assert [r['action']['n'] for r in curation_db.actions()] == [0, 1, 2, 3]
+    with curation_db.connect() as con:  # a go-back: the same number of rows taken back, but other ones
+        con.execute('UPDATE curation SET reverted = 1 WHERE id = 1')
+    assert [r['action']['n'] for r in curation_db.actions()] == [1, 2, 3]
+    with curation_db.connect() as con:
+        con.execute('UPDATE curation SET reverted = 0')
+        con.execute('UPDATE curation SET reverted = 1 WHERE id = 2')
+    assert [r['action']['n'] for r in curation_db.actions()] == [0, 2, 3]
+    assert [r['action']['n'] for r in curation_db.actions(include_reverted=True)] == [0, 1, 2, 3]
+    with curation_db.connect() as con:
+        con.execute('INSERT INTO curation (at, page, by, action) VALUES (?, ?, ?, ?)', ('2026-10-22T09', 'p', None, json.dumps({'action': 'note', 'n': 4})))
+    assert [r['action']['n'] for r in curation_db.actions()] == [0, 2, 3, 4]

@@ -31,6 +31,7 @@ def test_retold_on_several_days_shows_once(monkeypatch, tmp_path):
                           group('It was a bioweapon test', 'Russian lab worker dies from plague', 4)]}]
     monkeypatch.setattr(ps, 'reports_by_day', lambda days=7: reports)
     monkeypatch.setattr(motif_index, 'load', lambda: {'entries': {}, 'claims': {}, 'corrections': {}})
+    monkeypatch.setattr(motif_index, 'snapshot', motif_index.load)  # the views read the index through snapshot()
     monkeypatch.setattr(narrative_threads, 'load', dict)
     monkeypatch.setattr(focus_group, 'load', dict)
     monkeypatch.setattr(page_folklore, 'told_before', lambda *a: [])

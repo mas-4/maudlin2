@@ -69,6 +69,21 @@ def load() -> dict:
     return _read()
 
 
+_snap = {'path': None, 'version': None, 'index': None}
+
+
+def snapshot() -> dict:
+    """The index as last saved, parsed once per save and shared: for reading only. The checker's views read the index
+    several times a request (Oct 22: four reads of it in every workbench state, 0.14 of its 0.37 s); this reads it
+    once a save. Never change what it gives: load() gives a copy of one's own to change and save"""
+    if getattr(_batch, 'on', False):  # inside a batch: the batch's own copy, as load() gives
+        return load()
+    v = version()  # the stamp first: a save landing between the two is read again next time, never missed
+    if _snap['index'] is None or _snap['path'] != INDEX or _snap['version'] != v:
+        _snap.update(path=INDEX, version=v, index=_read())
+    return _snap['index']
+
+
 def save(index: dict):
     drop_dangling(index)
     drop_related_resting(index)
@@ -326,7 +341,7 @@ def to_check(limit: int | None = None) -> list[dict]:
     """(claim, motif) filings nobody has checked yet, for the motif check page: the most-used motifs first (a wrong
     filing there spreads), then the rest."""
     out = []
-    for e in sorted(live(load()), key=lambda e: (-len(e['claims']), e['id'])):
+    for e in sorted(live(snapshot()), key=lambda e: (-len(e['claims']), e['id'])):
         for c in e['claims']:
             if not c.get('checked'):
                 out.append({'id': e['id'], 'name': e['name'], 'size': len(e['claims']), 'claim': c['claim'],
@@ -417,9 +432,9 @@ def facet_notes(index: dict | None = None) -> dict[str, dict[str, str]]:
     return (index if index is not None else load()).get('facet_notes', {})
 
 
-def board() -> dict:
+def board(index: dict | None = None) -> dict:
     """Everything the motif board shows: groups, and every live motif with its claims"""
-    index = load()
+    index = index if index is not None else load()
     entries = [{'id': e['id'], 'name': e['name'], 'group': (groups_of(e) or [None])[0], 'groups': groups_of(e),
                 'curated': bool(e.get('curated')),
                 'done': is_done(e), 'note': e.get('note', ''), 'note_by': e.get('note_by', 'person' if e.get('note') else ''),
@@ -496,11 +511,28 @@ def similar(eid: str, n: int = 15) -> list[dict]:
     return sorted(items, key=lambda i: -i['score'])[:n]
 
 
+_VECS: dict = {}  # claim text -> its mxbai vector, kept in the process: the checker's similar claims
+TEXT_DIM = 1024  # mxbai's width; the static fallback's is narrower, and never kept
+
+
+def _vectors(texts: list[str]):
+    """The texts' vectors, from memory where known (Oct 22: similar claims read every claim's vector from the 3.7 GB
+    cache on each call, 0.4 s, 3.5 s with the GPU busy; now only a new claim is asked for)"""
+    import numpy as np
+    from app.narratives import embed
+    missing = [t for t in dict.fromkeys(texts) if t not in _VECS]
+    if missing:
+        v = embed(missing)
+        if v.shape[1] != TEXT_DIM:  # Ollama down: the static model for all of them, this once, kept nowhere
+            return embed(texts)
+        _VECS.update(zip(missing, v))
+    return np.vstack([_VECS[t] for t in texts])
+
+
 def similar_claims(claim: str, n: int = 8) -> list[dict]:
     """The claims closest in meaning to one claim (cosine similarity of their embeddings), filed or not: to spot the
     same claim told another way (same_claim) or a neighbor worth filing with it. Its own wordings are left out."""
-    from app.narratives import embed
-    index = load()
+    index = snapshot()
     mine = originals(claim, index) | {claim}
     for e in entries_of(index, claim):
         for c in e['claims']:
@@ -509,7 +541,7 @@ def similar_claims(claim: str, n: int = 8) -> list[dict]:
     items = [c for c in searchable_claims() if c['claim'] not in mine and key(c['claim']) != key(claim)]
     if not items:
         return []
-    v = embed([claim] + [c['claim'] for c in items])
+    v = _vectors([claim] + [c['claim'] for c in items])
     for c, s in zip(items, v[1:] @ v[0]):
         c['score'] = round(float(s), 3)
     return sorted(items, key=lambda c: -c['score'])[:n]
@@ -635,7 +667,7 @@ def searchable_claims() -> list[dict]:
     would take but hasn't (the latest folklore report's, the last LABEL_DAYS of fact-checks), in today's words."""
     from app.analysis import factchecks
     from app.narratives import latest_report, withheld
-    index = load()
+    index = snapshot()
     out = {}
     for e in live(index):
         for c in e['claims']:

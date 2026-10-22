@@ -98,7 +98,7 @@ def motif_context(data: dict) -> dict:
     """What the model had proposed before a person's change: each motif the action names (its name, whether the model
     or a person made it, a few of its claims) and, for a claim, every motif it was filed under."""
     from app.analysis import motif_index as mi
-    index = mi.load()
+    index = mi.snapshot()  # read only
     entries = index['entries']
 
     def motif(eid):
@@ -119,7 +119,7 @@ def decision_fits(data: dict) -> dict:
     decisions right (Oct 9)"""
     from app.analysis import filing_confidence as fc, motif_index as mi
     from app.utils.store import read_json
-    entries = mi.load()['entries']
+    entries = mi.snapshot()['entries']  # read only
     fits = {}
     for s in [data] + [x for x in (data.get('steps') or []) if isinstance(x, dict)]:
         pairs = [(s.get('claim'), s.get(k)) for k in ('id', 'source', 'target')]
@@ -333,7 +333,7 @@ def claim_detail(claim: str) -> dict:
     """What's behind a claim for the motif board: the fact-check it came from (headline, summary, link, the model's
     labels) or the folklore group (how many told it, a few of their posts, linked articles, labels). Local only."""
     from app.analysis import factchecks, motif_index as mi
-    index = mi.load()
+    index = mi.snapshot()
     words = mi.originals(claim, index)
     filed = next((c for e in mi.live(index) for c in e['claims'] if c['claim'] == claim), {})
     out = {'claim': claim, 'source': filed.get('source', ''), 'model_words': sorted(words - {claim})}
@@ -407,8 +407,8 @@ def board_action(data: dict):
 # check, and a batch of several (one undo step for a whole multi-select drag)
 def workbench_state() -> dict:
     from app.analysis import motif_index as mi
-    index = mi.load()
-    state = mi.board()
+    index = mi.snapshot()  # read once and passed on (Oct 22: it was read four times a state, the log four times too)
+    state = mi.board(index)
     for e in state['entries']:
         entry = index['entries'].get(e['id'], {})
         e['stands_alone'] = bool(entry.get('stands_alone'))
@@ -424,7 +424,7 @@ def workbench_state() -> dict:
     held = mi.held(index)
     state['held'] = sorted({c['claim'] for e in mi.live(index) for c in e['claims'] if mi.key(c['claim']) in held})
     from app.analysis import motif_proposals as mp
-    state['proposals'] = len(mp.open_proposals())  # the 💡 tab's count
+    state['proposals'] = len(mp.open_proposals(index))  # the 💡 tab's count
     from app.analysis import claim_organizer as co
     state['splits'] = sum(1 for p in mp.load().values() if p.get('status') == 'open' and co.still_holds(p, index))
     from app.analysis import tellings
@@ -440,7 +440,7 @@ def workbench_state() -> dict:
                            # the likely-out line, and how often the person took out what fell under it (from the
                            # model trained after Oct 18; the line alone before)
                            'out_at': fc.OUT_AT, 'at_out': m['test'].get('at_out'),
-                           'tally': sure_tally()} if sure else None
+                           'tally': sure_tally(index=index)} if sure else None
     return state
 
 
@@ -448,7 +448,7 @@ def filing_fits() -> dict:
     """Each unchecked filing's fit, as the hourly run left it on the filing (filing_confidence.refresh: the checker
     never asks the models itself)"""
     from app.analysis import motif_index as mi
-    return {f"{mi.key(c['claim'])}|{e['id']}": c['fit'] for e in mi.live(mi.load()) for c in e['claims']
+    return {f"{mi.key(c['claim'])}|{e['id']}": c['fit'] for e in mi.live(mi.snapshot()) for c in e['claims']
             if not c.get('checked') and c.get('fit') is not None}
 
 
@@ -460,7 +460,7 @@ def check_queue() -> list[dict]:
     from app.analysis import filing_confidence as fc, motif_index as mi
     items = mi.to_check()
     fits = filing_fits()
-    index = mi.load()
+    index = mi.snapshot()
     tested = fc.tested_sources(index) if fits else set()
     for x in items:
         x['fit'] = fits.get(f"{mi.key(x['claim'])}|{x['id']}")
@@ -506,22 +506,22 @@ def recently_confirmed(days: int = SECOND_WAIT) -> set[tuple[str, str]]:
 SURE_TALLY_DAYS = 7
 
 
-def sure_tally(days: int = SURE_TALLY_DAYS) -> list[dict]:
+def sure_tally(days: int = SURE_TALLY_DAYS, index: dict | None = None) -> list[dict]:
     """How the sure claims fared with the person, a day at a time, newest first: [{'day', 'clean', 'needed'}] (Oct 18,
     the person: "I feel like I'm having to heavily police the sure claims"; the held-out test said 95% right, but it
     counts only filings passed or taken out, and that day 9 of about 95 sure claims were held). A sure claim is clean
     when all of it passed; it needed the person when one of its sure filings was unticked, taken out, or the claim held.
     Holds logged before the ✅ sure tab marked its own count when all the claim's filings are sure now"""
-    by = sure_tally_claims(days)
+    by = sure_tally_claims(days, index)
     return [{'day': d, 'clean': len(by[d]['clean']), 'needed': len(by[d]['needed'])} for d in sorted(by, reverse=True)]
 
 
-def sure_tally_claims(days: int = SURE_TALLY_DAYS) -> dict:
+def sure_tally_claims(days: int = SURE_TALLY_DAYS, index: dict | None = None) -> dict:
     """sure_tally's claims: {day: {'clean' and 'needed': {claim key: {'claim', 'ids': the sure filings' motifs}}}}
     (Baron Munchausen, F24, scores them again)"""
     from app.analysis import curation_db, motif_index as mi
     since = (dt.now() - td(days=days)).strftime('%Y-%m-%d')
-    index = mi.load()
+    index = index if index is not None else mi.snapshot()
     least, waiting = {}, {}  # claim key -> its least fit now, over the filings still waiting; and those filings
     for e in mi.live(index):
         for c in e['claims']:
@@ -585,7 +585,7 @@ def pace(days: int = PACE_DAYS) -> dict:
     arrived, seen, first = {}, set(), None
     # only claims that reached the index or a decision of the person's: Rip Van Winkle's 687 practice filings of 1896
     # newspapers leaked into the log on Oct 15, before experiments had their own data, and showed as 755 arrivals
-    real = set(mi.load()['claims'])
+    real = set(mi.snapshot()['claims'])
     for r in fc.log_rows():
         if isinstance(r.get('action'), dict):
             d = {}
@@ -654,10 +654,10 @@ def second_look() -> list[dict]:
     from app.analysis import motif_index as mi
     hand, recent = hand_made(), recently_confirmed()
     rows = [{'id': e['id'], 'name': e['name'], 'claim': c['claim'], 'source': c.get('source', ''), 'fit': c['fit']}
-            for e in mi.live(mi.load()) for c in e['claims'] if doubted(e, c, hand, recent)]
+            for e in mi.live(mi.snapshot()) for c in e['claims'] if doubted(e, c, hand, recent)]
     rows = sorted(rows, key=lambda r: r['fit'])
     from app.analysis import filing_confidence as fc
-    index = mi.load()
+    index = mi.snapshot()
     for r in rows:
         r['better'] = fc.better(index, r['claim'])  # where it might belong instead
     return rows
@@ -677,7 +677,7 @@ TODAY_FILE = os.path.join(FOLDER, 'today.json')  # {'date', 'keys'}: the day's s
 def _today_candidates() -> dict[str, list[dict]]:
     """Every decision of each kind worth making now, the most useful first, each with its key"""
     from app.analysis import filing_confidence as fc, motif_index as mi, motif_proposals as mp
-    index = mi.load()
+    index = mi.snapshot()
     live = mi.live(index)
     doubted = [{**r, 'kind': 'doubted', 'key': f"d|{r['claim']}|{r['id']}"} for r in second_look() if r.get('better')]
     torn, seen = [], set()
@@ -705,15 +705,15 @@ def _still(key: str, waiting: dict) -> dict | None:
     kind, rest = key.split('|', 1)
     if kind in ('t', 'd'):
         claim, eid = rest.rsplit('|', 1)
-        e = mi.load()['entries'].get(eid)
+        e = mi.snapshot()['entries'].get(eid)
         c = next((c for c in (e or {}).get('claims', []) if c['claim'] == claim), None)
         if not c or (kind == 't' and c.get('checked')) or (kind == 'd' and (c.get('checked') != 'yes' or c.get('rechecked'))):
             return None
         return waiting.get(key) or {'kind': 'torn' if kind == 't' else 'doubted', 'id': eid, 'name': e['name'], 'claim': claim,
                                     'source': c.get('source', ''), 'fit': c.get('fit'), 'key': key,
-                                    'better': fc.better(mi.load(), claim)}
+                                    'better': fc.better(mi.snapshot(), claim)}
     if kind == 'n':
-        e = mi.load()['entries'].get(rest)
+        e = mi.snapshot()['entries'].get(rest)
         return waiting.get(key) if e and not e.get('merged_into') and 'done' not in e and e.get('claims') else None
     if kind == 'p':
         return waiting.get(key) if any(p['id'] == rest for p in mp.open_proposals()) else None
@@ -766,7 +766,7 @@ def judge_queue() -> list[dict]:
             out.append(by[x['claim']])
         return by[x['claim']]
     from app.analysis import motif_index as mi
-    index = mi.load()
+    index = mi.snapshot()
     refiled = {(mi.key(c['claim']), e['id']): c['refiled'] for e in mi.live(index) for c in e['claims'] if c.get('refiled')}
     held = mi.held(index)  # ⏸ on hold: in the held tab, not here
     for x in check_queue():
@@ -810,7 +810,7 @@ def workbench_queue(kind: str):
             similar, note = [], f'similar names unavailable: {type(e).__name__}'
         return {'similar': similar, 'shared': mi.shared_pairs(), 'note': note}
     if kind == 'held':  # ⏸ the claims on hold, the latest held first, with how many filings still wait on each
-        index = mi.load()
+        index = mi.snapshot()
         held, waiting = mi.held(index), {}
         for e in mi.live(index):
             for c in e['claims']:
@@ -920,13 +920,13 @@ def _claims(q: dict):
 
 def _better(q: dict):  # where a weakly filed claim might belong instead
     from app.analysis import filing_confidence as fc, motif_index
-    return fc.better(motif_index.load(), q.get('claim', ''))
+    return fc.better(motif_index.snapshot(), q.get('claim', ''))
 
 
 def _motif_similar(q: dict):
     from app.analysis import motif_index
     eid = q.get('id', '')
-    if eid not in {e['id'] for e in motif_index.live(motif_index.load())}:
+    if eid not in {e['id'] for e in motif_index.live(motif_index.snapshot())}:
         raise NotFound(f'no such motif: {eid}')
     return motif_index.similar(eid)
 

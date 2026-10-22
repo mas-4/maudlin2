@@ -111,12 +111,24 @@ def backfill_log(path: str) -> int:
     return len(rows)
 
 
+_actions = {}  # (database, include_reverted) -> (stamp, rows): the log parsed once until it changes
+
+
 def actions(include_reverted: bool = False) -> list[dict]:
-    """The curation log, oldest first: {'at', 'page', 'by', 'action', 'before'}"""
+    """The curation log, oldest first: {'at', 'page', 'by', 'action', 'before'}. Parsed once until the log changes
+    (Oct 22: the checker parsed all of it four times for every workbench state); the rows are shared, so read them,
+    don't change them"""
     with connect() as con:
+        stamp = con.execute('SELECT COUNT(*), COALESCE(MAX(id), 0), (SELECT group_concat(id) FROM curation WHERE '
+                            'reverted = 1) FROM curation').fetchone()  # rows only added, or marked taken back
+        got = _actions.get((DB, include_reverted))
+        if got and got[0] == stamp:
+            return list(got[1])
         q = 'SELECT at, page, by, action, before FROM curation' + ('' if include_reverted else ' WHERE reverted = 0')
-        return [{'at': a, 'page': p, 'by': b, 'action': json.loads(x), 'before': json.loads(y) if y else None}
+        rows = [{'at': a, 'page': p, 'by': b, 'action': json.loads(x), 'before': json.loads(y) if y else None}
                 for a, p, b, x, y in con.execute(q + ' ORDER BY id')]
+    _actions[(DB, include_reverted)] = (stamp, rows)
+    return list(rows)
 
 
 def checkpoint(name: str, index_text: str, proposals_text: str | None, kind: str = 'manual') -> dict:

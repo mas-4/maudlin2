@@ -49,6 +49,7 @@ def test_all_has_every_live_motif_and_marks_drafts(index):
 
 def test_every_format_reads_back(index, monkeypatch):
     monkeypatch.setattr(mi, 'load', lambda: index)
+    monkeypatch.setattr(mi, 'snapshot', mi.load)  # the views read the index through snapshot()
     data = json.loads(x.export('json')[0])
     assert [m['name'] for m in data['motifs']] == ['Cover-up', 'Hidden hand']
     rows = list(csv.DictReader(io.StringIO(x.export('csv')[0])))

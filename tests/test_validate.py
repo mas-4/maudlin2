@@ -282,6 +282,7 @@ def test_todays_set_is_picked_once_a_day_runs_out_as_decided_and_more_can_be_ask
         'M2': {'id': 'M2', 'name': 'Also mine', 'done': ['x'], 'curated': True, 'claims': [c('torn a', fit=0.45)]},
         'M3': {'id': 'M3', 'name': 'Made by the model', 'claims': [c('m'), c('n')]}}}
     monkeypatch.setattr(mi, 'load', lambda: index)
+    monkeypatch.setattr(mi, 'snapshot', mi.load)  # the views read the index through snapshot()
     monkeypatch.setattr(validate, 'TODAY_FILE', str(tmp_path / 'today.json'))
     monkeypatch.setattr(validate, 'TODAY', {'doubted': 4, 'torn': 1, 'new motifs': 3, 'proposals': 3})
     monkeypatch.setattr(validate, 'second_look', lambda: [{'claim': 'doubted', 'id': 'M1', 'fit': 0.2, 'better': [{'id': 'M2'}]}])
@@ -306,6 +307,7 @@ def test_the_check_list_goes_least_sure_first(monkeypatch):
     items = [{'claim': c, 'id': 'M1', 'source': ''} for c in ('sure', 'torn', 'unlikely', 'unscored')]
     monkeypatch.setattr(mi, 'to_check', lambda: [dict(x) for x in items])
     monkeypatch.setattr(mi, 'load', lambda: {'entries': {}})
+    monkeypatch.setattr(mi, 'snapshot', mi.load)  # the views read the index through snapshot()
     monkeypatch.setattr(validate, 'filing_fits', lambda: {f'{mi.key(c)}|M1': f for c, f in
                                                           (('sure', 0.97), ('torn', 0.52), ('unlikely', 0.1))})
     monkeypatch.setattr(fc, 'tested_sources', lambda index: set())
@@ -431,6 +433,7 @@ def test_pace_counts_arrivals_and_judged_claims_and_the_steady_target(monkeypatc
     rows.append({'at': day(1), 'key': 'leak', 'picked': ['M1']})
     log.write_text(''.join(json.dumps(r) + '\n' for r in rows))
     monkeypatch.setattr(mi, 'load', lambda: {'claims': {r['key']: ['M1'] for r in rows if r['key'] != 'leak'}, 'entries': {}})
+    monkeypatch.setattr(mi, 'snapshot', mi.load)  # the views read the index through snapshot()
     monkeypatch.setattr(fc, 'log_rows', lambda: [
         {'at': day(0), 'action': {'action': 'batch', 'steps': [{'action': 'check', 'claim': 'a', 'id': 'M1', 'answer': 'yes'},
                                                              {'action': 'unfile', 'claim': 'a', 'id': 'M2'},

@@ -168,10 +168,10 @@ def still_holds(p: dict, index: dict) -> bool:
 KINDS = ['rename', 'note', 'merge', 'unparent', 'unrelate', 'parent', 'relate', 'new_motif', 'new_group', 'group', 'genre']  # the checklist's order
 
 
-def open_proposals() -> list[dict]:
+def open_proposals(index: dict | None = None) -> list[dict]:
     """The checklist: typo fixes, merges and link removals first (in KINDS order), then the rests-on and related
     proposals together, best fit first; each of those below the fold's cut marked 'unlikely'"""
-    index = mi.load()
+    index = index if index is not None else mi.load()
     cut = (read_json(RUNS, {}).get('fit') or {}).get('cut')
     out = []
     for p in load().values():
