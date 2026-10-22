@@ -5,7 +5,7 @@
 # nvidia-prime's prime-run does: these three variables), and gaming mode off again when the game ends, unless it was
 # already on before.
 #
-#   scripts/game.sh <the game's command>          e.g. scripts/game.sh godot --path ~/games/mine
+#   scripts/game.sh <the game's command>          e.g. scripts/game.sh ~/Repos/iliad/game/play.sh (Menin)
 #   Steam, a game's launch options:               /home/mas/maudlin-prod/scripts/game.sh %command%
 set -u
 PROD=/home/mas/maudlin-prod
@@ -16,7 +16,10 @@ was_on=0
 gaming status >/dev/null 2>&1 && was_on=1
 [ "$was_on" = 1 ] || gaming on >/dev/null
 
-__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia __VK_LAYER_NV_optimus=NVIDIA_only "$@"
+export __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia __VK_LAYER_NV_optimus=NVIDIA_only
+egl=/usr/share/glvnd/egl_vendor.d/10_nvidia.json  # EGL games too (Menin's own game/play.sh sets it the same way)
+[ -e "$egl" ] && export __EGL_VENDOR_LIBRARY_FILENAMES="$egl"
+"$@"
 status=$?
 
 [ "$was_on" = 1 ] || gaming off >/dev/null
