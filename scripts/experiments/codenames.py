@@ -82,6 +82,7 @@ CODENAMES = {
     'F25': ("Indra's Net", 'every jewel reflects all the others: each motif mirrored in many versions for the shortlist'),
     'F26': ('Tiresias', 'the blind seer who saw what was meant: the point a teller makes, for the shortlist'),
     'F27': ('Ali Baba', 'the cave that opens to the exact words: the tellers\' own phrases for each motif, for the shortlist'),
+    'F28': ('the Judgement of Paris', 'asked to choose among those offered: which model picks from the shortlist'),
 }
 
 
