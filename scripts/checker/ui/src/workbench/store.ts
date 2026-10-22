@@ -3,7 +3,7 @@
 // there opens here.
 import { useSyncExternalStore } from 'react'
 
-const KEEP = ['open', 'view', 'sort', 'tab', 'folded', 'groupby', 'quickper', 'cols', 'shelf', 'similarOpen'] as const
+const KEEP = ['open', 'view', 'sort', 'tab', 'folded', 'groupby', 'quickper', 'cols', 'shelf', 'similarOpen', 'shelfFolded'] as const
 
 function read<T>(k: string, d: T): T {
   try {
@@ -33,6 +33,7 @@ export interface WB {
   quickper: number
   cols: { left: number; right: number } | null
   shelf: number | null // the shelf's height
+  shelfFolded: boolean // the shelf down to one line (it opens by itself while something is dragged)
   shelfFilter: Shelf | null
   q: string
   msel: string[]
@@ -74,6 +75,7 @@ let state: WB = {
   quickper: read('quickper', 25),
   cols: read('cols', null),
   shelf: read('shelf', null),
+  shelfFolded: read('shelfFolded', false),
   shelfFilter: null,
   q: '',
   msel: [],

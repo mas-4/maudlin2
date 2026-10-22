@@ -51,12 +51,11 @@ export function ClaimView({ claim, j, check }: { claim: { claim: string; src?: s
             <button className="mini" title="it tells several things: split it into one claim per telling (the original stays as the telling)" onClick={(ev) => void splitByHand(c, ev.currentTarget)}>✂️ split</button></span>
         </blockquote>
         {(rec?.variants ?? []).length > 0 && <p className="faint">≡ also told as: {rec!.variants!.map((v) => '“' + v + '”').join(' · ')}</p>}
-        <h3>📜 where it came from</h3>
-        <div className="cl-detail"><Detail claim={c} /></div>
         <h3>🧩 all its motifs <i>{ins.length}</i> <span className="faint">take one away with ✕, add more below or by dropping a motif here</span></h3>
         {ins.map((e) => <MotifRow key={e.id} m={m} e={e} claim={c} j={j} />)}
         {!ins.length && <p className="faint">📥 not in any motif</p>}
         <Better m={m} claim={c} j={j} />
+        <Sources claim={c} />
         <h3>➕ add it to another motif</h3>
         <AddTo m={m} claim={c} ins={ins} />
         <div className="sbtns clacts">
@@ -68,6 +67,19 @@ export function ClaimView({ claim, j, check }: { claim: { claim: string; src?: s
         <SimilarFold claim={c} filed={ins.length > 0} />
       </div>
     </div>
+  )
+}
+
+/** 📜 where it came from, under the motifs (Oct 22: above them, on a laptop the motifs being judged sat below the fold
+    on every card): a few lines, and the rest a press away; folded again for the next claim */
+function Sources({ claim }: { claim: string }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => setOpen(false), [claim])
+  return (
+    <>
+      <h3>📜 where it came from <button className="mini" onClick={() => setOpen(!open)}>{open ? '▴ less' : '▾ all of it'}</button></h3>
+      <div className={'cl-detail' + (open ? ' open' : '')}><Detail claim={claim} /></div>
+    </>
   )
 }
 

@@ -70,7 +70,8 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .help { max-width: 40em; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--pink); }
   .help h2 { font: var(--shout); margin-top: 0; }
   /* the shelf: groups and genres side by side above the three panes */
-  .shelf { display: grid; grid-template-columns: minmax(0, 3fr) minmax(15em, 1fr); gap: 10px; padding: 6px 12px 8px; }
+  .shelf { position: relative; padding: 6px 12px 8px; }
+  .shelfboxes { display: grid; grid-template-columns: minmax(0, 3fr) minmax(15em, 1fr); gap: 10px; }
   .shelfbox { display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: 5px; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 12px;
     background: var(--paper); max-height: var(--shelf-h, 8em); overflow-y: auto; }
   .hsplit { grid-column: 1 / -1; height: 10px; margin: -4px 0 -6px; cursor: row-resize; position: relative; touch-action: none; }
@@ -87,7 +88,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .schip.dz-target { outline: 3px dashed var(--ink); }
   body.dragging & .schip { border-style: dashed; }
   .shelfnew { font: 12px system-ui; border: 1.5px dashed var(--ink); border-radius: 999px; padding: 2px 8px; width: 11em; }
-  @media (max-width: 900px) { .shelf { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .shelfboxes { grid-template-columns: 1fr; } }
   /* the three panes and the bars between them */
   .wb-main { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--left, minmax(240px, 20%)) 12px minmax(0, 1fr) 12px var(--right, minmax(300px, 28%));
     padding: 12px; }
@@ -344,3 +345,28 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .similar-fold > summary h3::before { content: '▸ '; }
   .similar-fold[open] > summary h3::before { content: '▾ '; }
 }
+
+/* The shelf folded to one line; it opens while something is dragged, to drop on a group or genre */
+.wb {
+  .shelf-fold { justify-self: start; font: var(--talk); font-size: 12.5px; color: #555; background: none; border: 0;
+    padding: 0 2px; cursor: pointer; }
+  .shelf-fold:hover { color: var(--ink); text-decoration: underline; }
+  .shelf.folded { display: flex; align-items: center; gap: 8px; padding: 3px 12px; }
+  .shelf.folded .shelfboxes, .shelf.folded .hsplit { display: none; }
+}
+/* while dragging, the folded shelf opens over the panes, so nothing under the pointer moves */
+body.dragging .wb .shelf.folded .shelfboxes { display: grid; position: absolute; top: 100%; left: 0; right: 0; z-index: 40;
+  padding: 6px 12px 8px; background: var(--wash); border-bottom: 3px solid var(--ink); box-shadow: 0 6px 12px rgba(0, 0, 0, .15); }
+
+/* One line for the bar and one row for the tabs (Oct 22: on a laptop the bar took two lines and the tabs three) */
+.wb {
+  .wb-bar { flex-wrap: nowrap; gap: 10px; padding: 6px 12px; }
+  .wb-search { flex: 1 1 14em; min-width: 10em; }
+  .wb-stats { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12.5px; }
+  .wb-drops { flex: none; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 3px; }
+  .tab { white-space: nowrap; flex: none; }
+  .cl-detail .detail { max-height: 120px; }
+  .cl-detail.open .detail { max-height: none; }
+}
+@media (max-width: 1500px) { .wb .wb-bar h1 .t { display: none; } }

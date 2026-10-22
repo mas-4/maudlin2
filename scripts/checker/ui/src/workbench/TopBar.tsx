@@ -24,7 +24,7 @@ export function TopBar() {
   const filings = es.reduce((n, e) => n + e.claims.length, 0)
   return (
     <header className="wb-bar">
-      <h1>🧰 Motif workbench</h1>
+      <h1 title="Motif workbench">🧰 <span className="t">Motif workbench</span></h1>
       <label className="wb-search">🔎 <input ref={search} type="search" value={q} autoComplete="off"
         placeholder="find a motif by name, note or M-number  (press /)"
         onChange={(e) => setWB({ q: e.target.value })}

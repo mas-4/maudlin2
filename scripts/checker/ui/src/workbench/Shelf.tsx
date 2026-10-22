@@ -3,7 +3,7 @@
 import { useRef, type PointerEvent as RPE } from 'react'
 import { ask, sure } from '../components/Feedback'
 import { act } from './act'
-import { genreColor, useWorkbench, type Model } from './model'
+import { genreColor, groupName, useWorkbench, type Model } from './model'
 import { getWB, setWB, useWB, type Shelf as ShelfFilter } from './store'
 
 export const noteOf = (m: Model, kind: string, id: string) =>
@@ -34,6 +34,7 @@ export function Shelf() {
   const { model: m } = useWorkbench()
   const filter = useWB((s) => s.shelfFilter)
   const height = useWB((s) => s.shelf)
+  const folded = useWB((s) => s.shelfFolded)
   const box = useRef<HTMLElement>(null)
   if (!m) return null
   const ms = m.data.entries
@@ -78,8 +79,20 @@ export function Shelf() {
     bar.addEventListener('pointerup', done, { once: true })
     bar.addEventListener('lostpointercapture', done, { once: true })
   }
+  // Folded (Oct 22: on a laptop the shelf took 136 of 768 px), it's one line: what it holds, and the filter in force.
+  // It opens by itself while something is dragged, so it's still somewhere to drop a motif on a group or genre
+  const shown = filter && (filter.kind === 'group' ? (filter.id ? '📁 ' + groupName(m, filter.id) : '🗃️ in no group') : (filter.id ? '🎭 ' + filter.id : '❔ no genre yet'))
+  const fold = (
+    <button className="shelf-fold" title={folded ? 'show the groups and genres' : 'fold the shelf to one line (it opens while you drag)'}
+      onClick={() => setWB({ shelfFolded: !folded })}>
+      {folded ? '▸' : '▾'} 📁 {m.data.groups.length} groups · 🎭 {genres.length} genres{folded && shown ? <> · showing only <b>{shown}</b></> : ''}
+    </button>
+  )
   return (
-    <section ref={box} className="shelf" aria-label="Groups and genres" style={height ? { ['--shelf-h' as string]: `min(${height}px, 60vh)` } : undefined}>
+    <section ref={box} className={'shelf' + (folded ? ' folded' : '')} aria-label="Groups and genres" style={height ? { ['--shelf-h' as string]: `min(${height}px, 60vh)` } : undefined}>
+      {fold}
+      {folded && shown && <button className="mini" title="show every motif again" onClick={() => setWB({ shelfFilter: null })}>✕ show all</button>}
+      <div className="shelfboxes">
       <div className="shelfbox">
         <b className="shelfhead">📁 groups</b>
         {m.data.groups.map((g) => chip('group', g.id, '📁 ' + g.name, ms.filter((e) => (e.groups ?? []).includes(g.id)).length, '#8a5cff', true))}
@@ -91,6 +104,7 @@ export function Shelf() {
         {genres.map((v) => chip('genre', v, '🎭 ' + v, ms.filter((e) => e.facets?.genre === v).length, genreColor(genres, v), true))}
         {chip('genre', '', '❔ no genre yet', ms.filter((e) => !e.facets?.genre).length, '#bbb', false)}
         {add('genre')}
+      </div>
       </div>
       <div className="hsplit" title="drag down to make the shelf taller (double-click: back to the default)" onPointerDown={resize} onDoubleClick={() => setWB({ shelf: null })} />
     </section>

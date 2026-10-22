@@ -27,7 +27,8 @@ export function Inbox() {
   return (
     <section className="pane inbox-pane" aria-label="Inbox">
       <div className="pane-head"><div className="tabs" role="tablist">
-        {TABS.map(([k, label]) => <button key={k} role="tab" className={'tab' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{label}{counts[k] !== undefined && <> <i>{counts[k]}</i></>}</button>)}
+        {TABS.map(([k, label]) => <button key={k} role="tab" className={'tab' + (tab === k ? ' on' : '')} ref={tab === k ? (b) => b?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) : undefined}
+          onClick={() => setTab(k)}>{label}{counts[k] !== undefined && <> <i>{counts[k]}</i></>}</button>)}
       </div></div>
       <div className="scroll inbox-scroll" data-scroll>
         {tab === 'stats' ? <StatsTab />

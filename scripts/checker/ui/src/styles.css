@@ -27,7 +27,7 @@ a { color: var(--ink); }
 .nav-undo { margin-left: auto; padding-left: 12px; display: flex; align-items: center; gap: 6px; }
 .nav-undo button, .nav-new { font: inherit; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 999px; background: white; cursor: pointer; }
 .nav-undo button:disabled { opacity: .45; cursor: default; }
-.nav-undo span { font-size: 12px; color: #555; max-width: 22em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-undo span { font-size: 12px; color: #555; max-width: 16em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav-new { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); margin-left: auto; }
 
 /* shared pieces */
@@ -80,3 +80,16 @@ body.acting, body.acting * { cursor: progress !important; }
 .saved-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; justify-content: flex-end; }
 
 .nav-saving { font: var(--talk); font-size: 12.5px; color: #555; white-space: nowrap; }
+
+/* ⋯ more: the pages that aren't the main ones, in a menu, so the nav keeps to one line */
+.nav { flex-wrap: nowrap; }
+.nav-more { position: relative; }
+.nav-more > summary { list-style: none; cursor: pointer; padding: 3px 10px; border-radius: 999px; border: 2px solid var(--ink); background: white; white-space: nowrap; }
+.nav-more > summary::-webkit-details-marker { display: none; }
+.nav-more > summary.active { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+.nav-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 60; display: flex; flex-direction: column; gap: 4px; min-width: 13em;
+  background: white; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--pink); padding: 8px 10px; }
+.nav-menu > div { display: flex; flex-direction: column; gap: 2px; }
+.nav-menu .nav-label { margin: 4px 0 2px; }
+.nav-menu a { white-space: nowrap; }
+@media (max-width: 1250px) { .nav-undo span { display: none; } .nav a.nav-main { margin-right: 0; padding: 3px 7px; } }
