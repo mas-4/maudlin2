@@ -119,8 +119,9 @@ class Hold:
 
 
 def _hourly_run_going() -> bool:
-    from app import worker
-    return worker.run_going()
+    """The hourly run going, or gaming mode on (app/gaming.py): either way the command waits, or is paused"""
+    from app import gaming, worker
+    return worker.run_going() or gaming.active() is not None
 
 
 def _worker_busy() -> bool:
@@ -303,7 +304,8 @@ def run(command: list[str], minutes: float, holder: str | None = None) -> int:
                             print(f'gpu_lease: {minutes:g} minutes up, the command stopped', flush=True)
                             return 124
                         if _hourly_run_going():
-                            why = 'the hourly run started'
+                            from app import gaming
+                            why = 'gaming mode' if gaming.active() else 'the hourly run started'
                             break
                         if time.time() - began >= TURN * 60:
                             why = f'{TURN} minutes run; the worker gets its turn'

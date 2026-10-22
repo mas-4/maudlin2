@@ -910,6 +910,12 @@ def _motif_similar(q: dict):
     return motif_index.similar(eid)
 
 
+def _gaming_state() -> dict:
+    from app import gaming
+    on = gaming.active()
+    return {'on': bool(on), 'until': on and on['until'], 'text': gaming.describe(on)}
+
+
 def _index_version():
     from app.analysis import motif_index
     return motif_index.version()
@@ -980,6 +986,7 @@ GET_JSON = {
     '/undo.json': _undo_next,
     '/version.json': lambda q: {'version': code_version()},  # the workbench's own code now: an open tab compares
     '/index-version.json': lambda q: {'version': _index_version()},  # cheap: polled by an open workbench
+    '/gaming.json': lambda q: _gaming_state(),  # 🎮 gaming mode (app/gaming.py), for the nav's switch
     '/pace.json': lambda q: pace(),  # 📈 the person's pace against what arrives
     '/live.json': _live,
     '/flow.json': _flow,
@@ -1092,6 +1099,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(critique(data))
             except (ValueError, OSError) as e:
                 return self.send_json_error(400, str(e))
+        if self.path == '/gaming':  # 🎮 gaming mode on or off ({on: bool}); not a change to the index, so no undo step
+            from app import gaming
+            if data.get('on'):
+                gaming.turn_on()
+            else:
+                gaming.turn_off()
+            return self.send_json(_gaming_state())
         if self.path == '/undo':
             try:
                 what = undo()

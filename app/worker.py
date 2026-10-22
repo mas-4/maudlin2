@@ -93,8 +93,11 @@ def run_going() -> bool:
 
 
 def yielding() -> str | None:
-    """Why the worker should leave the GPU now: the hourly run going, or an experiment holding the GPU lease
-    (app/gpu_lease.py); None when it's free"""
+    """Why the worker should leave the GPU now: gaming mode (app/gaming.py), the hourly run going, or an experiment
+    holding the GPU lease (app/gpu_lease.py); None when it's free"""
+    from app import gaming
+    if gaming.active():
+        return 'gaming mode'
     if run_going():
         return 'the hourly run'
     from app import gpu_lease
@@ -217,6 +220,9 @@ def main():
             return
         if (why := yielding()):
             beat(state, busy=False, waiting=why)
+            if why == 'gaming mode':  # the step it was on may have loaded a model since gaming mode came on
+                from app import gaming
+                gaming.free_card()
             if holding_gpu():  # give the whole card back: systemd starts a fresh worker, which waits without one
                 logger.info("Worker: giving way to %s; exiting to free the card's memory", why)
                 return

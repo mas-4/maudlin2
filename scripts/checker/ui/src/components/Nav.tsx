@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { PAGES } from '../lib/routes'
 import { SavedStates } from './SavedStates'
+import { Gaming } from './Gaming'
 import { Saving } from './Saving'
 import { Undo } from './Undo'
 import { VersionWatch } from './VersionWatch'
@@ -42,6 +43,7 @@ export function Nav() {
       <VersionWatch />
       <span className="nav-right">
         <Saving />
+        <Gaming />
         <SavedStates />
         <Undo />
       </span>

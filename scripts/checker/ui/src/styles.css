@@ -93,3 +93,7 @@ body.acting, body.acting * { cursor: progress !important; }
 .nav-menu .nav-label { margin: 4px 0 2px; }
 .nav-menu a { white-space: nowrap; }
 @media (max-width: 1250px) { .nav-undo span { display: none; } .nav a.nav-main { margin-right: 0; padding: 3px 7px; } }
+
+/* 🎮 gaming mode's switch: lit while it's on */
+.nav-gaming { font: inherit; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 999px; background: white; cursor: pointer; white-space: nowrap; }
+.nav-gaming.on { background: var(--purple); color: white; box-shadow: 2px 2px 0 var(--ink); font-weight: 700; }

@@ -28,6 +28,13 @@ if git diff --quiet && git diff --cached --quiet; then
     fi
 fi
 
+# Gaming mode (app/gaming.py): the card and the machine are the person's; this run is skipped, and the next after it
+# catches the site up
+if .venv/bin/python -m app.gaming status >/dev/null 2>&1; then
+    echo "Gaming mode is on: this hourly run is skipped"
+    exit 0
+fi
+
 # Did the timer wake the machine for this run? (the kernel logs the resume just before the timer fires)
 woke=0
 if journalctl -q -k --since "-5min" 2>/dev/null | grep -q "PM: suspend exit"; then
@@ -55,6 +62,8 @@ else
 fi
 status=$(cat "$status_file")
 rm -f "$status_file"
+# Gaming mode came on while this run went: its models off the card now it's done
+.venv/bin/python -m app.gaming free >/dev/null 2>&1 || true
 
 # Back to sleep if the timer woke the machine and nobody has come back to it: the desktop locks the screen before
 # sleeping, so a session still locked after the run means no one's using it. Otherwise it'd sit awake until the

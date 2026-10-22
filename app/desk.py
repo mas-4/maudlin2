@@ -321,6 +321,9 @@ def data() -> dict:
                  'hourly': 'The hourly run', 'idle': 'Idle'}[state['who']]
         if state['failed']:
             title += ' · last run failed'
+        from app import gaming
+        if gaming.active():  # the project's GPU work waits for the person's games (app/gaming.py)
+            title = '🎮 Gaming mode: the project waits'
         out['look'] = {'title': title, 'effect': effect.lower(), 'color': '#%02x%02x%02x' % colour,
                        'brightness': bright, 'night': lights.night()}
     except Exception as e:  # noqa: BLE001
