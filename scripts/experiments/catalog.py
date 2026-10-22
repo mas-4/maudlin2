@@ -146,7 +146,8 @@ REGISTRY = {
             'as shortlist signals', 'f26_tiresias.py', 'answered', 'f26_tiresias.sqlite',
             'not kept: top-12 +0.3% with sources (interval from -0.0%), +0.0% bare; moves +0.5%; 9 of 159 hard misses back'),
     'F27': ("The tellers' own words: each motif's phrases by weighted log-odds over its tellings, names out, as "
-            'shortlist signals', 'f27_ali_baba.py', 'queued', 'f27_ali_baba.sqlite', ''),
+            'shortlist signals', 'f27_ali_baba.py', 'answered', 'f27_ali_baba.sqlite',
+            'not kept: top-12 +0.1% (interval from -0.3%), moves -0.3%; the phrases are mostly the topic in single words'),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
