@@ -14,6 +14,13 @@ export interface ClaimDetail {
   examples?: string[]; posts?: number; summary?: string; label?: Record<string, string>; piece?: string; model_words?: string | string[]
 }
 
+// Who said it on the show (app/analysis/show_claims.py SPEAKERS), said plainly (Oct 22: "clip" was a faint word at the
+// end of the line, and a right-wing clip The Young Turks played read as theirs)
+const SPEAKER: Record<string, string> = {
+  host: '🎙️ the show’s own hosts', guest: '🎤 a guest the hosts interview', caller: '📞 a listener calling in',
+  clip: '▶️ a clip the show played: someone else’s words, not the hosts’ (shows often play a clip to answer it)',
+}
+
 export function useDetail(claim: string | undefined) {
   return useJSON<ClaimDetail>('/claim-detail.json', { claim }, { enabled: !!claim })
 }
@@ -42,9 +49,10 @@ export function Detail({ claim }: { claim: string }) {
           🎙️ told {x.tellings!.length} time{x.tellings!.length === 1 ? '' : 's'} on {shows} show{shows === 1 ? '' : 's'}
           {x.tellings!.map((t, i) => (
             <div className="telling" key={i}>
-              <b>{t.show}</b>{t.lean && <span className="faint"> ({t.lean})</span>} ·{' '}
+              <b>{t.show}</b>{t.lean && <span className="faint"> (the show: {t.lean})</span>} ·{' '}
               {t.url ? <a href={t.url} target="_blank" rel="noopener">{t.title || 'the episode'}</a> : t.title || 'an episode'}{' '}
-              <span className="faint">{t.date}{t.at != null ? ` · the part from ${clock(t.at)}` : ''}{t.speaker ? ' · ' + t.speaker : ''}</span>
+              <span className="faint">{t.date}{t.at != null ? ` · the part from ${clock(t.at)}` : ''}</span>
+              {t.speaker && <div className={'speaker ' + t.speaker}>{SPEAKER[t.speaker] ?? t.speaker}</div>}
               {t.claim && t.claim !== claim && <div className="faint">as read there: “{t.claim}”</div>}
               {t.context ? <div className="transcript">🗣️ {t.context.before}<mark>{t.context.quote}</mark>{t.context.after}</div>
                 : t.quote ? <div>🗣️ “{t.quote}”</div> : null}

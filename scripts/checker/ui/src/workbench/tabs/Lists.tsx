@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { sure as confirm, toast } from '../../components/Feedback'
 import { getJSON } from '../../lib/api'
 import { act, batch } from '../act'
-import { Chip, claimDrag, FitChip, useClaimHead } from '../bits'
+import { Chip, claimDrag, ClaimText, FitChip, useClaimHead } from '../bits'
 import { useQueue, type Judging } from '../judge'
 import { isEmpty, isSingle, motifsOf, SOURCE, useWorkbench, type Model } from '../model'
 import { holdClaim, openClaim, openMotif, quickDecide } from '../ops'
@@ -198,7 +198,7 @@ export function FindTab() {
 function ClaimLine({ c, from, meta, unfiled }: { c: { claim: string; source: string; ref?: string }; from: string; meta: React.ReactNode; unfiled?: boolean }) {
   return (
     <li className={'claim mini' + (unfiled ? ' unfiled' : '')} {...claimDrag(c, from)}>
-      <span className="ctext" onClick={() => openClaim(c.claim, { src: c.source, ref: c.ref })}>{c.claim}</span>
+      <ClaimText claim={c.claim} className="ctext" onOpen={() => openClaim(c.claim, { src: c.source, ref: c.ref })} />
       <span className="meta">{meta}</span>
     </li>
   )

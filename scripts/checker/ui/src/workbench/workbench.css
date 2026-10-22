@@ -380,3 +380,15 @@ body.dragging .wb .shelf.folded .shelfboxes { display: grid; position: absolute;
   .part.on { background: var(--soft-yellow); border-color: var(--ink); }
   .part i { font-style: normal; color: #666; }
 }
+
+/* where it came from: a taller box, a clear way to read it all, and who is speaking on a show */
+.wb {
+  .cl-detail .detail { max-height: 180px; }
+  .more-bar { display: block; width: 100%; margin: 2px 0 8px; padding: 3px 0; font: var(--talk); font-size: 12.5px; color: var(--ink);
+    background: var(--soft-yellow); border: 1.5px dashed var(--ink); border-radius: 0 0 10px 10px; cursor: pointer; }
+  .more-bar:hover { background: var(--yellow); }
+  .speaker { font: 700 12.5px 'Comic Neue', 'Comic Sans MS', cursive; margin: 2px 0; }
+  .speaker.clip { color: #8a3b00; background: #fff1e0; border-left: 3px solid var(--orange); padding: 1px 6px; border-radius: 4px; }
+  .claimlink { color: inherit; text-decoration: none; }
+  .claimlink:hover { text-decoration: underline; }
+}

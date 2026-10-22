@@ -47,11 +47,7 @@ export function useClaimHead(claim: string, ids?: string[]) {
     drag: claimDrag({ claim, source: rec.source, ref: rec.ref }, from),
     head: (
       <>
-        <span className="quicktext" title="click to open it whole (← back comes back here); drag it onto a motif to file it there too, or move it"
-          onClick={() => openClaim(claim)}
-          onAuxClick={(ev) => { if (ev.button === 1) { ev.preventDefault(); open(claimLink(claim), '_blank') } }}>
-          {claim}
-        </span>
+        <ClaimText claim={claim} className="quicktext" title="click to open it whole (← back comes back here); middle-click or Ctrl-click: a new tab; drag it onto a motif to file it there too, or move it" />
         <a className="newtab" href={claimLink(claim)} target="_blank" title="open it in a new tab">↗</a>
       </>
     ),
@@ -140,3 +136,20 @@ export function WordDiff({ a, b }: { a: string; b: string }) {
 
 export const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}` // 845 -> 14:05
 export const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`
+
+/** A claim's words as a real link (Oct 22, the person: middle-click a claim to open it in another tab): a plain click
+ * opens it on the right as before; a middle, Ctrl or ⌘ click is the browser's own, a new tab. The drag engine lets
+ * these links be dragged (DragLayer) */
+export function ClaimText({ claim, className, title, onOpen }: { claim: string; className?: string; title?: string; onOpen?: () => void }) {
+  return (
+    <a className={'claimlink ' + (className ?? '')} href={claimLink(claim)} draggable={false} title={title}
+      onClick={(ev) => {
+        if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return
+        ev.preventDefault()
+        if (onOpen) onOpen()
+        else openClaim(claim)
+      }}>
+      {claim}
+    </a>
+  )
+}

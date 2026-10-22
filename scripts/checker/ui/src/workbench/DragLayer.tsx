@@ -134,7 +134,7 @@ export function DragLayer() {
       if (ev.button !== 0 || menuRef.current?.pinned) return
       const t = ev.target as HTMLElement
       const h = t.closest<HTMLElement>('[data-drag]')
-      if (!h || t.closest('button, input, textarea, select, a, dialog, .dz-menu')) return
+      if (!h || t.closest('button, input, textarea, select, a:not(.claimlink), dialog, .dz-menu')) return // a claim's words are a link, and still drag
       drag = { h, x: ev.clientX, y: ev.clientY, on: false, touch: ev.pointerType === 'touch', id: ev.pointerId, scroll: 0 }
       if (drag.touch) drag.timer = window.setTimeout(() => { if (drag && !drag.on) start(ev) }, 350)
     }

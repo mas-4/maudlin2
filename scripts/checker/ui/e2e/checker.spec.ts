@@ -121,3 +121,38 @@ test('a claim dragged onto a motif offers its choices, and the folded shelf open
   await expect(page.locator('.dz-menu')).toHaveCount(0)
   await expect(page.locator('.shelfboxes')).toBeHidden()
 })
+
+test('a sure claim: middle-click opens it in a new tab, a plain click on the right, and it still drags', async ({ page, context }) => {
+  await judge(page, 'sure')
+  test.skip(!(await count(page, 'sure')), 'no sure claim in the copy')
+  const link = page.locator('.sureline .claimlink').first()
+  const words = await link.innerText()
+  const [tab] = await Promise.all([context.waitForEvent('page'), link.click({ button: 'middle' })])
+  await tab.waitForURL(/claim=/) // a new tab starts blank, then goes to the claim's address
+  await expect(tab.locator('.inspect .bigtext')).toHaveText(words, { timeout: 15_000 })
+  await tab.close()
+  await expect(page.locator('.parts .part.on')).toContainText('sure') // the first tab stayed where it was
+  await link.click()
+  await expect(page.locator('.inspect .bigtext')).toHaveText(words) // a plain click: opened on the right
+  await page.locator('.back').click()
+  const from = await page.locator('.sureline .claimlink').first().boundingBox()
+  const row = await page.locator('.tree-pane .row[data-drop]').nth(3).boundingBox()
+  await page.mouse.move(from!.x + 20, from!.y + 6)
+  await page.mouse.down()
+  await page.mouse.move(row!.x + 60, row!.y + row!.height / 2, { steps: 15 })
+  await expect(page.locator('.dz-menu')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+})
+
+test('where it came from opens whole, and stays open for the next claim', async ({ page }) => {
+  await judge(page)
+  test.skip(!(await count(page, 'claims to judge')), 'no claim waiting in the copy')
+  const bar = page.locator('.more-bar')
+  if ((await bar.innerText()).includes('shorter')) await bar.click() // start folded
+  await expect(page.locator('.cl-detail')).not.toHaveClass(/open/)
+  await bar.click()
+  await expect(page.locator('.cl-detail')).toHaveClass(/open/)
+  await page.keyboard.press('ArrowRight') // the next claim
+  await expect(page.locator('.cl-detail')).toHaveClass(/open/)
+})

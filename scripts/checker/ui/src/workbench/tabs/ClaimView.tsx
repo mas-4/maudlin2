@@ -5,11 +5,11 @@ import { toast } from '../../components/Feedback'
 import { getJSON } from '../../lib/api'
 import { client, useJSON } from '../../lib/queries'
 import { act, batch } from '../act'
-import { Chip, claimDrag, FitChip } from '../bits'
+import { Chip, claimDrag, ClaimText, FitChip } from '../bits'
 import { Detail } from '../Detail'
 import { whyHere, type Judging } from '../judge'
 import { matches, motifsOf, SORTS, SOURCE, useWorkbench, words, type Model } from '../model'
-import { claimAction, correctClaim, goBack, holdClaim, openClaim, renamed, splitByHand } from '../ops'
+import { claimAction, correctClaim, goBack, holdClaim, renamed, splitByHand } from '../ops'
 import { getWB, mark, setWB, useWB } from '../store'
 import type { ClaimHit, Entry } from '../types'
 
@@ -73,12 +73,14 @@ export function ClaimView({ claim, j, check }: { claim: { claim: string; src?: s
 /** 📜 where it came from, under the motifs (Oct 22: above them, on a laptop the motifs being judged sat below the fold
     on every card): a few lines, and the rest a press away; folded again for the next claim */
 function Sources({ claim }: { claim: string }) {
-  const [open, setOpen] = useState(false)
-  useEffect(() => setOpen(false), [claim])
+  // opened once, it stays open for the next claims (Oct 22, the person: "I can't expand this window to read it better")
+  const open = useWB((s) => s.sourcesOpen)
+  const flip = () => setWB({ sourcesOpen: !open })
   return (
     <>
-      <h3>📜 where it came from <button className="mini" onClick={() => setOpen(!open)}>{open ? '▴ less' : '▾ all of it'}</button></h3>
+      <h3>📜 where it came from <button className="mini" onClick={flip}>{open ? '▴ shorter' : '▾ all of it'}</button></h3>
       <div className={'cl-detail' + (open ? ' open' : '')}><Detail claim={claim} /></div>
+      <button className="more-bar" onClick={flip}>{open ? '▴ show it shorter' : '▾ read all of where it came from'}</button>
     </>
   )
 }
@@ -210,7 +212,7 @@ function Similar({ claim, filed }: { claim: string; filed: boolean }) {
     <ul className="claims">
       {data.map((x) => (
         <li key={x.claim} className={'claim mini' + (x.motifs.length ? '' : ' unfiled')} {...claimDrag(x, x.motifs[0]?.id ?? '')}>
-          <span className="ctext" onClick={() => openClaim(x.claim)}>{x.claim}</span>
+          <ClaimText claim={x.claim} className="ctext" />
           <span className="meta">{x.motifs.length ? <>in {x.motifs.map((y) => <Chip key={y.id} id={y.id} />)}</> : <>📥 not filed · {SOURCE[x.source] || x.source || ''}</>} · alike {x.score?.toFixed(2)}</span>
           <span className="cbtns show">
             {filed ? <button className="mini" title="the same claim: fold it into this one" onClick={() => void act({ action: 'same_claim', variant: x.claim, canonical: claim }, '≡ folded into this claim')}>≡ same claim</button>
