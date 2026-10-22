@@ -407,8 +407,10 @@ def board_action(data: dict):
 # check, and a batch of several (one undo step for a whole multi-select drag)
 def workbench_state() -> dict:
     from app.analysis import motif_index as mi
+    version = mi.version()  # before the read: a save landing between makes the page look again, never miss it
     index = mi.snapshot()  # read once and passed on (Oct 22: it was read four times a state, the log four times too)
     state = mi.board(index)
+    state['version'] = version  # the page compares it with /index-version.json to see others' changes (the hourly run)
     for e in state['entries']:
         entry = index['entries'].get(e['id'], {})
         e['stands_alone'] = bool(entry.get('stands_alone'))
@@ -931,6 +933,11 @@ def _motif_similar(q: dict):
     return motif_index.similar(eid)
 
 
+def _index_version():
+    from app.analysis import motif_index
+    return motif_index.version()
+
+
 def _claim_similar(q: dict):
     from app.analysis import motif_index
     return motif_index.similar_claims(q.get('claim', ''))
@@ -1001,6 +1008,7 @@ GET_JSON = {
     '/checkpoints.json': _checkpoints,
     '/undo.json': _undo_next,
     '/version.json': lambda q: {'version': code_version()},  # the workbench's own code now: an open tab compares
+    '/index-version.json': lambda q: {'version': _index_version()},  # cheap: polled by an open workbench
     '/pace.json': lambda q: pace(),  # 📈 the person's pace against what arrives
     '/live.json': _live,
     '/flow.json': _flow,

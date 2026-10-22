@@ -335,3 +335,12 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .shape td:first-child { text-align: left; }
   [data-drag] { touch-action: pan-y; }
 }
+
+/* ≡ claims like this one, folded until asked for */
+.wb {
+  .similar-fold > summary { cursor: pointer; list-style: none; }
+  .similar-fold > summary::-webkit-details-marker { display: none; }
+  .similar-fold > summary h3 { display: inline-block; }
+  .similar-fold > summary h3::before { content: '▸ '; }
+  .similar-fold[open] > summary h3::before { content: '▾ '; }
+}

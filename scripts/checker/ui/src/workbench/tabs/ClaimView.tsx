@@ -2,7 +2,8 @@
 // belong instead, adding it to another motif, and claims like it. With a check bar on top it is 🎯 claims to judge.
 import { useEffect, useRef, useState } from 'react'
 import { toast } from '../../components/Feedback'
-import { useJSON } from '../../lib/queries'
+import { getJSON } from '../../lib/api'
+import { client, useJSON } from '../../lib/queries'
 import { act, batch } from '../act'
 import { Chip, claimDrag, FitChip } from '../bits'
 import { Detail } from '../Detail'
@@ -64,8 +65,7 @@ export function ClaimView({ claim, j, check }: { claim: { claim: string; src?: s
           {held.includes(c) ? <button className="btn" title="on hold: back into the queues" onClick={() => void holdClaim(c, false)}>⏸ on hold · ▶ take off</button>
             : ins.length > 0 && !check ? <button className="btn" title="keep it aside to look at later: out of the queues, into ⏸ held" onClick={() => void holdClaim(c, true)}>⏸ hold</button> : null}
         </div>
-        <h3>≡ claims like this one <span className="faint">closest in meaning; fold one in if it's the same claim told another way</span></h3>
-        <Similar claim={c} filed={ins.length > 0} />
+        <SimilarFold claim={c} filed={ins.length > 0} />
       </div>
     </div>
   )
@@ -177,6 +177,18 @@ function AddTo({ m, claim, ins }: { m: Model; claim: string; ins: Entry[] }) {
   )
 }
 
+/** ≡ claims like this one, folded until asked for (Oct 22: it was the heaviest thing a card asked the checker for, and
+    sat at the bottom of every card, slowing the save before it); opened once, it stays open for the next cards */
+function SimilarFold({ claim, filed }: { claim: string; filed: boolean }) {
+  const open = useWB((s) => s.similarOpen)
+  return (
+    <details className="similar-fold" open={open} onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; if (o !== open) setWB({ similarOpen: o }) }}>
+      <summary><h3>≡ claims like this one <span className="faint">closest in meaning; fold one in if it's the same claim told another way</span></h3></summary>
+      {open && <Similar claim={claim} filed={filed} />}
+    </details>
+  )
+}
+
 /** Claims closest in meaning: fold that one into this one (if this one is filed), or this one into that one */
 function Similar({ claim, filed }: { claim: string; filed: boolean }) {
   const { data, error } = useJSON<ClaimHit[]>('/claim-similar.json', { claim }, { staleTime: Infinity, refetchOnWindowFocus: false })
@@ -253,6 +265,15 @@ export function JudgeTab({ j }: { j: Judging | null }) {
   useEffect(() => {
     if (x && !back && !here) setWB({ checkHere: x })
   }, [x?.claim, back, here])
+  // The next two claims' sources and better fits, read while this one is judged, so each card comes up whole
+  useEffect(() => {
+    if (!j || !x) return
+    const at = j.items.findIndex((i) => i.claim === x.claim)
+    for (const next of j.items.slice(at + 1, at + 3)) {
+      void client.prefetchQuery({ queryKey: ['/claim-detail.json', { claim: next.claim }], queryFn: () => getJSON('/claim-detail.json', { claim: next.claim }), staleTime: 60_000 })
+      void client.prefetchQuery({ queryKey: ['/better.json', { claim: next.claim }], queryFn: () => getJSON('/better.json', { claim: next.claim }), staleTime: Infinity })
+    }
+  }, [j, x?.claim])
   useEffect(() => { // the keys, while judging (not while typing)
     const key = (ev: KeyboardEvent) => {
       const t = ev.target as HTMLElement | null

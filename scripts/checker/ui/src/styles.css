@@ -78,3 +78,5 @@ body.acting, body.acting * { cursor: progress !important; }
 .saved-form input { flex: 1; font: inherit; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; }
 .saved-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1.5px dashed #ddd; }
 .saved-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; justify-content: flex-end; }
+
+.nav-saving { font: var(--talk); font-size: 12.5px; color: #555; white-space: nowrap; }

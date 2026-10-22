@@ -33,9 +33,35 @@ export async function getJSON<T>(path: string, params?: Params): Promise<T> {
   return r.json() as Promise<T>
 }
 
-export async function postJSON<T>(path: string, body: unknown): Promise<T> {
+async function send<T>(path: string, body: unknown): Promise<T> {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   if (!r.ok) throw await failure(r)
   const text = await r.text()
   return (text ? JSON.parse(text) : null) as T
+}
+
+// Every write, one at a time and in the order made (Oct 22: the workbench refused a press while the last change was
+// saving, two to three seconds, and the person's quick ✓ ✓ ✓ bounced). A press is never refused now: it waits its turn.
+// Undo and the saved states wait in the same line, so an undo takes back the last change made, not one still on its way
+let tail: Promise<unknown> = Promise.resolve()
+let waiting = 0
+const watchers = new Set<() => void>()
+const told = () => watchers.forEach((w) => w())
+
+/** How many writes are waiting or on their way */
+export const writesWaiting = () => waiting
+export function watchWrites(fn: () => void) {
+  watchers.add(fn)
+  return () => void watchers.delete(fn)
+}
+
+export function postJSON<T>(path: string, body: unknown): Promise<T> {
+  waiting++
+  told()
+  const run = tail.then(() => send<T>(path, body))
+  tail = run.then(() => undefined, () => undefined).then(() => {
+    waiting--
+    told()
+  })
+  return run
 }

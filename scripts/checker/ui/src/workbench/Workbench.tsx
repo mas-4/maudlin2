@@ -14,6 +14,7 @@ import { TopBar } from './TopBar'
 import { Tree } from './Tree'
 import { WhyBar } from './tabs/Proposals'
 import { onUndo } from '../lib/undo'
+import { client, useJSON } from '../lib/queries'
 import './workbench.css'
 
 export function Workbench() {
@@ -21,6 +22,17 @@ export function Workbench() {
   const cols = useWB((s) => s.cols)
   const main = useRef<HTMLElement>(null)
   const [params, setParams] = useSearchParams()
+  // Others' changes (the hourly run filing claims, the worker): the index's version, read every 30 s, against the one
+  // this state was read at. Ahead of it, the state and the claims to judge are read again; the card on screen stays
+  // (Oct 22: the claims to judge were read once and never again while the tab stayed open)
+  const iv = useJSON<{ version: number }>('/index-version.json', undefined, { refetchInterval: 30_000, staleTime: 0 })
+  const have = model?.data.version
+  useEffect(() => {
+    if (iv.data && have !== undefined && iv.data.version > have) {
+      void client.invalidateQueries({ queryKey: ['/workbench.json'] })
+      void client.invalidateQueries({ queryKey: ['/workbench-queue.json', { kind: 'judge' }] })
+    }
+  }, [iv.data, have])
   // an undo takes decisions back: the filings it left unticked are waiting again, so off this session's decided set
   // (the old workbench kept them hidden until a reload)
   useEffect(() => onUndo(() => {

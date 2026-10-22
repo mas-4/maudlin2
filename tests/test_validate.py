@@ -206,6 +206,8 @@ def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path)
         'M003': {'id': 'M003', 'name': 'stolen elections', 'claims': [], 'curated': True}}})
     state = validate.workbench_state()
     assert state['to_check'] == 3 and state['entries'][0]['stands_alone'] is False and state['not_same'] == []
+    # the version it was read at, which an open page compares with /index-version.json to see others' changes
+    assert state['version'] == validate.GET_JSON['/index-version.json']({})['version'] == mi.version()
     # A multi-claim drag is one batch (one undo step): both claims move into a new motif together
     validate.workbench_action({'action': 'new_with', 'name': 'liars', 'claims': [
         {'claim': 'a', 'source': 'M001', 'mode': 'move'}, {'claim': 'b', 'source': 'M001', 'mode': 'also'},

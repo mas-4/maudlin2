@@ -59,6 +59,7 @@ export interface WBState {
   tellings_of?: Record<string, number>
   not_same: [string, string][]
   confidence?: Confidence | null
+  version?: number // the index's version this state was read at (validate.workbench_state)
 }
 
 export interface JudgeItem {

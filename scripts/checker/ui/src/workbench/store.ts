@@ -3,7 +3,7 @@
 // there opens here.
 import { useSyncExternalStore } from 'react'
 
-const KEEP = ['open', 'view', 'sort', 'tab', 'folded', 'groupby', 'quickper', 'cols', 'shelf'] as const
+const KEEP = ['open', 'view', 'sort', 'tab', 'folded', 'groupby', 'quickper', 'cols', 'shelf', 'similarOpen'] as const
 
 function read<T>(k: string, d: T): T {
   try {
@@ -42,6 +42,7 @@ export interface WB {
   claim: { claim: string; src?: string; ref?: string } | null // the claim in 🔍 claim
   back: { tab: string; scroll: number } | null
   claimQ: string
+  similarOpen: boolean // ≡ claims like this one, unfolded (kept: whoever opens it wants it each time)
   findQ: string
   unfiledQ: string
   tellingsFor: string | null
@@ -58,7 +59,6 @@ export interface WB {
   quickSkip: string[]
   unticked: string[]
   outTicked: string[]
-  acting: boolean
 }
 
 const legacyTab = (t: string) => ({ check: 'judge', unchecked: 'judge', second: 'judge' } as Record<string, string>)[t] ?? t
@@ -83,6 +83,7 @@ let state: WB = {
   claim: null,
   back: null,
   claimQ: '',
+  similarOpen: read('similarOpen', false),
   findQ: '',
   unfiledQ: '',
   tellingsFor: null,
@@ -97,7 +98,6 @@ let state: WB = {
   quickSkip: [],
   unticked: [],
   outTicked: [],
-  acting: false,
 }
 const listeners = new Set<() => void>()
 
