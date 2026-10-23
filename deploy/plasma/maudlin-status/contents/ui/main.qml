@@ -117,8 +117,7 @@ PlasmoidItem {
             id: card
             anchors { left: parent.left; top: parent.top }
             spacing: 8
-            opacity: root.d.look && root.d.look.night ? 0.55 : 1  // dimmer at night, as the lights are
-            Behavior on opacity { NumberAnimation { duration: 1200 } }
+            // no dimming at night (Oct 23: at 55% from sunset to sunrise, it read as fading away; the lights still dim)
 
             // What the machine is doing, in the light's own colour
             Tile {

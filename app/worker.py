@@ -109,8 +109,18 @@ def commit() -> str:
     return subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True).stdout.strip()
 
 
+def boot_id() -> str:
+    try:
+        with open('/proc/sys/kernel/random/boot_id') as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
 def beat(state: dict, **changes):
-    state.update(pid=os.getpid(), at=time.time())
+    # 'awake': a clock that stops while the machine sleeps, so a heartbeat left before a suspend reads as the machine
+    # asleep, not the worker down (Oct 23: the desk widget said "down (last beat 47 min ago)" just after a wake)
+    state.update(pid=os.getpid(), at=time.time(), awake=time.monotonic(), boot=boot_id())
     state.update(changes)
     tmp = HEARTBEAT + '.tmp'
     with open(tmp, 'w') as f:

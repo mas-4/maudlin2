@@ -85,6 +85,10 @@ def worker_line() -> str:
     except (OSError, ValueError):
         return '🛠 worker: no heartbeat'
     if time.time() - beat.get('at', 0) > 600:
+        from app import worker
+        awake_since = time.monotonic() - beat['awake'] if beat.get('boot') == worker.boot_id() and 'awake' in beat else None
+        if awake_since is not None and awake_since < 600:  # the machine slept since the beat, the worker didn't stop
+            return '🛠 worker: back from sleep, carrying on'
         return f"🛠 worker: down (last beat {ago(time.time() - beat.get('at', 0))} ago)"
     last = beat.get('last cycle') or {}
     tail = f" · last cycle {last.get('minutes', '?')} min at {last.get('at', '')[11:16]}" if last else ''
@@ -325,7 +329,8 @@ def data() -> dict:
         if gaming.active():  # the project's GPU work waits for the person's games (app/gaming.py)
             title = '🎮 Gaming mode: the project waits'
         out['look'] = {'title': title, 'effect': effect.lower(), 'color': '#%02x%02x%02x' % colour,
-                       'brightness': bright, 'night': lights.night()}
+                       'brightness': bright, 'night': False}  # the card no longer dims at night (Oct 23, the person:
+        # "This thing's transparency keeps getting worse"); the lights still do. False until the widget is reinstalled
     except Exception as e:  # noqa: BLE001
         out['look'] = {'title': 'Lights unreadable', 'effect': 'direct', 'color': '#666666', 'brightness': 0,
                        'error': str(e)}

@@ -65,3 +65,17 @@ def test_ollama_says_when_it_needs_a_restart(monkeypatch):
         raise requests.ConnectionError
     monkeypatch.setattr(requests, 'get', down)
     assert desk.ollama_words().startswith('⛔ not answering')
+
+
+def test_a_heartbeat_left_before_a_sleep_is_not_the_worker_down(monkeypatch, tmp_path):
+    """Oct 23: after a 47-minute suspend the widget said the worker was down; the heartbeat's awake clock stops in sleep"""
+    import json
+    import time
+    from app import desk, worker
+    from app.utils import Config
+    monkeypatch.setattr(Config, 'data', str(tmp_path))
+    beat = {'at': time.time() - 47 * 60, 'awake': time.monotonic() - 30, 'boot': worker.boot_id(), 'busy': True}
+    (tmp_path / 'worker.json').write_text(json.dumps(beat))
+    assert desk.worker_line() == '🛠 worker: back from sleep, carrying on'
+    (tmp_path / 'worker.json').write_text(json.dumps({**beat, 'awake': time.monotonic() - 47 * 60}))
+    assert 'down (last beat' in desk.worker_line()  # awake all that time: stuck or gone
