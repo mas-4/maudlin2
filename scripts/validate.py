@@ -326,6 +326,9 @@ def claim_detail(claim: str) -> dict:
     index = mi.snapshot()
     words = mi.originals(claim, index)
     filed = next((c for e in mi.live(index) for c in e['claims'] if c['claim'] == claim), {})
+    if not (filed.get('source') or filed.get('ref')) and not mi._json_mode():  # out of every motif (or filed by hand
+        from app.analysis import motif_db  # without it): where it last came from, from the change log (Oct 24)
+        filed = {**filed, **motif_db.last_origin(mi.INDEX, {mi.key(t) for t in words})}
     out = {'claim': claim, 'source': filed.get('source', ''), 'model_words': sorted(words - {claim})}
     if filed.get('split_from'):  # one telling (a side) split out of a claim: where it came from is where that came
         out['split_from'] = filed['split_from']  # from (Oct 20: the Biden side of a dispute showed "report is gone")

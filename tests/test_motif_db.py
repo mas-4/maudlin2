@@ -115,3 +115,18 @@ def test_the_curation_log_is_parsed_again_only_when_it_changes(tmp_path, monkeyp
     with curation_db.connect() as con:
         con.execute('INSERT INTO curation (at, page, by, action) VALUES (?, ?, ?, ?)', ('2026-10-22T09', 'p', None, json.dumps({'action': 'note', 'n': 4})))
     assert [r['action']['n'] for r in curation_db.actions()] == [0, 2, 3, 4]
+
+
+def test_a_claim_filed_again_by_hand_gets_back_where_it_came_from(monkeypatch, tmp_path):
+    """Out of every motif a claim keeps no row; filed again by hand with no source, it lost its posts (Oct 24)"""
+    path = str(tmp_path / 'index.sqlite')
+    monkeypatch.setattr(mi, 'INDEX', path)
+    index = sample()
+    index['entries']['M001']['claims'][0].update(source='Snopes', ref='https://x')
+    motif_db.write(path, index)
+    mi.unfile('a', 'M001')
+    assert not any(c['claim'] == 'a' for c in mi.load()['entries']['M001']['claims'])
+    mi.file_by_hand({'claim': 'a', 'source': '', 'ref': ''}, 'M002')
+    got = next(c for c in mi.load()['entries']['M002']['claims'] if c['claim'] == 'a')
+    assert (got['source'], got['ref']) == ('Snopes', 'https://x')
+    assert motif_db.last_origin(path, {mi.key('never filed')}) == {}

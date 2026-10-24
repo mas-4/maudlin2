@@ -210,6 +210,28 @@ def write(path: str, index: dict, log: bool = True) -> int:
     return t
 
 
+def last_origin(path: str, keys: set[str]) -> dict:
+    """Where a claim last came from (its newest filing row with a source), by any of its keys: a claim taken out of
+    every motif keeps no row of its own, so one filed again by hand lost its posts and tellings (Oct 24, 77 filings)"""
+    if not keys or not os.path.exists(path):
+        return {}
+    con = connect(path)
+    try:
+        for k in keys:
+            for old, new in con.execute("SELECT old, new FROM changes WHERE tbl = 'filings' AND (new LIKE ? OR old LIKE ?)"
+                                        ' ORDER BY id DESC', (f'%"{k}"%', f'%"{k}"%')):
+                for row in (new, old):
+                    if not row:
+                        continue
+                    r = json.loads(row)
+                    data = json.loads(r[4]) if isinstance(r[4], str) else r[4]
+                    if r[2] == k and (data.get('source') or data.get('ref')):
+                        return {f: data[f] for f in ('source', 'ref', 'side', 'split_from') if data.get(f) is not None}
+    finally:
+        con.close()
+    return {}
+
+
 def state_at(path: str, at_txn: int) -> dict:
     """The index as it was after save `at_txn`: today's rows with every later change taken back, newest first"""
     con = connect(path)

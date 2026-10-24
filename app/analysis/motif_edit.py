@@ -649,6 +649,10 @@ def file_by_hand(claim: dict, eid: str):
     if entry.get('merged_into'):
         raise ValueError(f'{eid} is gone')
     k = mi.key(claim['claim'])
+    if not (claim.get('source') or claim.get('ref')) and not mi._json_mode():  # a claim out of every motif: where it
+        from app.analysis import motif_db  # came from is in the change log
+        keys = {mi.key(t) for t in mi.originals(claim['claim'], index)}
+        claim = {**claim, **{f: v for f, v in motif_db.last_origin(mi.INDEX, keys).items() if f in ('source', 'ref')}}
     if not any(mi.key(c['claim']) == k for c in entry['claims']):
         entry['claims'].append({'claim': claim['claim'], 'source': claim.get('source', ''), 'ref': claim.get('ref', ''),
                                 'date': dt.now().strftime('%Y-%m-%d'), 'checked': 'yes',  # a person's filing
