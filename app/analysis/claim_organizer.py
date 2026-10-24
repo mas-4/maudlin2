@@ -429,13 +429,16 @@ def _children(children) -> list[str]:
 
 def pending(index: dict | None = None) -> list[dict]:
     """Children of applied splits not filed yet (the checker applied the split without filing them), ready for
-    file_claims"""
+    file_claims. A child a person has since reworded or folded into another claim (same_claim) is followed through the
+    corrections to the claim it became: filed already, it's done (Oct 24: a folded child came back into the claims to
+    judge at every hourly run, its own key gone from the index)"""
     index = index if index is not None else mi.load()
     out = []
     for t in index.get('tellings', {}).values():
         for child in t.get('children', []):
-            if mi.key(child) not in index['claims']:
-                out.append({**t.get('as', {}), 'claim': child, 'split_from': t['claim']})
+            now = mi.corrected(child, index)
+            if mi.key(child) not in index['claims'] and mi.key(now) not in index['claims']:
+                out.append({**t.get('as', {}), 'claim': now, 'split_from': t['claim']})
     return out
 
 

@@ -191,3 +191,16 @@ def test_the_checker_splits_through_its_own_action(monkeypatch, tmp_path):
     hand = {'action': 'split', 'claim': 'other', 'children': ['one part', 'another']}
     v.workbench_action(hand)
     assert hand['ids'] == ['M001'] and mi.key('other') in mi.load()['tellings']
+
+
+def test_a_child_folded_into_another_claim_is_not_filed_again(monkeypatch, tmp_path):
+    """Oct 24: a split's child that the person folded into another claim came back into the claims to judge at every
+    hourly run: its key was gone from the index, so it looked unfiled. Followed through the corrections, it's done; a
+    child reworded before it was filed is filed in its new words"""
+    setup(monkeypatch, tmp_path)
+    co.apply_split(claim=PARENT, children=['a part', 'another part'], refile=False)
+    mi.file_by_hand({'claim': 'a part', 'source': 'narrative'}, 'M004')  # the hourly run files it
+    assert [c['claim'] for c in co.pending()] == ['another part']
+    mi.same_claim('a part', 'other')  # the person folds it into another claim
+    assert mi.key('a part') not in mi.load()['claims']
+    assert [c['claim'] for c in co.pending()] == ['another part']
