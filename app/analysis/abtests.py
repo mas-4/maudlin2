@@ -23,8 +23,13 @@ def record(agency_id: int, cards: list[tuple[str, list[str], str]], now: dt = No
     """Save one run's cards (url, every wording on it, the default wording). A card with one wording is saved only
     when its article was tested before: that's how a test ends."""
     now = now or dt.now(pytz.UTC).replace(tzinfo=None)
-    cards = [(url, list(dict.fromkeys(_clean(t) for t in texts if _clean(t))), _clean(default))
-             for url, texts, default in cards]
+    # One card per article: the same article twice on a front page (Slate, Oct 24) added its wordings twice, and the
+    # second insert broke the unique index and the whole hourly run with it (the session doesn't flush before a query)
+    merged: dict[str, tuple[list[str], str]] = {}
+    for url, texts, default in cards:
+        have, first = merged.get(url, ([], _clean(default)))
+        merged[url] = (list(dict.fromkeys(have + [_clean(t) for t in texts if _clean(t)])), first)
+    cards = [(url, texts, default) for url, (texts, default) in merged.items()]
     with Session() as s, SqlLock:
         urls = [url for url, texts, _ in cards if texts]
         tracked = {u for (u,) in s.query(HeadlineVariant.url).filter(HeadlineVariant.url.in_(urls)).distinct()}

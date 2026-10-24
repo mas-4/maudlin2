@@ -54,7 +54,12 @@ class SeleniumThread(threading.Thread):
             if not sel.success:  # its page never loaded
                 scraper_health.record(sel.agency, sel.url, error='page not loaded')
                 continue
-            sel.post_run()
+            try:  # as for the other scrapers: one outlet's failure, not the run's
+                sel.post_run()
+            except Exception as e:  # noqa: BLE001
+                logger.exception(f"Processing {sel} failed: {e}")
+                scraper_health.record(sel.agency, sel.url, error=type(e).__name__)
+                continue
             logger.info(f"Finished {sel} ({i + 1} of {num})")
 
 
@@ -78,7 +83,13 @@ class Queue:
                 if future.exception():
                     scraper_health.record(scraper.agency, scraper.url, error=type(future.exception()).__name__)
                 elif scraper.success:
-                    scraper.post_run()
+                    try:  # one outlet's processing failing loses that outlet this run, not the whole run (Oct 24: a
+                        # duplicate A/B wording from Slate failed the 13:00 run at its first minute)
+                        scraper.post_run()
+                    except Exception as e:  # noqa: BLE001
+                        logger.exception(f"Processing {scraper} failed: {e}")
+                        scraper_health.record(scraper.agency, scraper.url, error=type(e).__name__)
+                        continue
                     logger.info(f"Finished {scraper} ({i + 1} of {num})")
                 else:
                     scraper_health.record(scraper.agency, scraper.url, error='page not loaded')

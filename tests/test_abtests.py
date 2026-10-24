@@ -73,3 +73,18 @@ def test_slate_parser_keeps_default_and_every_wording():
     assert [ab._clean(w) for w in wordings] == ['First wording here', 'Second wording here']
     assert default == 'Second wording here'
     assert scraper.variants[1][1] == ['Plain headline on the card']
+
+
+def test_the_same_article_twice_on_a_front_page_is_one_card(monkeypatch):
+    """Oct 24: Slate showed one article on two cards; with production's session (no autoflush) the second card's
+    wordings were inserted again and the unique index failed the whole hourly run"""
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine, autoflush=False)  # as app/models.py makes it
+    monkeypatch.setattr(ab, 'Session', session)
+    with session() as s:
+        s.add(Agency(name='Slate', url='https://slate.com', _bias=-2, _credibility=0, _country=0))
+        s.commit()
+    ab.record(1, [(URL, ['Wording A', 'Wording B'], 'Wording A'), (URL, ['Wording B', 'Wording C'], 'Wording B')], now=T0)
+    with session() as s:
+        assert sorted(v.text for v in s.query(HeadlineVariant)) == ['Wording A', 'Wording B', 'Wording C']
