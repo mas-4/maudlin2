@@ -188,6 +188,32 @@ def test_undo_steps_back_again_and_again(monkeypatch, tmp_path):
         server.shutdown()
 
 
+def test_an_undone_check_no_longer_counts_as_confirmed(monkeypatch, tmp_path):
+    """Oct 24: undo put the index back but left the ✓ in the curation log, so a doubted filing confirmed and then undone
+    still counted as confirmed lately, and its claim never came back to the claims to judge"""
+    import json
+    import threading
+    import urllib.request
+    from app.analysis import curation_db, motif_index as mi
+    monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.sqlite'))
+    monkeypatch.setattr(curation_db, 'DB', str(tmp_path / 'curation.sqlite'))
+    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl', 'UNDO': tmp_path / 'undo'}.items():
+        monkeypatch.setattr(validate, k, str(v))
+    mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's', 'checked': 'yes'}]}}})
+    server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    post = lambda path, body=None: json.loads(urllib.request.urlopen(urllib.request.Request(  # noqa: E731
+        f'http://127.0.0.1:{server.server_port}{path}', json.dumps(body or {}).encode(), {'Content-Type': 'application/json'})).read())
+    try:
+        post('/workbench', {'action': 'check', 'claim': 'a', 'id': 'M001', 'answer': 'yes'})
+        assert (mi.key('a'), 'M001') in validate.recently_confirmed()
+        post('/undo')
+        assert (mi.key('a'), 'M001') not in validate.recently_confirmed()
+    finally:
+        server.shutdown()
+
+
 def test_the_workbench_does_every_pages_work_in_one_place(monkeypatch, tmp_path):
     from app.analysis import motif_index as mi
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))

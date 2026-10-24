@@ -11,6 +11,7 @@ import { Panels } from './Panels'
 import { Shelf } from './Shelf'
 import { setWB, useWB } from './store'
 import { TopBar } from './TopBar'
+import type { JudgeItem } from './types'
 import { Tree } from './Tree'
 import { WhyBar } from './tabs/Proposals'
 import { onUndo } from '../lib/undo'
@@ -33,12 +34,15 @@ export function Workbench() {
       void client.invalidateQueries({ queryKey: ['/workbench-queue.json', { kind: 'judge' }] })
     }
   }, [iv.data, have])
-  // an undo takes decisions back: the filings it left unticked are waiting again, so off this session's decided set
-  // (the old workbench kept them hidden until a reload)
+  // an undo takes decisions back: the filings it left unticked are waiting again, and so are the doubted ones it
+  // un-confirmed (still ticked, but in the claims to judge again: Oct 24, a ✓ on a doubted filing undone stayed
+  // hidden), so off this session's decided set (the old workbench kept them hidden until a reload)
   useEffect(() => onUndo(() => {
     const m = currentModel()
     if (!m) return
     const open = new Set(m.data.entries.flatMap((e) => e.claims.filter((c) => !c.checked).map((c) => c.claim + '|' + e.id)))
+    for (const x of client.getQueryData<JudgeItem[]>(['/workbench-queue.json', { kind: 'judge' }]) ?? [])
+      for (const r of x.reasons) if (r.kind === 'doubted') open.add(x.claim + '|' + r.id)
     setWB((s) => ({ decided: s.decided.filter((k) => !open.has(k)) }))
   }), [])
   // opened from a link (↗, a middle click): the claim or motif it names

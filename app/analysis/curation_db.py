@@ -83,13 +83,15 @@ def record_version(text: str) -> int | None:
         return None
 
 
-def record_action(at: str, page: str | None, action: dict, before: dict | None, by: str | None = None):
+def record_action(at: str, page: str | None, action: dict, before: dict | None, by: str | None = None) -> int | None:
+    """The action kept in the log; its row's id (for undo to mark it taken back), or None if it couldn't be kept"""
     try:
         with connect() as con:
-            con.execute('INSERT INTO curation (at, page, by, action, before) VALUES (?, ?, ?, ?, ?)',
-                        (at, page, by, json.dumps(action), json.dumps(before) if before is not None else None))
+            return con.execute('INSERT INTO curation (at, page, by, action, before) VALUES (?, ?, ?, ?, ?)',
+                               (at, page, by, json.dumps(action), json.dumps(before) if before is not None else None)).lastrowid
     except sqlite3.Error as e:
         logger.warning("Curation database: action not kept (%s)", e)
+        return None
 
 
 def backfill_log(path: str) -> int:
@@ -167,6 +169,15 @@ def restore(cid: int) -> tuple[dict, str, str | None]:
         raise ValueError(f'no such checkpoint: {cid}')
     return ({'id': row[0], 'at': row[1], 'name': row[2], 'log_id': row[5], 'reverted_ids': json.loads(row[6])},
             _unpack(row[3]), _unpack(row[4]) if row[4] else None)
+
+
+def revert(log_id: int):
+    """One change taken back by an undo: out of what the queues and the models read as the person's decisions"""
+    try:
+        with connect() as con:
+            con.execute('UPDATE curation SET reverted = 1 WHERE id = ?', (log_id,))
+    except sqlite3.Error as e:
+        logger.warning("Curation database: undo not marked (%s)", e)
 
 
 def set_reverted(cp: dict) -> int:

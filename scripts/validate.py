@@ -121,13 +121,13 @@ def decision_fits(data: dict) -> dict:
 BY = {'claude'}  # who besides the person may act through the checker (by MCP, scripts/maudlin_mcp.py), marked as theirs
 
 
-def log_curation(page: str, data: dict, before: dict, by: str | None = None):
+def log_curation(page: str, data: dict, before: dict, by: str | None = None) -> int | None:
     os.makedirs(FOLDER, exist_ok=True)
     at = dt.now().isoformat(timespec='seconds')
     with open(CURATION_LOG, 'a') as f:
         f.write(json.dumps({'at': at, 'page': page, 'action': data, 'before': before, **({'by': by} if by else {})}) + '\n')
     from app.analysis import curation_db  # and in the curation database (Oct 8)
-    curation_db.record_action(at, page, data, before, by)
+    return curation_db.record_action(at, page, data, before, by)  # its row, for undo to mark taken back
 
 
 # Undo: each change on the organizer pages snapshots the file it touched (the motif index, or the name aliases) so the
@@ -189,9 +189,10 @@ def describe(data: dict, before: dict) -> str:
     return ' '.join(parts)[:160]
 
 
-def push_undo(path: str, before_text: str | None, what: str, proposals: list[str] | None = None):
+def push_undo(path: str, before_text: str | None, what: str, proposals: list[str] | None = None, log: int | None = None):
     """A step to undo: the file as it was, and the proposals the step decided (reopened on undo; a rejection changes
-    no file but is a step all the same; until Oct 7 undo skipped it, and undoing an approval left it decided)"""
+    no file but is a step all the same; until Oct 7 undo skipped it, and undoing an approval left it decided), and its
+    row in the curation log (marked taken back on undo)"""
     after = state(path)
     if after == before_text and not proposals:
         return
@@ -200,7 +201,8 @@ def push_undo(path: str, before_text: str | None, what: str, proposals: list[str
     with open(os.path.join(UNDO, stamp + '.json'), 'w') as f:
         json.dump({'path': path, 'before': before_text, 'after_sha': hashlib.sha1((after or '').encode()).hexdigest(),
                    **({'after': after} if (after or '').startswith('txn:') else {}),  # the index's save number after it
-                   'what': what, 'at': stamp, **({'proposals': proposals} if proposals else {})}, f)
+                   'what': what, 'at': stamp, **({'proposals': proposals} if proposals else {}),
+                   **({'log': log} if log else {})}, f)
     for old in sorted(os.listdir(UNDO))[:-UNDO_KEEP]:
         os.remove(os.path.join(UNDO, old))
 
@@ -244,6 +246,9 @@ def undo() -> str:
     if snap.get('proposals'):
         from app.analysis import motif_proposals
         motif_proposals.reopen(snap['proposals'])
+    if snap.get('log'):  # the change's decisions taken back too (Oct 24: an undone ✓ on a doubted filing still counted
+        from app.analysis import curation_db  # as confirmed lately, so the claim never came back to the claims to judge)
+        curation_db.revert(snap['log'])
     log_curation('undo', {'action': 'undo', 'undid': snap['what']}, {})
     return snap['what']
 
@@ -1068,10 +1073,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Location', new_address(path, self.path.partition('?')[2]))
         self.end_headers()
 
-    def remember(self, data: dict, before: dict, by: str | None = None, proposals: list[str] | None = None):
+    def remember(self, data: dict, before: dict, by: str | None = None, proposals: list[str] | None = None,
+                 log: int | None = None):
         if getattr(self, '_undo', None):
             push_undo(self._undo[0], self._undo[1], describe(data, before) + (f' (by {by.capitalize()})' if by else ''),
-                      proposals)
+                      proposals, log)
 
     def send_json(self, value):
         body = json.dumps(value).encode()
@@ -1135,15 +1141,16 @@ class Handler(BaseHTTPRequestHandler):
                     before['steps'] = [motif_context(x) if isinstance(x, dict) else {} for x in data.get('steps') or []]
                 before.update(decision_fits(data))
                 workbench_action(data)
-                log_curation('motif workbench', data, before, by)
+                log = log_curation('motif workbench', data, before, by)
                 steps = data['steps'] if data.get('action') == 'batch' else [data]
                 self.remember(data if data.get('action') != 'batch' else
                               {'action': f"{len(data['steps'])} changes: {data['steps'][0].get('action')}…"}, before, by,
-                              [x['proposal'] for x in steps if isinstance(x, dict) and x.get('proposal')])
+                              [x['proposal'] for x in steps if isinstance(x, dict) and x.get('proposal')], log)
             except (ValueError, KeyError) as e:
+                log = None
                 if getattr(e, 'done', None):  # a batch stopped midway: what it did is logged, and still undoable
-                    log_curation('motif workbench', {'action': 'batch', 'steps': e.done}, before, by)
-                self.remember({'action': 'part of a change that failed'}, {}, by)
+                    log = log_curation('motif workbench', {'action': 'batch', 'steps': e.done}, before, by)
+                self.remember({'action': 'part of a change that failed'}, {}, by, log=log)
                 return self.send_json_error(400, str(e))
             return self.send_json(workbench_state())
         if self.path == '/entities':
@@ -1152,8 +1159,7 @@ class Handler(BaseHTTPRequestHandler):
                 before = {'aliases': {k: v for k, v in entities.load_aliases()['aliases'].items()
                                       if any(isinstance(x, str) and x.lower() in (k, v.lower()) for x in data.values())}}
                 entities_action(data)
-                log_curation('names', data, before)
-                self.remember(data, {})
+                self.remember(data, {}, log=log_curation('names', data, before))
             except (ValueError, KeyError) as e:
                 self.send_error(400, str(e)[:200])
                 return
