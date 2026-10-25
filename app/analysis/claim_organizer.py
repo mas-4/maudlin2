@@ -17,6 +17,12 @@ so how often each fires, and which predict a split, can be counted:
     middling scores    every pick's fit is MIDDLING: nothing fits the whole claim well
     also               the person filed the claim in another motif by hand (the board's or checker's 'also'): the
                        filing missed a part of it
+    dispute            the claim is worded as a sentence about a dispute ("Arguments exist over whether X or Y",
+                       "Debates persist over...", "There is debate over..."), not as anyone's claim: it always fires,
+                       and organize_claims drafts one child per side (sides()) whatever the motifs and posts say. The
+                       person's standing rule (Oct 25), from the claim praxis (Oct 12): a dispute is a telling with
+                       one claim per side, and a sentence about it pulls in motifs from both sides. Read in claims
+                       from any source, not only posts
 
 A split is a proposal (motif_proposals' store, kind 'split'; when the motifs don't spread, kind 'no_split' with the
 reason, status 'none', so the same claim and picks aren't asked again). Nothing is applied until a person approves:
@@ -56,6 +62,24 @@ MIN_TOLD = 2  # posts that must tell a motif for it to count as told in the post
 SAME_POSTS = 0.5  # two motifs whose posts overlap this much (of the fewer) are told by the same posts: layers of one
 BROAD = 0.8  # a motif told by this share of the posts that tell any is a layer of every telling, not a telling
 CHILDREN = 4  # children drafted at most
+# A claim worded as a sentence about a dispute: "Arguments exist over whether...", "Debates persist over...", "There is
+# debate over...", "Arguments about whether...", "Democrats debate whether...", "Posters argue over the Greens: whether
+# ...", "Whether X is a genocide is argued: ...". Not "People argue that X" or "Carriage drivers argue the ban is..."
+# (one side's claim, said by whom), nor "There is no debate about X" or "Debate moderators were biased" (claims)
+DISPUTE = re.compile(
+    r"^\s*(?:there\s+(?:is|are|has\s+been|have\s+been)\s+(?:(?:an?|much|some|ongoing|heated|fierce)\s+)*)?"
+    r"(?:arguments?|debates?|disagreements?|disputes?|controvers(?:y|ies))\b(?:\s+[\w'-]+){0,2}?"
+    r"\s+(?:over|about|on|regarding|as\s+to|whether)\b"
+    r"|^(?!\s*(?:there\s+[\w']+\s+)?no\b)\s*(?:[\w'-]+\s+){1,3}?(?:debate|argue|disagree|dispute)s?"
+    r"\s+(?:over|about|(?:on\s+)?whether)\b"
+    r"|^\s*whether\b", re.I)
+
+
+def disputed(claim: str) -> str:
+    """The opening that words a claim as a sentence about a dispute ("Arguments exist over"), or '' for a claim"""
+    m = DISPUTE.match(claim or '')
+    return ' '.join(m.group(0).split()) if m else ''
+
 
 TELLS_PROMPT = """Posts people wrote, grouped together because they read alike:
 {posts}
@@ -88,20 +112,33 @@ def child_schema(n: int) -> dict:
         "type": "string", "maxLength": 300}}}, "required": ["claims"]}
 
 
-SIDE_RULE = ("- Each claim is one side's assertion in that side's own voice. Where the posts argue, each side's claim "
-             "is its own; never a sentence about the argument (\"Arguments over whether...\" is not a claim).")
+def child_rules(index: dict | None = None, kind: str = 'posts') -> str:
+    """The Brothers Grimm's wording for claims from this kind of source (claim_wording), whose rule makes a child one
+    side's claim in its own voice (decision 6; in claim_wording for every claim writer since Oct 25)"""
+    from app.claim_wording import rules
+    return rules(kind, index)
 
 
-def child_rules(index: dict | None = None) -> str:
-    """The Brothers Grimm's wording for claims from posts (claim_wording), with decision 6's rule in place of the one
-    that words a disagreement as an argument: a child is one side's claim"""
-    from app.claim_wording import RULES, SHORT, examples
-    rules = '\n'.join(SIDE_RULE if line.startswith('- When the tellers disagree') else line for line in RULES.split('\n'))
-    try:
-        shown = examples('posts', index)
-    except Exception:  # noqa: BLE001 - the rules without examples
-        shown = ''
-    return '\n' + rules + '\n' + SHORT + shown
+SIDES_PROMPT = """A claim was worded as a sentence about a dispute, not as anyone's claim: "{claim}"
+{posts}
+Write the claim each side of the dispute makes: one side's assertion in its tellers' own voice, as they would put it. \
+Never a sentence about the dispute, about an argument or about who says what. Usually two sides; more only if the \
+sentence or the posts plainly name more. If the sentence names only one position ("...over whether X"), the other \
+side's claim is theirs against it, as they would put it.
+For each side, also list the letters of the motifs below that its claim tells (none if none){post_line}.
+
+Motifs (recurring story shapes) the claim was filed under:
+{motifs}
+{wording}"""
+
+
+def sides_schema(n_motifs: int, n_posts: int) -> dict:
+    side = {"claim": {"type": "string", "maxLength": 300},
+            "motifs": {"type": "array", "items": {"type": "string", "enum": [chr(65 + n) for n in range(max(1, n_motifs))]}}}
+    if n_posts:
+        side["posts"] = {"type": "array", "items": {"type": "integer"}}
+    return {"type": "object", "properties": {"sides": {"type": "array", "minItems": 2, "maxItems": CHILDREN, "items": {
+        "type": "object", "properties": side, "required": list(side)}}}, "required": ["sides"]}
 
 
 # ---------- what's known about a claim ----------
@@ -227,6 +264,8 @@ def triggers(claim: str, index: dict, group: dict | None = None, also: dict | No
     if hand:
         names = [index['entries'][t]['name'] if t in index['entries'] else t for t in hand]
         fired['also'] = ', '.join(names)
+    if disputed(claim):
+        fired['dispute'] = disputed(claim)
     return fired
 
 
@@ -311,15 +350,52 @@ def organize(claim: str, posts: list[str], motifs: list[str], index: dict | None
     return {**out, 'split': True, 'children': children, 'reason': f'told by different posts: {names}'}
 
 
+def sides(claim: str, posts: list[str], motifs: list[str], index: dict | None = None, kind: str = 'posts',
+          model: str = MODEL) -> dict:
+    """A claim worded as a dispute (disputed()), a child drafted for each side, whatever the motifs and posts: the
+    same shape as organize()'s result, with 'dispute' True. The posts (a group's, for a claim from posts) help word the
+    sides and are shared out between them; with none, the sides come from the sentence. GPU work"""
+    index = index if index is not None else mi.load()
+    entries = index['entries']
+    motifs = [m for m in dict.fromkeys(mi.resolve(index, m) for m in motifs) if m in entries]
+    posts = [p for p in posts if p and p.strip()][:POSTS]
+    out = {'claim': claim, 'motifs': motifs, 'posts': len(posts), 'tells': {}, 'broad': [], 'split': False,
+           'children': [], 'model': model, 'dispute': True}
+    shown = ('\nPosts that tell it:\n' + '\n'.join(f'{n}. {p[:SHOWN]}' for n, p in enumerate(posts, 1)) + '\n'
+             if posts else '')
+    listed = '\n'.join(f"{chr(65 + n)}. {mi.described(entries[m])[:300]}" for n, m in enumerate(motifs)) or '(none)'
+    r = llm.complete_json(SIDES_PROMPT.format(claim=claim, posts=shown, motifs=listed, wording=child_rules(index, kind),
+                                              post_line=', and the numbers of the posts that take that side'
+                                              if posts else ''),
+                          sides_schema(len(motifs), len(posts)), max_tokens=600, model=model)
+    if not r or not isinstance(r.get('sides'), list):
+        return {**out, 'reason': 'no answer', 'failed': True}
+    letters = {chr(65 + n): m for n, m in enumerate(motifs)}
+    children = []
+    for side in r['sides'][:CHILDREN]:
+        text = ' '.join(((side or {}).get('claim') or '').split())
+        if not text or disputed(text) or mi.key(text) == mi.key(claim) \
+                or any(mi.key(text) == mi.key(c['claim']) for c in children):
+            continue  # a side worded as the dispute again is no side
+        children.append({'claim': text, 'posts': _numbers(side.get('posts'), len(posts)),
+                         'motifs': [letters[x] for x in dict.fromkeys(side.get('motifs') or []) if x in letters]})
+    if len(children) < 2:
+        return {**out, 'reason': 'worded as a dispute, but the sides were not drafted as two claims'}
+    return {**out, 'split': True, 'children': children,
+            'reason': f'worded as a dispute ("{disputed(claim)}..."): one claim per side'}
+
+
 # ---------- proposals ----------
 
-def proposal_id(claim: str, motifs: list[str], split: bool = True) -> str:
-    """One proposal per claim and set of picks: asked again only when the picks change"""
-    return mp.pid('split' if split else 'no_split', {'claim': claim, 'motifs': sorted(motifs)})
+def proposal_id(claim: str, motifs: list[str], split: bool = True, dispute: bool = False) -> str:
+    """One proposal per claim and set of picks: asked again only when the picks change. A dispute's sides not drafted
+    have their own 'no_split', so a claim read before the dispute rule (Oct 25) and not split is read again"""
+    return mp.pid('split' if split else 'no_split',
+                  {'claim': claim, 'motifs': sorted(motifs), **({'dispute': True} if dispute and not split else {})})
 
 
-def asked(store: dict, claim: str, motifs: list[str]) -> bool:
-    return any(proposal_id(claim, motifs, s) in store for s in (True, False))
+def asked(store: dict, claim: str, motifs: list[str], dispute: bool = False) -> bool:
+    return any(proposal_id(claim, motifs, s, dispute) in store for s in (True, False))
 
 
 def propose(store: dict, result: dict, fired: dict | None = None, keys: list[list[str]] | None = None) -> str | None:
@@ -329,7 +405,7 @@ def propose(store: dict, result: dict, fired: dict | None = None, keys: list[lis
     if result.get('failed'):
         return None
     claim, motifs = result['claim'], result['motifs']
-    i = proposal_id(claim, motifs, result['split'])
+    i = proposal_id(claim, motifs, result['split'], bool(result.get('dispute')))
     if i in store:
         return i
     args = {'claim': claim, 'motifs': motifs, 'triggers': fired or {}, 'posts': result['posts']}
@@ -345,7 +421,8 @@ def propose(store: dict, result: dict, fired: dict | None = None, keys: list[lis
 
 def organize_claims(claims: list[str] | None = None, budget: float | None = None, since: str | None = None) -> Counter:
     """The organizer over filed claims from posts (all, or `claims`; with `since`, those dated that day or later): each
-    with 2+ picks and its group's posts kept, not asked about these picks before, read and proposed. GPU work"""
+    with 2+ picks and its group's posts kept, not asked about these picks before, read and proposed; and a claim from
+    any source worded as a dispute (disputed()), whatever its picks, drafted one child per side (sides()). GPU work"""
     import time
     started = time.time()
     index = mi.load()
@@ -356,7 +433,7 @@ def organize_claims(claims: list[str] | None = None, budget: float | None = None
     todo = {}
     for e in mi.live(index):
         for c in e['claims']:
-            if c.get('source') == 'narrative' and (wanted is None or c['claim'] in wanted) \
+            if (c.get('source') == 'narrative' or disputed(c['claim'])) and (wanted is None or c['claim'] in wanted) \
                     and (since is None or (c.get('date') or '') >= since):
                 todo.setdefault(c['claim'], c)
     done = Counter()
@@ -364,11 +441,17 @@ def organize_claims(claims: list[str] | None = None, budget: float | None = None
         if budget is not None and time.time() - started > budget:
             break
         motifs = [e['id'] for e, _ in picks(index, claim)]
-        if len(motifs) < 2 or asked(store, claim, motifs) or mi.key(claim) in index.get('tellings', {}):
+        dispute = bool(disputed(claim))
+        if len(motifs) < (1 if dispute else 2) or asked(store, claim, motifs, dispute) \
+                or mi.key(claim) in index.get('tellings', {}):
             continue
-        group = group_of(claim, rec.get('ref', ''), groups)
+        group = group_of(claim, rec.get('ref', ''), groups) if rec.get('source') == 'narrative' else None
         posts = posts_of((group or {}).get('keys') or [])
-        result = organize(claim, [p['text'] for p in posts], motifs, index)
+        if dispute:
+            from app.claim_wording import kind_of
+            result = sides(claim, [p['text'] for p in posts], motifs, index, kind_of(rec.get('source', '')))
+        else:
+            result = organize(claim, [p['text'] for p in posts], motifs, index)
         fired = triggers(claim, index, group, also)
         if propose(store, result, fired, [p['keys'] for p in posts]):
             trace.emit('split_proposed', claim, split=result['split'], motifs=motifs, posts=result.get('posts'),

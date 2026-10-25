@@ -6,7 +6,13 @@ from their sources: Gemma wrote closest to the person's wording (0.784 alike, ag
 way the blind judge preferred to the current one) with three things added after each source's own instruction: the
 rules read from the person's corrections (RULES), one short plain sentence (SHORT), and up to EXAMPLES of the person's
 corrections of claims from the same kind of source. The text of both rules is the experiment's own, unchanged. Until
-Oct 12 none of it was in production (fact-checks had the five latest corrections of any source as examples)."""
+Oct 12 none of it was in production (fact-checks had the five latest corrections of any source as examples).
+
+One rule changed since (Oct 25, the person's standing rule): the experiment's "When the tellers disagree, word the
+argument itself" gave claims such as "Arguments exist over whether X or Y", ~23 from posts and 2 from shows by Oct 25,
+and such a claim pulls in motifs from both sides. A dispute is a telling with one claim per side (the claim praxis,
+Oct 12), so the rule now asks for one side's assertion in its own voice, and the claim organizer splits any left
+(claim_organizer.disputed)."""
 import time
 
 RULES = """How a person who curates these claims rewords them (follow it):
@@ -18,8 +24,9 @@ nobody was punished", "...because the governor owed them a favor").
 ordinary savers", not "Banks offer low interest rates").
 - Add nothing the tellers don't say: no motive, threat or framing of your own (if a mayor says he's disappointed in a newspaper, \
 don't write that he threatened it).
-- When the tellers disagree, word the argument itself: "Arguments over whether...", "Republicans debate whether...; \
-many argue...", "Both sides say...".
+- A claim is one side's assertion in that side's own voice: when the tellers disagree, each side's claim is its own, \
+and two sides make two claims. Never word a claim as a sentence about the dispute ("Arguments exist over whether...", \
+"Debates persist over...", "There is debate over..." are not claims).
 - Allegations against people stay allegations: "accused", "critics say", "is said to"; never state a crime as fact. \
 Name lesser-known people by their role ("a city councilman", "the plaintiff", "a former aide").
 - If the claim says who says it, get it right: a guest, a host or a clip is not "the voter"; an aide is not the \

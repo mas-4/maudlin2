@@ -11,6 +11,7 @@ from app.analysis import filing_confidence as fc
 from app.analysis import llm
 from app.analysis import motif_index as mi
 from app.analysis import motif_proposals as mp
+from app.analysis import trace
 from app.analysis import watch_list as wl
 
 PARENT = 'Canadian separatists are working with the United States to break up Canada.'
@@ -91,6 +92,88 @@ def test_motifs_told_by_the_same_posts_are_no_split(monkeypatch, tmp_path):
     assert co.asked(store, PARENT, ['M003', 'M002', 'M001'])  # not asked again for the same picks
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: None)
     assert co.propose(store, co.organize(PARENT, ['p'] * 6, ['M001', 'M002'])) is None  # a failed read isn't kept
+
+
+DISPUTED = "Arguments exist over whether taxing billionaire wealth is a productive way to fund government or a harmful tax."
+
+
+def test_a_claim_worded_as_a_dispute_always_fires(monkeypatch, tmp_path):
+    for claim, opening in [(DISPUTED, 'Arguments exist over'),
+                           ('Debates persist over whether Israel has a right to exist.', 'Debates persist over'),
+                           ('There is debate over whether the stockpiling advice means a crisis.', 'There is debate over'),
+                           ('arguments about whether trans people are dangerous or falsely accused.', 'arguments about'),
+                           ('Democrats debate whether to impeach Trump; many argue it is futile.', 'Democrats debate whether'),
+                           ('Posters argue over the Greens: whether the media ignores them.', 'Posters argue over'),
+                           ("Whether Israel's actions are a genocide is argued: Cruz says no.", 'Whether')]:
+        assert co.disputed(claim) == opening
+    for claim in ['People argue that Israelis occupying land should be called settler terrorists.',  # one side's
+                  'Carriage drivers argue the ban is an attack on the working class.',
+                  'There is no debate about climate change.', 'Debate moderators were biased against Trump.',
+                  'Arguments that vaccines cause autism are suppressed.', 'The debate was rigged.', PARENT]:
+        assert co.disputed(claim) == '', claim
+    setup(monkeypatch, tmp_path)
+    index = mi.load()
+    assert co.triggers(DISPUTED, index) == {'dispute': 'Arguments exist over'}  # no motifs, nothing else known
+    assert 'dispute' not in co.triggers(PARENT, index, {'variety': 0.93, 'authors': 22})
+
+
+def test_a_dispute_is_drafted_one_child_per_side(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    asked = []
+
+    def answer(prompt, schema, **kw):
+        asked.append((prompt, schema))
+        return {'sides': [{'claim': 'Taxing billionaires is a fair way to fund government.', 'motifs': ['B', 'B', 'Z'],
+                           'posts': [1, 2, 9]},
+                          {'claim': 'Arguments exist over whether a wealth tax works.', 'motifs': [], 'posts': [3]},
+                          {'claim': 'A wealth tax drives business capital out of the country.', 'motifs': ['A'],
+                           'posts': [3, 4]}]}
+    monkeypatch.setattr(llm, 'complete_json', answer)
+    got = co.sides(DISPUTED, ['post 1', 'post 2', 'post 3', 'post 4'], ['M001', 'M002'])
+    assert got['split'] and got['dispute'] and 'worded as a dispute' in got['reason']
+    assert [c['claim'] for c in got['children']] == ['Taxing billionaires is a fair way to fund government.',
+                                                     'A wealth tax drives business capital out of the country.']
+    assert [c['motifs'] for c in got['children']] == [['M002'], ['M001']]  # letters as motifs; Z is none of them
+    assert [c['posts'] for c in got['children']] == [[0, 1], [2, 3]]  # 9 is no post; a side worded as the dispute: none
+    prompt, schema = asked[0]
+    assert DISPUTED in prompt and 'post 3' in prompt and "one side's assertion in that side's own voice" in prompt
+    assert 'Arguments exist over whether...' in prompt and 'word the argument itself' not in prompt  # the new rule
+    assert 'posts' in schema['properties']['sides']['items']['properties']
+    no_posts = co.sides(DISPUTED, [], ['M001'])  # a claim from a show: the sides come from the sentence alone
+    assert no_posts['split'] and 'Posts that tell it' not in asked[1][0]
+    assert 'posts' not in asked[1][1]['properties']['sides']['items']['properties']
+    monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'sides': [{'claim': DISPUTED, 'motifs': []},
+                                                                         {'claim': 'One side.', 'motifs': []}]})
+    assert not co.sides(DISPUTED, [], ['M001'])['split']  # one side left: no split
+
+
+def test_organize_claims_splits_a_dispute_from_any_source_whatever_its_picks(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    index = mi.load()
+    index['claims'][mi.key(DISPUTED)] = ['M004']
+    index['entries']['M004']['claims'] = [{'claim': DISPUTED, 'source': 'shows', 'ref': 'ep', 'fit': 0.9}]
+    mi.save(index)
+    store = mp.load()
+    old = co.propose(store, {'claim': DISPUTED, 'motifs': ['M004'], 'posts': 0, 'split': False, 'reason': 'one motif'})
+    mp.save(store)  # read before the dispute rule and not split: read again
+    monkeypatch.setattr(co, 'report_groups', lambda index=None: {})
+    monkeypatch.setattr(co, 'alsos', lambda rows=None: {})
+    monkeypatch.setattr(trace, 'emit', lambda *a, **k: None)
+    read = []
+
+    def answer(prompt, schema, **kw):
+        read.append(prompt)
+        return {'sides': [{'claim': 'A wealth tax funds government fairly.', 'motifs': ['A']},
+                          {'claim': 'A wealth tax harms business.', 'motifs': []}]}
+    monkeypatch.setattr(llm, 'complete_json', answer)
+    assert co.organize_claims([DISPUTED, 'other']) == {'split': 1}  # 'other': one motif, worded as a claim, not read
+    assert len(read) == 1 and DISPUTED in read[0]
+    split = [p for p in mp.load().values() if p['kind'] == 'split']
+    assert len(split) == 1 and split[0]['args']['triggers'] == {'dispute': 'Arguments exist over'}
+    assert [c['claim'] for c in split[0]['args']['children']] == ['A wealth tax funds government fairly.',
+                                                                  'A wealth tax harms business.']
+    assert old in mp.load() and co.organize_claims([DISPUTED]) == {}  # asked once for these picks
+    assert co.open_splits()[0]['args']['claim'] == DISPUTED
 
 
 def proposed(monkeypatch, tmp_path) -> str:

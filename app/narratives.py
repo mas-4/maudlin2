@@ -88,7 +88,8 @@ words), or do they only share a topic? Reporting or reacting to the same news ev
 reaction", not a legend or rumor: a legend or rumor is a story told as true that isn't plain reporting of the day's
 news. A claim made in only one or two of the posts is not their narrative. Answer in the fields below.
 
-narrative: the claim or story most of the posts share, in one plain sentence, or "" if there is none{wording}
+narrative: the claim or story most of the posts share, in one plain sentence, or "" if there is none; where the
+posts argue with each other, the claim of the side most of them take, in that side's own voice{wording}
 retold: true if most of the posts retell that one narrative, false if they only share a topic
 genre: one of {genres}
 motif: the specific motif in a few words of your own, describing these posts, or ""
