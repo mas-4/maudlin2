@@ -1,23 +1,8 @@
-import re
-
-from bs4 import BeautifulSoup as Soup
-
-from app.scraper import Scraper
-from app.utils import Constants, get_logger
-
-logger = get_logger(__name__)
+from app.scraper import FeedScraper
 
 
-class WashingtonTimes(Scraper):
+class WashingtonTimes(FeedScraper):
+    """The front page has refused us (403) since Oct 22, 2026, whatever the user agent; the news feed answers"""
     url: str = 'https://www.washingtontimes.com/'
     agency: str = "The Washington Times"
-    headers = {'User-Agent': Constants.Headers.UserAgents.maudlin}
-
-    def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'href': re.compile('/news/')}):
-            try:
-                self.downstream.append((a['href'], a))
-            except Exception as e:
-                logger.error(f"{self.agency}: Error parsing link: {e}")
-                logger.exception(f"{self.agency}: Link: {a}")
-                continue
+    feed: str = 'https://www.washingtontimes.com/rss/headlines/news/'

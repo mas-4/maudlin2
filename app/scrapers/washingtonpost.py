@@ -1,7 +1,10 @@
-from app.scraper import FeedScraper
+from app.scraper import GoogleNewsScraper
 
 
-class WashingtonPost(FeedScraper):
+class WashingtonPost(GoogleNewsScraper):
+    """The Post's feed server (feeds.washingtonpost.com) has answered 502 since Oct 17, 2026, and its own site times out
+    on us, so we read it through Google News."""
     url: str = 'https://www.washingtonpost.com'
     agency: str = "The Washington Post"
-    feed: str = 'https://feeds.washingtonpost.com/rss/national'
+    site = 'washingtonpost.com'
+    suffix = ' - The Washington Post'
