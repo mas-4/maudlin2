@@ -487,6 +487,23 @@ def test_a_claim_a_person_files_is_already_checked(monkeypatch, tmp_path):
     assert entries['M003']['claims'][0]['checked'] == 'yes'
 
 
+def test_a_claim_copied_or_moved_leaves_its_old_motifs_fit_behind(monkeypatch, tmp_path):
+    # Oct 25: a claim copied out of a motif kept its low fit there, and the model "doubted" it in its new one
+    fresh(monkeypatch, tmp_path)
+    rec = {'claim': 'a', 'source': 'x', 'ref': 'r', 'date': '2026-10-25', 'side': 'left', 'story': 7, 'fit': 0.22,
+           'fit_model': 'm1', 'rechecked': '2026-10-24', 'carrying': ['phrase'], 'refiled': {'at': '2026-10-20'}}
+    mi.save({'next': 4, 'claims': {mi.key('a'): ['M001']}, 'entries': {
+        'M001': {'id': 'M001', 'name': 'one', 'claims': [dict(rec)]},
+        'M002': {'id': 'M002', 'name': 'two', 'claims': []}, 'M003': {'id': 'M003', 'name': 'three', 'claims': []}}})
+    mi.also_file('a', 'M001', 'M002')
+    mi.move('a', 'M001', 'M003')
+    entries = mi.load()['entries']
+    for eid in ('M002', 'M003'):
+        got = entries[eid]['claims'][0]
+        assert got == {'claim': 'a', 'source': 'x', 'ref': 'r', 'date': '2026-10-25', 'side': 'left', 'story': 7,
+                       'checked': 'yes'}  # the claim's own fields kept, its old motif's dropped
+
+
 def test_metrics_say_how_the_catalog_is_shaped_and_keep_a_day_by_day_history(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
     monkeypatch.setattr('app.analysis.motif_filing.METRICS', str(tmp_path / 'metrics.json'))

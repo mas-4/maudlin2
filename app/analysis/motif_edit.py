@@ -124,6 +124,16 @@ def delete(eid: str):
     mi.save(index)
 
 
+# A filing's fields that belong to its motif, not to the claim: left behind when the claim is copied or moved to another
+# motif (Oct 25: a claim copied out of Words mean things kept its 0.22 there, so the model "doubted" it in its new motif)
+PER_MOTIF = ('checked', 'fit', 'fit_model', 'rechecked', 'carrying', 'refiled')
+
+
+def _for_motif(rec: dict) -> dict:
+    """A filing as it goes to another motif by a person's hand: its motif's own fields dropped, checked"""
+    return {**{k: v for k, v in rec.items() if k not in PER_MOTIF}, 'checked': 'yes'}
+
+
 @mi.exclusive
 def move(claim: str, source: str, target: str):
     """Move one claim out of `source` into another entry (or a new one, target 'new')."""
@@ -136,7 +146,7 @@ def move(claim: str, source: str, target: str):
     entry['claims'] = [c for c in entry['claims'] if mi.key(c['claim']) != k]
     entry.setdefault('not_claims', []).append(k)  # moved out by hand: it isn't this motif
     if not any(mi.key(c['claim']) == k for c in index['entries'][target]['claims']):  # moved there by a person: checked
-        index['entries'][target]['claims'] += [{**c, 'checked': 'yes'} for c in moved]
+        index['entries'][target]['claims'] += [_for_motif(c) for c in moved]
     index['claims'][k] = list(dict.fromkeys([target if i == source else i for i in mi._ids(index, k)] + [target]))
     if not entry['claims'] and not entry.get('curated'):  # emptied: a motif the model made goes; one a person made stays
         del index['entries'][source]
@@ -423,7 +433,7 @@ def also_file(claim: str, source: str, target: str):
     if found is None or entry.get('merged_into'):
         raise ValueError(f'no such claim in {source}, or {target} is gone')
     if not any(mi.key(c['claim']) == k for c in entry['claims']):  # a person filed it here: already checked
-        entry['claims'].append({**{kk: v for kk, v in found.items() if kk != 'checked'}, 'checked': 'yes'})
+        entry['claims'].append(_for_motif(found))
     entry['not_claims'] = [x for x in entry.get('not_claims', []) if x != k]
     index['claims'][k] = list(dict.fromkeys(mi._ids(index, k) + [target]))
     mi.save(index)
