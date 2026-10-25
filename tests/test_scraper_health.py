@@ -41,3 +41,12 @@ def test_write_lists_flagged_and_missing_scrapers(monkeypatch, tmp_path):
     sh.record('Good', 'https://good', found=40, kept=40, added=3)
     assert sh.write([('Good', 'https://good')]) == []
     assert 'All 1 scrapers look healthy.' in (tmp_path / 'check.md').read_text()
+
+
+def test_a_scraper_back_after_only_failed_runs_has_no_usual_yet():
+    """Oct 25: the Washington Post came back after a week of errors and the median of no loaded runs ended the run"""
+    from app import scraper_health as sh
+    past = [{'found': 0, 'kept': 0, 'added': 0, 'too_long': 0, 'error': '502'} for _ in range(10)]
+    now = {'found': 40, 'kept': 40, 'added': 40, 'too_long': 0, 'error': None}
+    assert sh.problems('The Washington Post', now, past) == []
+    assert sh.problems('The Washington Post', {**now, 'found': 0, 'kept': 0}, past) == ['found no headlines']

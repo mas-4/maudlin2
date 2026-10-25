@@ -42,7 +42,8 @@ def problems(agency: str, now: dict, past: list[dict]) -> list[str]:
         failed = 1 + sum(1 for r in past[-2:] if r.get('error'))
         return [f"page didn't load ({now['error']})" + (f', {failed} runs in a row' if failed > 1 else '')]
     out = []
-    usual = median([r['found'] for r in past if not r.get('error')]) if len(past) >= MIN_RUNS else None
+    loaded = [r['found'] for r in past if not r.get('error')]  # the runs its page loaded in: none for a scraper back
+    usual = median(loaded) if len(loaded) >= MIN_RUNS else None  # after days of errors (Oct 25: the whole run fell over)
     if now['found'] == 0:
         out.append('found no headlines' + (f' (usually {usual:g})' if usual else ''))
     elif now['kept'] == 0:
