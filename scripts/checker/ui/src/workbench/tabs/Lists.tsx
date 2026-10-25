@@ -21,16 +21,39 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
   const { model: m } = useWorkbench()
   const per = useWB((s) => s.quickper)
   const page0 = useWB((s) => s.quickPage[kind] ?? 0)
+  const snap = useWB((s) => s.quickSnap[kind])
   const unticked = useWB((s) => s.unticked), outTicked = useWB((s) => s.outTicked)
+  const rows = m?.data.confidence && j ? (kind === 'sure' ? j.sure : j.out) : null
+  const pages = Math.max(1, Math.ceil((rows?.length ?? 0) / per)), page = Math.min(page0, pages - 1)
+  // The page holds still while it's read (Oct 25: the worker filing split claims saved the index every minute, the
+  // lists were read again each time, and rows slid off the page or vanished mid-read). Its rows are the ones it opened
+  // with, kept until it's passed or turned; one decided, held or rescored meanwhile stays in its place, greyed, and
+  // claims that came in wait for the next page. Passing acts on the rows shown and nothing else
+  const stale = !snap || snap.page !== page || snap.per !== per
+  const slice = (from: { claim: string; ids: string[] }[]) => from.slice(page * per, (page + 1) * per).map(({ claim, ids }) => ({ claim, ids }))
+  const keep = (next: { claim: string; ids: string[] }[] | null) => setWB((s) => {
+    const all = { ...s.quickSnap }
+    if (next) all[kind] = { page, per, rows: next }
+    else delete all[kind]
+    return { quickSnap: all }
+  })
+  useEffect(() => {
+    if (rows && stale) keep(slice(rows))
+  })
   if (!m || !j) return <p className="faint">⏳ thinking…</p>
   const conf = m.data.confidence
-  if (!conf) return <p className="faint">The confidence model hasn't been trained yet.</p>
-  const rows = kind === 'sure' ? j.sure : j.out
-  if (!rows.length) return <div className="welcome"><div className="hero">{kind === 'sure' ? '✅' : '🚫'}</div><p>{kind === 'sure' ? 'No sure claims waiting.' : 'No likely misfits waiting.'}</p></div>
-  const pages = Math.max(1, Math.ceil(rows.length / per)), page = Math.min(page0, pages - 1)
-  const shown = rows.slice(page * per, (page + 1) * per)
+  if (!conf || !rows) return <p className="faint">The confidence model hasn't been trained yet.</p>
+  const shown = stale ? slice(rows) : snap.rows
+  if (!rows.length && !shown.length) return <div className="welcome"><div className="hero">{kind === 'sure' ? '✅' : '🚫'}</div><p>{kind === 'sure' ? 'No sure claims waiting.' : 'No likely misfits waiting.'}</p></div>
+  const live = new Map(rows.map((r) => [r.claim, r.ids]))
+  const on = (r: { claim: string; ids: string[] }) => r.ids.filter((id) => live.get(r.claim)?.includes(id))
+  const gone = (claim: string) => live.has(claim) ? '' : !j.why[claim] || !j.waiting(claim).length ? 'done or held since this page opened'
+    : kind === 'sure' ? 'no longer sure since this page opened: it wants its card in 🎯' : 'no longer a likely misfit since this page opened'
+  const here = new Set(shown.map((r) => r.claim))
+  const came = stale ? 0 : slice(rows).filter((r) => !here.has(r.claim)).length
   const ticked = (k: string) => (kind === 'sure' ? !unticked.includes(k) : outTicked.includes(k))
-  const pairs = shown.flatMap((r) => r.ids.map((id) => r.claim + '|' + id))
+  const pairs = shown.flatMap((r) => on(r).map((id) => r.claim + '|' + id))
+  const next = () => keep(slice(rows.filter((r) => !here.has(r.claim)))) // the page passed: the rows after it, as they are now
   const pager = (
     <div className="pager">
       <button className="btn" disabled={!page} onClick={() => setWB((s) => ({ quickPage: { ...s.quickPage, [kind]: page - 1 } }))}>◀</button>
@@ -46,6 +69,7 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
     // holds the unchecked ones"); the unticked go in the log too, for the tab's tally (sure_tally)
     const held = [...new Set(no.map((k) => k.slice(0, k.lastIndexOf('|'))))]
     setWB((s) => ({ unticked: s.unticked.filter((k) => !no.includes(k)) }))
+    next()
     void quickDecide(yes.map((k) => [k, 'yes']), [`🎯 passed ${yes.length} sure filing${yes.length === 1 ? '' : 's'}`, held.length ? `⏸ held ${held.length}` : ''].filter(Boolean).join(', '),
       { quick: 'sure', unticked: no }, held.map((claim) => ({ action: 'hold', claim, from: 'sure' })))
   }
@@ -54,6 +78,7 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
     if (!out.length && !(keep && rest.length)) return toast('nothing ticked')
     if (!keep) rest.forEach((k) => mark('quickSkip', k)) // looked at, left: for its card
     setWB((s) => ({ outTicked: s.outTicked.filter((k) => !pairs.includes(k)) }))
+    next()
     void quickDecide([...out.map((k) => [k, 'out'] as [string, 'out']), ...(keep ? rest.map((k) => [k, 'yes'] as [string, 'yes']) : [])],
       [out.length ? `✕ took out ${out.length}` : '', keep && rest.length ? `✓ ${rest.length} fit` : ''].filter(Boolean).join(', '))
   }
@@ -64,7 +89,7 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
     head = <>
       {t.length > 0 && <p className="tally">📏 With you: {t[0].day === new Date().toLocaleDateString('en-CA') ? 'today' : t[0].day} {fared(t[0])}{t.length > 1 ? `; the last week ${fared(week)}` : ''}. Every untick, take-out or hold counts as needing you.</p>}
       <p className="faint" title={`Tested on your past checks, held out: ${pct(conf.at_sure.precision)}% of filings at ${pct(conf.sure_at)}% or more were ones you kept; holds and unticks don't count there`}>
-        ✅ <b>{rows.length} sure claim{rows.length === 1 ? '' : 's'}</b> ({pct(conf.at_sure.precision)}% right in the model's own test): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: the ticked pass, and a claim with any motif unticked goes to ⏸ held, to look at later. Your ticks stay as you leave them when you turn the page.</p>
+        ✅ <b>{rows.length} sure claim{rows.length === 1 ? '' : 's'}</b> ({pct(conf.at_sure.precision)}% right in the model's own test): every motif waiting on them is past the sure line. Untick any that don't fit, then pass the page: the ticked pass, and a claim with any motif unticked goes to ⏸ held, to look at later. Your ticks stay as you leave them when you turn the page. The page holds still while you read it.</p>
     </>
   } else {
     const o = conf.at_out
@@ -74,7 +99,8 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
     <>
       {head}
       {pager}
-      <div className="quicklist">{shown.map((r) => <QuickRow key={r.claim} kind={kind} r={r} j={j} ticked={ticked} />)}</div>
+      {came > 0 && <p className="faint quicknew">🆕 {came} more came in or back since this page opened; they show when you pass or turn the page. <button className="mini" onClick={() => keep(null)}>🔄 show them now</button></p>}
+      <div className="quicklist">{shown.map((r) => <QuickRow key={r.claim} kind={kind} r={r} on={on(r)} gone={gone(r.claim)} j={j} ticked={ticked} />)}</div>
       <div className="quickbar">
         {kind === 'sure' ? <button className="btn yes" title="the ticked pass; a claim with any motif unticked goes to ⏸ held" onClick={pass}>✓ pass the ticked, ⏸ hold the rest</button>
           : <><button className="btn no" onClick={() => takeOut(false)}>✕ take out the ticked</button>
@@ -84,19 +110,23 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
   )
 }
 
-function QuickRow({ kind, r, j, ticked }: { kind: 'sure' | 'out'; r: { claim: string; ids: string[] }; j: Judging; ticked: (k: string) => boolean }) {
+/** A quick tab's row as the page opened with it: `on`, its motifs still waiting as they were (the rest were decided
+ * since, and pass without them); `gone`, why it left the list since, greyed and passed with nothing */
+function QuickRow({ kind, r, on, gone, j, ticked }: { kind: 'sure' | 'out'; r: { claim: string; ids: string[] }; on: string[]; gone: string; j: Judging; ticked: (k: string) => boolean }) {
   const h = useClaimHead(r.claim, r.ids)
   return (
-    <div className="sureline" {...h.drag}>
+    <div className={gone ? 'sureline quickgone' : 'sureline'} {...h.drag}>
       <span>{h.head}</span>
+      {gone && <span className="faint">· {gone}</span>}
       <span className="quickmotifs">
         {r.ids.map((id) => {
-          const k = r.claim + '|' + id
-          return <label key={id} className="quickmotif"><input type="checkbox" checked={ticked(k)}
-            onChange={(e) => mark(kind === 'sure' ? 'unticked' : 'outTicked', k, kind === 'sure' ? !e.target.checked : e.target.checked)} />
-            <FitChip fit={j.fits[k]} /> <Chip id={id} /></label>
+          const k = r.claim + '|' + id, live = on.includes(id)
+          return <label key={id} className={live ? 'quickmotif' : 'quickmotif quickoff'} title={live ? undefined : 'decided since this page opened: passing leaves it as it is'}>
+            <input type="checkbox" checked={live && ticked(k)} disabled={!live}
+              onChange={(e) => mark(kind === 'sure' ? 'unticked' : 'outTicked', k, kind === 'sure' ? !e.target.checked : e.target.checked)} />
+            {j.fits[k] != null && <FitChip fit={j.fits[k]} />} <Chip id={id} /></label>
         })}
-        {kind === 'out' && <button className="mini" title="keep it aside to look at later: out of the lists, into ⏸ held" onClick={() => void holdClaim(r.claim, true)}>⏸ hold</button>}
+        {kind === 'out' && !gone && <button className="mini" title="keep it aside to look at later: out of the lists, into ⏸ held" onClick={() => void holdClaim(r.claim, true)}>⏸ hold</button>}
       </span>
     </div>
   )

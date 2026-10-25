@@ -90,6 +90,43 @@ test('passing the sure page holds a claim with a motif unticked', async ({ page 
   await expect.poll(async () => (await count(page, 'held')) ?? 0).toBe(held)
 })
 
+for (const kind of ['sure', 'misfits']) {
+  test(`the ${kind} page holds still while it is read, and acts only on the rows still waiting`, async ({ page }) => {
+    await judge(page, kind)
+    test.skip(!(await count(page, kind)), `no ${kind} claim in the copy`)
+    const rows = page.locator('.inbox-scroll .sureline')
+    await expect(rows.first()).toBeVisible()
+    const two = (await rows.count()) > 1 // a second row to act on; with one, the press finds nothing to do
+    const claim = (await rows.first().getAttribute('data-claim'))!
+    const ids = await rows.first().locator('.chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-id')!))
+    if (kind === 'misfits') await rows.first().locator('input[type=checkbox]').first().check() // ticked, then decided elsewhere
+    const ticked = await page.locator('.inbox-scroll .sureline input[type=checkbox]:checked').count()
+    // someone else decides the first row meanwhile (the worker, another tab), in one step: the lists are read again
+    const steps = ids.map((id) => ({ action: 'check', claim, id, answer: 'yes' }))
+    expect((await page.request.post('/workbench', { data: { action: 'batch', steps } })).ok()).toBe(true)
+    const reread = page.waitForResponse((r) => r.url().includes('/workbench-queue.json') && r.url().includes('kind=judge'))
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange'))) // as when the person comes back to the tab
+    await reread
+    await expect(rows.first()).toHaveClass(/quickgone/) // kept in its place, greyed
+    await expect(rows.first()).toHaveAttribute('data-claim', claim)
+    await expect(rows.first().locator('input[type=checkbox]:checked')).toHaveCount(0)
+    await expect(rows.first().locator('input[type=checkbox]').first()).toBeDisabled()
+    if (kind === 'sure') {
+      await page.locator('.inbox-scroll button', { hasText: 'pass the ticked' }).click()
+      await expect(page.locator('.toast').last()).toContainText(two ? `passed ${ticked - ids.length} sure filing` : 'nothing on this page') // not the decided row
+    } else {
+      if (two) await rows.nth(1).locator('input[type=checkbox]').first().check()
+      await page.getByRole('button', { name: '✕ take out the ticked', exact: true }).click()
+      await expect(page.locator('.toast').last()).toContainText(two ? 'took out 1' : 'nothing ticked') // the second row's, not the decided first
+    }
+    if (two) { // the page's step undone, then the other decision (the workbench never saw it): the copy as it was
+      await page.locator('.nav-undo button').click()
+      await expect(page.locator('.toast').last()).toContainText('undid')
+    }
+    expect((await page.request.post('/undo', { data: {} })).ok()).toBe(true)
+  })
+}
+
 test('a misfit ticked is taken out, and undo puts it back', async ({ page }) => {
   await judge(page, 'misfits')
   const misfits = await count(page, 'misfits')

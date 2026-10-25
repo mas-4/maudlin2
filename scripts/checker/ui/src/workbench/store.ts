@@ -22,6 +22,13 @@ function write(k: string, v: unknown) {
 }
 
 export interface Shelf { kind: 'group' | 'genre'; id: string }
+/** A quick tab's page held still while it's read: its rows as they were when it opened, at that page and size */
+export interface QuickSnap {
+  page: number
+  per: number
+  rows: { claim: string; ids: string[] }[]
+}
+
 export interface WB {
   open: string[]
   active: number
@@ -56,6 +63,7 @@ export interface WB {
   checkTrail: string[]
   checkForward: string[]
   quickPage: Record<string, number>
+  quickSnap: Record<string, QuickSnap> // ✅ sure's and 🚫 misfits' page as it was when it opened (QuickTab)
   // this session's decisions, hidden at once
   decided: string[]
   rejected: string[]
@@ -99,6 +107,7 @@ let state: WB = {
   checkTrail: [],
   checkForward: [],
   quickPage: {},
+  quickSnap: {},
   decided: [],
   rejected: [],
   quickSkip: [],

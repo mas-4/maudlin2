@@ -287,6 +287,9 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .newtab:hover { opacity: 1; }
   .quickmotifs { display: flex; flex-wrap: wrap; gap: .3em .8em; width: 100%; }
   .quickmotif { display: inline-flex; gap: .3em; align-items: baseline; cursor: pointer; }
+  .quickgone { opacity: .5; } /* left the list since the page opened: kept in its place, passed with nothing */
+  .quickoff { opacity: .5; text-decoration: line-through; cursor: default; }
+  .quicknew { margin: .2em 0; }
   .quickbar { position: sticky; bottom: -8px; display: flex; flex-wrap: wrap; gap: .5em; padding: .5em 0; background: white; border-top: 2px solid var(--ink); }
   .pager { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; padding: .3em 0; }
   .pager label { margin-left: auto; }
