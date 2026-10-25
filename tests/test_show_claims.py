@@ -51,6 +51,22 @@ def test_only_retold_claims_reach_the_index(monkeypatch):
     assert [x['source'] for x in sc.claims()] == [sc.SOURCE]
 
 
+def test_two_show_claims_on_one_topic_are_not_one_claim_unless_close(monkeypatch):
+    """Oct 25: "Trump says ... a jihadist" and Megyn Kelly's "the Harris campaign's Hitler comparisons" (0.81 alike)
+    were grouped as one claim, and the pair made it "retold" though each was told on one show"""
+    import app.narratives
+    vec = {'Trump calls the candidate a jihadist.': [1.0, 0.0], 'The Harris campaign used Hitler comparisons.': [0.81, 0.586],
+           'Trump says the candidate is a jihadist.': [0.95, 0.312]}
+    monkeypatch.setattr(app.narratives, 'embed', lambda texts: np.array([vec[t] for t in texts]))
+    c = lambda claim: {'claim': claim, 'quote': 'q', 'speaker': 'host', 'at': 0}  # noqa: E731
+    ep = lambda show, claim: {'show': show, 'date': '2026-10-25', 'lean': 'right', 'claims': [c(claim)]}  # noqa: E731
+    assert sc.retold({'u1': ep('MeidasTouch', 'Trump calls the candidate a jihadist.'),
+                      'u2': ep('Megyn Kelly', 'The Harris campaign used Hitler comparisons.')}) == []  # 0.81: two claims
+    got = sc.retold({'u1': ep('MeidasTouch', 'Trump calls the candidate a jihadist.'),
+                     'u2': ep('Pod Save America', 'Trump says the candidate is a jihadist.')})  # 0.95: one claim, retold
+    assert len(got) == 1 and got[0]['shows'] == ['MeidasTouch', 'Pod Save America']
+
+
 def test_a_news_briefings_presenter_is_not_a_teller(monkeypatch):
     """Oct 18: a briefing's presenter reads the news; its clips and guests still tell"""
     import app.narratives

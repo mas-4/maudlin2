@@ -175,13 +175,14 @@ def neighbours(v: np.ndarray, k: int, chunk: int = 2048) -> tuple[np.ndarray, np
     return idx, sim
 
 
-def groups(posts: list[dict]) -> list[list[int]]:
-    """Paraphrase groups: connected components of the mutual-neighbour graph above SIMILARITY."""
+def groups(posts: list[dict], similarity: float = SIMILARITY) -> list[list[int]]:
+    """Paraphrase groups: connected components of the mutual-neighbour graph above `similarity` (SIMILARITY, the
+    posts'; show claims have their own, show_claims.SIMILARITY)."""
     v = embed([p['text'] for p in posts])
     if len(posts) < 2:
         return []
     idx, sim = neighbours(v, NEIGHBOURS)
-    near = [set(idx[i][sim[i] >= SIMILARITY]) for i in range(len(posts))]
+    near = [set(idx[i][sim[i] >= similarity]) for i in range(len(posts))]
     parent = list(range(len(posts)))
 
     def find(x):

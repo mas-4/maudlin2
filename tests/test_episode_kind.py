@@ -23,7 +23,7 @@ def test_new_episodes_are_labeled_once(monkeypatch, tmp_path):
 def test_a_claim_told_only_in_evergreen_episodes_isnt_retold_this_week(monkeypatch):
     from app import narratives
     from app.analysis import show_claims
-    monkeypatch.setattr(narratives, 'groups', lambda items: [list(range(len(items)))])
+    monkeypatch.setattr(narratives, 'groups', lambda items, *similarity: [list(range(len(items)))])
     monkeypatch.setattr(narratives, 'embed', lambda texts: np.ones((len(texts), 2)))
     c = {'claim': 'Rome fell to decadence', 'at': 0, 'speaker': 'host', 'quote': ''}
     store = {'https://e.example/a': {'show': 'A', 'date': '2026-10-08', 'claims': [c]},

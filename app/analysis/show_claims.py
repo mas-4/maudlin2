@@ -173,6 +173,14 @@ def kept_retold() -> list[dict]:
 
 MIN_SHOWS = 2  # a claim is retold once this many shows tell it (or this many callers, to any shows)
 SOURCE = 'shows'  # the motif index's source for a retold claim (as 'narrative' is for what people post)
+# Two show claims this alike (mxbai) are one claim told twice. Higher than the posts' 0.78 (narratives.SIMILARITY):
+# show claims are one tidy sentence each, and sentences on one topic with the same names score high however different
+# their claims. Oct 25, 70 of the 310 two-show groups judged by hand: one claim in about 4 of 14 at 0.78-0.80, 6 of 14
+# at 0.80-0.82, 8 of 14 at 0.82-0.84, 10 of 14 at 0.84-0.86 and all but none above (opposites among them: "the Trump
+# investigation was a coup" with "the investigation into Trump's attempt to overturn the election"). At 0.78 about
+# half the two-show claims were two claims glued together, made "retold" by the glue alone; at 0.84 about nine in ten
+# are one claim, though some two-show claims told in other words are no longer found
+SIMILARITY = 0.84
 
 
 def retold(store: dict | None = None) -> list[dict]:
@@ -192,7 +200,7 @@ def retold(store: dict | None = None) -> list[dict]:
     if len(rows) < 2:
         return []
     out = []
-    for g in groups([{'text': r['claim']} for r in rows]):
+    for g in groups([{'text': r['claim']} for r in rows], SIMILARITY):
         tellers = [rows[i] for i in g]
         # retold this week: told on the news, not only in history deep dives and other evergreen episodes
         shows = {r['show'] for r in tellers if not r['evergreen']}
