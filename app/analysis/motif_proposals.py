@@ -79,6 +79,8 @@ SHAPE_DISTANCE = 0.3  # cosine distance under which claims' shapes cluster, for 
 NEW_MOTIFS = 10  # clusters of claims put to the model in one run
 MOTIF_CLUSTER_MAX = 8
 TYPO_SIMILARITY = 0.8  # a fix must leave the text this alike (difflib): a typo, not a rewrite
+TYPO_EDITS = 4  # ...and change at most this many characters: a swapped or missing letter, not a new word (Oct 25:
+# "turned on it" made "turned on its head" changed what the note said)
 MERGE_FLOOR = 0.8  # a merge is proposed only for motifs this alike in meaning (the first run proposed merging motifs
 # that merely shared a claim: "Watermelon" and "Trojan horse")
 SHARED_FLOOR = 0.6  # motifs sharing a single claim are asked about only if this alike; two or more shared, always
@@ -137,7 +139,7 @@ def still_holds(p: dict, index: dict) -> bool:
     if k == 'rename':
         return live(a['id']) and entries[a['id']]['name'] == a['from'] and a['to'] != a['from']
     if k == 'note':
-        return live(a['id']) and (entries[a['id']].get('note') or '') == a['from'] and a['to'] != a['from']
+        return live(a['id']) and (entries[a['id']].get('note') or '') == a['from'] and small_fix(a['from'], a['to'])
     if k == 'parent':
         return live(a['id']) and live(a['parent']) and a['parent'] not in mi.parents_of(entries[a['id']]) \
             and a['id'] not in mi.parents_of(entries[a['parent']])
@@ -252,13 +254,45 @@ motif with a typo, give its number and its name and note written out in full wit
 fixes: the motifs with typos (often none)"""
 TYPO_SCHEMA = {"type": "object", "properties": {"fixes": {"type": "array", "maxItems": TYPO_BATCH, "items": {
     "type": "object", "properties": {"n": {"type": "integer"}, "name": {"type": "string", "maxLength": 120},
-                                     "note": {"type": "string", "maxLength": 400}},
+                                     "note": {"type": "string"}},  # no cap: a capped note comes back cut off
     "required": ["n", "name", "note"]}}}, "required": ["fixes"]}
 
 
+def quoted(text: str) -> list[tuple[int, int]]:
+    """The spans of `text` in quotation marks (double, curly or single), as (opening mark, closing mark). A single
+    quote between letters is an apostrophe (don't), not a quote mark"""
+    spans, start, closer = [], None, None
+    for i, c in enumerate(text):
+        before = text[i - 1] if i else ' '
+        after = text[i + 1] if i + 1 < len(text) else ' '
+        if start is None:
+            if c in '"“' or (c in "'‘" and not before.isalnum() and not after.isspace()):
+                start, closer = i, {'"': '"', '“': '”', "'": "'’", '‘': "'’"}[c]
+        elif c in closer and not (c in "'’" and after.isalnum()):
+            spans.append((start, i))
+            start = None
+    return spans
+
+
 def small_fix(old: str, new: str) -> bool:
+    """Whether `new` is `old` with a typo fixed and nothing else: not cut off (Oct 25: four of seven note proposals
+    were the person's note cut at the schema's 400 characters), not much shorter, a few characters changed at most,
+    and nothing inside quotation marks changed (tellers' words are kept as they wrote them, 'dems' and all)"""
     new = ' '.join((new or '').split())
-    return bool(old) and bool(new) and new != old and difflib.SequenceMatcher(None, old, new).ratio() >= TYPO_SIMILARITY
+    if not old or not new or new == old:
+        return False
+    if old.startswith(new) or len(new) < len(old) - TYPO_EDITS:
+        return False
+    ops = [op for op in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes() if op[0] != 'equal']
+    tag, i1, i2, j1, j2 = ops[-1]
+    if i2 == len(old) and i2 - i1 > j2 - j1:  # the end lost: cut off, maybe with a slip just before the cut
+        return False
+    if sum(max(i2 - i1, j2 - j1) for _, i1, i2, j1, j2 in ops) > TYPO_EDITS:
+        return False
+    spans = quoted(old)
+    if any(i1 <= end and max(i2, i1 + 1) > start + 1 for _, i1, i2, _, _ in ops for start, end in spans):
+        return False
+    return difflib.SequenceMatcher(None, old, new).ratio() >= TYPO_SIMILARITY
 
 
 def typos(store: dict, index: dict, runs: dict | None = None, deadline: float | None = None) -> int:
@@ -274,7 +308,8 @@ def typos(store: dict, index: dict, runs: dict | None = None, deadline: float | 
         batch = entries[start:start + TYPO_BATCH]
         listing = '\n'.join(f'{n}. name: {e["name"]}' + (f'\n   note: {e["note"]}' if e.get('note') else '')
                             for n, e in enumerate(batch, 1))
-        answer = llm.complete_json(TYPO_PROMPT.format(motifs=listing), TYPO_SCHEMA, max_tokens=1500, model=MODEL)
+        answer = llm.complete_json(TYPO_PROMPT.format(motifs=listing), TYPO_SCHEMA, model=MODEL,
+                                   max_tokens=1500 + len(listing) // 2)  # room to write every note out whole
         for fix in (answer or {}).get('fixes', []):
             if not (isinstance(fix.get('n'), int) and 1 <= fix['n'] <= len(batch)):
                 continue

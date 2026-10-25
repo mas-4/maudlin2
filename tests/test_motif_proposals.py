@@ -29,6 +29,59 @@ def test_typo_fixes_must_be_small():
     assert not mp.small_fix('Empty suit', 'Empty suit')
 
 
+LONG = ("A beaten candidate won't accept the loss: he refuses to back the winner and works to sink him, or keeps "
+        "crying fraud and settling grudges with those he blames, and the sulk is read as proof he was only ever in it "
+        "for himself: 'the minute he is not our candidate... he starts actively, aggressively working' against the "
+        "nominee, 'spent every waking moment bitching about Ken Paxton'; the sore-loser laws that bar a beaten "
+        "candidate from running again, after Huntington's clash of civilizations.")
+
+
+def test_a_note_cut_off_is_never_a_typo_fix():
+    assert not mp.small_fix(LONG, LONG[:400])  # what a 400-character cap on the answer made of it
+    slipped = LONG[:-len('civilizations.')] + 'civilizaiton'  # a slip as well as the cut
+    assert not mp.small_fix(LONG, slipped)
+    assert mp.small_fix(LONG.replace('civilizations', 'civilizatoins'), LONG)  # a typo in the last word is still fixed
+
+
+def test_a_much_shorter_note_is_never_a_typo_fix():
+    assert not mp.small_fix(LONG, LONG.replace(', aggressively', ''))
+    assert not mp.small_fix(LONG, LONG.replace(' and settling grudges with those he blames', ''))
+
+
+def test_a_typo_fix_changes_a_few_characters_at_most():
+    old = "A foul move is waved through as worth it for the prize, Machiavelli's maxim turned on it."
+    assert not mp.small_fix(old, old.replace('on it.', 'on its head.'))  # a new word changes what it says
+    assert mp.small_fix(old.replace('waved', 'wavde'), old)
+    assert mp.small_fix(old.replace('the prize', 'the the prize'), old)
+
+
+def test_words_in_quotation_marks_are_never_fixed():
+    old = "Carville would rather lose the Senate, 'the dems don't want to win', they'd rather lose: rule or ruin."
+    assert not mp.small_fix(old, old.replace('dems', 'Dems'))  # a teller's words, as they wrote them
+    assert not mp.small_fix(old.replace("'", '"'), old.replace("'", '"').replace('dems', 'Dems'))
+    assert mp.small_fix(old.replace('Senate', 'Sneate'), old)  # outside the quote a typo is still fixed
+    assert mp.quoted("they'd say 'who's in charge' and won't") == [(11, 27)]  # apostrophes aren't quote marks
+
+
+def test_a_long_note_is_written_out_whole_and_a_cut_one_dropped(tmp_path, monkeypatch):
+    index_with(tmp_path, monkeypatch)
+    index = mi.load()
+    index['entries']['M002']['note'] = LONG
+    mi.save(index)
+    asked = {}
+
+    def answer(prompt, schema, max_tokens=0, **k):
+        asked.update(schema=schema, max_tokens=max_tokens)
+        return {'fixes': [{'n': 2, 'name': 'Empty suit', 'note': LONG[:400]}]}
+    monkeypatch.setattr(llm, 'complete_json', answer)
+    store = {}
+    assert mp.typos(store, mi.load()) == 0
+    note = asked['schema']['properties']['fixes']['items']['properties']['note']
+    assert 'maxLength' not in note and asked['max_tokens'] > len(LONG)
+    mp.add(store, 'note', {'id': 'M002', 'from': LONG, 'to': LONG[:400]}, 'a typo in its note')  # made before the guard
+    assert not mp.still_holds(next(iter(store.values())), mi.load())
+
+
 def test_typos_from_the_model_become_proposals(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'fixes': [
