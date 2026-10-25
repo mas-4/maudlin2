@@ -218,3 +218,20 @@ test("a judge card's ＋ add files the card's claim, not the one last opened in 
   await page.locator('.nav-undo button').click()
   await expect(page.locator('.toast')).toContainText('undid')
 })
+
+for (const kind of ['sure', 'misfits'] as const) {
+  test(`🔄 refresh brings the ${kind} page up to date`, async ({ page }) => {
+    await judge(page, kind)
+    test.skip(!(await count(page, kind)), `no ${kind} claim in the copy`)
+    const rows = page.locator('.inbox-scroll .sureline')
+    await expect(rows.first()).toBeVisible()
+    const claim = (await rows.first().getAttribute('data-claim'))!
+    const ids = await rows.first().locator('.chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-id')!))
+    // decided elsewhere: the page holds still until 🔄 refresh, then the row is gone
+    const steps = ids.map((id) => ({ action: 'check', claim, id, answer: 'yes' }))
+    expect((await page.request.post('/workbench', { data: { action: 'batch', steps } })).ok()).toBe(true)
+    await page.locator('.inbox-scroll .pager button', { hasText: 'refresh' }).click()
+    await expect(page.locator(`.inbox-scroll .sureline[data-claim="${claim.replace(/"/g, '\\"')}"]`)).toHaveCount(0)
+    expect((await page.request.post('/undo', { data: {} })).ok()).toBe(true) // the copy as it was
+  })
+}

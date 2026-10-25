@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { sure as confirm, toast } from '../../components/Feedback'
 import { getJSON } from '../../lib/api'
+import { client } from '../../lib/queries'
 import { act, batch } from '../act'
 import { Chip, claimDrag, ClaimText, FitChip, useClaimHead } from '../bits'
 import { useQueue, type Judging } from '../judge'
@@ -23,6 +24,7 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
   const page0 = useWB((s) => s.quickPage[kind] ?? 0)
   const snap = useWB((s) => s.quickSnap[kind])
   const unticked = useWB((s) => s.unticked), outTicked = useWB((s) => s.outTicked)
+  const [fetching, setFetching] = useState(false)
   const rows = m?.data.confidence && j ? (kind === 'sure' ? j.sure : j.out) : null
   const pages = Math.max(1, Math.ceil((rows?.length ?? 0) / per)), page = Math.min(page0, pages - 1)
   // The page holds still while it's read (Oct 25: the worker filing split claims saved the index every minute, the
@@ -54,11 +56,22 @@ export function QuickTab({ kind, j }: { kind: 'sure' | 'out'; j: Judging | null 
   const ticked = (k: string) => (kind === 'sure' ? !unticked.includes(k) : outTicked.includes(k))
   const pairs = shown.flatMap((r) => on(r).map((id) => r.claim + '|' + id))
   const next = () => keep(slice(rows.filter((r) => !here.has(r.claim)))) // the page passed: the rows after it, as they are now
+  const refresh = async () => { // 🔄 the page brought up to date: the index and the claims to judge read again, then the page
+    setFetching(true)
+    try {
+      await Promise.all([client.invalidateQueries({ queryKey: ['/workbench.json'] }),
+        client.invalidateQueries({ queryKey: ['/workbench-queue.json', { kind: 'judge' }] })])
+    } finally {
+      setFetching(false)
+      keep(null)
+    }
+  }
   const pager = (
     <div className="pager">
       <button className="btn" disabled={!page} onClick={() => setWB((s) => ({ quickPage: { ...s.quickPage, [kind]: page - 1 } }))}>◀</button>
       <span>page {page + 1} of {pages}</span>
       <button className="btn" disabled={page >= pages - 1} onClick={() => setWB((s) => ({ quickPage: { ...s.quickPage, [kind]: page + 1 } }))}>▶</button>
+      <button className="btn" disabled={fetching} title="bring the page up to date: what was decided elsewhere leaves, what came in shows" onClick={() => void refresh()}>{fetching ? '⏳' : '🔄'} refresh</button>
       <label className="faint">rows a page <select value={per} onChange={(e) => setWB({ quickper: +e.target.value, quickPage: {} })}>{QUICK_PER.map((n) => <option key={n}>{n}</option>)}</select></label>
     </div>
   )
