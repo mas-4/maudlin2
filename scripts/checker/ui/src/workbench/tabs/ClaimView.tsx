@@ -43,7 +43,7 @@ export function ClaimView({ claim, j, check }: { claim: { claim: string; src?: s
           </span>
         </div>
       )}
-      <div className="inspect" data-drop="claim">
+      <div className="inspect" data-drop="claim" data-claim={c} data-src={src} data-ref={rec?.ref || claim.ref || ''}>
         <blockquote className="claim big" {...claimDrag({ claim: c, source: src, ref: rec?.ref || claim.ref }, first?.id ?? '')}>
           <BigText claim={c} />
           <span className="meta">{rec ? '#' + rec.id + ' · ' : ''}{SOURCE[src] || src} · drag me onto a motif ·{' '}
@@ -57,10 +57,10 @@ export function ClaimView({ claim, j, check }: { claim: { claim: string; src?: s
         <Better m={m} claim={c} j={j} />
         <Sources claim={c} />
         <h3>➕ add it to another motif</h3>
-        <AddTo m={m} claim={c} ins={ins} />
+        <AddTo m={m} claim={claim} ins={ins} />
         <div className="sbtns clacts">
-          <button className="btn" onClick={(ev) => void claimAction('new', '', ev.currentTarget)}>✨ new motif with it</button>
-          {ins.length > 0 && <button className="btn" onClick={(ev) => void claimAction('nomotif', '', ev.currentTarget)}>∅ no motif</button>}
+          <button className="btn" onClick={(ev) => void claimAction(claim, 'new', '', ev.currentTarget)}>✨ new motif with it</button>
+          {ins.length > 0 && <button className="btn" onClick={(ev) => void claimAction(claim, 'nomotif', '', ev.currentTarget)}>∅ no motif</button>}
           {held.includes(c) ? <button className="btn" title="on hold: back into the queues" onClick={() => void holdClaim(c, false)}>⏸ on hold · ▶ take off</button>
             : ins.length > 0 && !check ? <button className="btn" title="keep it aside to look at later: out of the queues, into ⏸ held" onClick={() => void holdClaim(c, true)}>⏸ hold</button> : null}
         </div>
@@ -120,10 +120,10 @@ function MotifRow({ m, e, claim, j }: { m: Model; e: Entry; claim: string; j: Ju
       <Chip id={e.id} />
       <span className="sbtns">
         {(r.checked !== 'yes' || doubt) && fit != null && <FitChip fit={fit} unsure={j?.unsure.has(claim + '|' + e.id)} />}
-        {doubt ? <button className="btn yes" title="you said it fits; the model now doubts it: does it still?" onClick={() => void claimAction('check', e.id)}>🧐 ✓ still fits</button>
+        {doubt ? <button className="btn yes" title="you said it fits; the model now doubts it: does it still?" onClick={() => void claimAction({ claim }, 'check', e.id)}>🧐 ✓ still fits</button>
           : r.checked === 'yes' ? <span className="fits">✓ fits</span>
-            : <button className="btn yes" title="it belongs here" onClick={() => void claimAction('check', e.id)}>✓ fits</button>}
-        <button className="btn no" title="take it out of this motif" onClick={() => void claimAction('unfile', e.id)}>✕ take out</button>
+            : <button className="btn yes" title="it belongs here" onClick={() => void claimAction({ claim }, 'check', e.id)}>✓ fits</button>}
+        <button className="btn no" title="take it out of this motif" onClick={() => void claimAction({ claim }, 'unfile', e.id)}>✕ take out</button>
       </span>
       {e.note ? <span className="mnote">{e.note}</span> : <span className="mnote faint">no note yet</span>}
       <label className="carry" title="the tellers' own words that carry this motif here (“religion of peace”): saves when you click away or press Enter; ; between phrases">
@@ -168,7 +168,7 @@ function Better({ m, claim, j }: { m: Model; claim: string; j: Judging | null })
 }
 
 /** Find a motif to add the claim to (＋ first, where the eye lands), or start a new one named what was typed */
-function AddTo({ m, claim, ins }: { m: Model; claim: string; ins: Entry[] }) {
+function AddTo({ m, claim, ins }: { m: Model; claim: { claim: string; src?: string; ref?: string }; ins: Entry[] }) {
   const q = useWB((s) => s.claimQ)
   const make = useRef<HTMLButtonElement>(null)
   const w = words(q), inIds = new Set(ins.map((e) => e.id))
@@ -181,12 +181,11 @@ function AddTo({ m, claim, ins }: { m: Model; claim: string; ins: Entry[] }) {
       <div className="cl-results">
         {!w.length ? <p className="faint">type to find a motif, or drag the claim onto one</p> : <>
           {found.map((e) => <div key={e.id} className="sug pick"><span className="pickbtns"><button className="btn yes" title="file it here too"
-            onClick={() => { setWB({ claimQ: '' }); void claimAction('add', e.id) }}>＋ add</button></span><Chip id={e.id} /></div>)}
+            onClick={() => { setWB({ claimQ: '' }); void claimAction(claim, 'add', e.id) }}>＋ add</button></span><Chip id={e.id} /></div>)}
           {!found.length && <p className="faint">🦗 no motif matches</p>}
-          {!taken && <button ref={make} className="btn yes newnamed" onClick={() => void claimAction('newnamed')}>✨ new motif “{typed}” with it</button>}
+          {!taken && <button ref={make} className="btn yes newnamed" onClick={() => void claimAction(claim, 'newnamed')}>✨ new motif “{typed}” with it</button>}
         </>}
       </div>
-      {claim && null}
     </>
   )
 }

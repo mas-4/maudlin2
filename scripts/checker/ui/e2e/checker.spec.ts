@@ -197,3 +197,24 @@ test('where it came from opens whole, and stays open for the next claim', async 
   await page.keyboard.press('ArrowRight') // the next claim
   await expect(page.locator('.cl-detail')).toHaveClass(/open/)
 })
+
+test("a judge card's ＋ add files the card's claim, not the one last opened in 🔍 claim", async ({ page }) => {
+  // Oct 25: the card's buttons read 🔍 claim's claim, so adding Double standard on a card filed another claim there
+  const queue = await (await page.request.get('/workbench-queue.json?kind=judge')).json() as { claim: string }[]
+  test.skip(queue.length < 2, 'fewer than two claims waiting in the copy')
+  const other = queue[queue.length - 1].claim
+  await page.goto('/ui/workbench?claim=' + encodeURIComponent(other)) // opened in 🔍 claim first
+  await expect(page.locator('.tree-pane .row').first()).toBeVisible()
+  await page.locator('.inbox-pane .tabs .tab', { hasText: 'judge' }).click()
+  await page.locator('.parts .part', { hasText: 'claims to judge' }).click()
+  const card = await page.locator('.inspect').getAttribute('data-claim')
+  test.skip(!card || card === other, 'the card shows the claim opened before')
+  await page.locator('.addsearch input').fill('e')
+  const pick = page.locator('.cl-results .sug').first()
+  const id = await pick.locator('.chip').getAttribute('data-id')
+  await pick.getByRole('button', { name: '＋ add' }).click()
+  await expect(page.locator('.toast')).toContainText('filed in')
+  await expect(page.locator(`.inspect .motifrow .chip[data-id="${id}"]`)).toBeVisible() // on the card's own claim
+  await page.locator('.nav-undo button').click()
+  await expect(page.locator('.toast')).toContainText('undid')
+})

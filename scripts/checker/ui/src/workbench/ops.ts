@@ -117,9 +117,11 @@ export function renamed(old: string, text: string) {
   if (s.claim?.claim === old) setWB({ claim: { ...s.claim, claim: text } })
 }
 
-/** What the 🔍 claim's own buttons do: file it, check it, take it out, a new motif with it, reword it */
-export async function claimAction(kind: string, id = '', anchor?: Element | null) {
-  const m = currentModel(), c = getWB().claim
+/** What a claim card's own buttons do (🔍 claim's and 🎯 claims to judge's): file it, check it, take it out, a new
+ * motif with it. `c` is the claim the card shows (Oct 25: they read 🔍 claim's claim, so on a 🎯 card ＋ add filed
+ * whichever claim was last opened there, and did nothing when none was) */
+export async function claimAction(c: { claim: string; src?: string; ref?: string } | null, kind: string, id = '', anchor?: Element | null) {
+  const m = currentModel()
   if (!m || !c) return
   const ins = motifsOf(m, c.claim), first = ins[0]
   const rec = first?.claims.find((x) => x.claim === c.claim)

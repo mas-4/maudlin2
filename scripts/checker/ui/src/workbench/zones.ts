@@ -32,7 +32,7 @@ function workbenchZones(item: DragItem, t: HTMLElement): Zone[] {
   const S = getWB()
   if (drop === 'sameclaim' || (drop === 'claim' && item.kind === 'claim')) {
     // A claim dropped on a claim: one claim told two ways. Over a claim in an open motif, the motif's own choices too
-    const target = drop === 'claim' ? S.claim?.claim : t.dataset.claim
+    const target = t.dataset.claim ?? (drop === 'claim' ? S.claim?.claim : undefined) // the card's own claim
     const panelEl = drop === 'sameclaim' ? (t.closest('[data-drop="motif"]') as HTMLElement | null) : null
     const base = panelEl ? zones(item, panelEl) : []
     if (item.kind !== 'claim' || !target || !motifsOf(m, target).length) return base
@@ -146,9 +146,10 @@ function workbenchZones(item: DragItem, t: HTMLElement): Zone[] {
       { label: '📁 a group of these', say: `start a new group with “${A.name}” and “${B.name}” in it`, run: () => newGroupOf(t, [a, b]) },
     ]
   }
-  if (drop === 'claim' && S.claim) {
-    if (motifsOf(m, S.claim.claim).some((e) => e.id === a)) return []
-    return [{ label: '＋ file the claim here', say: `file the claim in “${A.name}”`, run: () => claimAction('add', a) }]
+  const on = drop === 'claim' ? (t.dataset.claim ? { claim: t.dataset.claim, src: t.dataset.src, ref: t.dataset.ref } : S.claim) : null
+  if (on) { // a motif dropped on a claim card (🔍 claim, 🎯 claims to judge): that card's claim
+    if (motifsOf(m, on.claim).some((e) => e.id === a)) return []
+    return [{ label: '＋ file the claim here', say: `file the claim in “${A.name}”`, run: () => claimAction(on, 'add', a) }]
   }
   if (drop === 'facet') {
     const value = t.dataset.g || null
