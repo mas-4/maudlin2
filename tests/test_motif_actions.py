@@ -43,3 +43,11 @@ def test_an_action_checks_its_fields_before_anything_runs(monkeypatch, tmp_path)
     seen = []
     ma.apply({'action': 'check', 'claim': 'a', 'id': 'M001', 'answer': 'yes'}, on_check=seen.append)
     assert [s['answer'] for s in seen] == ['yes']
+
+
+def test_a_withdrawn_claim_leaves_no_verdict():
+    """Oct 25: duplicates a regrouping filed under new words come out with no "not this motif" for the models"""
+    from app.analysis import filing_confidence as fc
+    out = {}
+    fc._decided({'action': 'batch', 'steps': [{'action': 'withdraw', 'claim': 'a duplicate'}]}, out, hand=True)
+    assert out == {} and 'withdraw' in ma.ACTIONS

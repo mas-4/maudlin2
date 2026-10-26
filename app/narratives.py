@@ -200,6 +200,27 @@ def groups(posts: list[dict], similarity: float = SIMILARITY) -> list[list[int]]
     return [g for g in found.values() if len(g) > 1]
 
 
+def tight_groups(v: np.ndarray, similarity: float, k: int = 30) -> list[list[int]]:
+    """Groups around a centre, every member alike the centre itself, not only a neighbour of a neighbour: the row with
+    most mutual neighbours above `similarity` takes them (its first `k` at most, still free), then the next, and so on.
+    Each group's centre comes first. groups() joins every chain, which in show claims ran through a topic (Oct 25: 4,436
+    tellings in one group at 0.78; at 0.84 "Trump falls asleep" still reached "the Epstein files" in a group of 149)"""
+    if len(v) < 2:
+        return []
+    idx, sim = neighbours(v, k)
+    near = [set(idx[i][sim[i] >= similarity].tolist()) for i in range(len(v))]
+    mutual = [{j for j in near[i] if i in near[j]} for i in range(len(v))]
+    free, out = set(range(len(v))), []
+    for c in sorted(range(len(v)), key=lambda i: (-len(mutual[i]), i)):
+        if c not in free:
+            continue
+        g = [c] + sorted(j for j in mutual[c] if j in free)
+        if len(g) > 1:
+            free -= set(g)
+            out.append(g)
+    return out
+
+
 def variety(texts: list[str], rng: random.Random) -> float:
     """One minus the mean word overlap (Jaccard) between pairs of versions: 0 the same words, 1 nothing shared."""
     sets = [words(t) for t in texts]

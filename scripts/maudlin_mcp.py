@@ -450,6 +450,7 @@ def checker_action(action: dict) -> str:
       its motifs are; "" clears)
       also {claim, source, target} (file it there too) · move {claim, source, target} · unfile {claim, id}
       check {claim, id, answer: yes|no|unsure} · no_motif {claim} · new_with {name, claims: [{claim, source?}]}
+      withdraw {claim} (a claim filed by mistake, a duplicate: out of every motif, no verdict for the models)
       batch {steps: [actions]} (one undo step; a step can name a motif an earlier step made as "$1", "$2"…, e.g.
       new_with then group_member {id: "$1"} and check {id: "$1"}. "$1" is always the batch's FIRST new motif, "$2"
       its second, counted from the start of the batch, never "the one just made": a note for the third new motif

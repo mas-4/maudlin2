@@ -77,3 +77,18 @@ def test_a_news_briefings_presenter_is_not_a_teller(monkeypatch):
     assert sc.retold({'u1': ep('bbcglobal', 'BBC', 'host'), 'u2': ep('cnn5things', 'CNN', 'host')}) == []
     got = sc.retold({'u1': ep('bbcglobal', 'BBC', 'clip'), 'u2': ep('cnn5things', 'CNN', 'guest')})
     assert len(got) == 1 and got[0]['shows'] == ['BBC', 'CNN']
+
+
+def test_show_claims_group_around_a_centre_and_keep_their_filed_words(monkeypatch):
+    """Oct 25: chains of alike claims joined a topic into one group (149 tellings, "Trump falls asleep" to "the Epstein
+    files"), and a regrouping filed 270 claims told before under new words"""
+    import app.narratives
+    angle = {'A sleeps.': 0, 'A dozes.': 5, 'A snoozes.': -5, 'A naps.': 30, 'A lies.': 60}  # a chain: sleeps, naps, lies
+    vec = {t: [np.cos(np.radians(d)), np.sin(np.radians(d))] for t, d in angle.items()}
+    monkeypatch.setattr(app.narratives, 'embed', lambda texts: np.array([vec[t] for t in texts]))
+    c = lambda claim: {'claim': claim, 'quote': 'q', 'speaker': 'host', 'at': 0}  # noqa: E731
+    store = {f'u{n}': {'show': f'Show {n}', 'date': '2026-10-25', 'lean': 'left', 'claims': [c(t)]}
+             for n, t in enumerate(angle)}
+    got = sc.retold(store)
+    assert len(got) == 1 and 'A lies.' not in {t['claim'] for t in got[0]['told']}  # alike a neighbour, not the centre
+    assert sc.retold(store, lambda text: text == 'A naps.')[0]['claim'] == 'A naps.'  # the filed words kept

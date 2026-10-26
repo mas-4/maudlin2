@@ -126,6 +126,9 @@ ACTIONS: dict[str, tuple[dict[str, str], Callable[[dict, _Context], object]]] = 
     'reject': ({'claim': 'text', 'id': 'motif'}, lambda d, cx: mi.reject(d['claim'], d['id'])),
     'check': ({}, _check),
     'no_motif': ({'claim': 'text'}, lambda d, cx: mi.no_motif(d['claim'])),
+    # filed by mistake, not a verdict: out of every motif with nothing the models read as "not this motif" (Oct 25: a
+    # regrouping of the show claims filed duplicates of claims already filed, in new words)
+    'withdraw': ({'claim': 'text'}, lambda d, cx: mi.withdraw(d['claim'])),
     'hold': ({'claim': 'text'}, lambda d, cx: mi.hold(d['claim'], True)),  # kept aside to look at later; no verdict
     'unhold': ({'claim': 'text'}, lambda d, cx: mi.hold(d['claim'], False)),
     'correct': ({'claim': 'text', 'text': 'text'}, lambda d, cx: mi.correct_claim(d['claim'], d['text'])),

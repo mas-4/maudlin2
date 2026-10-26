@@ -129,7 +129,10 @@ def extract(budget: float | None = None) -> dict:
         return store
     calls = read_episodes(store, budget)
     if calls or not os.path.exists(RETOLD):
-        old, new = read_json(RETOLD, []), retold(store)
+        from app.analysis import motif_index as mi
+        index = mi.load()
+        filed = set(index['claims']) | set(index.get('tellings', {}))
+        old, new = read_json(RETOLD, []), retold(store, lambda text: mi.key(mi.corrected(text, index)) in filed)
         write_json(RETOLD, new)
         trace.written_shows(old, new)  # the 🧠 Live page's (app/analysis/trace.py)
     return store
@@ -183,15 +186,17 @@ SOURCE = 'shows'  # the motif index's source for a retold claim (as 'narrative' 
 SIMILARITY = 0.84
 
 
-def retold(store: dict | None = None) -> list[dict]:
-    """The claims told on MIN_SHOWS or more shows, or by as many callers: versions of one claim grouped the way
-    what people post is (app/narratives.groups: mutual neighbours alike enough), each group as the version nearest its
-    center, with who told it. One show's one-off take isn't folklore; told again elsewhere, it is."""
+def retold(store: dict | None = None, filed=None) -> list[dict]:
+    """The claims told on MIN_SHOWS or more shows, or by as many callers: versions of one claim grouped around a centre
+    (narratives.tight_groups, every member SIMILARITY alike the centre), each group as the version nearest its middle,
+    with who told it. One show's one-off take isn't folklore; told again elsewhere, it is. `filed(text)`: whether a
+    version is already a claim in the motif index; a group holding one keeps it as its words, so a regrouping never
+    files claims told before under new words (Oct 25: 270 in two runs)"""
     from collections import Counter
 
     import numpy as np
 
-    from app.narratives import embed, groups
+    from app.narratives import embed, tight_groups
     from app import episode_kind
     store = store if store is not None else load()
     kinds = episode_kind.load()
@@ -200,15 +205,18 @@ def retold(store: dict | None = None) -> list[dict]:
     if len(rows) < 2:
         return []
     out = []
-    for g in groups([{'text': r['claim']} for r in rows], SIMILARITY):
+    vectors = embed([r['claim'] for r in rows])
+    for g in tight_groups(vectors, SIMILARITY):
         tellers = [rows[i] for i in g]
         # retold this week: told on the news, not only in history deep dives and other evergreen episodes
         shows = {r['show'] for r in tellers if not r['evergreen']}
         callers = {(r['url'], r['at']) for r in tellers if r.get('speaker') == 'caller' and not r['evergreen']}
         if len(shows) < MIN_SHOWS and len(callers) < MIN_SHOWS:
             continue
-        v = embed([r['claim'] for r in tellers])
-        lead = tellers[int(np.argmax(v @ v.mean(0)))]
+        v = vectors[g]
+        middle = v @ v.mean(0)
+        known = [n for n, r in enumerate(tellers) if filed and filed(r['claim'])]
+        lead = tellers[max(known, key=lambda n: middle[n]) if known else int(np.argmax(middle))]
         out.append({'claim': lead['claim'], 'shows': sorted({r['show'] for r in tellers}), 'tellings': len(tellers),
                     'leans': dict(Counter(r['lean'] or '' for r in tellers)), 'speakers': dict(Counter(r['speaker'] or '' for r in tellers)),
                     'date': max(r['date'] for r in tellers), 'ref': lead['url'],
