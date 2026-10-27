@@ -370,6 +370,21 @@ def rewordings(headlines: list[dict]) -> list[dict]:
             for o, hs in sorted(by.items()) if len(hs) > 1]
 
 
+def told_as(web: dict | None, st: dict, tv: dict | None) -> dict:
+    """How the story is being told (motif_web.by_story: each motif with the shows that told it by lean, people online,
+    fact-checkers, and the motifs that answer it), and the motifs' own words in its headlines (by the outlets' lean)
+    and on TV (by channel)"""
+    if not web:
+        return {'told_as': [], 'motif_words': {}}
+    from app.analysis import motif_web
+    lean = {-3: 'left', -2: 'left', -1: 'left', 0: 'center', 1: 'right', 2: 'right', 3: 'right'}
+    heads = [(h['title'], lean.get(h['bias'], 'not rated')) for h in st['headlines']]
+    caps = [(c['text'], c['name']) for c in (tv or {}).get('spots', [])]
+    return {'told_as': web['stories'].get(st['id'], [])[:10],
+            'motif_words': {'headlines': motif_web.words_in(heads, web['lexicon'], web['pattern'])[:6],
+                            'tv': motif_web.words_in(caps, web['lexicon'], web['pattern'])[:6]}}
+
+
 def share(st: dict, outlets: list, lean_counts: dict, stuck: list) -> dict:
     """What a shared link to a story page shows: its headline, its numbers in a line, and its card"""
     from app.site import share_images
@@ -405,6 +420,12 @@ class StoryPages:
         aliases = entities.load_aliases()['aliases']
         from app.site.page_headlines import STORY_EXTRAS
         extras = read_json(STORY_EXTRAS, {})
+        try:  # the motif index across the site (motif_web): how each story is being told, and its words
+            from app.site.page_motif import shared
+            web = shared()['web']
+        except Exception as e:  # noqa: BLE001 - the pages stand without it
+            logger.warning("Story pages: motifs: %s", e)
+            web = None
         for st in stories:
             by_outlet = {}
             for h in sorted(st['headlines'], key=lambda h: h['first'] or datetime.min):
@@ -427,6 +448,7 @@ class StoryPages:
             self.template.write({
                 'title': st['label'] or 'A story', 'story': st, 'outlets': outlets,
                 'lean_counts': lean_counts, 'stickers': stuck, **share(st, outlets, lean_counts, stuck),
+                **told_as(web, st, tv.get(st['id'])),
                 'since': eastern(st['first']), 'until': eastern(st['last']), 'spark': sparkline(st['snapshots']),
                 'by_lean': story_charts.by_lean(st, outlets),
                 'timeline': story_charts.timeline(st, outlets, (tv.get(st['id']) or {}).get('spots', []),

@@ -334,11 +334,15 @@ class HeadlinesPage:
         self.newsletter.write(self.context)
         self.write_feed()
         try:  # the stories being told: the motifs told most lately, a door from the news into the motif index
-            from app.site.page_motif import told_now
+            from app.site.page_motif import shared, told_now
             self.context['told_now'] = told_now()
+            from app.analysis import motif_web
+            told = shared()['web']['stories']  # each card's story, as it's being told (motif_web.by_story)
+            self.context['motif_cloud'] = motif_web.cloud(shared()['web']['rows'])  # the cloud's "stories told" mode
+            self.context['told_as_of'] = {c: told[s][:3] for c, s in getattr(self, 'story_of', {}).items() if s in told}
         except Exception as e:  # noqa: BLE001 - the front page stands without its strip
             logger.warning("Front page: stories being told: %s", e)
-            self.context['told_now'] = []
+            self.context['told_now'], self.context['told_as_of'], self.context['motif_cloud'] = [], {}, []
         self.template.write({**self.context, 'page_part': 'front'})
         self.stories_page.write({**self.context, 'page_part': 'stories', 'title': 'Every story',
                                  'page_title': f'{Config.site_name} - Every story'})

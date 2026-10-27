@@ -25,6 +25,8 @@ LEAN_INK = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#8a8f98'}  # as th
 ANSWER = re.compile(r'answer|counter|mirror|rebut|retort', re.I)  # a related link's note naming a move and its reply
 CLAIMS_SHOWN = 40  # claims listed on a motif's page, the newest
 TOLD_NOW = 6  # motifs in the front page's strip
+NEWS = 10  # stories a motif's page links to, the most told first
+PHRASES = 12  # the tellers' own words shown on a motif's page
 REDIRECT = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Moved</title>'
             '<link rel="canonical" href="{to}"><meta http-equiv="refresh" content="0; url={to}"></head>'
             '<body><p>This motif is now part of <a href="{to}">this one</a>.</p></body></html>')
@@ -63,8 +65,9 @@ def shared() -> dict:
     stamp = j2env.globals.get('build_version')
     if SHARED.get('motif_pages', {}).get('stamp') != stamp:
         index = motif_index.load()
+        from app.analysis import motif_web
         SHARED['motif_pages'] = {'stamp': stamp, 'index': index, 'catalog': catalog(index),
-                                 'tellers': show_tellers(), 'episodes': show_claims.load()}
+                                 'tellers': show_tellers(), 'episodes': show_claims.load(), 'web': motif_web.build()}
     return SHARED['motif_pages']
 
 
@@ -136,6 +139,18 @@ class MotifPages:
         s = shared()
         index, entries = s['index'], s['catalog']['entries']
         shown = {e['id']: e for e in entries}
+        web = s['web']
+        from app.analysis import motif_web
+        from app.site.page_story import archived_ids
+        labels = {st['id']: st for st in motif_web.stories_around()}
+        pages = archived_ids()  # story pages are kept for good once built
+        try:  # the motif's own words, word for word, in the last days' headlines (by lean) and captions (by channel)
+            heads = motif_web.words_by_motif(motif_web.words_in(motif_web.recent_headlines(), web['lexicon'], web['pattern']))
+            caps = motif_web.words_by_motif(motif_web.words_in(motif_web.recent_captions(), web['lexicon'], web['pattern']))
+        except Exception as err:  # noqa: BLE001 - extra
+            logger.warning("Motif pages: words in headlines: %s", err)
+            heads, caps = {}, {}
+        show_pages = {sh: motif_web.show_slug(sh) for sh in web['shows']}
         for e in entries:
             up = came_up(e, s['tellers'], s['episodes'])
             claims = []
@@ -156,6 +171,10 @@ class MotifPages:
                 'og_image': image, 'og_image_alt': f"{e['name']}: {e['note']}",
                 'e': e, 'up': up, 'counts': counts, 'claims': claims, 'related': related(index, e, shown),
                 'genre_emoji': GENRE_EMOJI, 'genre_gloss': GENRE_GLOSS.get(e['genre'], ''), 'inks': LEAN_INK,
+                'news': [labels[sid] for sid in web['motif_stories'].get(e['id'], []) if sid in labels and sid in pages][:NEWS],
+                'lag': web['lag'].get(e['id'], []),
+                'phrases': [p for p, _ in motif_index.carrying(index['entries'][e['id']])][:PHRASES],
+                'in_headlines': heads.get(e['id'], []), 'on_tv': caps.get(e['id'], []), 'show_pages': show_pages,
             }, os.path.join(Config.build, motif_href(e['id'])))
         # A motif merged into another: its old address goes to the one kept
         moved = 0

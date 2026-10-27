@@ -105,6 +105,19 @@
 
     <section class="story-stage" id="retelling">
         {{ banner('🧶', 'Retelling', 'what people online made of it', '#8a5cff') }}
+            {% if told_as %}
+                <div class="saga-card story-page-card story-told-card" id="told-as" style="--saga: #8a5cff">
+                <h3><a href="motifs.html">🧩 How it's being told</a></h3>
+                <p class="tv-time">The stories under this news, from our motif index, and who told each: the shows we follow by their lean, people online, fact-checkers. A story people tell, not a claim that it's true; claims are matched to this story by our tools, so a link can be wrong.</p>
+                <ul class="radio-items story-told-list">{% for m in told_as %}<li><a class="motif-chip" href="{{ motif_href(m.id) }}" title="{{ m.genre|e }}">🧩 {{ m.name|e }}</a>
+                    {% for side, emoji, ink in (('left', '🫏', '#3a86ff'), ('center', '⚖️', '#8a8f98'), ('right', '🐘', '#ff4f6d')) %}{% if m.sides[side] %}<span class="show-chip tv-chip" style="--chip: {{ ink }}" title="{{ m.sides[side]|join(', ')|e }}">{{ emoji }} {{ m.sides[side]|length }} {{ side }} show{{ '' if m.sides[side]|length == 1 else 's' }}</span> {% endif %}{% endfor %}{% if m.sides.posts %}<span class="show-chip tv-chip" style="--chip: #8a5cff">🧶 online</span> {% endif %}{% for c in m.sides.checks %}<span class="show-chip tv-chip" style="--chip: #f5b700">🔎 {{ c|e }}</span> {% endfor %}
+                    {% if m.answers %}<br><span class="tv-time">↔️ its answer: {% for a in m.answers %}<a href="{{ motif_href(a.id) }}">{{ a.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+                    <br><span class="tv-time">“{{ m.claims[0]|e }}”{% if m.claims|length > 1 %} and {{ m.claims|length - 1 }} more{% endif %}</span></li>{% endfor %}</ul>
+                </div>
+            {% endif %}
+            {% if motif_words and (motif_words.headlines or motif_words.tv) %}
+                <p class="stage-notes story-motif-words">🧩 the motifs' own words{% if motif_words.headlines %}, in its headlines: {% for w in motif_words.headlines %}<a class="quote-chip" href="{{ motif_href(w.id) }}" title="{% for g, n in w.by.items() %}{{ n }} {{ g }}{% if not loop.last %}, {% endif %}{% endfor %}">“{{ w.phrase|e }}” <b>{{ w.n }}</b></a> {% endfor %}{% endif %}{% if motif_words.tv %}{% if motif_words.headlines %};{% else %},{% endif %} on TV: {% for w in motif_words.tv %}<a class="quote-chip" href="{{ motif_href(w.id) }}" title="{% for g, n in w.by.items() %}{{ g }} {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}">“{{ w.phrase|e }}” <b>{{ w.n }}</b></a> {% endfor %}{% endif %}</p>
+            {% endif %}
             {% if folklore %}
                 <div class="saga-card story-page-card" style="--saga: #8a5cff">
                 <h3><a href="folklore.html">🧶 Retold online</a></h3>

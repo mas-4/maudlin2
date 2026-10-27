@@ -39,7 +39,7 @@ PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emoti
 NAV_LINKS = ['stories.html', 'motifs.html', 'sagas.html',
              'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
              'tv.html', 'radio.html', 'beyond.html', 'folklore.html', 'motifs.html', 'motif-map.html',
-             'about.html', 'glossary.html', 'methods.html', 'feed.xml']
+             'about.html', 'glossary.html', 'lab.html', 'methods.html', 'feed.xml']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500

@@ -31,7 +31,8 @@
             {% if e.rests_on %}<p title="This motif only makes sense given these: a kind of them, or a case, argument or figure that tells them">🪜 rests on {% for p in e.rests_on %}<a class="motif-chip" href="{{ motif_href(p.id) }}">🧩 {{ p.name|e }}</a> {% endfor %}</p>{% endif %}
             {% if e.under %}<p title="Motifs that only make sense given this one">⤵️ under it: {% for p in e.under %}<a class="motif-chip" href="{{ motif_href(p.id) }}">🧩 {{ p.name|e }}</a> {% endfor %}</p>{% endif %}
             {% for r in related if r.answer %}{% if loop.first %}<p>↔️ answers and mirrors:</p><ul class="motif-page-answers">{% endif %}
-                <li><a class="motif-chip" href="{{ motif_href(r.id) }}">🧩 {{ r.name|e }}</a> <span class="court-when">{{ r.note|e }}</span></li>
+                <li><a class="motif-chip" href="{{ motif_href(r.id) }}">🧩 {{ r.name|e }}</a> <span class="court-when">{{ r.note|e }}</span>
+                    {% for l in lag if l.id == r.id %}<br><span class="court-when">⏱️ {% if l.days > 0 %}answered {{ l.days }} day{{ '' if l.days == 1 else 's' }} after this was first told here ({{ l.first_move }} → {{ l.first_answer }}){% elif l.days < 0 %}told here {{ -l.days }} day{{ '' if l.days == -1 else 's' }} after its answer ({{ l.first_answer }} → {{ l.first_move }}){% else %}both first told the same day ({{ l.first_move }}){% endif %}</span>{% endfor %}</li>
             {% if loop.last %}</ul>{% endif %}{% endfor %}
             {% for r in related if not r.answer %}{% if loop.first %}<p>🔗 goes with: {% endif %}<a class="motif-chip small" href="{{ motif_href(r.id) }}"{% if r.note %} title="{{ r.note|e }}"{% endif %}>🧩 {{ r.name|e }}</a> {% if loop.last %}</p>{% endif %}{% endfor %}
         </div>
@@ -44,13 +45,29 @@
             {% for k in ('left', 'center', 'right') %}
                 <div class="motif-page-side" style="--side: {{ inks[k] }}">
                     <h4>{{ {'left': '🫏 left', 'center': '⚖️ center', 'right': '🐘 right'}[k] }} <span class="motif-seen">{{ counts[k] }}</span></h4>
-                    {% if up.shows[k] %}<p>{% for s in up.shows[k] %}<span class="show-chip tv-chip motif-page-show" style="--chip: {{ inks[k] }}">🎙️ {{ s|e }}</span> {% endfor %}</p>
+                    {% if up.shows[k] %}<p>{% for s in up.shows[k] %}{% if s in show_pages %}<a class="show-chip tv-chip motif-page-show" href="show-{{ show_pages[s] }}.html" style="--chip: {{ inks[k] }}" title="What this show tells">🎙️ {{ s|e }}</a>{% else %}<span class="show-chip tv-chip motif-page-show" style="--chip: {{ inks[k] }}">🎙️ {{ s|e }}</span>{% endif %} {% endfor %}</p>
                     {% else %}<p class="court-when">🦗 none of our {{ k }} shows, so far</p>{% endif %}
                 </div>
             {% endfor %}
         </div>
         <p class="table-intro">"Came up on" means one of its claims was heard on the show: told, reported or argued
             against. We don't yet mark which. Show leans are our own grouping of the shows we transcribe.</p>
+    {% endif %}
+
+    {% if news %}
+        <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>📰 In the news</span></h2>
+        <p class="stage-sub">the stories its claims were told about, the most told first (matched by our tools, so a link can be wrong)</p>
+        <ul class="story-checks motif-page-news">{% for st in news %}<li>📰 <a href="story-{{ st.id }}.html">{{ st.label|e }}</a> <span class="court-when">{{ st.first }}{% if st.last != st.first %} to {{ st.last }}{% endif %}</span></li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if phrases or in_headlines or on_tv %}
+        <h2 class="section-divider stage-banner" style="--stage: #ffc400"><span>🗣️ In so many words</span></h2>
+        <p class="stage-sub">the words that carry it</p>
+        <div class="stage-notes">
+            {% if phrases %}<p>💬 the tellers' own words: {% for p in phrases %}<span class="quote-chip">“{{ p|e }}”</span> {% endfor %}</p>{% endif %}
+            {% if in_headlines %}<p>📰 in the last three days' headlines: {% for w in in_headlines %}<span class="quote-chip" title="{% for g, n in w.by.items() %}{{ n }} {{ g }}{% if not loop.last %}, {% endif %}{% endfor %}">“{{ w.phrase|e }}” <b>{{ w.n }}</b></span> ({% for g, n in w.by.items() %}{{ n }} {{ g }}{% if not loop.last %}, {% endif %}{% endfor %}) {% endfor %}</p>{% endif %}
+            {% if on_tv %}<p>📺 on TV captions: {% for w in on_tv %}<span class="quote-chip">“{{ w.phrase|e }}” <b>{{ w.n }}</b></span> ({% for g, n in w.by.items() %}{{ g }} {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}) {% endfor %}</p>{% endif %}
+        </div>
     {% endif %}
 
     <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🧶 Its claims</span></h2>

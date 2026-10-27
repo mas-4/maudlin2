@@ -1,4 +1,4 @@
-// How groups sit on the map and how a group is drawn, ported from app/site/static/motif-map-layout.js (the site's map
+// How groups sit on the map and how a group is drawn, ported from app/site/static/motif-map-layout.js (removed from the site Oct 27; this is now the only copy) (the site's map
 // still loads that file). Keep the two in step, so a group sits and looks the same on both maps; the colours are
 // model.ts's GROUP_COLORS and GENRE_COLORS, the same lists.
 import * as d3 from 'd3'

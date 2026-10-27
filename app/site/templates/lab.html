@@ -1,0 +1,33 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <header class="story-hero lab-hero">
+        <p class="story-kicker"><span>🧪 The Lab</span></p>
+        <h2 class="story-page-title">How we test the machine that reads the stories</h2>
+        <ul class="story-stickers">
+            <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🧪</span><b>{{ total }}</b><span>experiments so far</span></li>
+            {% for emoji, words, n in counts[:3] %}<li style="--sticker: {{ ['#00c2a8', '#ffc400', '#ff4fa3'][loop.index0] }}"><span class="sticker-emoji" aria-hidden="true">{{ emoji }}</span><b>{{ n }}</b><span>{{ words }}</span></li>{% endfor %}
+        </ul>
+    </header>
+    <p class="table-intro lab-intro">Our <a href="motifs.html">motif index</a> is built by language models running on our
+        own computer, with a person checking their work. Every change to how the models file and find stories is
+        tried here first, on the person's own decisions, with its hypothesis written down before it runs, and kept only
+        if it helps. Each experiment is named after a figure from folklore. The misses are here too: an idea that didn't
+        work is a finding. The numbers are the experiments' own shorthand; <a href="methods.html">the methods log</a>
+        tells the story of each change in plain words.</p>
+    <p class="lab-key">{% for emoji, words, n in counts %}<span class="quote-chip">{{ emoji }} {{ words }} <b>{{ n }}</b></span> {% endfor %}</p>
+
+    {% for f in families %}
+        <h2 class="section-divider stage-banner" style="--stage: {{ ['#00c2a8', '#8a5cff', '#ff4fa3', '#ffc400', '#3a86ff', '#ff6b1a'][loop.index0 % 6] }}"><span>{{ f.key }} · {{ f.about }}</span></h2>
+        <div class="court-cards lab-cards">
+            {% for x in f['items'] %}
+                <div class="story court-story lab-card lab-{{ x.status|replace(' ', '-')|e }}" id="{{ x.code|e }}">
+                    <p class="folk-sources"><span class="folk-genre">{{ x.emoji }} {{ x.words }}</span> <span class="court-when">{{ x.code }}</span></p>
+                    <h4>{{ x.codename|e }}</h4>
+                    <p class="lab-question">{{ x.question|e }}</p>
+                    {% if x.result %}<p class="lab-result">🔬 {{ x.result|e }}</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+{% endblock %}

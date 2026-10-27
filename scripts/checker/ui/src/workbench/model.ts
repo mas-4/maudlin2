@@ -72,7 +72,7 @@ export function matches(e: Entry, words: string[]) {
 }
 export const words = (q: string) => q.toLowerCase().split(/\s+/).filter(Boolean)
 
-/** A group's or genre's colour, as on the maps (app/site/static/motif-map-layout.js): by its place A to Z */
+/** A group's or genre's colour, as on the maps (the site's old map, app/site/static/motif-map-layout.js, removed Oct 27 for the aisle): by its place A to Z */
 export const GROUP_COLORS = ['#ff4fa3', '#3a86ff', '#ff6b1a', '#8a5cff', '#00a896', '#e0a800']
 export const GENRE_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff', '#2bb673', '#e0102e', '#a0522d',
   '#00a6d6', '#c2185b', '#6b8e23', '#ff8fab', '#5c6bc0']

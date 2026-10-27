@@ -1,0 +1,91 @@
+{% extends "page.html" %}
+
+{% macro chips(items) %}{% for d in items %}<a class="motif-chip small" href="{{ d.href }}" title="{{ d.left }} left, {{ d.center }} center, {{ d.right }} right shows">🧩 {{ d.name|e }}</a> {% endfor %}{% endmacro %}
+
+{% block content %}
+    <header class="story-hero aisle-hero">
+        <p class="story-kicker"><span>🧩 The motif map</span></p>
+        <h2 class="story-page-title">The aisle: the stories each side tells</h2>
+        <ul class="story-stickers">
+            <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🧩</span><b>{{ dots|length }}</b><span>motifs the shows told</span></li>
+            <li style="--sticker: #a9a9b8"><span class="sticker-emoji" aria-hidden="true">⚖️</span><b>{{ dots|selectattr('left')|selectattr('right')|list|length }}</b><span>told on both sides</span></li>
+            <li style="--sticker: #ff4fa3"><span class="sticker-emoji" aria-hidden="true">↔️</span><b>{{ arcs }}</b><span>answers across the aisle</span></li>
+        </ul>
+    </header>
+    <div class="rumor-warning" role="note">
+        <p class="rumor-warning-head">⚠️ Stories people tell, not claims that they're true.</p>
+        <p>Each dot is a motif from our <a href="motifs.html">index</a>: the shape of a story as people tell it. It sits
+            left or right by which side's shows its claims came up on (told, reported or argued against: we don't yet
+            mark which), and higher the more it was told. An arc joins a story to its usual answer.</p>
+    </div>
+
+    <div class="table-filters story-sort aisle-tools" role="group" aria-label="Filter the aisle">
+        <span class="bar-group"><span class="bar-label">genre:</span>
+            {% for g, emoji, n in genres %}<button type="button" data-genre="{{ g|e }}">{{ emoji }} {{ g }} <b>{{ n }}</b></button>{% endfor %}</span>
+        <span class="bar-divider" aria-hidden="true"></span>
+        <span class="bar-group"><label class="bar-label" for="aisle-search">🔎</label>
+            <input type="search" id="aisle-search" placeholder="find a motif"></span>
+    </div>
+    <figure class="aisle-figure">
+        {{ svg }}
+        <figcaption>Left to right: the share of a motif's shows that lean left or right (a motif few shows told is drawn
+            nearer the middle). Up: how many tellers told it, on a log scale. The most told are named; tap any dot.</figcaption>
+    </figure>
+    <div class="aisle-card" hidden aria-live="polite"></div>
+
+    <section class="aisle-lists">
+        <h2 class="section-divider stage-banner" style="--stage: #a9a9b8"><span>⚖️ Told on both sides</span></h2>
+        <p class="stage-sub">the most shows on each side</p>
+        <p class="stage-notes">{{ chips(both) }}</p>
+        <h2 class="section-divider stage-banner" style="--stage: #3a86ff"><span>🫏 Mostly left</span></h2>
+        <p class="stage-notes">{{ chips(leftmost) }}</p>
+        <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>🐘 Mostly right</span></h2>
+        <p class="stage-notes">{{ chips(rightmost) }}</p>
+        <p class="court-when">{{ unplaced }} more motifs were told only online, by fact-checkers or by voters, not on the shows: they're in <a href="motifs.html">the index</a>.</p>
+    </section>
+
+    <script>
+        (function () {
+            const DOTS = Object.fromEntries({{ dots|tojson }}.map((d) => [d.id, d]));
+            const svg = document.querySelector('.aisle-svg');
+            const card = document.querySelector('.aisle-card');
+            const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+            const pick = (id) => {
+                const d = DOTS[id];
+                svg.querySelectorAll('.aisle-dot').forEach((a) => a.classList.toggle('picked', a.dataset.id === id));
+                svg.querySelectorAll('.aisle-arc').forEach((p) => p.classList.toggle('lit', p.dataset.a === id || p.dataset.b === id));
+                card.hidden = false;
+                card.innerHTML = `<h3>🧩 ${esc(d.name)}</h3>${d.note ? `<p class="motif-page-note">${esc(d.note)}</p>` : ''}
+                    <p><span class="show-chip tv-chip" style="--chip: #3a86ff">🫏 ${d.left} left</span> <span class="show-chip tv-chip" style="--chip: #8a8f98">⚖️ ${d.center} center</span> <span class="show-chip tv-chip" style="--chip: #ff4f6d">🐘 ${d.right} right</span>${d.posts ? ` <span class="show-chip tv-chip" style="--chip: #8a5cff">🧶 online</span>` : ''}</p>
+                    <p class="more-link"><a href="${d.href}">its page: who told it, its answers, its claims →</a></p>`;
+            };
+            svg.addEventListener('click', (ev) => {
+                const a = ev.target.closest('.aisle-dot') || (ev.target.closest('.aisle-label') && svg.querySelector(`.aisle-dot[data-id="${ev.target.closest('.aisle-label').dataset.id}"]`));
+                if (!a) return;
+                ev.preventDefault();
+                pick(a.dataset.id);
+            });
+            let genre = null;
+            const search = document.getElementById('aisle-search');
+            const show = () => {
+                const q = search.value.trim().toLowerCase();
+                svg.querySelectorAll('.aisle-dot').forEach((a) => {
+                    const on = (!genre || a.dataset.genre === genre) && (!q || a.dataset.name.includes(q));
+                    a.classList.toggle('dim', !on);
+                });
+                svg.querySelectorAll('.aisle-label').forEach((t) => {
+                    const a = svg.querySelector(`.aisle-dot[data-id="${t.dataset.id}"]`);
+                    t.classList.toggle('dim', a.classList.contains('dim'));
+                });
+            };
+            document.querySelector('.aisle-tools').addEventListener('click', (ev) => {
+                const b = ev.target.closest('button[data-genre]');
+                if (!b) return;
+                genre = genre === b.dataset.genre ? null : b.dataset.genre;
+                document.querySelectorAll('.aisle-tools button').forEach((x) => x.classList.toggle('active', x.dataset.genre === genre));
+                show();
+            });
+            search.addEventListener('input', show);
+        })();
+    </script>
+{% endblock %}

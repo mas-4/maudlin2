@@ -31,6 +31,27 @@ def snapshots(story_ids: list[int]) -> dict[int, list[dict]]:
     return out
 
 
+DRIFT_DAYS, DRIFT_MOTIFS = 14, 5  # the latest days shown, and the most-told motifs each day
+
+
+def drift(rows: list[dict], stories: set[int]) -> list[dict]:
+    """How a saga has been told, day by day: for each day with tellings about one of its parts, its most-told motifs
+    (each with how many tellers), newest day first. A motif new to the saga that day is marked, so the turns show"""
+    from collections import Counter, defaultdict
+    days = defaultdict(Counter)
+    names = {}
+    for r in rows:
+        if r['story'] in stories and r['date']:
+            days[r['date']][r['motif']] += 1
+            names[r['motif']] = r['name']
+    seen, out = set(), []
+    for day in sorted(days):
+        top = days[day].most_common(DRIFT_MOTIFS)
+        out.append({'day': day, 'motifs': [{'id': m, 'name': names[m], 'n': n, 'new': m not in seen} for m, n in top]})
+        seen |= set(days[day])
+    return list(reversed(out))[:DRIFT_DAYS]
+
+
 class SagaPages:
     def __init__(self, dh=None):
         self.template = TemplateHandler('saga.html')
@@ -43,6 +64,12 @@ class SagaPages:
         recent = page_story.recent_stories()
         tv, radio, folk = page_story.tv_by_story(), page_story.radio_by_story(), page_story.folklore_by_story(recent)
         with_page = {st['id'] for st in recent} | page_story.archived_ids()  # parts with a story page of their own
+        try:  # how the saga's been told, day by day, from the motif index (motif_web)
+            from app.site.page_motif import shared
+            rows = shared()['web']['rows']
+        except Exception as e:  # noqa: BLE001 - extra
+            logger.warning("Saga pages: motifs: %s", e)
+            rows = []
         for saga in found:
             parts = saga['parts']
             for i, p in enumerate(parts):
@@ -72,6 +99,7 @@ class SagaPages:
             if people:
                 stickers.append({'emoji': '🧶', 'big': people, 'small': 'people retold it online', 'color': '#8a5cff'})
             self.template.write({
+                'drift': drift(rows, {p['story'] for p in parts}),
                 'title': saga['name'], 'saga': saga, 'parts': parts, 'stickers': stickers,
                 'color': SAGA_COLORS[saga['id'] % len(SAGA_COLORS)],
                 'since': eastern(saga['first']), 'until': eastern(saga['last']),

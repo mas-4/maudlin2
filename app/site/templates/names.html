@@ -28,6 +28,7 @@
                         </li>
                     {% endmacro %}
                     <ol class="saga-timeline">{% for st in n.stories[:shown] %}{{ story(st) }}{% endfor %}</ol>
+                    {% if n.motifs %}<p class="name-told" title="Stories told about this name, from our motif index: a story people tell, not a claim that it's true">🧩 told about them: {% for m in n.motifs %}<a class="motif-chip small" href="{{ motif_href(m.id) }}">{{ m.name|e }} <span class="motif-seen">×{{ m.claims }}</span></a> {% endfor %}</p>{% endif %}
                     {% if n.stories|length > shown %}<details class="name-more"><summary>+{{ n.stories|length - shown }} more</summary>
                         <ol class="saga-timeline">{% for st in n.stories[shown:] %}{{ story(st) }}{% endfor %}</ol></details>{% endif %}
                 </div>

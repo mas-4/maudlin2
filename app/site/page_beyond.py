@@ -60,7 +60,15 @@ class BeyondPage:
             if rows:
                 directory.append({'kind': kind, 'emoji': emoji, 'heading': heading,
                                   'rows': sorted(rows, key=lambda r: r['name'].lower())})
+        try:  # each show's own page, where the motif index has enough of its claims (page_show)
+            from app.analysis import motif_web
+            from app.site.page_motif import shared
+            show_pages = {s: motif_web.show_slug(s) for s in shared()['web']['shows']}
+        except Exception as e:  # noqa: BLE001 - extra
+            logger.warning("Beyond: show pages: %s", e)
+            show_pages = {}
         self.template.write({
+            'show_pages': show_pages,
             'title': 'Beyond the front pages', 'items': items, 'directory': directory, 'kinds': KIND,
             'subject_counts': Counter(s for i in items for s in i['subjects']).most_common(),
             'subject_emoji': subjects.EMOJI, 'subject_label': subjects.label,

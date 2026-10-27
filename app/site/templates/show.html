@@ -1,0 +1,40 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <p class="story-page-crumb"><a href="beyond.html">← every show and newsletter</a></p>
+    <header class="story-hero show-page-hero">
+        <p class="story-kicker"><span>🎙️ What a show tells</span></p>
+        <h2 class="story-page-title">{{ sh.show|e }}</h2>
+        <ul class="story-stickers">
+            <li style="--sticker: {{ ink }}"><span class="sticker-emoji" aria-hidden="true">{{ {'left': '🫏', 'right': '🐘', 'center': '⚖️'}.get(sh.lean or '', '🎙️') }}</span><b>{{ (sh.lean or 'unrated')|upper }}</b><span>our grouping of the show</span></li>
+            <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🧩</span><b>{{ sh.claims }}</b><span>claims in our motif index</span></li>
+            <li style="--sticker: #00c2a8"><span class="sticker-emoji" aria-hidden="true">🗂️</span><b>{{ sh.motifs|length }}</b><span>motifs they came up in</span></li>
+        </ul>
+    </header>
+    <div class="rumor-warning" role="note">
+        <p class="rumor-warning-head">⚠️ Stories told, not claims that they're true.</p>
+        <p>What the show's hosts, guests, callers and the clips they play said, as claims in our words, filed by the
+            shape of the story. "Came up on" the show: told, reported or argued against. We don't yet mark which.</p>
+    </div>
+
+    {% if sh.signature %}
+        <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>✍️ Its signature</span></h2>
+        <p class="stage-sub">the motifs it tells far more than the other shows we follow do</p>
+        <p class="stage-notes">{% for m, name, z in sh.signature %}<a class="motif-chip" href="{{ motif_href(m) }}">🧩 {{ name|e }}</a> {% endfor %}</p>
+    {% endif %}
+
+    {% if neighbours %}
+        <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>👯 Tells the most alike</span></h2>
+        <p class="stage-sub">the shows whose stories overlap most with its own, whatever their lean</p>
+        <ul class="story-checks show-page-neighbours">{% for o, pct in neighbours %}<li><a class="show-chip tv-chip" href="{{ show_href(o) }}" style="--chip: {{ inks.get(leans[o] or '', '#b8b8c8') }}">🎙️ {{ o|e }}</a> <span class="court-when">{{ pct }}% alike{% if leans[o] %} · {{ leans[o] }}{% endif %}</span></li>{% endfor %}</ul>
+    {% endif %}
+
+    <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🧩 Its repertoire</span></h2>
+    <p class="stage-sub">every motif its claims came up in, the most first</p>
+    <p class="stage-notes">{% for m, name, n in repertoire %}<a class="motif-chip small" href="{{ motif_href(m) }}">🧩 {{ name|e }} <span class="motif-seen">×{{ n }}</span></a> {% endfor %}</p>
+
+    <h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🎙️ Lately on the show</span></h2>
+    <p class="stage-sub">its latest claims, in our words, with their motifs</p>
+    <ul class="story-checks motif-page-claims">{% for c in latest %}<li><span class="court-when">{{ c.date }}</span> {% if c.url %}<a href="{{ c.url|e }}">“{{ c.claim|e }}”</a>{% else %}“{{ c.claim|e }}”{% endif %}<br>{% for m, name in c.motifs %}<a class="motif-chip small" href="{{ motif_href(m) }}">🧩 {{ name|e }}</a> {% endfor %}</li>{% endfor %}</ul>
+    <p class="court-when motif-page-dates"><a href="about.html">what this is</a> · <a href="motifs.html#how">how the index works</a></p>
+{% endblock %}

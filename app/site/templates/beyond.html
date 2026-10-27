@@ -54,6 +54,7 @@
                 {% for r in group.rows %}
                     <li><span class="source-name" style="border-color: {{ (r.color or '#b8b8c8')|e }}">{% if r.home %}<a href="{{ r.home|e }}">{{ r.name|e }}</a>{% else %}{{ r.name|e }}{% endif %}</span>
                         {% if r.lean %}<span class="source-lean">{{ r.lean }}</span>{% endif %}
+                        {% if show_pages and r.name in show_pages %}<a class="motif-chip small" href="show-{{ show_pages[r.name] }}.html" title="The stories it tells, from our motif index">🧩 what it tells</a>{% endif %}
                         <span class="source-use">{{ r.use }}</span>
                         {% if r.about %}<span class="source-about">{{ r.about|e }}</span>{% endif %}</li>
                 {% endfor %}

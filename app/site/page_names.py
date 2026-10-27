@@ -15,6 +15,7 @@ NOW_SLACK = td(minutes=30)
 
 
 SHOWN = 3  # a name's stories shown; the rest folded
+MOTIFS = 6  # the stories told about a name shown on its card, the most told first
 WIDE = 15  # outlets: a name in one story today is listed if that story reached this many
 
 
@@ -50,6 +51,15 @@ class NamesPage:
             rated = e['left'] + e['center'] + e['right']
             e['shares'] = {s: round(100 * e[s] / rated, 1) if rated else 0 for s in ('left', 'center', 'right')}
             e['text'] = ' '.join([e['name']] + [st['label'] or '' for st in e['stories']]).lower()
+        try:  # the stories told about each name, from the motif index (motif_web.people)
+            from app.analysis import motif_web
+            from app.site.page_motif import shared
+            told = motif_web.people(shared()['web']['rows'], [e['name'] for e in found], entities.load_aliases()['aliases'])
+        except Exception as err:  # noqa: BLE001 - extra
+            logger.warning("Names page: motifs: %s", err)
+            told = {}
+        for e in found:
+            e['motifs'] = told.get(e['name'], [])[:MOTIFS]
         found.sort(key=lambda e: (-e['outlets'], -len(e['stories']), e['name']))
         self.template.write({'title': "Who's in the news", 'names': found, 'shown': SHOWN,
                              'today': datetime_eastern_today()})

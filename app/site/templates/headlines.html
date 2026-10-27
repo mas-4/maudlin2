@@ -123,6 +123,13 @@
                 {% for m in retold.motifs %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
             </div>
         {% endif %}
+        {% set told_as = told_as_of.get(cluster['cluster']) if told_as_of is defined else none %}
+        {% if told_as %}
+            <div class="story-shows story-told-as">
+                <a class="story-shows-label" href="{% if story_of is defined and cluster['cluster'] in story_of %}story-{{ story_of[cluster['cluster']]|e }}.html#told-as{% else %}motifs.html{% endif %}" title="The stories this news is being told as, from the motif index: on the shows (by their lean), online and by fact-checkers">🧩 told as</a>
+                {% for m in told_as %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{{ m.genre|e }}">🧩 {{ m.name|e }}{% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% if m.sides[side] %} <span class="told-as-side told-as-{{ side }}" title="{{ m.sides[side]|join(', ')|e }}">{{ emoji }}{{ m.sides[side]|length }}</span>{% endif %}{% endfor %}</a>{% endfor %}
+            </div>
+        {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
             <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
         {% endif %}
@@ -177,6 +184,7 @@
             <button data-cloud="size" class="active">📏 biggest first</button>
             <button data-cloud="side">⚖️ left to right</button>
             <button data-cloud="spice" title="{{ spicy_tip|e }}">🌶️ plain to spicy</button>
+            {% if motif_cloud %}<button data-cloud="motifs" title="The stories being told this week, from our motif index: bigger = told by more shows and people online, color = which side's shows told it (blue left, red right, striped both). Poke one to open it.">🧩 stories told</button>{% endif %}
         </div>
         <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Poke (click or tap) a word to see how outlets are using it, and the feeling its headlines stir.">
             <span class="key-part"><span class="key-big">BIGGER</span> <span>= more outlets</span></span>
@@ -267,7 +275,9 @@
             const panel = document.getElementById('cloud-detail');
             if (!panel.hidden && !panel.contains(ev.target) && !ev.target.closest('.cloud-word')) panel.hidden = true;
         });
-        const WORDS = {{ cloud_words|tojson }};
+        let WORDS = {{ cloud_words|tojson }};
+        const NEWS_WORDS = WORDS;  // the cloud's own words; "🧩 stories told" swaps in the week's motifs
+        const MOTIF_WORDS = {{ (motif_cloud or [])|tojson }};
         // Lay out the cloud for the space it has: wide and short on desktop, taller than wide on a phone. Word sizes
         // follow the canvas area, and the cloud redraws when the window is resized.
         // The window's width without its scrollbar, for the edge-to-edge cloud. Watched rather than read once: the
@@ -605,7 +615,7 @@
                 });
                 // Moving a focused element drops its focus, so give it back
                 g.addEventListener('focus', () => { if (svg.lastElementChild !== g) { surface(); g.focus({preventScroll: true}); } });
-                const open = () => showWord(d);
+                const open = () => { if (d.url) location.href = d.url; else showWord(d); };  // a motif opens its page
                 g.addEventListener('click', open);
                 g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
             }
@@ -675,7 +685,11 @@
                 const button = ev.target.closest('button');
                 if (!button) return;
                 document.querySelectorAll('.cloud-sort button').forEach((b) => b.classList.toggle('active', b === button));
-                arrangeCloud(button.dataset.cloud);
+                const mode = button.dataset.cloud;
+                // "🧩 stories told" draws a different set of words; back from it, the news words are drawn again
+                const words = mode === 'motifs' ? MOTIF_WORDS : NEWS_WORDS;
+                if (words !== WORDS) { WORDS = words; cloudMode = mode; document.getElementById('cloud-detail').hidden = true; drawCloud(); }
+                else arrangeCloud(mode);
             });
             let lastWidth = document.getElementById('cloud').clientWidth, timer;
             window.addEventListener('resize', () => {

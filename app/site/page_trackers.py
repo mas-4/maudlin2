@@ -35,8 +35,8 @@ FOLKLORE = [
      'about': "What's told: retold online, told on the shows, and examined by fact-checkers, read for its shape."},
     {'href': 'motifs.html', 'emoji': '🧩', 'name': 'Motif index',
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
-    {'href': 'motif-map.html', 'emoji': '🕸️', 'name': 'Motif map',
-     'about': 'The motif index as a map: which motifs are kinds of which, which go together.'},
+    {'href': 'motif-map.html', 'emoji': '↔️', 'name': 'The aisle',
+     'about': "The motif map: every story placed by which side's shows tell it, and the answers across the aisle."},
 ]
 
 ABOUT = [
@@ -44,6 +44,8 @@ ABOUT = [
      'about': "What this site is, who makes it, and what it won't do."},
     {'href': 'glossary.html', 'emoji': '🛠️', 'name': 'How it works',
      'about': 'What every measure means and how we make it.'},
+    {'href': 'lab.html', 'emoji': '🧪', 'name': 'The Lab',
+     'about': 'Every experiment on how the models read the stories, named after folklore, with what it found.'},
     {'href': 'methods.html', 'emoji': '📓', 'name': 'Methods log',
      'about': 'Every change to how we measure, with the mistakes we caught, day by day.'},
     {'href': 'feed.xml', 'emoji': '📡', 'name': 'RSS feed', 'about': 'The current stories, for your feed reader.'},

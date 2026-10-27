@@ -55,6 +55,13 @@
         </div>
     </section>
 
+    {% if drift %}
+    <section class="story-stage" id="drift">
+        {{ banner('🧩', "How it's been told", 'the stories under the saga, day by day, from our motif index (✨ new to the saga that day)', '#8a5cff') }}
+        <ul class="story-checks saga-drift">{% for d in drift %}<li><span class="court-when">{{ d.day }}</span> {% for m in d.motifs %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.n }} teller{{ '' if m.n == 1 else 's' }} that day">{% if m.new %}✨ {% endif %}{{ m.name|e }} <span class="motif-seen">×{{ m.n }}</span></a> {% endfor %}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
     <section class="story-stage">
         {{ banner('🧶', 'Retelling', 'what people online made of it, part by part', '#8a5cff') }}
         {% if retellings %}

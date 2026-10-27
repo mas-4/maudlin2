@@ -1,0 +1,74 @@
+/* The motif index across the site (Oct 27): "told as" on story cards, how a story's being told, saga drift, names, shows, the Lab */
+
+/* "🧩 told as" on a story card: each motif with how many left and right shows told it */
+.told-as-side {
+    font-size: 0.8em;
+    margin-left: 0.15em;
+    white-space: nowrap;
+}
+
+.told-as-left { color: #2456c9; }
+.told-as-right { color: #c41d3a; }
+
+/* A story page's "How it's being told" card */
+.story-told-list li {
+    margin-bottom: 0.7em;
+    line-height: 1.5;
+}
+
+.story-motif-words .quote-chip {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* A saga's telling, day by day */
+.saga-drift li {
+    margin-bottom: 0.5em;
+    line-height: 1.6;
+}
+
+/* The stories told about a name, on its card */
+.name-told {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0.4em 0;
+}
+
+/* A show's page */
+.show-page-neighbours li {
+    margin-bottom: 0.4em;
+}
+
+/* Told against checked, on Folklore */
+.folk-checking {
+    margin: 0.8em 0;
+}
+
+/* The Lab */
+.lab-intro {
+    max-width: 52em;
+}
+
+.lab-key {
+    margin: 0.4em 0 1em;
+}
+
+.lab-question {
+    font-size: 1em;
+    line-height: 1.45;
+    margin: 0.3em 0;
+}
+
+.lab-result {
+    font-size: 0.9em;
+    line-height: 1.45;
+    color: #444;
+    background: color-mix(in srgb, #00c2a8 10%, white);
+    border-radius: 8px;
+    padding: 0.3em 0.6em;
+}
+
+.lab-card.lab-not-kept,
+.lab-card.lab-planned {
+    opacity: 0.85;
+}

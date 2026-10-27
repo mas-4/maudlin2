@@ -1,0 +1,92 @@
+/* The aisle (Oct 27): the motif map as the stories each side tells, left to right */
+.aisle-figure {
+    margin: 0.8em 0;
+    overflow-x: auto;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #8a5cff;
+    padding: 6px;
+}
+
+.aisle-svg {
+    display: block;
+    width: 100%;
+    min-width: 680px;  /* on a phone it scrolls sideways inside its frame, the page doesn't */
+    height: auto;
+}
+
+.aisle-figure figcaption {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+    padding: 0.3em 0.5em 0.2em;
+}
+
+.aisle-mid {
+    stroke: #1f1f2e;
+    stroke-width: 2;
+    stroke-dasharray: 6 6;
+    opacity: 0.4;
+}
+
+.aisle-end {
+    font: 700 15px 'Comic Neue', 'Comic Sans MS', cursive;
+    fill: #555;
+}
+
+.aisle-end-left { fill: #2456c9; }
+.aisle-end-right { fill: #c41d3a; }
+
+.aisle-dot circle {
+    stroke: #1f1f2e;
+    stroke-width: 1.5;
+    opacity: 0.8;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.aisle-dot:hover circle,
+.aisle-dot.picked circle {
+    opacity: 1;
+    stroke-width: 3;
+}
+
+.aisle-dot.dim circle,
+.aisle-label.dim {
+    opacity: 0.08;
+}
+
+.aisle-label {
+    font: 700 13px 'Comic Neue', 'Comic Sans MS', cursive;
+    fill: #1f1f2e;
+    paint-order: stroke;
+    stroke: white;
+    stroke-width: 4px;
+    cursor: pointer;
+}
+
+.aisle-arc {
+    fill: none;
+    stroke: #ff4fa3;
+    stroke-width: 1.5;
+    opacity: 0.35;
+}
+
+.aisle-arc.lit {
+    stroke-width: 3;
+    opacity: 1;
+}
+
+.aisle-card {
+    background: color-mix(in srgb, #8a5cff 8%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #ffc400;
+    padding: 0.5em 1em 0.7em;
+    margin: 0.6em 0 1em;
+}
+
+.aisle-card h3 {
+    font: 700 1.3em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.2em 0;
+}
