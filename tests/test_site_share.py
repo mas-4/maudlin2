@@ -12,12 +12,12 @@ from app.utils.config import Config
 def test_a_page_address_is_the_one_netlify_serves():
     assert common.page_url(os.path.join(Config.build, 'index.html')) == 'https://bignews.day/'
     assert common.page_url(os.path.join(Config.build, 'story-991.html')) == 'https://bignews.day/story-991'
-    assert common.page_url(os.path.join(Config.build, 'motif-M619.html')) == 'https://bignews.day/motif-M619'
+    assert common.page_url(os.path.join(Config.build, 'motif-m619.html')) == 'https://bignews.day/motif-m619'
 
 
 def test_a_motif_link_goes_to_its_page_or_to_the_index_when_it_has_none(monkeypatch):
     monkeypatch.setitem(common.j2env.globals, 'motif_pages', {'M619'})
-    assert common.motif_href('M619') == 'motif-M619.html'
+    assert common.motif_href('M619') == 'motif-m619.html'  # Netlify lowercases addresses
     assert common.motif_href('M742') == 'motifs.html'  # a watch list, or a motif with nothing shown: no page
 
 

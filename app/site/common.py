@@ -55,7 +55,8 @@ def motif_href(motif_id: str) -> str:
     """A motif's own page (page_motif.py), or the index page for one without a page this build (the build lists them
     in the 'motif_pages' global before any page renders)"""
     pages = j2env.globals.get('motif_pages')
-    return f'motif-{motif_id}.html' if pages is None or motif_id in pages else 'motifs.html'
+    # lowercase: Netlify serves addresses lowercased and redirects /motif-M619 to /motif-m619 (Oct 27)
+    return f'motif-{motif_id.lower()}.html' if pages is None or motif_id in pages else 'motifs.html'
 
 
 def calculate_xkeyscore(df):

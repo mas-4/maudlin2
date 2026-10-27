@@ -550,7 +550,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         assert 'Only six people' not in html and '1 more told by fewer' in html
         assert 'the kept king' not in html  # the labeler's own motif phrase isn't shown; the index entry is
         assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
-        assert 'href="motif-M007.html"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
+        assert 'href="motif-m007.html"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
         assert 'a model guess nobody checked' not in html  # only motifs a person verified reach the site
         # the story's cast (villain, victim, hero) was dropped Oct 7, even from old reports that still carry it
         assert '🦹' not in html and '🫂' not in html and 'the president' not in html and 'role-' not in html
