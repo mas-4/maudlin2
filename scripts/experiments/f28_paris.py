@@ -7,6 +7,10 @@ ones: the first lean against Gemma (it didn't pick them at the time), the second
 
 The paper is ~/maudlin-data/papers/judgement-of-paris.md (hypotheses and the decision rule written before the run).
 
+Oct 27, the second asking: Clef, Clef Flash and Nimble v3 are decision models (no chat), so each scores the twelve
+shown motifs one at a time, the Norns' question and state, and picks those at or above a threshold set on the other
+half of the claims to match Gemma's number of picks (the paper's amendment).
+
     f28_paris.py ask       under the GPU lease: the prompts built once, then each model in turn; resumes
     f28_paris.py report    found (overall, hand-made, model-made), wrong, none, seconds a claim, paired intervals
                            against Gemma, the decision"""
@@ -31,6 +35,8 @@ from app.analysis import motif_index as mi  # noqa: E402
 DB = os.path.join(harness.EXP, 'f28_paris.sqlite')
 GEMMA = 'gemma4:26b'
 MODELS = [GEMMA, 'clef:latest', 'clef-flash:latest', 'nimble-v3:latest']
+DECIDERS = MODELS[1:]  # decision models: a probability per claim and motif (/v1/systemone), not a pick
+MOST = 3  # a decider's pick: the shown motifs at or above its threshold, the highest three at most
 SAMPLE, SEED, SHOWN, ROUND = 600, 28, 12, 8
 BOOTS = 1000
 
@@ -42,6 +48,8 @@ def connect() -> sqlite3.Connection:
     con.execute('create table if not exists answers (model text, key text, picks text, reason text, '
                 'primary key (model, key))')
     con.execute('create table if not exists timing (model text, claims integer, seconds real, at text)')
+    con.execute('create table if not exists scores (model text, key text, motif text, p real, '
+                'primary key (model, key, motif))')
     return con
 
 
@@ -81,11 +89,52 @@ def build(con):
     print(f'Paris: {len(keys)} claims, {len(hand)} with a hand-made filing', flush=True)
 
 
+def state(entries: dict, k: str, claim: str, m: str) -> str:
+    """The Norns' state for a decision model: the motif, its note, its last three claims but this one, the claim"""
+    e = entries[m]
+    own = [c['claim'] for c in e.get('claims', []) if mi.key(c['claim']) != k][-3:]
+    return (f"Motif: {e['name']}\nWhat it covers: {e.get('note') or '(no note yet)'}\nClaims filed under it:\n"
+            + '\n'.join(f'- {c[:300]}' for c in own) + f'\n\nNew claim: {claim}')
+
+
+def score(con, model: str, rows: dict, entries: dict):
+    """A decision model's probability for each claim and each motif shown it; resumes"""
+    from j1_jury import decide
+    done = {k for (k,) in con.execute('select distinct key from scores where model = ?', (model,))}
+    todo = [k for k in sorted(rows) if k not in done]
+    print(f'Paris: {model}, {len(done)} scored already, {len(todo)} to score', flush=True)
+    for start in range(0, len(todo), ROUND):
+        part = [(k, m) for k in todo[start:start + ROUND] for m in rows[k][0]]
+
+        def one(km, model=model):
+            k, m = km
+            try:
+                return decide(model, {'state': state(entries, k, rows[k][2], m)})
+            except Exception as e:  # noqa: BLE001 - counted, the claim tried again next run
+                print(f'Paris: {model} failed on a pair: {e}', flush=True)
+                return None
+        t = time.time()
+        got = llm.parallel(one, part)
+        took = time.time() - t
+        full = {k for k in todo[start:start + ROUND]
+                if all(p is not None for (kk, _), p in zip(part, got) if kk == k)}
+        for (k, m), p in zip(part, got):
+            if k in full:
+                con.execute('insert or replace into scores values (?, ?, ?, ?)', (model, k, m, p))
+        con.execute('insert into timing values (?, ?, ?, ?)', (model, len(full), took, datetime.now().isoformat(timespec='seconds')))
+        con.commit()
+        print(f'Paris: {model} {min(start + ROUND, len(todo))}/{len(todo)} ({took / max(len(full), 1):.1f} s a claim)', flush=True)
+
+
 def ask():
     con = connect()
     build(con)
-    rows = {k: (json.loads(s), p) for k, s, p in con.execute('select key, shown, prompt from prompts')}
-    for model in MODELS:  # one at a time, so each loads once
+    rows = {k: (json.loads(s), p, c) for k, s, p, c in con.execute('select key, shown, prompt, claim from prompts')}
+    entries = None
+    for model in DECIDERS:
+        entries = entries or mi.load()['entries']
+        score(con, model, rows, entries)
+    for model in [GEMMA]:  # Gemma's picks, as production asks (kept from Oct 22; resumes)
         done = {k for (k,) in con.execute('select key from answers where model = ?', (model,))}
         todo = [k for k in sorted(rows) if k not in done]
         print(f'Paris: {model}, {len(done)} asked already, {len(todo)} to ask', flush=True)
@@ -93,7 +142,7 @@ def ask():
             part = todo[start:start + ROUND]
 
             def one(k, model=model):
-                shown, prompt = rows[k]
+                shown, prompt, _ = rows[k]
                 schema = {"type": "object", "properties": {
                     "reason": {"type": "string", "maxLength": 1000},
                     "fits": {"type": "array", "maxItems": 3,
@@ -137,23 +186,53 @@ def rates(m: np.ndarray) -> np.ndarray:
                      s[7] / max(s[8], 1)])
 
 
+def picks_at(scores: dict, gemma: dict, fixed: float | None = None) -> dict:
+    """A decider's picks per claim: the shown motifs scored at or above a threshold, the highest MOST. The threshold is
+    `fixed`, or set on the other half of the claims (two folds by claim) to give as many picks as Gemma made there"""
+    keys = sorted(scores)
+    folds = [keys[0::2], keys[1::2]]
+    out = {}
+    for n, half in enumerate(folds):
+        other = folds[1 - n]
+        if fixed is not None:
+            t = fixed
+        else:
+            want = sum(len(gemma.get(k, [])) for k in other)
+            ps = sorted((p for k in other for p in sorted(scores[k].values(), reverse=True)[:MOST]), reverse=True)
+            t = ps[want - 1] if 0 < want <= len(ps) else (ps[-1] if ps else 0.5)
+        for k in half:
+            ranked = sorted(scores[k].items(), key=lambda kv: -kv[1])
+            out[k] = [m for m, p in ranked if p >= t][:MOST]
+    return out
+
+
 def report():
     con = connect()
     S, T, H = {}, {}, {}
     for k, s, t, h in con.execute('select key, shown, truth, hand from prompts'):
         S[k], T[k], H[k] = json.loads(s), json.loads(t), json.loads(h)
-    A = {m: {k: json.loads(p) for k, p in con.execute('select key, picks from answers where model = ?', (m,))} for m in MODELS}
-    keys = sorted(k for k in S if all(k in A[m] for m in MODELS))
-    sec = {m: (lambda r: r[1] / max(r[0], 1))(con.execute('select sum(claims), sum(seconds) from timing where model = ?',
-                                                            (m,)).fetchone()) for m in MODELS}
-    M = {m: measures(keys, A[m], S, T, H) for m in MODELS}
+    A = {GEMMA: {k: json.loads(p) for k, p in con.execute('select key, picks from answers where model = ?', (GEMMA,))}}
+    for m in DECIDERS:
+        sc = {}
+        for k, mo, p in con.execute('select key, motif, p from scores where model = ?', (m,)):
+            sc.setdefault(k, {})[mo] = p
+        A[m] = picks_at(sc, A[GEMMA])
+        A[m + ' at 0.5'] = picks_at(sc, A[GEMMA], fixed=0.5)
+    shown_models = list(A)
+    keys = sorted(k for k in S if all(k in A[m] for m in shown_models))
+    if not keys:
+        harness.note('F28 Paris: no claim answered by every model yet; nothing to compare')
+        return
+    sec = {m: (lambda r: r[1] / max(r[0] or 0, 1))(con.execute('select sum(claims), sum(seconds) from timing where model = ?',
+                                                                 (m.removesuffix(' at 0.5'),)).fetchone()) for m in shown_models}
+    M = {m: measures(keys, A[m], S, T, H) for m in shown_models}
     hand_n, model_n = int(M[GEMMA][:, 6].sum()), int(M[GEMMA][:, 8].sum())
     harness.note(f'F28 Paris: {len(keys)} claims answered by all four ({sum(1 for k in keys if H[k])} with a hand-made '
                  f'filing); among the twelve shown, {hand_n} hand-made filings and {model_n} model-made')
     rng = np.random.default_rng(0)
     draws = [rng.integers(0, len(keys), len(keys)) for _ in range(BOOTS)]
-    R = {m: rates(M[m]) for m in MODELS}
-    for m in MODELS:
+    R = {m: rates(M[m]) for m in shown_models}
+    for m in shown_models:
         f, w, nn, fh, fm = R[m]
         line = (f'F28 {m}: found {f:.1%}, wrong {w:.1%}, none {nn:.1%}, found hand-made {fh:.1%}, found model-made '
                 f'{fm:.1%}, {sec[m]:.1f} s a claim')
