@@ -35,6 +35,8 @@ MODELS = {
     'bge-m3': ('', ''),
     'bge-large': ('Represent this sentence for searching relevant passages: ', ''),
     'snowflake-arctic-embed2': ('query: ', ''),
+    # Oct 27: Ollama's newer build of it, pulled under its own tag beside the one filing uses, to compare first
+    'snowflake-arctic-embed2-new': ('query: ', ''),
     'granite-embedding:278m': ('', ''),
 }
 ONLY = [m for m in os.environ.get('ONLY', '').split(',') if m]
