@@ -736,8 +736,8 @@
                         <li class="{{ 'saga-now' if part.now else 'saga-earlier' }}"><span class="saga-bead" aria-hidden="true">{{ n }}</span>
                             {% if part.now %}<a class="saga-part" href="{{ card_href(part.cluster) }}">{{ part.title }}</a>
                             {% else %}<span class="saga-past" title="Off the front pages now">{{ part.title }}</span>{% endif %}
-                            <span class="trend-posts">{% if part.now %}🔴 on the front pages · {% endif %}{% if part.outlets %}{{ part.outlets }} outlets · {% endif %}{{ part.age }} ago</span>
-                            {% for f in part.feelings %}<span title="{{ f.name|e }}">{{ f.emoji }}</span>{% endfor %}
+                            <span class="trend-posts">{% if part.now %}🔴 on the front pages · {% endif %}{% if part.outlets %}{{ part.outlets }} outlet{{ '' if part.outlets == 1 else 's' }} · {% endif %}{{ part.age }} ago</span>
+                            {% for f in part.feelings %}<span class="saga-feeling" title="The feeling its headlines stir most">{{ f.emoji }} {{ f.name|e }}</span>{% endfor %}
                         </li>
                     {% endmacro %}
                     {# runs of parts that have left the front pages fold away (page_headlines.part_runs) #}

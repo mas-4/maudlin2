@@ -989,7 +989,7 @@ class HeadlinesPage:
             median_age = ages[len(ages) // 2]
             hrefs[-1] += (f'<p class="story-status">{live} of {len(cluster["data"])} outlets still showing it'
                           f' · typically first seen {age_text(median_age)} ago'
-                          + (f' · <span class="fast-break">🚀 {cluster["speed"]} in the first hour</span>'
+                          + (f'<span class="status-speed"> · <span class="fast-break">🚀 {cluster["speed"]} in the first hour</span></span>'
                              if (cluster.get('speed') or 0) >= FAST_BREAK else '') + '</p>')
             hrefs.append(SORT_BAR)
             chips = []

@@ -23,7 +23,17 @@ WORD = re.compile(r"[a-z0-9][a-z0-9'’-]*[a-z0-9]|[a-z0-9]")
 FILLER = set(stopwords.words('english')) | {
     'says', 'say', 'said', 'new', 'us', 'u.s', 'report', 'reports', 'amid', 'could', 'would', 'may', 'video',
     'watch', 'live', 'update', 'updates', 'news', 'latest', 'per', 'via', 'gets', 'get', 'set', 'one', 'two',
+    # light verbs, whose phrase is the headline's grammar, not its framing ("judge puts" a hold on it, Oct 27)
+    'puts', 'put', 'takes', 'take', 'makes', 'make', 'gives', 'give', 'goes', 'go', 'comes', 'come',
 }
+# Dotted abbreviations written as one word: "D.C. golf" read as "d", "c", "golf" made a phrase "c golf" for the left
+# while the right's "DC golf" made "dc golf", one place in two spellings, each side's alone (Oct 27)
+
+
+def words(title: str) -> list[str]:
+    text = title.lower().replace('’', "'")
+    text = re.sub(r'\b(?:[a-z]\.){2,}', lambda m: m.group(0).replace('.', ''), text)  # d.c. -> dc, u.s. -> us
+    return WORD.findall(text)
 
 # Forms a stemmer doesn't fold together but headlines swap freely
 FOLD = {'dead': 'die', 'death': 'die'}  # never 'kill': killed vs. died is framing
@@ -36,8 +46,8 @@ def stem(word: str) -> str:
 
 
 def bigrams(title: str) -> set[str]:
-    words = WORD.findall(title.lower().replace('’', "'"))
-    return {f'{a} {b}' for a, b in zip(words, words[1:]) if a not in FILLER and b not in FILLER}
+    w = words(title)
+    return {f'{a} {b}' for a, b in zip(w, w[1:]) if a not in FILLER and b not in FILLER}
 
 
 def side(row: dict) -> str | None:
@@ -78,7 +88,7 @@ def side_phrases(rows: list[dict]) -> dict:
         if s is None:
             continue
         outlets[s].add(row['agency'])
-        vocab[s] |= {stem(word) for word in WORD.findall(row['title'].lower().replace('’', "'"))}
+        vocab[s] |= {stem(word) for word in words(row['title'])}
         for phrase in bigrams(row['title']):
             used[phrase][s].add(row['agency'])
     if min(len(outlets['left']), len(outlets['right'])) < MIN_SIDE:

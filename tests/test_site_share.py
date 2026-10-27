@@ -89,3 +89,14 @@ def test_folklore_leaves_out_appeals_for_money_but_not_political_ones():
     assert page_folklore.appeal({'narrative': "A friend's animal charity needs donations for sick pets.", 'politics': False})
     assert not page_folklore.appeal({'narrative': 'Campaigns spam texts asking for donations.', 'politics': True})
     assert not page_folklore.appeal({'narrative': 'Jay-Z will headline the Super Bowl.', 'politics': False})
+
+
+def test_one_side_wording_reads_dotted_abbreviations_as_one_word():
+    from app.analysis.wording import bigrams
+    assert bigrams('Judge blocks D.C. golf course work') == bigrams('Judge blocks DC golf course work')
+    assert 'c golf' not in bigrams('Judge blocks D.C. golf course work')
+
+
+def test_one_side_wording_leaves_out_light_verbs():
+    from app.analysis.wording import bigrams
+    assert not any('puts' in p for p in bigrams('Judge puts brakes on tree removal'))

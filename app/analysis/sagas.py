@@ -46,7 +46,8 @@ WORD = re.compile(r"[A-Za-z][A-Za-z']{3,}")  # hyphens split words: "UK-Iranian"
 
 NAME_PROMPT = """These headlines are parts of one ongoing news story. Name the story in 2 to 6 words, the way a \
 newspaper would label a running story (for example "Cornell fraternity rape case" or "Russia-Ukraine peace talks"). \
-Plain words, no quotes, no dates.
+Plain words, no quotes, no dates. Neutral: no word that takes a side or passes judgment ("scandal", "slams", \
+"attacks" for words) unless every headline says it, and true of every headline listed, not only the loudest.
 
 {headlines}"""
 NAME_SCHEMA = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}

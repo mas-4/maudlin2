@@ -191,3 +191,16 @@
     margin: 0 0.2em 0.35em 0;
     font-size: 0.9em;
 }
+
+/* A saga part's feeling, named so it reads on a phone too (a lone emoji only explained itself on hover) */
+.saga-feeling {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+    white-space: nowrap;
+    margin-left: 0.3em;
+}
+
+/* A top story's card already says how fast it broke, above; its outlet list needn't say it again */
+.top-story-cards .status-speed {
+    display: none;
+}
