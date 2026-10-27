@@ -1,0 +1,70 @@
+{% extends "page.html" %}
+
+{% macro show_chips(shows) %}{% for t in shows %}{% if t.url %}<a class="show-chip tv-chip motif-page-show" href="{{ t.url|e }}" style="--chip: {{ t.ink|e }}" title="{{ t.lean|e }}{% if t.date %} · {{ t.date|e }}{% endif %}">🎙️ {{ t.show|e }}</a>{% else %}<span class="show-chip tv-chip motif-page-show" style="--chip: {{ t.ink|e }}" title="{{ t.lean|e }}{% if t.date %} · {{ t.date|e }}{% endif %}">🎙️ {{ t.show|e }}</span>{% endif %} {% endfor %}{% endmacro %}
+
+{% block content %}
+    <p class="story-page-crumb"><a href="motifs.html">← the whole motif index</a></p>
+    <header class="story-hero motif-page-hero">
+        <p class="story-kicker"><span>🧩 BND Motif Index · {{ e.id }}</span></p>
+        <h2 class="story-page-title">{{ e.name|e }}</h2>
+        {% if e.note %}<p class="motif-page-note">{{ e.note|e }}</p>{% endif %}
+        <p class="folk-sources">{% if e.genre %}<a class="folk-genre" href="motifs.html#genre={{ e.genre|urlencode }}" title="{{ genre_gloss|e }}">{{ genre_emoji.get(e.genre, '') }} {{ e.genre|e }}</a>{% endif %}{% for g in e.groups %}<a class="folk-genre motif-group-tag" href="motifs.html#group={{ g.id|e }}" title="The motifs that go with it">🗂️ {{ g.name|e }}</a>{% endfor %}</p>
+        <ul class="story-stickers">
+            <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🧩</span><b>{{ e.count }}</b><span>claim{{ '' if e.count == 1 else 's' }} filed under it</span></li>
+            {% for k in ('left', 'center', 'right') %}{% if counts[k] %}<li style="--sticker: {{ inks[k] }}"><span class="sticker-emoji" aria-hidden="true">🎙️</span><b>{{ counts[k] }}</b><span>{{ k }} show{{ '' if counts[k] == 1 else 's' }} it came up on</span></li>{% endif %}{% endfor %}
+            {% if up.posts %}<li style="--sticker: #ff4fa3"><span class="sticker-emoji" aria-hidden="true">🧶</span><b>{{ up.posts }}</b><span>claim{{ "" if up.posts == 1 else "s" }} retold online</span></li>{% endif %}
+            {% if up.checkers %}<li style="--sticker: #ffc400"><span class="sticker-emoji" aria-hidden="true">🔎</span><b>{{ up.checkers|length }}</b><span>fact-checker{{ '' if up.checkers|length == 1 else 's' }}</span></li>{% endif %}
+        </ul>
+    </header>
+    <div class="rumor-warning" role="note">
+        <p class="rumor-warning-head">⚠️ A story people tell, not a claim that it's true.</p>
+        <p>A motif is <b>the shape of a story as its tellers tell it</b>, named the way a folklorist names a tale type, so
+            the same story told about other people, by the other side or in another year lands in the same place. Some
+            of the claims below are true, many are false, and a motif is the same whether people tell the story or
+            argue against it.</p>
+    </div>
+
+    {% if e.rests_on or e.under or related %}
+        <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>🪜 Its family</span></h2>
+        <p class="stage-sub">what it rests on, what rests on it, and the motifs that answer it</p>
+        <div class="stage-notes motif-page-family">
+            {% if e.rests_on %}<p title="This motif only makes sense given these: a kind of them, or a case, argument or figure that tells them">🪜 rests on {% for p in e.rests_on %}<a class="motif-chip" href="{{ motif_href(p.id) }}">🧩 {{ p.name|e }}</a> {% endfor %}</p>{% endif %}
+            {% if e.under %}<p title="Motifs that only make sense given this one">⤵️ under it: {% for p in e.under %}<a class="motif-chip" href="{{ motif_href(p.id) }}">🧩 {{ p.name|e }}</a> {% endfor %}</p>{% endif %}
+            {% for r in related if r.answer %}{% if loop.first %}<p>↔️ answers and mirrors:</p><ul class="motif-page-answers">{% endif %}
+                <li><a class="motif-chip" href="{{ motif_href(r.id) }}">🧩 {{ r.name|e }}</a> <span class="court-when">{{ r.note|e }}</span></li>
+            {% if loop.last %}</ul>{% endif %}{% endfor %}
+            {% for r in related if not r.answer %}{% if loop.first %}<p>🔗 goes with: {% endif %}<a class="motif-chip small" href="{{ motif_href(r.id) }}"{% if r.note %} title="{{ r.note|e }}"{% endif %}>🧩 {{ r.name|e }}</a> {% if loop.last %}</p>{% endif %}{% endfor %}
+        </div>
+    {% endif %}
+
+    {% if counts.left or counts.center or counts.right %}
+        <h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🎙️ Who it came up with</span></h2>
+        <p class="stage-sub">the shows we follow where its claims came up, by the show's lean</p>
+        <div class="motif-page-sides">
+            {% for k in ('left', 'center', 'right') %}
+                <div class="motif-page-side" style="--side: {{ inks[k] }}">
+                    <h4>{{ {'left': '🫏 left', 'center': '⚖️ center', 'right': '🐘 right'}[k] }} <span class="motif-seen">{{ counts[k] }}</span></h4>
+                    {% if up.shows[k] %}<p>{% for s in up.shows[k] %}<span class="show-chip tv-chip motif-page-show" style="--chip: {{ inks[k] }}">🎙️ {{ s|e }}</span> {% endfor %}</p>
+                    {% else %}<p class="court-when">🦗 none of our {{ k }} shows, so far</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <p class="table-intro">"Came up on" means one of its claims was heard on the show: told, reported or argued
+            against. We don't yet mark which. Show leans are our own grouping of the shows we transcribe.</p>
+    {% endif %}
+
+    <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🧶 Its claims</span></h2>
+    <p class="stage-sub">what's been told in this shape, newest first, in our words, with where each was heard</p>
+    <ul class="story-checks motif-claims motif-page-claims">
+        {% for c in claims %}
+            <li><span class="court-when">{{ c.date }}</span> “{{ c.claim|e }}”
+                {% if c.source == 'shows' %}{% if c.shows %}<br>{{ show_chips(c.shows) }}{% else %}<span class="court-when">🎙️ on the shows</span>{% endif %}
+                {% elif c.source == 'narrative' %}<span class="court-when">🧶 people online</span>
+                {% elif c.source == 'Focus Group' %}<span class="court-when">🗳️ voters in The Focus Group</span>
+                {% elif c.ref and c.ref.startswith('http') %}<a class="court-when" href="{{ c.ref|e }}">🔎 {{ c.source|e }}</a>
+                {% else %}<span class="court-when">{{ c.source|e }}</span>{% endif %}</li>
+        {% endfor %}
+        {% if e.count > claims|length %}<li class="court-when">and {{ e.count - claims|length }} older, on <a href="motifs.html#{{ e.id|e }}">the index page</a></li>{% endif %}
+    </ul>
+    <p class="court-when motif-page-dates">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %} · <a href="about.html">what this is</a> · <a href="motifs.html#how">how the index works</a></p>
+{% endblock %}

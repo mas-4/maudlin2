@@ -1,0 +1,44 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <header class="story-hero about-hero">
+        <p class="story-kicker"><span>👋 About bignews.day</span></p>
+        <h2 class="story-page-title">The news, and the stories people tell about it</h2>
+    </header>
+
+    <div class="about-body">
+        <h3>📰 What it is</h3>
+        <p>Every hour we read the front pages of 145 news sites, from far left to far right, and group their headlines
+            into stories: who's running each one, how prominently, in what mood, and for how long. We follow each story
+            on through TV captions, radio newscasts, over a hundred podcasts and shows across the spectrum, what people
+            retell on Bluesky and Mastodon, and what fact-checkers make of it.</p>
+
+        <h3>🧩 What's different</h3>
+        <p>Underneath the news is a smaller set of stories people keep telling: <i>they're going to steal the
+            election</i>, <i>the law is being used against enemies</i>, <i>the leader is too old</i>. Folklorists have
+            catalogued the shapes of folktales for a century; we do the same for what's said about politics and public
+            life, in the <a href="motifs.html">BND Motif Index</a>. Each motif names a shape, with the claims told in it,
+            the motifs that answer it, and which shows on the left, center and right it came up on. Often both sides
+            tell the same story about each other.</p>
+
+        <h3>⚖️ What it isn't</h3>
+        <ul>
+            <li><b>Not a fact-checker.</b> A motif describes how a story is told, never whether it's true. Where a
+                fact-checker has looked into a claim, we link to their verdict.</li>
+            <li><b>Not on a side.</b> We file what tellers say, not why we think a story spreads, and the same shape
+                gets the same name whoever tells it. Claims carry no party labels; the shows and outlets are marked by
+                their lean so you can see who tells what.</li>
+            <li><b>Not finished.</b> A language model running on our own computer suggests motifs and files claims; a
+                person checks every motif before it's shown here. Expect some loose fits, and tell us when you find
+                one.</li>
+        </ul>
+
+        <h3>🙋 Who makes it</h3>
+        <p>One independent researcher, with a lot of help from open language models running at home. No funding, no ads, no party.{% if contact %} Corrections, questions
+            and ideas: {{ contact }}.{% endif %}</p>
+
+        <h3>🛠️ Want the details?</h3>
+        <p class="more-link"><a href="glossary.html">🛠️ how it works</a> <a href="methods.html">📓 methods log</a>
+            <a href="motifs.html">🧩 motif index</a> <a href="folklore.html">🧶 folklore and rumors</a></p>
+    </div>
+{% endblock %}

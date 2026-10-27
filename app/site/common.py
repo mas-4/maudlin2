@@ -33,8 +33,29 @@ class TemplateHandler:
     def write(self, context, path: str = None):
         if path is None:
             path = self.path
+        context = {'page_url': page_url(path), **context}  # the page's own address, for its share card and canonical link
         with open(path, 'w', encoding='utf-8') as f:
             f.write(self.render(context))
+
+
+SITE_URL = 'https://bignews.day'
+SITE_DESCRIPTION = ("The news, and the stories people tell about it: 145 front pages every hour, TV, radio and over a "
+                    "hundred shows left and right, and our own index of the stories being told.")
+
+
+def page_url(path: str) -> str:
+    """A built page's public address, as Netlify serves it (no .html; the front page is the bare domain)"""
+    name = os.path.relpath(path, Config.build).replace(os.sep, '/')
+    if name == 'index.html':
+        return SITE_URL + '/'
+    return f"{SITE_URL}/{name.removesuffix('.html')}"
+
+
+def motif_href(motif_id: str) -> str:
+    """A motif's own page (page_motif.py), or the index page for one without a page this build (the build lists them
+    in the 'motif_pages' global before any page renders)"""
+    pages = j2env.globals.get('motif_pages')
+    return f'motif-{motif_id}.html' if pages is None or motif_id in pages else 'motifs.html'
 
 
 def calculate_xkeyscore(df):
@@ -109,6 +130,10 @@ class PathHandler:
 
 # <editor-fold desc="Jinja2 Environment Stuff">
 j2env.globals['Config'] = Config
+j2env.globals['site_url'] = SITE_URL
+j2env.globals['site_description'] = SITE_DESCRIPTION
+j2env.globals['site_image'] = 'apple-touch-icon.png'  # until the build draws the site's share card (builder.prepare)
+j2env.globals['motif_href'] = motif_href
 j2env.globals['bias'] = Bias.to_dict()
 j2env.globals['credibility'] = Credibility.to_dict()
 j2env.globals['now'] = Constants.TimeConstants.now_func

@@ -333,6 +333,12 @@ class HeadlinesPage:
         self.context['table_download'] = f"bignews-headlines-{pd.Timestamp.now(tz='US/Eastern'):%Y-%m-%d-%H%M}.json"
         self.newsletter.write(self.context)
         self.write_feed()
+        try:  # the stories being told: the motifs told most lately, a door from the news into the motif index
+            from app.site.page_motif import told_now
+            self.context['told_now'] = told_now()
+        except Exception as e:  # noqa: BLE001 - the front page stands without its strip
+            logger.warning("Front page: stories being told: %s", e)
+            self.context['told_now'] = []
         self.template.write({**self.context, 'page_part': 'front'})
         self.stories_page.write({**self.context, 'page_part': 'stories', 'title': 'Every story',
                                  'page_title': f'{Config.site_name} - Every story'})

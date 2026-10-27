@@ -2,7 +2,7 @@ import threading
 
 from app import ratings
 from app.analysis import lean_estimate
-from app.site import favicons
+from app.site import favicons, share_images
 from app.site.common import copy_assets, clear_build, stamp_build, j2env
 from app.site.data import DataHandler
 from app.site.deploy import publish_to_netlify
@@ -15,6 +15,8 @@ from app.site.page_glossary import GlossaryPage
 from app.site.page_folklore import FolklorePage
 from app.site.page_beyond import BeyondPage
 from app.site.page_motifs import MotifsPage
+from app.site.page_motif import MotifPages, page_ids
+from app.site.page_about import AboutPage
 from app.site.page_motif_map import MotifMapPage
 from app.site.page_sagas import SagasPage
 from app.site.page_names import NamesPage
@@ -38,6 +40,7 @@ def prepare():
     j2env.globals['unrated'] = ratings.unrated()
     lean = lean_estimate.estimate()  # our own estimate for some unrated outlets, kept out of lean averages
     j2env.globals['lean_estimates'], j2env.globals['lean_quality'] = lean['estimates'], lean['quality']
+    j2env.globals['site_image'] = share_images.site_card()  # what a shared link to any page shows by default
     favicons.refresh()  # only fetches icons that are missing or a week old
     j2env.globals['icons'] = favicons.publish()
     logger.info("Prepared %d outlet icons, %d unrated outlets, %d lean estimates",
@@ -51,10 +54,11 @@ def build(upload_aside: bool = False):
     stamp_build()
     clear_build()
     prepare()
+    j2env.globals['motif_pages'] = page_ids()  # which motifs get a page, so every link to one finds it
     dh: DataHandler = DataHandler()
     # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
-    pages = [HeadlinesPage, AgenciesPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifMapPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage]
+    pages = [HeadlinesPage, AgenciesPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifPages, MotifMapPage, AboutPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage]
     for page in pages:
         built = page(dh)
         built.generate()

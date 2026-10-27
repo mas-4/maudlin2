@@ -120,7 +120,7 @@
         {% if retold %}
             <div class="story-shows story-retold">
                 <a class="story-shows-label" href="{% if story_of is defined and cluster['cluster'] in story_of %}story-{{ story_of[cluster['cluster']]|e }}.html{% else %}folklore.html{% endif %}" title="People retelling this story in their own words on Bluesky and Mastodon, in the latest daily report">🧶 retold online by {{ retold.people }} people</a>
-                {% for m in retold.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
+                {% for m in retold.motifs %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
             </div>
         {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
@@ -193,6 +193,7 @@
     <nav class="page-toc" aria-label="On this page">
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
+        {% if told_now %}<a href="#told"><span class="toc-emoji">🧩</span><span class="toc-label">stories told</span></a>{% endif %}
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
         <a href="#top-stories"><span class="toc-emoji">📰</span><span class="toc-label">top stories</span></a>
         <a href="stories.html"><span class="toc-emoji">🗂️</span><span class="toc-label">every story</span></a>
@@ -688,6 +689,21 @@
     </script>
 
 
+    {% if page_part == 'front' and told_now %}
+    <h2 class="section-divider" id="told"><span>🧩 Stories being told</span></h2>
+    <p class="stage-sub">the shapes under this week's news, from our <a href="motifs.html">motif index</a> · who they came up with on the shows, left and right · stories people tell, not claims that they're true</p>
+    <ul class="front-told">
+        {% for m in told_now %}
+            <li><a class="front-told-card" href="{{ motif_href(m.id) }}">
+                <span class="front-told-genre">{{ m.emoji }} {{ m.genre|e }}</span>
+                <b class="front-told-name">{{ m.name|e }}</b>
+                {% if m.note %}<span class="front-told-note">{{ m.note|e }}</span>{% endif %}
+                <span class="front-told-sides">{% if m.leans.left or m.leans.center or m.leans.right %}🎙️ came up on{% if m.leans.left %} <span class="front-told-lean front-told-left">🫏 {{ m.leans.left }} left</span>{% endif %}{% if m.leans.center %} <span class="front-told-lean front-told-center">{{ m.leans.center }} center</span>{% endif %}{% if m.leans.right %} <span class="front-told-lean front-told-right">🐘 {{ m.leans.right }} right</span>{% endif %}{% else %}🧶 told online{% endif %}</span>
+            </a></li>
+        {% endfor %}
+    </ul>
+    <p class="more-link"><a href="motifs.html">🧩 every story being told →</a> <a href="about.html">👋 what's a motif?</a></p>
+    {% endif %}
     {% if page_part == 'front' and top_stories %}
     <h2 class="section-divider" id="top-stories"><span>📰 Top stories</span></h2>
     <p class="stage-sub">what the most front pages carry right now · <a href="stories.html">every story, with every outlet's headline →</a></p>

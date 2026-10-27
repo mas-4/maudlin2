@@ -9,6 +9,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import socket
 import zlib
 from datetime import datetime as dt
@@ -35,10 +36,10 @@ from app.utils.config import Config
 
 PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
          'sagas.html', 'names.html', 'radio.html', 'tv.html']
-NAV_LINKS = ['stories.html', 'sagas.html',
+NAV_LINKS = ['stories.html', 'motifs.html', 'sagas.html',
              'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
              'tv.html', 'radio.html', 'beyond.html', 'folklore.html', 'motifs.html', 'motif-map.html',
-             'glossary.html', 'methods.html', 'feed.xml']
+             'about.html', 'glossary.html', 'methods.html', 'feed.xml']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
 MAIN_HEADLINES = 1000
 STORY_HEADLINES = 2500
@@ -456,7 +457,7 @@ def test_court_page(site):
 
 def test_nav_menus_follow_a_story_downstream(site):
     nav = site['soup']['edits.html'].select_one('nav')
-    assert [a['href'] for a in nav.select('.nav-links > a')] == ['stories.html', 'sagas.html']
+    assert [a['href'] for a in nav.select('.nav-links > a')] == ['stories.html', 'motifs.html', 'sagas.html']
     menus = nav.select('.nav-menu')
     assert [m.select_one('summary').get_text(strip=True) for m in menus] == [label for label, _, _ in MENUS]
     for menu, (_, items, _) in zip(menus, MENUS):
@@ -549,7 +550,7 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         assert 'Only six people' not in html and '1 more told by fewer' in html
         assert 'the kept king' not in html  # the labeler's own motif phrase isn't shown; the index entry is
         assert 'Motif-Index</a> D' not in html  # Thompson's chapters are off the site
-        assert 'href="motifs.html#M007"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
+        assert 'href="motif-M007.html"' in html and '🧩 the ruler kept alive in secret <span class="motif-seen">×3</span></a>' in html
         assert 'a model guess nobody checked' not in html  # only motifs a person verified reach the site
         # the story's cast (villain, victim, hero) was dropped Oct 7, even from old reports that still carry it
         assert '🦹' not in html and '🫂' not in html and 'the president' not in html and 'role-' not in html
@@ -835,7 +836,7 @@ def test_story_pages_are_kept_and_old_ones_published_as_they_were(monkeypatch, t
     first = (build / 'story-70.html').read_text()
     assert (archive / 'story-70.html').read_text() == first
     for f in build.iterdir():
-        f.unlink()  # the next build starts empty
+        shutil.rmtree(f) if f.is_dir() else f.unlink()  # the next build starts empty (share cards in share/)
     monkeypatch.setattr(page_story, 'recent_stories', list)  # a week on: no longer recent
     monkeypatch.setattr(page_story, 'story_merges', lambda: {71: 70})  # and an old story merged into it
     page_story.StoryPages().generate()

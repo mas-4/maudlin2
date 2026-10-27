@@ -370,6 +370,23 @@ def rewordings(headlines: list[dict]) -> list[dict]:
             for o, hs in sorted(by.items()) if len(hs) > 1]
 
 
+def share(st: dict, outlets: list, lean_counts: dict, stuck: list) -> dict:
+    """What a shared link to a story page shows: its headline, its numbers in a line, and its card"""
+    from app.site import share_images
+    numbers = [f"{k['big']} {k['small']}" for k in stuck if k['emoji'] in ('📰', '⏱️', '📺', '🧶', '🔎')]
+    lean = f"{lean_counts['left']} left, {lean_counts['center']} center, {lean_counts['right']} right"
+    hours = next((str(k['big']) for k in stuck if k['emoji'] == '⏱️'), '')
+    try:
+        image = share_images.story_card(st['label'] or 'A story', len(outlets), lean_counts, hours)
+    except Exception as e:  # noqa: BLE001 - the page stands without its card; the site's is shown instead
+        logger.warning("Story %s: share card: %s", st['id'], e)
+        image = None
+    return {'og_title': st['label'] or 'A story',
+            'og_description': f"{'; '.join(numbers)} ({lean}). How the story traveled: front pages, TV, radio, "
+                              f"the shows, what people retold and what fact-checkers found.",
+            'og_image': image}
+
+
 class StoryPages:
     def __init__(self, dh=None):
         self.template = TemplateHandler('story.html')
@@ -405,11 +422,11 @@ class StoryPages:
             both = {p['url']: p for p in (checks.get(st['id']) or []) + (ex.get('factchecks') or [])}
             ex['factchecks'] = sorted(both.values(), key=lambda p: p.get('published', ''), reverse=True)[:6]
             told = folk.get(st['id'], [])
+            stuck = stickers(st, outlets, lean_counts, tv.get(st['id']), radio.get(st['id'], []), told,
+                             ex.get('factchecks') or [], st['snapshots'])
             self.template.write({
                 'title': st['label'] or 'A story', 'story': st, 'outlets': outlets,
-                'lean_counts': lean_counts,
-                'stickers': stickers(st, outlets, lean_counts, tv.get(st['id']), radio.get(st['id'], []),
-                                     told, ex.get('factchecks') or [], st['snapshots']),
+                'lean_counts': lean_counts, 'stickers': stuck, **share(st, outlets, lean_counts, stuck),
                 'since': eastern(st['first']), 'until': eastern(st['last']), 'spark': sparkline(st['snapshots']),
                 'by_lean': story_charts.by_lean(st, outlets),
                 'timeline': story_charts.timeline(st, outlets, (tv.get(st['id']) or {}).get('spots', []),

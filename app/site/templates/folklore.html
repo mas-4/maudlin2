@@ -10,7 +10,7 @@
 
 {% macro motifs(c) %}{% if c.motifs %}
     <div class="card-section"><p class="section-label" title="Recurring shapes this is an instance of, in our own motif index: suggested and filed by a language model, each motif checked by a person">🧩 BND Motif Index</p>
-        {% for m in c.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.genre %} ({{ m.genre|e }}){% endif %}{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
+        {% for m in c.motifs %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index{% if m.genre %} ({{ m.genre|e }}){% endif %}{% if m.count > 1 %}: seen {{ m.count|e }} times{% endif %}">🧩 {{ m.name|e }}{% if m.count > 1 %} <span class="motif-seen">×{{ m.count }}</span>{% endif %}</a>{% endfor %}
     </div>
 {% endif %}{% endmacro %}
 
@@ -35,7 +35,7 @@
             {% if index.lately %}
                 <div class="motif-lately-box">
                     <p class="section-label" title="Motifs with the most claims dated in the last {{ index.lately_days }} days">🔥 Told most lately</p>
-                    <p class="motif-front-chips">{% for m in index.lately %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.recent }} claims in the last {{ index.lately_days }} days, {{ m.count }} in all{% if m.genre %} ({{ m.genre|e }}){% endif %}">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.recent }}</span></a>{% endfor %}</p>
+                    <p class="motif-front-chips">{% for m in index.lately %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.recent }} claims in the last {{ index.lately_days }} days, {{ m.count }} in all{% if m.genre %} ({{ m.genre|e }}){% endif %}">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.recent }}</span></a>{% endfor %}</p>
                 </div>
             {% endif %}
             <div class="genre-shelves">
@@ -43,7 +43,7 @@
                     <div class="genre-shelf">
                         <h4><a href="motifs.html#genre={{ g.name|urlencode }}"><span aria-hidden="true">{{ g.emoji }}</span> {{ g.name }}</a></h4>
                         <p class="genre-about">{{ g.about|e }}</p>
-                        <p class="motif-front-chips">{% for m in g.top %}<a class="motif-chip small" href="motifs.html#{{ m.id|e }}"{% if m.note %} title="{{ m.note|e }}"{% endif %}>🧩 {{ m.name|e }}</a>{% endfor %}</p>
+                        <p class="motif-front-chips">{% for m in g.top %}<a class="motif-chip small" href="{{ motif_href(m.id) }}"{% if m.note %} title="{{ m.note|e }}"{% endif %}>🧩 {{ m.name|e }}</a>{% endfor %}</p>
                         <p class="genre-all"><a href="motifs.html#genre={{ g.name|urlencode }}">all {{ g.count }} motifs, {{ g.claims }} claims →</a></p>
                     </div>
                 {% endfor %}
@@ -284,7 +284,7 @@
                 <summary><b>{{ ep.title|e }}</b> <span class="court-when">{{ ep.date }} · {{ ep.claims|length }} claims</span></summary>
                 <ul class="focus-claims">
                     {% for c in ep.claims %}<li>{{ c.claim|e }}{% if c.side %} <span class="court-when">({{ c.side|e }})</span>{% endif %}
-                        {% for m in c.motifs %}<a class="motif-chip small" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
+                        {% for m in c.motifs %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}</li>{% endfor %}
                 </ul>
                 <p class="court-when"><a href="{{ ep.url|e }}">Listen to the episode</a></p>
             </details>

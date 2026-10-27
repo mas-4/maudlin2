@@ -42,7 +42,10 @@ def catalog(index: dict | None = None, screen: accusations.Screen | None = None)
     since = (date.today() - timedelta(days=LATELY_DAYS - 1)).isoformat()
     groups = index.get('groups', {})
     entries = {}
+    bins = motif_index.watched(index)  # watch lists (Straight news): sinks for plain reports, not shapes to show
     for e in motif_index.live(index):
+        if e['id'] in bins:
+            continue
         claims = motif_index.public_claims(e) if motif_index.public(e) else []  # only motifs a person verified
         claims = [{**c, 'claim': shown} for c in claims
                   if (shown := screen.shown(motif_index.corrected(c['claim'], index), c.get('source', '')))]

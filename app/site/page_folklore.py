@@ -14,6 +14,7 @@ People's own posts are never shown on the published site, only the model's summa
 handles, a quoted post can be searched back to its author. Local preview builds (debug) show a few versions, so the
 research can be checked."""
 import os
+import re
 from collections import Counter
 from datetime import date
 
@@ -50,6 +51,14 @@ MOVED = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Move
 # What's told on the shows reaches the public page only once plain news is filtered out: the first 25 were mostly
 # daily news podcasts repeating the news (BBC, Reuters, Up First, Morning Wire), not claims people tell (Oct 8)
 SHOWS_PUBLIC = False
+# Appeals for money with no politics in them (Oct 27: "A friend's animal charity needs donations", 285 accounts posting
+# once each, no replies, nothing shared) are a spam wave's shape, not a story people tell: kept off the public page
+APPEAL = re.compile(r'donat|charit|fundrais|gofundme|crowdfund', re.I)
+
+
+def appeal(label: dict) -> bool:
+    """A retold card that only asks for money: a non-political appeal for donations"""
+    return not label.get('politics') and bool(APPEAL.search(f"{label.get('narrative', '')} {label.get('motif', '')}"))
 SHOW_INK = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#b8b8c8'}  # as the front page's shows (page_headlines)
 
 
@@ -71,7 +80,7 @@ def motif_cards(index: dict, claim: str) -> list[dict]:
     return [{'id': e['id'], 'name': e['name'], 'count': len(motif_index.public_claims(e)), 'note': motif_index.public_note(e),
              'genre': motif_index.person_genre(e)}
             for e in (motif_index.entries_of(index, claim) if claim else [])
-            if motif_index.public(e) and k in set(e.get('done') or [])]
+            if motif_index.public(e) and not e.get('watch') and k in set(e.get('done') or [])]
 
 
 def genres(motifs: list[dict]) -> list[str]:
@@ -160,7 +169,7 @@ class FolklorePage:
         if report:
             for g in report['found']:
                 label = g.get('label') or {}
-                if label.get('narrative') in pulled:
+                if label.get('narrative') in pulled or (label.get('retold') and appeal(label)):
                     continue
                 if label.get('retold') and g['authors'] < floor:
                     fewer += 1

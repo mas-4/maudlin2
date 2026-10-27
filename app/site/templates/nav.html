@@ -1,8 +1,10 @@
 <nav class="navbar">
     <a class="nav-brand" href="index.html">🗞️ bignews.day</a>
+    <a class="nav-tagline" href="about.html" title="What this site is">the news, and the stories people tell about it</a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Menu">☰</button>
     <div class="nav-links" id="nav-links">
         <a href="stories.html">📚 every story</a>
+        <a href="motifs.html">🧩 stories told</a>
         <a href="sagas.html">🧵 sagas</a>
         {# Menus of the other pages, opened on hover or tap, in the order a story travels (app/site/page_trackers.py) #}
         {% for label, items, note in menus %}

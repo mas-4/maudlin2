@@ -59,7 +59,7 @@
             {% for e in entries %}
                 <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-genre="{{ e.genre|e }}" data-groups="|{{ e.groups|map(attribute='id')|join('|')|e }}|" data-count="{{ e.count }}" data-recent="{{ e.recent }}" data-first="{{ (e.first_seen or '')|e }}" data-name="{{ e.name|lower|e }}" data-text="{{ (e.name ~ ' ' ~ e.note ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
                     {% if e.genre or e.groups %}<p class="folk-sources">{% if e.genre %}<a class="folk-genre" href="#genre={{ e.genre|urlencode }}" title="{{ e.genre|e }}: show the whole genre">{{ genre_emoji.get(e.genre, '') }} {{ e.genre|e }}</a>{% endif %}{% for g in e.groups %}<a class="folk-genre motif-group-tag" href="#group={{ g.id|e }}" title="Show the whole group">🗂️ {{ g.name|e }}</a>{% endfor %}</p>{% endif %}
-                    <h4>🧩 {{ e.name|e }}</h4>
+                    <h4><a class="motif-entry-link" href="{{ motif_href(e.id) }}" title="Its own page: who it came up with, its answers, all its claims">🧩 {{ e.name|e }}</a></h4>
                     {% if e.note %}<p class="motif-note">{{ e.note|e }}</p>{% endif %}
                     {% if e.rests_on %}<p class="motif-rests" title="This motif only makes sense given these: a kind of them, or a case, argument or figure that tells them">🪜 rests on {% for p in e.rests_on %}<a href="#{{ p.id|e }}">{{ p.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
                     {% if e.under %}<p class="motif-rests" title="Motifs that only make sense given this one">⤵️ under it: {% for p in e.under %}<a href="#{{ p.id|e }}">{{ p.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}

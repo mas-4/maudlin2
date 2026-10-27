@@ -276,7 +276,7 @@
                 ${row('⬆️', 'rests on', up)}${row('⬇️', 'rest on it', down)}${relRow}${row('🤝', 'shares claims with', rel('shared'))}
                 <p class="mm-count">${m.count} claim${m.count === 1 ? '' : 's'}${m.count > m.claims.length ? `, the newest ${m.claims.length}` : ''}${m.occasions ? (m.placed ? ' · 📍 all about one event so far' : ` · 🗓 told about ${m.occasions} different events`) : ''}</p>
                 <ul class="mm-claims">${m.claims.map((c) => `<li>“${esc(c.claim)}” <span class="court-when">${c.url ? `<a href="${esc(c.url)}">${esc(c.source)}</a>` : esc(c.source)}</span></li>`).join('')}</ul>
-                <p class="saga-go"><a href="motifs.html#${esc(m.id)}">🧩 in the motif index →</a></p>`;
+                <p class="saga-go"><a href="motif-${esc(m.id)}.html">🧩 its page →</a></p>`;
             card.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
             if (window.matchMedia('(max-width: 800px)').matches) card.scrollIntoView({behavior: 'smooth', block: 'nearest'});
         }

@@ -1,4 +1,4 @@
-"""The nav's menus: every page past the front page, grouped the way a story travels (front pages, then TV and radio,
+"""The nav's menus (Oct 27: the motif index has a link of its own, "stories told", beside every story): every page past the front page, grouped the way a story travels (front pages, then TV and radio,
 then people retelling it online), so the nav stays short. Two links sit beside them: every story, and the sagas."""
 
 # On the front pages: the outlets, their headlines and what the trackers measure in them
@@ -40,6 +40,8 @@ FOLKLORE = [
 ]
 
 ABOUT = [
+    {'href': 'about.html', 'emoji': '👋', 'name': 'About',
+     'about': "What this site is, who makes it, and what it won't do."},
     {'href': 'glossary.html', 'emoji': '🛠️', 'name': 'How it works',
      'about': 'What every measure means and how we make it.'},
     {'href': 'methods.html', 'emoji': '📓', 'name': 'Methods log',
@@ -51,6 +53,6 @@ ABOUT = [
 MENUS = [
     ('📰 front pages', FRONT_PAGES, ''),
     ('📡 on air', ON_AIR, ''),
-    ('🧶 online', FOLKLORE, 'Work in progress: rumors and narratives read for their shapes, not their truth.'),
+    ('🧶 folklore', FOLKLORE, 'Work in progress: rumors and narratives read for their shapes, not their truth.'),
     ('🛠️ how it works', ABOUT, ''),
 ]

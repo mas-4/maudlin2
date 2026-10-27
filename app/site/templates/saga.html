@@ -59,7 +59,7 @@
         {{ banner('🧶', 'Retelling', 'what people online made of it, part by part', '#8a5cff') }}
         {% if retellings %}
             <ul class="radio-items">{% for f in retellings %}<li><span class="sc-key" style="--key: {{ f.color|e }}"></span>{{ f.claim|e }} <span class="tv-time">told by {{ f.people }} people, on “{{ f.part|e }}”</span>
-                {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="motifs.html#{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
+                {% if f.motifs %}<br>{% for m in f.motifs %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a> {% endfor %}{% endif %}</li>{% endfor %}</ul>
         {% else %}
             <p class="stage-empty">🦗 Nobody's retelling any part of it online yet, as far as the daily report can tell.</p>
         {% endif %}

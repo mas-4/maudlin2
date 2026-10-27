@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{% if page_title is defined %}{{ page_title }}{% else %}{{ Config.site_name }} - {{ title }}{% endif %}</title>
+    {# What a link to this page shows where it's shared (Bluesky, Mastodon, chat apps): a title, a line and a card
+       (app/site/share_images.py). Pages give their own og_title, og_description and og_image, or get the site's #}
+    {% set share_title = og_title or (title ~ ' · bignews.day' if title is defined and title else 'bignews.day') %}
+    {% set share_text = og_description or site_description %}
+    {% set share_image = site_url ~ '/' ~ (og_image or site_image) %}
+    <meta name="description" content="{{ share_text|e }}">
+    {% if page_url %}<link rel="canonical" href="{{ page_url|e }}">
+    <meta property="og:url" content="{{ page_url|e }}">{% endif %}
+    <meta property="og:site_name" content="bignews.day">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ share_title|e }}">
+    <meta property="og:description" content="{{ share_text|e }}">
+    <meta property="og:image" content="{{ share_image|e }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ (og_image_alt or share_title)|e }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ share_title|e }}">
+    <meta name="twitter:description" content="{{ share_text|e }}">
+    <meta name="twitter:image" content="{{ share_image|e }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
