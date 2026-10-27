@@ -97,8 +97,9 @@ One emoji per thing, the same everywhere. Reuse these before picking a new one.
 - Lean always in the lean colors; channels in their channel ink; everything outlined thinly in ink.
 - Times on axes in Eastern (`8 AM`, the day at midnight and on the first tick). Captions say exactly what is drawn,
   in a sentence, under the chart.
-- On a phone a dense chart keeps a readable size and scrolls sideways inside its figure (`min-width` on the SVG,
-  `overflow-x: auto` on the figure); the page itself never scrolls sideways.
+- On a phone a chart scales down to the column (its viewBox, `width: 100%`) rather than scrolling sideways (Oct 27,
+  the person: sideways charts were too wide, and opened with their captions cut). The aisle (the motif map) is the
+  exception: its labels need the room, so it still scrolls inside its frame. The page itself never scrolls sideways.
 
 ## Words
 

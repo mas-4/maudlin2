@@ -111,7 +111,9 @@
 /* The story's charts (app/site/story_charts.py): inline SVG, scaled to the column */
 .story-chart-figure {
     margin: 0.6em 0 1.2em;
-    overflow-x: auto;  /* on a phone the chart keeps a readable size and scrolls sideways */
+    /* Oct 27, the person: too wide on a phone. The chart scales to the column (its viewBox), so it never scrolls
+       sideways and its caption never starts mid-sentence */
+    overflow-x: visible;
 }
 
 .story-chart {
@@ -121,7 +123,7 @@
     border: 2px solid #1f1f2e;
     border-radius: 10px;
     padding: 4px 0;
-    min-width: 540px;
+    width: 100%;
 }
 
 .story-chart-figure figcaption {
