@@ -271,6 +271,26 @@ def name(stories: pd.DataFrame, clusters: list[int]) -> str:
     return _names[key]
 
 
+NAME_PARTS = 12  # a saga is named from this many of its parts' labels at most, spread from first to latest
+
+
+def name_parts(labels: list[str]) -> str:
+    """A saga's name from all its parts (Oct 27 audit: named from today's parts only, a name fit the latest part and
+    not the saga: "Paris protests disrupt NFL game" fit 1 of 18 parts, "Trump blames Paxton" had it backwards), each
+    part's label a line, spread over the saga when there are many; '' without the model"""
+    if not labels:
+        return ''
+    if len(labels) > NAME_PARTS:
+        step = (len(labels) - 1) / (NAME_PARTS - 1)
+        labels = [labels[round(i * step)] for i in range(NAME_PARTS)]
+    key = frozenset(labels)
+    if key not in _names:
+        answer = llm.complete_json(NAME_PROMPT.format(headlines='\n'.join(f'- {t}' for t in labels)), NAME_SCHEMA,
+                                   max_tokens=32)
+        _names[key] = ((answer or {}).get('name', '') or '').strip().strip('"')[:80]
+    return _names[key]
+
+
 def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counter, common: float,
            names_ok: set[str], titles: list[str], story_id=None, member_rows=None) -> dict:
     """Greedy saga merging (as in find_sagas) over `groups`: key -> {'members': [...], 'rows': [title rows]}. Two
@@ -423,7 +443,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
             saga.words = ','.join(sorted(group['words']))[:255]
             parts = s.query(Story).filter(Story.saga_id == saga.id).order_by(*PART_ORDER).all()
             if not saga.name or len(parts) >= RENAME_GROWTH * (saga.named_with or 1):
-                saga.name = name(stories, now_clusters)
+                saga.name = name_parts([p.label for p in parts if p.label]) or name(stories, now_clusters)
                 saga.named_with = len(parts)
             # Every outlet on any part, plus related headlines today that made no story
             outlets = set(stories[stories['cluster'].isin(now_clusters)]['agency'])

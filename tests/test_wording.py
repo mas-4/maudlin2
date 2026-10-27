@@ -2,12 +2,13 @@
 from app.analysis import wording as w
 
 
-def row(title, agency, bias, rated=True):
-    return {'title': title, 'agency': agency, 'bias': bias, 'rated': rated}
+def row(title, agency, bias, rated=True, loaded=2.0):
+    return {'title': title, 'agency': agency, 'bias': bias, 'rated': rated, 'loaded_score': loaded}
 
 
 BIG_BEND = [row('Small Texas town stopped Trump’s border wall', 'A', -1),
             row('Small Texas town stopped Trump’s wall', 'B', -2),
+            row('Small Texas town stopped Trump’s wall', 'H', -1),
             row('Judge halts wall', 'C', -1),
             row('Judge pauses wall in national park', 'D', 1),
             row('National park wall paused', 'E', 2),
@@ -18,12 +19,12 @@ BIG_BEND = [row('Small Texas town stopped Trump’s border wall', 'A', -1),
 def test_one_sided_phrases_joined_and_ranked():
     out = w.side_phrases(BIG_BEND)
     assert [p['phrase'] for p in out['left']] == ["small texas town stopped trump's"]  # back-to-back pairs joined
-    assert [p['phrase'] for p in out['right']] == ['national park', 'wall paused']  # most outlets first
+    assert [p['phrase'] for p in out['right']] == ['national park']  # 'wall paused': two outlets, under MIN_OUTLETS
     assert out['right'][0]['outlets'] == ['D', 'E', 'F']  # the center outlet doesn't count for either side
 
 
 def test_needs_both_sides_represented():
-    assert w.side_phrases(BIG_BEND[:3] + BIG_BEND[3:5]) == {}  # only two right-leaning outlets
+    assert w.side_phrases(BIG_BEND[:4] + BIG_BEND[4:6]) == {}  # only two right-leaning outlets
     unrated = [{**r, 'rated': False} if r['bias'] > 0 else r for r in BIG_BEND]
     assert w.side_phrases(unrated) == {}
 
@@ -41,3 +42,13 @@ def test_the_storys_own_words_in_another_form_are_not_framing():
     assert w.side_phrases(rows) == {}  # "bakker dead": the left wrote both words, as "Bakker dies"
     rows[3:] = [row('Police kill Bakker', a, 1) for a in 'DEF']
     assert [p['phrase'] for p in w.side_phrases(rows)['right']] == ['police kill bakker']  # killed vs. died is framing
+
+
+def test_framing_needs_loaded_headlines_and_more_than_a_name_or_a_fragment():
+    left = [row('Trump dangles $1M reward', a, -1) for a in 'ABC']
+    right = [row('Trump offers reward', a, 1) for a in 'DEF']
+    assert [p['phrase'] for p in w.side_phrases(left + right)['left']] == ['trump dangles 1m reward']
+    plain = [{**r, 'loaded_score': 0.3} for r in left]
+    assert not w.side_phrases(plain + right).get('left')  # the same words in plain headlines aren't framing
+    assert not w.framing('b star', [2.0]) and not w.framing('9 11', [2.0])
+    assert not w.framing('abdul el-sayed', [2.0])  # a name alone

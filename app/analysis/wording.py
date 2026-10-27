@@ -15,7 +15,11 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 
 MIN_SIDE = 3
-MIN_OUTLETS = 2
+MIN_OUTLETS = 3  # Oct 27 audit: at 2, two outlets' incidental detail ("subway platform") read as framing
+MIN_LOADED = 1.5  # the headlines carrying the phrase, on average, on the 0-2 loaded-wording scale
+# Oct 27 audit: of 60 chips, about 20% framing ("obama judge", "biden admin"), 67% incidental details ("bus stop"),
+# 13% fragments ("b star" from R&B, "9 11"). A framing phrase sits in loaded headlines, is used by several outlets,
+# and is more than a name: on the day's stories these three cut 45 chips to the 3 that were framing
 MIN_SHARE = 0.25
 SHOWN = 3
 WORD = re.compile(r"[a-z0-9][a-z0-9'’-]*[a-z0-9]|[a-z0-9]")
@@ -76,6 +80,22 @@ def joined(phrases: list[dict]) -> list[dict]:
     return phrases
 
 
+def framing(phrase: str, scores: list[float]) -> bool:
+    """Whether a phrase reads as framing: its headlines loaded on average (MIN_LOADED; no scores, no chip), no word a
+    fragment (one letter, or digits: "b star", "9 11"), and at least one word in the dictionary, so a name alone
+    ("abdul el-sayed") isn't framing"""
+    words = phrase.split()
+    if not scores or sum(scores) / len(scores) < MIN_LOADED:
+        return False
+    if any(len(w) < 2 or w.isdigit() for w in words):
+        return False
+    try:
+        from nltk.corpus import wordnet as wn
+        return any(wn.synsets(w) for w in words)
+    except LookupError:
+        return True
+
+
 def side_phrases(rows: list[dict]) -> dict:
     """{'left': [...], 'right': [...]}: up to SHOWN phrases each side alone used, most outlets first, each with the
     outlets that used it; {} when either side has fewer than MIN_SIDE rated outlets on the story. `rows` are the
@@ -83,11 +103,13 @@ def side_phrases(rows: list[dict]) -> dict:
     outlets = {'left': set(), 'right': set()}
     used = defaultdict(lambda: {'left': set(), 'right': set()})
     vocab = {'left': set(), 'right': set()}  # word stems each side wrote anywhere in its headlines
+    loaded = {}  # outlet -> its headline's loaded-wording score
     for row in rows:
         s = side(row)
         if s is None:
             continue
         outlets[s].add(row['agency'])
+        loaded[row['agency']] = row.get('loaded_score', row.get('loaded'))
         vocab[s] |= {stem(word) for word in words(row['title'])}
         for phrase in bigrams(row['title']):
             used[phrase][s].add(row['agency'])
@@ -98,7 +120,8 @@ def side_phrases(rows: list[dict]) -> dict:
         for s, other in (('left', 'right'), ('right', 'left')):
             n = len(by[s])
             if n >= MIN_OUTLETS and n >= MIN_SHARE * len(outlets[s]) and not by[other] \
-                    and not all(stem(word) in vocab[other] for word in phrase.split()):
+                    and not all(stem(word) in vocab[other] for word in phrase.split()) \
+                    and framing(phrase, [loaded[a] for a in by[s] if loaded.get(a) is not None]):
                 out[s].append({'phrase': phrase, 'outlets': sorted(by[s]), 'count': n})
     for s in out:
         out[s] = joined(out[s])

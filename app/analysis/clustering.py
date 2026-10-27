@@ -88,6 +88,38 @@ def unlink_money_conflicts(cosine_sim: np.ndarray, titles) -> np.ndarray:
     return cosine_sim
 
 
+# Rallies and campaign stops in different states (Oct 27 audit): feed templates like "Trump Participates in Midterm
+# Rally in Mississippi" score 0.83-0.86 against the same line about Michigan or Texas, so one story held several
+# rallies (17 of 43 headlines in the Mississippi story were Michigan's or Texas's). Not Washington: it's DC as often.
+# On Oct 27's 2,945 story headlines it split a 98-headline cluster of five states' rallies
+STATES = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida',
+          'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
+          'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska',
+          'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+          'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas',
+          'Utah', 'Vermont', 'Virginia', 'West Virginia', 'Wisconsin', 'Wyoming']
+STATE = re.compile(r'\b(' + '|'.join(sorted(STATES, key=len, reverse=True)) + r')\b')
+VISIT = re.compile(r'\b(rall(y|ies|ying)|campaign(s|ing)? (in|stop)|stumps?|town hall|visits?|tour(s|ing)?)\b', re.I)
+
+
+def places(title: str) -> set[str]:
+    """The states a rally or campaign-stop headline names ('' for any other headline)"""
+    return set(STATE.findall(title)) if VISIT.search(title) else set()
+
+
+def unlink_place_conflicts(cosine_sim: np.ndarray, titles) -> np.ndarray:
+    """Zero the similarity of two rally or campaign-stop headlines that name states and share none, so one tour's stops
+    stay separate stories. Headlines naming no state are left alone"""
+    where = [places(t) for t in titles]
+    for i, a in enumerate(where):
+        if not a:
+            continue
+        for j in range(i + 1, len(where)):
+            if where[j] and not (a & where[j]):
+                cosine_sim[i, j] = cosine_sim[j, i] = 0
+    return cosine_sim
+
+
 EMBEDDING_MODEL = 'minishlab/potion-base-8M'
 
 

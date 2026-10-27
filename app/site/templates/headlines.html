@@ -84,7 +84,7 @@
             </p>
         {% endif %}
         {% if cluster['wording'] %}
-            <p class="story-wording"><span class="story-quotes-label" title="Two-word phrases outlets on one side put in their headlines and no outlet on the other side did (each side needs 3 or more rated outlets on the story)">🗣️ only one side says</span>
+            <p class="story-wording"><span class="story-quotes-label" title="Phrases three or more outlets on one side put in loaded headlines and no outlet on the other side used: word choice, read from the outlets' own wording (each side needs 3 or more rated outlets on the story)">🗣️ only one side says</span>
                 {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in cluster['wording'].get(s, []) %}<span class="wording-chip wording-{{ s|e }}" title="{{ s|capitalize }}-leaning: {{ p.outlets|join(', ')|e }}">{{ emoji }} {{ p.phrase|e }}{% if p.count > 2 %} <b>{{ p.count }}</b>{% endif %}</span>{% endfor %}{% endfor %}
             </p>
         {% endif %}

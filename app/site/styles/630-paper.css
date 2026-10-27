@@ -1,0 +1,20 @@
+/* Paper behind text that sits on the page, and fainter shapes on a phone (Oct 27: text was hard to read) */
+main .story-checks, main .stage-notes, main .stage-sub, main .poll-note, main .motif-page-dates, main .saga-drift,
+main .aisle-lists .court-when, main .story-page-intro, main .lab-key, main .cloud-side-note {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+}
+
+main .story-checks, main .stage-notes {
+    padding: 0.5em 0.9em;
+}
+
+main .stage-sub, main .poll-note, main .motif-page-dates {
+    padding: 0.15em 0.6em;
+}
+
+@media (max-width: 760px) {
+    #memphis svg {
+        opacity: 0.28;
+    }
+}

@@ -27,7 +27,20 @@ SEED_ALIASES = {
     'democrats': 'Democratic Party', 'democratic party': 'Democratic Party',
     'supreme court of the united states': 'Supreme Court', 'scotus': 'Supreme Court',
     'u.s. supreme court': 'Supreme Court', 'us supreme court': 'Supreme Court',
+    # Oct 27 audit: one subject, several cards on the names page
+    'doj': 'Justice Department', 'department of justice': 'Justice Department', 'trump doj': 'Justice Department',
+    'united states department of justice': 'Justice Department', 'u.s. department of justice': 'Justice Department',
+    'us department of justice': 'Justice Department',
+    'fbi': 'FBI', 'federal bureau of investigation': 'FBI',
+    'united states senate': 'Senate', 'u.s. senate': 'Senate', 'us senate': 'Senate',
+    'midterms': '2026 midterm elections', 'midterm elections': '2026 midterm elections',
+    '2026 midterms': '2026 midterm elections', '2026 midterm elections': '2026 midterm elections',
+    'ninth circuit': '9th Circuit', '9th circuit court of appeals': '9th Circuit',
+    'ninth circuit court of appeals': '9th Circuit', 'houthi': 'Houthis', 'pope leo xiv': 'Pope Leo',
 }
+# Aliases that reached too far (Oct 27 audit): Cornell's own administration filed as the Trump administration, a New
+# York City stabbing as New York State. Left out wherever they come from
+UNSAFE_ALIASES = {'administration', 'new york'}
 MAX = 6
 MAX_NEW = 120  # model calls a run, at most
 PROMPT = """These headlines are about one news story:
@@ -49,7 +62,7 @@ EVERYWHERE = {'united states', 'u.s', 'u.s.', 'us', 'usa', 'america', 'united st
 # Common nouns the model sometimes gives as names ('Worker', 'Researcher' from "Russian lab worker dies"): not who's in
 # the news, so left off the names page (Oct 12). WordNet tells most (generic()); these it gets wrong ('Man' is also the
 # Isle of Man)
-GENERIC = {'man', 'men', 'woman', 'women', 'people', 'children', 'kids', 'families', 'police'}
+GENERIC = {'man', 'men', 'woman', 'women', 'people', 'children', 'kids', 'families', 'police', 'opposition'}
 
 
 def generic(name: str, labels: list[str] = ()) -> bool:
@@ -57,8 +70,13 @@ def generic(name: str, labels: list[str] = ()) -> bool:
     knows only as a common noun (its noun lemmas all lower case: 'worker', unlike 'London'), unless the story labels
     capitalize it mid-sentence ('Investors cheer Apple's results': Apple the company, not the fruit)"""
     if ' ' in name.strip():
-        return False
+        return role_phrase(name)
     word = name.strip().lower()
+    try:  # a plural is a common noun as its singular is ('Students', 'Investors': Oct 27 audit)
+        from nltk.corpus import wordnet as wn
+        word = wn.morphy(word, wn.NOUN) or word
+    except LookupError:
+        pass
     if word in GENERIC:
         return True
     try:
@@ -69,6 +87,29 @@ def generic(name: str, labels: list[str] = ()) -> bool:
     if not lemmas or any(x[:1].isupper() for x in lemmas):
         return False
     return not any(re.search(r'(?<![.!?:]\s)(?<!^)\b' + re.escape(name.strip()) + r'\b', lab or '') for lab in labels)
+# A role or a thing, not a name, when a phrase ends in one of these ("Convicted murderer", "Serbian president",
+# "National Defence", "Alaska Senate candidate": Oct 27 audit), unless WordNet knows the whole phrase as a name
+# ("Supreme Court", "White House")
+ROLES = {'man', 'woman', 'men', 'women', 'leader', 'president', 'minister', 'candidate', 'counsel', 'police', 'court',
+         'murderer', 'worker', 'student', 'investor', 'member', 'power', 'report', 'race', 'defence', 'defense',
+         'fraud', 'opposition', 'official', 'judge', 'voter', 'resident', 'suspect', 'victim', 'officer', 'teen',
+         'governor', 'senator', 'lawmaker', 'protester', 'family', 'parent', 'shooter', 'agent'}
+
+
+def role_phrase(name: str) -> bool:
+    words = re.findall(r"[A-Za-z]+", name)
+    if len(words) < 2:
+        return False
+    try:
+        from nltk.corpus import wordnet as wn
+        if any(x.name()[:1].isupper() for syn in wn.synsets('_'.join(words).lower(), pos=wn.NOUN) for x in syn.lemmas()):
+            return False
+        last = wn.morphy(words[-1].lower(), wn.NOUN) or words[-1].lower()
+    except LookupError:
+        last = words[-1].lower().rstrip('s')
+    return last in ROLES
+
+
 FILLER = {'the', 'of', 'and', 'for', 'new', 'national', 'department', 'party', 'state', 'states', 'united', 'news'}
 
 
@@ -76,13 +117,26 @@ def named_in(name: str, text: str) -> bool:
     """Whether the headlines actually name it (the model adds names they don't: OPEC+ came back with Russia, Iran
     and Iraq): one of its distinctive words appears in them, e.g. 'Houthis' in 'Houthi rebels', 'Russia' in
     'Russian'."""
-    words = [w for w in re.findall(r"[a-z0-9+']+", name.lower()) if len(w) >= 3 and w not in FILLER]
-    return any(w.rstrip('s') in text for w in words)
+    return any(re.search(r'\b' + re.escape(w), text) for w in distinctive(name))
+
+
+def distinctive(name: str) -> list[str]:
+    """A name's words worth looking for, each without a final s ('Houthis' is found in 'Houthi rebels')"""
+    return [w.rstrip('s') for w in re.findall(r"[a-z0-9+']+", name.lower()) if len(w) >= 3 and w not in FILLER]
+
+
+def named_fully(name: str, text: str) -> bool:
+    """Every distinctive word of the name starts a word in the text (Oct 27 audit: 'Joe Vance' passed on 'Vance',
+    'Trump administration' on any Trump headline, 'Federal Bureau of Investigation' on 'federal officials', 'Anne
+    Carson' on 'channel' when any word anywhere was enough)"""
+    words = distinctive(name)
+    return bool(words) and all(re.search(r'\b' + re.escape(w), text) for w in words)
 
 
 def load_aliases() -> dict:
     book = read_json(ALIASES, {})
-    return {'aliases': {**SEED_ALIASES, **book.get('aliases', {})}, 'not_same': book.get('not_same', [])}
+    aliases = {k: v for k, v in {**SEED_ALIASES, **book.get('aliases', {})}.items() if k not in UNSAFE_ALIASES}
+    return {'aliases': aliases, 'not_same': book.get('not_same', [])}
 
 
 def save_aliases(book: dict):
@@ -226,6 +280,18 @@ def untitled(name: str) -> str:
     return bare if bare != name and len(words) >= 2 and all(w[:1].isupper() for w in words) else name
 
 
+def merge_surnames(names: dict):
+    """A one-word name that is the last word of exactly one longer name on the list joins it ('Putin' into 'Vladimir
+    Putin', 'Obama' into 'Barack Obama'); left alone when two share it ('Biden': Joe, Hunter)"""
+    for key in [k for k, e in names.items() if ' ' not in e['name']]:
+        longer = [k for k, e in names.items() if ' ' in e['name'] and e['name'].lower().split()[-1] == key]
+        if len(longer) == 1:
+            into, gone = names[longer[0]], names.pop(key)
+            seen = {st['id'] for st in into['stories']}
+            into['stories'] += [st for st in gone['stories'] if st['id'] not in seen]
+            into['outlets'].update(gone['outlets'])
+
+
 def history(least: int = 2, since=None) -> list[dict]:
     """Each name over time, for the names page: every saved story that names it (by its canonical name) with when it
     was on the front pages and how many outlets had it, and the outlets on all of them by lean. Names in at least
@@ -240,26 +306,38 @@ def history(least: int = 2, since=None) -> list[dict]:
     with Session() as s:
         stories = {f's{sid}': {'id': sid, 'label': label, 'first': first, 'last': last}
                    for sid, label, first, last in s.query(Story.id, Story.label, Story.first_seen, Story.last_seen)}
-        rows = s.query(StoryHeadline.story_id, Agency.name, Agency._bias, Agency.lean_rated).join(
+        rows = s.query(StoryHeadline.story_id, Agency.name, Agency._bias, Agency.lean_rated, Headline.title).join(
             Headline, Headline.id == StoryHeadline.headline_id).join(Article, Article.id == Headline.article_id).join(
             Agency, Agency.id == Article.agency_id).all()
-    outlets = {}
-    for sid, agency, bias, rated in rows:
+    outlets, titles = {}, {}
+    for sid, agency, bias, rated, title in rows:
         side = ('left' if bias < 0 else 'right' if bias > 0 else 'center') if rated else 'unrated'
         outlets.setdefault(f's{sid}', {})[agency] = side
+        titles.setdefault(f's{sid}', []).append(title or '')
+    text = {k: ' '.join(t).lower() for k, t in titles.items()}
+    # A name stays on a story when its headlines name it in full, or name its last word and the full name is named
+    # in full on some other story ('Vladimir Putin' where they say 'Putin'), never on a first name nobody wrote
+    # ('Joe Vance': Oct 27 audit)
+    full = {x for k, found in cache.items() if k in text for x in found if named_fully(x, text[k])}
+
+    def named(x: str, k: str) -> bool:
+        t = text.get(k, '')
+        words = distinctive(x)
+        return named_fully(x, t) or (x in full and bool(words) and bool(re.search(r'\b' + re.escape(words[-1]), t)))
     names = {}
     for k, found in cache.items():
         if k not in stories:
             continue  # a cluster key, never saved as a story
         if since is not None and stories[k]['last'] < since:
             continue
-        for n in dict.fromkeys(canonical(untitled(canonical(x, aliases)), aliases) for x in found):
+        for n in dict.fromkeys(canonical(untitled(canonical(x, aliases)), aliases) for x in found if named(x, k)):
             if n.lower() in EVERYWHERE:
                 continue
             entry = names.setdefault(n.lower(), {'name': n, 'stories': [], 'outlets': {}})
             st = stories[k]
             entry['stories'].append({**st, 'outlets': len(outlets.get(k, {}))})
             entry['outlets'].update(outlets.get(k, {}))
+    merge_surnames(names)
     out = []
     for e in names.values():
         if len(e['stories']) < least or generic(e['name'], [st['label'] for st in e['stories']]):
