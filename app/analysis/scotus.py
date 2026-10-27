@@ -116,6 +116,8 @@ GENERIC = {
     'california', 'trump', 'biden', 'roy', 'cook', 'missionaries', 'ferguson', 'young', 'smith', 'jones', 'brown',
     'univ', 'deptartment',  # (sic: the list's own typo)
     'dist', 'younge', 'north', 'south', 'maxwell',  # Maxwell: also Ghislaine Maxwell, in court news on her own
+    # Oct 27 audit: "court" from "U.S. Dist. Court for D.C." (25-1103) filed every headline saying "court" under it
+    'court', 'courts', 'supreme', 'appeals',
 }
 # Short names the press uses for a party, by a phrase in the party's name
 ALIASES = {'REPUBLICAN NATIONAL COMMITTEE': ['RNC']}

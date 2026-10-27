@@ -102,3 +102,23 @@ body.toc-on .page-toc {
 .story-sort {
     margin: -0.2em 0 1em;
 }
+
+/* Wide screens (Oct 27, the person: "the rail can stand to be a lot bigger on desktop. It's fine if it overlaps
+   with text, because they can scroll to see around it"): bigger pills, every section's name showing */
+@media (min-width: 701px) {
+    .page-toc {
+        gap: 12px;
+    }
+    .page-toc a {
+        font-size: 1.25em;
+        padding: 0.4em 0.8em;
+        border-width: 3px;
+        box-shadow: 4px 4px 0 #1f1f2e;
+    }
+    .toc-emoji {
+        font-size: 1.35em;
+    }
+    .toc-label {
+        max-width: 10em;
+    }
+}

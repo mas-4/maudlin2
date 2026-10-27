@@ -72,3 +72,65 @@
 .lab-card.lab-planned {
     opacity: 0.85;
 }
+
+/* A top story's card on the front page (Oct 27): the head shows, the rest folds under "more" */
+.card-more {
+    margin-top: 0.4em;
+}
+
+.card-more > summary {
+    display: inline-block;
+    list-style: none;
+    cursor: pointer;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    padding: 0.25em 0.9em;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    background: white;
+    box-shadow: 3px 3px 0 #ffc400;
+    transition: transform 0.15s;
+}
+
+.card-more > summary::-webkit-details-marker {
+    display: none;
+}
+
+.card-more > summary:hover {
+    transform: translate(-1px, -1px) rotate(-1deg);
+}
+
+.card-more[open] > summary {
+    background: #ffc400;
+    margin-bottom: 0.6em;
+}
+
+/* Share a page: Bluesky, the phone's share sheet, copy the link, save the card */
+.share-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0.8em 0;
+}
+
+.share-label {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.share-button {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    text-decoration: none;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #3a86ff;
+    padding: 0.25em 0.8em;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.share-button:hover {
+    transform: translate(-1px, -1px) rotate(-1deg);
+}

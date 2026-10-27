@@ -100,3 +100,15 @@ def test_one_side_wording_reads_dotted_abbreviations_as_one_word():
 def test_one_side_wording_leaves_out_light_verbs():
     from app.analysis.wording import bigrams
     assert not any('puts' in p for p in bigrams('Judge puts brakes on tree removal'))
+
+
+def test_an_edits_note_drops_the_models_labels():
+    from app.site.page_edits import note_text
+    assert note_text('added police probe and wording: more_loaded') == 'added police probe'
+    assert note_text('more_loaded') is None and note_text('same') is None
+    assert note_text("cut the senator's name") == "cut the senator's name"
+
+
+def test_court_is_too_common_a_word_to_name_a_party():
+    from app.analysis import scotus
+    assert {'court', 'courts', 'supreme'} <= scotus.GENERIC

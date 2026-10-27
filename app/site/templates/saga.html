@@ -13,6 +13,7 @@
             {% for k in stickers %}<li style="--sticker: {{ k.color|e }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
         </ul>
     </header>
+    {% include "share.html" %}
     <p class="table-intro story-page-intro">🧵 One running story, told across days: each part is a story of its own on the
         front pages, joined to the others because our tools judged them one case, event or investigation as it
         developed. A part can be joined wrongly; the saga tracker says how they're made.</p>

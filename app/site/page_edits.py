@@ -1,3 +1,4 @@
+import re
 import os
 
 import pandas as pd
@@ -21,6 +22,15 @@ def eastern(timestamp) -> str:
 
 NOTES = {('wording', 'more_loaded'): 'more loaded wording', ('wording', 'plainer'): 'plainer wording',
          ('news', 'better'): 'reads as better news', ('news', 'worse'): 'reads as worse news'}
+
+
+def note_text(change) -> str | None:
+    """The model's note on what changed, or None when it wrote one of its labels instead ("more_loaded", "same": Oct 27
+    audit, 7% of the notes), which isn't a note"""
+    change = re.sub(r'\s*,?\s*(?:and\s+)?(?:wording|news)\s*:\s*[a-z_]+', '', str(change or '')).strip(' ,;')
+    if not change or re.fullmatch(r'[a-z_]+', change):
+        return None
+    return change
 
 
 def shifts(judgment, edit) -> list[str]:
@@ -74,7 +84,7 @@ class EditsPage:
                 'between': f"{eastern(edit['last_seen_before'])} and {eastern(edit['first_seen_after'])} ET",
                 'when': int(pd.Timestamp(edit['first_seen_after']).timestamp()),
                 'shifts': shifts(judgment, edit),
-                'change': judgment.get('change') if judgment else None,
+                'change': note_text(judgment.get('change')) if judgment else None,
                 'source': kinds.get(edit['agency'], 'front page'),
             })
         rates = edit_rates(edits)

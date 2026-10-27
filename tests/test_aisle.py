@@ -19,9 +19,23 @@ def test_a_motif_sits_by_which_sides_shows_told_it_and_few_shows_pull_it_to_the_
 
 
 def test_the_aisle_draws_every_dot_and_joins_answers():
-    dots = [{'id': 'M1', 'name': 'Voter fraud', 'genre': 'Theories', 'lean': 0.5, 'told': 30, 'left': 2, 'right': 7,
-             'center': 1, 'href': 'motif-m1.html'},
-            {'id': 'M2', 'name': 'Voter suppression', 'genre': 'Plots', 'lean': -0.4, 'told': 20, 'left': 5, 'right': 3,
-             'center': 1, 'href': 'motif-m2.html'}]
+    one = {'lean': 0.5, 'told': 30, 'left': 2, 'right': 7, 'center': 1}
+    two = {'lean': -0.4, 'told': 20, 'left': 5, 'right': 3, 'center': 1}
+    dots = [{'id': 'M1', 'name': 'Voter fraud', 'genre': 'Theories', **one, 'spots': {'all': one, 'week': one},
+             'trend': 'rising', 'href': 'motif-m1.html'},
+            {'id': 'M2', 'name': 'Voter suppression', 'genre': 'Plots', **two, 'spots': {'all': two}, 'trend': 'steady',
+             'href': 'motif-m2.html'}]
     svg = str(page_aisle.draw(dots, [('M1', 'M2', 'Voter suppression answers Voter fraud')]))
-    assert svg.count('class="aisle-dot"') == 2 and 'class="aisle-arc"' in svg and '>Voter fraud</text>' in svg
+    assert svg.count('class="aisle-dot ') == 2 and 'class="aisle-arc"' in svg and '>Voter fraud</text>' in svg
+    assert svg.count('class="aisle-ring"') == 1 and svg.count('data-week=') == 1  # only M1 rises, and was told this week
+
+
+def test_a_motif_rises_when_told_twice_as_often_this_week():
+    from datetime import date
+    rows = [dict(row('lawfare', 'left', f'S{n}'), date=f'2026-10-{d:02d}') for n, d in enumerate([25, 26, 27, 26])]
+    rows += [dict(row('fading', 'right', f'T{n}'), date='2026-10-15') for n in range(4)]
+    rows += [dict(row('fading', 'right', 'T9'), date='2026-10-25')]
+    web = {'rows': rows, 'entries': {'lawfare': {'name': 'Lawfare'}, 'fading': {'name': 'Fading'}}}
+    dots = {d['id']: d for d in page_aisle.place(web, today=date(2026, 10, 27))}
+    assert dots['lawfare']['trend'] == 'rising' and dots['fading']['trend'] == 'fading'
+    assert dots['lawfare']['daily'][-3:] == [1, 2, 1] and 'days3' in dots['lawfare']['spots']

@@ -90,3 +90,43 @@
     font: 700 1.3em 'Comic Neue', 'Comic Sans MS', cursive;
     margin: 0.2em 0;
 }
+
+/* Time: a rising motif's ring, dots absent from the window, the card's sparkline */
+.aisle-dot .aisle-ring {
+    fill: none;
+    stroke: #ff6b1a;
+    stroke-width: 2.5;
+    animation: aisle-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes aisle-pulse {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aisle-dot .aisle-ring { animation: none; }
+}
+
+.aisle-dot circle.aisle-core,
+.aisle-svg .aisle-label {
+    transition: cx 0.6s, cy 0.6s, r 0.6s, x 0.6s, y 0.6s, opacity 0.3s;
+}
+
+.aisle-dot.absent,
+.aisle-label.absent,
+.aisle-arc.absent {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.aisle-spark rect {
+    fill: #8a5cff;
+}
+
+.aisle-spark-line {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.6em;
+    margin: 0.3em 0;
+}

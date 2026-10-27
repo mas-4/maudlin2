@@ -15,6 +15,7 @@
             {% for k in stickers %}<li style="--sticker: {{ k.color|e }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
         </ul>
     </header>
+    {% include "share.html" %}
     <p class="table-intro story-page-intro">👣 How this story traveled: from the front pages that broke it, out through
         TV, radio and the shows, into what people retold and what fact-checkers examined, and on into the saga it is
         part of. Everything here is matched to the story by our tools, so a link can be wrong; the trackers' pages say
@@ -114,9 +115,6 @@
                     {% if m.answers %}<br><span class="tv-time">↔️ its answer: {% for a in m.answers %}<a href="{{ motif_href(a.id) }}">{{ a.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
                     <br><span class="tv-time">“{{ m.claims[0]|e }}”{% if m.claims|length > 1 %} and {{ m.claims|length - 1 }} more{% endif %}</span></li>{% endfor %}</ul>
                 </div>
-            {% endif %}
-            {% if motif_words and (motif_words.headlines or motif_words.tv) %}
-                <p class="stage-notes story-motif-words">🧩 the motifs' own words{% if motif_words.headlines %}, in its headlines: {% for w in motif_words.headlines %}<a class="quote-chip" href="{{ motif_href(w.id) }}" title="{% for g, n in w.by.items() %}{{ n }} {{ g }}{% if not loop.last %}, {% endif %}{% endfor %}">“{{ w.phrase|e }}” <b>{{ w.n }}</b></a> {% endfor %}{% endif %}{% if motif_words.tv %}{% if motif_words.headlines %};{% else %},{% endif %} on TV: {% for w in motif_words.tv %}<a class="quote-chip" href="{{ motif_href(w.id) }}" title="{% for g, n in w.by.items() %}{{ g }} {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}">“{{ w.phrase|e }}” <b>{{ w.n }}</b></a> {% endfor %}{% endif %}</p>
             {% endif %}
             {% if folklore %}
                 <div class="saga-card story-page-card" style="--saga: #8a5cff">

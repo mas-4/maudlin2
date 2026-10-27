@@ -222,6 +222,16 @@ def chip_style(name: str, bias: int) -> str:
 
 
 j2env.globals['chip_style'] = chip_style
+
+
+def _curator_style() -> str:
+    """An aggregator's chip: the same neutral chip for every one, whatever its lean (they link stories, they don't
+    cover them; Oct 27: Political Wire's lean estimate made its chip a dashed blue that read as selected)"""
+    from app.site.graphing import bias_colors, bias_ink
+    return f'background-color: {bias_colors[3]}; color: {bias_ink[3]}'
+
+
+j2env.globals['curator_style'] = _curator_style()
 j2env.globals['FileNames'] = PathHandler.FileNames
 
 

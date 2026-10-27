@@ -1,0 +1,29 @@
+{# Share a page (Oct 27): to Bluesky's compose box, the phone's own share sheet, a copied link, or its card to save.
+   Needs page_url; uses the page's share title and card (page.html's og_title / og_image) when it has them #}
+{% set s_title = og_title or (title if title is defined else 'bignews.day') %}
+{% if page_url %}
+<p class="share-row" data-url="{{ page_url|e }}" data-title="{{ s_title|e }}">
+    <span class="share-label">📣 share:</span>
+    <a class="share-button" href="https://bsky.app/intent/compose?text={{ (s_title ~ ' ' ~ page_url)|urlencode }}" target="_blank" rel="noopener">🦋 Bluesky</a>
+    <button type="button" class="share-button share-native" hidden>📤 share</button>
+    <button type="button" class="share-button share-copy">🔗 copy link</button>
+    {% if og_image %}<a class="share-button" href="{{ og_image|e }}" target="_blank" rel="noopener" title="The picture a shared link shows: save it to post it yourself">🖼️ the card</a>{% endif %}
+</p>
+<script>
+    (function () {
+        const row = document.currentScript.previousElementSibling;
+        const native = row.querySelector('.share-native');
+        if (navigator.share) {
+            native.hidden = false;
+            native.addEventListener('click', () => navigator.share({title: row.dataset.title, url: row.dataset.url}).catch(() => {}));
+        }
+        const copy = row.querySelector('.share-copy');
+        copy.addEventListener('click', () => {
+            navigator.clipboard.writeText(row.dataset.url).then(() => {
+                copy.textContent = '✅ copied';
+                setTimeout(() => { copy.textContent = '🔗 copy link'; }, 1500);
+            }).catch(() => {});
+        });
+    })();
+</script>
+{% endif %}

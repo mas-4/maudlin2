@@ -16,12 +16,14 @@
             {% if up.checkers %}<li style="--sticker: #ffc400"><span class="sticker-emoji" aria-hidden="true">🔎</span><b>{{ up.checkers|length }}</b><span>fact-checker{{ '' if up.checkers|length == 1 else 's' }}</span></li>{% endif %}
         </ul>
     </header>
+    {% include "share.html" %}
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ A story people tell, not a claim that it's true.</p>
         <p>A motif is <b>the shape of a story as its tellers tell it</b>, named the way a folklorist names a tale type, so
             the same story told about other people, by the other side or in another year lands in the same place. Some
-            of the claims below are true, many are false, and a motif is the same whether people tell the story or
-            argue against it.</p>
+            of the claims below are true, many are false. Arguing against a story is often a story of its own, its
+            <b>answer</b> (Voter fraud is answered by Voter suppression, Lawfare by No one is above the law), and we
+            file it there; where no answer has a motif yet, the arguments against a story sit with its tellings.</p>
     </div>
 
     {% if e.rests_on or e.under or related %}
@@ -60,13 +62,11 @@
         <ul class="story-checks motif-page-news">{% for st in news %}<li>📰 <a href="story-{{ st.id }}.html">{{ st.label|e }}</a> <span class="court-when">{{ st.first }}{% if st.last != st.first %} to {{ st.last }}{% endif %}</span></li>{% endfor %}</ul>
     {% endif %}
 
-    {% if phrases or in_headlines or on_tv %}
+    {% if phrases %}
         <h2 class="section-divider stage-banner" style="--stage: #ffc400"><span>🗣️ In so many words</span></h2>
         <p class="stage-sub">the words that carry it</p>
         <div class="stage-notes">
-            {% if phrases %}<p>💬 the tellers' own words: {% for p in phrases %}<span class="quote-chip">“{{ p|e }}”</span> {% endfor %}</p>{% endif %}
-            {% if in_headlines %}<p>📰 in the last three days' headlines: {% for w in in_headlines %}<span class="quote-chip" title="{% for g, n in w.by.items() %}{{ n }} {{ g }}{% if not loop.last %}, {% endif %}{% endfor %}">“{{ w.phrase|e }}” <b>{{ w.n }}</b></span> ({% for g, n in w.by.items() %}{{ n }} {{ g }}{% if not loop.last %}, {% endif %}{% endfor %}) {% endfor %}</p>{% endif %}
-            {% if on_tv %}<p>📺 on TV captions: {% for w in on_tv %}<span class="quote-chip">“{{ w.phrase|e }}” <b>{{ w.n }}</b></span> ({% for g, n in w.by.items() %}{{ g }} {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}) {% endfor %}</p>{% endif %}
+            <p>💬 the tellers' own words: {% for p in phrases %}<span class="quote-chip">“{{ p|e }}”</span> {% endfor %}</p>
         </div>
     {% endif %}
 

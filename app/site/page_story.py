@@ -372,17 +372,8 @@ def rewordings(headlines: list[dict]) -> list[dict]:
 
 def told_as(web: dict | None, st: dict, tv: dict | None) -> dict:
     """How the story is being told (motif_web.by_story: each motif with the shows that told it by lean, people online,
-    fact-checkers, and the motifs that answer it), and the motifs' own words in its headlines (by the outlets' lean)
-    and on TV (by channel)"""
-    if not web:
-        return {'told_as': [], 'motif_words': {}}
-    from app.analysis import motif_web
-    lean = {-3: 'left', -2: 'left', -1: 'left', 0: 'center', 1: 'right', 2: 'right', 3: 'right'}
-    heads = [(h['title'], lean.get(h['bias'], 'not rated')) for h in st['headlines']]
-    caps = [(c['text'], c['name']) for c in (tv or {}).get('spots', [])]
-    return {'told_as': web['stories'].get(st['id'], [])[:10],
-            'motif_words': {'headlines': motif_web.words_in(heads, web['lexicon'], web['pattern'])[:6],
-                            'tv': motif_web.words_in(caps, web['lexicon'], web['pattern'])[:6]}}
+    fact-checkers, and the motifs that answer it)"""
+    return {'told_as': web['stories'].get(st['id'], [])[:10] if web else []}
 
 
 def share(st: dict, outlets: list, lean_counts: dict, stuck: list) -> dict:

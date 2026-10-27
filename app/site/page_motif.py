@@ -144,12 +144,8 @@ class MotifPages:
         from app.site.page_story import archived_ids
         labels = {st['id']: st for st in motif_web.stories_around()}
         pages = archived_ids()  # story pages are kept for good once built
-        try:  # the motif's own words, word for word, in the last days' headlines (by lean) and captions (by channel)
-            heads = motif_web.words_by_motif(motif_web.words_in(motif_web.recent_headlines(), web['lexicon'], web['pattern']))
-            caps = motif_web.words_by_motif(motif_web.words_in(motif_web.recent_captions(), web['lexicon'], web['pattern']))
-        except Exception as err:  # noqa: BLE001 - extra
-            logger.warning("Motif pages: words in headlines: %s", err)
-            heads, caps = {}, {}
+        # Its words spotted in headlines and captions were taken off the pages before launch (Oct 27 audit: a quarter
+        # to a third were the words used plainly, "Ponzi scheme" in a fraud report, "Game of Thrones" in costumes)
         show_pages = {sh: motif_web.show_slug(sh) for sh in web['shows']}
         for e in entries:
             up = came_up(e, s['tellers'], s['episodes'])
@@ -174,7 +170,7 @@ class MotifPages:
                 'news': [labels[sid] for sid in web['motif_stories'].get(e['id'], []) if sid in labels and sid in pages][:NEWS],
                 'lag': web['lag'].get(e['id'], []),
                 'phrases': [p for p, _ in motif_index.carrying(index['entries'][e['id']])][:PHRASES],
-                'in_headlines': heads.get(e['id'], []), 'on_tv': caps.get(e['id'], []), 'show_pages': show_pages,
+                'show_pages': show_pages,
             }, os.path.join(Config.build, motif_href(e['id'])))
         # A motif merged into another: its old address goes to the one kept
         moved = 0

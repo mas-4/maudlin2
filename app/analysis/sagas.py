@@ -415,7 +415,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
                     s.query(Saga).filter(Saga.id == absorbed).delete()
                     record_end(absorbed, {'saga': saga.id})
             else:
-                saga = Saga(first_seen=now, last_seen=now)
+                saga = Saga(id=next_saga_id(s), first_seen=now, last_seen=now)
                 s.add(saga)
                 s.flush()
             s.query(Story).filter(Story.id.in_(story_ids)).update({'saga_id': saga.id})
@@ -518,6 +518,15 @@ def record_end(saga_id: int, to: dict):
     ended = read_json(ENDED, {})
     ended[str(saga_id)] = to
     write_json(ENDED, ended, indent=1)
+
+
+def next_saga_id(s) -> int:
+    """A new saga's id: past every saga there is or ever was. The table's ids aren't AUTOINCREMENT, so a deleted
+    saga's id came back for the next new one (Oct 27 audit: 48, 50, 58, 69, 76 and 84 were ended sagas whose pages
+    redirect, reused by unrelated new sagas, so an old shared link opened the wrong one)"""
+    from sqlalchemy import func
+    top = s.query(func.max(Saga.id)).scalar() or 0
+    return max([top] + list(ended())) + 1
 
 
 def ended() -> dict[int, dict]:

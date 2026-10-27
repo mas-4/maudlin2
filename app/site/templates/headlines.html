@@ -46,6 +46,19 @@
                 </span>
             </div>
         {% endif %}
+        {% if top %}{# the front page's top stories: a head card, the rest folded under "more" (Oct 27) #}
+        {% set told_as = told_as_of.get(cluster['cluster']) if told_as_of is defined else none %}
+        {% if told_as %}
+            <div class="story-shows story-told-as">
+                <a class="story-shows-label" href="{% if story_of is defined and cluster['cluster'] in story_of %}story-{{ story_of[cluster['cluster']]|e }}.html#told-as{% else %}motifs.html{% endif %}" title="The stories this news is being told as, from the motif index: on the shows (by their lean), online and by fact-checkers">🧩 told as</a>
+                {% for m in told_as %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{{ m.genre|e }}">🧩 {{ m.name|e }}{% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% if m.sides[side] %} <span class="told-as-side told-as-{{ side }}" title="{{ m.sides[side]|join(', ')|e }}">{{ emoji }}{{ m.sides[side]|length }}</span>{% endif %}{% endfor %}</a>{% endfor %}
+            </div>
+        {% endif %}
+        {% if story_of is defined and cluster['cluster'] in story_of %}
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+        {% endif %}
+        <details class="card-more"><summary>🔍 more: mood, quotes, shows, TV, radio and every outlet</summary>
+        {% endif %}
         <div class="meters">
             {% for feeling in cluster['feelings'] %}
                 <span class="story-feeling" title="{{ feeling['share']|e }}% of the feeling in its headlines">
@@ -123,6 +136,7 @@
                 {% for m in retold.motifs %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in the BND Motif Index">🧩 {{ m.name|e }}</a>{% endfor %}
             </div>
         {% endif %}
+        {% if not top %}
         {% set told_as = told_as_of.get(cluster['cluster']) if told_as_of is defined else none %}
         {% if told_as %}
             <div class="story-shows story-told-as">
@@ -133,11 +147,13 @@
         {% if story_of is defined and cluster['cluster'] in story_of %}
             <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
         {% endif %}
+        {% endif %}
         {% if cluster['curators'] %}
-            <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ (outlet_home(a) or '#')|e }}" style="{{ (chip_style(a, 0))|e }}" title="{{ a|e }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
+            <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ (outlet_home(a) or '#')|e }}" style="{{ curator_style|e }}" title="{{ a|e }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
         {% endif %}
         </div>
         <div class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</div>
+        {% if top %}</details>{% endif %}
     </div>
 {% endmacro %}
     <script>
@@ -201,7 +217,6 @@
     <nav class="page-toc" aria-label="On this page">
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
-        {% if told_now %}<a href="#told"><span class="toc-emoji">🧩</span><span class="toc-label">stories told</span></a>{% endif %}
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
         <a href="#top-stories"><span class="toc-emoji">📰</span><span class="toc-label">top stories</span></a>
         <a href="stories.html"><span class="toc-emoji">🗂️</span><span class="toc-label">every story</span></a>
@@ -249,15 +264,27 @@
         function showWord(d) {
             const panel = document.getElementById('cloud-detail');
             const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-            const rows = d.samples.map((h) => `<li><span class="edit-chip" style="${chipStyle(h.agency, h.bias)}">${outletIcon(h.agency)}${esc(shortName(h.agency))}</span>
-                <a href="${esc(h.url)}">${esc(h.title)}</a></li>`).join('');
+            // The word's card (Oct 27, the person: "these cards could be more interesting and better looking"): the word
+            // as a sticker in its lean color, its numbers as stickers, then how each side's outlets use it, side by side
+            const chip = (h) => `<li><span class="edit-chip" style="${chipStyle(h.agency, h.bias)}">${outletIcon(h.agency)}${esc(shortName(h.agency))}</span>
+                <a href="${esc(h.url)}">${esc(h.title)}</a></li>`;
+            const sides = {left: d.samples.filter((h) => h.bias < 0), center: d.samples.filter((h) => h.bias === 0),
+                           right: d.samples.filter((h) => h.bias > 0)};
+            const column = (key, emoji, label) => sides[key].length
+                ? `<div class="cloud-side cloud-side-${key}"><h4>${emoji} ${label}</h4><ul class="cloud-samples">${sides[key].map(chip).join('')}</ul></div>` : '';
+            const spice = d.spice >= 1.2 ? ['🌶️🌶️', 'spicy'] : d.spice >= 0.6 ? ['🌶️', 'a bit spicy'] : ['🍞', 'plain'];
+            const mood = (d.tip.match(/mood (-?[\d.]+)/) || [])[1];
             panel.innerHTML = `<button class="cloud-close" aria-label="Close">×</button>
-                <h3 class="${d.color === 'balanced' ? 'balanced-text' : ''}" style="${d.color === 'balanced' ? '' : `color: ${d.color}`}">${esc(d.word)}</h3>
-                ${d.feeling ? `<p class="cloud-feeling">${d.feeling.emoji} ${esc(d.feeling.phrase)}
-                    <a href="emotions.html">(emotions)</a></p>` : ''}
-                <p class="poll-note">${d.outlets} outlets · ${esc(d.side)}. A sample of headlines using it, one per outlet,
-                    from left- to right-leaning:</p>
-                <ul class="cloud-samples">${rows}</ul>`;
+                <p class="cloud-kicker"><span>☁️ in the cloud right now</span></p>
+                <h3 class="cloud-word-title ${d.color === 'balanced' ? 'balanced-text' : ''}" style="${d.color === 'balanced' ? '' : `color: ${d.color}`}">${esc(d.word)}</h3>
+                <ul class="cloud-stickers">
+                    <li style="--sticker: #3a86ff"><span aria-hidden="true">📰</span><b>${d.outlets}</b><span>outlets use it</span></li>
+                    ${d.feeling ? `<li style="--sticker: #ff4fa3"><span aria-hidden="true">${d.feeling.emoji}</span><b>${esc((d.feeling.phrase.match(/\d+%/) || [''])[0])}</b><span><a href="emotions.html">${esc(d.feeling.phrase.replace(/:.*$/, '').toLowerCase())}</a></span></li>` : ''}
+                    <li style="--sticker: #ffc400"><span aria-hidden="true">${spice[0]}</span><b>${spice[1]}</b><span>its headlines' wording</span></li>
+                    ${mood ? `<li style="--sticker: #00c2a8"><span aria-hidden="true">${Number(mood) < -0.2 ? '⛈️' : Number(mood) > 0.2 ? '☀️' : '⛅'}</span><b>${Number(mood) < -0.2 ? 'grim' : Number(mood) > 0.2 ? 'upbeat' : 'mixed'}</b><span>the news it's in</span></li>` : ''}
+                </ul>
+                <p class="cloud-side-note">${esc(d.side.charAt(0).toUpperCase() + d.side.slice(1))}. One headline an outlet, a sample:</p>
+                <div class="cloud-sides">${column('left', '🫏', 'left-leaning')}${column('center', '⚖️', 'center')}${column('right', '🐘', 'right-leaning')}</div>`;
             // Open where the reader is looking: the panel normally sits near the cloud's top, which on a phone can be
             // above the screen, and focusing it there made the whole page jump up to it
             panel.style.top = '';
@@ -703,21 +730,6 @@
     </script>
 
 
-    {% if page_part == 'front' and told_now %}
-    <h2 class="section-divider" id="told"><span>🧩 Stories being told</span></h2>
-    <p class="stage-sub">the shapes under this week's news, from our <a href="motifs.html">motif index</a> · who they came up with on the shows, left and right · stories people tell, not claims that they're true</p>
-    <ul class="front-told">
-        {% for m in told_now %}
-            <li><a class="front-told-card" href="{{ motif_href(m.id) }}">
-                <span class="front-told-genre">{{ m.emoji }} {{ m.genre|e }}</span>
-                <b class="front-told-name">{{ m.name|e }}</b>
-                {% if m.note %}<span class="front-told-note">{{ m.note|e }}</span>{% endif %}
-                <span class="front-told-sides">{% if m.leans.left or m.leans.center or m.leans.right %}🎙️ came up on{% if m.leans.left %} <span class="front-told-lean front-told-left">🫏 {{ m.leans.left }} left</span>{% endif %}{% if m.leans.center %} <span class="front-told-lean front-told-center">{{ m.leans.center }} center</span>{% endif %}{% if m.leans.right %} <span class="front-told-lean front-told-right">🐘 {{ m.leans.right }} right</span>{% endif %}{% else %}🧶 told online{% endif %}</span>
-            </a></li>
-        {% endfor %}
-    </ul>
-    <p class="more-link"><a href="motifs.html">🧩 every story being told →</a> <a href="about.html">👋 what's a motif?</a></p>
-    {% endif %}
     {% if page_part == 'front' and top_stories %}
     <h2 class="section-divider" id="top-stories"><span>📰 Top stories</span></h2>
     <p class="stage-sub">what the most front pages carry right now · <a href="stories.html">every story, with every outlet's headline →</a></p>

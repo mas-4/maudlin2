@@ -4,6 +4,64 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-27
+- **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
+  front page's cards ("🧩 told as"). A show claim is tied to the story on the front pages it is nearest in meaning to
+  (mxbai embeddings), among the stories running from two days before its episode to a day after, only when it is at
+  least 0.75 alike and 0.04 closer than the next story; otherwise it is tied to none. Calibrated on the 392 Bluesky
+  narratives the story model had tied: the nearest story agreed with the model's 85% of the time, and fell in the same
+  saga 92%. About 1 in 14 show claims clears the bar, so the panel shows mostly on the bigger stories, and a tie can
+  be wrong.
+- **"Came up on", not "told by".** Where the site counts the left, center and right shows behind a motif, a show
+  counts when one of the motif's claims was heard there: told, reported or argued against. Tellings don't yet record
+  which, so these counts say where a story came up, not who believes it.
+- **Arguing against a story.** The site used to say a motif "is the same whether people tell the story or argue
+  against it". Not quite: an answer often has a shape of its own (Voter fraud is answered by Voter suppression, Lawfare
+  by No one is above the law) and is filed under the answer's motif. Where no answer has a motif yet, the arguments
+  against a story are filed with its tellings. The site's notes now say so.
+- **Each show's signature.** A show's page lists the motifs it tells far more than the other shows: weighted log-odds
+  with an informative prior (Monroe, Colaresi and Quinn 2008), the prior a weight of 10 tellings spread over the motifs
+  by their share of all tellings. Its nearest shows are by cosine similarity of their motif counts, whatever their
+  lean.
+- **The motifs' words in headlines and on TV.** Motif names and the tellers' phrases (two words or more) are looked
+  for word for word in the last three days' headlines and captions. Plots and everyday talk are left out: a plot's name
+  is what a plain report says ("found dead", "mass shooting"), where an argument's or a theory's ("rigged election",
+  "radical left") is the telling itself. A headline can still use a motif's words to report on it.
+- **The motif map is the aisle.** The force-directed map is replaced by a chart: each motif placed left to right by
+  the share of its shows that lean left or right, (right − left) / (right + left + 2) so a motif few shows told sits
+  nearer the middle, and up by its tellers on a log scale; answers are arcs. A motif rises when told at least 3 times
+  in the last 7 days and at least twice as often as in the 7 before; it fades when told a third as often or less.
+- **Out of the public index: watch lists and donation appeals.** Straight news and any other watch list (sinks for
+  plain reports, kept so the models learn what isn't a story) no longer appear among the public motifs or their
+  rankings. Folklore leaves out retold "claims" that are non-political appeals for money: on Oct 27 the top card was
+  a pet-charity appeal posted once each by 285 accounts with no replies, a spam wave's shape.
+- **One side's wording.** "D.C." was read as the words "d" and "c", so the left's "D.C. golf" and the right's "DC golf"
+  each looked like a phrase only that side used. Abbreviations with dots are now read as one word, and light verbs
+  ("puts", "takes", "makes") count as headline grammar, not framing.
+- **Saga names.** The naming prompt now asks for neutral words true of every part. Two names were corrected by hand:
+  "California noncitizen voting scandal" (now "California noncitizen ballot dispute") and "Trump attacks El-Sayed and
+  Minaj", whose first part was Trump praising Minaj (now "Trump's Michigan rally").
+
+## 2026-10-26
+- **Show claims grouped around a centre.** A claim told on two or more shows is now grouped with only the claims close
+  to it and to each other (mutual neighbours at 0.84), around its most central telling, rather than chained through
+  any pair alike enough: at 0.78 one chain had joined 4,436 tellings. The words a claim was filed under are kept when
+  its group is redrawn, so a filed claim isn't filed again as a new one.
+
+## 2026-10-25
+- **Show claims need to be 0.84 alike to count as one claim retold** (from 0.78). Judged by hand on 70 pairs: at 0.78
+  to 0.80 about 4 in 14 pairs were one claim, at 0.84 to 0.86 about 10 in 14, above that nearly all. At 0.78 about
+  half the two-show claims were two claims glued together.
+- **Claims worded as a dispute are split, one claim a side.** "Arguments exist over whether..." isn't a claim anyone
+  tells; such a claim is now split into each side's own claim, and the claim writers are told not to word one that way.
+- **The Washington Post and The Washington Times** are read again, the Post through Google News and the Times through
+  its headlines feed, after both stopped coming in. A scraper coming back after failed runs
+  no longer stops the hourly run.
+
+## 2026-10-24
+- **One outlet's failure no longer fails the hourly run;** its headlines are just missing for that hour.
+- **Visits are counted with GoatCounter:** no cookies, nothing personal kept.
+
 ## 2026-10-20
 - **Transcripts without Whisper's repetition loops.** Whisper decoded each stretch of audio with the text before it as
   context, its default, and a repeated phrase fed itself: "it is all happening, it is all happening…". 951 of 2,016

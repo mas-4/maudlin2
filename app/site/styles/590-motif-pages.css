@@ -177,38 +177,52 @@
     text-decoration: underline wavy #8a5cff;
 }
 
-/* About */
-.about-body {
-    max-width: 46em;
-    background: rgba(255, 255, 255, 0.92);
-    border-radius: 12px;
-    padding: 0.4em 1em 1em;
+/* About: a lede under the title, then a grid of cards */
+.about-lede {
+    font-size: 1.15em;
+    line-height: 1.5;
+    color: #444;
+    max-width: 48em;
+    margin: 0.5em 0 0;
+}
+
+.about-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.4em;
+    margin: 1em 0 2em;
+}
+
+.about-card {
+    background: color-mix(in srgb, var(--about) 8%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--about);
+    padding: 0.4em 1.2em 1em;
     line-height: 1.6;
 }
 
-.about-body h3 {
-    font: 700 1.3em 'Comic Neue', 'Comic Sans MS', cursive;
-    margin: 1.1em 0 0.3em;
+.about-card:nth-child(odd) {
+    transform: rotate(-0.4deg);
 }
 
-.about-body li {
+.about-card:nth-child(even) {
+    transform: rotate(0.4deg);
+}
+
+.about-wide {
+    grid-column: 1 / -1;
+}
+
+.about-card h3 {
+    font: 700 1.35em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.6em 0 0.3em;
+}
+
+.about-card li {
     margin-bottom: 0.5em;
 }
 
-.motif-page-side .motif-page-show {
-    margin: 0 0.2em 0.35em 0;
-    font-size: 0.9em;
-}
-
-/* A saga part's feeling, named so it reads on a phone too (a lone emoji only explained itself on hover) */
-.saga-feeling {
-    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
-    color: #666;
-    white-space: nowrap;
-    margin-left: 0.3em;
-}
-
-/* A top story's card already says how fast it broke, above; its outlet list needn't say it again */
-.top-story-cards .status-speed {
-    display: none;
+.about-links {
+    text-align: left;
 }
