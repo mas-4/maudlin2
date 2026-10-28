@@ -379,7 +379,9 @@ class HeadlinesPage:
         # The headline table has a page of its own, rendered from the same template (`page_part` picks the sections)
         self.table_page = TemplateHandler('headlines.html', 'headlines.html')
         self.stories_page = TemplateHandler('headlines.html', 'stories.html')
-        self.context = {'title': 'Current Headlines', 'page_title': 'Big News Day', 'breaking_minutes': BREAKING_MINUTES}
+        # The home page has no title of its own, only the site's name (Oct 28, the person: "'Current Headlines' honestly can
+        # be dropped"), in the browser tab and where a link to it is shared
+        self.context = {'title': '', 'page_title': 'bignews.day', 'breaking_minutes': BREAKING_MINUTES}
 
     def generate(self):
         logger.info("Generating headlines page...")

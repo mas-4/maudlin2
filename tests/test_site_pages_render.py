@@ -297,7 +297,7 @@ def test_built_stylesheet_styles_each_page(site, built_css, name, selector):
 def test_page_has_title_and_footer(site, name):
     soup = site['soup'][name]
     if name in ('index.html', 'headlines.html'):  # the home page and its copy
-        assert soup.title.string == 'Big News Day'
+        assert soup.title.string == 'bignews.day'  # the site's name only, no page title (Oct 28)
     else:
         assert soup.title.string.startswith(f'{Config.site_name} - ')
     assert soup.select_one('.site-footer') is not None
