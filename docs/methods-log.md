@@ -5,6 +5,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **Outlet lists by shares, feelings against the average outlet, measures against the median.** The outlets page's
+  Spiciest | Plainest and Grimmest | Sunniest rank outlets by the share of their headlines scored loaded (1 or 2) or
+  plain (0), grim (below 0) or good news (above 0), not by the averages. The outlet map's stories that pull each way
+  are colored by the side that ran them more: the share of its left-rated outlets that ran a story against the share of
+  its right-rated ones, alike within 1.5 times. An outlet page's feelings are its share of each against the average
+  outlet's (each outlet with 5 or more headlines read counting once, from front pages now), within 2 points "about the
+  same"; its loaded share, grim share, rewrites and wire share sit beside the median outlet's.
 - **The aisle: "only in the center".** A motif is listed when at least 2 center shows said it in their own voice (a
   host or guest, as the aisle counts sides) and no left, right or crossover show told it at all, not even in a clip it
   played or a call, over all time; crossover shows are their own group, with an "only on crossover shows" list when any

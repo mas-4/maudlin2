@@ -1,19 +1,89 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
-{% set MOOD_TINTS = {'grim+': '#cfc6ff', 'grim': '#e3ddff', 'plain': '#f4efe6', 'upbeat': '#fff1b3', 'upbeat+': '#ffe066'} %}
-{% set SPIN_TINTS = {'plain': '#f4efe6', 'loaded': '#ffd6c2', 'loaded+': '#ffab8a'} %}
-{% set FRAMING_TINTS = {'😈': '#e0d4ff', '😇': '#fff1b3', '🤝': '#eef1f6'} %}
-{% set FEELING_TINTS = {'anger': '#ffc2c2', 'fear': '#e0d4ff', 'sadness': '#c9e2ff', 'disgust': '#d6f5c4',
-                        'surprise': '#fff1b3', 'joy': '#ffe066', 'hope': '#c8f7e6'} %}
+{# The outlets page (page_agencies.py). Oct 28: paired leaderboards first, rows colored by the outlet's type on the
+   outlet map with its lean a small mark beside the name; then every outlet in one sortable table. Each outlet's card
+   (its blurb and badges) is the hover card on its name. Nothing here is escaped by the environment: escape it all. #}
 
-{% macro badge(emoji, text, tint, title='') %}
-    <span class="badge" style="--tint: {{ tint|e }}"{% if title %} title="{{ title|e }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
-{% endmacro %}
+{% macro lean_mark(l) %}<span class="olean{% if l.est %} olean-est{% endif %}" style="--lean: {{ l.ink|e }}" role="img" aria-label="lean: {{ l.label|e }}">{{ l.mark|e }}</span>{% endmacro %}
+
+{% macro oboard(bd) %}<section class="rank-board rank-board-{{ bd.key|e }}" aria-labelledby="rank-{{ bd.key|e }}">
+    <h3 class="section-divider stage-banner rank-board-title" id="rank-{{ bd.key|e }}" style="--stage: {{ bd.stage|e }}"><span>{{ bd.emoji|e }} {{ bd.title|e }}</span></h3>
+    <p class="stage-sub">{{ bd.sub|e }}</p>
+    {% if bd.rows %}<ol class="rank-list">
+        {% for r in bd.rows %}<li><a href="{{ r.href|e }}" class="rank-row orow" data-ocard="{{ r.card|e }}" style="--ink: {{ r.ink|e }}; --bar: {{ r.bar }}%">
+            <span class="rank-mark" role="img" aria-label="{{ r.mark_label|e }}">{{ r.mark|e }}</span>
+            <span class="rank-main"><span class="rank-name">{{ r.name|e }} {{ lean_mark(r.lean) }}</span><span class="rank-bar" aria-hidden="true"></span></span>
+            <span class="rank-figure">{{ r.figure|e }}</span></a></li>
+        {% endfor %}</ol>
+    {% else %}<p class="stage-empty">{{ bd.empty|e }}</p>{% endif %}
+</section>{% endmacro %}
+
+{% macro cell_bar(value, top, figure) %}{% if value is none %}–{% else %}<span class="ocell-bar"><span class="rank-bar" style="--bar: {{ [(100 * value / top)|round|int, 4]|max }}%"></span><span>{{ figure|e }}</span></span>{% endif %}{% endmacro %}
+
+{% macro ocard(o) %}<template id="ocard-{{ o.slug|e }}"><div class="ocard">
+    <div class="hover-card-head">{{ o.name|e }} <span aria-label="{{ o.country|e }}">{{ o.flag|e }}</span></div>
+    {% if o.wiki %}{% set w = o.wiki %}
+        {% if w.owner or w.parent or w.founded or w.headquarters %}<p class="ocard-about">
+            {% if w.owner or w.parent %}<span>🏢 {{ (w.owner or w.parent)|join(', ')|e }}{% if w.owner and w.parent and w.parent != w.owner %} (part of {{ w.parent|join(', ')|e }}){% endif %}</span>{% endif %}
+            {% if w.founded %}<span>📅 since {{ w.founded|e }}</span>{% endif %}
+            {% if w.headquarters %}<span>📍 {{ w.headquarters[0]|e }}</span>{% endif %}</p>{% endif %}
+        {% if w.extract %}<blockquote class="ocard-wiki">{{ w.extract|e }} <a href="{{ w.url|e }}">— Wikipedia</a> <small>(CC BY-SA 4.0)</small></blockquote>{% endif %}
+    {% endif %}
+    <p>{% if o.lean_url %}<a href="{{ o.lean_url|e }}">⚖️ {{ o.lean|e }} (AllSides)</a>{% elif o.estimate %}⚖️ {{ o.estimate|e }}, our estimate from its headlines' wording (AllSides doesn't rate it){% else %}⚖️ not rated by AllSides{% endif %}
+        · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability|e }}{% if o.reliability_note %} ({{ o.reliability_note|e }}){% endif %}{% else %}not on Wikipedia's list{% endif %}</p>
+    <p>{{ o.look.mark|e }} <a href="outlet-map.html#omap-types">{{ o.look.name|e }}</a>{% if o.look.about %}: {{ o.look.about|e }}{% endif %}</p>
+    <ul class="ocard-measures">
+        {% if o.spice %}<li>{{ o.spice.badge[0]|e }} <b>{{ o.spice.badge[1]|e }}</b>: {{ o.shares.stirs }}% of its headlines worded to stir (average {{ o.spice.value }}, from 0 plain to 2 built to provoke)</li>{% endif %}
+        {% if o.mood %}<li>{{ o.mood.badge[0]|e }} <b>{{ o.mood.badge[1]|e }} news</b>: {{ o.shares.grim }}% grim, {{ o.shares.sunny }}% good news (average {{ o.mood.value }}, from -1 grim to 1 upbeat)</li>{% endif %}
+        {% if o.framing %}<li>{{ o.framing.badge[0]|e }} <b>{{ o.framing.badge[1]|e }}</b>: on stories other outlets also covered, its headlines run {{ o.framing.value }} from theirs</li>{% endif %}
+        {% if o.feeling %}<li>{{ o.feeling.emoji|e }} <b>{{ ('mostly ' if o.feeling.share >= 50 else 'often ') ~ o.feeling.name|e }}</b>: {{ o.feeling.share }}% of the feeling in its headlines</li>{% endif %}
+        <li>✏️ <b>{{ (o.edits ~ ' rewrites per 100')|e if o.edits else 'no rewrites' }}</b>: headlines changed after we first saw them</li>
+        {% if o.is_wire %}<li>📡 <b>a wire service</b>: its headlines are the copy other outlets run</li>{% elif o.wire is not none %}<li>📡 <b>{{ (o.wire ~ '% wire copy') if o.wire else 'no wire copy' }}</b>: its headlines that are AP or Reuters headlines, word for word or nearly</li>{% endif %}
+    </ul>
+    <p>📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</p>
+    <a class="hover-card-more" href="outlet-{{ o.slug|e }}.html">full profile →</a>
+</div></template>{% endmacro %}
 
 {% block content %}
-    <h1>The outlets</h1>
+    <h1>📰 The outlets</h1>
+    <p class="table-intro">How {{ outlets|length }} outlets word the news, from their news headlines over the last
+        {{ window_days }} days, as read by a local language model (outlets with fewer than {{ min_headlines }} are left
+        out). Each list comes with the list that answers it. Each outlet's disc is its type on
+        <a href="outlet-map.html">the outlet map</a>, named for what it does on its front page, not for its lean; the
+        small mark after its name is its lean. 👆 Point at or tap an outlet for its card.</p>
+    <div class="outlet-search">
+        <input type="search" id="outlet-search" placeholder="🔎 find an outlet" aria-label="Find an outlet">
+    </div>
+    {{ b.key(type_key, 'Outlet types') }}
+    <p class="olean-key">Lean marks: 🫏 left · ⚖️ center · 🐘 right, in AllSides' colors; dashed when it's
+        <span class="olean olean-est" style="--lean: #ffffff" aria-hidden="true"></span> our estimate or not rated.</p>
 
-    <h2 class="section-divider" id="lineup"><span>The lineup</span></h2>
+    {% for pair in pairs %}<div class="rank-boards">{% for bd in pair %}{{ oboard(bd) }}{% endfor %}</div>
+    {% endfor %}
+
+    <h2 class="section-divider" id="every-outlet"><span>📋 Every outlet</span></h2>
+    <p class="stage-sub">🌶️ the share of its headlines worded to stir · ⛈️ the share telling bad news · ✏️ headlines
+        rewritten per 100 · 📡 the share that's AP or Reuters copy · 📰 headlines in {{ window_days }} days. Click a
+        heading to sort; point at a name for its card.</p>
+    <table class="sortable olist">
+        <thead><tr><th data-sort="text">Outlet</th><th data-sort="number" class="olist-wide">⚖️ Lean</th>
+            <th data-sort="number">🌶️ Stirs</th><th data-sort="number">⛈️ Grim</th><th data-sort="number">✏️ Rewrites</th>
+            <th data-sort="number" class="olist-wide">📡 Wire</th><th data-sort="number" class="olist-wide">📰 Headlines</th></tr></thead>
+        <tbody>
+        {% for o in outlets %}
+            <tr id="outlet-{{ o.slug|e }}" data-name="{{ o.name|e }}" style="--ink: {{ o.look.ink|e }}">
+                <td class="olist-name" data-ocard="{{ o.slug|e }}"><span class="rank-mark ocell-mark" role="img" aria-label="{{ o.look.name|e }}" data-mark="{{ o.look.mark|e }}"></span><a href="outlet-{{ o.slug|e }}.html">{{ short_name(o.name)|e }}</a> {{ lean_mark(o.lean_look) }}{{ ocard(o) }}</td>
+                <td class="olist-wide" data-value="{{ o.lean_look.order }}">{{ o.lean_look.label|e }}</td>
+                <td data-value="{{ o.shares.stirs if o.shares.stirs is not none else -1 }}">{{ cell_bar(o.shares.stirs, tops.stirs, o.shares.stirs ~ '%') }}</td>
+                <td data-value="{{ o.shares.grim if o.shares.grim is not none else -1 }}">{{ cell_bar(o.shares.grim, tops.grim, o.shares.grim ~ '%') }}</td>
+                <td data-value="{{ o.edits }}">{{ cell_bar(o.edits, tops.edits, '%g'|format(o.edits)) }}</td>
+                <td class="olist-wide" data-value="{{ 101 if o.is_wire else (o.wire if o.wire is not none else -1) }}">{% if o.is_wire %}📡 a wire{% else %}{{ cell_bar(o.wire, tops.wire, o.wire ~ '%') }}{% endif %}</td>
+                <td class="olist-wide" data-value="{{ o.headlines }}">{{ '{:,}'.format(o.headlines) }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
     <p class="ratings-credit">⚖️ Lean: <a href="https://www.allsides.com/media-bias/ratings">AllSides Media Bias
         Ratings</a> (<a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a>), shown on their five-level
         scale. 📚 Reliability: Wikipedia's
@@ -21,133 +91,31 @@
         (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>), which says whether Wikipedia editors
         will cite a source. Both as of October 3, 2026. 🏢 About: each outlet's opening lines are quoted from its
         Wikipedia article (CC BY-SA 4.0), and its owner, founding year and headquarters come from
-        <a href="https://www.wikidata.org/">Wikidata</a> (CC0), refreshed weekly. The badges on the cards are our own
-        measurements.
-        {% if lean_quality %}<br>✏️ Outlets marked <em>est.</em> aren't rated by AllSides; their lean is our estimate from
-        their headlines' wording, published only when the model is confident. Tested by hiding each rated outlet in turn,
+        <a href="https://www.wikidata.org/">Wikidata</a> (CC0), refreshed weekly. 🏷️ Types: from
+        <a href="outlet-map.html">the outlet map</a>, by what each outlet does on its front page. The lists and their
+        figures are our own measurements.
+        {% if lean_quality %}<br>✏️ Leans marked as our estimate are for outlets AllSides doesn't rate, from their
+        headlines' wording, published only when the model is confident. Tested by hiding each rated outlet in turn,
         it calls a side for {{ lean_quality.called }} of {{ lean_quality.outlets }} and gets
         {{ (lean_quality.side_right * 100)|round|int }}% of those right.{% endif %}</p>
-    <div class="lineup">
-        {% for column in lineup %}
-            <div class="lineup-column">
-                <div class="lineup-head{% if column.unrated %} lineup-unrated{% endif %}" style="background-color: {{ column.color|e }}; color: {{ column.ink|e }}">{{ column.name }}</div>
-                {% for o in column.outlets %}
-                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug|e }}"
-                       style="{{ o.style|e }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name|e }}{% if o.estimate %} (our estimate){% endif %}">{{ short_name(o.name) }}{% if o.estimate %} <small>est.</small>{% endif %}</span></a>
-                {% endfor %}
-            </div>
-        {% endfor %}
-    </div>
-    {% if unrated_outlets %}
-        <div class="unrated-strip">
-            <div class="unrated-head">Not rated <span>· off the left-right scale: AllSides doesn't rate them and our estimate isn't confident</span></div>
-            <div class="unrated-chips">
-                {% for o in unrated_outlets %}
-                    <a class="edit-chip lineup-chip" href="#outlet-{{ o.slug|e }}" style="{{ o.style|e }}">{{ outlet_icon(o.name) }}<span class="chip-name" title="{{ o.name|e }}">{{ short_name(o.name) }}</span></a>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-
-    <h2 class="section-divider" id="outlet-cards"><span>How they cover it</span></h2>
-    <div class="table-filters outlet-sort" role="group" aria-label="Sort outlets">
-        <span>sort:</span>
-        <button data-sort="name" class="active">🔤 A to Z</button>
-        <button data-sort="lean" title="Left to right">⚖️ lean</button>
-        <button data-sort="spice" title="Most loaded wording first">🌶️ spiciest</button>
-        <button data-sort="mood" title="Grimmest news first">⛈️ grimmest</button>
-        <button data-sort="framing" title="Gloomiest framing of shared stories first">😈 gloomiest framing</button>
-        <button data-sort="edits" title="Rewrites the most headlines first">✏️ most rewrites</button>
-        <button data-sort="headlines" title="Most headlines first">📰 busiest</button>
-    </div>
-    <div class="outlet-search">
-        <input type="search" id="outlet-search" placeholder="🔎 find an outlet" aria-label="Find an outlet">
-    </div>
-    <div class="outlet-cards">
-        {% for o in outlets %}
-            <div class="outlet-card" id="outlet-{{ o.slug|e }}" style="--pop: {{ o.color|e }}"
-                 data-name="{{ (o.name.removeprefix('The '))|e }}" data-lean="{{ (o.bias if o.bias is not none else 9)|e }}"
-                 data-spice="{{ (o.spice.value if o.spice else -1)|e }}" data-mood="{{ (o.mood.value if o.mood else 9)|e }}"
-                 data-framing="{{ (o.framing.value if o.framing else 9)|e }}" data-edits="{{ o.edits|e }}"
-                 data-headlines="{{ o.headlines|e }}">
-                <div class="outlet-head">
-                    <span class="edit-chip outlet-name{% if short_name(o.name)|length > 18 %} long-name{% endif %}" style="{{ o.style|e }}" title="{{ o.name|e }}">{{ outlet_icon(o.name) }}{{ short_name(o.name) }}</span>
-                    <span class="outlet-flag" title="{{ o.country|e }}">{{ o.flag }}</span>
-                </div>
-                {% if o.wiki %}
-                    {% set w = o.wiki %}
-                    <div class="outlet-about">
-                        {% if w.owner or w.parent %}<span>🏢 {{ (w.owner or w.parent)|join(', ') }}{% if w.owner and w.parent and w.parent != w.owner %} (part of {{ w.parent|join(', ') }}){% endif %}</span>{% endif %}
-                        {% if w.founded %}<span>📅 since {{ w.founded }}</span>{% endif %}
-                        {% if w.headquarters %}<span>📍 {{ w.headquarters[0] }}</span>{% endif %}
-                    </div>
-                    {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url|e }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
-                {% endif %}
-                <div class="outlet-facts">
-                    {% if o.lean_url %}<a href="{{ o.lean_url|e }}" title="AllSides rating">⚖️ {{ o.lean }}</a>{% elif o.estimate %}<span title="Not rated by AllSides; estimated from its headlines' wording">⚖️ est. {{ o.estimate }} (ours)</span>{% else %}⚖️ not rated by AllSides{% endif %}
-                    · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% if o.reliability_note %} ({{ o.reliability_note }}){% endif %}{% else %}not on Wikipedia's list{% endif %}
-                </div>
-                <div class="outlet-badges">
-                    {% if o.spice %}{{ badge(o.spice.badge[0], o.spice.badge[1], SPIN_TINTS[o.spice.badge[1]], 'Average loaded score ' ~ o.spice.value ~ ' (0 plain to 2 built to provoke)') }}{% endif %}
-                    {% if o.mood %}{{ badge(o.mood.badge[0], o.mood.badge[1] ~ ' news', MOOD_TINTS[o.mood.badge[1]], 'Average mood ' ~ o.mood.value ~ ' (-1 grim to 1 upbeat)') }}{% endif %}
-                    {% if o.framing %}{{ badge(o.framing.badge[0], o.framing.badge[1], FRAMING_TINTS[o.framing.badge[0]], 'On stories other outlets also covered, its headlines run ' ~ o.framing.value ~ ' from theirs') }}{% endif %}
-                    {% if o.feeling %}{{ badge(o.feeling.emoji, 'mostly ' ~ o.feeling.name if o.feeling.share >= 50 else 'often ' ~ o.feeling.name, FEELING_TINTS[o.feeling.name], o.feeling.share ~ '% of the feeling in its headlines') }}{% endif %}
-                    {{ badge('✏️', (o.edits ~ ' rewrites per 100') if o.edits else 'no rewrites', '#d9f7f2', 'Headlines changed after first seen, per 100 headlines') }}
-                    {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff', 'Its headlines are the copy other outlets run') }}{% elif o.wire is not none %}{{ badge('📡', (o.wire ~ '% wire copy') if o.wire else 'no wire copy', '#e0d4ff', 'Share of its headlines in ' ~ window_days ~ ' days that are AP or Reuters headlines, word for word or nearly') }}{% endif %}
-                </div>
-                <div class="outlet-count">📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</div>
-                <a class="outlet-profile-link" href="outlet-{{ o.slug|e }}.html">full profile →</a>
-            </div>
-        {% endfor %}
-    </div>
-    <p class="table-intro">From each outlet's news headlines over the last {{ window_days }} days, as read by a local language
-        model; outlets with fewer than {{ min_headlines }} are left out. Hover a badge for the number behind it.</p>
 
     <script>
         (function () {
-            // Phones: the lineup's lean groups stack masonry-style (each into the shorter of two columns), so a long
-            // group doesn't leave a hole beside a short one; wide screens keep the five groups side by side in order
-            if (matchMedia('(max-width: 700px)').matches) {
-                const lineup = document.querySelector('.lineup');
-                if (lineup) packColumns(lineup, [...lineup.querySelectorAll('.lineup-column')], 150);
-            }
-            const box = document.querySelector('.outlet-cards');
-            const all = [...box.querySelectorAll('.outlet-card')];
-            let order = all;
-            const repack = packColumns(box, all, 330);
-            // Search by name: matching cards stay, the rest step out; lineup chips that don't match fade
-            const search = document.getElementById('outlet-search');
-            const matches = (name) => name.toLowerCase().includes(search.value.trim().toLowerCase());
-            const shown = () => order.filter((c) => matches(c.dataset.name + ' ' + c.querySelector('.outlet-name').title));
-            search.addEventListener('input', () => {
-                repack(shown());
-                document.querySelectorAll('.lineup-chip').forEach((chip) => {
-                    chip.classList.toggle('dimmed', Boolean(search.value.trim()) && !matches(chip.querySelector('.chip-name').title));
-                });
-            });
-            const num = (c, key) => parseFloat(c.dataset[key]);
-            const SORTS = {
-                name: (a, b) => a.dataset.name.localeCompare(b.dataset.name),
-                lean: (a, b) => num(a, 'lean') - num(b, 'lean') || a.dataset.name.localeCompare(b.dataset.name),
-                spice: (a, b) => num(b, 'spice') - num(a, 'spice'),
-                mood: (a, b) => num(a, 'mood') - num(b, 'mood'),
-                framing: (a, b) => num(a, 'framing') - num(b, 'framing'),
-                edits: (a, b) => num(b, 'edits') - num(a, 'edits'),
-                headlines: (a, b) => num(b, 'headlines') - num(a, 'headlines'),
-            };
-            // Lineup chips pop their outlet's card up instead of jumping down to it
-            document.querySelectorAll('.lineup, .unrated-strip').forEach((area) => area.addEventListener('click', (ev) => {
-                const chip = ev.target.closest('.lineup-chip');
-                if (!chip) return;
-                ev.preventDefault();
-                popCard(document.getElementById(chip.getAttribute('href').slice(1)));
+            // Each outlet's card (its blurb and badges, kept in a <template> in its table row) on its name, in the
+            // lists and the table (index.js hoverCard)
+            document.addEventListener('DOMContentLoaded', () => window.hoverCard.register('[data-ocard]', (el) => {
+                const t = document.getElementById(`ocard-${el.dataset.ocard}`);
+                return t ? t.content.cloneNode(true) : null;
             }));
-            document.querySelector('.outlet-sort').addEventListener('click', (ev) => {
-                const button = ev.target.closest('button');
-                if (!button) return;
-                order = [...all].sort(SORTS[button.dataset.sort]);
-                repack(shown());
-                document.querySelectorAll('.outlet-sort button').forEach((b) => b.classList.toggle('active', b === button));
+            // Search by name: the table keeps the matching rows, the lists dim the rest
+            const search = document.getElementById('outlet-search');
+            const rows = [...document.querySelectorAll('.olist tbody tr')];
+            const names = Object.fromEntries(rows.map((r) => [r.id.slice(7), r.dataset.name.toLowerCase()]));
+            search.addEventListener('input', () => {
+                const q = search.value.trim().toLowerCase();
+                const hit = (slug) => !q || (names[slug] || '').includes(q);
+                rows.forEach((r) => { r.hidden = !hit(r.id.slice(7)); });
+                document.querySelectorAll('.orow').forEach((r) => r.classList.toggle('orow-dim', !hit(r.dataset.ocard)));
             });
         })();
     </script>

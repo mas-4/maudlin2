@@ -278,7 +278,7 @@ def test_built_stylesheet_is_the_joined_partials(built_css):
 
 @pytest.mark.parametrize('name, selector', [
     ('index.html', '.navbar'), ('index.html', '.top-story-cards'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
-    ('agencies.html', '.outlet-card'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
+    ('agencies.html', '.olist'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
     ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
     ('radio.html', '.radio-stats'), ('outlet-map.html', '.omap-finding')])
 def test_built_stylesheet_styles_each_page(site, built_css, name, selector):
@@ -446,7 +446,7 @@ def test_emotions_page(site):
 
 def test_agencies_page(site):
     soup = site['soup']['agencies.html']
-    assert soup.select_one('h1').get_text(strip=True) == 'The outlets'
+    assert soup.select_one('h1').get_text(strip=True) == '📰 The outlets'
 
 
 def test_edits_page(site):
@@ -475,10 +475,11 @@ def test_outlet_map_draws_both_views_with_a_dot_per_outlet(site):
     assert [b['data-view'] for b in page.select('.omap-views button')] == ['coverage', 'style']
     data = json.loads(page.select_one('#omap-data').string)
     assert data['Raw Story']['href'] == 'outlet-raw-story.html' and data['Raw Story']['heat'] == '97th'
-    assert '<Markets> rally' in page.select_one('.omap-ends').get_text()  # escaped story label
-    types = page.select('.omap-type')
-    assert [t.select_one('h3').get_text(strip=True) for t in types] == ['🏘️ Right partisan web', '🏷️ Left Trump-watch']
-    assert [a['href'] for a in types[0].select('a')] == ['outlet-breitbart.html', 'outlet-fox-news.html']
+    assert '<Markets> rally' in page.select_one('.rank-board-pull-left').get_text()  # escaped story label
+    types = page.select('.omap-type-row')  # the most heated first
+    assert [t.select_one('.rank-name').get_text(strip=True) for t in types] == ['Left Trump-watch', 'Right partisan web']
+    members = page.select_one(f"#otype-{types[1]['data-otype']}")
+    assert [a['href'] for a in members.select('a')] == ['outlet-breitbart.html', 'outlet-fox-news.html']
     assert len(page.select('table.omap-table tbody tr')) == len(names)
     assert '28 days' in page.select_one('figcaption').get_text()
 
