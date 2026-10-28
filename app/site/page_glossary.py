@@ -1,5 +1,7 @@
 """How it works: the glossary and methodology page. Its numbers come from the settings the rest of the site uses, so
 the page stays true when a threshold changes."""
+import re
+
 from app.analysis import clustering, edits, lean_estimate, sagas
 from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI
 from app.registry import Scrapers, SeleniumScrapers
@@ -45,5 +47,36 @@ class GlossaryPage:
             'estimate_rank': lean_estimate.MIN_RANK_AGREEMENT, 'lean_quality': j2env.globals.get('lean_quality'),
             'estimates': len(j2env.globals.get('lean_estimates') or {}),
         })
+        self.context['folk'] = folk()
         self.template.write(self.context)
         logger.info("...done")
+
+
+# The folklore half (Oct 28, the site redo: the page promised every number, badge and emoji on the site and had none of
+# the motif side). Each card opens with the real chip, sticker or meter it explains; the motifs named in them are the
+# ones the site's own words use as examples (motif.html: Voter fraud is answered by Voter suppression), with what one
+# rests on in the index, linked to their pages when this build has them (motif_href falls back to the index).
+EXAMPLES = {'motif': ('M806', 'Voter fraud', 'Theories'), 'rests_on': ('M174', 'Rigged election'),
+            'answer': ('M875', 'Voter suppression')}
+
+
+def folk() -> dict:
+    """What the folklore cards need, from the settings the folklore pages use"""
+    from app import sidefeeds
+    from app.analysis import divide, replay
+    from app.site import boards, page_aisle
+    from app.site.page_motifs import GENRE_EMOJI
+    crossover = []
+    for s in sidefeeds.SOURCES:  # the crossover shows by name, once each (a show's podcast and video feeds are one show:
+        # "Joe Rogan Experience (podcast)", "This Past Weekend w/ Theo Von" beside "Theo Von")
+        name = re.sub(r'\s*\((?:podcast|video)\)$', '', s['name'])
+        bare = lambda n: n.lower().removeprefix('the ')  # noqa: E731
+        if s['group'] == 'crossover' and not any(bare(name) in bare(c) or bare(c) in bare(name) for c in crossover):
+            crossover.append(name)
+    chips = [sidefeeds.BY_KEY[k]['name'] for k in ('yt_rogan', 'yt_theo') if k in sidefeeds.BY_KEY] or crossover[:2]
+    key = [{**k, 'about': ''} for k in boards.genre_key()]  # the genres' glosses are in the card's words
+    return {'examples': EXAMPLES, 'genre_key': key, 'genre_emoji': GENRE_EMOJI, 'crossover_chips': chips,
+            'genre_ink': boards.GENRE_INK, 'lean_ink': boards.LEAN_INK, 'aisle_ink': page_aisle.LEAN_INK, 'crossover': crossover,
+            'replay_words': replay.K, 'replay_shows': replay.MIN_SHOWS, 'replay_days': replay.DAYS,
+            'divide_draws': divide.DRAWS, 'divide_full': divide.FULL_TRANSCRIPTS,
+            'only_least': page_aisle.ONLY_LEAST, 'rising_min': page_aisle.RISING_MIN}

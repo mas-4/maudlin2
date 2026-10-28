@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% macro term(emoji, name, id=none) %}
     <div class="term"{% if id %} id="{{ id|e }}"{% endif %}>
@@ -6,6 +7,17 @@
         {{ caller() }}
     </div>
 {% endmacro %}
+
+{# A folklore card opens with the real chip, sticker or meter it explains, in the site's own classes #}
+{% macro fterm(emoji, name, id, badge) %}
+    <div class="term gloss-folk" id="{{ id|e }}">
+        <div class="gloss-badge">{{ badge }}</div>
+        <h3><span class="term-emoji">{{ emoji }}</span>{{ name }}</h3>
+        {{ caller() }}
+    </div>
+{% endmacro %}
+
+{% macro chip(m) %}<a class="motif-chip" href="{{ motif_href(m[0])|e }}">🧩 {{ m[1]|e }}</a>{% endmacro %}
 
 {% block content %}
     <h1>How it works</h1>
@@ -166,6 +178,97 @@
         {% call term('📡', 'Trending elsewhere', 'trending') %}
             <p>What's trending on Bluesky, Google searches, Wikipedia's most-read pages and Mastodon, next to what the
                 press is covering. A trend tagged <span class="trend-both">news</span> matches one of our stories.</p>
+        {% endcall %}
+    </div>
+
+    {% set ex = folk.examples %}
+    <h2 class="section-divider" id="folklore"><span>🧶 Folklore and motifs</span></h2>
+    <p class="table-intro">The other half of the site: the stories people tell about the news, on the shows we
+        transcribe, online and to fact-checkers, sorted into shapes the way a folklorist sorts tales. A story people
+        tell is not a claim that it's true.</p>
+    <div class="terms">
+        {% set badge %}{{ chip(ex.motif) }}{% endset %}
+        {% call fterm('🧩', 'Motif', 'motif', badge) %}
+            <p>The shape of a story as its tellers tell it, named the way a folklorist names a tale type: without
+                names or dates, so the same story told about other people, by the other side or in another year lands
+                in the same place. A language model files each claim it reads under the motifs it fits, and a person
+                checks them; only motifs a person has looked over are on the site. All of them are in
+                <a href="motifs.html">the motif index</a>, each with a page of its claims.</p>
+        {% endcall %}
+        {% set badge %}<a class="folk-genre" href="motifs.html#genre={{ ex.motif[2]|urlencode }}">{{ folk.genre_emoji[ex.motif[2]] }} {{ ex.motif[2]|e }}</a>{% endset %}
+        {% call fterm('🎨', 'Genre', 'genre', badge) %}
+            <p>The layer of story a motif is, given by a person: a kind of person, what happened, a premise, what
+                people think is behind it, a move in an argument, and so on. A genre belongs to a motif, not to a
+                claim. Wherever motifs are listed by color, the five biggest genres (most of what's told) have their
+                own colors, always with their emoji; the smaller ones stay white, known by their emoji:</p>
+            {{ b.key(folk.genre_key, 'Genre colors') }}
+        {% endcall %}
+        {% set badge %}<p class="gloss-badge-line">{{ chip(ex.motif) }} <span class="gloss-badge-word">🪜 rests on</span> {{ chip(ex.rests_on) }}</p>{% endset %}
+        {% call fterm('🪜', 'Rests on', 'rests-on', badge) %}
+            <p>A motif rests on another when it only makes sense given that one: a kind of it, or a case, an argument
+                or a figure that tells it. Voter fraud rests on Rigged election. It's the index's one hierarchy, and it
+                can cross genres. A motif's page lists what it rests on and, as <b>⤵️ under it</b>, what rests on it.</p>
+        {% endcall %}
+        {% set badge %}<p class="gloss-badge-line">{{ chip(ex.motif) }} <span class="gloss-badge-word">↔️ answered by</span> {{ chip(ex.answer) }}</p>{% endset %}
+        {% call fterm('↔️', 'Answer', 'answer', badge) %}
+            <p>Arguing against a story is often a story of its own: its answer. Voter fraud is answered by Voter
+                suppression, Lawfare by No one is above the law. A person links the two, and the argument against is
+                filed under the answer; where no answer has a motif yet, it sits with the story's own tellings. A
+                motif's page lists them under <b>↔️ answers and mirrors</b>; on the aisle, an arc joins each pair.</p>
+        {% endcall %}
+        {% set badge %}<div class="meter"><span class="meter-bar"><span class="meter-end" aria-hidden="true">📋</span><span class="meter-end-word">copied</span>
+            <span class="meter-track variety-track"><span class="meter-dot" style="left: 78%"></span></span>
+            <span class="meter-end-word">own words</span><span class="meter-end" aria-hidden="true">🗣️</span></span></div>{% endset %}
+        {% call fterm('🗣️', 'Copied or in their own words', 'own-words', badge) %}
+            <p>On a story <a href="folklore.html">retold online</a>: how much the posts telling it share the same
+                words. Folklore travels as variants, each teller putting it their own way, so its dot sits toward 🗣️
+                own words; copypasta and coordinated posting are the same words pasted, toward 📋 copied. The dot is
+                how much one version's words turn up in another, on average.</p>
+        {% endcall %}
+        {% set badge %}<ul class="story-stickers gloss-stickers"><li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">📏</span><b>0</b><span>no more apart than chance</span></li></ul>{% endset %}
+        {% call fterm('📏', 'The divide', 'divide', badge) %}
+            <p>How different the stories left and right shows tell are, week by week (Tuesday to Monday), on <a
+                href="motif-map.html#divide">the aisle</a>: the mix of motifs said by the hosts and guests of
+                left-leaning shows against the mix on right-leaning shows, less how different the same shows look when
+                split into two sides at random ({{ folk.divide_draws }} times). <b>0 means no more different than
+                shows picked at random</b>; higher, further apart. Weeks only: a day has too few tellings. Weeks before
+                Oct 20 rest on partial transcripts.</p>
+        {% endcall %}
+        {% set badge %}<svg class="aisle-svg gloss-aisle" viewBox="0 0 360 120" role="img" aria-label="A sketch of the aisle: a story told on the left, one told on both sides, one told on the right, and an arc joining a story to its answer">
+            <rect x="0" y="0" width="360" height="120" rx="10" fill="#f6f6fa"/>
+            <line x1="180" y1="8" x2="180" y2="92" class="aisle-mid"/>
+            <path class="aisle-arc" d="M 62 62 Q 180 2 296 48"/>
+            <g class="aisle-dot"><circle class="aisle-core" cx="62" cy="62" r="11" fill="{{ folk.aisle_ink.left|e }}"/></g>
+            <g class="aisle-dot"><circle class="aisle-core" cx="178" cy="40" r="8" fill="#6b6f78"/></g>
+            <g class="aisle-dot"><circle class="aisle-ring" cx="296" cy="48" r="14"/><circle class="aisle-core" cx="296" cy="48" r="9" fill="{{ folk.aisle_ink.right|e }}"/></g>
+            <text x="8" y="112" class="aisle-end aisle-end-left">🫏 left shows</text>
+            <text x="180" y="112" class="aisle-end" text-anchor="middle">⚖️ both</text>
+            <text x="352" y="112" class="aisle-end aisle-end-right" text-anchor="end">right shows 🐘</text>
+        </svg>{% endset %}
+        {% call fterm('🗺️', 'The aisle', 'aisle', badge) %}
+            <p><a href="motif-map.html">The motif map</a>: every motif the shows told is a dot, placed left to right by
+                the share of the shows whose host or guest said it that lean left or right (a clip a show played, or a
+                caller, doesn't count; a motif few shows said sits nearer the middle), and higher the more it was told.
+                A ringed dot is rising: told at least {{ folk.rising_min }} times this week, and twice as often as
+                the week before. An arc joins a
+                story to its answer. Below the map, ranked lists in pairs: rising and fading, mostly left and mostly
+                right, told on both sides and only in the center.</p>
+        {% endcall %}
+        {% set badge %}<p class="gloss-badge-line">{% for s in folk.crossover_chips %}<span class="show-chip tv-chip" style="--chip: {{ folk.lean_ink.crossover|e }}">🎙️ {{ s|e }}</span> {% endfor %}</p>{% endset %}
+        {% call fterm('🔀', 'Crossover shows', 'crossover', badge) %}
+            <p>Shows we don't put on the left or the right, whose hosts and audiences cross the usual lines:
+                {{ folk.crossover|join(', ') }}. Show leans are our own rough grouping by reputation, not a rating, in
+                purple wherever shows are colored by lean. The aisle leaves crossover shows out of its two sides and
+                lists, when there are any, the motifs said on {{ folk.only_least }} or more crossover shows and on no
+                other; the Replay gives them a lane of their own.</p>
+        {% endcall %}
+        {% set badge %}<ul class="story-stickers gloss-stickers"><li style="--sticker: #00c2a8"><span class="sticker-emoji" aria-hidden="true">🔁</span><b>{{ folk.replay_shows }}+</b><span>shows, word for word</span></li></ul>{% endset %}
+        {% call fterm('🔁', 'The Replay', 'replay', badge) %}
+            <p><a href="replayed.html">The passages heard word for word on many shows</a> this week: a clip of a
+                speech or an interview, a campaign ad, a statement read out, a sponsor read. We find them in our own
+                machine transcripts of the shows' episodes: the same {{ folk.replay_words }} words in the same order on
+                {{ folk.replay_shows }} or more different shows. Each clip shows when and where it aired, in a lane
+                for each lean of show.</p>
         {% endcall %}
     </div>
 

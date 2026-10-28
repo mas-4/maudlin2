@@ -1,12 +1,26 @@
 {% extends "page.html" %}
 
+{# The ladders (page_lab.py): the shared ranked strips' classes (styles/175-boards.css), with a before → after bar
+   where a result has one (styles/770-redo-g.css). Nothing here is escaped by the environment: every field is. #}
+{% macro ladder(l) %}<section class="rank-board lab-ladder" aria-labelledby="rank-{{ l.key|e }}">
+    <h3 class="section-divider stage-banner rank-board-title" id="rank-{{ l.key|e }}" style="--stage: {{ l.stage|e }}"><span>{{ l.emoji|e }} {{ l.title|e }}</span></h3>
+    <p class="stage-sub">{{ l.sub|e }}</p>
+    <ol class="rank-list">
+        {% for r in l.rows %}<li id="{{ r.code|e }}" data-status="{{ r.status|e }}"><div tabindex="0" class="rank-row lab-rung" style="--ink: {{ r.ink|e }}" data-tip-head="{{ r.head|e }}" data-tip="{{ r.tip|e }}">
+            <span class="rank-mark" role="img" aria-label="{{ r.mark_label|e }}">{{ r.mark|e }}</span>
+            <span class="rank-main"><span class="rank-name lab-codename">{{ r.name|e }} <span class="lab-code">{{ r.code|e }}</span></span>
+                {% if r.before is not none %}<span class="lab-ba" aria-hidden="true"><span class="lab-ba-before" style="--bar: {{ r.before }}%"></span><span class="lab-ba-after" style="--bar: {{ r.after }}%"></span></span>{% endif %}</span>
+            <span class="rank-figure">{{ r.figure|e }}</span></div></li>
+        {% endfor %}</ol>
+</section>{% endmacro %}
+
 {% block content %}
     <header class="story-hero lab-hero">
         <p class="story-kicker"><span>🧪 The Lab</span></p>
         <h2 class="story-page-title">How we test the machine that reads the stories</h2>
         <ul class="story-stickers">
-            <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🧪</span><b>{{ total }}</b><span>experiments so far</span></li>
-            {% for emoji, words, n in counts[:3] %}<li style="--sticker: {{ ['#00c2a8', '#ffc400', '#ff4fa3'][loop.index0] }}"><span class="sticker-emoji" aria-hidden="true">{{ emoji }}</span><b>{{ n }}</b><span>{{ words }}</span></li>{% endfor %}
+            <li style="--sticker: #ff4fa3"><span class="sticker-emoji" aria-hidden="true">🧪</span><b>{{ total }}</b><span>experiments so far</span></li>
+            {% for k in key[:3] %}<li style="--sticker: {{ k.ink|e }}"><span class="sticker-emoji" aria-hidden="true">{{ k.mark|e }}</span><b>{{ k.count }}</b><span>{{ k.name|e }}</span></li>{% endfor %}
         </ul>
     </header>
     <p class="table-intro lab-intro">Our <a href="motifs.html">motif index</a> is built by language models running on our
@@ -15,19 +29,52 @@
         if it helps. Each experiment is named after a figure from folklore. The misses are here too: an idea that didn't
         work is a finding. The numbers are the experiments' own shorthand; <a href="methods.html">the methods log</a>
         tells the story of each change in plain words.</p>
-    <p class="lab-key">{% for emoji, words, n in counts %}<span class="quote-chip">{{ emoji }} {{ words }} <b>{{ n }}</b></span> {% endfor %}</p>
 
-    {% for f in families %}
-        <h2 class="section-divider stage-banner" style="--stage: {{ ['#00c2a8', '#8a5cff', '#ff4fa3', '#ffc400', '#3a86ff', '#ff6b1a'][loop.index0 % 6] }}"><span>{{ f.key }} · {{ f.about }}</span></h2>
-        <div class="court-cards lab-cards">
-            {% for x in f['items'] %}
-                <div class="story court-story lab-card lab-{{ x.status|replace(' ', '-')|e }}" id="{{ x.code|e }}">
-                    <p class="folk-sources"><span class="folk-genre">{{ x.emoji }} {{ x.words }}</span> <span class="court-when">{{ x.code }}</span></p>
-                    <h4>{{ x.codename|e }}</h4>
-                    <p class="lab-question">{{ x.question|e }}</p>
-                    {% if x.result %}<p class="lab-result">🔬 {{ x.result|e }}</p>{% endif %}
-                </div>
-            {% endfor %}
-        </div>
-    {% endfor %}
+    <div class="table-intro lab-how">
+        <p>🪜 <b>Each family of experiments is a ladder</b>, from what's in use on the site at the top down to what was
+            tried and not kept, colored by where each stands. Point at or tap an experiment for its question and what
+            it found.</p>
+        <p>📊 <b>The bar</b>, where a result says a measure went from one number to another ({{ with_bar }} of
+            {{ total }} do): <span class="lab-ba lab-ba-sample" aria-hidden="true"><span class="lab-ba-before" style="--bar: 55%"></span><span class="lab-ba-after" style="--bar: 75%"></span></span>
+            grey is before, colored is after, from 0 to 100% (or 0 to 1, for a score like an AUC). What it measures is
+            in the card. The rest say it in words, so they get no bar rather than a guessed one.</p>
+    </div>
+    <div class="pick-chips lab-filters" role="group" aria-label="Show only the experiments that are…">
+        <button type="button" class="pick-chip" data-status="" aria-pressed="true"><span class="rank-mark" aria-hidden="true" style="--ink: #ffffff">🧪</span><b>all</b> <span class="pick-chip-n">{{ total }}</span></button>
+        {% for k in key %}<button type="button" class="pick-chip" data-status="{{ k.status|e }}" aria-pressed="false"><span class="rank-mark" aria-hidden="true" style="--ink: {{ k.ink|e }}">{{ k.mark|e }}</span><b>{{ k.name|e }}</b> <span class="pick-chip-n">{{ k.count }}</span></button>{% endfor %}
+    </div>
+    <p class="lab-showing" aria-live="polite" hidden></p>
+
+    <div class="lab-ladders">
+        {% for l in ladders %}{{ ladder(l) }}
+        {% endfor %}
+    </div>
+
+    <script>
+        (function () {
+            // The status chips filter the ladders: one status at a time, "all" (or the same chip again) for every one
+            const chips = [...document.querySelectorAll('.pick-chip')];
+            const showing = document.querySelector('.lab-showing');
+            function pick(status) {
+                chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.status === status)));
+                let n = 0;
+                document.querySelectorAll('.lab-ladder').forEach((l) => {
+                    let seen = 0;
+                    l.querySelectorAll('li[data-status]').forEach((li) => {
+                        const on = !status || li.dataset.status === status;
+                        li.hidden = !on;
+                        seen += on;
+                    });
+                    l.hidden = !seen;
+                    n += seen;
+                });
+                const chip = chips.find((c) => c.dataset.status === status);
+                showing.hidden = !status;
+                if (status) showing.textContent = `Showing the ${n} ${chip.querySelector('b').textContent}; tap it again for all.`;
+            }
+            chips.forEach((c) => c.addEventListener('click', () => {
+                pick(c.getAttribute('aria-pressed') === 'true' ? '' : c.dataset.status);
+            }));
+        })();
+    </script>
 {% endblock %}

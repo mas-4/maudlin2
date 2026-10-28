@@ -1,11 +1,41 @@
 /* How it works terms (glossary); card background tints */
 
 /* How it works */
+/* One card a row on a phone, two side by side, three on a wide screen. Sections hold 2 to 9 cards, and a fixed
+   three across left holes (Oct 28: a section of 4 had two empty places, of 5 one): on a wide screen the grid is six
+   columns, a card takes two, and the last row is shared out (two cards left over take half each, one left over makes
+   the last four two pairs); with two across, an odd last card takes the row */
 .terms {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(22em, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.2em;
     margin-bottom: 1em;
+}
+
+@media (min-width: 760px) {
+    .terms {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .terms > .term:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 1150px) {
+    .terms {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .terms > .term,
+    .terms > .term:last-child:nth-child(odd) {
+        grid-column: span 2;
+    }
+
+    .terms:has(> .term:last-child:nth-child(3n + 2)) > .term:nth-last-child(-n + 2),
+    .terms:has(> .term:last-child:nth-child(3n + 1)) > .term:nth-last-child(-n + 4) {
+        grid-column: span 3;
+    }
 }
 
 .term {

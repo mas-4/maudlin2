@@ -1,0 +1,192 @@
+/* The site redo, Oct 28, group G: the Lab's ladders, the methods log's timeline, the glossary's folklore cards */
+
+/* The Lab: each family a ladder of the shared ranked strips (175-boards.css), laid in columns so a long family and
+   a short one don't leave holes beside each other */
+.lab-how {
+    max-width: 52em;
+    text-align: left;
+}
+
+.lab-how p {
+    margin: 0.3em 0;
+}
+
+.pick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5em 0.6em;
+    margin: 0.8em 0 0.4em;
+}
+
+.pick-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    min-height: 44px;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 0.15em 0.8em 0.15em 0.25em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    cursor: pointer;
+    transform: rotate(-1deg);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.pick-chip:nth-child(even) {
+    transform: rotate(1deg);
+}
+
+.pick-chip:hover {
+    transform: translate(-1px, -2px);
+    box-shadow: 3px 4px 0 #1f1f2e;
+}
+
+.pick-chip[aria-pressed="true"] {
+    background: #ffc400;
+    box-shadow: 1px 1px 0 #1f1f2e;
+    transform: translate(1px, 1px);
+}
+
+.pick-chip .rank-mark {
+    width: 1.9em;
+    height: 1.9em;
+}
+
+.pick-chip-n {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 0.85em;
+    color: #555;
+}
+
+.lab-showing {
+    text-align: center;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+    padding: 0.2em 0.8em;
+    width: fit-content;
+    margin: 0.4em auto;
+}
+
+.lab-ladders {
+    columns: 2 24em;
+    column-gap: 2.2em;
+}
+
+.lab-ladder {
+    break-inside: avoid;
+    display: inline-block;  /* keeps a ladder whole in its column where break-inside alone doesn't */
+    width: 100%;
+}
+
+.lab-ladder .rank-board-title {
+    margin-top: 1em;
+}
+
+.lab-rung {
+    cursor: help;
+}
+
+.lab-codename {
+    font-size: 1.12em;
+}
+
+.lab-code {
+    font: 0.68em 'Bungee', 'Comic Neue', sans-serif;
+    color: #6b6f78;
+    white-space: nowrap;
+}
+
+/* Before → after: two thin bars on one scale, grey before, the status color after */
+.lab-ba {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+
+.lab-ba > span {
+    display: block;
+    box-sizing: border-box;
+    width: var(--bar);
+    min-width: 6px;
+    height: 7px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.lab-ba-before {
+    background: #e3e3ec;
+}
+
+.lab-ba-after {
+    background: var(--ink, #8a5cff);
+}
+
+.lab-ba-sample {
+    display: inline-flex;
+    width: 5em;
+    vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pick-chip, .pick-chip:nth-child(even), .pick-chip:hover { transition: none; transform: none; }
+}
+
+/* The glossary's folklore cards: each opens with the real chip, sticker or meter it explains, on a little stage */
+.gloss-badge {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    min-height: 3.2em;
+    margin: 0.3em 0 0.2em;
+    padding: 0.5em 0.6em;
+    background: white;
+    border: 2px solid #e2e2ec;
+    border-radius: 12px;
+}
+
+.gloss-badge > * {
+    margin: 0;
+}
+
+.gloss-badge .meter {
+    width: 100%;
+}
+
+.gloss-badge-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35em;
+}
+
+.gloss-badge-word {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    white-space: nowrap;
+}
+
+.gloss-badge .story-stickers.gloss-stickers {
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+}
+
+/* The aisle's sketch: the aisle's own marks, at the card's width (the map itself scrolls on a phone; this doesn't) */
+.gloss-badge .aisle-svg.gloss-aisle {
+    min-width: 0;
+    max-width: 26em;
+}
+
+.gloss-folk .rank-key {
+    justify-content: flex-start;
+}

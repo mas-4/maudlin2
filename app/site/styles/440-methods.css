@@ -1,36 +1,229 @@
-/* The methods log */
+/* The methods log (page_methods.py): a timeline on a paper backing, an entry a line, its full text folded under it */
 
-/* The methods log: a long read, so a comfortable column */
-.methods-log {
-    max-width: 50em;
+/* The paper: the whole page sits on it, so no text is ever on the pattern */
+.methods-paper {
+    max-width: 52em;
     margin: 0 auto 3em;
-    line-height: 1.55;
+    padding: 0.6em 1.4em 1.4em;
+    background: rgba(255, 255, 255, 0.96);
+    border: 3px solid #1f1f2e;
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 #8a5cff;
 }
 
-.methods-log h2 {
-    font: 700 1.3em 'Comic Neue', 'Comic Sans MS', cursive;
-    margin: 1.6em 0 0.5em;
-    padding-bottom: 0.2em;
+.methods-intro {
+    line-height: 1.55;
+    color: #444;
+}
+
+.methods-keys {
+    margin: 0.8em 0;
+}
+
+.methods-key-label {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    margin: 0.6em 0 0.2em;
+}
+
+.methods-filters {
+    justify-content: flex-start;
+    margin-top: 0.3em;
+}
+
+.methods-kind-key {
+    white-space: nowrap;
+}
+
+.methods-rules {
+    font-size: 0.88em;
+    color: #555;
+    line-height: 1.45;
+}
+
+/* A bar a day: how many changes it logged, a link to the day */
+.methods-days {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    margin: 1em 0 0.2em;
+}
+
+.methods-day-link {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    color: #1f1f2e;
+    text-decoration: none;
+}
+
+.methods-day-bar {
+    display: block;
+    width: 100%;
+    max-width: 1.6em;
+    height: calc(0.35em + var(--n) * 0.035em);  /* --n: the day's changes, 0-100 of the busiest day's */
+    background: #8a5cff;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 4px 4px 1px 1px;
+    transition: transform 0.15s;
+}
+
+.methods-day-link:hover .methods-day-bar, .methods-day-link:focus-visible .methods-day-bar {
+    background: #ffc400;
+    transform: translateY(-2px);
+}
+
+.methods-day-name {
+    font: 700 0.72em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+}
+
+.methods-days-note {
+    font-size: 0.85em;
+    color: #666;
+    margin: 0 0 0.8em;
+}
+
+.methods-tools {
+    margin: 0.4em 0;
+}
+
+.methods-showing {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: #fff4c2;
+    border-radius: 10px;
+    padding: 0.2em 0.8em;
+    width: fit-content;
+}
+
+/* The timeline: a rule down the left, each entry's colored disc on it */
+.methods-day {
+    scroll-margin-top: 1em;
+}
+
+.methods-date {
+    font: 700 1.2em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 1.3em 0 0.3em;
+    padding-bottom: 0.15em;
     border-bottom: 3px solid #1f1f2e;
 }
 
-.methods-log ul ul {
-    margin: 0.3em 0;
+.methods-entries {
+    list-style: none;
+    margin: 0;
+    padding: 0.2em 0 0.2em 0;
+    position: relative;
 }
 
-.methods-log li {
-    margin: 0.45em 0;
+.methods-entries::before {
+    content: '';
+    position: absolute;
+    left: calc(1em - 1.5px);
+    top: 0;
+    bottom: 0;
+    border-left: 3px solid #d8d8e4;
 }
 
-.methods-log code {
+.methods-entry summary {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2em 1.4em minmax(0, 1fr);
+    align-items: center;
+    gap: 0.45em;
+    min-height: 44px;
+    padding: 0.2em 0.4em 0.2em 0;
+    border-radius: 10px;
+    cursor: pointer;
+    list-style: none;
+    font: 700 1.02em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    transition: background 0.15s;
+}
+
+.methods-entry summary::-webkit-details-marker {
+    display: none;
+}
+
+.methods-entry summary::after {
+    content: '▸';
+    position: absolute;
+    right: 0.4em;
+    color: #888;
+}
+
+.methods-entry details[open] > summary::after {
+    content: '▾';
+}
+
+.methods-entry summary:hover, .methods-entry summary:focus-visible {
+    background: color-mix(in srgb, var(--ink) 16%, #fbfbfd);
+}
+
+.methods-kind {
+    text-align: center;
+    font-size: 1.05em;
+}
+
+.methods-line {
+    line-height: 1.25;
+    padding-right: 1em;
+    overflow-wrap: anywhere;
+}
+
+.methods-line code, .methods-body code {
     font-size: 0.9em;
     background: #f3efe6;
     padding: 0 0.25em;
     border-radius: 3px;
 }
 
-.methods-days {
-    max-width: 50em;
-    margin: 0 auto 1em;
-    font-size: 0.9em;
+/* The entry's full text, a card under its line, edged in its area's color */
+.methods-body {
+    margin: 0.2em 0 0.8em 2.4em;
+    padding: 0.4em 0.9em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-left: 8px solid var(--ink);
+    border-radius: 10px;
+    line-height: 1.55;
+    color: #333;
+    overflow-wrap: anywhere;
+}
+
+.methods-body p {
+    margin: 0.4em 0;
+}
+
+.methods-body ul {
+    padding-left: 1.2em;
+}
+
+@media (max-width: 600px) {
+    .methods-paper {
+        padding: 0.4em 0.8em 1em;
+        box-shadow: 4px 4px 0 #8a5cff;
+    }
+
+    .methods-days {
+        flex-wrap: wrap;  /* a few rows of tap-sized days, not 23 slivers */
+        gap: 6px 2px;
+    }
+
+    .methods-day-link {
+        flex: 0 0 40px;
+    }
+
+    .methods-body {
+        margin-left: 0.6em;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .methods-day-bar, .methods-entry summary { transition: none; }
 }

@@ -807,7 +807,9 @@ def test_methods_page_publishes_the_log(monkeypatch, tmp_path):
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     pm.MethodsPage().generate()
     html = (tmp_path / 'methods.html').read_text()
-    assert '<h2 id="2026-10-05">2026-10-05</h2>' in html and '<strong>A change.</strong>' in html
+    # Oct 28: a timeline, an entry's lead its line and the rest folded under it (tests/test_redo_g.py has the rest)
+    assert 'id="2026-10-05"' in html and '<span class="methods-line">A change</span>' in html
+    assert 'It <b>matters</b>.' in html and '<span class="methods-line">Another</span>' in html
     assert 'href="#2026-10-04"' in html and 'Intro paragraph' not in html
 
 

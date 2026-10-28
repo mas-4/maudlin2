@@ -1,14 +1,95 @@
 {% extends "page.html" %}
 
+{# The methods log as a timeline (page_methods.py, styles/440-methods.css): a line an entry, colored by the area it
+   touches and tagged by kind, its full text folded under it. The entries' bodies are the log's own markdown, rendered;
+   every other field is escaped here. #}
 {% block content %}
-    <h2>📓 Methods log</h2>
-    <p class="poll-note">Every change to how bignews.day collects or measures things, dated, newest first, including
-        what we tried that didn't work and the mistakes we caught. A chart or a number that crosses one of these dates
-        should be read with the change in mind. How each measure works today is on <a href="glossary.html">How it
-        works</a>; this is how it got that way. Scores in our data carry the model and rubric that made them from
-        Oct 3, 2026 on.</p>
-    {% if days %}<p class="methods-days">Jump to: {% for d in days %}<a href="#{{ d|e }}">{{ d }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
-    <article class="methods-log">
-        {{ log }}
-    </article>
+    <div class="methods-paper">
+        <h2>📓 Methods log</h2>
+        <p class="methods-intro">Every change to how bignews.day collects or measures things, dated, newest first,
+            including what we tried that didn't work and the mistakes we caught. A chart or a number that crosses one
+            of these dates should be read with the change in mind. How each measure works today is on <a
+            href="glossary.html">How it works</a>; this is how it got that way. Scores in our data carry the model and
+            rubric that made them from Oct 3, 2026 on.</p>
+
+        <div class="methods-keys">
+            <p class="methods-key-label">🎨 The part of the site each change touches (tap to show only those):</p>
+            <div class="pick-chips methods-filters" role="group" aria-label="Show only the changes to…">
+                <button type="button" class="pick-chip" data-area="" aria-pressed="true"><span class="rank-mark" aria-hidden="true" style="--ink: #ffffff">📓</span><b>everything</b> <span class="pick-chip-n">{{ total }}</span></button>
+                {% for a in areas %}<button type="button" class="pick-chip" data-area="{{ a.key|e }}" aria-pressed="false"><span class="rank-mark" aria-hidden="true" style="--ink: {{ a.ink|e }}">{{ a.mark|e }}</span><b>{{ a.name|e }}</b> <span class="pick-chip-n">{{ a.count }}</span></button>{% endfor %}
+            </div>
+            <p class="methods-key-label">🏷️ What kind of change:
+                {% for k in kinds %}<span class="methods-kind-key"><span aria-hidden="true">{{ k.mark|e }}</span> {{ k.name|e }} <b>{{ k.count }}</b></span>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+            <p class="methods-rules">Both are read from each entry's first line by simple rules, not written by hand: the
+                part of the site is the first one its line names (a story, a show, a motif…), or, if it names none, its
+                next sentence; the kind comes from words like "no longer" or "fix" (🐛), "dropped" or "tried" (🗑️) and
+                "new" or "begins" (🆕), and anything else is 🔧 changed. So a few will be filed oddly; the text is the
+                log's own.</p>
+        </div>
+
+        <nav class="methods-days" aria-label="Jump to a day">
+            {% for d in days %}<a href="#{{ d.anchor|e }}" class="methods-day-link" style="--n: {{ (100 * d.entries|length / top)|round|int }}" aria-label="{{ d.label|e }}: {{ d.entries|length }} change{{ '' if d.entries|length == 1 else 's' }}"><span class="methods-day-bar" aria-hidden="true"></span><span class="methods-day-name">{{ d.short|e }}</span></a>{% endfor %}
+        </nav>
+        <p class="methods-days-note">October 2026, a bar a day: how many changes it logged. Tap one to jump to it.</p>
+
+        <p class="methods-tools"><button type="button" class="pick-chip methods-open-all" aria-pressed="false"><span class="rank-mark" aria-hidden="true" style="--ink: #ffffff">📖</span><b>open every entry</b></button></p>
+        <p class="methods-showing" aria-live="polite" hidden></p>
+
+        <div class="methods-timeline">
+            {% for d in days %}
+                <section class="methods-day" id="{{ d.anchor|e }}" aria-labelledby="h-{{ d.anchor|e }}">
+                    <h3 class="methods-date" id="h-{{ d.anchor|e }}">🗓️ {{ d.label|e }}</h3>
+                    <ol class="methods-entries">
+                        {% for e in d.entries %}<li class="methods-entry" data-area="{{ e.area|e }}" style="--ink: {{ e.ink|e }}">
+                            <details>
+                                <summary><span class="rank-mark" role="img" aria-label="{{ e.area_name|e }}">{{ e.area_mark|e }}</span><span class="methods-kind" role="img" aria-label="{{ e.kind_name|e }}">{{ e.kind_mark|e }}</span><span class="methods-line">{{ e.line_html }}</span></summary>
+                                {% if e.body %}<div class="methods-body">{{ e.body }}</div>{% endif %}
+                            </details>
+                        </li>{% endfor %}
+                    </ol>
+                </section>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // The area chips filter the timeline, one area at a time; "everything" (or the same chip again) for all
+            const chips = [...document.querySelectorAll('.methods-filters .pick-chip')];
+            const showing = document.querySelector('.methods-showing');
+            function pick(area) {
+                chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.area === area)));
+                let n = 0;
+                document.querySelectorAll('.methods-day').forEach((d) => {
+                    let seen = 0;
+                    d.querySelectorAll('.methods-entry').forEach((li) => {
+                        const on = !area || li.dataset.area === area;
+                        li.hidden = !on;
+                        seen += on;
+                    });
+                    d.hidden = !seen;
+                    n += seen;
+                });
+                const chip = chips.find((c) => c.dataset.area === area);
+                showing.hidden = !area;
+                if (area) showing.textContent = `Showing the ${n} changes to ${chip.querySelector('b').textContent}; tap it again for all.`;
+            }
+            chips.forEach((c) => c.addEventListener('click', () => pick(c.getAttribute('aria-pressed') === 'true' ? '' : c.dataset.area)));
+            // Open (or fold) every entry at once, for reading the whole log
+            const all = document.querySelector('.methods-open-all');
+            all.addEventListener('click', () => {
+                const open = all.getAttribute('aria-pressed') !== 'true';
+                all.setAttribute('aria-pressed', String(open));
+                all.querySelector('b').textContent = open ? 'fold every entry' : 'open every entry';
+                document.querySelectorAll('.methods-entry details').forEach((d) => { d.open = open; });
+            });
+            // A link to a day (#2026-10-05) shows it even when a filter had hidden it
+            const reveal = () => {
+                const d = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+                if (d && d.hidden) pick('');
+            };
+            addEventListener('hashchange', reveal);
+            reveal();
+        })();
+    </script>
 {% endblock %}
