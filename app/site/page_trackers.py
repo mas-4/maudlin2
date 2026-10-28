@@ -27,6 +27,8 @@ ON_AIR = [
      'about': "NPR's and ABC's hourly newscasts, story by story, beside what the front pages led with."},
     {'href': 'beyond.html', 'emoji': '🎙️', 'name': 'Shows and newsletters',
      'about': "What the podcasts, newsletters and investigators are talking about, and every source we follow."},
+    {'href': 'replayed.html', 'emoji': '🔁', 'name': 'The Replay',
+     'about': 'Clips, campaign ads and statements heard word for word on many shows this week, and who played them when.'},
 ]
 
 # Online: what people retell and what fact-checkers examine, read for their shapes

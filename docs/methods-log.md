@@ -33,6 +33,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   doubled in the week of Oct 13 against the weeks before (thin transcripts on both sides). The draft's 0.271 also
   counted the week of Oct 20 against thin weeks, where the fix alone made shows' motifs double. Days are the index's: a show's is its episode's publish day in UTC, so an episode out after
   7 PM ET counts as the next day. A frozen forecast that no longer matches its hash is not scored, and its test fails.
+- **The Replay.** A new page lists the passages heard word for word on many shows: the same 12 words in the same order
+  in our transcripts of three or more different shows, over the 14 days up to the newest transcript (the page shows
+  those heard in the last 7). Shared runs a word or two apart in an episode are one passage; pieces of one clip that a
+  transcript broke apart are joined when they sit within 30 words of each other in at least three quarters of the
+  same episodes. Passages are sorted by rules read off their words: a transcription loop (fewer different words than
+  35% of its words) is left out; "paid for by", "approve this message" and the like make a political ad; phrases
+  such as "promo code", "terms apply" or a web address read out ("at wayfair com"), or shopping words making up 6% of
+  it, make a sponsor read, as does a piece sitting right against one in half its episodes. Everything else is a clip.
+  On the Oct 27 data (1,861 transcripts) it found 284 passages in about 4 seconds; the top one, the Ramaswamy ad
+  featuring Amy Acton's mother, on 23 shows. Times are the feeds' publish times; the time in an episode is the start
+  of the transcript segment where the passage begins.
 
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
