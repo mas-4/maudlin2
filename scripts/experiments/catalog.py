@@ -32,7 +32,8 @@ create table if not exists files (path text primary key, code text, bytes intege
 FAMILIES = {'E': 'the shortlist: finding a claim\'s motifs', 'J': 'the judge', 'C': 'a cascade', 'R': 'the reranker',
             'W': 'wording claims', 'G': 'genre and group descriptions', 'M': 'one model for another',
             'P': 'proposals and praxis', 'D': 'ideas from the research', 'A': 'archives: our method on outside material',
-            'S': 'stories and sagas', 'F': 'filing: fewer corrections for the person', 'U': 'the machine alone, without curation', 'ASR': 'transcription'}
+            'S': 'stories and sagas', 'F': 'filing: fewer corrections for the person', 'U': 'the machine alone, without curation', 'ASR': 'transcription',
+            'O': 'outlets: what each one does on its front page'}
 # code: (name, script, status, data, result)
 REGISTRY = {
     'A1': ('Our pipeline on 1,518 ATU-labelled folktales', 'a1_folktales.py', 'answered',
@@ -151,6 +152,9 @@ REGISTRY = {
     'F28': ('Which model picks the motifs from the shortlist: Gemma 26B against Clef, Clef Flash and Nimble v3',
             'f28_paris.py', 'not run', 'f28_paris.sqlite',
             'the three are decision models (no completion), so they cannot pick; Gemma alone: found 53.6%, wrong 33.7%'),
+    'O1': ('A barbell outlet: a ton of straight news over a separate tail of ideological framing, each headline read '
+           'by Gemma blind to the outlet', 'o1_wolf.py', 'queued', 'o1_wolf.sqlite',
+           'queued Oct 28: trial (the hand-check gate), label (27,013 headlines, 76 outlets), report'),
     'U1b': ("Golem II: the Golem's broad motifs split by Gemma into the tellings inside", 'u1_uncurated.py split',
             'answered', 'u1_uncurated.json (split); archives/u1',
             '63 motifs became 225; B-cubed precision 0.19 to 0.54, recall 0.53 to 0.44'),
