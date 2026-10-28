@@ -3,6 +3,7 @@ the motif pages' claims by side and shows as a ranked strip."""
 from datetime import date
 
 from app.site import page_folklore as pf
+from app.site import page_motif as pg
 from app.site import page_motifs as pm
 
 
@@ -84,3 +85,29 @@ def test_the_hover_card_holds_the_claims_the_card_no_longer_shows():
     assert len(h['c']) == pm.HOVER_CLAIMS and h['m'] == 12 - pm.HOVER_CLAIMS
     assert h['c'][0][1:] == ['Snopes', 'https://snopes.example/1'] and len(h['c'][0][0]) == pm.HOVER_CHARS
     assert h['x'] == ['🧶 11 people online'] and h['r'][0][1] == 'Intimidation'
+
+
+def told(name, lean):
+    return {'show': name, 'lean': lean, 'date': '2026-10-20', 'url': ''}
+
+
+def test_a_motifs_claims_go_left_right_both_and_below():
+    claims = [{'claim': 'L', 'source': 'shows', 'date': '2026-10-01', 'shows': [told('A', 'left')]},
+              {'claim': 'R', 'source': 'shows', 'date': '2026-10-02', 'shows': [told('B', 'right'), told('C', 'center')]},
+              {'claim': 'LR', 'source': 'shows', 'date': '2026-10-03', 'shows': [told('A', 'left'), told('B', 'right')]},
+              {'claim': 'X', 'source': 'shows', 'date': '2026-10-04', 'shows': [told('D', 'crossover')]},
+              {'claim': 'O', 'source': 'narrative', 'date': '2026-10-05', 'shows': []},
+              {'claim': 'F', 'source': 'Snopes', 'date': '2026-10-06', 'shows': []}]
+    cols = {c['key']: [x['claim'] for x in c['claims']] for c in pg.by_side(claims)}
+    assert cols == {'left': ['L'], 'right': ['R'], 'both': ['LR'], 'center': ['X'], 'online': ['O'], 'checks': ['F']}
+    assert [c['key'] for c in pg.by_side(claims[4:])] == ['online', 'checks']  # no shows: no empty left | right
+    assert [c['key'] for c in pg.by_side(claims[1:2])] == ['left', 'right']  # an empty side says so
+
+
+def test_the_shows_strip_ranks_by_claims_and_colors_by_lean():
+    claims = [{'claim': f'c{i}', 'source': 'shows',
+               'shows': [told('Right pod', 'right')] + ([told('Left pod', 'left')] if i == 0 else [])} for i in range(3)]
+    rows = pg.show_strip(claims, {'Left pod': 'left-pod'})
+    assert [(r['name'], r['figure'], r['ink'], r['mark'], r['href']) for r in rows] == [
+        ('Right pod', '3 claims', '#ff4f6d', '🐘', None), ('Left pod', '1 claim', '#3a86ff', '🫏', 'show-left-pod.html')]
+    assert rows[0]['bar'] == 100 and rows[0]['tip'].startswith('Right pod: a right-leaning show. 3 of its claims')

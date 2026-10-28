@@ -1,6 +1,13 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
-{% macro show_chips(shows) %}{% for t in shows %}{% if t.url %}<a class="show-chip tv-chip motif-page-show" href="{{ t.url|e }}" style="--chip: {{ t.ink|e }}" title="{{ t.lean|e }}{% if t.date %} · {{ t.date|e }}{% endif %}">🎙️ {{ t.show|e }}</a>{% else %}<span class="show-chip tv-chip motif-page-show" style="--chip: {{ t.ink|e }}" title="{{ t.lean|e }}{% if t.date %} · {{ t.date|e }}{% endif %}">🎙️ {{ t.show|e }}</span>{% endif %} {% endfor %}{% endmacro %}
+{# One claim: its date, its words, and where it was heard: the shows as lean-colored dots (their names in the hover
+   card), or the fact-check's link #}
+{% macro claim(c) %}<li><span class="court-when">{{ c.date|e }}</span> “{{ c.claim|e }}”
+    {%- if c.source == 'shows' %}{% if c.shows %} <span class="motif-page-dots" tabindex="0" role="button" data-shows='{{ c.shows|tojson }}' aria-label="Came up on {{ c.shows|length }} show{{ '' if c.shows|length == 1 else 's' }}: {{ c.shows|map(attribute='show')|join(', ')|e }}">{% for t in c.shows %}<span class="motif-page-dot" style="--ink: {{ t.ink|e }}"></span>{% endfor %}<span class="motif-page-dots-n">{{ c.shows|length }}</span></span>{% else %} <span class="court-when">🎙️ on the shows</span>{% endif %}
+    {%- elif c.source in ('narrative', 'Focus Group') %}
+    {%- elif c.ref and c.ref.startswith('http') %} <a class="court-when motif-page-check" href="{{ c.ref|e }}">🔎 {{ c.source|e }}</a>
+    {%- else %} <span class="court-when">{{ c.source|e }}</span>{% endif %}</li>{% endmacro %}
 
 {% block content %}
     <p class="story-page-crumb"><a href="motifs.html">← the whole motif index</a></p>
@@ -39,20 +46,16 @@
         </div>
     {% endif %}
 
-    {% if counts.left or counts.center or counts.right %}
-        <h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🎙️ Who it came up with</span></h2>
-        <p class="stage-sub">the shows we follow where its claims came up, by the show's lean</p>
-        <div class="motif-page-sides">
-            {% for k in ('left', 'center', 'right') %}
-                <div class="motif-page-side" style="--side: {{ inks[k] }}">
-                    <h4>{{ {'left': '🫏 left', 'center': '⚖️ center', 'right': '🐘 right'}[k] }} <span class="motif-seen">{{ counts[k] }}</span></h4>
-                    {% if up.shows[k] %}<p>{% for s in up.shows[k] %}{% if s in show_pages %}<a class="show-chip tv-chip motif-page-show" href="show-{{ show_pages[s] }}.html" style="--chip: {{ inks[k] }}" title="What this show tells">🎙️ {{ s|e }}</a>{% else %}<span class="show-chip tv-chip motif-page-show" style="--chip: {{ inks[k] }}">🎙️ {{ s|e }}</span>{% endif %} {% endfor %}</p>
-                    {% else %}<p class="court-when">🦗 none of our {{ k }} shows, so far</p>{% endif %}
-                </div>
-            {% endfor %}
+    {% if shows_board %}
+        {# The shows as one ranked strip by how many of its claims each heard, colored by lean (Oct 28: three boxes of
+           chips) #}
+        <div class="motif-page-shows">
+            {{ b.board(shows_board, 'h2') }}
+            {{ b.key(lean_key, "The shows' leans") }}
+            {% if shows_more %}<details class="motif-page-more"><summary>➕ {{ shows_more.rows|length }} more show{{ '' if shows_more.rows|length == 1 else 's' }}</summary>{{ b.board(shows_more) }}</details>{% endif %}
+            <p class="table-intro">"Came up on" means one of its claims was heard on the show: told, reported or argued
+                against. We don't yet mark which. Show leans are our own grouping of the shows we transcribe.</p>
         </div>
-        <p class="table-intro">"Came up on" means one of its claims was heard on the show: told, reported or argued
-            against. We don't yet mark which. Show leans are our own grouping of the shows we transcribe.</p>
     {% endif %}
 
     {% if news %}
@@ -70,17 +73,30 @@
     {% endif %}
 
     <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🧶 Its claims</span></h2>
-    <p class="stage-sub">what's been told in this shape, newest first, in our words, with where each was heard</p>
-    <ul class="story-checks motif-claims motif-page-claims">
-        {% for c in claims %}
-            <li><span class="court-when">{{ c.date }}</span> “{{ c.claim|e }}”
-                {% if c.source == 'shows' %}{% if c.shows %}<br>{{ show_chips(c.shows) }}{% else %}<span class="court-when">🎙️ on the shows</span>{% endif %}
-                {% elif c.source == 'narrative' %}<span class="court-when">🧶 people online</span>
-                {% elif c.source == 'Focus Group' %}<span class="court-when">🗳️ voters in The Focus Group</span>
-                {% elif c.ref and c.ref.startswith('http') %}<a class="court-when" href="{{ c.ref|e }}">🔎 {{ c.source|e }}</a>
-                {% else %}<span class="court-when">{{ c.source|e }}</span>{% endif %}</li>
+    <p class="stage-sub">what's been told in this shape, in our words, by who told it: newest first in each; a claim's
+        dots are the shows it came up on, in their lean's color (point at them for their names)</p>
+    <div class="motif-page-cols">
+        {% for col in sides %}
+            <section class="motif-page-col motif-page-col-{{ col.key }}" aria-labelledby="claims-{{ col.key }}">
+                <h3 id="claims-{{ col.key }}" class="motif-page-col-head"><span aria-hidden="true">{{ col.emoji }}</span> {{ col.title }} <span class="motif-seen">{{ col.claims|length + col.more|length }}</span></h3>
+                <p class="motif-page-col-sub">{{ col.sub }}</p>
+                {% if col.claims %}<ul class="motif-page-claims">{% for c in col.claims %}{{ claim(c) }}{% endfor %}</ul>
+                    {% if col.more %}<details class="motif-page-more"><summary>➕ {{ col.more|length }} older</summary><ul class="motif-page-claims">{% for c in col.more %}{{ claim(c) }}{% endfor %}</ul></details>{% endif %}
+                {% else %}<p class="stage-empty">🦗 No claim heard only on the {{ col.key }} so far.</p>{% endif %}
+            </section>
         {% endfor %}
-        {% if e.count > claims|length %}<li class="court-when">and {{ e.count - claims|length }} older, on <a href="motifs.html#{{ e.id|e }}">the index page</a></li>{% endif %}
-    </ul>
+    </div>
+    <script>
+        // A claim's dots: the shows it came up on, each with its lean, its date and its episode
+        window.hoverCard.register('.motif-page-dots', (el) => {
+            const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+            const shows = JSON.parse(el.dataset.shows);
+            return `<div class="hover-card-head">🎙️ Came up on ${shows.length} show${shows.length === 1 ? '' : 's'}</div><ul class="motif-slim-hover">`
+                + shows.map((t) => `<li><span class="motif-page-dot" style="--ink: ${esc(t.ink)}" aria-hidden="true"></span> `
+                    + (t.url ? `<a href="${esc(t.url)}">${esc(t.show)}</a>` : esc(t.show))
+                    + ` <span class="court-when">${esc(t.lean || 'lean not set')}${t.date ? ' · ' + esc(t.date) : ''}</span></li>`).join('')
+                + '</ul>';
+        });
+    </script>
     <p class="court-when motif-page-dates">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %} · <a href="about.html">what this is</a> · <a href="motifs.html#how">how the index works</a></p>
 {% endblock %}

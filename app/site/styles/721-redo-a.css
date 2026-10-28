@@ -307,3 +307,137 @@
     .motif-slim { transition: none; }
     .motif-slim:hover, .motif-slim:focus-within { transform: none; }
 }
+
+/* Motif pages: who it came up with, one ranked strip of shows by lean; the rest behind "more", numbered on */
+.motif-page-shows {
+    max-width: 46em;
+    margin: 0 auto;
+}
+
+.motif-page-shows .rank-board .stage-sub {
+    text-align: center;
+}
+
+.motif-page-more > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 0.9em;
+    margin: 0.2em 0 0.4em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #ffc400;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    cursor: pointer;
+}
+
+.motif-page-shows .motif-page-more .rank-board-title {
+    display: none;
+}
+
+.motif-page-shows .motif-page-more .rank-list {
+    counter-reset: rank-list 12;  /* page_motif.SHOWS_SHOWN */
+}
+
+/* Its claims: told on the left | told on the right side by side, the rest below, two by two where there's room */
+.motif-page-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.2em 1.6em;
+    align-items: start;
+    margin: 0.8em 0 1em;
+}
+
+@media (min-width: 760px) {
+    .motif-page-cols {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.motif-page-col {
+    min-width: 0;
+    padding: 0.3em 0.9em 0.6em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-top: 10px solid var(--col, #1f1f2e);
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 var(--col, #1f1f2e);
+}
+
+.motif-page-col-left { --col: #3a86ff; }
+.motif-page-col-right { --col: #ff4f6d; }
+.motif-page-col-both { --col: #b8b8c8; }
+.motif-page-col-center { --col: #b8b8c8; }
+.motif-page-col-online { --col: #00c2a8; }
+.motif-page-col-checks { --col: #ffc400; }
+.motif-page-col-voters { --col: #8a5cff; }
+
+.motif-page-col-head {
+    font: 700 1.2em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.35em 0 0.1em;
+}
+
+.motif-page-col-sub {
+    margin: 0 0 0.5em;
+    font: 700 0.88em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.motif-page-col .motif-page-claims {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.4em;
+}
+
+.motif-page-col .motif-page-claims li {
+    margin: 0;
+    padding: 0.45em 0;
+    line-height: 1.45;
+}
+
+.motif-page-col .motif-page-claims li + li {
+    border-top: 2px solid #ececf3;
+}
+
+.motif-page-col .stage-empty {
+    margin: 0.4em 0;
+}
+
+/* A claim's shows: a dot each in its lean's color, their names in the hover card */
+.motif-page-dots {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    min-height: 40px;
+    vertical-align: middle;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.motif-page-dots:hover, .motif-page-dots:focus-visible {
+    background: #f1f1f6;
+}
+
+.motif-page-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 50%;
+    background: var(--ink);
+    vertical-align: middle;
+}
+
+.motif-page-dots-n {
+    margin-left: 0.25em;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.motif-page-check {
+    display: inline-block;
+    padding: 0.5em 0;
+}

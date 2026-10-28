@@ -135,35 +135,6 @@
     margin: 0.3em 0;
 }
 
-.motif-page-sides {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 1em;
-    margin: 0.8em 0;
-}
-
-.motif-page-side {
-    background: white;
-    border: 3px solid #1f1f2e;
-    border-radius: 14px;
-    box-shadow: 5px 5px 0 var(--side);
-    padding: 0.5em 0.9em 0.7em;
-}
-
-.motif-page-side h4 {
-    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
-    margin: 0.2em 0 0.4em;
-}
-
-.motif-page-show {
-    white-space: nowrap;
-}
-
-.motif-page-claims li {
-    margin-bottom: 0.7em;
-    line-height: 1.45;
-}
-
 .motif-page-dates {
     margin-top: 1.4em;
 }
