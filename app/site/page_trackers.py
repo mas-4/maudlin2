@@ -37,6 +37,8 @@ FOLKLORE = [
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
     {'href': 'motif-map.html', 'emoji': '↔️', 'name': 'The aisle',
      'about': "The motif map: every story placed by which side's shows tell it, and the answers across the aisle."},
+    {'href': 'almanac.html', 'emoji': '🔮', 'name': 'The Election Almanac',
+     'about': "Which election stories will surge in election week: forecast before the polls open, scored after."},
 ]
 
 ABOUT = [

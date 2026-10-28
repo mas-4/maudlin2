@@ -484,3 +484,33 @@ def saga_card(name: str, color: str, first: datetime, last: datetime, parts: int
     return cached('saga', {'name': name, 'color': color, 'days': days, 'parts': parts, 'outlets': outlets,
                            'leans': {k: leans.get(k, 0) for k in LEAN}, 'span': span, 'told': told or '',
                            'layers': [[round(v, 1) for v in layer] for layer in layers]}, draw)
+
+
+def almanac_card(top: list[tuple[str, float]], stage: str, skill: float | None = None) -> str:
+    """The Election Almanac's card: the question, the three likeliest surges as bars, and where the forecast stands
+    (a draft, frozen, or its skill against the yardstick once scored)"""
+    def draw(spec):
+        img, d = frame('purple', 'almanac')
+        kicker(img, 'THE ELECTION ALMANAC · NOV 3–9', '🔮', 'yellow')
+        brand(img, d)
+        y = title(d, 'Which election stories will surge in election week?', (56, 50, 44), 2)
+        y = max(y + 14, 300)
+        f = font('bold', 32)
+        for i, (name, p) in enumerate(spec['top'][:3]):
+            d.text((100, y + 20), cut(d, name, f, 430), font=f, fill=INK, anchor='lm')
+            box = (560, y, 560 + 440, y + 40)
+            d.rounded_rectangle(box, radius=10, fill='white', outline=INK, width=4)
+            d.rounded_rectangle((box[0], box[1], box[0] + max(20, round(440 * p)), box[3]), radius=10,
+                                fill=rgb(PART_COLORS[i]), outline=INK, width=4)
+            d.text((1100, y + 20), f'{p:.0%}', font=font('black', 34), fill=INK, anchor='rm')
+            y += 60
+        line = {'draft': 'a draft: frozen before the polls open, scored win or lose',
+                'frozen': 'frozen before the polls opened; scored win or lose',
+                'scoring': 'scoring now: the numbers so far are provisional',
+                'scored': 'scored after the vote, win or lose'}.get(spec['stage'], 'scored win or lose')
+        if spec['skill'] is not None:
+            line = f"skill {spec['skill']:+.2f} against the yardstick" + (' so far' if spec['stage'] == 'scoring' else '')
+        d.text((100, H - 112), line, font=font('bold', 30), fill=GREY, anchor='lm')
+        return img
+    return cached('almanac', {'top': [[n, round(p, 2)] for n, p in top], 'stage': stage,
+                              'skill': None if skill is None else round(skill, 2)}, draw)
