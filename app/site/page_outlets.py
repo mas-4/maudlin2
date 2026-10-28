@@ -5,7 +5,7 @@ import os
 
 import pandas as pd
 
-from app.analysis.edits import find_edits, judge_edits
+from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI, emotion_weights
 from app.site.common import SHARED, TemplateHandler
 from app.site.data import DataHandler
@@ -44,7 +44,6 @@ class OutletPages:
         live = self.dh.main_headline_df
         story_of_url = SHARED.get('story_of_url', {})
         edits, _ = find_edits()
-        judged = judge_edits([(e['before'], e['after']) for _, e in edits.iterrows()]) if not edits.empty else {}
         for o in self.outlets:
             mine = live[live['agency'] == o['name']]
             now = [{'title': r.title, 'url': r.url, 'story': story_of_url.get(r.url)}
@@ -52,8 +51,8 @@ class OutletPages:
             rewrites = []
             if not edits.empty:
                 for _, e in edits[edits['agency'] == o['name']].head(MAX_REWRITES).iterrows():
-                    j = judged.get((e['before'], e['after'])) or {}
-                    rewrites.append({'before': e['before_html'], 'after': e['after_html'], 'change': j.get('change')})
+                    # without the model's note on what changed (not credible: see page_edits)
+                    rewrites.append({'before': e['before_html'], 'after': e['after_html']})
             self.template.write({'title': o['name'], 'o': o, 'now': now, 'rewrites': rewrites, 'window_days': self.window_days,
                                  'feelings': feelings(mine['emotion_ranks']) if 'emotion_ranks' in mine else []},
                                 os.path.join(Config.build, f"outlet-{o['slug']}.html"))

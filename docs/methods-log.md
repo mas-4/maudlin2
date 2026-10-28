@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **Headline changes without the model's reading.** The edits page and the outlet pages no longer show the language
+  model's note on what a rewrite changed, or the "more loaded / plainer wording" and "better / worse news" tags (and
+  their filter buttons). Its 15,049 judgments (qwen3:8b) called 63% of rewrites more loaded for outlets on every side,
+  and 6.8% of its notes only repeated a label. On Oct 28 that was a note on 2,949 of a week's rewrites and a tag on
+  505. The rewrites themselves, their before and after, and each outlet's count stay; no new judgments are asked for.
 - **Live pages aren't headline edits.** The headline-changes count skipped live blogs only when the headline said
   "LIVE" or "live updates". It now also skips "Live Score" match pages (News 18, Times of India), title-case labels
   ("Israel Elections Live:") and pages whose address marks them live (/liveblog/, -live-updates, -live-score-, the

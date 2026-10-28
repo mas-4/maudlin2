@@ -27,13 +27,6 @@
     font-style: italic;
 }
 
-/* What a headline rewrite changed, in the model's words (edits page) */
-.edit-change {
-    font-style: italic;
-    color: #444;
-    margin-left: 0.3em;
-}
-
 /* Blindspot meter: who covers the story, left (blue) to right (red), with a tick where an average story splits */
 .bs-meter {
     display: flex;

@@ -163,7 +163,10 @@ def edit_rates(edits: pd.DataFrame, days: int = WINDOW_DAYS, min_headlines: int 
 
 
 # What a rewrite changed, judged by the language model looking at both versions side by side. Comparing two separate
-# scores (each version scored on its own) mostly measured scoring noise: identical headlines came out "plainer"
+# scores (each version scored on its own) mostly measured scoring noise: identical headlines came out "plainer".
+# Oct 28: no page shows these any more, nor does the build ask for new ones. Of 15,049 judgments (qwen3:8b), 63% said
+# "more loaded" for outlets on every side and 6.8% of the notes only repeated a label: not a reading to publish. The
+# cache stays for a better judge to be checked against
 JUDGMENTS = os.path.join(Config.data, 'edit_judgments.json')
 JUDGE_PROMPT = """A news outlet rewrote a headline.
 
