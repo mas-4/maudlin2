@@ -57,6 +57,16 @@ ABOUT = [
     {'href': 'feed.xml', 'emoji': '📡', 'name': 'RSS feed', 'about': 'The current stories, for your feed reader.'},
 ]
 
+# Pages built for the preview only, not published yet (Oct 28, the person: the Almanac "still sounds weak to me ... let's
+# discuss it later"; the Replay quotes transcripts, which the site said it never republishes: the person decides)
+PREVIEW_ONLY = {'almanac.html', 'replayed.html'}
+
+
+def menus(published: bool) -> list:
+    """MENUS, without the preview-only pages where the site is published"""
+    return [(label, [p for p in pages if not (published and p['href'] in PREVIEW_ONLY)], note) for label, pages, note in MENUS]
+
+
 # (label, its pages, a note at the top of the menu)
 MENUS = [
     ('📰 front pages', FRONT_PAGES, ''),

@@ -65,6 +65,8 @@ def build(upload_aside: bool = False):
     # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
     pages = [HeadlinesPage, AgenciesPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifPages, ShowPages, AislePage, AboutPage, LabPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage, AlmanacPage, ReplayPage, PlayPage]
+    if Config.netlify:  # published: the pages still waiting on the person (page_trackers.PREVIEW_ONLY) stay out
+        pages = [p for p in pages if p not in (AlmanacPage, ReplayPage)]
     for page in pages:
         built = page(dh)
         built.generate()

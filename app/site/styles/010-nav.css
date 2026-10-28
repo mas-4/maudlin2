@@ -10,28 +10,43 @@
     border-bottom: 3px solid #1f1f2e;
 }
 
+/* The brand (Oct 28, the person: "a bigger talking paper behind the text ... not the orange box, instead making
+   BIGNEWS.DAY stand out with orange block shadows"): the mark large and tilted behind the start of the name, the name in
+   Bungee, white with an ink outline and a stacked orange block shadow */
 .nav-brand {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45em 0.2em 0.45em 1.2em;
     font-family: 'Bungee', 'Comic Neue', sans-serif;
-    font-size: 1.25em;
-    color: #1f1f2e;
+    font-size: 1.55em;
+    line-height: 1;
     text-decoration: none;
-    padding: 0.15em 0.6em;
-    background: #ffc400;
-    border: 3px solid #1f1f2e;
-    border-radius: 12px;
-    box-shadow: 4px 4px 0 #ff4fa3;
-    transform: rotate(-2deg);
     transition: transform 0.15s;
 }
 
 .nav-logo {
-    height: 1.1em;
+    position: absolute;
+    left: -0.3em;
+    top: 50%;
+    height: 2.7em;
     width: auto;
-    vertical-align: -0.15em;
+    transform: translateY(-50%) rotate(-8deg);
+    z-index: 0;
+}
+
+.nav-name {
+    position: relative;
+    z-index: 1;
+    color: #ffffff;
+    -webkit-text-stroke: 2px #1f1f2e;
+    paint-order: stroke fill;
+    text-shadow: 1px 1px 0 #ff6b1a, 2px 2px 0 #ff6b1a, 3px 3px 0 #ff6b1a, 4px 4px 0 #ff6b1a, 5px 5px 0 #1f1f2e;
+    letter-spacing: 0.02em;
 }
 
 .nav-brand:hover {
-    transform: rotate(1deg) scale(1.04);
+    transform: rotate(-1.5deg) scale(1.04);
 }
 
 .nav-links {

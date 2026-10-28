@@ -149,8 +149,8 @@ def stamp_build():
     j2env.globals['build_version'] = now.strftime('%Y%m%d%H%M')
     j2env.globals['built_at_text'] = now.astimezone(Constants.TimeConstants.timezone).strftime(
         '%#I:%M %p ET' if os.name == 'nt' else '%-I:%M %p ET')
-    from app.site.page_trackers import MENUS
-    j2env.globals['nav'] = j2env.get_template('nav.html').render(menus=MENUS)
+    from app.site.page_trackers import menus
+    j2env.globals['nav'] = j2env.get_template('nav.html').render(menus=menus(published=bool(Config.netlify)))
 
 
 stamp_build()
