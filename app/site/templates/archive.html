@@ -1,22 +1,68 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% block content %}
-    <h1>Past front pages</h1>
+    <header class="story-hero archive-hero">
+        <p class="story-kicker"><span>📅 The archive</span></p>
+        <h2 class="story-page-title">Past front pages</h2>
+    </header>
     <p class="table-intro">Each day's front page as it stood at the end of the day: the cloud, the stories and every
         measure, kept as they were. Our archive starts on October 2, 2026.</p>
+
+    {% if months %}
+        <section class="archive-cal" aria-labelledby="archive-cal">
+            <h2 class="section-divider stage-banner" id="archive-cal" style="--stage: {{ shade_ink|e }}"><span>🗓️ Every day, by how newsy it was</span></h2>
+            <p class="stage-sub">tap a day for its front page; point at one for its top story</p>
+            <div class="archive-key" role="note" aria-label="What the shades mean">
+                <p class="archive-key-words"><b>The day's number</b> is how much of the news its biggest story took:
+                    in an average hour that day, the share of the outlets with a story on their front page that carried
+                    the biggest one (a story counts for less once it's 12 hours old). <b>0.30</b> means about 3 in 10
+                    front pages had it. Darker is newsier.</p>
+                <ol class="archive-key-steps">
+                    {% for k in shade_key %}<li class="archive-shade-{{ k.step }}" style="--tile: {{ k.hex|e }}"><span class="archive-key-swatch" aria-hidden="true">{{ k.emoji }}</span>{{ k.words|e }}</li>{% endfor %}
+                </ol>
+                <p class="archive-key-words archive-key-tiers">🌴 a slow day (under 0.25) · 📰 just another news day · 🚨 a big news day (0.45 and up)</p>
+            </div>
+            {% for m in months %}
+                <div class="archive-month">
+                    <h3 class="archive-month-name">{{ m.name|e }}</h3>
+                    <div class="archive-grid" role="list" aria-label="{{ m.name|e }}">
+                        {% for d in ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') %}<span class="archive-weekday" aria-hidden="true">{{ d }}</span>{% endfor %}
+                        {% for week in m.weeks %}{% for t in week %}
+                            {% if not t %}<span class="archive-blank" aria-hidden="true"></span>
+                            {% elif t.href %}<a role="listitem" class="archive-tile archive-shade-{{ t.shade }}{% if t.today %} archive-today{% endif %}" href="{{ t.href|e }}" style="--tile: {{ t.hex|e }}" data-tip-head="{{ t.head|e }}" data-tip="{{ t.tip|e }}" aria-label="{{ t.head|e }}{% if t.score is not none %}: {{ '%.2f'|format(t.score) }}{% endif %}"><span class="archive-tile-day">{{ t.day }}</span><span class="archive-tile-emoji" aria-hidden="true">{{ t.emoji }}</span>{% if t.score is not none %}<span class="archive-tile-score">{{ '%.2f'|format(t.score)|replace('0.', '.', 1) }}</span>{% endif %}</a>
+                            {% else %}<span role="listitem" tabindex="0" class="archive-tile archive-missing" data-tip-head="{{ t.head|e }}" data-tip="{{ t.tip|e }}"><span class="archive-tile-day">{{ t.day }}</span><span class="archive-tile-emoji" aria-hidden="true">{{ t.emoji }}</span></span>{% endif %}
+                        {% endfor %}{% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </section>
+
+        <section class="archive-boards" aria-labelledby="archive-ranked">
+            <h2 class="section-divider stage-banner" id="archive-ranked" style="--stage: #00c2a8"><span>🏆 The days, ranked</span></h2>
+            <p class="stage-sub">the finished days by their number; each colored by whether it fell on a weekday or a weekend</p>
+            {{ b.key(day_key, 'Day colors') }}
+            {{ b.boards(day_boards) }}
+        </section>
+    {% else %}
+        <p class="table-intro">The first archived day appears tomorrow.</p>
+    {% endif %}
+
     {% if newsiness %}
+        <h2 class="section-divider stage-banner" id="archive-hours" style="--stage: #ff4fa3"><span>🌡️ Hour by hour, the past week</span></h2>
         <figure class="nw-figure" id="newsiness">
             <h2>🌡️ How newsy each hour was
                 <button type="button" class="nw-full" aria-label="show the chart full screen">⛶ full screen</button></h2>
             <div class="nw-scroll"><div class="nw-stage">{{ newsiness|safe }}
                 <button type="button" class="nw-close" aria-label="close full screen">✕</button></div></div>
             <figcaption>Each hour's news-day score over the past week: the share of the outlets with a story on their front
-                page that carry the day's biggest story, halving every 24 hours once it's 12 hours old. Over 0.45 is a big
-                news day. Dashed: worked out afterwards from what we'd saved; solid: kept by each hour's build. Hover for
-                the hour's top story; a dot marks each story's peak over the big line.</figcaption>
+                page that carry the hour's biggest story (0.5: half of them), halving every 24 hours once it's 12 hours
+                old. From 0.45 the front page calls it a big news day: nearly half the front pages on one story. Dashed:
+                worked out afterwards from what we'd saved; solid: kept by each hour's build. Point at the line for the
+                hour's top story; a dot marks each story's peak over the big line.</figcaption>
             {% if spikes %}<ul class="nw-spikes">{% for p in spikes %}
-                <li><b>{{ p.when }} ET</b> · {{ '%.2f'|format(p.score) }} ·
-                    {% if p.href %}<a href="{{ p.href|e }}">{{ p.label }}</a>{% else %}{{ p.label }}{% endif %}
+                <li><b>{{ p.when|e }} ET</b> · {{ '%.2f'|format(p.score) }} ·
+                    {% if p.href %}<a href="{{ p.href|e }}">{{ p.label|e }}</a>{% else %}{{ p.label|e }}{% endif %}
                     <span class="nw-faint">({{ p.outlets }} of {{ p.active }} outlets)</span></li>
             {% endfor %}</ul>{% endif %}
         </figure>
@@ -44,16 +90,5 @@
                 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) close(); });
             })();
         </script>
-    {% endif %}
-    {% if days %}
-        <ul class="archive-days">
-            {% for d in days %}
-                <li><a href="{{ d.path|e }}">{{ d.when }}</a>
-                    {% if d.label %}<span class="trend-posts">{{ d.emoji }} {{ d.label }}{% if d.story %} · top story: {{ d.story }}{% endif %}{% if d.stories %} · {{ d.stories }} stories{% endif %}</span>{% endif %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p class="table-intro">The first archived day appears tomorrow.</p>
     {% endif %}
 {% endblock content %}

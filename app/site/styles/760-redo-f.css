@@ -1,0 +1,199 @@
+/* The Oct 28 redo, group F: the archive's calendar, the court's docket strips, the aisle's divide by week */
+
+/* ---- The archive: a month calendar of day tiles, shaded by how newsy the day was (one hue, light to dark) ---- */
+.archive-key {
+    max-width: 40em;
+    margin: 0.4em auto 0.8em;
+    padding: 0.5em 0.8em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+}
+
+.archive-key-words {
+    margin: 0.2em 0;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.archive-key-tiers {
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    text-align: center;
+}
+
+.archive-key-steps {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0;
+    margin: 0.5em 0 0.3em;
+}
+
+.archive-key-steps li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2em;
+    min-width: 5.2em;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-key-swatch {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 2em;
+    background: var(--tile);
+    border: 2px solid #1f1f2e;
+    border-left-width: 1px;
+    border-right-width: 1px;
+}
+
+.archive-key-steps li:first-child .archive-key-swatch {
+    border-left-width: 2px;
+    border-radius: 8px 0 0 8px;
+}
+
+.archive-key-steps li:last-child .archive-key-swatch {
+    border-right-width: 2px;
+    border-radius: 0 8px 8px 0;
+}
+
+.archive-month {
+    max-width: 36em;
+    margin: 0.6em auto 1.2em;
+}
+
+.archive-month-name {
+    font: 1.05em 'Bungee', 'Comic Neue', sans-serif;
+    text-align: center;
+    margin: 0.4em 0;
+}
+
+.archive-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.archive-weekday {
+    text-align: center;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.archive-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 62px;
+    aspect-ratio: 1;
+    box-sizing: border-box;
+    background: var(--tile, white);
+    border: 2.5px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 #1f1f2e;
+    color: #1f1f2e;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.archive-tile:hover, .archive-tile:focus-visible, .archive-tile.hover-card-on {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 #1f1f2e;
+}
+
+/* the darkest shade takes white text (contrast 6:1); the rest ink */
+.archive-tile.archive-shade-5, .archive-shade-5 .archive-key-swatch {
+    color: white;
+}
+
+.archive-tile.archive-shade-0, .archive-tile.archive-missing {
+    background: white;
+    border-style: dashed;
+    box-shadow: none;
+}
+
+.archive-tile.archive-missing {
+    border-color: #a9a9b8;
+    color: #6b6f78;
+}
+
+.archive-tile.archive-today {
+    outline: 3px dashed #ff4fa3;
+    outline-offset: 2px;
+}
+
+.archive-tile-day {
+    position: absolute;
+    top: 3px;
+    left: 6px;
+    font: 0.8em 'Bungee', 'Comic Neue', sans-serif;
+}
+
+.archive-tile-emoji {
+    font-size: 1.5em;
+    line-height: 1;
+    margin-top: 0.3em;
+}
+
+.archive-tile-score {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-blank {
+    min-height: 0;
+}
+
+@media (max-width: 480px) {
+    .archive-grid {
+        gap: 4px;
+    }
+
+    .archive-tile {
+        aspect-ratio: auto;
+        min-height: 58px;
+        justify-content: flex-start;
+        padding-top: 2px;
+        border-width: 2px;
+        border-radius: 8px;
+        box-shadow: 2px 2px 0 #1f1f2e;
+    }
+
+    .archive-tile-day {
+        position: static;
+        font-size: 0.68em;
+        line-height: 1.3;
+    }
+
+    .archive-tile-emoji {
+        font-size: 1.1em;
+        margin-top: 0;
+    }
+
+    .archive-tile-score {
+        font-size: 0.7em;
+    }
+
+    .archive-key-steps li {
+        min-width: 0;
+        flex: 1;
+        font-size: 0.72em;
+    }
+}
+
+.archive-boards {
+    margin: 0.4em 0 1.4em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .archive-tile { transition: none; }
+    .archive-tile:hover, .archive-tile:focus-visible, .archive-tile.hover-card-on { transform: none; }
+}
