@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **The Election Almanac is dropped, and the Replay is published.** The Almanac's chances were set by hand, not drawn
+  from the data, and the person didn't want a guess at which motifs would grow passed off as a forecast; it was never
+  published and its page and code are gone. The Replay, built for the preview the same day, is now on the site, with
+  its short quotes of the replayed passages; the sources page says so.
 - **The Play page came down the same day.** The person didn't want the headline games (Real or satire?, Guess the
   lean, Same story, two papers); the page, its card and its code are gone.
 - **Breitbart's first sightings from its feed too.** About a fifth of Breitbart's articles were first seen a day after
@@ -26,8 +30,8 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   card (`story.first_seen`); it went wide at 20 or more outlets. Each story counts once in each cell it passes through
   in its first 12 hours (24 for crossing). A cell with fewer than 20 stories gives way to a coarser one (the hours band
   dropped; for crossing, then the wire/center split too), and with none big enough nothing is shown. The momentum line
-  shows only when its cell is well off the base rate: at least 1.75 times it (and 10 points over) is "📈 gaining fast"
-  with 3 or more new outlets, else "📰 big for its age"; half of it or less is "🐢 slow so far". The crossing watch takes
+  shows only when its cell is well over the base rate: at least 1.75 times it (and 10 points over) is "📈 gaining fast"
+  with 3 or more new outlets, else "📰 big for its age"; a slow story says nothing. The crossing watch takes
   stories under a day old with 5 or more rated outlets, at least 80% of them on one side and fewer than 3 on the other,
   and gives the share of such stories (by side, a wire service or center outlet on it or not, hours so far) that had
   3 or more outlets from the other side within the next 24 hours; both directions are counted and worded the same way.

@@ -39,8 +39,6 @@ FOLKLORE = [
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
     {'href': 'motif-map.html', 'emoji': '↔️', 'name': 'The aisle',
      'about': "The motif map: every story placed by which side's shows tell it, and the answers across the aisle."},
-    {'href': 'almanac.html', 'emoji': '🔮', 'name': 'The Election Almanac',
-     'about': "Which election stories will surge in election week: forecast before the polls open, scored after."},
 ]
 
 ABOUT = [
@@ -55,9 +53,8 @@ ABOUT = [
     {'href': 'feed.xml', 'emoji': '📡', 'name': 'RSS feed', 'about': 'The current stories, for your feed reader.'},
 ]
 
-# Pages built for the preview only, not published yet (Oct 28, the person: the Almanac "still sounds weak to me ... let's
-# discuss it later"; the Replay quotes transcripts, which the site said it never republishes: the person decides)
-PREVIEW_ONLY = {'almanac.html', 'replayed.html'}
+# Pages built for the preview only, left out of the published site's menus (none now: the Replay was published Oct 28)
+PREVIEW_ONLY: set = set()
 
 
 def menus(published: bool) -> list:

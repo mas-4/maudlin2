@@ -97,9 +97,7 @@ def test_badge_words():
     assert line['title'].startswith('Of the 25 stories in the last 30 days that had 7 or fewer outlets with 6 or more '
                                     'new in the last three hourly runs, in their first 3 hours')
     assert '20 went on to reach 20 or more outlets; of all stories, 31% did' in line['title']
-    line = m.badge(tbl, slow(2, NOW), NOW)
-    assert (line['emoji'], line['label']) == ('🐢', 'slow so far')
-    assert line['text'] == 'stories gathering like this never went wide (45 stories)'
+    assert m.badge(tbl, slow(2, NOW), NOW) is None  # a slow story says nothing (Oct 28: no "slow so far")
     assert m.badge(tbl, fast(3, NOW - 13 * H), NOW) is None  # an old story says nothing
 
 

@@ -41,8 +41,9 @@ YOUNG_HOURS = 12  # the momentum line is for stories younger than this
 OUTLET_BANDS = [(0, 7, '7 or fewer'), (8, 10, '8–10'), (11, 15, '11–15'), (16, WIDE - 1, f'16–{WIDE - 1}')]
 GAIN_BANDS = [(0, 0, 'none'), (1, 2, '1–2'), (3, 5, '3–5'), (6, 10 ** 6, '6 or more')]
 AGE_BANDS = [(0, 3, 'in their first 3 hours'), (3, 6, '3–6 hours in'), (6, YOUNG_HOURS, f'6–{YOUNG_HOURS} hours in')]
-# The line shows only when its cell is well off the base rate, either way
-FAST_RATIO, FAST_GAP, SLOW_RATIO = 1.75, 0.1, 0.5
+# The line shows only when its cell is well over the base rate. Slow cells say nothing (Oct 28, the person: most young
+# stories are slow, and "slow so far" on every card would overwhelm the page)
+FAST_RATIO, FAST_GAP = 1.75, 0.1
 FAST_GAIN = 3  # outlets in the last three runs: "gaining fast" (fewer, and a high share: "big for its age")
 
 CROSS_SHARE = 0.8  # of its rated outlets from one side
@@ -205,7 +206,7 @@ def said(did: str, hit: int, n: int) -> str:
 
 def badge(table: dict, story: dict, now: dt) -> dict | None:
     """The momentum line for a young story's card and page, or None: YOUNG_HOURS old, already wide, no cell big
-    enough, or a cell too close to the base rate to say anything"""
+    enough, or a cell not well over the base rate"""
     st = state(story, now)
     found = lookup(table['momentum']['cells'], momentum_keys(st))
     base = table['momentum']['base']
@@ -214,13 +215,10 @@ def badge(table: dict, story: dict, now: dt) -> dict | None:
     rate = base['hit'] / base['n']
     if found['share'] >= max(FAST_RATIO * rate, rate + FAST_GAP):
         kind = 'fast' if st['gained'] >= FAST_GAIN else 'big'
-    elif found['share'] <= SLOW_RATIO * rate:
-        kind = 'slow'
     else:
         return None
     emoji, label, like = {'fast': ('📈', 'gaining fast', 'stories gathering like this'),
-                          'big': ('📰', 'big for its age', 'stories this big this early'),
-                          'slow': ('🐢', 'slow so far', 'stories gathering like this')}[kind]
+                          'big': ('📰', 'big for its age', 'stories this big this early')}[kind]
     n_band, g_band, *a_band = found['key'].split('|')
     tip = (f"Of the {found['n']} stories in the last {HISTORY_DAYS} days that had {n_band} outlets with "
            f"{g_band} new in the last three hourly runs{', ' + a_band[0] if a_band else ''} (counting from when each "

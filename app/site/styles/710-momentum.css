@@ -11,10 +11,6 @@
     line-height: 1.35;
 }
 
-.card-momentum.momentum-slow {
-    background: color-mix(in srgb, #b8b8c8 30%, white);
-}
-
 .card-momentum.momentum-big {
     background: color-mix(in srgb, #ffc400 22%, white);
 }

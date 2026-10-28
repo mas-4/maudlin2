@@ -46,7 +46,8 @@
     <h3 id="sources">Every source we follow beyond the front pages</h3>
     <p class="poll-note">Leans are loose, by reputation, for balance and colors (the outlets' own ratings are on
         <a href="agencies.html">Outlets</a>). "Archived" sources are kept for research (how people and shows talk
-        about the news) and never republished.</p>
+        about the news) and not republished: the one exception is <a href="replayed.html">The Replay</a>, which names
+        the shows that aired the same clip and quotes a few dozen words of it.</p>
     {% for group in directory %}
         <details class="how-it-works source-group"{% if loop.first %} open{% endif %}>
             <summary>{{ group.emoji }} {{ group.heading }} ({{ group.rows|length }})</summary>
