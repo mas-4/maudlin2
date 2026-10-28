@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% block content %}
     <h1>🗺️ The outlet map</h1>
@@ -21,23 +22,36 @@
             <figcaption>{{ outlets|length }} outlets with at least {{ min_stories }} of our stories and
                 {{ min_articles }} headlines in the {{ profile.window_days }} days to {{ until }} ET.
                 <span class="omap-note" data-view="coverage">Placed by which of {{ profile.stories }} stories each ran
-                    (stories at least three of them ran), by correspondence analysis. The two axes hold
-                    {{ profile.axes.inertia[0] }}% and {{ profile.axes.inertia[1] }}% of the differences, so outlets
-                    close together here can still differ in other ways. Which way each axis points is set by the lean
-                    ratings: the end where outlets rated far left or far right gather is to the right, the end where
-                    left-rated ones gather is up. The ratings only point the axes; they place no one.</span>
-                <span class="omap-note" data-view="style" hidden>Across: how close its agenda and headline words are to
-                    the AP's and Reuters' (the share of its stories a wire also ran, how near its headlines are to the
-                    wire's on those stories, its vocabulary). Up: how heated its wording is (loaded words, combat verbs
-                    like "slams", sensational words, anger, each side's labels for the other). Each is the average of
-                    those measures' ranks among these outlets. The AP and Reuters aren't on this view: they're the
-                    yardstick.</span></figcaption>
+                    (the stories at least three of them ran): outlets that ran the same stories sit close together.
+                    The map shows the two biggest ways they differ, so two outlets close together here can still
+                    differ in others. The ratings place no one; they only decide which way round the map is drawn.</span>
+                <span class="omap-note" data-view="style" hidden>Across: how close its stories and headline words are
+                    to the AP's and Reuters'. Up: how heated its wording is (loaded words, verbs like "slams",
+                    sensational words, anger, each side's labels for the other). The AP and Reuters aren't on this
+                    view: they're the yardstick.</span></figcaption>
         </figure>
         <p class="omap-pick">👆 Point at or tap a dot for its outlet's card; click to keep it open.</p>
         <ul class="omap-legend" aria-label="Lean colors">
             {% for l in leans %}<li><span class="omap-swatch" style="background: {{ l.color|e }}"></span>{{ l.name }}</li>{% endfor %}
             <li><span class="omap-swatch omap-unrated"></span>not rated</li>
         </ul>
+        <details class="omap-how">
+            <summary>🔧 How the map is made</summary>
+            <p>🗞️ <strong>Which stories it covers:</strong> a correspondence analysis of outlets × stories (did the
+                outlet run the story or not). The two axes drawn hold {{ profile.axes.inertia[0] }}% and
+                {{ profile.axes.inertia[1] }}% of the differences between outlets. The maths leaves each axis' direction
+                open, so the lean ratings set it: the end where outlets rated far left or far right gather is to the
+                right, the end where left-rated ones gather is up.</p>
+            <p>🌶️ <strong>How it words them:</strong> across, the average rank among these outlets of the share of its
+                stories a wire also ran, how near its headlines are to the wire's on those stories, and its vocabulary;
+                up, the average rank of its loaded words, combat verbs, sensational words, anger and labels.</p>
+            <p>🏷️ <strong>The types:</strong> Ward clusters on about fifty measures of what outlets do, each group
+                of measures weighted alike. A type is shown when it holds together: sorted again a hundred times with a
+                fifth of the outlets left out at random, it comes back at least three-quarters the same on average
+                (clusterwise Jaccard). An outlet is given its type only when at least two of the three outlets it
+                behaves most like share it, and a type named for a side only when it's rated on that side or not
+                rated.</p>
+        </details>
         <script type="application/json" id="omap-data">{{ dots|tojson }}</script>
         <script>
             // The two views (buttons above the map), and each outlet's card, beside its dot (index.js hoverCard: on
@@ -113,56 +127,72 @@
         </script>
 
         <h2 class="section-divider" id="omap-pull"><span>🧲 The stories that pull each way</span></h2>
-        <p class="table-intro">The stories that place outlets furthest along each axis, by our labels for them.</p>
-        <div class="omap-ends">
-            {% for axis, ends in [('x', [('low', views.coverage.left), ('high', views.coverage.right)]), ('y', [('high', views.coverage.up), ('low', views.coverage.down)])] %}
-                {% for end, words in ends %}
-                    <div class="omap-end-card">
-                        <h3>{{ words }}</h3>
-                        <ul>{% for s in profile.axes[axis][end] %}<li>{{ s|e }}</li>{% endfor %}</ul>
-                    </div>
-                {% endfor %}
-            {% endfor %}
-        </div>
+        <p class="table-intro">An outlet that runs these stories is drawn toward that end of the map. Each story's
+            color says whose outlets ran it more: the share of the left-rated outlets on the map that ran it against
+            the share of the right-rated ones. Hover or tap a story for both shares; click one to open its page.</p>
+        {{ b.key([{'name': 'left-rated ran it more', 'mark': '🫏', 'ink': LEAN_INK.left},
+                  {'name': 'both alike', 'mark': '⚖️', 'ink': LEAN_INK.center},
+                  {'name': 'right-rated ran it more', 'mark': '🐘', 'ink': LEAN_INK.right}], 'Which side ran it more') }}
+        {% for pair in pulls %}{{ b.boards(pair) }}{% endfor %}
 
         <h2 class="section-divider" id="omap-types"><span>🏷️ Outlet types</span></h2>
-        <p class="table-intro">Outlets sorted into types by what they do on their front pages: which stories they run,
-            when, beside whom, how close to the wires, how their headlines are worded, how often they rewrite them,
-            about fifty measures in all, and none of them a rating. Outlets sit on a continuum more than in islands, so
-            a type is shown only when it holds together: when we leave out a fifth of the outlets at random and sort
-            them again, it comes back at least three-quarters the same. The finer types outside the partisan webs don't,
-            so those outlets carry only the broad family, named for what it isn't. An outlet is given a type only when
-            at least two of the three outlets it behaves most like share it, and a type named for a side only when it's
-            rated on that side or not rated.</p>
-        <div class="omap-types">
-            {% for t in types %}
-                <div class="omap-type{% if t.level == 'family' %} omap-family{% endif %}">
-                    <h3>{{ '🏘️' if t.level == 'family' else '🏷️' }} {{ t.name|e }}</h3>
-                    <p>{{ t.about|e }}</p>
-                    <p class="omap-members">{% for m in t.members %}<a class="edit-chip" style="{{ chip_style(m.name, m.bias)|e }}" href="{{ m.href|e }}">{{ outlet_icon(m.name) }}{{ short_name(m.name)|e }}</a>{% endfor %}</p>
-                    <p class="trend-posts">{{ t.members|length }} outlets · {{ (t.stability * 100)|round|int }}% the same when sorted again</p>
-                </div>
-            {% else %}
-                <p class="stage-empty">🤷 No type held together this time.</p>
-            {% endfor %}
-        </div>
+        <p class="table-intro">Outlets sorted into types by what they do on their front pages, not by any rating: which
+            stories they run and when, beside whom, how close to the wires, how they word their headlines, how often
+            they rewrite them. Outlets shade into each other more than they fall into islands, so a type is shown only
+            when it holds together each time we sort them again; among the big mainstream outlets the finer types
+            don't, so those carry only the broad family, named for what it isn't. A "partisan web" is one side's own
+            outlets, running the same fight-heavy stories as each other.</p>
+        <p class="stage-sub omap-types-sub">The most heated first: 🌶️ the bar is how heated the type's middle outlet
+            words its headlines (its percentile among the outlets on the map); 📡 the second, how close it is to the
+            AP and Reuters. Hover or tap a type for what it does and its outlets.</p>
+        {% if types %}
+            <ol class="rank-list omap-type-list">
+                {% for t in types %}
+                    <li><div class="rank-row omap-type-row" tabindex="0" data-otype="{{ loop.index }}" style="--ink: {{ t.ink|e }}">
+                        <span class="rank-mark" role="img" aria-label="{{ t.name|e }}">{{ t.mark|e }}</span>
+                        <span class="rank-main"><span class="rank-name">{{ t.name|e }}</span>
+                            <span class="omap-type-bars">
+                                <span class="omap-type-bar"><span aria-hidden="true">🌶️</span><span class="rank-bar" style="--bar: {{ [t.heat, 4]|max }}%"></span><span class="omap-type-fig">{{ ordinal(t.heat) }} heat</span></span>
+                                {% if t.wire is not none %}<span class="omap-type-bar omap-type-wire"><span aria-hidden="true">📡</span><span class="rank-bar" style="--bar: {{ [t.wire, 4]|max }}%"></span><span class="omap-type-fig">{{ ordinal(t.wire) }} wire</span></span>{% endif %}
+                            </span></span>
+                        <span class="rank-figure">{{ t.n }} outlets</span></div>
+                        <template id="otype-{{ loop.index }}"><div class="ocard"><div class="hover-card-head">{{ t.mark|e }} {{ t.name|e }}</div>
+                            <p>{{ t.about|e }}</p>
+                            <p>🧷 Holds together: sorted again with some outlets left out, it keeps {{ t.stability }}% of its outlets on average.</p>
+                            <p class="ocard-members">{% for m in t.members %}<a href="{{ m.href|e }}">{{ m.name|e }}</a>{{ ', ' if not loop.last }}{% endfor %}</p></div></template></li>
+                {% endfor %}
+            </ol>
+        {% else %}
+            <p class="stage-empty">🤷 No type held together this time.</p>
+        {% endif %}
 
         <h2 class="section-divider" id="omap-all"><span>📋 Every outlet on the map</span></h2>
-        <div class="matrix-wrap">
-            <table class="races sortable omap-table">
-                <thead><tr><th data-sort="text">Outlet</th><th data-sort="text">Type</th>
-                    <th data-sort="number" title="Percentile: closer to the AP and Reuters than this share of the outlets here">📡 Wire</th>
-                    <th data-sort="number" title="Percentile: more heated wording than this share of the outlets here">🌶️ Heat</th>
-                    <th>Behaves most like</th></tr></thead>
-                <tbody>
-                {% for o in outlets %}
-                    <tr><td><a href="{{ o.href|e }}">{{ o.name|e }}</a></td><td>{{ (o.type or '–')|e }}</td>
-                        <td data-value="{{ -1 if o.is_wire else o.wire_pct }}">{{ 'a wire' if o.is_wire else o.wire_pct }}</td>
-                        <td data-value="{{ o.heat_pct }}">{{ o.heat_pct }}</td><td>{{ o.like|join(', ')|e }}</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <p class="stage-sub">📡 Wire: closer to the AP and Reuters than this share of the outlets here. 🌶️ Heat: more
+            heated wording than this share. Click a heading to sort.</p>
+        {{ b.key(type_key, 'Type colors') }}
+        <table class="sortable omap-table">
+            <thead><tr><th data-sort="text">Outlet</th><th data-sort="text" class="omap-col-type">Type</th>
+                <th data-sort="number">📡 Wire</th><th data-sort="number">🌶️ Heat</th>
+                <th class="omap-col-like">Behaves most like</th></tr></thead>
+            <tbody>
+            {% for o in outlets %}
+                <tr style="--ink: {{ o.look.ink|e }}">
+                    <td class="omap-cell-name"><span class="rank-mark ocell-mark" role="img" aria-label="{{ o.look.name|e }}" data-mark="{{ o.look.mark|e }}"></span><a href="{{ o.href|e }}">{{ o.name|e }}</a> <span class="olean{% if not o.lean_mark %} olean-est{% endif %}" style="--lean: {{ o.lean_ink|e }}" role="img" aria-label="lean: {{ o.lean|e }}">{{ o.lean_mark|e }}</span></td>
+                    <td class="omap-col-type">{{ (o.type or 'no settled type')|e }}</td>
+                    <td data-value="{{ -1 if o.is_wire else o.wire_pct }}">{% if o.is_wire %}📡 a wire{% else %}<span class="ocell-bar"><span class="rank-bar" style="--bar: {{ [o.wire_pct, 4]|max }}%"></span><span>{{ o.wire_pct }}</span></span>{% endif %}</td>
+                    <td data-value="{{ o.heat_pct }}"><span class="ocell-bar"><span class="rank-bar" style="--bar: {{ [o.heat_pct, 4]|max }}%"></span><span>{{ o.heat_pct }}</span></span></td>
+                    <td class="omap-col-like">{% for x in o.like_links %}<a href="{{ x.href|e }}">{{ x.name|e }}</a>{{ ', ' if not loop.last }}{% endfor %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                window.hoverCard.register('.omap-type-row', (row) => {
+                    const t = document.getElementById(`otype-${row.dataset.otype}`);
+                    return t ? t.content.cloneNode(true) : null;
+                });
+            });
+        </script>
         <p class="table-intro">From the study of Oct 27-28, rebuilt each day from the last {{ profile.window_days }}
             days; the <a href="methods.html">methods log</a> has the details. Outlets the site doesn't build stories from
             (most outlets outside the US and the UK) aren't on the map.</p>

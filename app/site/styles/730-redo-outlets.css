@@ -1,0 +1,470 @@
+/* Outlets redo (Oct 28): the outlets page's table, the outlet map's lists, the outlet pages' measures and front page */
+
+/* The ranked strips themselves are the shared boards (175-boards.css); these are the variants these pages need */
+
+/* An outlet's lean, a small mark after its name: its lean color (AllSides'), dashed when it's our estimate or none */
+.olean {
+    display: inline-grid;
+    place-items: center;
+    width: 1.6em;
+    height: 1.6em;
+    margin-left: 0.15em;
+    vertical-align: middle;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 50%;
+    background: var(--lean);
+    font-size: 0.8em;
+    line-height: 1;
+}
+
+.olean-est {
+    border-style: dashed;
+}
+
+.olean-key {
+    text-align: center;
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    margin: 0 auto 0.4em;
+    width: fit-content;
+    max-width: 100%;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+    padding: 0.1em 0.6em;
+}
+
+.orow-dim {
+    opacity: 0.25;
+}
+
+/* Each outlet's card in a hover card: its blurb, its facts, its badges as lines */
+.hover-card:has(.ocard) {
+    max-width: min(25em, calc(100vw - 16px));
+}
+
+.ocard p, .ocard blockquote, .ocard ul {
+    margin: 0.35em 0;
+}
+
+.ocard-about {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em 0.8em;
+}
+
+.ocard-wiki {
+    font: 0.86em/1.4 Helvetica, Arial, sans-serif;
+    color: #555;
+    border-left: 3px solid #e6e6ee;
+    padding-left: 0.6em;
+}
+
+.ocard-measures {
+    list-style: none;
+    padding: 0;
+    font-size: 0.95em;
+}
+
+.ocard-measures li + li {
+    margin-top: 0.2em;
+}
+
+.ocard-members {
+    font-size: 0.92em;
+}
+
+/* The tables: every outlet (the outlets page), every outlet on the map. White, ink-ruled, a bar inline in each
+   measure's cell; headings sort (index.js table.sortable) */
+.olist, .omap-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #00c2a8;
+    margin: 0.5em 0 1.2em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.olist th, .omap-table th {
+    text-align: left;
+    padding: 0.55em 0.5em;
+    border-bottom: 2.5px solid #1f1f2e;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.olist td, .omap-table td {
+    padding: 0.35em 0.5em;
+    border-top: 1.5px solid #ececf3;
+    vertical-align: middle;
+}
+
+.olist tbody tr:first-child td, .omap-table tbody tr:first-child td {
+    border-top: none;
+}
+
+.olist tr:target td {
+    background: color-mix(in srgb, var(--ink) 20%, #fffdf5);
+}
+
+.olist-name, .omap-cell-name {
+    min-width: 9em;
+}
+
+.olist-name a, .omap-cell-name a {
+    color: #1f1f2e;
+}
+
+/* The row's type disc, its emoji drawn by CSS so the name still sorts by itself */
+.ocell-mark {
+    width: 1.7em;
+    height: 1.7em;
+    margin-right: 0.4em;
+    vertical-align: middle;
+    font-size: 0.9em;
+}
+
+.ocell-mark::before {
+    content: attr(data-mark);
+}
+
+.ocell-bar {
+    display: inline-grid;
+    grid-template-columns: 5em 3.4em;
+    align-items: center;
+    gap: 0.35em;
+    font-variant-numeric: tabular-nums;
+}
+
+.ocell-bar .rank-bar {
+    --ink: #b8b8c8;
+}
+
+.olist .ocell-bar .rank-bar, .omap-table .ocell-bar .rank-bar {
+    background: #ffc400;
+}
+
+.omap-table td:nth-child(4) .ocell-bar .rank-bar {
+    background: #ff6b1a;
+}
+
+.omap-col-like a {
+    color: #1f1f2e;
+}
+
+@media (max-width: 760px) {
+    /* a phone: the outlet, the type disc and the measures with bars; the rest is in each outlet's card */
+    .olist-wide, .omap-col-type, .omap-col-like {
+        display: none;
+    }
+
+    .olist, .omap-table {
+        font-size: 0.88em;
+        box-shadow: 4px 4px 0 #00c2a8;
+    }
+
+    .olist th, .omap-table th, .olist td, .omap-table td {
+        padding-left: 0.3em;
+        padding-right: 0.3em;
+    }
+
+    .olist-name, .omap-cell-name {
+        min-width: 0;
+    }
+
+    .ocell-bar {
+        grid-template-columns: minmax(1.6em, 2.6em) auto;
+    }
+}
+
+/* The outlet map's types: each a strip with two bars, heat (in its color) and wire (white) */
+.omap-types-sub {
+    max-width: 46em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.omap-type-list {
+    max-width: 46em;
+    margin: 0 auto 1.2em;
+}
+
+.omap-type-bars {
+    display: grid;
+    gap: 3px;
+}
+
+.omap-type-bar {
+    display: grid;
+    grid-template-columns: 1.4em minmax(0, 1fr) 6.5em;
+    align-items: center;
+    gap: 0.3em;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.omap-type-wire .rank-bar {
+    background: white;
+}
+
+.omap-type-fig {
+    white-space: nowrap;
+}
+
+.omap-how {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    padding: 0.3em 1em;
+    margin: 0.4em auto 1em;
+    max-width: 46em;
+    font-size: 0.92em;
+    color: #555;
+}
+
+.omap-how summary {
+    cursor: pointer;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+/* An outlet page's measures against the median outlet's: its bar, the median's tick */
+.ovs {
+    list-style: none;
+    padding: 0;
+    margin: 0.7em 0 0.2em;
+}
+
+.ovs-row {
+    display: grid;
+    grid-template-columns: 9.5em minmax(5em, 1fr) minmax(0, auto);
+    align-items: center;
+    gap: 0.6em;
+    min-height: 32px;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.ovs-track {
+    position: relative;
+    height: 12px;
+    background: #f0f0f5;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 3px 6px 6px 3px;
+}
+
+.ovs-bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--bar);
+    background: #00c2a8;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.ovs-tick {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    left: var(--tick);
+    width: 3px;
+    margin-left: -1.5px;
+    background: #1f1f2e;
+    border-radius: 2px;
+}
+
+.ovs-figure {
+    color: #555;
+    font-variant-numeric: tabular-nums;
+}
+
+.ovs-figure b {
+    color: #1f1f2e;
+}
+
+.ovs-key {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+    margin: 0.2em 0 0.6em;
+}
+
+@media (max-width: 760px) {
+    .ovs-row {
+        grid-template-columns: 8em minmax(0, 1fr);
+        row-gap: 0.1em;
+        padding: 0.25em 0;
+    }
+
+    .ovs-figure {
+        grid-column: 1 / -1;
+        font-size: 0.92em;
+    }
+}
+
+/* An outlet page's feelings against the average outlet's: a diverging strip, more to the right, less to the left */
+.ofeel-lede {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5em 0.8em;
+    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.4em 0 0.2em;
+}
+
+.ofeel-tag-more {
+    border: 2.5px solid #1f1f2e;
+    border-radius: 12px;
+    padding: 0.2em 0.7em;
+    transform: rotate(-2deg);
+    box-shadow: 4px 4px 0 #ff6b1a;
+    background: color-mix(in srgb, #ff6b1a 18%, white);
+}
+
+.ofeel-tag-less {
+    border: 2.5px solid #1f1f2e;
+    border-radius: 12px;
+    padding: 0.2em 0.7em;
+    transform: rotate(2deg);
+    box-shadow: 4px 4px 0 #00c2a8;
+    background: color-mix(in srgb, #00c2a8 18%, white);
+}
+
+.ofeel-sep {
+    color: #999;
+}
+
+.ofeel {
+    list-style: none;
+    max-width: 40em;
+    margin: 0 auto 1.2em;
+    padding: 0.3em 0.6em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+}
+
+.ofeel-row {
+    display: grid;
+    grid-template-columns: 9.5em minmax(0, 1fr) 5.5em;
+    align-items: center;
+    gap: 0.5em;
+    min-height: 40px;
+    font: 700 0.98em 'Comic Neue', 'Comic Sans MS', cursive;
+    border-radius: 8px;
+}
+
+.ofeel-row:hover, .ofeel-row:focus-visible {
+    background: #f6f6fa;
+}
+
+.ofeel-track {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 14px;
+}
+
+.ofeel-half {
+    display: flex;
+    align-items: stretch;
+}
+
+.ofeel-left {
+    justify-content: flex-end;
+    border-right: 2px solid #1f1f2e;
+}
+
+.ofeel-bar {
+    width: 0;
+    box-sizing: border-box;
+}
+
+/* the bar on the side it leans: orange for more than the average outlet, teal for less, grey when about the same */
+.ofeel-to-right .ofeel-right .ofeel-bar {
+    width: var(--bar);
+    background: #ff6b1a;
+    border: 1.5px solid #1f1f2e;
+    border-left: none;
+    border-radius: 0 5px 5px 0;
+}
+
+.ofeel-to-left .ofeel-left .ofeel-bar {
+    width: var(--bar);
+    background: #00c2a8;
+    border: 1.5px solid #1f1f2e;
+    border-right: none;
+    border-radius: 5px 0 0 5px;
+}
+
+.ofeel-row.ofeel-even .ofeel-bar {
+    background: #d4d4de;
+}
+
+.ofeel-figure {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ofeel-even .ofeel-figure {
+    color: #777;
+}
+
+@media (max-width: 760px) {
+    .ofeel-row {
+        grid-template-columns: 7.2em minmax(0, 1fr) 4.4em;
+        font-size: 0.9em;
+    }
+}
+
+/* An outlet page's front page now: With the pack | Only here. The number is the story's rank, or the headline's
+   place on its own front page */
+.onow-row::before {
+    content: attr(data-rank);
+    font-size: 0.75em;
+}
+
+.onow-list .rank-row {
+    grid-template-columns: 2.1em auto minmax(0, 1fr) auto;
+}
+
+.onow-title {
+    font: 0.98em/1.35 Helvetica, Arial, sans-serif;
+    color: #1f1f2e;
+}
+
+a.onow-title:hover {
+    color: #f56a6a;
+}
+
+.onow-story {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    /* a phone: the headline gets the room; the disc (the same for every row) steps out */
+    .onow-list .rank-row {
+        grid-template-columns: 2.1em minmax(0, 1fr) auto;
+    }
+
+    .onow-list .rank-mark {
+        display: none;
+    }
+
+    .onow-list .rank-figure {
+        font-size: 0.85em;
+    }
+}
+
+.onow-more summary {
+    cursor: pointer;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

@@ -8,6 +8,7 @@ from html import escape
 import pytz
 
 from app.analysis import outlet_profile
+from app.site.boards import LEAN_INK
 from app.site.common import TemplateHandler, short_name
 from app.site.data import DataHandler
 from app.site.favicons import slug
@@ -30,6 +31,131 @@ VIEWS = {
               'up': '↑ heated wording', 'down': '↓ calm wording'},
 }
 LEANS = [(-2, 'Left'), (-1, 'Lean left'), (0, 'Center'), (1, 'Lean right'), (2, 'Right')]
+LEAN_MARK = {-2: '🫏', -1: '🫏', 0: '⚖️', 1: '🐘', 2: '🐘'}
+
+# The outlet types' colors (Oct 28), for every list that colors outlets by type: fixed to the type, in the order of
+# outlet_profile's FAMILIES then TYPES, never cycled. The left family's two types are its purple lighter and darker, so
+# the family reads first; the others stand apart (the dataviz validator, adjacent pairs on white: worst deutan ΔE 7.6,
+# the olive and brown, in the floor band, so the emoji always goes with the color). None is the lean blue or red: the
+# types are named for what outlets do, not for their lean. An outlet with no settled type is white.
+TYPE_INK = {'Outside the partisan webs': '#00c2a8', 'Right partisan web': '#ff6b1a', 'Left partisan web': '#8a5cff',
+            'Left Trump-watch': '#b49aff', 'Left opinion': '#5d3bd1', 'Business desk': '#eda100',
+            'Washington and network news': '#00897b', 'General interest': '#a0522d',
+            'Explainers and public media': '#7a8a00', 'Slow analysis and magazines': '#e87ba4'}
+TYPE_EMOJI = {'Outside the partisan webs': '🏘️', 'Right partisan web': '🚨', 'Left partisan web': '📢',
+              'Left Trump-watch': '👀', 'Left opinion': '💭', 'Business desk': '💹',
+              'Washington and network news': '🏛️', 'General interest': '🏟️', 'Explainers and public media': '💡',
+              'Slow analysis and magazines': '🐢'}
+NO_TYPE = {'name': 'No settled type', 'mark': '⚪', 'ink': '#ffffff',
+           'about': 'On the map, but between the types that hold together.'}
+OFF_MAP = {'name': 'Not on the map', 'mark': '🌐', 'ink': '#ffffff',
+           'about': 'In too few of our stories to place (most outlets outside the US and the UK).'}
+# Which side ran a story more: the share of the left-rated outlets on the map that ran it against the share of the
+# right-rated ones; within this ratio of each other they ran it alike
+SIDE_EVEN = 1.5
+
+
+def type_look(profiled: dict | None) -> dict:
+    """An outlet's type as the lists color it (name, emoji, ink, what it does), from its profile; None: not mapped"""
+    if not profiled:
+        return OFF_MAP
+    name = profiled.get('type')
+    if not name:
+        return NO_TYPE
+    return {'name': name, 'mark': TYPE_EMOJI.get(name, '🏷️'), 'ink': TYPE_INK.get(name, '#ffffff'),
+            'about': outlet_profile.ABOUT.get(name, '')}
+
+
+def type_key(names, off_map: bool = False) -> list[dict]:
+    """The key to the type colors the lists hold: the colored ones in their fixed order, then the white ones"""
+    names = set(names)
+    key = [{'name': n, 'mark': TYPE_EMOJI[n], 'ink': ink} for n, ink in TYPE_INK.items() if n in names]
+    if None in names or NO_TYPE['name'] in names:
+        key.append({k: NO_TYPE[k] for k in ('name', 'mark', 'ink')})
+    if off_map:
+        key.append({k: OFF_MAP[k] for k in ('name', 'mark', 'ink')})
+    return key
+
+
+def side_look(left: float | None, right: float | None) -> dict:
+    """A pulling story's disc: the lean whose outlets ran it more, in the lean colors, or grey when they ran it alike"""
+    from app.site.boards import LEAN_EMOJI, LEAN_INK
+    lf, rt = left or 0.0, right or 0.0
+    if lf > rt * SIDE_EVEN and lf > 0:
+        side, words = 'left', 'run more by left-rated outlets'
+    elif rt > lf * SIDE_EVEN and rt > 0:
+        side, words = 'right', 'run more by right-rated outlets'
+    else:
+        side, words = 'center', 'run alike by left- and right-rated outlets'
+    return {'ink': LEAN_INK[side], 'mark': LEAN_EMOJI[side], 'label': words}
+
+
+def pull_boards(profile: dict, with_page: set[int]) -> list[list[dict]]:
+    """🧲 The stories that pull outlets toward each end of the map's two axes, as two answering pairs of boards
+    (across: business, tech and world | the political fight; up and down: critical of Trump | crime and
+    immigration), each story's disc in the lean that ran it more, its bar how many outlets on the map ran it"""
+    from app.site import boards
+    from app.site.page_story import page_name
+    axes = profile.get('axes', {})
+    pulls, n = axes.get('pull', {}), len(profile.get('outlets', {}))
+
+    def rows(axis, end):
+        found = pulls.get(axis, {}).get(end)
+        if found is None:  # a profile from before the stories carried their ids: the labels alone
+            found = [{'id': None, 'label': x, 'outlets': None, 'left': None, 'right': None}
+                     for x in axes.get(axis, {}).get(end, [])]
+        top = max((s['outlets'] or 0 for s in found), default=0)
+        out = []
+        for s in found:
+            look = side_look(s['left'], s['right'])
+            tip = f"{s['label']}: {look['label']}"
+            if s['left'] is not None and s['right'] is not None:
+                tip += (f"; {round(100 * s['left'])}% of the left-rated outlets on the map ran it, "
+                        f"{round(100 * s['right'])}% of the right-rated")
+            out.append(boards.row(s['label'], page_name(s['id']) if s['id'] in with_page else None,
+                                  s['outlets'] or 0, top, f"{s['outlets']} of {n}" if s['outlets'] else '',
+                                  tip=tip, ink=look['ink'], mark=look['mark'], mark_label=look['label']))
+        return out
+    sub = 'the stories that pull outlets this way hardest, first; the bar is how many outlets on the map ran it'
+    v = VIEWS['coverage']
+    return [[boards.board('pull-left', '💼', v['left'].removeprefix('← '), '#00c2a8', sub, rows('x', 'low')),
+             boards.board('pull-right', '🥊', v['right'].removesuffix(' →'), '#ff6b1a', sub, rows('x', 'high'))],
+            [boards.board('pull-up', '🔍', v['up'].removeprefix('↑ '), '#8a5cff', sub, rows('y', 'high')),
+             boards.board('pull-down', '🚔', v['down'].removeprefix('↓ '), '#eda100', sub, rows('y', 'low'))]]
+
+
+def type_rows(profile: dict) -> list[dict]:
+    """🏷️ The outlet types as strips, the most heated first: each with its members' middle heat and wire percentiles
+    (the bars), how many outlets, what it does, how well it held together, and its members, for the hover card"""
+    outlets = profile.get('outlets', {})
+    out = []
+    for t in profile.get('types', []):
+        members = [m for m in t['members'] if m in outlets]
+        if not members:
+            continue
+        heat = sorted(outlets[m]['heat_pct'] for m in members)
+        wire = sorted(outlets[m]['wire_pct'] for m in members if not outlets[m]['is_wire'])
+        look = type_look({'type': t['name']})
+        out.append({**look, 'level': t['level'], 'heat': heat[len(heat) // 2],
+                    'wire': wire[len(wire) // 2] if wire else None, 'n': len(members),
+                    'about': t['about'] or look['about'], 'stability': round(100 * t['stability']),
+                    'members': [{'name': m, 'href': f'outlet-{slug(m)}.html'} for m in members]})
+    return sorted(out, key=lambda t: -t['heat'])
+
+
+def story_pages() -> set[int]:
+    """The stories with a page of their own: every story of the last days, and every page kept once built"""
+    from datetime import timedelta as td
+    from app.models import Session, Story
+    from app.site import page_story
+    since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=page_story.DAYS)
+    try:
+        with Session() as s:
+            recent = {i for (i,) in s.query(Story.id).filter(Story.last_seen >= since)}
+    except Exception:  # noqa: BLE001 - lists without links beat no page
+        logger.exception("Story ids for the outlet map's links")
+        recent = set()
+    return recent | page_story.archived_ids()
 
 
 def ordinal(n: int) -> str:
@@ -182,7 +308,9 @@ class OutletMapPage:
         outlets = profile.get('outlets', {})
         rows = [{'name': n, 'href': f'outlet-{slug(n)}.html', 'type': o['type'], 'wire_pct': o['wire_pct'],
                  'heat_pct': o['heat_pct'], 'like': o['like'], 'is_wire': o['is_wire'],
-                 'lean': dict(LEANS).get(o['lean'], 'not rated')}
+                 'lean': dict(LEANS).get(o['lean'], 'not rated'), 'look': type_look(o),
+                 'lean_ink': fill(o['lean']), 'lean_mark': LEAN_MARK.get(o['lean'], ''),
+                 'like_links': [{'name': x, 'href': f'outlet-{slug(x)}.html'} for x in o['like']]}
                 for n, o in sorted(outlets.items(), key=lambda kv: kv[0].removeprefix('The '))]
         dots = {r['name']: {**{k: r[k] for k in ('href', 'type', 'like', 'is_wire', 'lean')},
                             'wire': ordinal(r['wire_pct']), 'heat': ordinal(r['heat_pct'])} for r in rows}
@@ -193,9 +321,9 @@ class OutletMapPage:
             'min_articles': outlet_profile.MIN_ARTICLES,
             'views': VIEWS, 'leans': [{'name': nm, 'color': bias_colors[b + 3], 'ink': bias_ink[b + 3]}
                                       for b, nm in LEANS],
-            'types': [{**t, 'members': [{'name': m, 'href': f'outlet-{slug(m)}.html',
-                                         'bias': outlets[m]['lean'] or 0} for m in t['members']]}
-                      for t in profile.get('types', [])],
+            'types': type_rows(profile),
+            'pulls': pull_boards(profile, story_pages()) if outlets else [],
+            'type_key': type_key([o['type'] for o in outlets.values()]), 'LEAN_INK': LEAN_INK, 'ordinal': ordinal,
         })
         self.template.write(self.context)
         logger.info("...%d outlets on the map", len(outlets))

@@ -176,51 +176,7 @@
     border-style: dashed;
 }
 
-.omap-ends, .omap-types {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16em), 1fr));
-    gap: 1em;
-    max-width: 60em;
-    margin: 0 auto 1.6em;
-}
-
-.omap-end-card, .omap-type {
-    background: white;
-    border: 3px solid #1f1f2e;
-    border-radius: 14px;
-    padding: 0.6em 1em;
-    box-shadow: 5px 5px 0 #00c2a8;
-}
-
-.omap-end-card:nth-child(even), .omap-type:nth-child(even) {
-    box-shadow: 5px 5px 0 #8a5cff;
-}
-
-.omap-end-card h3, .omap-type h3 {
-    margin: 0.2em 0 0.4em;
-    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
-}
-
-.omap-end-card ul {
-    margin: 0;
-    padding-left: 1.2em;
-    font-size: 0.9em;
-}
-
-.omap-family {
-    background: color-mix(in srgb, #ffc400 12%, white);
-}
-
-.omap-members {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3em;
-}
-
-.omap-members .edit-chip {
-    text-decoration: none;
-}
-
+/* (Oct 28: the stories that pull each way, the types and the table are ranked strips now: 730-redo-outlets.css) */
 .omap-table td:last-child {
     font-size: 0.85em;
     color: #555;

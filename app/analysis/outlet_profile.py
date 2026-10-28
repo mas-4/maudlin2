@@ -45,7 +45,7 @@ AGREE = 2  # of an outlet's NEIGHBOURS look-alikes that must share its type for 
 STABLE = 0.75  # clusterwise Jaccard (Hennig): above this a cluster is stable
 BOOTS = 100
 CACHE = os.path.join(Config.data, 'outlet_profile.json')
-VERSION = 2  # bump when the method changes, so the day's cache is rebuilt
+VERSION = 3  # bump when the method changes, so the day's cache is rebuilt
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire', 'Memeorandum'}
 
 # Types named by their anchor outlets (from the study's clusters). A cluster takes the name whose anchors it holds most
@@ -600,7 +600,8 @@ def build(data: dict, until: dt) -> dict:
             'headlines': int(len(data['heads'])), 'articles': int(len(art)), 'stories': int(X.shape[1]),
             'outlets': out, 'types': types,
             'axes': {'inertia': [round(100 * float(i), 1) for i in inertia[:2]], 'rho': rho,
-                     'x': _ends(cols, 'ca1', labels), 'y': _ends(cols, 'ca2', labels)}}
+                     'x': _ends(cols, 'ca1', labels), 'y': _ends(cols, 'ca2', labels),
+                     'pull': {ax: _pulls(cols, X, f'ca{i}', labels, bias) for i, ax in ((1, 'x'), (2, 'y'))}}}
 
 
 def agreed(outlet: str, level: int, first: dict, like: dict) -> str | None:
@@ -631,6 +632,29 @@ def _ends(cols: pd.DataFrame, axis: str, labels: pd.Series, n: int = 4) -> dict:
     for end, mask in (('low', cols[axis] < 0), ('high', cols[axis] > 0)):
         top = contrib[mask].sort_values(ascending=False).index
         out[end] = [str(labels[s]) for s in top if isinstance(labels.get(s), str) and labels[s].strip()][:n]
+    return out
+
+
+def _pulls(cols: pd.DataFrame, X: pd.DataFrame, axis: str, labels: pd.Series, bias: pd.Series, n: int = 8) -> dict:
+    """The stories that pull hardest toward each end of an axis, as `_ends` but each with its id, how many of the
+    profiled outlets ran it, and the share of the left-rated and of the right-rated ones that did (for the outlet
+    map's lists, Oct 28: which side ran each story more)"""
+    rated = bias.reindex(X.index)
+    left, right = X[rated < 0], X[rated > 0]
+    contrib = cols['mass'] * cols[axis] ** 2
+    out = {}
+    for end, mask in (('low', cols[axis] < 0), ('high', cols[axis] > 0)):
+        rows = []
+        for s in contrib[mask].sort_values(ascending=False).index:
+            label = labels.get(s)
+            if not isinstance(label, str) or not label.strip():
+                continue
+            rows.append({'id': int(s) if isinstance(s, (int, np.integer)) else str(s), 'label': label.strip(), 'outlets': int(X[s].sum()),
+                         'left': round(float(left[s].mean()), 3) if len(left) else None,
+                         'right': round(float(right[s].mean()), 3) if len(right) else None})
+            if len(rows) >= n:
+                break
+        out[end] = rows
     return out
 
 
