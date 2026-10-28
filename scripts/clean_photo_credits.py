@@ -4,13 +4,14 @@ and was kept as a headline, often as its article's first. Bloomberg's front page
 feeds (Oct 11). The scrapers now take the credit out of the link, and a text that is only a credit is never a headline
 (app/analysis/preprocessing.py, is_photo_credit). This re-reads the stored link html of older rows the same way.
 
-Almost every such row held nothing but the credit, so there is nothing to rewrite it to; what to do with those is
-for the person to decide, and this only lists them (read only, whatever the flags). A row whose link held a headline
-besides the credit is listed with the headline it would be rewritten to.
+Almost every such row held nothing but the credit, so there is nothing to rewrite it to. The person (Oct 28):
+delete them. --apply deletes each credit-only headline, its story links, and any article left with no headline; a row
+whose link held a headline besides the credit is rewritten to that headline. Back the database up first.
 
-    python scripts/clean_photo_credits.py              what it would change (the live database, read only)
-    python scripts/clean_photo_credits.py --db PATH    the same on another copy
-    python scripts/clean_photo_credits.py --all        every row, not ten examples per outlet"""
+    python scripts/clean_photo_credits.py                      what it would change (the live database, read only)
+    python scripts/clean_photo_credits.py --db PATH            the same on another copy
+    python scripts/clean_photo_credits.py --all                every row, not ten examples per outlet
+    python scripts/clean_photo_credits.py --db PATH --apply    change them"""
 import argparse
 import collections
 import os
@@ -54,12 +55,39 @@ def changes(con: sqlite3.Connection):
             yield hid, agency, old, new
 
 
+def apply(con: sqlite3.Connection, found: list) -> dict:
+    """Delete the credit-only headlines (story links first) and the articles left with none; rewrite the rest. One
+    transaction: all of it or none"""
+    from app.analysis.preprocessing import preprocess
+    ids = [f[0] for f in found if f[3] is None]
+    con.execute('begin immediate')
+    try:
+        con.execute('create temp table gone (id integer primary key)')
+        con.executemany('insert into gone values (?)', [(i,) for i in ids])
+        arts = [a for a, in con.execute('select distinct article_id from headline where id in (select id from gone)')]
+        links = con.execute('delete from story_headline where headline_id in (select id from gone)').rowcount
+        heads = con.execute('delete from headline where id in (select id from gone)').rowcount
+        con.execute('create temp table touched (id integer primary key)')
+        con.executemany('insert into touched values (?)', [(a,) for a in arts])
+        empty = con.execute('''delete from article where id in (select id from touched)
+            and not exists (select 1 from headline h where h.article_id = article.id)''').rowcount
+        rewrites = [(new, preprocess(new), hid) for hid, _, _, new in found if new is not None]
+        con.executemany('update headline set title = ?, processed = ? where id = ?', rewrites)
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    return {'headlines': heads, 'story links': links, 'articles': empty, 'rewritten': len(rewrites)}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', default=Config.db_file_path)
     ap.add_argument('--all', action='store_true', help='list every row, not ten per outlet')
+    ap.add_argument('--apply', action='store_true', help='delete the credits and rewrite the rest (back up first)')
     args = ap.parse_args()
-    con = sqlite3.connect(f'file:{args.db}?mode=ro', uri=True)
+    con = sqlite3.connect(f'file:{args.db}' + ('' if args.apply else '?mode=ro'), uri=True, timeout=120,
+                          isolation_level=None)
     found = list(changes(con))
     credits = [f for f in found if f[3] is None]
     rewrites = [f for f in found if f[3] is not None]
@@ -87,7 +115,10 @@ def main():
     print(f'{len(credits)} headlines are only a photo credit: {first} are their article\'s first headline, '
           f'{alone} articles have no other headline, {in_stories} are in a story')
     print(f'{len(rewrites)} headlines would be rewritten')
-    print('nothing changed: this script only reads')
+    if not args.apply:
+        print('nothing changed: run with --apply to delete them')
+        return
+    print('done:', apply(con, found))
 
 
 if __name__ == '__main__':

@@ -344,3 +344,22 @@ def test_clean_photo_credits_lists_credit_only_rows():
         (4, 'Biden/Harris rally draws crowds', '<a>Biden/Harris rally draws crowds</a>')])
     assert list(changes(con)) == [(1, 'NBC News', 'Saul Loeb / AFP via Getty', None),
                                   (3, 'NBC News', 'Jane Doe / AP', None)]
+
+
+def test_clean_photo_credits_apply_deletes_credits_and_emptied_articles():
+    """Oct 28, the person: "Delete them". The credit goes with its story link; an article keeps its real headline,
+    and one left with no headline goes too"""
+    from scripts.clean_photo_credits import apply
+    con = sqlite3.connect(':memory:', isolation_level=None)
+    con.executescript("""create table article (id integer primary key);
+        create table headline (id integer primary key, article_id integer, title text, processed text);
+        create table story_headline (story_id integer, headline_id integer);
+        insert into article values (1), (2);
+        insert into headline values (1, 1, 'Saul Loeb / AFP via Getty', 'x'), (2, 1, 'A real headline', 'y'),
+                                    (3, 2, 'Jane Doe / AP', 'z');
+        insert into story_headline values (7, 1), (7, 2);""")
+    done = apply(con, [(1, 'NBC News', 'Saul Loeb / AFP via Getty', None), (3, 'NBC News', 'Jane Doe / AP', None)])
+    assert done == {'headlines': 2, 'story links': 1, 'articles': 1, 'rewritten': 0}
+    assert [r for r, in con.execute('select id from headline')] == [2]
+    assert [r for r, in con.execute('select id from article')] == [1]
+    assert list(con.execute('select * from story_headline')) == [(7, 2)]
