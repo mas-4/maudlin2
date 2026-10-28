@@ -73,3 +73,43 @@ def test_show_boards_come_in_pairs_with_the_repertoire_counting_on():
     assert out['alike'][1]['rows'] == []  # two other shows: too few for a least-alike list beside the most alike
     assert {k['name'] for k in out['lean_key']} == {'leans left', 'leans right'}
     assert out['mix'][0]['genre'] == 'Plots' and round(sum(g['share'] for g in out['mix'])) == 100
+
+
+def test_group_titles_joins_wordings_of_one_story_but_not_on_common_words():
+    from app.site import page_tv
+    titles = ['Federal Reserve meeting begins', 'Federal Reserve begins two-day meeting on interest rates',
+              'Milwaukee Brewers win Game 3 against Tampa Bay', 'Brewers lead Tampa Bay Rays 3-0 in World Series',
+              'Democrats hold advantage in midterm election polls', 'Voter turnout in midterm election grows',
+              'Midterm election ad spending', 'Midterm election early ballots', 'Pope Leo cleared to travel']
+    groups = page_tv.group_titles([{'text': t} for t in titles])
+    joined = sorted(sorted(i['text'] for i in g) for g in groups if len(g) > 1)
+    assert joined == sorted([sorted(titles[:2]), sorted(titles[2:4])])  # midterm and election are in too many to join on
+
+
+def test_tv_skipped_lists_front_page_leaders_with_little_time_on_air():
+    from datetime import datetime as dt
+    from app.site import page_tv
+    caps = [{'at': dt(2026, 10, 5, 18), 'channel': 'CNNW', 'seconds': 60, 'text': 'X', 'story': 1, 'rank': 1, 'label': 'a'},
+            {'at': dt(2026, 10, 5, 18), 'channel': 'FOXNEWSW', 'seconds': 900, 'text': 'Y', 'story': 2, 'rank': 2,
+             'label': 'b'}]
+    led = {1: {'id': 1, 'label': 'Quiet one', 'hours': 6, 'best': 1}, 2: {'id': 2, 'label': 'Loud one', 'hours': 9, 'best': 1},
+           3: {'id': 3, 'label': 'Never aired', 'hours': 4, 'best': 3}, 4: {'id': 4, 'label': 'Brief', 'hours': 1, 'best': 9}}
+    rows = page_tv.skipped(caps, led, dt(2026, 10, 5))
+    assert [(r['name'], r['figure'], r['mark']) for r in rows] == [('Quiet one', '6 h · 60 s', 'CNN'),
+                                                                   ('Never aired', '4 h · none', '📵')]
+    assert 'Not on any channel' in rows[1]['tip']
+
+
+def test_tv_swimlane_puts_each_channel_hour_in_its_lane_and_flips_on_a_phone():
+    from datetime import datetime as dt
+    from app.site import page_tv
+    caps = [{'at': dt(2026, 10, 5, 18, 5), 'channel': 'CNNW', 'seconds': 120, 'text': 'A', 'story': 7, 'rank': 2,
+             'label': 'Story', 'program': 'News'},
+            {'at': dt(2026, 10, 5, 19, 5), 'channel': 'BBCNEWS', 'seconds': 30, 'text': 'B', 'program': 'World'}]
+    lane = page_tv.swimlane(page_tv.hours(caps))
+    assert [x['mark'] for x in lane['lanes']] == ['CNN', 'BBC'] and lane['cols'] == 2
+    cnn, bbc = lane['cells']
+    assert (cnn['row'], cnn['col'], cnn['flip'], cnn['rank']) == (2, 2, 3, 2)  # oldest left; at the bottom on a phone
+    assert (bbc['row'], bbc['col'], bbc['flip'], bbc['rank']) == (3, 3, 2, None)
+    assert cnn['head'] == '📺 CNN, Mon Oct 5, 2 PM ET · News' and '#2 on the front pages, as “Story”' in cnn['tip']
+    assert [h['label'] for h in lane['hours']] == ['Mon 2 PM', '3 PM']

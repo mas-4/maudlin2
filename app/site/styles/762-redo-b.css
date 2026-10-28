@@ -53,3 +53,181 @@
 .rank-board-rep-next .rank-list {
     counter-reset: rank-list 20;  /* page_show.FIRST */
 }
+
+/* On TV and On the radio (air.html): channel discs carry their short name (CNN, NPR...) on the channel's ink, so the
+   color is never alone; white on the dark TV inks, ink on the light radio ones */
+.air-marks .rank-mark, .air-mark {
+    width: 2.9em;
+    height: 2.9em;
+    font: 700 0.68em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: var(--mark-text, white);
+    letter-spacing: -0.02em;
+}
+
+.air-marks .rank-key-plain .rank-mark {
+    color: #1f1f2e;
+}
+
+.air-marks.air-light .rank-mark, .air-light .air-mark {
+    --mark-text: #1f1f2e;
+}
+
+/* The hourly swimlane: a lane per channel across the hours (oldest left); on a phone the hours run down, newest at
+   the top, and the channels across */
+.air-lane {
+    display: grid;
+    grid-template-columns: 7.2em repeat(var(--cols), minmax(0, 1fr));
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #00c2a8;
+    padding: 0.5em;
+    margin: 0.6em 0 1.4em;
+}
+
+.air-lane > * {
+    grid-row: var(--r);
+    grid-column: var(--c);
+    min-width: 0;
+}
+
+.air-lane-corner, .air-lane-hour {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    align-self: end;
+    text-align: center;
+    padding-bottom: 0.15em;
+}
+
+.air-lane-name {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.air-lane-name .air-mark {
+    font-size: 0.62em;
+}
+
+.air-lane-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 5.2em;
+    padding: 4px 5px;
+    border: 2px solid #1f1f2e;
+    border-left: 6px solid var(--ink);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--ink) 9%, white);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.15s;
+}
+
+.air-lane-cell:hover, .air-lane-cell:focus-visible, .air-lane-cell.hover-card-on {
+    transform: translate(-1px, -2px);
+    box-shadow: 3px 3px 0 var(--ink);
+    outline: none;
+}
+
+.air-lane-rank {
+    align-self: flex-start;
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0 0.4em;
+    background: #fff3c4;
+    line-height: 1.3;
+}
+
+.air-lane-off .air-lane-rank {
+    background: #eee;
+    color: #555;
+}
+
+.air-lane-text {
+    font-size: 0.72em;
+    line-height: 1.25;
+    color: #1f1f2e;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+}
+
+@media (max-width: 760px) {
+    .air-lane {
+        grid-template-columns: 3.4em repeat(var(--lanes), minmax(0, 1fr));
+        padding: 0.4em 0.3em;
+    }
+
+    .air-lane > * {
+        grid-row: var(--f);
+        grid-column: var(--r);
+    }
+
+    .air-lane-hour {
+        align-self: center;
+        text-align: right;
+        padding: 0 0.2em 0 0;
+    }
+
+    .air-lane-name {
+        flex-direction: column;
+        gap: 0.15em;
+        text-align: center;
+        font-size: 0.78em;
+        line-height: 1.1;
+    }
+
+    .air-lane-cell {
+        min-height: 4.4em;
+    }
+
+    .air-lane-text {
+        font-size: 0.64em;
+        overflow-wrap: break-word;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .air-lane-cell { transition: none; }
+    .air-lane-cell:hover, .air-lane-cell:focus-visible, .air-lane-cell.hover-card-on { transform: none; }
+}
+
+/* A ranked strip's bar in parts, one per channel in its ink, outlined like the boards' bars */
+.air-stack {
+    display: flex;
+    height: 12px;
+    width: 100%;
+}
+
+.air-stack > span {
+    flex: 0 0 var(--w);
+    min-width: 4px;
+    box-sizing: border-box;
+    background: var(--ink);
+    border: 1.5px solid #1f1f2e;
+}
+
+.air-stack > span + span {
+    border-left: none;
+}
+
+.air-stack > span:first-child {
+    border-radius: 2px 0 0 2px;
+}
+
+.air-stack > span:last-child {
+    border-radius: 0 5px 5px 0;
+}
+
+.air-front {
+    font-size: 0.85em;
+    color: #555;
+}

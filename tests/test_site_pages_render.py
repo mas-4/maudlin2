@@ -824,12 +824,16 @@ def test_radio_page_sets_each_newscast_beside_the_front_pages(site):
 
 def test_tv_page_shows_minutes_on_screen_by_channel(site):
     page = site['soup']['tv.html']
-    row = page.select_one('.tv-table tbody tr')
-    assert row.select_one('td').get_text() == 'Dubai flight attack' and row.select_one('.radio-rank').get_text() == '#2'
-    assert [c.get_text(strip=True) for c in row.select('.tv-cell')] == ['2 min', '60 s', '', '']  # CNN, Fox, MSNOW, BBC
-    cnn, fox = page.select('.radio-card')
-    assert cnn.select_one('li').get_text().startswith('CO-PILOT <MEANT> TO CRASH PLANE')  # escaped
-    assert fox.select('li')[1].select_one('.radio-off')  # not matched to a story
+    row = page.select_one('.rank-board-tv-most .rank-row')  # the day's stories by minutes, a bar part per channel
+    assert row.select_one('.rank-name').get_text() == 'Dubai flight attack'
+    assert row.select_one('.rank-figure').get_text(' ', strip=True) == '3 min 📰 #2'
+    assert 'CNN: 2 min' in row['data-tip'] and 'Fox News: 60 s' in row['data-tip'] and len(row.select('.air-stack span')) == 2
+    cnn, fox = page.select('.air-lane-cell')  # the hour's swimlane: a cell per channel, its captions in a hover card
+    assert cnn.select_one('.air-lane-text').get_text() == 'CO-PILOT <MEANT> TO CRASH PLANE'  # escaped
+    assert cnn.select_one('.air-lane-rank').get_text() == '#2'
+    assert '“LOCAL WEATHER” · 45 s · not on the front pages' in fox['data-tip']  # not matched to a story
+    off = page.select_one('.rank-board-on-air .rank-row')
+    assert off.select_one('.rank-name').get_text() == 'LOCAL WEATHER' and off.select_one('.rank-mark').get_text() == 'FOX'
 
 
 def test_story_cards_carry_tv_minutes_and_radio_newscasts(monkeypatch):
