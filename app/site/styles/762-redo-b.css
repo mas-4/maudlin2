@@ -347,6 +347,28 @@
     background: #ff4f6d;
 }
 
+/* The Replay (replayed.html): who is speaking or what the clip is, where the words say so; "crossover" explained */
+.replay-about {
+    margin: -0.2em 0 0.6em;
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, #ffc400 18%, white);
+    border-radius: 8px;
+    padding: 0.2em 0.6em;
+    display: inline-block;
+}
+
+.replay-crossover {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+.replay-strip text[tabindex] {
+    cursor: help;
+    text-decoration: underline dotted;
+}
+
 .bypg-picked[hidden] {
     display: none;
 }

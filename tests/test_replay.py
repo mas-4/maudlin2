@@ -201,7 +201,7 @@ def test_the_page_shows_clips_then_sponsor_reads_and_leaves_out_glitches(tmp_pat
     (card,) = soup.select('.replay-card')
     assert card.select_one('.replay-count').get_text(' ', strip=True).startswith('3 shows · 3 airings')
     assert 'Donna' in card.select_one('.replay-quote').get_text()
-    assert len(card.select('svg circle')) == 3 and len(card.select('a.show-chip')) == 3
+    assert len(card.select('svg circle')) == 3 and not card.select('a.show-chip')  # the dots' cards name the shows
     assert [li.select_one('a')['href'] for li in card.select('.replay-airings li')] == \
         ['https://example.com/1', 'https://example.com/2', 'https://example.com/3']
     assert 'Quince' in soup.select_one('.replay-reads').get_text()

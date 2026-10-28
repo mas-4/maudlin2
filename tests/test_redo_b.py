@@ -144,6 +144,43 @@ def test_radio_pair_counts_newscasts_off_the_front_pages_and_front_page_leaders_
     assert len(lane['cells']) == 4 + 1 + 4  # NPR's four newscasts, ABC's one, the front pages' four hours
 
 
+def clip(text, titles, kind='clip'):
+    return {'kind': kind, 'text': text, 'airings': [{'source': f's{i}', 'title': t} for i, t in enumerate(titles)]}
+
+
+def test_replay_says_who_is_speaking_where_the_words_or_the_titles_do():
+    from app.site import page_replay as pr
+    assert pr.about(clip("My name is Donna Arthur, and I'm Amy Acton's mother. I love her.", [])) == \
+        "🗣️ Speaking, in their own words: Donna Arthur, “I'm Amy Acton's mother”"
+    assert pr.about(clip('Hi, everyone. Ilhan here. Thank you.', [])) == \
+        '🗣️ Speaking, in their own words: Ilhan (“Ilhan here”)'
+    assert pr.about(clip("I'm Sherrod Brown and I approve this message.", [], 'campaign')).startswith(
+        '🗳️ The candidate speaking: Sherrod Brown')
+    assert pr.about(clip('Vote early. Paid for by Ohio Forward Action. Not authorized by any candidate.', [],
+                         'campaign')) == '🗳️ Paid for by Ohio Forward Action, it says'
+    # names the clip says that the episodes' titles have too: the full name over its parts, common words never
+    text = ('Well, the Senate race. Vivek Ramaswamy said it again in Ohio, and Right now the Republicans are worried. '
+            'Obama never did.')
+    titles = ["Ramaswamy's October surprise", 'Vivek Ramaswamy doubles down', 'Ohio Senate Republicans Panic',
+              'Republicans In Ohio, Right Now']
+    assert pr.about(clip(text, titles)) == ('📝 Named in the clip and in the titles of the episodes that played it: '
+                                            'Ramaswamy (2 of 4), Ohio (2 of 4)')  # never Senate, Right, Republicans
+    titles.append('Vivek Ramaswamy, again')
+    line = pr.about(clip(text, titles))  # the full name, once two titles have it, over its part
+    assert 'Vivek Ramaswamy (2 of 5)' in line and 'Ramaswamy (3' not in line
+    assert pr.about(clip('So he said it. Then he left.', ['So It Goes', 'Then And Now'])) is None
+
+
+def test_replay_explains_crossover_where_its_lane_and_count_appear():
+    from bs4 import BeautifulSoup
+    from app.site import page_replay as pr
+    airings = [{'source': 'pod_rogan', 'show': 'Joe Rogan', 'group': 'crossover', 'title': 'Ep', 'url': 'https://x/1',
+                'published': '2026-10-20T18:00:00', 'at': None}]
+    svg = BeautifulSoup(pr.strip(airings), 'html.parser')
+    label = next(t for t in svg.select('text.sc-label') if 'crossover' in t.get_text())
+    assert label.title.get_text() == pr.CROSSOVER and 'Theo Von' in pr.CROSSOVER
+
+
 def test_beyond_subjects_diverge_left_and_right_with_the_rest_across_the_middle(monkeypatch, tmp_path):
     from bs4 import BeautifulSoup
     from app.site import page_beyond as pb
