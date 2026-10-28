@@ -151,6 +151,11 @@ def site(data_handler, tmp_path_factory):
     event.listen(engine, 'before_cursor_execute', no_writes)
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(Config, 'build', str(build))
+        from app.analysis import echoes
+        mp.setattr(echoes, 'any_approved', lambda: False)  # never the real echoes store
+        mp.setattr(echoes, 'approved', lambda path=None: [])
+        from app.site.common import stamp_build
+        stamp_build()  # the nav was drawn at import, from the real store
         from app.site import wordcloudgen
         mp.setattr(wordcloudgen, 'CLOUD_HISTORY', str(build / 'cloud_history.json'))  # never the real history
         mp.setattr(socket.socket, 'connect', refuse_connection)
