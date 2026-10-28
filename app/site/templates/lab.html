@@ -39,9 +39,9 @@
             grey is before, colored is after, from 0 to 100% (or 0 to 1, for a score like an AUC). What it measures is
             in the card. The rest say it in words, so they get no bar rather than a guessed one.</p>
     </div>
-    <div class="lab-filters" role="group" aria-label="Show only the experiments that are…">
-        <button type="button" class="lab-filter" data-status="" aria-pressed="true"><span class="rank-mark" aria-hidden="true" style="--ink: #ffffff">🧪</span><b>all</b> <span class="lab-filter-n">{{ total }}</span></button>
-        {% for k in key %}<button type="button" class="lab-filter" data-status="{{ k.status|e }}" aria-pressed="false"><span class="rank-mark" aria-hidden="true" style="--ink: {{ k.ink|e }}">{{ k.mark|e }}</span><b>{{ k.name|e }}</b> <span class="lab-filter-n">{{ k.count }}</span></button>{% endfor %}
+    <div class="pick-chips lab-filters" role="group" aria-label="Show only the experiments that are…">
+        <button type="button" class="pick-chip" data-status="" aria-pressed="true"><span class="rank-mark" aria-hidden="true" style="--ink: #ffffff">🧪</span><b>all</b> <span class="pick-chip-n">{{ total }}</span></button>
+        {% for k in key %}<button type="button" class="pick-chip" data-status="{{ k.status|e }}" aria-pressed="false"><span class="rank-mark" aria-hidden="true" style="--ink: {{ k.ink|e }}">{{ k.mark|e }}</span><b>{{ k.name|e }}</b> <span class="pick-chip-n">{{ k.count }}</span></button>{% endfor %}
     </div>
     <p class="lab-showing" aria-live="polite" hidden></p>
 
@@ -53,7 +53,7 @@
     <script>
         (function () {
             // The status chips filter the ladders: one status at a time, "all" (or the same chip again) for every one
-            const chips = [...document.querySelectorAll('.lab-filter')];
+            const chips = [...document.querySelectorAll('.pick-chip')];
             const showing = document.querySelector('.lab-showing');
             function pick(status) {
                 chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.status === status)));

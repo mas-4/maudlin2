@@ -61,7 +61,65 @@ def test_the_lab_page_has_real_filters_and_escapes_what_it_shows(tmp_path, monke
                                                  key=page_lab.status_key(found), with_bar=1)
     assert 'Lethe &lt;b&gt;' in html and 'Lethe <b>' not in html
     assert 'data-tip="❓ Subtract &#34;the news&#34;' in html or 'data-tip="❓ Subtract &quot;the news&quot;' in html
-    assert 'class="lab-filter" data-status="in production"' in html and 'data-status="in production"><div' in html
+    assert 'class="pick-chip" data-status="in production"' in html and 'data-status="in production"><div' in html
     assert 'class="lab-ba-after" style="--bar: 60.0%"' in html
     page = html[html.index('lab-hero'):]
     assert ' title=' not in page[:page.index('<script>')]  # hover cards, never tooltips
+
+
+# The methods log
+
+LOG = """# Methods log
+
+Opening paragraph, the page's own.
+
+## 2026-10-28
+- **Show claims tied to stories.** What the shows said reaches the story pages, with `code`.
+- **One outlet's failure no longer fails the hourly run;** a broken scraper is skipped.
+- **Story coherence check tried, not adopted.** It cost more than it caught.
+- **Hand labels.** 200 headlines labeled by hand to check the model.
+  - *Nested:* a sub-point kept in the card.
+- **A merge keeps everything.** Its claims stay with it.
+
+## 2026-10-03 (evening)
+- **Shows archive begins.** 40 newsletters and podcasts.
+
+## History
+- **2024-01 to 2024-08: built by hand** as Maudlin.
+"""
+
+
+def test_the_log_becomes_days_of_one_line_entries_with_the_text_folded_under():
+    from app.site import page_methods
+    days = page_methods.parse(LOG)
+    assert [(d['anchor'], d['label'], d['short']) for d in days] == [
+        ('2026-10-28', 'Oct 28', '28'), ('2026-10-03-evening', 'Oct 3, evening', '3🌙'), ('history', 'History', '🕰️')]
+    first = days[0]['entries']
+    assert [e['line'] for e in first] == ['Show claims tied to stories', "One outlet's failure no longer fails the hourly run",
+                                          'Story coherence check tried, not adopted', 'Hand labels',
+                                          'A merge keeps everything']
+    assert '<code>code</code>' in first[0]['body'] and 'Show claims tied' not in first[0]['body']
+    assert '<em>Nested:</em>' in first[3]['body']  # the sub-list stays with its entry
+    assert 'Opening paragraph' not in str(days)
+
+
+def test_an_entry_is_colored_by_the_first_area_its_line_names_and_tagged_by_kind():
+    from app.site import page_methods
+    first = page_methods.parse(LOG)[0]['entries']
+    assert [e['area'] for e in first] == ['shows', 'outlets', 'stories', 'measures', 'motifs']  # the last from its next sentence
+    assert [e['kind'] for e in first] == ['changed', 'fix', 'dropped', 'changed', 'changed']
+    assert page_methods.area_of('Nothing named here') == 'site' and page_methods.kind_of('Shows archive begins') == 'new'
+
+
+def test_the_methods_page_keeps_every_day_anchor_and_filters_by_area():
+    from app.site import page_methods
+    days = page_methods.parse(LOG)
+    areas, kinds = page_methods.keys(days)
+    for d in days:
+        for e in d['entries']:
+            a = next(x for x in areas if x['key'] == e['area'])
+            e.update(area_mark=a['mark'], area_name=a['name'], ink=a['ink'], kind_mark='🔧', kind_name='changed')
+    html = j2env.get_template('methods.html').render(days=days, areas=areas, kinds=kinds, top=5, total=7)
+    assert 'id="2026-10-28"' in html and 'href="#2026-10-03-evening"' in html
+    assert 'class="pick-chip" data-area="shows"' in html and 'data-area="shows" style="--ink: #ff6b1a"' in html
+    assert html.count('<details>') == 7 and 'methods-paper' in html
