@@ -63,6 +63,7 @@ from app.scrapers.moscowtimes import MoscowTimes
 from app.scrapers.motherjones import MotherJones
 from app.scrapers.msnbc import MSNBC
 from app.scrapers.nation import Nation
+from app.scrapers.nationaldesk import NationalDesk
 from app.scrapers.nationalpost import NationalPost
 from app.scrapers.nationalreview import NationalReview
 from app.scrapers.nbc import NBC
@@ -144,6 +145,11 @@ from app.scrapers.week import Week
 from app.scrapers.winnipegfreepress import WinnipegFreePress
 from app.scrapers.xinhua import Xinhua
 from app.scrapers.yahoonews import YahooNews
+from app.scrapers.komo import KOMO
+from app.scrapers.kutv import KUTV
+from app.scrapers.wbff import WBFF
+from app.scrapers.wjla import WJLA
+from app.scrapers.wpec import WPEC
 
 Scrapers = [
     # HindustanTimes,
@@ -218,6 +224,7 @@ Scrapers = [
     NPR,
     NYT,
     Nation,
+    NationalDesk,
     NationalPost,
     NationalReview,
     NewRepublic,
@@ -298,6 +305,11 @@ Scrapers = [
     Xinhua,
     YahooNews,
 ]
+
+# Read every run for research, not shown as outlets (app/sinclair.py): Sinclair's local stations, whose national pieces
+# are The National Desk's copy. Their headlines are kept as StationSightings, never Headlines, so they're left out of
+# stories, outlet counts and the outlets' pages; being outside Scrapers keeps them out of the counts made from it.
+ResearchScrapers = [KOMO, WJLA, KUTV, WPEC, WBFF]
 
 TradScrapers = []
 SeleniumScrapers = []

@@ -11,6 +11,7 @@ def db():
     con.execute('CREATE TABLE side_item (source, published, first_seen)')
     con.execute('CREATE TABLE agency (id, name)')
     con.execute('CREATE TABLE article (agency_id, last_accessed)')
+    con.execute('CREATE TABLE station_sighting (agency_id, last_seen)')
     return con
 
 
@@ -29,3 +30,14 @@ def test_quiet_and_stunted_feeds_and_missing_outlets_are_flagged():
     con.executemany('INSERT INTO agency VALUES (?, ?)', [(1, 'Up'), (2, 'Down')])
     con.executemany('INSERT INTO article VALUES (?, ?)', [(1, str(now - td(hours=1))), (2, str(now - td(hours=9)))])
     assert [p['outlet'] for p in health.missing_outlets(con, now)] == ['Down']
+
+
+def test_a_research_station_counts_as_seen_by_its_homepage_sightings():
+    """Sinclair's stations (app/sinclair.py) save no articles, only sightings of their homepage headlines"""
+    now = dt(2026, 10, 28, 12)
+    con = db()
+    con.executemany('INSERT INTO agency VALUES (?, ?)', [(1, 'Station up'), (2, 'Station down'), (3, 'Both')])
+    con.executemany('INSERT INTO station_sighting VALUES (?, ?)',
+                    [(1, str(now - td(hours=1))), (2, str(now - td(hours=9))), (3, str(now - td(hours=9)))])
+    con.execute('INSERT INTO article VALUES (?, ?)', (3, str(now - td(hours=1))))
+    assert [p['outlet'] for p in health.missing_outlets(con, now)] == ['Station down']

@@ -337,6 +337,25 @@ class FeedSighting(Base):
     last_seen: Mapped[dt] = mapped_column(DateTime())
 
 
+class StationSighting(Base):
+    """A headline on the homepage of a Sinclair site we read for research (app/sinclair.py, since Oct 28): its local
+    stations, whose national pieces are The National Desk's copy, and The National Desk itself. One row per site, link
+    and wording, with when we first and last saw it there and its highest place on the page. The stations' rows never
+    become Headlines, so they stay out of stories, lean bars and "on the front pages" counts; The National Desk is also
+    an ordinary outlet, whose headlines are saved as usual besides. The link's last part (slug) is the piece: Sinclair's
+    sites share one system, so a syndicated piece has the same slug on every site that runs it."""
+    __tablename__ = "station_sighting"
+    __table_args__ = (UniqueConstraint('agency_id', 'url', 'title', name='uq_station_sighting_agency_url_title'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"), index=True)
+    url: Mapped[str] = mapped_column(Text())
+    slug: Mapped[str] = mapped_column(String(255), index=True)
+    title: Mapped[str] = mapped_column(Text())
+    position: Mapped[int] = mapped_column(Integer())  # its highest place on the homepage, 0 the top
+    first_seen: Mapped[dt] = mapped_column(DateTime())  # naive UTC, as articles keep their times
+    last_seen: Mapped[dt] = mapped_column(DateTime())
+
+
 class StoryHeadline(Base):
     """A headline's membership in a story, with how its sentiment compares to the other outlets on that story."""
     __tablename__ = "story_headline"

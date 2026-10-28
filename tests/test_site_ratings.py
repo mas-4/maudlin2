@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import ratings
 from app.models import Agency, Base
-from app.registry import Scrapers
+from app.registry import ResearchScrapers, Scrapers
 
 
 @pytest.fixture(scope='module')
@@ -62,7 +62,8 @@ def test_rated_outlets_cite_allsides(rows):
 
 
 def test_csv_and_registry_list_the_same_outlets(rows):
-    registry = {s.agency for s in Scrapers}
+    # The research-only stations (app/sinclair.py) have agencies too, so apply looks them up like any outlet
+    registry = {s.agency for s in Scrapers + ResearchScrapers}
     assert set(rows) - registry == set(), 'rated outlets with no scraper'
     assert registry - set(rows) == set(), 'scraped outlets missing from ratings.csv (apply warns and shows them unrated)'
 

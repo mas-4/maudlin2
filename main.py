@@ -8,7 +8,7 @@ from app.analysis.metrics import reapply_sent
 from app.analysis.preprocessing import reprocess_headlines
 from app.analysis.topics import analyze_all_topics
 from app import scraper_health
-from app.registry import Scrapers
+from app.registry import Scrapers, ResearchScrapers
 from app.scraper import SeleniumScraper, SeleniumResourceManager, Scraper
 from app.trends import fetch_trends
 from app.investigations import fetch_investigations
@@ -176,7 +176,9 @@ def main(args: argparse.Namespace):
         listening = threading.Thread(target=lambda: (vernacular.sample(), vernacular.mastodon_sample()), daemon=True)
         listening.start()
     if not args.skip_scrape:
-        scrapers = [s for s in Scrapers if s.agency == args.scraper] if args.scraper else Scrapers
+        # The research-only sites (Sinclair's stations, app/sinclair.py) are read in the same run, one request each
+        everything = Scrapers + ResearchScrapers
+        scrapers = [s for s in everything if s.agency == args.scraper] if args.scraper else everything
         scrape(args, scrapers)
         if not args.scraper:
             fetch_trends()

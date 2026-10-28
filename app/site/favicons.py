@@ -70,8 +70,10 @@ def _fetch(home: str) -> Image.Image | None:
 def refresh(force: bool = False) -> None:
     """Fetch icons that are missing or more than a week old."""
     os.makedirs(CACHE, exist_ok=True)
+    from app.registry import ResearchScrapers
+    research = {s.agency for s in ResearchScrapers}  # never shown, so no icon to fetch (app/sinclair.py)
     with Session() as s:
-        agencies = [(a.name, a.url) for a in s.query(Agency).all()]
+        agencies = [(a.name, a.url) for a in s.query(Agency).all() if a.name not in research]
 
     def stale(name):
         path = os.path.join(CACHE, f'{slug(name)}.png')

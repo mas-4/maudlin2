@@ -5,6 +5,27 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **Sinclair: The National Desk as an outlet, five of its stations for research only.** To test the "barbell" (an
+  outlet running mostly straight news around a small share of centrally made pieces, as Sinclair's must-runs sit inside
+  otherwise local news), each hourly run reads the homepages of The National Desk (thenationaldesk.com, Sinclair's
+  national news, on air as The National News Desk) and of KOMO Seattle, WJLA Washington, KUTV Salt Lake City, WPEC
+  West Palm Beach and WBFF Baltimore: one request each, our user agent, headlines only, never the articles.
+  Sinclair's terms forbid scraping and limit use to personal, non-commercial use; the person judged those claims weak
+  for headlines alone and chose to go ahead. The National Desk is an ordinary outlet, joining stories, lean bars and
+  counts; AllSides rates it Right (low or initial confidence, read Oct 28), and ratings.csv records it like any
+  other, with no column for confidence. The stations are not outlets. Their national pieces are The National Desk's
+  copy, the same piece under the same slug on every station (on Oct 28 one White House piece on socialism led
+  all six homepages), so five stations as outlets would have made one syndicated piece look like five outlets on a
+  story, and five mostly local front pages would have thinned every "share of outlets" measure (the news day, story
+  coverage). So a station's headlines are kept in `station_sighting` under the station (link, wording, highest place,
+  first and last seen) and never become headlines: no story, lean bar, outlet count, outlet page or icon. Nothing is
+  dropped because another site saved the same headline first. The National Desk's homepage is kept there too, so
+  `app.sinclair.sightings()` can say per station headline whether The National Desk's homepage ran the same piece
+  (`national_desk`; strict, as its homepage shows about 20 pieces at a time) and on how many of our Sinclair sites it
+  ran (`sites`; two or more is syndicated but not always central: WJLA and WBFF, neighbours, share regional pieces, so
+  `section` says news/local or news/nation-world). On the saved homepages: The National Desk 25 headlines, KOMO 87,
+  WJLA 75, KUTV 90, WPEC 93, WBFF 90. From the first hourly run with this change (the earliest
+  `station_sighting.first_seen` marks it).
 - **The outlet map's broad group is "outside the partisan webs", and look-alikes must agree.** The 50-outlet cluster
   first called "wire and mainstream" is everyone the two partisan webs leave out, One America News Network, Newsmax and
   The Epoch Times among them, so it's now named for what it isn't. And an outlet is given a type (or family) only when

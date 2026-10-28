@@ -51,8 +51,11 @@ def quiet_feeds(con, now: dt, sources: list[dict]) -> list[dict]:
 def missing_outlets(con, now: dt) -> list[dict]:
     """Outlets not seen on their front page lately (a scraper broken by a redesign, or a site down)"""
     since = (now - td(hours=OUTLET_HOURS)).isoformat(sep=' ')
-    rows = con.execute('SELECT a.name, max(ar.last_accessed) FROM agency a LEFT JOIN article ar ON ar.agency_id = a.id '
+    # The research-only Sinclair stations (app/sinclair.py) have no articles, only homepage sightings: seen is the later
+    rows = con.execute('SELECT a.name, max(ar.last_accessed), (SELECT max(ss.last_seen) FROM station_sighting ss '
+                       'WHERE ss.agency_id = a.id) FROM agency a LEFT JOIN article ar ON ar.agency_id = a.id '
                        'GROUP BY a.id').fetchall()
+    rows = [(name, max((str(x) for x in (article, sighting) if x), default=None)) for name, article, sighting in rows]
     return [{'outlet': name, 'problem': f'not seen since {(last or "never")[:16]}'} for name, last in rows
             if not last or last < since]
 
