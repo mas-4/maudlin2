@@ -30,15 +30,19 @@ def test_a_motif_sits_by_which_sides_shows_told_it_and_few_shows_pull_it_to_the_
     assert dots['sharia']['lean'] == 0.6 and dots['one']['lean'] == -1 / 3  # pulled to the middle when few told it
 
 
-def test_the_divide_chart_draws_a_dot_a_week_with_partial_weeks_hollow():
+def test_the_divide_plot_gives_each_week_a_column_with_partial_weeks_marked():
     week = {'jsd': 0.5, 'floor': 0.3, 'floor_p05': 0.25, 'floor_p95': 0.36, 'index': 0.2, 'left': 50, 'right': 60,
             'left_shows': 5, 'right_shows': 6}
     weeks = [dict(week, week='2026-10-13', first='2026-10-13', last='2026-10-19', partial=True),
              dict(week, week='2026-10-20', first='2026-10-20', last='2026-10-26', partial=False, index=0.23)]
-    svg = str(page_aisle.divide_chart(weeks))
-    assert svg.count('class="divide-dot') == 2 and svg.count('divide-partial') == 1
-    assert 'Oct 20–26: 0.23' in svg and '>0.23</text>' in svg and 'class="divide-band"' in svg
-    assert page_aisle.divide_chart([]) is None and page_aisle.day_span('2026-09-29', '2026-10-05') == 'Sep 29–Oct 5'
+    plot = page_aisle.divide_plot(weeks)
+    first, last = plot['weeks']
+    assert (first['x'], last['x'], first['width']) == (25, 75, 50) and [w['partial'] for w in plot['weeks']] == [True, False]
+    assert last['span'] == 'Oct 20–26' and last['tip'].startswith('0.23 apart, where 0 is no further apart')
+    assert 'Partial transcripts' in first['tip'] and last['label'] == 'Oct 20'
+    assert plot['zero'] == 75.0 and last['y'] == 17.5 and plot['line'] == '25.0,25.0 75.0,17.5'  # 0.3 down to -0.1
+    assert plot['band'].startswith('0.00,60.00 25.00,60.00') and [t['value'] for t in plot['ticks']] == ['-0.1', '0', '0.1', '0.2', '0.3']
+    assert page_aisle.divide_plot([]) is None and page_aisle.day_span('2026-09-29', '2026-10-05') == 'Sep 29–Oct 5'
 
 
 def test_the_aisle_draws_every_dot_and_joins_answers():

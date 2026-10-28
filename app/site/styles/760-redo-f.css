@@ -292,3 +292,305 @@
 .court-one-side {
     margin: 0.3em 0;
 }
+
+/* ---- The aisle's divide: a full-width line of week buttons, and each week's stories as a butterfly ---- */
+.divide-wide {
+    margin: 0.6em 0 1em;
+    padding: 0.8em 0.9em 0.5em 0.4em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 6px 6px 0 #8a5cff;
+}
+
+.divide-wide figcaption {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+    padding: 0.2em 0.4em 0.1em 0.8em;
+}
+
+.divide-plot {
+    display: grid;
+    grid-template-columns: 2.4em minmax(0, 1fr);
+    margin-bottom: 2.4em;  /* the week labels hang below the plot */
+}
+
+.divide-ticks {
+    position: relative;
+}
+
+.divide-ticks span {
+    position: absolute;
+    right: 0.5em;
+    transform: translateY(-50%);
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+}
+
+.divide-area {
+    position: relative;
+    height: 240px;
+}
+
+.divide-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.divide-plot-grid {
+    stroke: #e6e6ee;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.divide-plot-band {
+    fill: #a9a9b8;
+    opacity: 0.35;
+}
+
+.divide-plot-zero {
+    stroke: #1f1f2e;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+    opacity: 0.6;
+    vector-effect: non-scaling-stroke;
+}
+
+.divide-plot-line {
+    fill: none;
+    stroke: #1f1f2e;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.divide-zero-label {
+    position: absolute;
+    right: 0.3em;
+    margin-top: 0.15em;
+    font: 700 0.78em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+    pointer-events: none;
+}
+
+/* A week: its whole column is the button (a tap target the plot's height), its dot at the week's value */
+.divide-week {
+    position: absolute;
+    top: 0;
+    bottom: 0;  /* the plot's height, so the dot's --y lines up with the line; the label hangs below */
+    transform: translateX(-50%);
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+    font: inherit;
+    color: #1f1f2e;
+}
+
+.divide-week:hover, .divide-week:focus-visible {
+    background: rgba(138, 92, 255, 0.08);
+}
+
+.divide-week[aria-pressed="true"] {
+    background: rgba(138, 92, 255, 0.16);
+}
+
+.divide-week-dot {
+    position: absolute;
+    top: var(--y);
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    background: #ff4fa3;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+    transition: width 0.15s, height 0.15s;
+}
+
+.divide-week-partial .divide-week-dot {
+    background: white;
+}
+
+.divide-week[aria-pressed="true"] .divide-week-dot {
+    width: 20px;
+    height: 20px;
+    box-shadow: 0 0 0 3px white, 0 0 0 5px #8a5cff;
+}
+
+.divide-week-value {
+    display: none;
+    position: absolute;
+    top: calc(var(--y) - 2.1em);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0 0.3em;
+    background: white;
+    border-radius: 6px;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+}
+
+.divide-week[aria-pressed="true"] .divide-week-value {
+    display: block;
+}
+
+.divide-week-label {
+    position: absolute;
+    top: calc(100% + 0.45em);
+    left: 50%;
+    transform: translateX(-50%);
+    font: 700 0.82em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+}
+
+.divide-tech {
+    margin: 0.3em 0.4em 0.2em 0.8em;
+    font-size: 0.88em;
+    color: #555;
+}
+
+.divide-tech summary {
+    cursor: pointer;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.divide-panel {
+    --fly-cols: minmax(0, 1fr) minmax(9em, 1.5fr) minmax(0, 1fr);  /* left bars, the name, right bars */
+    --fly-gap: 0.5em;
+    max-width: 52em;
+    margin: 0 auto 1em;
+}
+
+.divide-fly-head {
+    display: grid;
+    grid-template-columns: var(--fly-cols);
+    align-items: center;
+    gap: var(--fly-gap);
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    padding: 0 0.4em;
+}
+
+.divide-fly-head span:last-child {
+    text-align: right;
+}
+
+.divide-fly-group {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.7em 0 0.2em;
+    text-align: center;
+}
+
+.divide-fly-group.divide-fly-mostly_left {
+    text-align: left;
+}
+
+.divide-fly-group.divide-fly-mostly_right {
+    text-align: right;
+}
+
+.divide-fly {
+    list-style: none;
+    padding: 0.2em 0.4em;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    /* the centre line the both-sides rows sit on */
+    background-image: linear-gradient(to right, transparent calc(50% - 1px), #d6d6e0 calc(50% - 1px), #d6d6e0 calc(50% + 1px), transparent calc(50% + 1px));
+}
+
+.divide-fly li + li {
+    border-top: 2px solid #ececf3;
+}
+
+.divide-fly-row {
+    display: grid;
+    grid-template-columns: var(--fly-cols);
+    align-items: center;
+    gap: var(--fly-gap);
+    min-height: 44px;
+    padding: 0.2em 0;
+    border-radius: 10px;
+    color: #1f1f2e;
+    text-decoration: none;
+}
+
+.divide-fly-row:hover, .divide-fly-row:focus-visible {
+    background: #f3f0ff;
+}
+
+.divide-fly-side {
+    display: flex;
+    align-items: center;
+}
+
+.divide-fly-left {
+    justify-content: flex-end;
+}
+
+.divide-fly-bar {
+    display: block;
+    box-sizing: border-box;
+    min-width: 8px;
+    height: 12px;
+    border: 1.5px solid #1f1f2e;
+}
+
+.divide-fly-left .divide-fly-bar {
+    background: #3a86ff;
+    border-radius: 5px 2px 2px 5px;
+}
+
+.divide-fly-right .divide-fly-bar {
+    background: #ff4f6d;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.divide-fly-mid {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    min-width: 0;
+    padding: 0.15em 0.4em;
+    background: white;
+    border-radius: 10px;
+}
+
+.divide-fly-mid .rank-mark {
+    width: 1.7em;
+    height: 1.7em;
+    font-size: 0.9em;
+}
+
+.divide-fly-name {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+    .divide-area {
+        height: 200px;
+    }
+
+    .divide-panel {
+        --fly-cols: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr);
+        --fly-gap: 0.3em;
+    }
+
+    .divide-fly-name {
+        font-size: 0.92em;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .divide-week-dot { transition: none; }
+}

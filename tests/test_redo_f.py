@@ -55,6 +55,31 @@ def test_biggest_and_slowest_days_answer_each_other_colored_by_weekday_or_weeken
     assert len(few[0]['rows']) == 3 and few[1]['rows'] == []
 
 
+def test_each_divide_week_lists_its_stories_as_a_butterfly_on_one_scale():
+    from app.site import page_aisle
+
+    def told(motif, side, teller, n=1, date='2026-10-21'):
+        return [{'motif': motif, 'name': motif.title(), 'side': side, 'teller': f'{teller}{i}' if n > 1 else teller,
+                 'date': date} for i in range(n)]
+    rows = (told('family', 'left', 'L', 6) + told('family', 'right', 'R1') + told('lawfare', 'right', 'R', 7)
+            + told('surge', 'left', 'L', 3) + told('surge', 'right', 'R', 3)
+            + told('family', 'left', 'L', 2, date='2026-10-14') + told('lawfare', 'right', 'R', 2, date='2026-10-14'))
+    weeks = [{'week': '2026-10-13', 'first': '2026-10-14', 'last': '2026-10-14'},
+             {'week': '2026-10-20', 'first': '2026-10-21', 'last': '2026-10-21'}]
+    before, last = page_aisle.divide_lists(rows, weeks, {'family': 'Archetypes', 'lawfare': 'Theories'})
+    assert last['span'] == 'Oct 21' and [g['key'] for g in last['groups']] == ['mostly_left', 'shared', 'mostly_right']
+    left, shared, right = ([m['id'] for m in g['rows']] for g in last['groups'])
+    assert left == ['family'] and shared == ['surge'] and right == ['lawfare']
+    family = last['groups'][0]['rows'][0]
+    assert family['left_len'] == 86 and family['right_len'] == 14  # 6 and 1 of the biggest count, 7
+    assert family['mark'] == page_aisle.GENRE_EMOJI['Archetypes'] and family['mark_label'] == 'Archetypes'
+    assert family['ink'] == page_aisle.GENRE_INK['Archetypes'] and family['href'] == page_aisle.motif_href('family')
+    assert 'told 6 times on 6 left-leaning shows and 1 times on 1 right-leaning' in family['tip']
+    surge = last['groups'][1]['rows'][0]
+    assert surge['mark_label'] == 'No genre yet' and surge['ink'] == '#ffffff'
+    assert before['groups'][0]['rows'][0]['left_len'] == 29  # 2 of 7: the scale holds across weeks
+
+
 def test_a_cases_stage_comes_from_its_dates_and_other_news_by_what_its_headlines_report():
     from datetime import date
 
