@@ -9,6 +9,7 @@ from collections import Counter
 from app.analysis import sagas
 from app.models import Session, StorySnapshot
 from app.site import page_story, page_tv, story_charts
+from app.site.boards import genre_key
 from app.site.common import TemplateHandler
 from app.site.page_headlines import SAGA_COLORS
 from app.site.page_sagas import eastern, lasted
@@ -85,18 +86,59 @@ def drift(rows: list[dict], stories: set[int]) -> list[dict]:
     """How a saga has been told, day by day: for each day with tellings about one of its parts, its most-told motifs
     (each with how many tellers), newest day first. A motif new to the saga that day is marked, so the turns show"""
     from collections import Counter, defaultdict
+    from datetime import date
+    from app.site import boards
     days = defaultdict(Counter)
-    names = {}
+    names, genres = {}, {}
     for r in rows:
         if r['story'] in stories and r['date']:
             days[r['date']][r['motif']] += 1
-            names[r['motif']] = r['name']
+            names[r['motif']], genres[r['motif']] = r['name'], r.get('genre')
     seen, out = set(), []
     for day in sorted(days):
         top = days[day].most_common(DRIFT_MOTIFS)
-        out.append({'day': day, 'motifs': [{'id': m, 'name': names[m], 'n': n, 'new': m not in seen} for m, n in top]})
+        try:  # "Tue Oct 21", not 2026-10-21 (Oct 28: ISO dates on a page that reads Oct 21 everywhere else)
+            label = date.fromisoformat(day).strftime('%a %b %-d')
+        except ValueError:
+            label = day
+        out.append({'day': day, 'label': label, 'total': sum(n for _, n in top),
+                    'motifs': [{'id': m, 'name': names[m], 'n': n, 'new': m not in seen, 'genre': genres[m],
+                                'ink': boards.GENRE_INK.get(genres[m], boards.UNCOLORED)} for m, n in top]})
         seen |= set(days[day])
     return list(reversed(out))[:DRIFT_DAYS]
+
+
+def part_board(parts: list[dict]) -> dict:
+    """The saga's parts, listed once in full (Oct 28: they were listed three times, as a journey, a chart's labels
+    and a wall of cards): a row each in the order of their latest news, in its color on the charts, the bar the
+    outlets that carried it, the disc whether it's on the front pages now (🔴), has a page of its own (📄) or is
+    older than a week (🗄️); when it broke, how long it lasted, its first headline and its TV, radio and retellings in
+    its hover card"""
+    from app.site import boards
+    top = max((p['outlets'] for p in parts), default=1)
+    rows = []
+    for p in parts:
+        lines = [f"{p['label']}: {p['when']} ET · on the front pages {p['lasted']}"
+                 + (' · 🔴 on them now' if p.get('now') else '')]
+        if p.get('first_title'):
+            lines.append(f"“{p['first_title']}”" + (f" first on {', '.join(p['first_outlets'])}"
+                                                     if p.get('first_outlets') else ''))
+        if p.get('tv'):
+            lines.append('📺 ' + ', '.join(f"{t['name']} {t['time']}" for t in p['tv']['channels']))
+        if p.get('radio'):
+            lines.append(f"📻 {len(p['radio'])} radio newscast{'' if len(p['radio']) == 1 else 's'}")
+        if p.get('folklore'):
+            lines.append(f"🧶 retold by {sum(f['people'] for f in p['folklore'])} people online")
+        if not p.get('page'):
+            lines.append('older than a week: no page of its own')
+        mark, label = ('🔴', 'on the front pages now') if p.get('now') else ('📄', 'has its own page') if p.get('page') \
+            else ('🗄️', 'older than a week')
+        rows.append(boards.row(p['label'], p.get('page'), p['outlets'], top,
+                               f"{p['outlets']} outlet{'' if p['outlets'] == 1 else 's'}", tip='\n'.join(lines),
+                               ink=p['color'], mark=mark, mark_label=label))
+    return boards.board('parts', '🧩', 'The parts', '#ff4fa3', 'in the order of their latest news, each in its color '
+                        'on the charts; the bar is the outlets that carried it. 🔴 on the front pages now, 📄 a page of '
+                        'its own, 🗄️ older than a week', rows)
 
 
 class SagaPages:
@@ -147,12 +189,14 @@ class SagaPages:
                 stickers.append({'emoji': '🧶', 'big': people, 'small': 'people retold it online', 'color': '#8a5cff'})
             color = SAGA_COLORS[saga['id'] % len(SAGA_COLORS)]
             self.template.write({
-                'drift': drift(rows, {p['story'] for p in parts}),
+                'drift': (told := drift(rows, {p['story'] for p in parts})),
+                'drift_key': genre_key([{'genre': m['genre']} for d in told for m in d['motifs']]),
                 'title': saga['name'], 'saga': saga, 'parts': parts, 'stickers': stickers, 'color': color,
                 **share(saga, parts, rows, color),
                 'since': eastern(saga['first']), 'until': eastern(saga['last']),
                 'lanes': story_charts.saga_lanes(parts, spots, newscasts, retold, page_tv.CHANNEL_INK),
                 'coverage': story_charts.saga_coverage(parts),
+                'part_board': part_board(parts),
                 'channels': sorted({s['name'] for s in spots}),
                 'retellings': [{**f, 'part': p['label'], 'color': p['color']} for p in parts for f in p['folklore']],
             }, os.path.join(Config.build, page_name(saga['id'])))

@@ -4,7 +4,7 @@ tellings. Synthetic data only: no database, no models."""
 import pytest
 from bs4 import BeautifulSoup
 
-from app.site import page_headlines as ph, page_story
+from app.site import page_headlines as ph, page_saga, page_story
 from app.site.common import j2env
 
 
@@ -117,3 +117,42 @@ def test_a_story_page_renders_its_boards_and_notes_escaped(leans):
     assert soup.select_one('.story-note-left li:nth-child(2)').get_text() == 'w <l>'
     assert soup.select_one('.story-note-names span').get_text() == 'Name <n>'
     assert not soup.select('.stage-notes') and not soup.select('#broadcast .show-chip')
+
+
+# --- saga pages: the parts once in full, beads up top, the telling by readable day ------------------------------
+def part(i, outlets, page=True, now=False):
+    return {'story': i, 'label': f'Part <{i}>', 'outlets': outlets, 'color': '#3a86ff', 'when': 'Oct 3, 2 PM',
+            'lasted': '4 hours', 'page': f'story-{i}.html' if page else None, 'now': now, 'first_title': 'First <t>',
+            'first_outlets': ['AP'], 'tv': None, 'radio': [], 'folklore': []}
+
+
+def test_a_sagas_parts_are_one_board_with_their_details_in_the_hover_cards():
+    board = page_saga.part_board([part(1, 4), part(2, 8, page=False), part(3, 2, now=True)])
+    rows = board['rows']
+    assert [r['mark'] for r in rows] == ['📄', '🗄️', '🔴'] and [r['bar'] for r in rows] == [50, 100, 25]
+    assert rows[1]['href'] is None and 'no page of its own' in rows[1]['tip']
+    assert '“First <t>” first on AP' in rows[0]['tip'] and rows[0]['figure'] == '4 outlets'
+
+
+def test_a_sagas_telling_reads_its_days_and_colors_its_genres():
+    rows = [{'story': 1, 'date': '2026-10-21', 'motif': 'M1', 'name': 'Lawfare', 'genre': 'Theories'},
+            {'story': 1, 'date': '2026-10-21', 'motif': 'M1', 'name': 'Lawfare', 'genre': 'Theories'},
+            {'story': 1, 'date': '2026-10-20', 'motif': 'M2', 'name': 'Odd one', 'genre': 'Values'}]
+    days = page_saga.drift(rows, {1})
+    assert [d['label'] for d in days] == ['Wed Oct 21', 'Tue Oct 20'] and days[0]['day'] == '2026-10-21'
+    assert days[0]['motifs'][0]['ink'] == '#8a5cff' and days[1]['motifs'][0]['ink'] == '#ffffff'
+
+
+def test_a_saga_page_lists_its_parts_once_in_full(leans, monkeypatch):
+    monkeypatch.setitem(j2env.globals, 'motif_pages', set())
+    parts = [part(1, 4), part(2, 8, page=False)]
+    days = page_saga.drift([{'story': 1, 'date': '2026-10-21', 'motif': 'M1', 'name': 'Law <fare>', 'genre': None}], {1})
+    html = j2env.get_template('saga.html').render(
+        saga={'id': 1, 'name': 'S', 'now': False}, parts=parts, stickers=[], color='#ff4fa3', since='a', until='b',
+        drift=days, drift_key=[], part_board=page_saga.part_board(parts), retellings=[])
+    soup = BeautifulSoup(html, 'html.parser')
+    beads = soup.select('.saga-beads .saga-bead-dot')
+    assert [b.get_text() for b in beads] == ['1', '2'] and beads[0]['href'] == 'story-1.html' and beads[1].name == 'span'
+    assert len(soup.select('.rank-board-parts .rank-row')) == 2 and not soup.select('.story-page-card')
+    assert soup.select_one('.saga-drift-date').get_text() == 'Wed Oct 21'
+    assert 'Law <fare>' in soup.select_one('.saga-drift-seg').get_text() and 'Law <fare>' not in html
