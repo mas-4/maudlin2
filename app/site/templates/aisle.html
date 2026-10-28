@@ -42,6 +42,30 @@
     </figure>
     <div class="aisle-card" hidden aria-live="polite"></div>
 
+    {% if divide_svg %}{% set k = divide.latest %}
+        <section class="divide-section" aria-labelledby="divide">
+            <h2 class="section-divider stage-banner" id="divide" style="--stage: #8a5cff"><span>📏 The divide, week by week</span></h2>
+            <p class="stage-sub">how different the stories left and right shows tell are</p>
+            <p class="table-intro">Each week (Tuesday to Monday) we compare the mix of motifs the hosts and guests of
+                left-leaning shows said with the mix on right-leaning shows, and take away how different the same shows
+                look when split into two sides at random. <b>0 means no more different than shows picked at random.</b>
+                Weeks only: a single day has too few tellings to tell apart from chance.</p>
+            <figure class="divide-figure">
+                {{ divide_svg }}
+                <figcaption>The divide each week (Jensen–Shannon divergence between the two sides' motifs, less its
+                    average over {{ divide_draws }} random splits of the same shows), dated by the week's Tuesday; grey: where 9 in
+                    10 random splits land. Hover a dot for its counts.{% if divide.weeks|selectattr('partial')|list %}
+                    Hollow dots: weeks before Oct 20, when our show transcripts kept only part of what was said (about a
+                    third as many claims an episode), so those weeks rest on less.{% endif %}</figcaption>
+            </figure>
+            <p class="divide-latest">🗓️ {{ divide_span }}: <b>{{ '%.2f'|format(k.index) }}</b>, from {{ k.left }} tellings on
+                {{ k.left_shows }} left shows and {{ k.right }} on {{ k.right_shows }} right shows.</p>
+            {% for side, emoji, label in (('shared', '⚖️', 'said on both sides alike'), ('mostly_left', '🫏', 'mostly on the left'), ('mostly_right', '🐘', 'mostly on the right')) %}
+                {% if k[side] %}<p class="stage-notes">{{ emoji }} {{ label }}: {% for m in k[side] %}<a class="motif-chip small" href="{{ m.href }}" title="{{ m.left }} left and {{ m.right }} right tellings, on {{ m.left_shows }} left and {{ m.right_shows }} right shows">🧩 {{ m.name|e }} <span class="motif-seen">🫏{{ m.left }} · {{ m.right }}🐘</span></a> {% endfor %}</p>{% endif %}
+            {% endfor %}
+        </section>
+    {% endif %}
+
     <section class="aisle-lists">
         {% if rising %}<h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🔥 Rising this week</span></h2>
         <p class="stage-sub">told at least twice as often in the last 7 days as in the 7 before</p>

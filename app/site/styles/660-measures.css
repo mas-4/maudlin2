@@ -1,0 +1,79 @@
+/* Measures on existing pages (Oct 28): the aisle's weekly divide, the folklore page's lead lists, who stayed on a story */
+.divide-figure {
+    margin: 0.6em 0 0.8em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 6px 6px 0 #8a5cff;
+    padding: 6px;
+    max-width: 520px;
+}
+
+.divide-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.divide-figure figcaption {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #666;
+    padding: 0.3em 0.4em 0.1em;
+}
+
+.divide-svg text {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+}
+
+.divide-grid {
+    stroke: #e6e6ee;
+    stroke-width: 1;
+}
+
+.divide-tick {
+    font-size: 12px;
+    fill: #666;
+}
+
+.divide-band {
+    fill: #a9a9b8;
+    opacity: 0.35;
+}
+
+.divide-zero {
+    stroke: #1f1f2e;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+    opacity: 0.6;
+}
+
+.divide-line {
+    fill: none;
+    stroke: #1f1f2e;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+
+.divide-dot {
+    fill: #ff4fa3;
+    stroke: #1f1f2e;
+    stroke-width: 2;
+}
+
+.divide-partial {
+    fill: white;
+}
+
+.divide-value {
+    font-size: 15px;
+    fill: #1f1f2e;
+}
+
+.divide-latest {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+    padding: 0.3em 0.6em;
+}

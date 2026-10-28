@@ -15,6 +15,16 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   sample and left the divide between the sides about where it was. 21 of the 607 motifs heard on the shows came up only
   in clips, calls or unknown voices and leave the aisle. A dot's height still counts every telling, and the motif
   pages' "came up on" lists are unchanged: they say where a story was heard, not who said it.
+- **The weekly divide index** (the aisle page). Each Tuesday-to-Monday week, the Jensen–Shannon divergence (bits)
+  between the motifs left-leaning and right-leaning shows' hosts and guests said (one per motif per episode), less its
+  mean over 500 shuffles of the lean labels among that week's whole shows (as many left shows as there were); the
+  chart's band is the shuffles' 5th to 95th percentile. 0 means no more different than shows picked at random. Raw JSD
+  is never shown: it mostly tracks sample size. A week needs 40 tellings and 4 shows a side; the week in progress is
+  left out, and so are days (only 7 of 23 beat the floor in the Oct 27 probe). Weeks before Oct 20 rest on partial
+  show transcripts (about 3 characters a second of audio kept, against about 16 since the transcriber fix; about 7
+  claims an episode against 24) and are drawn hollow. First values: 0.16 (Oct 3–5), 0.10, 0.18, 0.23 (Oct 20–26).
+  The latest week's shared motifs are those said by 2 or more shows a side with weighted log-odds |z| < 1; its
+  one-sided motifs have the largest |z|, said by 2 or more shows on that side.
 
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the

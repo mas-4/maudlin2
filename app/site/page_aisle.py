@@ -11,6 +11,7 @@ from datetime import date, timedelta
 
 from markupsafe import Markup, escape
 
+from app.analysis import divide, motif_web
 from app.site.common import TemplateHandler, motif_href
 from app.site.page_motif import shared
 from app.site.page_motifs import GENRE_EMOJI
@@ -36,8 +37,7 @@ def where(rs: list[dict]) -> dict | None:
     shows whose host or guest said it (motif_web.spoken), not the clips a show played or its callers (Oct 28: 15 of
     the left's 19 "The impostor" tellings were left shows playing the attack ad on Amy Acton); the height counts
     every telling"""
-    from app.analysis import motif_web
-    s = motif_web.sided(motif_web.spoken(rs))
+    s =motif_web.sided(motif_web.spoken(rs))
     left, right, center = len(s['left']), len(s['right']), len(s['center'])
     if not (left or right or center):
         return None
@@ -139,6 +139,69 @@ def draw(dots: list[dict], arcs: list[tuple[str, str, str]]) -> Markup:
     return Markup(''.join(parts))
 
 
+def short_day(day: str) -> str:
+    d = date.fromisoformat(day)
+    return f"{d.strftime('%b')} {d.day}"
+
+
+def day_span(first: str, last: str) -> str:
+    """'Oct 20–26', 'Sep 29–Oct 5', or one day"""
+    if first == last:
+        return short_day(first)
+    end = str(date.fromisoformat(last).day) if first[:7] == last[:7] else short_day(last)
+    return f'{short_day(first)}–{end}'
+
+
+def divide_chart(weeks: list[dict]) -> Markup | None:
+    """The weekly divide index (app/analysis/divide.py) as a small SVG line: each week's index, with the band where
+    90% of the shuffles of whole shows land (their 5th to 95th percentile, less their mean) around 0"""
+    if not weeks:
+        return None
+    w, h, left, right, top, bottom = 420, 220, 40, 26, 24, 34  # narrow, so its words stay readable on a phone
+    lo = min(-0.1, *(k['floor_p05'] - k['floor'] for k in weeks))
+    hi = max(0.3, *(k['index'] for k in weeks), *(k['floor_p95'] - k['floor'] for k in weeks))
+    lo, hi = math.floor(lo * 10) / 10, math.ceil(hi * 10) / 10
+    step = (w - left - right) / max(len(weeks) - 1, 1)
+    x = (lambda i: left + i * step) if len(weeks) > 1 else (lambda i: (left + w - right) / 2)  # noqa: E731
+    y = lambda v: top + (hi - v) / (hi - lo) * (h - top - bottom)  # noqa: E731
+    parts = [f'<svg class="divide-svg" viewBox="0 0 {w} {h}" role="img" aria-label="The divide between left and right '
+             f'shows, week by week">']
+    for t in range(round(lo * 10), round(hi * 10) + 1):
+        v = t / 10
+        parts.append(f'<line class="divide-grid" x1="{left}" x2="{w - right}" y1="{y(v):.1f}" y2="{y(v):.1f}"/>'
+                     f'<text class="divide-tick" x="{left - 6}" y="{y(v) + 4:.1f}" text-anchor="end">{v:g}</text>')
+    up = [(x(i), y(k['floor_p95'] - k['floor'])) for i, k in enumerate(weeks)]
+    down = [(x(i), y(k['floor_p05'] - k['floor'])) for i, k in enumerate(weeks)]
+    if len(weeks) == 1:  # one week: a band as wide as a dot's neighbourhood
+        up = [(up[0][0] - 20, up[0][1]), (up[0][0] + 20, up[0][1])]
+        down = [(down[0][0] - 20, down[0][1]), (down[0][0] + 20, down[0][1])]
+    band = ' '.join(f'{px:.1f},{py:.1f}' for px, py in up + down[::-1])
+    parts.append(f'<polygon class="divide-band" points="{band}"><title>Where 9 in 10 random splits of the same shows '
+                 f'land</title></polygon>')
+    parts.append(f'<line class="divide-zero" x1="{left}" x2="{w - right}" y1="{y(0):.1f}" y2="{y(0):.1f}"/>'
+                 f'<text class="divide-tick" x="{w - right}" y="{y(0) + 14:.1f}" text-anchor="end">0: shows picked at '
+                 f'random</text>')
+    if len(weeks) > 1:
+        parts.append('<polyline class="divide-line" points="' +
+                     ' '.join(f'{x(i):.1f},{y(k["index"]):.1f}' for i, k in enumerate(weeks)) + '"/>')
+    for i, k in enumerate(weeks):
+        span = day_span(k['first'], k['last'])
+        partial = ' divide-partial' if k.get('partial') else ''
+        note = '; partial transcripts' if partial else ''
+        parts.append(f'<circle class="divide-dot{partial}" cx="{x(i):.1f}" cy="{y(k["index"]):.1f}" r="6"><title>{span}'
+                     f'{note}: {k["index"]:.2f} ({k["left"]} left and {k["right"]} right tellings from {k["left_shows"]} and '
+                     f'{k["right_shows"]} shows; their raw gap {k["jsd"]:.2f}, random splits {k["floor"]:.2f})'
+                     f'</title></circle>')
+        if len(weeks) <= 8 or i % 2 == (len(weeks) - 1) % 2:
+            parts.append(f'<text class="divide-tick" x="{x(i):.1f}" y="{h - 10}" text-anchor="middle">'
+                         f'{short_day(k["week"])}</text>')
+    last = weeks[-1]
+    parts.append(f'<text class="divide-value" x="{x(len(weeks) - 1) - 10:.1f}" y="{y(last["index"]) - 12:.1f}" '
+                 f'text-anchor="end">{last["index"]:.2f}</text>')
+    parts.append('</svg>')
+    return Markup(''.join(parts))
+
+
 class AislePage:
     def __init__(self, dh=None):
         self.template = TemplateHandler('aisle.html', 'motif-map.html')
@@ -157,7 +220,18 @@ class AislePage:
                     arcs.append((pair[0], pair[1], a['note']))
         genres = sorted({d['genre'] for d in dots if d['genre']}, key=lambda g: list(GENRE_EMOJI).index(g) if g in GENRE_EMOJI else 99)
         both = sorted((d for d in dots if d['left'] and d['right']), key=lambda d: -min(d['left'], d['right']))[:12]
+        try:  # the weekly divide index (app/analysis/divide.py)
+            gaps = divide.weekly(motif_web.spoken(web['rows']))
+            for side in ('shared', 'mostly_left', 'mostly_right'):
+                for m in (gaps['latest'] or {}).get(side, []):
+                    m['href'] = motif_href(m['id'])
+        except Exception as e:  # noqa: BLE001 - the page stands without it
+            logger.warning("The aisle: divide index: %s", e)
+            gaps = {'weeks': [], 'latest': None}
+        latest = gaps['latest']
         self.template.write({
+            'divide': gaps, 'divide_svg': divide_chart(gaps['weeks']), 'divide_draws': divide.DRAWS,
+            'divide_span': day_span(latest['first'], latest['last']) if latest else '',
             'title': 'The aisle', 'svg': draw(dots, arcs), 'dots': dots, 'arcs': len(arcs),
             'genres': [(g, GENRE_EMOJI.get(g, '🧩'), sum(1 for d in dots if d['genre'] == g)) for g in genres],
             'unplaced': len(web['entries']) - len(dots), 'both': both,
