@@ -5,7 +5,7 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 .venv/bin/ruff check --quiet . || { echo "ruff found problems (.venv/bin/ruff check . --fix fixes the simple ones)"; exit 1; }
-.venv/bin/python -m pytest -q -x 2>&1 | tail -3
+.venv/bin/python -m pytest -q -x -m 'not slow' 2>&1 | tail -3  # the slow whole-page tests: pytest -m slow
 [ "${PIPESTATUS[0]}" = 0 ] || exit 1
 # The checker's browser tests (Playwright, about 35 s), when a commit touches the checker: its React app (as built in
 # dist), its server, or the actions it runs. They run on a fresh copy of the data at port 8798, never the live checker

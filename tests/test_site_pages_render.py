@@ -138,7 +138,7 @@ RADIO_CAST = {'source': 'nprnewsnow', 'show': 'NPR News Now', 'title': '2pm ET',
               'front_top': [{'id': 26, 'label': 'Trump <rallies>', 'outlets': 40}, {'id': 70, 'label': 'Dubai flight attack', 'outlets': 30}]}
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')  # built once a run: other files' tests use it too (test_redo_C)
 def site(data_handler, tmp_path_factory):
     build = tmp_path_factory.mktemp('site-build')
     writes = []
