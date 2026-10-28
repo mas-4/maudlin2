@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as strips %}
 
 {% macro chips(items, ink) %}{% for p in items %}<a class="show-chip tv-chip" href="{{ (p.url or '#')|e }}" style="--chip: {{ (p.color or ink)|e }}" title="{{ p.source|e }}{% if p.title %}: {{ p.title|e }}{% endif %}">{% if p.emoji %}{{ p.emoji }} {% endif %}{{ p.source }}</a> {% endfor %}{% endmacro %}
 
@@ -53,13 +54,47 @@
                     (bigger: the lead) and when people were found retelling it. Hover for details.</figcaption>
             </figure>
         {% endif %}
-        {% if wire or extras.curators or extras.quotes or extras.wording or (stayed and stayed.longer) %}<div class="stage-notes">
-        {% if stayed and stayed.longer %}{% set other = 'left' if stayed.longer == 'right' else 'right' %}<p class="story-stayed" title="How long each outlet kept it on its front page, from its first headline on it to the last time we saw one there: the middle of {{ stayed.left_n }} left-rated and {{ stayed.right_n }} right-rated outlets (AllSides)">⏱️ {{ stayed.longer|capitalize }} outlets kept it on their front pages a median {{ stayed.hours }} hours longer than {{ other }} outlets ({{ stayed[stayed.longer] }} hours against {{ stayed[other] }}).</p>{% endif %}
-        {% if wire %}<p title="Headlines nearly word for word the same as the wire service's, as on the outlets page">📡 wire copy: {{ wire.outlets|length }} outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires }} headline nearly word for word ({{ wire.outlets|join(', ') }})</p>{% endif %}
-        {% if extras.curators %}<p>📌 linked by aggregators: {{ chips(extras.curators, '#888') }}</p>{% endif %}
-        {% if extras.quotes %}<p>💬 quoted: {% for q in extras.quotes[:8] %}<span class="quote-chip">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span> {% endfor %}</p>{% endif %}
-        {% if extras.wording %}<p>🗣️ only one side says: {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in extras.wording.get(s, []) %}<span class="wording-chip wording-{{ s|e }}">{{ emoji }} {{ p.phrase|e }}</span> {% endfor %}{% endfor %}</p>{% endif %}
-        </div>{% endif %}
+        {% if wire or extras.curators or extras.quotes or extras.wording or (stayed and stayed.longer) %}
+        {# The spread's small findings as compact cards (page_story.notes) #}
+        <div class="story-notes">
+        {% if stayed and stayed.longer %}{% set other = 'left' if stayed.longer == 'right' else 'right' %}
+            <div class="story-note" style="--note: {{ '#3a86ff' if stayed.longer == 'left' else '#ff4f6d' }}" data-tip="How long each outlet kept it on its front page, from its first headline on it to the last time we saw one there: the middle of {{ stayed.left_n|e }} left-rated and {{ stayed.right_n|e }} right-rated outlets (AllSides)">
+                <p class="story-note-head">⏱️ Who stayed on it</p>
+                <p class="story-note-big"><b>+{{ stayed.hours|e }} h</b> {{ '🫏' if stayed.longer == 'left' else '🐘' }} {{ stayed.longer|e }}</p>
+                <p class="story-note-text">{{ stayed.longer|capitalize|e }} outlets kept it on their front pages a median {{ stayed.hours|e }} hours longer than {{ other }} outlets ({{ stayed[stayed.longer]|e }} hours against {{ stayed[other]|e }}).</p>
+            </div>
+        {% endif %}
+        {% if wire %}
+            <div class="story-note" style="--note: #00c2a8">
+                <p class="story-note-head">📡 Wire copy</p>
+                <p class="story-note-big"><b>{{ wire.outlets|length }}</b> outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires|e }} headline nearly word for word</p>
+                <div class="dot-strip story-note-dots">{% for d in notes.wire %}<span class="outlet-dot dot-live dot-{{ d.kind|e }}" tabindex="0" style="--dot: {{ d.fill|e }}" data-tooltip-color="{{ d.fill|e }}" data-tooltip-ink="{{ d.ink|e }}" data-tip-head="{{ d.outlet|e }}" data-tip="{{ d.word|e }}" aria-label="{{ d.outlet|e }}"><span class="dot-disc" aria-hidden="true"></span></span>{% endfor %}</div>
+                <p class="story-note-text">{{ wire.outlets|join(', ')|e }}</p>
+            </div>
+        {% endif %}
+        {% if notes.quotes %}
+            <div class="story-note" style="--note: #ffc400">
+                <p class="story-note-head">💬 Quoted</p>
+                <ol class="story-note-strip">{% for q in notes.quotes %}<li><span class="story-note-phrase">“{{ q.phrase|e }}”</span><span class="story-note-bar" style="width: {{ q.bar }}%" aria-hidden="true"></span><b>{{ q.count }}</b></li>{% endfor %}</ol>
+                <p class="story-note-text">phrases its headlines put in quotation marks; the bar is how many outlets did</p>
+            </div>
+        {% endif %}
+        {% if extras.wording %}
+            <div class="story-note" style="--note: #8a5cff">
+                <p class="story-note-head">🗣️ Only one side says</p>
+                <div class="story-note-sides">{% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}<ul class="story-note-side story-note-{{ side }}"><li class="story-note-side-head">{{ emoji }} {{ side }}</li>{% for p in extras.wording.get(side, []) %}<li>{{ p.phrase|e }}</li>{% else %}<li class="story-note-none">nothing of its own</li>{% endfor %}</ul>{% endfor %}</div>
+                <p class="story-note-text">phrases three or more outlets on one side used and none on the other</p>
+            </div>
+        {% endif %}
+        {% if extras.curators %}
+            <div class="story-note" style="--note: #a9a9b8">
+                <p class="story-note-head">📌 Linked by aggregators</p>
+                <p class="story-note-big"><b>{{ extras.curators|length }}</b> {{ extras.curators|map(attribute='source')|join(' · ')|e }}</p>
+                <p class="story-note-text">aggregators linking to it from their front page (they don't count as outlets covering it)</p>
+            </div>
+        {% endif %}
+        </div>
+        {% endif %}
         {% if rewordings %}
             <details class="story-rewordings"><summary>✏️ {{ rewordings|length }} outlet{{ '' if rewordings|length == 1 else 's' }} ran more than one headline on it (reworded, or a follow-up)</summary>
                 <ul class="radio-items">{% for r in rewordings %}<li><b>{{ r.outlet }}</b> ({{ r.times }} wordings): “{{ r.first|e }}” → “{{ r.latest|e }}”</li>{% endfor %}</ul>
@@ -77,30 +112,40 @@
 
     <section class="story-stage" id="broadcast">
         {{ banner('📡', 'Broadcast', 'TV, radio, and the shows that talked about it', '#ff6b1a') }}
-        {% if tv or radio or extras.shows or extras.investigations or extras.satire %}
-            <div class="story-page-grid">
-                {% if tv %}
-                    <div class="saga-card story-page-card" style="--saga: #cc0000">
-                        <h3><a href="tv.html">📺 On TV</a></h3>
-                        <div class="story-tv-bars">{% for t in tv.channels %}<div class="story-tv-row"><span class="story-tv-name">{{ t.name }}</span><span class="story-tv-bar" style="--ink: {{ t.ink|e }}; width: {{ [t.share or 100, 3]|max }}%"></span><b>{{ t.time }}</b></div>{% endfor %}</div>
-                        <ul class="radio-items">{% for c in tv.captions %}<li>{{ c.text|e }} <span class="tv-time">{{ c.channel }}, {{ c.time }}</span></li>{% endfor %}</ul>
-                    </div>
-                {% endif %}
-                {% if radio %}
-                    <div class="saga-card story-page-card" style="--saga: #e8463c">
-                        <h3><a href="radio.html">📻 On the radio</a></h3>
-                        <ul class="radio-items">{% for r in radio %}<li><b>{{ r.show }}</b>, {{ r.when }} ET: {% if r.place == 1 %}the lead{% else %}story {{ r.place }} of {{ r.of }}{% endif %}</li>{% endfor %}</ul>
-                    </div>
-                {% endif %}
-                {% if extras.shows or extras.investigations or extras.satire %}
-                    <div class="saga-card story-page-card" style="--saga: #00c2a8">
-                        <h3><a href="beyond.html">🎙️ Shows, investigators, satire</a></h3>
-                        {% if extras.shows %}<p>🎙️ {{ chips(extras.shows, '#00c2a8') }}</p>{% endif %}
-                        {% if extras.investigations %}<p>🕵️ {{ chips(extras.investigations, '#8a5cff') }}</p>{% endif %}
-                        {% if extras.satire %}<p>🃏 {{ chips(extras.satire, '#f5b700') }}</p>{% endif %}
-                    </div>
-                {% endif %}
-            </div>
+        {% if broadcast.pairs %}
+            {{ strips.key(broadcast.key, 'Lean colors') }}
+            {% for pair in broadcast.pairs %}{{ strips.boards(pair) }}{% endfor %}
+            {# Each row's card: its tip, and the links it stands for (each episode, the TV and radio pages); a click or
+               tap keeps the card open, so the links are reachable on a phone too #}
+            <script type="application/json" id="broadcast-links">{{ broadcast.links|tojson }}</script>
+            <script>
+                (function () {
+                    const LINKS = JSON.parse(document.getElementById('broadcast-links').textContent);
+                    window.hoverCard.register('#broadcast .rank-row', (el) => {
+                        const board = [...el.closest('.rank-board').classList].find((c) => c.startsWith('rank-board-')).slice(11);
+                        const name = el.querySelector('.rank-name').textContent;
+                        const frag = document.createDocumentFragment();
+                        const add = (cls, text, href) => {
+                            const div = document.createElement('div');
+                            div.className = cls;
+                            if (href) {
+                                const a = document.createElement('a');
+                                a.href = href;
+                                a.textContent = text;
+                                div.append(a);
+                            } else div.textContent = text;
+                            frag.append(div);
+                        };
+                        add('hover-card-head', name);
+                        (el.dataset.tip || '').split('\n').forEach((line, i) => {
+                            const text = i === 0 && line.startsWith(name + ': ') ? line.slice(name.length + 2) : line;
+                            if (text.trim()) add('hover-card-line', text);
+                        });
+                        ((LINKS[board] || {})[name] || []).slice(0, 8).forEach((l) => add('hover-card-line', l.text, l.href));
+                        return frag;
+                    });
+                })();
+            </script>
         {% else %}
             <p class="stage-empty">📺🤷 No TV captions or radio newscasts matched to it yet. It may still get there, or our matchers missed it.</p>
         {% endif %}
@@ -138,7 +183,7 @@
             {% else %}
                 <p class="stage-empty">🦗 Nobody's retelling it online yet, as far as the daily reports of the last week can tell.</p>
             {% endif %}
-            {% if names %}<p class="stage-notes">🗣️ names in it: {% for n in names %}<span class="show-chip tv-chip" style="--chip: #00c2a8">{{ n|e }}</span> {% endfor %}</p>{% endif %}
+            {% if names %}<div class="story-notes"><div class="story-note story-note-wide" style="--note: #00c2a8"><p class="story-note-head"><a href="names.html">🗣️ Names in it</a></p><p class="story-note-names">{% for n in names %}<span>{{ n|e }}</span>{% endfor %}</p></div></div>{% endif %}
     </section>
 
     <section class="story-stage" id="checking">

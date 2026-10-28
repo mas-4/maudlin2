@@ -214,6 +214,143 @@ a.outlet-dot:focus-visible {
     border-radius: 2px 5px 5px 2px;
 }
 
+/* --- Story pages: the spread's small findings as compact cards (wire copy, quotes, one side's words, names) ---- */
+.story-notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+    gap: 1em;
+    margin: 1.2em 0 1em;
+}
+
+.story-note {
+    min-width: 0;
+    padding: 0.6em 0.9em 0.7em;
+    background: color-mix(in srgb, var(--note) 9%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 5px 5px 0 var(--note);
+}
+
+.story-note-wide {
+    grid-column: 1 / -1;
+}
+
+.story-note p {
+    margin: 0.2em 0;
+}
+
+.story-note-head {
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story-note-head a {
+    color: inherit;
+}
+
+.story-note-big {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story-note-big b {
+    font: 1.3em 'Bungee', 'Comic Neue', sans-serif;
+    margin-right: 0.15em;
+}
+
+.story-note-text {
+    font-size: 0.85em;
+    color: #555;
+    line-height: 1.4;
+}
+
+.story-note-dots {
+    margin: 0.4em 0;
+}
+
+span.outlet-dot {
+    cursor: help;
+}
+
+.story-note-strip {
+    list-style: none;
+    padding: 0;
+    margin: 0.4em 0;
+}
+
+.story-note-strip li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5em auto;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.2em 0;
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story-note-strip li + li {
+    border-top: 2px solid #ececf3;
+}
+
+.story-note-phrase {
+    overflow-wrap: anywhere;
+}
+
+.story-note-bar {
+    display: block;
+    box-sizing: border-box;
+    height: 10px;
+    background: var(--note);
+    border: 1.5px solid #1f1f2e;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.story-note-sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6em;
+}
+
+.story-note-side {
+    list-style: none;
+    padding: 0;
+    margin: 0.3em 0;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story-note-side li {
+    padding: 0.15em 0;
+    overflow-wrap: anywhere;
+}
+
+.story-note-side-head {
+    border-bottom: 3px solid #3a86ff;
+    margin-bottom: 0.2em;
+}
+
+.story-note-right .story-note-side-head {
+    border-bottom-color: #ff4f6d;
+}
+
+.story-note-none {
+    color: #888;
+}
+
+.story-note-names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em 0;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.story-note-names span:not(:last-child)::after {
+    content: '·';
+    margin: 0 0.45em;
+    color: #999;
+}
+
 .buzz-cell b {
     min-width: 1.4em;
     text-align: right;
