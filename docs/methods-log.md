@@ -97,6 +97,19 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   list its view count ("68.2K views"), which also made a new "headline" each time the count moved. The scrapers now
   leave those parts out. Headlines stored before keep them (3,951 on Oct 28, about half of Red State's and Townhall's)
   until `scripts/clean_glued_titles.py --apply` is run; scores the model gave the glued wording stay either way.
+- **Photo credits off the headlines.** NBC News, CNN, ABC News and The Christian Science Monitor link a story's photo
+  on its own, and the photo's credit sits inside that link, so the link read as a headline: "Saul Loeb / AFP via
+  Getty", "Chelsea Stahl / NBC News", "• Analysis  Mark Felix/AFP/Getty Images" (CNN's also brought the label on the
+  photo, and a video's caption). Bloomberg's front page did the same until it moved to its feeds on Oct 11. The
+  scrapers now leave the credit out, so a photo's link reads as nothing and is dropped, and a text that is only a
+  credit (ending in an agency after a slash or "via") is never a headline for any outlet; "Koch agrees to buy Getty
+  Images" and "AP sources: …" still are. Stored before: 1,228 on Oct 28 (NBC 571, CNN 423, ABC 164, Bloomberg 55, the
+  Monitor 10, and 5 of NBC's under articles Drudge Report linked first), the first headline of 632 articles. The model
+  scored every one not news, which kept them out of stories and the word cloud, but they still count: the edits
+  page's rewrites per 100 headlines count them (NBC's 8.3 a week is 13.5 without them), a credit seen between two
+  wordings hid that rewrite (36 in the week), and the outlet fingerprint reads an article's first wording, so NBC's
+  share of news articles was 0.78 against 0.90 without them, and CNN's 0.54 against 0.78. They stay until the person
+  decides what to do with them (`scripts/clean_photo_credits.py` lists them).
 - **One spelling for James Talarico.** The transcriber's list of names to expect spelled him "Tallarico", so most show
   transcripts did too, and the names page counted him twice. The list has his name right now, transcripts fix the old
   spelling, and the names page joins the two.
