@@ -1,0 +1,309 @@
+/* Folklore's lists and finder, the motif index's slim cards, the motif pages' claims and shows (Oct 28 redo) */
+
+/* page_folklore.py, page_motifs.py, page_motif.py; the ranked strips themselves are the shared ones (175-boards.css) */
+
+/* Folklore: the two-tone bars' line, with a swatch of the bar it explains */
+.folk-boards-split {
+    max-width: 52em;
+    margin: 0.2em auto 0;
+    font-size: 0.92em;
+}
+
+.folk-split-swatch {
+    display: inline-block;
+    vertical-align: middle;
+    width: 3em;
+    height: 10px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 2px 5px 5px 2px;
+    background: linear-gradient(to right, #3a86ff 60%, #ff4f6d 60%);
+}
+
+/* Folklore: what's told now, found by a genre row and a search box (Oct 28: seven rows of chips) */
+.folk-find {
+    margin: 0.8em 0 0.6em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    align-items: center;
+}
+
+.folk-find-genres {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.45em 0.55em;
+    margin: 0;
+}
+
+.folk-find-genre, .motif-slim-genre {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    min-height: 40px;
+    padding: 0.15em 0.8em 0.15em 0.25em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.folk-find-genre .rank-mark, .motif-slim-genre .rank-mark {
+    width: 1.8em;
+    height: 1.8em;
+}
+
+.folk-find-genre b, .motif-slim-genre b {
+    color: #555;
+}
+
+.folk-find-genre:hover, .motif-slim-genre:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #1f1f2e;
+}
+
+.folk-find-genre[aria-pressed="true"], .motif-slim-genre[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--ink) 30%, white);
+    box-shadow: inset 2px 2px 0 rgba(31, 31, 46, 0.35);
+    transform: translate(1px, 1px);
+}
+
+.folk-find-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0;
+    width: min(32em, 100%);
+}
+
+.folk-find-search label {
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    white-space: nowrap;
+}
+
+.folk-find-search input {
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+    box-sizing: border-box;
+    padding: 0.3em 0.9em;
+    border: 3px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #ffc400;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    background: white;
+}
+
+.folk-find-status {
+    margin: 0;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    text-align: center;
+}
+
+.folk-find-status:empty {
+    display: none;
+}
+
+.folk-find-clear {
+    display: inline-block;
+    padding: 0.5em 0.3em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .folk-find-genre, .motif-slim-genre { transition: none; }
+}
+
+/* The motif index: the genre row (the cards' color key), the bar's key, slim cards in a plain grid */
+.motif-slim-tools {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.motif-slim-genres {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.45em 0.55em;
+    margin: 0.6em 0 0.2em;
+}
+
+.motif-slim-key {
+    margin: 0.4em 0 0.2em;
+}
+
+.motif-slim-about {
+    max-width: 50em;
+    margin: 0 auto;
+    font-size: 0.92em;
+}
+
+.motif-slim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+    gap: 1em;
+    margin: 0.8em 0 1.4em;
+}
+
+.motif-slim {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+    min-width: 0;
+    padding: 0.55em 0.75em 0.6em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-left: 10px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 #1f1f2e;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.motif-slim[hidden] {
+    display: none;
+}
+
+.motif-slim:hover, .motif-slim:focus-within {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #1f1f2e;
+}
+
+.motif-slim.motif-arrived {
+    box-shadow: 6px 6px 0 #ff4fa3;
+}
+
+.motif-slim-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    margin: 0;
+    font: 700 1.08em 'Comic Neue', 'Comic Sans MS', cursive;
+    line-height: 1.15;
+}
+
+.motif-slim-head .rank-mark {
+    font-size: 0.85em;
+}
+
+.motif-slim-name {
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    color: #1f1f2e;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.motif-slim-name:hover {
+    text-decoration: underline wavy #ff4fa3;
+}
+
+.motif-slim-count {
+    flex: none;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    white-space: nowrap;
+}
+
+.motif-slim-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    flex: 1;
+    border-radius: 8px;
+    cursor: help;
+}
+
+.motif-slim-body:focus-visible {
+    outline: 3px solid #ffc400;
+    outline-offset: 2px;
+}
+
+.motif-slim-note {
+    margin: 0;
+    font-size: 0.88em;
+    line-height: 1.35;
+    color: #555;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.motif-slim-charts {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: auto;
+}
+
+/* Where its claims were heard: one bar of parts, each its share, in the key's fixed order */
+.motif-mix {
+    flex: 1;
+    display: flex;
+    height: 12px;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 3px 6px 6px 3px;
+    overflow: hidden;
+    background: #f3f3f7;
+}
+
+.motif-mix > i {
+    flex-basis: 0;
+    min-width: 3px;
+}
+
+.motif-mix > i + i {
+    border-left: 1.5px solid #1f1f2e;
+}
+
+/* the colors of page_motifs.MIX, in its order */
+.motif-mix-left { background: #3a86ff; }
+.motif-mix-center { background: #b8b8c8; }
+.motif-mix-right { background: #ff4f6d; }
+.motif-mix-crossover { background: #8a5cff; }
+.motif-mix-online { background: #00c2a8; }
+.motif-mix-checks { background: #ffc400; }
+.motif-mix-voters { background: #1f1f2e; }
+
+.motif-slim-spark {
+    flex: none;
+    overflow: visible;
+}
+
+.motif-slim-spark path {
+    fill: color-mix(in srgb, var(--ink) 45%, white);
+}
+
+.motif-slim-spark polyline {
+    fill: none;
+    stroke: #1f1f2e;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.motif-slim-hover {
+    list-style: none;
+    margin: 0.2em 0 0.4em;
+    padding: 0;
+    font-size: 0.92em;
+    line-height: 1.35;
+}
+
+.motif-slim-hover li + li {
+    margin-top: 0.3em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .motif-slim { transition: none; }
+    .motif-slim:hover, .motif-slim:focus-within { transform: none; }
+}
