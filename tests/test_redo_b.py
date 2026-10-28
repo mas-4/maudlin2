@@ -142,3 +142,32 @@ def test_radio_pair_counts_newscasts_off_the_front_pages_and_front_page_leaders_
     lane = page_radio.swimlane(page_radio.hours(store))
     assert [x['name'] for x in lane['lanes']] == ['NPR News Now', 'ABC News Update', 'The front pages']
     assert len(lane['cells']) == 4 + 1 + 4  # NPR's four newscasts, ABC's one, the front pages' four hours
+
+
+def test_beyond_subjects_diverge_left_and_right_with_the_rest_across_the_middle(monkeypatch, tmp_path):
+    from bs4 import BeautifulSoup
+    from app.site import page_beyond as pb
+    from app.utils.config import Config
+    items = [{'group': 'left', 'subjects': ['congress', 'sports']}, {'group': 'left', 'subjects': ['congress']},
+             {'group': 'right', 'subjects': ['congress']}, {'group': 'crossover', 'subjects': ['congress']},
+             {'subjects': ['congress']}]  # an investigation: no group
+    congress, sports = pb.subject_strip(items)
+    assert (congress['left'], congress['elsewhere'], congress['right'], congress['n']) == (2, 2, 1, 5)
+    assert congress['w_left'] + congress['w_mid'] == 50  # the widest side reaches the end of its half
+    assert sports['w_right'] == 0 and sports['tip'] == '🫏 1 from left-leaning shows'
+    assert '⚖️ 2 from center and crossover shows, investigations' in congress['tip']
+
+    monkeypatch.setattr(pb.sidefeeds, 'recent', lambda **k: [
+        {'title': 'Ep. 9', 'url': 'https://pod.example/9', 'summary': '', 'source': 'Show A', 'kind': 'podcast',
+         'group': 'left', 'published': '2026-10-04T12:00:00+00:00'}])
+    monkeypatch.setattr(pb.investigations, 'recent', lambda **k: [])
+    monkeypatch.setattr(pb.subjects, 'tag', lambda items: {'https://pod.example/9': ['Congress and <legislation>']})
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    pb.BeyondPage().generate()
+    page = BeautifulSoup((tmp_path / 'beyond.html').read_text(), 'html.parser')
+    row = page.select_one('.bypg-row')  # a button that filters the cards, as the subject buttons did
+    assert row['data-subject'] == 'Congress and <legislation>' and row['aria-pressed'] == 'false'
+    assert row.select_one('.bypg-left') and not row.select_one('.bypg-right')
+    assert page.select_one('.narrative[data-subjects="|Congress and <legislation>|"]')
+    assert not page.select('.narrative-tools button[data-subject]:not(.bypg-row)')  # no wall of subject buttons
+    assert not page.select('.source-list [title]')

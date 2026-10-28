@@ -1,6 +1,7 @@
 """Beyond the front pages: what the news-of-the-day shows, newsletters, streams and investigative outfits are
 talking about, by subject (app/analysis/subjects.py), and a directory of every source we follow besides the outlets'
-front pages, with what we do with each (shown on the site, or archived and transcribed for research only)."""
+front pages, with what we do with each (shown on the site, or archived and transcribed for research only). The subjects are a
+diverging strip, left-leaning shows against right-leaning (Oct 28, the site redo: they were 35 filter buttons)."""
 from collections import Counter
 
 import pandas as pd
@@ -20,6 +21,32 @@ LEAN = {'left': 'left-leaning', 'right': 'right-leaning', 'center': 'center', 'c
 # What we do with each kind of source, in plain words
 USE = {'investigation': 'shown on the stories it covers (🕵️)', 'fact-check': 'shown on stories and Rumors (🔎)',
        'satire': 'shown on the stories it jokes about (🃏)'}
+
+
+SIDES = [('left', '🫏', 'left-leaning shows'), ('elsewhere', '⚖️', 'center and crossover shows, investigations'),
+         ('right', '🐘', 'right-leaning shows')]
+
+
+def subject_strip(items: list[dict]) -> list[dict]:
+    """The subjects as a diverging strip (Oct 28, the site redo: they were 35 buttons): per subject the pieces from
+    left-leaning shows out to the left, right-leaning out to the right, and the rest (center and crossover shows,
+    investigations) across the middle, on one scale; the most pieces first"""
+    by = {}
+    for i in items:
+        side = i.get('group') if i.get('group') in ('left', 'right') else 'elsewhere'
+        for s in i['subjects']:
+            by.setdefault(s, Counter())[side] += 1
+    rows = sorted(by.items(), key=lambda kv: (-sum(kv[1].values()), kv[0]))
+    reach = max((max(c['left'], c['right']) + c['elsewhere'] / 2 for _, c in rows), default=1) or 1
+    out = []
+    for s, c in rows:
+        w = {k: 50 * c[k] / reach for k in ('left', 'right')}
+        mid = 50 * c['elsewhere'] / reach / 2  # half of the middle on each side of the axis
+        tip = '\n'.join(f"{emoji} {c[k]} from {words}" for k, emoji, words in SIDES if c[k])
+        out.append({'key': s, 'emoji': subjects.EMOJI.get(s, '🏷️'), 'label': subjects.label(s), 'n': sum(c.values()),
+                    'left': c['left'], 'right': c['right'], 'elsewhere': c['elsewhere'], 'tip': tip,
+                    'w_left': round(w['left'], 1), 'w_right': round(w['right'], 1), 'w_mid': round(mid, 1)})
+    return out
 
 
 def use(src: dict) -> str:
@@ -71,6 +98,7 @@ class BeyondPage:
             'show_pages': show_pages,
             'title': 'Beyond the front pages', 'items': items, 'directory': directory, 'kinds': KIND,
             'subject_counts': Counter(s for i in items for s in i['subjects']).most_common(),
+            'subject_strip': subject_strip(items), 'sides': SIDES,
             'subject_emoji': subjects.EMOJI, 'subject_label': subjects.label,
             'kind_counts': Counter(i['kind'] for i in items).most_common(),
             'total_sources': sum(len(d['rows']) for d in directory),

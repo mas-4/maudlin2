@@ -7,12 +7,25 @@
         the shows and investigations are talking about lately, tagged by subject by our local language model (a rough
         read), and below, <a href="#sources">every source</a> and what we do with it.</p>
     {% if items %}
+        {% if subject_strip %}
+            <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>🏷️ What they talk about</span></h2>
+            <p class="stage-sub">each subject by who brought it up lately: the pieces from left-leaning shows out to the
+                left, right-leaning out to the right, the rest (center and crossover shows, investigations) across the
+                middle; tap a subject to see just its pieces below</p>
+            <ul class="rank-key bypg-key" aria-label="Side colors">{% for k, emoji, words in sides %}<li class="rank-key-item bypg-key-{{ k }}"><span class="rank-mark" aria-hidden="true">{{ emoji }}</span><b>{{ words|e }}</b></li>{% endfor %}</ul>
+            <ol class="bypg-strip narrative-tools" aria-label="Subjects, by side; each one filters the pieces">
+                {% for r in subject_strip %}<li><button type="button" class="bypg-row" data-subject="{{ r.key|e }}" aria-pressed="false" data-tip-head="{{ r.emoji }} {{ r.label|e }}: {{ r.n }} pieces" data-tip="{{ r.tip|e }}">
+                    <span class="bypg-name"><span aria-hidden="true">{{ r.emoji }}</span> {{ r.label|e }}</span>
+                    <span class="bypg-bar" aria-hidden="true"><span class="bypg-half bypg-half-left">{% if r.w_left %}<span class="bypg-seg bypg-left" style="width: {{ r.w_left * 2 }}%"></span>{% endif %}{% if r.w_mid %}<span class="bypg-seg bypg-mid" style="width: {{ r.w_mid * 2 }}%"></span>{% endif %}</span><span class="bypg-half">{% if r.w_mid %}<span class="bypg-seg bypg-mid" style="width: {{ r.w_mid * 2 }}%"></span>{% endif %}{% if r.w_right %}<span class="bypg-seg bypg-right" style="width: {{ r.w_right * 2 }}%"></span>{% endif %}</span></span>
+                    <span class="bypg-figure">{% if r.left %}🫏 {{ r.left }}{% endif %}{% if r.elsewhere %} ⚖️ {{ r.elsewhere }}{% endif %}{% if r.right %} 🐘 {{ r.right }}{% endif %}</span></button></li>
+                {% endfor %}</ol>
+        {% endif %}
         <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter pieces">
             <span class="bar-group"><span class="bar-label">kind:</span>
                 {% for k, n in kind_counts %}<button type="button" data-kind="{{ k|e }}">{{ kinds.get(k, ('', k))[0] }} {{ kinds.get(k, ('', k))[1]|lower }} <b>{{ n }}</b></button>{% endfor %}</span>
             <span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">subject:</span>
-                {% for k, n in subject_counts %}<button type="button" data-subject="{{ k|e }}">{{ subject_emoji.get(k, '🏷️') }} {{ subject_label(k)|e }} <b>{{ n }}</b></button>{% endfor %}</span>
+            <span class="bar-group bypg-picked" hidden><span class="bar-label">subject:</span>
+                <button type="button" class="bypg-clear">✕ <span class="bypg-picked-name"></span></button></span>
         </div>
         <div class="court-cards narrative-cards beyond-cards">
             {% for p in items %}
@@ -30,15 +43,28 @@
                 const all = [...box.querySelectorAll('.narrative')];
                 const repack = packColumns(box, all, 320);
                 const pick = {kind: null, subject: null};
-                document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
+                const picked = document.querySelector('.bypg-picked');
+                // The kind buttons and the subjects' strip both filter the pieces; a picked subject shows by the kind
+                // buttons too, with a ✕ to clear it, so the filter is in view where the pieces are
+                document.querySelectorAll('.narrative-tools').forEach((tools) => tools.addEventListener('click', (ev) => {
                     const b = ev.target.closest('button');
                     if (!b) return;
-                    const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
-                    pick[key] = pick[key] === b.dataset[key] ? null : b.dataset[key];
-                    document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
+                    const key = b.classList.contains('bypg-clear') ? 'subject' : Object.keys(pick).find((k) => b.dataset[k] !== undefined);
+                    if (!key) return;
+                    pick[key] = b.classList.contains('bypg-clear') || pick[key] === b.dataset[key] ? null : b.dataset[key];
+                    document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => {
+                        x.classList.toggle('active', x.dataset[key] === pick[key]);
+                        if (x.hasAttribute('aria-pressed')) x.setAttribute('aria-pressed', String(x.dataset[key] === pick[key]));
+                    });
+                    if (key === 'subject' && picked) {
+                        picked.hidden = !pick.subject;
+                        const row = pick.subject && document.querySelector(`.bypg-row[data-subject="${CSS.escape(pick.subject)}"] .bypg-name`);
+                        picked.querySelector('.bypg-picked-name').textContent = row ? row.textContent.trim() : '';
+                        if (pick.subject && b.classList.contains('bypg-row')) box.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    }
                     repack(all.filter((c) => (!pick.kind || c.dataset.kind === pick.kind)
                         && (!pick.subject || c.dataset.subjects.includes(`|${pick.subject}|`))));
-                });
+                }));
             })();
         </script>
     {% endif %}
@@ -55,7 +81,7 @@
                 {% for r in group.rows %}
                     <li><span class="source-name" style="border-color: {{ (r.color or '#b8b8c8')|e }}">{% if r.home %}<a href="{{ r.home|e }}">{{ r.name|e }}</a>{% else %}{{ r.name|e }}{% endif %}</span>
                         {% if r.lean %}<span class="source-lean">{{ r.lean }}</span>{% endif %}
-                        {% if show_pages and r.name in show_pages %}<a class="motif-chip small" href="show-{{ show_pages[r.name] }}.html" title="The stories it tells, from our motif index">🧩 what it tells</a>{% endif %}
+                        {% if show_pages and r.name in show_pages %}<a class="motif-chip small" href="show-{{ show_pages[r.name] }}.html" data-tip="The stories it tells, from our motif index">🧩 what it tells</a>{% endif %}
                         <span class="source-use">{{ r.use }}</span>
                         {% if r.about %}<span class="source-about">{{ r.about|e }}</span>{% endif %}</li>
                 {% endfor %}

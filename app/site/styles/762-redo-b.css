@@ -332,3 +332,124 @@
 @media (prefers-reduced-motion: reduce) {
     .radiopg-sticker, .radiopg-sticker:nth-child(even) { transform: none; }
 }
+
+/* Beyond the front pages (beyond.html): the subjects as a diverging strip, left-leaning shows' pieces out to the
+   left, right-leaning out to the right, the rest across the middle; each row a button that filters the pieces */
+.bypg-key .bypg-key-left .rank-mark, .bypg-left {
+    background: #3a86ff;
+}
+
+.bypg-key .bypg-key-elsewhere .rank-mark, .bypg-mid {
+    background: #b8b8c8;
+}
+
+.bypg-key .bypg-key-right .rank-mark, .bypg-right {
+    background: #ff4f6d;
+}
+
+.bypg-picked[hidden] {
+    display: none;
+}
+
+.bypg-strip {
+    list-style: none;
+    padding: 0.3em 0.4em;
+    margin: 0.4em 0 1.2em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+}
+
+@media (min-width: 900px) {
+    .bypg-strip {
+        columns: 2;
+        column-gap: 2em;
+    }
+}
+
+.bypg-strip li {
+    break-inside: avoid;
+}
+
+.bypg-strip li + li {
+    border-top: 2px solid #ececf3;
+}
+
+.bypg-row {
+    display: grid;
+    grid-template-columns: minmax(6em, 11em) minmax(0, 1fr) 6.5em;
+    align-items: center;
+    gap: 0.5em;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.25em 0.4em;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: none;
+    color: #1f1f2e;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    transition: background 0.15s;
+}
+
+.bypg-row:hover, .bypg-row:focus-visible {
+    background: #f3f3f8;
+    outline: none;
+}
+
+.bypg-row[aria-pressed="true"] {
+    background: #fff3c4;
+    border-color: #1f1f2e;
+    box-shadow: 3px 3px 0 #ffc400;
+}
+
+.bypg-name {
+    font: 700 0.98em 'Comic Neue', 'Comic Sans MS', cursive;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+
+.bypg-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 14px;
+    background: linear-gradient(#1f1f2e, #1f1f2e) center / 2px 100% no-repeat;  /* the axis */
+}
+
+.bypg-half {
+    display: flex;
+}
+
+.bypg-half-left {
+    justify-content: flex-end;
+}
+
+.bypg-seg {
+    display: block;
+    min-width: 3px;
+    box-sizing: border-box;
+    border: 1.5px solid #1f1f2e;
+}
+
+.bypg-half-left .bypg-seg + .bypg-seg, .bypg-half .bypg-seg + .bypg-seg {
+    border-left: none;
+}
+
+.bypg-figure {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+    .bypg-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "name figure" "bar bar";
+        row-gap: 4px;
+    }
+
+    .bypg-name { grid-area: name; }
+    .bypg-bar { grid-area: bar; }
+    .bypg-figure { grid-area: figure; }
+}
