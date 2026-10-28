@@ -2,9 +2,21 @@
 from app.site import page_aisle
 
 
-def row(motif, side, teller, kind='shows'):
+def row(motif, side, teller, kind='shows', speaker='host'):
     return {'motif': motif, 'name': motif.title(), 'genre': 'Plots', 'claim': f'{motif} {teller}', 'key': f'{motif}{teller}',
-            'kind': kind, 'teller': teller, 'side': side, 'date': '2026-10-26', 'story': None, 'url': ''}
+            'kind': kind, 'teller': teller, 'side': side, 'date': '2026-10-26', 'story': None, 'url': '',
+            'speaker': speaker if kind == 'shows' else None}
+
+
+def test_a_clip_a_show_played_doesnt_place_a_motif_on_its_side():
+    web = {'rows': [row('impostor', 'left', 'A', speaker='clip'), row('impostor', 'left', 'B', speaker='clip'),
+                    row('impostor', 'right', 'C'), row('impostor', 'right', 'D', speaker='guest'),
+                    row('played', 'left', 'A', speaker='clip')],
+           'entries': {m: {'name': m.title(), 'note': ''} for m in ('impostor', 'played')}}
+    dots = {d['id']: d for d in page_aisle.place(web)}
+    assert dots['impostor']['left'] == 0 and dots['impostor']['right'] == 2 and dots['impostor']['lean'] == 0.5
+    assert dots['impostor']['told'] == 4  # the height still counts every telling
+    assert 'played' not in dots  # only ever played in a clip: no side to put it on
 
 
 def test_a_motif_sits_by_which_sides_shows_told_it_and_few_shows_pull_it_to_the_middle():
@@ -16,6 +28,17 @@ def test_a_motif_sits_by_which_sides_shows_told_it_and_few_shows_pull_it_to_the_
     assert set(dots) == {'lawfare', 'sharia', 'one'}  # told only online: not on the aisle
     assert dots['lawfare']['lean'] == 0
     assert dots['sharia']['lean'] == 0.6 and dots['one']['lean'] == -1 / 3  # pulled to the middle when few told it
+
+
+def test_the_divide_chart_draws_a_dot_a_week_with_partial_weeks_hollow():
+    week = {'jsd': 0.5, 'floor': 0.3, 'floor_p05': 0.25, 'floor_p95': 0.36, 'index': 0.2, 'left': 50, 'right': 60,
+            'left_shows': 5, 'right_shows': 6}
+    weeks = [dict(week, week='2026-10-13', first='2026-10-13', last='2026-10-19', partial=True),
+             dict(week, week='2026-10-20', first='2026-10-20', last='2026-10-26', partial=False, index=0.23)]
+    svg = str(page_aisle.divide_chart(weeks))
+    assert svg.count('class="divide-dot') == 2 and svg.count('divide-partial') == 1
+    assert 'Oct 20–26: 0.23' in svg and '>0.23</text>' in svg and 'class="divide-band"' in svg
+    assert page_aisle.divide_chart([]) is None and page_aisle.day_span('2026-09-29', '2026-10-05') == 'Sep 29–Oct 5'
 
 
 def test_the_aisle_draws_every_dot_and_joins_answers():

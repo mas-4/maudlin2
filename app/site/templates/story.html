@@ -52,7 +52,8 @@
                     (bigger: the lead) and when people were found retelling it. Hover for details.</figcaption>
             </figure>
         {% endif %}
-        {% if wire or extras.curators or extras.quotes or extras.wording %}<div class="stage-notes">
+        {% if wire or extras.curators or extras.quotes or extras.wording or (stayed and stayed.longer) %}<div class="stage-notes">
+        {% if stayed and stayed.longer %}{% set other = 'left' if stayed.longer == 'right' else 'right' %}<p class="story-stayed" title="How long each outlet kept it on its front page, from its first headline on it to the last time we saw one there: the middle of {{ stayed.left_n }} left-rated and {{ stayed.right_n }} right-rated outlets (AllSides)">⏱️ {{ stayed.longer|capitalize }} outlets kept it on their front pages a median {{ stayed.hours }} hours longer than {{ other }} outlets ({{ stayed[stayed.longer] }} hours against {{ stayed[other] }}).</p>{% endif %}
         {% if wire %}<p title="Headlines nearly word for word the same as the wire service's, as on the outlets page">📡 wire copy: {{ wire.outlets|length }} outlet{{ '' if wire.outlets|length == 1 else 's' }} ran the {{ wire.wires }} headline nearly word for word ({{ wire.outlets|join(', ') }})</p>{% endif %}
         {% if extras.curators %}<p>📌 linked by aggregators: {{ chips(extras.curators, '#888') }}</p>{% endif %}
         {% if extras.quotes %}<p>💬 quoted: {% for q in extras.quotes[:8] %}<span class="quote-chip">“{{ q.phrase|e }}”{% if q.count > 1 %} <b>{{ q.count }}</b>{% endif %}</span> {% endfor %}</p>{% endif %}

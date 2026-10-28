@@ -56,6 +56,40 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   the six biggest stories of the last 30 hours, the left-rated outlet's most left-typical headline and the right-rated
   outlet's most right-typical, sharing at least one word that matters. Scores count both kinds of right answer.
   Offensive words, quizzes, cartoons and headlines naming an outlet are left out.
+- **Sides counted on what the show itself said.** Each show telling now carries who said it, as the show-claims
+  pipeline heard it: host, guest, caller or a clip the show played (for a claim retold on several shows, the speaker
+  counting most among that show's tellings, host first). Where the site counts sides, on the aisle's left-to-right
+  placement, it now counts only shows whose host or guest said it, once per motif per episode. Before, a show counted
+  when any claim of a retold group was heard there, clips included: 629 of the 4,489 show tellings on Oct 27 were clips,
+  and 15 of the left's 19 "The impostor" tellings were left shows playing the attack ad on Amy Acton, mostly to rebut
+  it. Guests count because the show booked them (center shows' tellings are 44% guest); counting hosts alone halved the
+  sample and left the divide between the sides about where it was. 21 of the 607 motifs heard on the shows came up only
+  in clips, calls or unknown voices and leave the aisle. A dot's height still counts every telling, and the motif
+  pages' "came up on" lists are unchanged: they say where a story was heard, not who said it.
+- **The weekly divide index** (the aisle page). Each Tuesday-to-Monday week, the Jensen–Shannon divergence (bits)
+  between the motifs left-leaning and right-leaning shows' hosts and guests said (one per motif per episode), less its
+  mean over 500 shuffles of the lean labels among that week's whole shows (as many left shows as there were); the
+  chart's band is the shuffles' 5th to 95th percentile. 0 means no more different than shows picked at random. Raw JSD
+  is never shown: it mostly tracks sample size. A week needs 40 tellings and 4 shows a side; the week in progress is
+  left out, and so are days (only 7 of 23 beat the floor in the Oct 27 probe). Weeks before Oct 20 rest on partial
+  show transcripts (about 3 characters a second of audio kept, against about 16 since the transcriber fix; about 7
+  claims an episode against 24) and are drawn hollow. First values: 0.16 (Oct 3–5), 0.10, 0.18, 0.23 (Oct 20–26).
+  The latest week's shared motifs are those said by 2 or more shows a side with weighted log-odds |z| < 1; its
+  one-sided motifs have the largest |z|, said by 2 or more shows on that side.
+- **Folklore: told a lot, never checked; what only voters say.** The first lists the motifs with the most distinct
+  claims told on the shows and online (4 or more) and no claim examined by a fact-checker we follow, everyday talk
+  left out, each with the left and right shows whose host or guest said it: a list of leads, not of falsehoods. The
+  second lists the motifs whose only claims come from the voters in The Focus Group (33 on Oct 27; by a hand count in
+  the probe, 17 of them praise for a candidate).
+- **No more "answered N days after".** Motif pages no longer say how many days after a motif its answer was first
+  told. In the Oct 27 probe the answer came after its move in 26 of 47 pairs, against 26.5 expected from the two
+  motifs' sizes alone: the bigger motif simply shows up first. The answers themselves stay.
+- **Who stayed on it** (story pages). For each rated outlet, the hours from its first headline on the story to the
+  last sighting of any of its headlines on it (`headline.last_accessed`); left and right by the sign of its AllSides
+  lean, center and unrated outlets left out. With 3 or more outlets a side, the page says which side kept it up longer
+  when the two medians are 24 hours or more apart, and says nothing otherwise. Over the 481 stories that qualify the
+  sides come out even (median right minus left about +2 h); 28 stories have right outlets a day or more longer, 25
+  left. A sighting's time follows the scraper's cadence, and outlets turn their front pages over at different rates.
 
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the

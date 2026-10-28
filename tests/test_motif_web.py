@@ -1,5 +1,5 @@
 """The motif index across the site (app/analysis/motif_web.py): who told a story from which side, each show's
-repertoire and neighbours, the motifs told about a name, how long an answer took, the motifs' words in headlines,
+repertoire and neighbours, the motifs told about a name, who said it on a show, the motifs' words in headlines,
 the cloud of stories told, and a saga's telling day by day."""
 from datetime import datetime, timedelta
 
@@ -26,6 +26,32 @@ def test_a_story_is_told_by_side_with_its_answer():
     assert told[0]['answers'] == [{'id': 'M2', 'name': 'No one is above the law', 'note': 'No one is above the law answers Lawfare'}]
 
 
+def test_a_show_telling_carries_who_said_it_the_hosts_own_voice_first(monkeypatch):
+    from app.analysis import show_claims
+    eps = {'u1': {'show': 'Left Show', 'lean': 'left', 'date': '2026-10-20'},
+           'u2': {'show': 'Left Show', 'lean': 'left', 'date': '2026-10-21'},
+           'u3': {'show': 'Right Show', 'lean': 'right', 'date': '2026-10-21'}}
+    group = {'claim': 'Acton is an impostor.',
+             'told': [{'show': 'Left Show', 'url': 'u1', 'speaker': 'clip', 'claim': 'Acton is a fraud.'},
+                      {'show': 'Left Show', 'url': 'u2', 'speaker': 'host', 'claim': 'Acton is a fake.'},
+                      {'show': 'Right Show', 'url': 'u3', 'speaker': 'clip', 'claim': 'Acton is an impostor.'}]}
+    monkeypatch.setattr(show_claims, 'load', lambda: eps)
+    monkeypatch.setattr(show_claims, 'kept_retold', lambda: [group])
+    told = w.show_tellers()[w.mi.key('Acton is a fraud.')]
+    assert {t['show']: t['speaker'] for t in told} == {'Left Show': 'host', 'Right Show': 'clip'}
+
+
+def test_sides_are_counted_on_hosts_and_guests_once_per_motif_per_episode():
+    rows = [dict(row('M1', 'Lawfare', 'a', teller='A'), speaker='host', url='ep1'),
+            dict(row('M1', 'Lawfare', 'b', teller='A'), speaker='guest', url='ep1'),  # the same episode again
+            dict(row('M1', 'Lawfare', 'c', teller='A'), speaker='host', url='ep2'),
+            dict(row('M1', 'Lawfare', 'd', teller='B'), speaker='clip', url='ep3'),
+            dict(row('M1', 'Lawfare', 'e', teller='C'), speaker='caller', url='ep4'),
+            dict(row('M1', 'Lawfare', 'f', teller='D'), speaker='', url='ep5'),
+            row('M1', 'Lawfare', 'g', kind='posts', teller='people online', side=None)]
+    assert [r['claim'] for r in w.spoken(rows)] == ['a', 'c']
+
+
 def test_a_shows_signature_is_what_it_tells_more_than_the_others_and_its_neighbours_tell_alike():
     rows = []
     for n in range(10):
@@ -45,14 +71,6 @@ def test_a_name_gets_the_motifs_told_about_it_by_its_name_or_an_alias():
     told = w.people(rows, ['Ilhan Omar', 'Donald Trump'], {'omar': 'Ilhan Omar', 'trump': 'Donald Trump'})
     assert {m['name'] for m in told['Ilhan Omar']} == {'The impostor', 'Lawfare'}
     assert [m['name'] for m in told['Donald Trump']] == ['Senile leader']
-
-
-def test_an_answers_lag_is_the_days_between_first_tellings():
-    rows = [row('M1', 'Ballot dump', 'x', date='2026-10-17'), row('M2', 'Red mirage', 'y', date='2026-10-26')]
-    index = {'related': [['M1', 'M2']], 'related_notes': {'M1|M2': 'Red mirage answers Ballot dump'}}
-    entries = {'M1': {'name': 'Ballot dump'}, 'M2': {'name': 'Red mirage'}}
-    lag = w.answer_lag(rows, index, entries)
-    assert lag['M1'][0]['days'] == 9 and lag['M2'][0]['days'] == -9
 
 
 def test_a_motifs_words_are_found_whole_by_group_and_plots_left_out():
@@ -83,8 +101,22 @@ def test_the_cloud_of_stories_told_sizes_by_tellers_and_colors_by_side():
 def test_told_against_checked_finds_the_unchecked():
     rows = [row('M1', 'Voter fraud', f'c{n}', kind='posts', teller='people online', side=None) for n in range(5)]
     rows += [row('M2', 'Rigged election', 'x', kind='check', teller='Snopes', side=None)]
+    rows += [row('M3', 'Sports', f's{n}', kind='posts', teller='people online', side=None, genre='Perennials')
+             for n in range(9)]  # everyday talk: nothing to check
+    rows += [dict(row('M1', 'Voter fraud', 'h', teller='Right Show', side='right'), speaker='host'),
+             dict(row('M1', 'Voter fraud', 'k', teller='Left Show', side='left'), speaker='clip')]
     out = w.checked_vs_told(rows)
     assert [m['name'] for m in out['unchecked']] == ['Voter fraud'] and out['checked'][0]['name'] == 'Rigged election'
+    assert {k: out['unchecked'][0][k] for k in ('told', 'posts', 'left', 'right')} == {'told': 7, 'posts': 5,
+                                                                                       'left': 0, 'right': 1}
+
+
+def test_voters_only_motifs_are_told_by_nobody_else():
+    rows = [row('M1', 'Work horse', f'v{n}', kind='voters', teller='Focus Group', side=None) for n in range(3)]
+    rows += [row('M2', 'Proven record', 'v9', kind='voters', teller='Focus Group', side=None),
+             row('M2', 'Proven record', 'p', kind='posts', teller='people online', side=None),
+             row('M3', 'Clean hands', 'v8', kind='voters', teller='Focus Group', side=None)]
+    assert [(m['name'], m['claims']) for m in w.voters_only(rows)] == [('Work horse', 3), ('Clean hands', 1)]
 
 
 def test_a_sagas_drift_marks_the_motifs_new_that_day():

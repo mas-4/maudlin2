@@ -16,8 +16,9 @@
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ Stories people tell, not claims that they're true.</p>
         <p>Each dot is a motif from our <a href="motifs.html">index</a>: the shape of a story as people tell it. It sits
-            left or right by which side's shows its claims came up on (told, reported or argued against: we don't yet
-            mark which), and higher the more it was told. An arc joins a story to its usual answer.</p>
+            left or right by which side's shows said it in their own voice, a host or a guest (told, reported or argued
+            against: we don't yet mark which; clips a show played and callers aren't counted), and higher the more it
+            was told. An arc joins a story to its usual answer.</p>
     </div>
 
     <div class="table-filters story-sort aisle-tools" role="group" aria-label="Filter the aisle">
@@ -34,12 +35,36 @@
     </div>
     <figure class="aisle-figure">
         {{ svg }}
-        <figcaption>Left to right: the share of a motif's shows that lean left or right (a motif few shows told is drawn
-            nearer the middle). Up: how many tellers told it, on a log scale. 🔥 A ringed dot is rising: told at least
+        <figcaption>Left to right: the share of the shows whose host or guest said it that lean left or right (a motif
+            few shows said is drawn nearer the middle). Up: how many tellers told it, on a log scale. 🔥 A ringed dot is rising: told at least
             twice as often this week as the week before. The time buttons move each dot to where it sits in that window.
             The most told are named; tap any dot.</figcaption>
     </figure>
     <div class="aisle-card" hidden aria-live="polite"></div>
+
+    {% if divide_svg %}{% set k = divide.latest %}
+        <section class="divide-section" aria-labelledby="divide">
+            <h2 class="section-divider stage-banner" id="divide" style="--stage: #8a5cff"><span>📏 The divide, week by week</span></h2>
+            <p class="stage-sub">how different the stories left and right shows tell are</p>
+            <p class="table-intro">Each week (Tuesday to Monday) we compare the mix of motifs the hosts and guests of
+                left-leaning shows said with the mix on right-leaning shows, and take away how different the same shows
+                look when split into two sides at random. <b>0 means no more different than shows picked at random.</b>
+                Weeks only: a single day has too few tellings to tell apart from chance.</p>
+            <figure class="divide-figure">
+                {{ divide_svg }}
+                <figcaption>The divide each week (Jensen–Shannon divergence between the two sides' motifs, less its
+                    average over {{ divide_draws }} random splits of the same shows), dated by the week's Tuesday; grey: where 9 in
+                    10 random splits land. Hover a dot for its counts.{% if divide.weeks|selectattr('partial')|list %}
+                    Hollow dots: weeks before Oct 20, when our show transcripts kept only part of what was said (about a
+                    third as many claims an episode), so those weeks rest on less.{% endif %}</figcaption>
+            </figure>
+            <p class="divide-latest">🗓️ {{ divide_span }}: <b>{{ '%.2f'|format(k.index) }}</b>, from {{ k.left }} tellings on
+                {{ k.left_shows }} left shows and {{ k.right }} on {{ k.right_shows }} right shows.</p>
+            {% for side, emoji, label in (('shared', '⚖️', 'said on both sides alike'), ('mostly_left', '🫏', 'mostly on the left'), ('mostly_right', '🐘', 'mostly on the right')) %}
+                {% if k[side] %}<p class="stage-notes">{{ emoji }} {{ label }}: {% for m in k[side] %}<a class="motif-chip small" href="{{ m.href }}" title="{{ m.left }} left and {{ m.right }} right tellings, on {{ m.left_shows }} left and {{ m.right_shows }} right shows">🧩 {{ m.name|e }} <span class="motif-seen">🫏{{ m.left }} · {{ m.right }}🐘</span></a> {% endfor %}</p>{% endif %}
+            {% endfor %}
+        </section>
+    {% endif %}
 
     <section class="aisle-lists">
         {% if rising %}<h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🔥 Rising this week</span></h2>
@@ -55,7 +80,7 @@
         <p class="stage-notes">{{ chips(leftmost) }}</p>
         <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>🐘 Mostly right</span></h2>
         <p class="stage-notes">{{ chips(rightmost) }}</p>
-        <p class="court-when">{{ unplaced }} more motifs were told only online, by fact-checkers or by voters, not on the shows: they're in <a href="motifs.html">the index</a>.</p>
+        <p class="court-when">{{ unplaced }} more motifs were told only online, by fact-checkers or by voters, or came up on the shows only in clips and calls: they're in <a href="motifs.html">the index</a>.</p>
     </section>
 
     <script>

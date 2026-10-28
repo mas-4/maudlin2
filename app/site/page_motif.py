@@ -169,7 +169,6 @@ class MotifPages:
                 'e': e, 'up': up, 'counts': counts, 'claims': claims, 'related': related(index, e, shown),
                 'genre_emoji': GENRE_EMOJI, 'genre_gloss': GENRE_GLOSS.get(e['genre'], ''), 'inks': LEAN_INK,
                 'news': [labels[sid] for sid in web['motif_stories'].get(e['id'], []) if sid in labels and sid in pages][:NEWS],
-                'lag': web['lag'].get(e['id'], []),
                 'phrases': phrases,
                 'show_pages': show_pages,
             }, os.path.join(Config.build, motif_href(e['id'])))

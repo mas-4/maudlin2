@@ -7,6 +7,7 @@ import shutil
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta as td
+from statistics import median
 
 import pytz
 
@@ -56,13 +57,15 @@ def recent_stories(days: int = DAYS) -> list[dict]:
                                                                Story.saga_id).filter(Story.last_seen >= since)}
         if not stories:
             return []
-        for sid, title, url, agency, bias, rated, first, last in s.query(
+        for sid, title, url, agency, bias, rated, first, last, seen in s.query(
                 StoryHeadline.story_id, Headline.title, Article.url, Agency.name, Agency._bias, Agency.lean_rated,
-                Headline.first_accessed, StoryHeadline.last_seen).join(Headline, Headline.id == StoryHeadline.headline_id) \
+                Headline.first_accessed, StoryHeadline.last_seen, Headline.last_accessed) \
+                .join(Headline, Headline.id == StoryHeadline.headline_id) \
                 .join(Article, Article.id == Headline.article_id).join(Agency, Agency.id == Article.agency_id) \
                 .filter(StoryHeadline.story_id.in_(list(stories))):
             stories[sid]['headlines'].append({'title': (title or '').strip(), 'url': url, 'outlet': agency,
-                                              'bias': bias if rated else None, 'first': first, 'last': last})
+                                              'bias': bias if rated else None, 'first': first, 'last': last,
+                                              'seen': seen})
         for sid, at, outlets, lean, mood in s.query(StorySnapshot.story_id, StorySnapshot.at, StorySnapshot.outlets,
                                                     StorySnapshot.lean, StorySnapshot.mood) \
                 .filter(StorySnapshot.story_id.in_(list(stories))).order_by(StorySnapshot.at):
@@ -359,6 +362,35 @@ def stickers(st: dict, outlets: list[dict], lean_counts: dict, tv: dict | None, 
     return out
 
 
+STAY_OUTLETS = 3  # rated outlets a side needs for "who stayed on it"
+STAY_HOURS = 24  # the gap between the sides' medians worth a line
+
+
+def stayed(headlines: list[dict]) -> dict | None:
+    """Who stayed on it (Oct 28, the staying-power probe): how long each rated outlet kept the story on its front page,
+    from its first headline on it to that headline's (or a later one's) last sighting, and the median by side (the
+    sign of the outlet's AllSides lean). With STAY_OUTLETS or more rated outlets a side: {left, right (median hours),
+    left_n, right_n, longer ('left', 'right' or None), hours (the gap)}; None otherwise. Over 480 stories the sides'
+    medians came out even (right minus left +2 h), so a gap of a day or more says something about this story"""
+    first, last, side = {}, {}, {}
+    for h in headlines:
+        if not h.get('bias') or not h.get('first'):  # unrated (None) and center (0) outlets left out
+            continue
+        o = h['outlet']
+        first[o] = min(first.get(o, h['first']), h['first'])
+        last[o] = max(last.get(o, h['first']), h.get('seen') or h['first'])
+        side[o] = 'left' if h['bias'] < 0 else 'right'
+    hours = {'left': [], 'right': []}
+    for o in first:
+        hours[side[o]].append((last[o] - first[o]).total_seconds() / 3600)
+    if min(len(hours['left']), len(hours['right'])) < STAY_OUTLETS:
+        return None
+    left, right = median(hours['left']), median(hours['right'])
+    gap = right - left
+    return {'left': round(left), 'right': round(right), 'left_n': len(hours['left']), 'right_n': len(hours['right']),
+            'longer': ('right' if gap > 0 else 'left') if abs(gap) >= STAY_HOURS else None, 'hours': round(abs(gap))}
+
+
 def rewordings(headlines: list[dict]) -> list[dict]:
     """Outlets that ran more than one headline on the story (a reworded headline or a follow-up piece): the first and
     the latest"""
@@ -463,7 +495,7 @@ class StoryPages:
                 'names': list(dict.fromkeys(entities.canonical(n, aliases) for n in names.get(f"s{st['id']}", []))),
                 'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': told,
                 'voters': voters_by_motif(told), 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
-                'extras': ex, 'rewordings': rewordings(st['headlines']),
+                'extras': ex, 'rewordings': rewordings(st['headlines']), 'stayed': stayed(st['headlines']),
                 'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
             }, os.path.join(Config.build, page_name(st['id'])))

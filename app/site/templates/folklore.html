@@ -55,11 +55,23 @@
                     <p class="motif-front-chips">{% for g in index.groups %}<a class="motif-chip small" href="motifs.html#group={{ g.id|e }}"{% if g.note %} title="{{ g.note|e }}"{% endif %}>🗂️ {{ g.name|e }} <span class="motif-seen">{{ g.count }}</span></a>{% endfor %}</p>
                 </details>
             {% endif %}
-            {% if checking and (checking.unchecked or checking.checked) %}
+            {% if checking and checking.unchecked %}
+                <div class="motif-lately-box folk-unchecked">
+                    <p class="section-label" title="Motifs with the most different claims told on the shows and online, none of them examined by the fact-checkers we follow">🙈 Told a lot, never checked</p>
+                    <p class="folk-lead-about">The stories told most on the shows and online that no fact-checker we follow has examined, from both sides: a list of leads, not of falsehoods (many are opinions, or true).</p>
+                    <p class="motif-front-chips">{% for m in checking.unchecked %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.told }} different claims told: {{ m.posts }} online; said by the hosts or guests of {{ m.left }} left and {{ m.right }} right shows">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.told }}{% if m.left or m.right %} 🫏{{ m.left }} · {{ m.right }}🐘{% endif %}</span></a>{% endfor %}</p>
+                </div>
+            {% endif %}
+            {% if voters_only %}
+                <div class="motif-lately-box folk-voters-only">
+                    <p class="section-label" title="Motifs whose only claims come from the voters in The Focus Group's episodes">🗳️ What only voters say</p>
+                    <p class="folk-lead-about">Stories told by the voters in <a href="#focus-group">The Focus Group</a> and by no show, poster or fact-checker we follow. Many are praise for a candidate.</p>
+                    <p class="motif-front-chips">{% for m in voters_only %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.claims }} claim{{ '' if m.claims == 1 else 's' }} from voters">🧩 {{ m.name|e }}{% if m.claims > 1 %} <span class="motif-seen">×{{ m.claims }}</span>{% endif %}</a>{% endfor %}</p>
+                </div>
+            {% endif %}
+            {% if checking and checking.checked %}
                 <div class="folk-checking">
-                    <p class="section-label" title="Claims told on the shows and online, against claims the fact-checkers examined, by motif">🔎 Told, and checked</p>
-                    {% if checking.unchecked %}<p class="motif-front-chips">🙈 told the most, checked by no one: {% for m in checking.unchecked %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.told }} claims told{% if m.sides.left or m.sides.right %}; on {{ m.sides.left|length }} left and {{ m.sides.right|length }} right shows{% endif %}">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.told }}</span></a>{% endfor %}</p>{% endif %}
-                    {% if checking.checked %}<p class="motif-front-chips">🔎 the fact-checkers' favorites: {% for m in checking.checked %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.checked }} claims checked, {{ m.told }} told">🧩 {{ m.name|e }} <span class="motif-seen">🔎{{ m.checked }}</span></a>{% endfor %}</p>{% endif %}
+                    <p class="motif-front-chips">🔎 the fact-checkers' favorites: {% for m in checking.checked %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.checked }} claims checked, {{ m.told }} told">🧩 {{ m.name|e }} <span class="motif-seen">🔎{{ m.checked }}</span></a>{% endfor %}</p>
                 </div>
             {% endif %}
             <p class="more-link"><a href="motifs.html">🧩 browse the whole index</a> <a href="motif-map.html">↔️ see it across the aisle</a> <a href="motifs.html#how">📖 how it works</a></p>

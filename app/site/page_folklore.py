@@ -220,18 +220,19 @@ class FolklorePage:
             cards += show_cards(index, screen)
         cards += checked_cards(index, {p['url'] for c in cards for p in c.get('factchecks', [])})
         shelf = catalog(index, screen)  # the motif index itself, which the page opens on
-        try:  # told against checked, by motif (motif_web.checked_vs_told)
+        try:  # told against checked, and what only voters tell, by motif (motif_web)
             from app.analysis import motif_web
             from app.site.page_motif import shared
-            checking = motif_web.checked_vs_told(shared()['web']['rows'])
+            told_rows = shared()['web']['rows']
+            checking, voters_only = motif_web.checked_vs_told(told_rows), motif_web.voters_only(told_rows)
         except Exception as e:  # noqa: BLE001 - extra
             logger.warning("Folklore: checked against told: %s", e)
-            checking = {}
+            checking, voters_only = {}, []
         screen.save()
         looked = circulation.load()
         self.template.write({
             'title': 'Folklore and rumors', 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
-            'checking': checking,
+            'checking': checking, 'voters_only': voters_only,
             'report': report, 'cards': cards, 'copies': copies, 'voters': voters, 'floor': floor, 'fewer': fewer,
             'sources': SOURCES, 'source_counts': counted(cards, 'sources'), 'kinds': Counter(c['kind'] for c in cards),
             'genre_counts': counted(cards, 'genres'), 'family_counts': counted(cards, 'family'),
