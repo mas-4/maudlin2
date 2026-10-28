@@ -108,8 +108,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   scored every one not news, which kept them out of stories and the word cloud, but they still count: the edits
   page's rewrites per 100 headlines count them (NBC's 8.3 a week is 13.5 without them), a credit seen between two
   wordings hid that rewrite (36 in the week), and the outlet fingerprint reads an article's first wording, so NBC's
-  share of news articles was 0.78 against 0.90 without them, and CNN's 0.54 against 0.78. They stay until the person
-  decides what to do with them (`scripts/clean_photo_credits.py` lists them).
+  share of news articles was 0.78 against 0.90 without them, and CNN's 0.54 against 0.78. On the person's word
+  ("Delete them") they were deleted the same day with their 2 story links and the 33 articles left with no headline
+  (`scripts/clean_photo_credits.py --apply`; backup data.db.before-photo-credit-delete-2026-10-28). Measures from
+  before Oct 28 that read headlines counted them.
 - **One spelling for James Talarico.** The transcriber's list of names to expect spelled him "Tallarico", so most show
   transcripts did too, and the names page counted him twice. The list has his name right now, transcripts fix the old
   spelling, and the names page joins the two.
