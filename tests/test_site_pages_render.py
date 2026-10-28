@@ -440,7 +440,7 @@ def test_emotions_page(site):
     from app.analysis.newsfilter import EMOTIONS
     tables = soup.select('table.emotion-matrix')
     assert tables
-    header = [th.get('title') for th in tables[0].select('thead th') if th.get('title')]
+    header = [th.get('data-emotion') for th in tables[0].select('thead th') if th.get('data-emotion')]
     assert sorted(header) == sorted(EMOTIONS)
 
 
@@ -513,11 +513,14 @@ def test_outlet_pages_carry_their_fingerprint(site):
 
 def test_edits_page_shows_ab_tests_escaped(site):
     page = site['soup']['edits.html']
-    test = page.select_one('.ab-test.ab-won')
+    test = page.select_one('.ab-race.ab-won')
     assert test is not None and '🏆' in test.get_text()
-    assert test.select_one('.ab-won a').get_text() == 'Kept <wording>'  # escaped, not parsed as a tag
-    assert 'shown without javascript' in test.select_one('.ab-won').get_text()
-    assert test.select_one('.ab-lost').get_text().startswith('Dropped wording')
+    won = test.select_one('.ab-lane.ab-won')
+    assert won.select_one('a').get_text() == 'Kept <wording>'  # escaped, not parsed as a tag
+    assert won.select_one('.ab-star') and 'starting wording' in won['data-tip']  # ⭐, explained once above
+    assert won['data-tip-head'] == 'Kept <wording>'
+    assert test.select_one('.ab-lost').get_text(' ', strip=True).startswith('Dropped wording')
+    assert 'shown without javascript' not in page.get_text()
 
 
 def test_court_page(site):

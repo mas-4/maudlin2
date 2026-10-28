@@ -1,0 +1,255 @@
+/* Emotions' side bars, the edits page's headline races, the names page's strips (the site redo, Oct 28) */
+
+/* The boards themselves are the shared ranked strips (175-boards.css) */
+
+/* Emotions, by side: one stacked bar per side, the feelings in the tiles' tints and order, each part outlined in ink
+   and marked with its emoji where there's room; the parts' numbers in their hover cards */
+.feel-side-bars {
+    list-style: none;
+    padding: 0.6em 0.8em;
+    margin: 0.4em 0 0.4em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+}
+
+.feel-side + .feel-side {
+    margin-top: 0.8em;
+}
+
+.feel-side-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    margin-bottom: 0.3em;
+}
+
+.feel-side-n {
+    font-size: 0.85em;
+    color: #555;
+}
+
+.feel-stack {
+    display: flex;
+    min-height: 40px;
+    border: 2.5px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 4px 4px 0 #1f1f2e;
+    overflow: hidden;
+    background: white;
+}
+
+.feel-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    background: var(--tint);
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    cursor: default;
+}
+
+.feel-seg + .feel-seg {
+    border-left: 1.5px solid #1f1f2e;
+}
+
+@media (max-width: 600px) {
+    .feel-seg-pct:not(.feel-seg-wide) { display: none; }  /* a phone: numbers only on the big parts */
+}
+
+.feel-seg:hover, .feel-seg.hover-card-on {
+    filter: brightness(0.92);
+}
+
+.feel-key {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35em 0.5em;
+    padding: 0;
+    margin: 0.6em 0 0.4em;
+}
+
+.feel-key li {
+    background: var(--tint);
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.1em 0.65em;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+/* The full numbers, folded under the boards */
+.redo-d-fold {
+    margin: 1em 0 2em;
+}
+
+.redo-d-fold summary {
+    cursor: pointer;
+    display: inline-block;
+    min-height: 40px;
+    line-height: 40px;
+    padding: 0 1em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #ffc400;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.redo-d-fold[open] summary {
+    margin-bottom: 0.6em;
+}
+
+/* An outlet's hover card: its eight feelings as a little stacked bar, then listed */
+.feel-card-bar {
+    display: flex;
+    height: 14px;
+    margin: 0.45em 0 0.4em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.feel-card-bar span + span {
+    border-left: 1px solid #1f1f2e;
+}
+
+.feel-card-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 0.15em 1em;
+    padding: 0;
+    margin: 0;
+}
+
+.feel-card-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+}
+
+.feel-card-list b {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.feel-card-dot {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5em;
+    height: 1.5em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 50%;
+    background: var(--tint);
+    font-size: 0.85em;
+}
+
+/* Edits: Slate's headline tests as little races, a lane per wording, its bar the hours it was up (of the longest), the
+   one kept on top with its 🏆; the lane's details in its hover card */
+.ab-races {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1em;
+    margin: 0.6em 0 1em;
+}
+
+.ab-race {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #8a5cff;
+    padding: 0.6em 0.9em 0.5em;
+}
+
+.ab-race:nth-child(even) {
+    box-shadow: 5px 5px 0 #ffc400;
+}
+
+.ab-race-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 0.7em;
+    margin: 0 0 0.4em;
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+}
+
+.ab-lanes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ab-lane {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "text text" "track up";
+    align-items: center;
+    gap: 3px 0.6em;
+    min-height: 44px;
+    padding: 0.3em 0.4em;
+    border-radius: 10px;
+    color: #1f1f2e;
+}
+
+.ab-lane + .ab-lane {
+    border-top: 2px solid #ececf3;
+}
+
+.ab-lane:hover, .ab-lane:focus-visible, .ab-lane.hover-card-on {
+    background: #f6f2ff;
+}
+
+.ab-lane-text {
+    grid-area: text;
+    font-size: 0.98em;
+    line-height: 1.3;
+}
+
+.ab-lane-track {
+    grid-area: track;
+    display: block;
+}
+
+.ab-lane-bar {
+    display: block;
+    box-sizing: border-box;
+    width: var(--bar);
+    min-width: 8px;
+    height: 10px;
+    background: #d9cdfa;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.ab-lane-up {
+    grid-area: up;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.ab-won .ab-lane-text {
+    font-weight: bold;
+}
+
+.ab-won .ab-lane-bar {
+    background: #ffc400;
+}
+
+.ab-lost {
+    color: #666;
+}
+
+.ab-lost .ab-lane-bar {
+    background: #ececf3;
+}

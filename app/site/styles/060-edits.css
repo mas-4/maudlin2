@@ -61,36 +61,6 @@
     text-decoration: none;
 }
 
-.ab-variants {
-    margin: 0.5em 0 0;
-    padding-left: 1.4em;
-}
-
-.ab-variants li {
-    margin: 0.25em 0;
-}
-
-.ab-won {
-    font-weight: bold;
-}
-
-.ab-won::marker {
-    content: '🏆 ';
-}
-
-.ab-lost {
-    color: #777;
-    text-decoration: line-through;
-    text-decoration-color: #c99;
-}
-
-.ab-hours {
-    font-size: 0.8em;
-    color: #888;
-    font-weight: normal;
-    white-space: nowrap;
-}
-
 .edit-source {
     font-size: 0.8em;
     border: 1px solid #bbb;

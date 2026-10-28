@@ -1,22 +1,23 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% macro matrix(rows, label, chips=False) %}
     <div class="matrix-wrap">
     <table class="emotion-matrix sortable">
         <thead>
         <tr>
-            <th data-sort="text">{{ label }}</th>
-            {% for e in emotions %}<th data-sort="number" title="{{ e|e }}"><span class="matrix-emoji">{{ emoji[e] }}</span><br><span>{{ e }}</span></th>{% endfor %}
+            <th data-sort="text">{{ label|e }}</th>
+            {% for e in emotions %}<th data-sort="number" data-emotion="{{ e|e }}" aria-label="{{ e|e }}"><span class="matrix-emoji" aria-hidden="true">{{ emoji[e] }}</span><br><span>{{ e|e }}</span></th>{% endfor %}
             <th data-sort="number">Headlines</th>
         </tr>
         </thead>
         <tbody>
         {% for r in rows %}
             <tr>
-                <td>{% if chips %}<span class="edit-chip" style="{{ r.style|e }}">{{ outlet_icon(r.name) }}{{ short_name(r.name) }}</span>{% else %}{{ r.name }}{% endif %}</td>
+                <td>{% if chips %}<span class="edit-chip" style="{{ r.style|e }}">{{ outlet_icon(r.name) }}{{ short_name(r.name)|e }}</span>{% else %}{{ r.name|e }}{% endif %}</td>
                 {% for e in emotions %}
                     {% set share = r.shares[e] %}
-                    <td data-value="{{ share|e }}" title="{{ r.name|e }}: {{ (share * 100)|round(1) }}% {{ e|e }}"
+                    <td data-value="{{ share|e }}"
                         style="background-color: rgba(106, 63, 181, {{ [share / max_share, 1]|min * (0.15 if e == 'neutral' else 0.85) }})">
                         {{ (share * 100)|round|int }}%
                     </td>
@@ -44,19 +45,76 @@
                 <div class="emotion-tile tile-{{ o.emotion|e }}">
                     <div class="emotion-tile-emoji">{{ emoji[o.emotion] }}</div>
                     <div class="emotion-tile-share">{{ (o.share * 100)|round|int }}%</div>
-                    <div class="emotion-tile-label">{{ o.emotion }}</div>
+                    <div class="emotion-tile-label">{{ o.emotion|e }}</div>
                 </div>
             {% endfor %}
         </div>
 
-        <h3>By side</h3>
-        {{ matrix(sides, 'Outlets') }}
+        <section class="feel-sides" aria-labelledby="feel-sides">
+            <h3 class="section-divider stage-banner" id="feel-sides" style="--stage: #00c2a8"><span>⚖️ By side</span></h3>
+            <p class="stage-sub">all the news headlines from left-leaning, center and right-leaning outlets: each bar is
+                their whole vote, split by feeling, in the tiles' colors; point at a part for its share</p>
+            <ul class="feel-side-bars">
+                {% for s in side_bars %}
+                    <li class="feel-side">
+                        <span class="feel-side-name"><span class="rank-mark" aria-hidden="true" style="--ink: #ffffff">{{ s.emoji }}</span><b>{{ s.name|e }}</b> <span class="feel-side-n">{{ "{:,}".format(s.headlines) }} headlines</span></span>
+                        <span class="feel-stack" role="img" aria-label="{{ s.name|e }}: {% for g in s.segments %}{{ g.emotion|e }} {{ g.pct }}%{{ ', ' if not loop.last }}{% endfor %}">
+                            {% for g in s.segments %}{% if g.share > 0 %}<span class="feel-seg" style="flex: {{ g.share|e }} 0 0; --tint: {{ g.tint|e }}" data-tip-head="{{ s.emoji }} {{ s.name|e }}" data-tip="{{ g.emoji }} {{ g.emotion|e }}: {{ g.pct }}% of the feeling in their headlines">{% if g.pct >= 5 %}<span aria-hidden="true">{{ g.emoji }}</span>{% if g.pct >= 9 %}<span class="feel-seg-pct{% if g.pct >= 15 %} feel-seg-wide{% endif %}"> {{ g.pct }}%</span>{% endif %}{% endif %}</span>{% endif %}{% endfor %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+            <ul class="feel-key" aria-label="Feeling colors">
+                {% for e in emotions %}<li style="--tint: {{ tints[e]|e }}"><span aria-hidden="true">{{ emoji[e] }}</span> {{ e|e }}</li>{% endfor %}
+            </ul>
+            {% if unrated_side %}<p class="court-when">⚪ Outlets whose lean isn't rated ({{ "{:,}".format(unrated_side.headlines) }} headlines) aren't on a side: their biggest feeling is {{ emoji[unrated_side.dominant] }} {{ unrated_side.dominant|e }}, {{ (unrated_side.dominant_share * 100)|round|int }}%.</p>{% endif %}
+        </section>
 
-        <h3>By outlet</h3>
-        <p class="poll-note">Each outlet's share of the feeling in its news headlines; darker is a larger share. Click a
-            column to sort. Outlets need {{ min_outlet_headlines }} or more headlines to appear.</p>
-        {{ matrix(outlets, 'Outlet', chips=True) }}
-
+        <section class="feel-outlets" aria-labelledby="feel-outlets">
+            <h3 class="section-divider stage-banner" id="feel-outlets" style="--stage: #8a5cff"><span>📰 By outlet</span></h3>
+            <p class="stage-sub">the outlets whose news headlines stir each feeling most, in pairs; each colored by its
+                lean. Point at one for all eight of its feelings. Outlets need {{ min_outlet_headlines }} or more
+                headlines to count.</p>
+            {{ b.key(lean_key, 'Lean colors') }}
+            {{ b.boards(boards, 'h4') }}
+            <details class="redo-d-fold">
+                <summary>📋 Every outlet's eight feelings, as numbers ({{ outlets|length }} outlets)</summary>
+                <p class="poll-note">Each outlet's share of the feeling in its news headlines; darker is a larger share.
+                    Click a column to sort.</p>
+                {{ matrix(outlets, 'Outlet', chips=True) }}
+            </details>
+        </section>
+        <script type="application/json" id="feel-cards">{{ cards|tojson }}</script>
+        <script>
+            (function () {
+                // Each outlet's card: its lean, its headlines and its eight feelings as a little stacked bar and a list
+                const cards = JSON.parse(document.getElementById('feel-cards').textContent);
+                const EMOJI = {{ emoji|tojson }}, TINT = {{ tints|tojson }};
+                const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+                window.hoverCard.register('.feel-outlets .rank-row', (row) => {
+                    const name = row.querySelector('.rank-name').textContent, c = cards[name];
+                    if (!c) return null;
+                    const frag = document.createDocumentFragment();
+                    frag.append(el('div', 'hover-card-head', name));
+                    frag.append(el('div', 'hover-card-line', `${c.mark} ${c.lean[0].toUpperCase()}${c.lean.slice(1)} · ${c.n.toLocaleString()} news headlines`));
+                    const bar = el('div', 'feel-card-bar');
+                    c.shares.forEach(([e, pct]) => { if (pct > 0) { const s = el('span'); s.style.flex = `${pct} 0 0`; s.style.background = TINT[e]; bar.append(s); } });
+                    frag.append(bar);
+                    const list = el('ol', 'feel-card-list');
+                    [...c.shares].sort((a, b) => b[1] - a[1]).forEach(([e, pct]) => {
+                        const li = el('li');
+                        li.style.setProperty('--tint', TINT[e]);
+                        li.append(el('span', 'feel-card-dot', EMOJI[e]), el('span', null, e), el('b', null, `${Math.round(pct)}%`));
+                        list.append(li);
+                    });
+                    frag.append(list);
+                    const more = el('a', 'hover-card-more', 'its page →');
+                    more.href = row.getAttribute('href');
+                    frag.append(more);
+                    return frag;
+                });
+            })();
+        </script>
     {% endif %}
 
 {% endblock content %}
