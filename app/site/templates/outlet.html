@@ -38,6 +38,40 @@
         </div>
     </div>
 
+    {% if fp %}
+        <h2 class="section-divider" id="fingerprint"><span>🧬 Its fingerprint</span></h2>
+        <div class="outlet-fp">
+            <div class="outlet-fp-text">
+                <p class="outlet-fp-type">🏷️ {% if fp.type %}<strong>{{ fp.type|e }}</strong>{% if fp.family_note %}
+                    <span class="trend-posts">· part of the {{ fp.family_note|lower|e }}</span>{% endif %}
+                    <br>{{ fp.about|e }}{% else %}<strong>No settled type</strong><br>It sits between the types that
+                    hold together.{% endif %}</p>
+                <p>📡 <strong>Wire:</strong> {% if fp.is_wire %}a wire service, the yardstick the others are measured
+                    against.{% else %}{{ fp.wire_ord }}
+                    percentile. Its stories and headline words are closer to the AP's and Reuters' than
+                    {{ fp.wire_pct }}% of the {{ fp.n }} outlets we fingerprint.
+                    <span class="outlet-fp-bar" aria-hidden="true"><span style="width: {{ fp.wire_pct|e }}%"></span></span>{% endif %}</p>
+                <p>🌶️ <strong>Heat:</strong> {{ fp.heat_ord }} percentile. Its headlines are worded more heatedly
+                    (loaded words, combat verbs, anger) than {{ fp.heat_pct }}% of them.
+                    <span class="outlet-fp-bar outlet-fp-heat" aria-hidden="true"><span style="width: {{ fp.heat_pct|e }}%"></span></span></p>
+                <p>👯 <strong>Behaves most like</strong>
+                    {% for x in fp.like %}<a href="{{ x.href|e }}">{{ x.name|e }}</a>{{ ', ' if not loop.last and loop.revindex > 2 else (' and ' if not loop.last else '') }}{% endfor %}.</p>
+            </div>
+            <figure class="outlet-fp-figure">
+                <a href="outlet-map.html" aria-label="The outlet map">{{ fp.map|safe }}</a>
+                <figcaption>🗺️ Its place on <a href="outlet-map.html">the outlet map</a>, by which stories it covers:
+                    across, business and world news to the political fight; up, stories critical of Trump; down, crime
+                    and immigration.</figcaption>
+            </figure>
+        </div>
+        <p class="outlet-fp-note">From what it did on its front page in the last {{ fp.window_days }} days
+            ({{ fp.stories }} of our stories, {{ fp.articles }} headlines), not from its ratings.</p>
+    {% elif profiled %}
+        <h2 class="section-divider" id="fingerprint"><span>🧬 Its fingerprint</span></h2>
+        <p class="stage-empty">🦗 No fingerprint: it's in too few of our stories in the last weeks (we build stories
+            from US and UK front pages), or it's an aggregator.</p>
+    {% endif %}
+
     {% if feelings %}
         <h2 class="section-divider"><span>The feelings in its headlines</span></h2>
         <div class="feeling-bar" title="Each feeling's share of its headlines on the front page now, ranked-choice style">

@@ -5,10 +5,12 @@ import os
 
 import pandas as pd
 
+from app.analysis import outlet_profile
 from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI, emotion_weights
 from app.site.common import SHARED, TemplateHandler
 from app.site.data import DataHandler
+from app.site.page_outlet_map import fingerprint
 from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
@@ -44,6 +46,11 @@ class OutletPages:
         live = self.dh.main_headline_df
         story_of_url = SHARED.get('story_of_url', {})
         edits, _ = find_edits()
+        try:
+            profile = outlet_profile.profiles()  # its fingerprint (Oct 28), kept for the day
+        except Exception:  # noqa: BLE001 - the pages without fingerprints beat no pages
+            logger.exception("Outlet profiles failed; outlet pages go without fingerprints this build")
+            profile = {}
         for o in self.outlets:
             mine = live[live['agency'] == o['name']]
             now = [{'title': r.title, 'url': r.url, 'story': story_of_url.get(r.url)}
@@ -54,6 +61,7 @@ class OutletPages:
                     # without the model's note on what changed (not credible: see page_edits)
                     rewrites.append({'before': e['before_html'], 'after': e['after_html']})
             self.template.write({'title': o['name'], 'o': o, 'now': now, 'rewrites': rewrites, 'window_days': self.window_days,
+                                 'fp': fingerprint(profile, o['name']), 'profiled': bool(profile.get('outlets')),
                                  'feelings': feelings(mine['emotion_ranks']) if 'emotion_ranks' in mine else []},
                                 os.path.join(Config.build, f"outlet-{o['slug']}.html"))
         logger.info("Outlet pages: %d", len(self.outlets))

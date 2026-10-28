@@ -19,7 +19,7 @@ import pytest
 from bs4 import BeautifulSoup
 from sqlalchemy import event
 
-from app.analysis import abtests, clustering, llm, sagas, scotus
+from app.analysis import abtests, clustering, llm, outlet_profile, sagas, scotus
 from app.models import engine
 from app.site import common, page_agencies, page_headlines as ph
 from app.site.page_agencies import AgenciesPage
@@ -30,14 +30,15 @@ from app.site.page_emotions import EmotionsPage
 from app.site.page_glossary import GlossaryPage
 from app.site.page_sagas import SagasPage
 from app.site.page_names import NamesPage
+from app.site.page_outlet_map import OutletMapPage
 from app.site.page_radio import RadioPage
 from app.site.page_tv import TvPage
 from app.utils.config import Config
 
 PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
-         'sagas.html', 'names.html', 'radio.html', 'tv.html']
+         'sagas.html', 'names.html', 'radio.html', 'tv.html', 'outlet-map.html']
 NAV_LINKS = ['stories.html', 'motifs.html', 'sagas.html',
-             'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
+             'headlines.html', 'agencies.html', 'outlet-map.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
              'tv.html', 'radio.html', 'beyond.html', 'replayed.html', 'folklore.html', 'motifs.html', 'motif-map.html',
              'about.html', 'glossary.html', 'lab.html', 'methods.html', 'feed.xml']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time
@@ -93,6 +94,34 @@ COURT = {'term': 2026, 'source': 'https://www.supremecourt.gov/orders/26grantedn
          'glosses': {}}
 
 
+def fingerprinted(x, y, wire, heat, kind, like, lean, is_wire=False):
+    return {'x': x, 'y': y, 'wire': wire / 50 - 1, 'heat': heat / 50 - 1, 'wire_pct': wire, 'heat_pct': heat,
+            'family': kind, 'type': kind, 'like': like, 'is_wire': is_wire, 'lean': lean, 'stories': 120, 'articles': 900}
+
+
+# The outlet map and the outlet pages' fingerprints: a canned profile (the real one takes seconds over the month)
+OUTLET_PROFILE = {
+    'day': '2026-10-28', 'since': '2026-09-30T12:00', 'until': '2026-10-28T12:00', 'window_days': 28,
+    'headlines': 5000, 'articles': 4000, 'stories': 300,
+    'outlets': {
+        'AP': fingerprinted(-0.5, -0.2, 50, 20, 'Wire and mainstream', ['Reuters', 'Bloomberg', 'Fox News'], -1, True),
+        'Reuters': fingerprinted(-0.7, 0.0, 40, 10, 'Wire and mainstream', ['AP', 'Bloomberg', 'Fox News'], 0, True),
+        'Bloomberg': fingerprinted(-0.8, 0.2, 70, 11, 'Wire and mainstream', ['Reuters', 'AP', 'Fox News'], 0),
+        'Fox News': fingerprinted(0.4, -0.5, 34, 76, 'Right partisan web', ['Breitbart', 'AP', 'Reuters'], 2),
+        'Breitbart': fingerprinted(0.2, -0.47, 49, 72, 'Right partisan web', ['Fox News', 'AP', 'Reuters'], 2),
+        'Raw Story': fingerprinted(1.0, 1.5, 3, 97, 'Left Trump-watch', ['Bloomberg', 'AP', 'Fox News'], -2),
+        'Odd <News> & Co': fingerprinted(0.1, 0.1, 60, 60, None, ['AP', 'Reuters', 'Bloomberg'], None),
+    },
+    'types': [{'name': 'Right partisan web', 'level': 'family', 'stability': 0.92, 'k': 5, 'about': 'Heated.',
+               'members': ['Breitbart', 'Fox News']},
+              {'name': 'Left Trump-watch', 'level': 'type', 'stability': 0.9, 'k': 10, 'about': 'Fast.',
+               'members': ['Raw Story']}],
+    'axes': {'inertia': [5.9, 4.6], 'rho': {'ca1': 0.58, 'ca2': -0.7},
+             'x': {'low': ['<Markets> rally'], 'high': ['A fight']}, 'y': {'low': ['A crime'], 'high': ['A probe']}},
+}
+OUTLET_PROFILE['outlets']['Raw Story']['family'] = 'Left partisan web'
+
+
 def refuse_connection(*args, **kwargs):
     raise RuntimeError('network access in a test')
 
@@ -146,6 +175,7 @@ def site(data_handler, tmp_path_factory):
         mp.setattr(scotus, 'refresh_docket', lambda: None)
         mp.setattr(scotus, 'story_glosses', lambda groups: ['<Named> story'] * len(groups))
         mp.setattr(page_agencies, 'generate_wordcloud', lambda df, path: None)  # a png nobody checks here; slow
+        mp.setattr(outlet_profile, 'profiles', lambda *a, **k: copy.deepcopy(OUTLET_PROFILE))
         snapshot = sorted(glob.glob(os.path.expanduser(
             '~/.cache/huggingface/hub/models--minishlab--potion-base-8M/snapshots/*/model.safetensors')))
         from app.analysis import embeddings
@@ -164,7 +194,8 @@ def site(data_handler, tmp_path_factory):
         headlines = ph.HeadlinesPage(dh)
         try:
             headlines.generate()
-            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, CourtPage, SagasPage, NamesPage, RadioPage, TvPage):
+            for page in (GlossaryPage, EmotionsPage, EditsPage, AgenciesPage, OutletMapPage, CourtPage, SagasPage, NamesPage,
+                         RadioPage, TvPage):
                 page(data_handler).generate()
         finally:
             event.remove(engine, 'before_cursor_execute', no_writes)
@@ -249,7 +280,7 @@ def test_built_stylesheet_is_the_joined_partials(built_css):
     ('index.html', '.navbar'), ('index.html', '.top-story-cards'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
     ('agencies.html', '.outlet-card'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
     ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
-    ('radio.html', '.radio-stats')])
+    ('radio.html', '.radio-stats'), ('outlet-map.html', '.omap-finding')])
 def test_built_stylesheet_styles_each_page(site, built_css, name, selector):
     """A selector each page uses has a rule in the built stylesheet (the page's partial made it in)."""
     assert site['soup'][name].select_one(selector) is not None, f'{name} no longer uses {selector}'
@@ -423,6 +454,60 @@ def test_edits_page(site):
     assert soup.find('h2', string='Headline changes') is not None
     assert soup.select_one('details.how-it-works') is not None
 # </editor-fold>
+
+
+def test_outlet_map_draws_both_views_with_a_dot_per_outlet(site):
+    page = site['soup']['outlet-map.html']
+    assert page.select_one('h1').get_text(strip=True) == '🗺️ The outlet map'
+    assert "isn't left against right" in page.select_one('.omap-finding').get_text()
+    svg = page.select_one('figure.omap-figure svg.story-chart')  # so it gets the full-screen button
+    assert svg['viewbox'] == '0 0 760 560'
+    coverage, style = svg.select('g.omap-view')
+    assert coverage['data-view'] == 'coverage' and not coverage.get('display') and style['display'] == 'none'
+    names = OUTLET_PROFILE['outlets']
+    assert {d['data-name'] for d in coverage.select('.omap-dot')} == set(names)
+    assert {d['data-name'] for d in style.select('.omap-dot')} == {n for n, o in names.items() if not o['is_wire']}
+    assert 'Odd <News> & Co' in {d.select_one('title').get_text().split(':')[0] for d in coverage.select('.omap-dot')}
+    fill = {d['data-name']: d.select_one('circle')['fill'] for d in coverage.select('.omap-dot')}
+    assert fill['Odd <News> & Co'] == '#ffffff' and fill['Breitbart'] == '#b40426'  # lean colors, unrated white
+    assert coverage.select('.omap-label')  # the most distinctive are labeled
+    assert [b['data-view'] for b in page.select('.omap-views button')] == ['coverage', 'style']
+    data = json.loads(page.select_one('#omap-data').string)
+    assert data['Raw Story']['href'] == 'outlet-raw-story.html' and data['Raw Story']['heat'] == '97th'
+    assert '<Markets> rally' in page.select_one('.omap-ends').get_text()  # escaped story label
+    types = page.select('.omap-type')
+    assert [t.select_one('h3').get_text(strip=True) for t in types] == ['🏘️ Right partisan web', '🏷️ Left Trump-watch']
+    assert [a['href'] for a in types[0].select('a')] == ['outlet-breitbart.html', 'outlet-fox-news.html']
+    assert len(page.select('table.omap-table tbody tr')) == len(names)
+    assert '28 days' in page.select_one('figcaption').get_text()
+
+
+def test_outlet_pages_carry_their_fingerprint(site):
+    with open(site['build'] / 'outlet-raw-story.html', encoding='utf-8') as f:
+        page = BeautifulSoup(f.read(), 'html.parser')
+    fp = page.select_one('.outlet-fp')
+    text = ' '.join(fp.get_text(' ').split())
+    assert 'Left Trump-watch' in text and 'part of the left partisan web' in text
+    assert '3rd percentile' in text and '97th percentile' in text
+    assert [a['href'] for a in fp.select('.outlet-fp-text a')] == ['outlet-bloomberg.html', 'outlet-ap.html',
+                                                                    'outlet-fox-news.html']
+    assert fp.select_one('svg.outlet-fp-map .outlet-fp-me') is not None
+    assert len(fp.select('svg.outlet-fp-map .outlet-fp-other')) == len(OUTLET_PROFILE['outlets']) - 1
+    with open(site['build'] / 'outlet-ap.html', encoding='utf-8') as f:
+        ap = BeautifulSoup(f.read(), 'html.parser')
+    assert 'a wire service' in ap.select_one('.outlet-fp').get_text()
+    # an outlet the profile doesn't cover says so, and nothing in any fingerprint compares behaviour with ratings
+    unprofiled = [p for p in glob.glob(str(site['build'] / 'outlet-*.html'))
+                  if not re.search(r'outlet-(ap|reuters|bloomberg|fox-news|breitbart|raw-story|map)\.html$', p)]
+    assert unprofiled
+    with open(unprofiled[0], encoding='utf-8') as f:
+        assert 'No fingerprint' in f.read()
+    for p in glob.glob(str(site['build'] / 'outlet-*.html')):
+        with open(p, encoding='utf-8') as f:
+            card = BeautifulSoup(f.read(), 'html.parser').select_one('.outlet-fp')
+        if card is not None:
+            text = card.get_text(' ').lower()
+            assert 'conspiracy' not in text and 'rated' not in text
 
 
 def test_edits_page_shows_ab_tests_escaped(site):

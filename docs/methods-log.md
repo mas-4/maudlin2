@@ -39,6 +39,33 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   sighting). On Oct 28 the cells were small for crossing (24-72 stories) and showed left-leaning one-sided stories
   reaching the right about 3-5 times in 10, right-leaning ones reaching the left about 1 in 10-15; unlike the study, a
   wire or center outlet on a right-leaning story did not go with more crossing (1 of 18; too few to show on its own).
+- **The outlet map and outlet fingerprints.** A new page places every outlet with at least 20 of our stories and 100
+  headlines in the last 28 days by which stories it ran: a correspondence analysis of outlets × stories (ran it or
+  not; stories at least three of those outlets ran). On Oct 28 that was 75 outlets and 981 stories; the first two axes
+  hold 5.9% and 4.6% of the differences. The first runs from business, tech and world news to the political fight,
+  with the partisan outlets of both sides at the same end; the second from crime and immigration stories to
+  Trump-critical ones. An axis' sign is arbitrary in the maths, so each is pointed by the lean ratings: the first's
+  high end is where outlets rated far left or right gather (rank correlation with |lean| +0.58 on Oct 28), the
+  second's where left-rated ones gather (with lean −0.70). The ratings only point the axes; they place no one. A
+  second view sets outlets by **wire** (the share of its stories AP or Reuters also ran, how close its headlines are to
+  theirs on those stories, how often near word for word, its vocabulary against theirs on equal samples, and how much
+  of its front page is shared stories) against **heat** (loaded scores, combat verbs like "slams", sensational words,
+  anger and disgust, each side's labels for the other, minus neutral feeling): each the mean of those measures' ranks
+  on a normal curve. The AP and Reuters are measured against each other, so they're left off that view. Each outlet's
+  page now carries its **fingerprint**: wire and heat as percentiles among the profiled outlets, its three nearest
+  outlets in the full behaviour space ("behaves most like"), its place on the map, and its type. **Types** are Ward
+  clusters on about fifty behaviour measures in eight groups weighted alike (coverage, agenda, timing, sidedness,
+  headline form, heat, labels, churn), named by anchor outlets (a cluster holding more than half a type's anchors,
+  and no other type's majority). Each type is taken at the cut of the tree (2 to 10 clusters) where it's most
+  stable, and shown only when it comes back at least 0.75 the same (mean best Jaccard) across 100 reclusterings of
+  random 80% samples. On Oct 28 five held: wire and mainstream (50 outlets, 0.94), the right partisan web (13, 0.92),
+  the left partisan web (12, 0.77), and within it the left Trump-watch (3, 0.90) and left opinion (5, 0.82); the
+  mainstream's finer types (business desks, explainers and others, 0.44 to 0.68) didn't, so mainstream outlets carry
+  only the broad family. A type named for a side isn't shown on an outlet rated on the other side or center (on Oct
+  28 that kept The Sun, rated lean right, out of the left partisan web it clustered with). The features reproduce the
+  Oct 27-28 study's (rank correlation 0.93 to 1.0 per measure), except that bylines aren't stripped. Rebuilt once a
+  day (about 13 seconds) and kept in `outlet_profile.json`. Outlets the site builds no stories from (most outside the
+  US and the UK) and the aggregators aren't profiled.
 - **Bylines off the headlines.** Red State's and Townhall's cards, and Scripps News's, put a section label and the
   author's name inside the headline's link ("…but There's a Catch Susie Moore"), and The Gateway Pundit's trending
   list its view count ("68.2K views"), which also made a new "headline" each time the count moved. The scrapers now
