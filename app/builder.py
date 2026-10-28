@@ -42,6 +42,7 @@ def prepare():
     j2env.globals['unrated'] = ratings.unrated()
     lean = lean_estimate.estimate()  # our own estimate for some unrated outlets, kept out of lean averages
     j2env.globals['lean_estimates'], j2env.globals['lean_quality'] = lean['estimates'], lean['quality']
+    share_images.prune()  # cards no page has used for days (a live story's card is redrawn every hour)
     j2env.globals['site_image'] = share_images.site_card()  # what a shared link to any page shows by default
     favicons.refresh()  # only fetches icons that are missing or a week old
     j2env.globals['icons'] = favicons.publish()

@@ -376,14 +376,27 @@ def told_as(web: dict | None, st: dict, tv: dict | None) -> dict:
     return {'told_as': web['stories'].get(st['id'], [])[:10] if web else []}
 
 
-def share(st: dict, outlets: list, lean_counts: dict, stuck: list) -> dict:
+SPARK_POINTS = 90  # points on a share card's front-page curve (a story's snapshots are hourly)
+
+
+def told_on_card(told: list[dict]) -> str | None:
+    """The motif a story's share card says it's told as: its most-told one, if more than one teller told it (a
+    single telling can be a wrong tie)"""
+    return told[0]['name'] if told and told[0].get('tellers', 0) >= 2 else None
+
+
+def share(st: dict, outlets: list, lean_counts: dict, stuck: list, told: list[dict] | None = None) -> dict:
     """What a shared link to a story page shows: its headline, its numbers in a line, and its card"""
     from app.site import share_images
     numbers = [f"{k['big']} {k['small']}" for k in stuck if k['emoji'] in ('📰', '⏱️', '📺', '🧶', '🔎')]
     lean = f"{lean_counts['left']} left, {lean_counts['center']} center, {lean_counts['right']} right"
     hours = next((str(k['big']) for k in stuck if k['emoji'] == '⏱️'), '')
+    curve = [s['outlets'] for s in st.get('snapshots') or []]
+    if len(curve) > SPARK_POINTS:
+        curve = [curve[round(i * (len(curve) - 1) / (SPARK_POINTS - 1))] for i in range(SPARK_POINTS)]
     try:
-        image = share_images.story_card(st['label'] or 'A story', len(outlets), lean_counts, hours)
+        image = share_images.story_card(st['label'] or 'A story', len(outlets), lean_counts, hours, curve,
+                                        told_on_card(told or []))
     except Exception as e:  # noqa: BLE001 - the page stands without its card; the site's is shown instead
         logger.warning("Story %s: share card: %s", st['id'], e)
         image = None
@@ -436,10 +449,11 @@ class StoryPages:
             told = folk.get(st['id'], [])
             stuck = stickers(st, outlets, lean_counts, tv.get(st['id']), radio.get(st['id'], []), told,
                              ex.get('factchecks') or [], st['snapshots'])
+            told_now = told_as(web, st, tv.get(st['id']))
             self.template.write({
                 'title': st['label'] or 'A story', 'story': st, 'outlets': outlets,
-                'lean_counts': lean_counts, 'stickers': stuck, **share(st, outlets, lean_counts, stuck),
-                **told_as(web, st, tv.get(st['id'])),
+                'lean_counts': lean_counts, 'stickers': stuck, **told_now,
+                **share(st, outlets, lean_counts, stuck, told_now['told_as']),
                 'since': eastern(st['first']), 'until': eastern(st['last']), 'spark': sparkline(st['snapshots']),
                 'by_lean': story_charts.by_lean(st, outlets),
                 'timeline': story_charts.timeline(st, outlets, (tv.get(st['id']) or {}).get('spots', []),

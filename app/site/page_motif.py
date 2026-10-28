@@ -155,8 +155,9 @@ class MotifPages:
                     if c.get('source') == 'shows' else []
                 claims.append({**c, 'shows': [{**t, 'ink': LEAN_INK.get(t['lean'], '#b8b8c8')} for t in shows]})
             counts = lean_counts(up)
+            phrases = [ph for ph, _ in motif_index.carrying(index['entries'][e['id']])][:PHRASES]
             try:
-                image = share_images.motif_card(e['name'], e['note'], e['genre'], counts)
+                image = share_images.motif_card(e['name'], e['note'], e['genre'], counts, phrases[0] if phrases else None)
             except Exception as err:  # noqa: BLE001 - the page stands without its card
                 logger.warning("Motif %s: share card: %s", e['id'], err)
                 image = None
@@ -169,7 +170,7 @@ class MotifPages:
                 'genre_emoji': GENRE_EMOJI, 'genre_gloss': GENRE_GLOSS.get(e['genre'], ''), 'inks': LEAN_INK,
                 'news': [labels[sid] for sid in web['motif_stories'].get(e['id'], []) if sid in labels and sid in pages][:NEWS],
                 'lag': web['lag'].get(e['id'], []),
-                'phrases': [p for p, _ in motif_index.carrying(index['entries'][e['id']])][:PHRASES],
+                'phrases': phrases,
                 'show_pages': show_pages,
             }, os.path.join(Config.build, motif_href(e['id'])))
         # A motif merged into another: its old address goes to the one kept

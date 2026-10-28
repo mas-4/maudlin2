@@ -112,3 +112,62 @@ def test_an_edits_note_drops_the_models_labels():
 def test_court_is_too_common_a_word_to_name_a_party():
     from app.analysis import scotus
     assert {'court', 'courts', 'supreme'} <= scotus.GENERIC
+
+
+def test_a_saga_gets_a_card_of_its_own_with_its_parts_as_a_river(tmp_path, monkeypatch):
+    """Oct 27: a saga link showed the site's card, "generic and lame"; each saga now draws its own"""
+    from datetime import datetime, timedelta
+    from app.site import page_saga
+    monkeypatch.setattr(Config, 'data', str(tmp_path / 'data'))
+    monkeypatch.setattr(Config, 'build', str(tmp_path / 'build'))
+    t0 = datetime(2026, 10, 20, 12)
+    parts = [{'story': 1, 'label': 'Rally in Michigan', 'first': t0, 'last': t0 + timedelta(hours=10),
+              'snapshots': [{'at': t0 + timedelta(hours=h), 'outlets': 5 + h} for h in range(11)]},
+             {'story': 2, 'label': 'Rally in Texas', 'first': t0 + timedelta(days=2), 'last': t0 + timedelta(days=3),
+              'snapshots': [{'at': t0 + timedelta(days=2, hours=h), 'outlets': 9} for h in range(25)]}]
+    layers = page_saga.river_layers(parts, steps=31)
+    assert len(layers) == 2 and all(len(row) == 31 for row in layers)
+    assert layers[0][0] == 5 and layers[0][-1] == 0  # the first part early on, gone by the end
+    assert layers[1][0] == 0 and layers[1][-1] == 9  # the second part only at the end
+    saga = {'id': 92, 'name': 'Trump Michigan rally events', 'first': t0, 'last': t0 + timedelta(days=3),
+            'outlets': 35, 'left': 14, 'center': 8, 'right': 12}
+    rows = [{'story': 1, 'name': 'Rigged election'}, {'story': 2, 'name': 'Rigged election'},
+            {'story': 9, 'name': 'Elsewhere'}]
+    out = page_saga.share(saga, parts, rows, '#3a86ff')
+    assert out['og_image'].startswith('share/saga-')
+    assert Image.open(tmp_path / 'build' / out['og_image']).size == (share_images.W, share_images.H)
+    assert out['og_title'] == 'Trump Michigan rally events · a saga on bignews.day'
+    assert '“Rally in Michigan” to “Rally in Texas”' in out['og_description'] and '14 left' in out['og_description']
+
+
+def test_a_story_card_says_how_its_told_only_when_more_than_one_teller_told_it():
+    from app.site import page_story
+    assert page_story.told_on_card([{'name': 'Lawfare', 'tellers': 3}]) == 'Lawfare'
+    assert page_story.told_on_card([{'name': 'Lawfare', 'tellers': 1}]) is None  # one telling can be a wrong tie
+    assert page_story.told_on_card([]) is None
+
+
+def test_the_front_page_card_and_a_story_card_with_its_curve_are_drawn(tmp_path, monkeypatch):
+    monkeypatch.setattr(Config, 'data', str(tmp_path / 'data'))
+    monkeypatch.setattr(Config, 'build', str(tmp_path / 'build'))
+    front = share_images.front_card([{'label': 'Rallies in Arizona and Montana', 'outlets': 41,
+                                      'leans': {'left': 19, 'center': 7, 'right': 15}}] * 3, 'Tuesday, Oct 27, 9 PM ET')
+    story = share_images.story_card('A story', 12, {'left': 5, 'center': 2, 'right': 5}, '3 hours',
+                                    [1, 4, 9, 12, 8, 3], 'Lawfare')
+    for path in (front, story):
+        assert Image.open(tmp_path / 'build' / path).size == (share_images.W, share_images.H)
+
+
+def test_cards_no_build_has_used_for_days_are_pruned(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(Config, 'data', str(tmp_path / 'data'))
+    monkeypatch.setattr(Config, 'build', str(tmp_path / 'build'))
+    used = share_images.motif_card('Lawfare', 'A note.', 'Plots', {'left': 1})
+    os.makedirs(share_images.cache_dir(), exist_ok=True)
+    old = os.path.join(share_images.cache_dir(), 'story-old.png')
+    open(old, 'wb').close()
+    week_ago = time.time() - 7 * 86400
+    os.utime(old, (week_ago, week_ago))
+    share_images.prune()
+    assert not os.path.exists(old)
+    assert os.path.exists(os.path.join(share_images.cache_dir(), os.path.basename(used)))

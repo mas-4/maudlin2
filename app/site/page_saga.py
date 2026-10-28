@@ -2,7 +2,9 @@
 story page follows one story: when each part broke and how long it stayed on the front pages, coverage over time by
 part, its minutes on TV and its radio newscasts across every part, what people retold, and a link to each part's own
 page. The saga tracker and the front page's saga cards link here."""
+import bisect
 import os
+from collections import Counter
 
 from app.analysis import sagas
 from app.models import Session, StorySnapshot
@@ -32,6 +34,51 @@ def snapshots(story_ids: list[int]) -> dict[int, list[dict]]:
 
 
 DRIFT_DAYS, DRIFT_MOTIFS = 14, 5  # the latest days shown, and the most-told motifs each day
+RIVER_STEPS = 60  # time steps across a saga's river on its share card
+
+
+def river_layers(parts: list[dict], steps: int = RIVER_STEPS) -> list[list[float]]:
+    """How many outlets carried each part across the saga's time, at `steps` even steps: a list per part, in the parts'
+    order (its share card's river). Between hourly snapshots the latest one holds; a part shows from a step before
+    its first sighting to a step after its last, so a short part isn't lost between two steps"""
+    t0, t1 = min(p['first'] for p in parts), max(p['last'] for p in parts)
+    if t1 <= t0:
+        return []
+    step = (t1 - t0) / (steps - 1)
+    out = []
+    for p in parts:
+        snaps = p.get('snapshots') or []
+        times = [x['at'] for x in snaps]
+        row = []
+        for k in range(steps):
+            t = t0 + step * k
+            i = max(0, bisect.bisect_right(times, t) - 1)
+            row.append(float(snaps[i]['outlets']) if snaps and p['first'] - step <= t <= p['last'] + step else 0.0)
+        out.append(row)
+    return out
+
+
+def share(saga: dict, parts: list[dict], rows: list[dict], color: str) -> dict:
+    """What a shared link to a saga page shows: its name, its parts in a line, and its own card (Oct 27: a saga link
+    showed the site's card, "generic and lame")"""
+    from app.site import share_images
+    stories = {p['story'] for p in parts}
+    told = Counter(r['name'] for r in rows if r['story'] in stories).most_common(1)
+    leans = {k: saga[k] for k in ('left', 'center', 'right')}
+    try:
+        image = share_images.saga_card(saga['name'], color, saga['first'], saga['last'], len(parts), saga['outlets'],
+                                       leans, river_layers(parts), told[0][0] if told and told[0][1] >= 2 else None)
+    except Exception as e:  # noqa: BLE001 - the page stands without its card; the site's is shown instead
+        logger.warning("Saga %s: share card: %s", saga['id'], e)
+        image = None
+    ordered = sorted(parts, key=lambda p: p['first'])
+    days = max(1, (share_images.eastern(saga['last']).date() - share_images.eastern(saga['first']).date()).days + 1)
+    return {'og_title': f"{saga['name']} · a saga on bignews.day",
+            'og_description': f"{len(parts)} parts over {days} day{'s' if days != 1 else ''}, from "
+                              f"“{ordered[0]['label']}” to “{ordered[-1]['label']}”. {saga['outlets']} outlets: "
+                              f"{leans['left']} left, {leans['center']} center, {leans['right']} right.",
+            'og_image': image,
+            'og_image_alt': f"{saga['name']}: {len(parts)} parts over {days} days, carried by {saga['outlets']} outlets"}
 
 
 def drift(rows: list[dict], stories: set[int]) -> list[dict]:
@@ -98,10 +145,11 @@ class SagaPages:
                                  'color': '#e8463c'})
             if people:
                 stickers.append({'emoji': '🧶', 'big': people, 'small': 'people retold it online', 'color': '#8a5cff'})
+            color = SAGA_COLORS[saga['id'] % len(SAGA_COLORS)]
             self.template.write({
                 'drift': drift(rows, {p['story'] for p in parts}),
-                'title': saga['name'], 'saga': saga, 'parts': parts, 'stickers': stickers,
-                'color': SAGA_COLORS[saga['id'] % len(SAGA_COLORS)],
+                'title': saga['name'], 'saga': saga, 'parts': parts, 'stickers': stickers, 'color': color,
+                **share(saga, parts, rows, color),
                 'since': eastern(saga['first']), 'until': eastern(saga['last']),
                 'lanes': story_charts.saga_lanes(parts, spots, newscasts, retold, page_tv.CHANNEL_INK),
                 'coverage': story_charts.saga_coverage(parts),

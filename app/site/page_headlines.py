@@ -343,7 +343,7 @@ class HeadlinesPage:
         except Exception as e:  # noqa: BLE001 - the front page stands without its strip
             logger.warning("Front page: stories being told: %s", e)
             self.context['told_now'], self.context['told_as_of'], self.context['motif_cloud'] = [], {}, []
-        self.template.write({**self.context, 'page_part': 'front'})
+        self.template.write({**self.context, 'page_part': 'front', **self.front_share()})
         self.stories_page.write({**self.context, 'page_part': 'stories', 'title': 'Every story',
                                  'page_title': f'{Config.site_name} - Every story'})
         self.table_page.write({**self.context, 'page_part': 'table', 'title': 'Every Headline'})
@@ -580,6 +580,28 @@ class HeadlinesPage:
         self.top_stories()
 
     TOP_STORIES = 9
+
+    def front_share(self) -> dict:
+        """What a shared link to the front page shows: its own card, the top three stories right now, each with its
+        lean (Oct 27: the site's card was "generic and lame")"""
+        from app.site import share_images
+        stories = []
+        for item in self.context.get('top_stories', [])[:3]:
+            n = {band['key']: band['n'] for band in item['spread']}
+            outlets = item['outlets']
+            stories.append({'label': str(self.context['titles'][item['cluster']['cluster']]),
+                            'outlets': outlets if isinstance(outlets, int) else len(outlets),
+                            'leans': {'left': n.get('left', 0) + n.get('lean-left', 0), 'center': n.get('center', 0),
+                                      'right': n.get('lean-right', 0) + n.get('right', 0)}})
+        if not stories:
+            return {}
+        when = dt.now(pytz.timezone('US/Eastern')).strftime('%A, %b %-d, %-I %p ET')
+        try:
+            return {'og_image': share_images.front_card(stories, when),
+                    'og_image_alt': 'The top stories on bignews.day right now: ' + '; '.join(s['label'] for s in stories)}
+        except Exception as e:  # noqa: BLE001 - the page keeps the site's card
+            logger.warning("Front page: share card: %s", e)
+            return {}
 
     # The lean bands of the top stories' bar, left to right as the scale runs (an outlet's lean is -2 to 2)
     LEAN_BANDS = [('left', -2, 'left'), ('lean-left', -1, 'leans left'), ('center', 0, 'center'),
