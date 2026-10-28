@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup as Soup
 
-from app.scraper import Scraper
+from app.scraper import Scraper, without
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -15,6 +15,8 @@ class ScrippsNews(Scraper):
             href = a['href']
             if href.startswith('/'):
                 href = self.url + href
+            # The card's section label and author ride inside the link ("Sports  Could the Final Four…  Justin Boggs")
+            a = without(a, '.promo__category, .promo__author')
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

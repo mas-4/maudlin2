@@ -7,8 +7,12 @@ from bs4 import BeautifulSoup as Soup
 from app.analysis.preprocessing import extract_text, preprocess, strip_story_attributions
 from app.scraper import FeedScraper, GoogleNewsScraper, Scraper
 from app.scrapers.ap import AP
+from app.scrapers.gatewaypundit import GatewayPundit
 from app.scrapers.guardian import Guardian
 from app.scrapers.npr import NPR
+from app.scrapers.redstate import RedState
+from app.scrapers.scrippsnews import ScrippsNews
+from app.scrapers.townhall import Townhall
 from app.scrapers.vox import Vox
 from app.utils.constants import Constants
 
@@ -212,3 +216,42 @@ def test_preprocess(text, expected):
 
 def test_strip_story_attributions_keeps_longer_text():
     assert strip_story_attributions('A long caption about Getty Images') == 'A long caption about Getty Images'
+
+
+# Bylines, section labels and view counts inside the headline's link are taken out (Oct 28)
+
+TOWNHALL_CARD = """<html><body><a class="th-ts-item" href="/news/amy-curtis/2026/10/27/gallup-poll-n2685361">
+<div><img alt="VIP" class="thm-vip-badge" src="x.svg"/></div>
+<div class="th-ts-body"><div class="th-ts-eye">Polling</div>
+<div class="th-ts-hed">This Gallup Poll Shows Another Stark Difference</div><div class="th-ts-by">Amy Curtis</div></div>
+</a><a class="th-brk-item" href="/smoosieq/2026/10/27/scotus-n2208687"><div class="th-brk-body">
+<div class="th-brk-hed">SCOTUS Won't Revive Biden-Era Rule</div><div class="th-brk-by">Susie Moore</div></div></a>
+</body></html>"""
+
+
+@pytest.mark.parametrize('cls', [Townhall, RedState])
+def test_townhall_cards_lose_byline_and_section(cls):
+    scraper = bare(cls)
+    scraper.setup(Soup(TOWNHALL_CARD, 'lxml'))
+    assert [' '.join(extract_text(tag).split()) for _, tag in scraper.downstream] == [
+        'This Gallup Poll Shows Another Stark Difference', "SCOTUS Won't Revive Biden-Era Rule"]
+
+
+def test_gateway_pundit_trending_loses_view_count():
+    page = """<html><body><a class="pa-trending__link" href="https://www.thegatewaypundit.com/2026/10/translation/">
+    <span class="pa-trending__headline"><span class="pa-trending__views" data-pa-f="views">86.3K views</span>
+    <span data-pa-f="title">Translation Reveals a Message</span></span></a></body></html>"""
+    scraper = bare(GatewayPundit)
+    scraper.setup(Soup(page, 'lxml'))
+    [(_, tag)] = scraper.downstream
+    assert ' '.join(extract_text(tag).split()) == 'Translation Reveals a Message'
+
+
+def test_scripps_promo_loses_category_and_author():
+    page = """<html><body><a class="promo__link" href="https://www.scrippsnews.com/sports/final-four">
+    <h6 class="promo__category">Sports</h6><h3 class="promo__title"> Could the Final Four be coming? </h3>
+    <div class="promo__author"> Justin Boggs </div></a></body></html>"""
+    scraper = bare(ScrippsNews)
+    scraper.setup(Soup(page, 'lxml'))
+    [(_, tag)] = scraper.downstream
+    assert ' '.join(extract_text(tag).split()) == 'Could the Final Four be coming?'

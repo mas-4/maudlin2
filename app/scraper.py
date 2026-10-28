@@ -27,6 +27,16 @@ logger = get_logger(__name__)
 LIST_NUMBER = r'^\s*\d{1,2}\s*[,.)]\s+'  # a list rank before a headline; "1.5 million" has no space, so it stays
 VIEW_COUNT = r'^\s*[\d.,]+[kKmM]?\s+views\s*:\s*'  # "114.7k views : " counters some sites put before a headline
 
+
+
+def without(tag: Tag, selector: str) -> Tag:
+    """The link with the parts `selector` matches taken out: the byline, section label or view count some front pages
+    put inside the headline's link ("…but There's a Catch Susie Moore", "86.3K views Translation Reveals…")"""
+    for part in tag.select(selector):
+        part.decompose()
+    return tag
+
+
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score', 'event_score',
                                            'loaded_score', 'emotion', 'emotion_ranks', 'scored_by', 'scored_at',
                                            'affected'])
