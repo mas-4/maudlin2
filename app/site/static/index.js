@@ -335,3 +335,60 @@ document.addEventListener('DOMContentLoaded', () => {
     addEventListener('resize', place);
     document.addEventListener('touchstart', (ev) => { if (current && !current.contains(ev.target)) hide(); }, {passive: true});
 });
+
+// Charts open full screen (Oct 28, the person, of a saga's charts on a phone: "these deserve to be fullscreenable").
+// A button on each story and saga chart opens it in an overlay over the whole window; on a phone held upright the chart
+// is turned on its side to use the long edge. The phone's back button, Escape, the ✕ or a tap outside close it. Phones'
+// browsers mostly can't put a page element in true full screen (iPhones only video), so it's an overlay everywhere,
+// asked to go full screen where the browser allows.
+document.addEventListener('DOMContentLoaded', () => {
+    let open = null;
+    function close(fromHistory) {
+        if (!open) return;
+        open.remove();
+        open = null;
+        document.documentElement.classList.remove('chart-full-on');
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        if (!fromHistory && history.state && history.state.chartFull) history.back();
+    }
+    function show(svg, label) {
+        const overlay = document.createElement('div');
+        overlay.className = 'chart-full';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', label || 'Chart, full screen');
+        const shut = document.createElement('button');
+        shut.type = 'button';
+        shut.className = 'chart-full-close';
+        shut.setAttribute('aria-label', 'Close');
+        shut.textContent = '✕';
+        const stage = document.createElement('div');
+        stage.className = 'chart-full-stage';
+        const copy = svg.cloneNode(true);
+        copy.removeAttribute('width');
+        copy.removeAttribute('height');
+        copy.classList.add('chart-full-svg');
+        stage.appendChild(copy);
+        overlay.append(stage, shut);
+        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(false); });
+        shut.addEventListener('click', () => close(false));
+        document.body.appendChild(overlay);
+        document.documentElement.classList.add('chart-full-on');
+        open = overlay;
+        history.pushState({chartFull: true}, '');
+        if (overlay.requestFullscreen) overlay.requestFullscreen().catch(() => {});
+        shut.focus();
+    }
+    window.addEventListener('popstate', () => close(true));
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') close(false); });
+    document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && open) close(false); });
+    document.querySelectorAll('svg.story-chart').forEach((svg) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chart-full-open';
+        button.textContent = '⛶ full screen';
+        const caption = svg.closest('figure')?.querySelector('figcaption')?.textContent.trim();
+        button.addEventListener('click', () => show(svg, caption));
+        svg.parentNode.insertBefore(button, svg);
+    });
+});
