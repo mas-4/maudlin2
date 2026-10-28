@@ -1,0 +1,86 @@
+{% extends "page.html" %}
+
+{% macro chips(list) %}{% for s in list %}<a class="show-chip tv-chip" href="{{ s.url|e }}" style="--chip: {{ s.ink|e }}" title="{{ s.title|e }}">🎙️ {{ s.name|e }}</a> {% endfor %}{% endmacro %}
+
+{% block content %}
+    <h2>🔁 The Replay</h2>
+    <p class="table-intro">The passages heard word for word on many shows this week: a clip of a speech or an
+        interview, a campaign ad, a statement read out, a sponsor read. We find them in our own machine transcripts of
+        the shows' episodes: the same {{ k }} words in the same order on {{ min_shows }} or more different shows.
+        {% if until %}This week: {{ since }} to {{ until }} ET.{% endif %}</p>
+    <ul class="story-stickers replay-stickers">
+        <li style="--sticker: #00c2a8"><span class="sticker-emoji" aria-hidden="true">🔁</span><b>{{ clips }}</b><span>clips on {{ min_shows }}+ shows</span></li>
+        <li style="--sticker: #ff4fa3"><span class="sticker-emoji" aria-hidden="true">🎙️</span><b>{{ top }}</b><span>shows played the top one</span></li>
+        <li style="--sticker: #ffc400"><span class="sticker-emoji" aria-hidden="true">📣</span><b>{{ ads }}</b><span>sponsor reads and promos</span></li>
+        <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">📝</span><b>{{ transcripts }}</b><span>transcripts read, two weeks</span></li>
+    </ul>
+
+    <h2 class="section-divider"><span>🎬 Most replayed</span></h2>
+    {% if cards %}
+        <ol class="replay-cards">
+            {% for c in cards %}
+                <li class="replay-card" id="r-{{ c.id|e }}">
+                    <p class="replay-count"><b>{{ c.shows }} shows</b> · {{ c.airings|length }} airing{{ '' if c.airings|length == 1 else 's' }}{% for name, emoji, n in c.sides %} · {{ emoji }} {{ n }} {{ name }}{% endfor %}</p>
+                    {% if c.kind == 'campaign' %}<p class="replay-tag">🗳️ A political ad, in its own words: {{ c.why|e }}</p>{% endif %}
+                    <blockquote class="replay-quote">“{{ c.quote|e }}”</blockquote>
+                    <p class="replay-first">🥇 First heard: <a href="{{ c.first.url|e }}">{{ c.first.show|e }}</a>, {{ c.first.when }} ET{% if c.first.clock %} (at {{ c.first.clock }} in){% endif %}</p>
+                    <figure class="story-chart-figure replay-figure">
+                        {{ c.strip }}
+                        <figcaption>Each dot is an episode that played it, at the time its feed published it (ET), in a lane for the show's lean.</figcaption>
+                    </figure>
+                    <p class="replay-chips">{{ chips(c.chips) }}</p>
+                    <details class="replay-airings">
+                        <summary>⏱️ Every airing, with the time in the episode</summary>
+                        <ol>
+                            {% for a in c.airings %}<li><span class="court-when">{{ a.when }} ET</span> <b>{{ a.show|e }}</b>: <a href="{{ a.url|e }}">{{ a.title|e }}</a>{% if a.clock %} <span class="replay-at">at {{ a.clock }}</span>{% endif %}</li>{% endfor %}
+                        </ol>
+                    </details>
+                </li>
+            {% endfor %}
+        </ol>
+        {% if more %}
+            <details class="replay-more">
+                <summary>🔁 {{ more|length }} more clips heard on {{ min_shows }} or more shows{% if unlisted %}, and {{ unlisted }} more not listed here{% endif %}</summary>
+                <ul>
+                    {% for m in more %}<li>“{{ m.quote|e }}” <span class="court-when">{{ m.shows }} shows · {{ m.airings }} airings · {{ m.span }} ET</span><br>{{ chips(m.chips) }}</li>{% endfor %}
+                </ul>
+            </details>
+        {% endif %}
+    {% else %}
+        <p class="stage-empty">🦗 No clip heard on {{ min_shows }} or more shows this week, as far as our transcripts can tell.</p>
+    {% endif %}
+
+    <h2 class="section-divider replay-sponsor-banner"><span>📣 Sponsor reads and promos</span></h2>
+    <p class="table-intro">The same ads and show promos, read on many shows, grouped by the lean of the shows that
+        carried them. We say only where they ran: an ad on a show says nothing about the show's views, or the
+        sponsor's.</p>
+    {% if sponsors %}
+        {% for g in sponsors %}
+            <h3 class="replay-side">{{ g.emoji }} {{ g.label }} <span class="court-when">{{ g.reads|length }} read{{ '' if g.reads|length == 1 else 's' }}</span></h3>
+            <ul class="replay-reads">
+                {% for r in g.reads %}<li><q>{{ r.quote|e }}</q> <span class="court-when">{{ r.shows }} shows · {{ r.airings }} airings · {{ r.span }} ET · an ad by {{ r.why|e }}</span><br>{{ chips(r.chips) }}</li>{% endfor %}
+            </ul>
+        {% endfor %}
+    {% else %}
+        <p class="stage-empty">🤷 No sponsor read heard on {{ min_shows }} or more shows this week.</p>
+    {% endif %}
+
+    <section class="replay-caveats">
+        <h3>📝 Read with care</h3>
+        <ul>
+            <li><b>The transcripts are machine-made</b> (Whisper, on our own computer, or the show's own). A word can be
+                wrong, and the quotes above are our transcript's words, matched in lowercase without punctuation and
+                capitalized again for reading.</li>
+            <li><b>Playing a clip isn't agreeing with it.</b> A show may play it to report it, to argue with it or to
+                mock it; the episode tells which.</li>
+            <li><b>Times are the feeds' publish times</b>, not when a show went out live. The time in the episode is
+                where our transcript has it; ads put in by the podcast host can move between downloads.</li>
+            <li><b>It can miss things.</b> A clip cut short or heard differently on a show won't match there, and we
+                only read the shows we follow (the full list is on <a href="beyond.html">Shows and newsletters</a>),
+                as many of their episodes as our computer gets through.</li>
+            <li>Sorting is by rules that can be read off the words: a sponsor read says things like “promo code”,
+                “terms apply” or a web address; a political ad says “paid for by”.{% if glitches %} We left out
+                {{ glitches }} transcription glitches (the transcriber repeating a phrase, “you know you know…”).{% endif %}</li>
+        </ul>
+    </section>
+{% endblock %}

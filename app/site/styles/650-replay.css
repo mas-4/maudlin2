@@ -1,0 +1,199 @@
+/* The Replay (replayed.html): clips heard word for word on many shows, with their airings by the shows' lean */
+
+.replay-stickers {
+    justify-content: center;
+    margin: 0.4em auto 1.2em;
+    max-width: 48em;
+}
+
+.replay-cards {
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    max-width: 52em;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6em;
+}
+
+.replay-card {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #00c2a8;
+    padding: 0.8em 1.1em 0.9em;
+    min-width: 0;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.replay-card:nth-child(4n+2) {
+    box-shadow: 6px 6px 0 #ff4fa3;
+}
+
+.replay-card:nth-child(4n+3) {
+    box-shadow: 6px 6px 0 #ffc400;
+}
+
+.replay-card:nth-child(4n) {
+    box-shadow: 6px 6px 0 #8a5cff;
+}
+
+.replay-card:hover {
+    transform: translate(-2px, -2px);
+}
+
+.replay-count {
+    display: inline-block;
+    margin: 0 0 0.5em;
+    padding: 0.15em 0.7em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    background: color-mix(in srgb, #00c2a8 20%, white);
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    transform: rotate(-1.2deg);
+}
+
+.replay-count b {
+    font: 1.05em 'Bungee', 'Comic Neue', sans-serif;
+    font-weight: normal;
+}
+
+.replay-tag {
+    margin: 0.2em 0;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.replay-quote {
+    margin: 0.4em 0 0.6em;
+    padding: 0.3em 0 0.3em 0.9em;
+    border-left: 5px solid #1f1f2e;
+    font-size: 1.08em;
+    line-height: 1.45;
+    color: #1f1f2e;
+    overflow-wrap: anywhere;
+}
+
+.replay-first {
+    margin: 0.2em 0;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.replay-figure {
+    margin: 0.5em 0 0.6em;
+}
+
+.replay-strip {
+    box-shadow: none;
+    border-width: 2px;
+}
+
+.replay-chips {
+    margin: 0.3em 0;
+    line-height: 1.9;
+}
+
+.replay-airings {
+    margin-top: 0.4em;
+    font-size: 0.9em;
+}
+
+.replay-airings summary, .replay-more summary {
+    cursor: pointer;
+    font: 700 1em 'Comic Neue', 'Comic Sans MS', cursive;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.replay-airings ol {
+    padding-left: 1.4em;
+    margin: 0.3em 0;
+}
+
+.replay-airings li, .replay-reads li, .replay-more li {
+    margin: 0.35em 0;
+    overflow-wrap: anywhere;
+}
+
+.replay-at {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+}
+
+.replay-more {
+    font-size: 0.9em;
+    max-width: 52em;
+    margin: 1.4em auto 0;
+    background: rgba(255, 255, 255, 0.94);
+    border: 2.5px dashed #1f1f2e;
+    border-radius: 14px;
+    padding: 0.3em 1em;
+}
+
+.replay-more ul {
+    list-style: none;
+    padding: 0;
+}
+
+.replay-side {
+    max-width: 52em;
+    margin: 1.2em auto 0.3em;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.replay-reads {
+    list-style: none;
+    max-width: 52em;
+    margin: 0 auto;
+    background: color-mix(in srgb, #ffc400 12%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #ffc400;
+    padding: 0.4em 1em;
+}
+
+.replay-reads li + li {
+    border-top: 1px dashed #b8b8c8;
+    padding-top: 0.4em;
+}
+
+.replay-caveats {
+    max-width: 52em;
+    margin: 2em auto 1em;
+    background: rgba(255, 255, 255, 0.94);
+    border: 2.5px dashed #b8b8c8;
+    border-radius: 14px;
+    padding: 0.4em 1.1em;
+    font-size: 0.92em;
+}
+
+.replay-caveats h3 {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.4em 0;
+}
+
+.replay-caveats li {
+    margin: 0.35em 0;
+}
+
+@media (max-width: 600px) {
+    .replay-card {
+        padding: 0.6em 0.7em 0.7em;
+    }
+
+    .replay-quote {
+        font-size: 1em;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .replay-card, .replay-card:hover {
+        transition: none;
+        transform: none;
+    }
+
+    .replay-count {
+        transform: none;
+    }
+}
