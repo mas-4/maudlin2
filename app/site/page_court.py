@@ -20,6 +20,93 @@ SHOWN = 6  # headlines shown on a card before "more"
 TOPIC_CARDS = 9
 MIN_CARD_OUTLETS = 2  # a case gets a card from two outlets; one is in the term's list with its count
 
+# The docket strips (Oct 28 redo: "Cases in the news" was 30-odd cards, each with three sliders, a chip wall and
+# tags like "ruling 6 · term preview 1 · other 1", unexplained). A case's row is colored by where it stands on the
+# docket, from its dates (the Granted & Noted list has no decisions: those would be a fourth stage, "decided")
+CASE_STAGES = {
+    'case taken': {'emoji': '📥', 'ink': '#ffc400', 'about': 'taken, no argument date yet'},
+    'to be argued': {'emoji': '🗓️', 'ink': '#00c2a8', 'about': 'its argument date is set'},
+    'argued': {'emoji': '🎤', 'ink': '#8a5cff', 'about': 'argued, the ruling to come'},
+}
+# The other Court news, colored by what its headlines mostly report (the model's stage for each headline, in groups)
+NEWS_KINDS = {
+    'orders': {'name': 'rulings and orders', 'emoji': '🔨', 'ink': '#ff6b1a', 'stages': ('ruling', 'emergency order')},
+    'justices': {'name': 'the justices', 'emoji': '🧑‍⚖️', 'ink': '#ff4fa3',
+                 'stages': ('the justices', 'nomination or retirement')},
+    'cases': {'name': 'cases and the term', 'emoji': '📜', 'ink': '#7a8a00',
+              'stages': ('case taken', 'argument', 'term preview')},
+    'other': {'name': 'other Court news', 'emoji': '⚖️', 'ink': '#ffffff', 'stages': ('other',)},
+}
+# What each headline stage means, for the cards (the old tags, said in words)
+STAGE_WORDS = {'case taken': 'the Court taking the case', 'argument': 'the argument', 'ruling': 'a ruling',
+               'emergency order': 'an emergency order', 'the justices': 'the justices themselves',
+               'nomination or retirement': 'a nomination or retirement', 'term preview': 'a preview of the term',
+               'other': 'something else'}
+
+
+def case_stage(argued_on, today) -> str:
+    """Where a case stands on the docket: taken, to be argued (a date set) or argued"""
+    if argued_on is None:
+        return 'case taken'
+    return 'argued' if argued_on <= today else 'to be argued'
+
+
+def news_kind(stages) -> str:
+    """What a group of headlines mostly reports, by the model's stage for each: a NEWS_KINDS key (the first kind on a
+    tie)"""
+    count = Counter(next((k for k, v in NEWS_KINDS.items() if s in v['stages']), 'other') for s in stages)
+    return max(NEWS_KINDS, key=lambda k: (count[k], -list(NEWS_KINDS).index(k))) if count else 'other'
+
+
+def reported(stage_counts) -> str:
+    """The headline stage tags in words: 'a ruling 6 · a preview of the term 1'"""
+    return ' · '.join(f"{scotus.STAGE_EMOJI.get(s, '⚖️')} {STAGE_WORDS.get(s, s)} {n}" for s, n in stage_counts)
+
+
+def lean_split(counts) -> float | None:
+    """The share of a group's left- and right-leaning outlets that lean left, for the strip's two-tone bar"""
+    left, right = counts.get('left', 0), counts.get('right', 0)
+    return left / (left + right) if left + right else None
+
+
+def sides_text(counts) -> str:
+    parts = [f"{counts.get(s, 0)} {w}" for s, w in (('left', 'left-leaning'), ('center', 'center'),
+                                                     ('right', 'right-leaning')) if counts.get(s)]
+    if counts.get('unrated'):
+        parts.append(f"{counts['unrated']} not rated")
+    return ', '.join(parts) or 'no rated outlets'
+
+
+def strip_rows(items: list[dict], axis) -> list[dict]:
+    """Cases or stories as a ranked strip: the bar is how many outlets ran a headline on it, in two tones by lean
+    (center and unrated outlets out of the split); the disc is the row's colored axis, axis(item) -> (ink, emoji,
+    label). A row links to its block below (item['anchor']) or, without one, keeps its card open on a click"""
+    from app.site import boards
+    top = max((i['outlets'] for i in items), default=1)
+    rows = []
+    for i in items:
+        ink, mark, label = axis(i)
+        rows.append(boards.row(i['title'], f"#{i['anchor']}" if i.get('anchor') else None, i['outlets'], top,
+                               f"{i['outlets']} outlet{'s' if i['outlets'] != 1 else ''}", ink=ink, mark=mark,
+                               mark_label=label, split=lean_split(i['counts'])))
+    return rows
+
+
+def stage_axis(i):
+    s = CASE_STAGES[i['case_stage']]
+    return s['ink'], s['emoji'], i['case_stage']
+
+
+def kind_axis(i):
+    k = NEWS_KINDS[i['kind']]
+    return k['ink'], k['emoji'], k['name']
+
+
+def key_of(table: dict, shown: set) -> list[dict]:
+    """A strip's color key, in the table's fixed order, of the colors it shows"""
+    return [{'name': v.get('name', k), 'mark': v['emoji'], 'ink': v['ink'], 'about': v.get('about', '')}
+            for k, v in table.items() if k in shown]
+
 
 def court_date(text):
     """'10/5/26' -> a date, for sorting and 'Oct 5'."""
@@ -124,6 +211,29 @@ class CourtPage:
             by_topic.setdefault(h['topics'][0] if h['topics'] else 'the Court', []).append(h)
         topics = [{'topic': t, 'rows': rows(hs), 'outlets': len(one_per_outlet(hs)), **analysis(hs, baseline)}
                   for t, hs in sorted(by_topic.items(), key=lambda kv: -len(one_per_outlet(kv[1])))[:TOPIC_CARDS]]
+        # The strips: each case, story and topic's title, its block's anchor, its colored axis and its stage tags in words
+        for c in cards:
+            c.update(title=c['gloss'] or c['name'], anchor=f"case-{c['docket']}",
+                     case_stage=case_stage(c['argued_on'], today), reported=reported(c['stage_list']))
+        for n, t in enumerate(stories):
+            t.update(title=t['name'] or t['lead']['title'], anchor=f'court-story-{n}',
+                     kind=news_kind([s for s, k in t['stage_list'] for _ in range(k)]), reported=reported(t['stage_list']))
+        for t in topics:
+            stage_list = Counter(r['stage'] for r in t['rows']).most_common()
+            t.update(title=t['topic'], kind=news_kind([r['stage'] for r in t['rows']]), reported=reported(stage_list))
+        for i in cards + stories + topics:
+            i['who'] = sides_text(i['counts'])
+        from app.site import boards
+        strips = {
+            'cases': boards.board('court-cases', '⚖️', 'Cases in the news', '#8a5cff', 'the bar is how many outlets ran '
+                                  'a headline on it, blue for the share of its left-leaning outlets and red for its '
+                                  'right-leaning ones (center outlets aside)', strip_rows(cards, stage_axis)),
+            'stories': boards.board('court-stories', '📰', 'Also at the Court', '#00c2a8', 'news not about one of '
+                                    "the term's cases, grouped into stories; the bar is outlets, split by lean",
+                                    strip_rows(stories, kind_axis)),
+            'singles': boards.board('court-singles', '🗞️', 'Single headlines, by topic', '#ffc400', 'Court news no '
+                                    'other outlet ran a headline like; the bar is outlets, split by lean',
+                                    strip_rows(topics, kind_axis))}
         term_cases = sorted(({**c, **dates(c)} for c in data['cases']),
                             key=lambda c: (c['argued_on'] is None, c['argued_on'] or dt.max.date(), c['name']))
         uncovered = [c for c in term_cases if not c['headlines']]
@@ -135,6 +245,9 @@ class CourtPage:
             'n_cases': len(data['cases']),
             'argued_soon': sorted(argued_soon, key=lambda c: c['argued_on']), 'shown': SHOWN,
             'stage_emoji': scotus.STAGE_EMOJI, 'wiki': scotus.WIKI_PAGE, 'min_card': MIN_CARD_OUTLETS,
+            'strips': strips, 'stage_key': key_of(CASE_STAGES, {c['case_stage'] for c in cards}),
+            'kind_key': key_of(NEWS_KINDS, {t['kind'] for t in stories + topics}), 'stage_words': STAGE_WORDS,
+            'case_stages': CASE_STAGES, 'news_kinds': NEWS_KINDS,
         })
         self.template.write(self.context)
         logger.info("...%d cases in the news, %d other Court stories, %d topic cards, %d cases uncovered", len(cards),

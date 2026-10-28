@@ -40,27 +40,77 @@
             The most told are named; point at or tap any dot for its card, and click to keep it open.</figcaption>
     </figure>
 
-    {% if divide_svg %}{% set k = divide.latest %}
+    {% if divide_plot %}{% set p = divide_plot %}
         <section class="divide-section" aria-labelledby="divide">
             <h2 class="section-divider stage-banner" id="divide" style="--stage: #8a5cff"><span>📏 The divide, week by week</span></h2>
-            <p class="stage-sub">how different the stories left and right shows tell are</p>
+            <p class="stage-sub">how far apart the two sides' stories are; 0 = no more than chance</p>
             <p class="table-intro">Each week (Tuesday to Monday) we compare the mix of motifs the hosts and guests of
-                left-leaning shows said with the mix on right-leaning shows, and take away how different the same shows
-                look when split into two sides at random. <b>0 means no more different than shows picked at random.</b>
-                Weeks only: a single day has too few tellings to tell apart from chance.</p>
-            <figure class="divide-figure">
-                {{ divide_svg }}
-                <figcaption>The divide each week (Jensen–Shannon divergence between the two sides' motifs, less its
-                    average over {{ divide_draws }} random splits of the same shows), dated by the week's Tuesday; grey: where 9 in
-                    10 random splits land. Hover a dot for its counts.{% if divide.weeks|selectattr('partial')|list %}
-                    Hollow dots: weeks before Oct 20, when our show transcripts kept only part of what was said (about a
-                    third as many claims an episode), so those weeks rest on less.{% endif %}</figcaption>
+                left-leaning shows said with the mix on right-leaning shows, and take away how far apart the same shows
+                look when split into two sides at random. <b>0 means no further apart than shows picked at random;</b>
+                the higher, the more each side tells its own stories. Weeks only: a single day has too few tellings to
+                tell apart from chance. <b>Tap a week</b> for its stories below.</p>
+            <figure class="divide-wide">
+                <div class="divide-plot" role="group" aria-label="The divide each week: pick a week">
+                    <div class="divide-ticks" aria-hidden="true">{% for t in p.ticks %}<span style="top: {{ t.y }}%">{{ t.value }}</span>{% endfor %}</div>
+                    <div class="divide-area">
+                        <svg class="divide-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                            {% for t in p.ticks %}<line class="divide-plot-grid" x1="0" x2="100" y1="{{ t.y }}" y2="{{ t.y }}"/>{% endfor %}
+                            <polygon class="divide-plot-band" points="{{ p.band }}"/>
+                            <line class="divide-plot-zero" x1="0" x2="100" y1="{{ p.zero }}" y2="{{ p.zero }}"/>
+                            {% if p.line %}<polyline class="divide-plot-line" points="{{ p.line }}"/>{% endif %}
+                        </svg>
+                        <span class="divide-zero-label" style="top: {{ p.zero }}%" aria-hidden="true">0: shows picked at random</span>
+                        {% for w in p.weeks %}<button type="button" class="divide-week{% if w.partial %} divide-week-partial{% endif %}" data-week="{{ w.week|e }}" aria-pressed="{{ 'true' if loop.last else 'false' }}" style="left: {{ w.x }}%; width: {{ w.width }}%; --y: {{ w.y }}%" data-tip-head="Week of {{ w.span|e }}" data-tip="{{ w.tip|e }}" aria-label="Week of {{ w.span|e }}: {{ '%.2f'|format(w.index) }}"><span class="divide-week-dot" aria-hidden="true"></span><span class="divide-week-value" aria-hidden="true">{{ '%.2f'|format(w.index) }}</span><span class="divide-week-label" aria-hidden="true">{{ w.label|e }}</span></button>{% endfor %}
+                    </div>
+                </div>
+                <figcaption>Each dot is a week, dated by its Tuesday; the line joins them. Grey: where 9 in 10 random
+                    splits of the same shows land, so a dot inside it is within chance. Point at a dot for its counts;
+                    tap one to see that week's stories.{% if p.weeks|selectattr('partial')|list %} Hollow dots: weeks
+                    before Oct 20, when our show transcripts kept only part of what was said (about a third as many
+                    claims an episode), so those weeks rest on less.{% endif %}</figcaption>
+                <details class="divide-tech">
+                    <summary>🧮 The measure, technically</summary>
+                    <p>The divide is the Jensen–Shannon divergence (in bits) between the left-leaning and right-leaning
+                        shows' motif mixes for the week, less its average over {{ divide_draws }} shuffles of the same
+                        whole shows between the two sides (as many left shows as there were). The grey band is those
+                        shuffles' 5th to 95th percentile, less their average. A motif is "mostly" one side's by its
+                        weighted log-odds (Monroe, Colaresi and Quinn), said by at least two of that side's shows; "both
+                        sides alike" means at least two shows on each side and no clear lean. The <a href="methods.html">methods log</a> has the rest.</p>
+                </details>
             </figure>
-            <p class="divide-latest">🗓️ {{ divide_span }}: <b>{{ '%.2f'|format(k.index) }}</b>, from {{ k.left }} tellings on
-                {{ k.left_shows }} left shows and {{ k.right }} on {{ k.right_shows }} right shows.</p>
-            {% for side, emoji, label in (('shared', '⚖️', 'said on both sides alike'), ('mostly_left', '🫏', 'mostly on the left'), ('mostly_right', '🐘', 'mostly on the right')) %}
-                {% if k[side] %}<p class="stage-notes">{{ emoji }} {{ label }}: {% for m in k[side] %}<a class="motif-chip small" href="{{ m.href }}" title="{{ m.left }} left and {{ m.right }} right tellings, on {{ m.left_shows }} left and {{ m.right_shows }} right shows">🧩 {{ m.name|e }} <span class="motif-seen">🫏{{ m.left }} · {{ m.right }}🐘</span></a> {% endfor %}</p>{% endif %}
+
+            <p class="stage-sub">each week's most one-sided stories and those both sides told alike; the bars: how often
+                each side's hosts and guests told it that week, 🫏 left to the left, right to the right 🐘</p>
+            {{ b.key(divide_key, 'Genre colors') }}
+            {% for w in divide_weeks %}{% set k = w.k %}
+                <div class="divide-panel" data-week="{{ w.week|e }}"{% if not loop.last %} hidden{% endif %}>
+                    <p class="divide-latest">🗓️ {{ w.span|e }}: <b>{{ '%.2f'|format(k.index) }}</b> apart, from {{ k.left }} tellings on
+                        {{ k.left_shows }} left shows and {{ k.right }} on {{ k.right_shows }} right shows{% if k.partial %} (partial transcripts){% endif %}.</p>
+                    <div class="divide-fly-head" aria-hidden="true"><span>🫏 told on the left</span><span></span><span>told on the right 🐘</span></div>
+                    {% for g in w.groups %}
+                        <h3 class="divide-fly-group divide-fly-{{ g.key|e }}">{{ g.emoji }} {{ g.label|e }}</h3>
+                        {% if g.rows %}<ol class="divide-fly">
+                            {% for m in g.rows %}<li><a class="divide-fly-row" href="{{ m.href|e }}" data-tip-head="{{ m.name|e }}" data-tip="{{ m.tip|e }}">
+                                <span class="divide-fly-side divide-fly-left">{% if m.left %}<span class="divide-fly-bar" style="width: {{ m.left_len }}%"></span>{% endif %}</span>
+                                <span class="divide-fly-mid"><span class="rank-mark" role="img" aria-label="{{ m.mark_label|e }}" style="--ink: {{ m.ink|e }}">{{ m.mark|e }}</span><span class="divide-fly-name">{{ m.name|e }}</span></span>
+                                <span class="divide-fly-side divide-fly-right">{% if m.right %}<span class="divide-fly-bar" style="width: {{ m.right_len }}%"></span>{% endif %}</span>
+                            </a></li>{% endfor %}
+                        </ol>{% else %}<p class="stage-empty">🦗 None that week.</p>{% endif %}
+                    {% endfor %}
+                </div>
             {% endfor %}
+            <script>
+                (function () {
+                    // A week's dot picks that week's stories below
+                    const section = document.querySelector('.divide-section');
+                    section.addEventListener('click', (ev) => {
+                        const b = ev.target.closest('.divide-week');
+                        if (!b) return;
+                        section.querySelectorAll('.divide-week').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+                        section.querySelectorAll('.divide-panel').forEach((p) => { p.hidden = p.dataset.week !== b.dataset.week; });
+                    });
+                })();
+            </script>
         </section>
     {% endif %}
 

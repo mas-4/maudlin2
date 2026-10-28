@@ -12,6 +12,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   its right-rated ones, alike within 1.5 times. An outlet page's feelings are its share of each against the average
   outlet's (each outlet with 5 or more headlines read counting once, from front pages now), within 2 points "about the
   same"; its loaded share, grim share, rewrites and wire share sit beside the median outlet's.
+- **A day's newsiness; the court's stages; the divide's lists for every week.** The archive shades each day by its
+  number, the average of its hourly news-day scores (Eastern days; its emoji is the front page's tiers on that number,
+  so it can differ from what the front page said at the day's end, which its card keeps). The court page colors a case
+  by its docket stage from its dates (taken, to be argued, argued; no "decided", which the list lacks) and other Court
+  news by what most of its headlines report. The aisle's divide lists are now worked out for each charted week, and a
+  motif listed both as told alike and as mostly one side's shows once, as told alike.
 - **The aisle: "only in the center".** A motif is listed when at least 2 center shows said it in their own voice (a
   host or guest, as the aisle counts sides) and no left, right or crossover show told it at all, not even in a clip it
   played or a call, over all time; crossover shows are their own group, with an "only on crossover shows" list when any

@@ -283,7 +283,7 @@ def test_built_stylesheet_is_the_joined_partials(built_css):
 
 @pytest.mark.parametrize('name, selector', [
     ('index.html', '.navbar'), ('index.html', '.top-story-cards'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
-    ('agencies.html', '.olist'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
+    ('agencies.html', '.olist'), ('edits.html', '.edits'), ('court.html', '.court-strip'),
     ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
     ('radio.html', '.radiopg-sticker'), ('outlet-map.html', '.omap-finding')])
 def test_built_stylesheet_styles_each_page(site, built_css, name, selector):
@@ -531,25 +531,38 @@ def test_edits_page_shows_ab_tests_escaped(site):
 
 def test_court_page(site):
     court = site['soup']['court.html']
-    [card] = court.select('.court-cards #case-25-170')
-    assert card.select_one('h4').get_text() == 'Boulder <climate> suit'  # escaped gloss as the title
-    assert card.select_one('.court-meta a')['href'].endswith('/25-170.html')
-    assert 'argued Oct 5' in card.get_text()
-    left, right = card.select('.court-frame')
+    # The docket strip: a row a case, colored by where it stands, its bar split by lean, linking to its pair below
+    [row] = court.select('.rank-board-court-cases .rank-row')
+    assert row.select_one('.rank-name').get_text() == 'Boulder <climate> suit'  # escaped gloss as the title
+    assert row['href'] == '#case-25-170' and row.select_one('.rank-mark')['aria-label'] == 'argued'
+    assert '--split: 50%' in row['style'] and row.select_one('.rank-figure').get_text() == '2 outlets'
+    # Its card: the sliders, quotes and outlets the old card had, and its headlines' stages in words
+    pop = court.select_one('template#court-pop-court-cases-0')
+    assert pop is not None
+    pop = BeautifulSoup(pop.decode_contents(), 'html.parser')
+    assert len(pop.select('.meter')) == 3 and len(pop.select('.storylink')) == 2  # lean, mood, spice
+    assert pop.select_one('.quote-chip').get_text().startswith('“fights back”')
+    assert 'the argument 2' in pop.get_text() and '1 left-leaning, 1 right-leaning' in pop.get_text()
+    assert not pop.select('[title]')  # no tooltips inside a card
+    # The left and right headlines side by side, kept
+    [case] = court.select('.court-pairs #case-25-170')
+    assert case.select_one('.court-meta a')['href'].endswith('/25-170.html') and 'argued Oct 5' in case.get_text()
+    left, right = case.select('.court-frame')
     assert 'court-frame-left' in left['class'] and 'CNN' in left.get_text()
     assert right.select_one('.court-frame-title').get_text() == '“Justices weigh <Suncor> climate suit”'
     assert right['href'] == 'https://example.com/a?b=1&c=2'
-    assert card.select_one('.quote-chip').get_text().startswith('“fights back”')
-    assert len(card.select('.story-outlets .storylink')) == 2
-    assert len(card.select('.meter')) == 3  # lean, mood, spice
-    [topic] = court.select('.court-topic')
-    assert topic.select_one('h4').get_text() == 'retirement' and 'Alito <speaks>' in topic.get_text()
+    # Single headlines by topic: a row whose card holds the headlines
+    [single] = court.select('.rank-board-court-singles .rank-row')
+    assert single.select_one('.rank-name').get_text() == 'retirement'
+    assert single.select_one('.rank-mark')['aria-label'] == 'the justices'
+    assert 'Alito <speaks>' in court.select_one('template#court-pop-court-singles-0').get_text()
     covered, quiet = court.select('.court-quiet')  # the term's cases, by argument date (no date last)
     assert covered['href'] == '#case-25-170' and 'covered' in covered['class']
     assert covered.select_one('.court-gloss-tag').get_text() == 'Boulder <climate> suit'
     assert 'Apple contempt fight' in quiet.get_text() and quiet['href'].endswith('/25-1311.html')
     assert 'no coverage' in quiet.get_text()
-    assert [a['href'] for a in court.select('.page-toc a')] == ['#court-cases', '#court-singles', '#court-term']
+    assert [a['href'] for a in court.select('.page-toc a')] == ['#court-cases', '#court-singles', '#court-pairs',
+                                                                 '#court-term']
 
 
 def test_nav_menus_follow_a_story_downstream(site):
