@@ -5,6 +5,8 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **The Play page came down the same day.** The person didn't want the headline games (Real or satire?, Guess the
+  lean, Same story, two papers); the page, its card and its code are gone.
 - **Breitbart's first sightings from its feed too.** About a fifth of Breitbart's articles were first seen a day after
   the date in their address: late-night posts sit low on its homepage (median position 17 against 8) or reach it
   only the next morning, which made Breitbart look late to stories. Each hourly run now also reads its RSS feed

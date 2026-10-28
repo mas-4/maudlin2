@@ -17,17 +17,23 @@
     position: relative;
     display: inline-flex;
     align-items: center;
-    padding: 0.45em 0.2em 0.45em 1.2em;
+    padding: 0.4em 0.55em 0.4em 1.45em;
     font-family: 'Bungee', 'Comic Neue', sans-serif;
     font-size: 1.55em;
     line-height: 1;
     text-decoration: none;
+    /* the yellow sticker behind it, back by request (Oct 28: "bring back the background ... keep everything else") */
+    background: #ffc400;
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #ff4fa3;
+    transform: rotate(-2deg);
     transition: transform 0.15s;
 }
 
 .nav-logo {
     position: absolute;
-    left: -0.3em;
+    left: -0.55em;
     top: 50%;
     height: 2.7em;
     width: auto;

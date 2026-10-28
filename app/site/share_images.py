@@ -515,38 +515,3 @@ def almanac_card(top: list[tuple[str, float]], stage: str, skill: float | None =
     return cached('almanac', {'top': [[n, round(p, 2)] for n, p in top], 'stage': stage,
                               'skill': None if skill is None else round(skill, 2)}, draw)
 
-
-def two_papers_card(label: str, left: dict, right: dict, day: str = '') -> str:
-    """The Play page's card: one story as a left-rated outlet and a right-rated one headlined it, side by side.
-    left, right: {outlet, title}"""
-    def draw(spec):
-        img, d = frame('teal', spec['label'])
-        kicker(img, 'SAME STORY, TWO PAPERS', '📰', 'yellow')
-        brand(img, d)
-        f = font('bold', 30)
-        d.text((100, 178), cut(d, spec['label'], f, 760 if spec['day'] else 1000), font=f, fill=GREY, anchor='lm')
-        if spec['day']:
-            d.text((1100, 178), spec['day'], font=f, fill=GREY, anchor='rm')
-        panels = ((spec['left'], 'left', '🫏', -1.2), (spec['right'], 'right', '🐘', 1.2))
-        for i, (paper, lean, icon, angle) in enumerate(panels):
-            w, h = 484, 300
-            layer = Image.new('RGBA', (w + 12, h + 12), (0, 0, 0, 0))
-            ld = ImageDraw.Draw(layer)
-            ld.rounded_rectangle((10, 10, w + 10, h + 10), radius=20, fill=LEAN[lean])  # a hard shadow in its lean
-            ld.rounded_rectangle((0, 0, w, h), radius=20, fill=tint(LEAN[lean], 0.12), outline=INK, width=4)
-            e = emoji(icon, 40)
-            if e:
-                layer.paste(e, (20, 18), e)
-            fo = font('black', 30)
-            ld.text((72, 38), cut(ld, paper['outlet'], fo, w - 92), font=fo, fill=INK, anchor='lm')
-            ft, lines = fit(ld, f"“{paper['title']}”", 'bold', (40, 36, 32, 29, 26), w - 44, 6)
-            ty = 78
-            for line in lines:
-                ld.text((22, ty), line, font=ft, fill=INK)
-                ty += ft.size + 5
-            tilted(img, layer, 100 + i * 516, 212, angle)
-        foot = 'Outlets rated left and right by AllSides · headlines picked by our word model'
-        d.text((100, 540), cut(d, foot, font('bold', 26), 1000), font=font('bold', 26), fill=GREY, anchor='lm')
-        return img
-    return cached('papers', {'label': label, 'day': day, 'left': {'outlet': left['outlet'], 'title': left['title']},
-                             'right': {'outlet': right['outlet'], 'title': right['title']}}, draw)
