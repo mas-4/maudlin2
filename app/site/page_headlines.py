@@ -13,7 +13,7 @@ import pandas as pd
 from sqlalchemy import func
 
 from app.analysis.clustering import story_similarity, headline_vectors, form_clusters, label_clusters, embed, split_seams, \
-    unlink_money_conflicts
+    unlink_money_conflicts, unlink_place_conflicts
 from app.analysis.sagas import link_sagas
 from app.analysis import entities, factchecks, satire, trends_meter
 from app.analysis.quotes import story_quotes
@@ -460,6 +460,7 @@ class HeadlinesPage:
         df = df.reset_index(drop=True)  # cluster ids are positional
         similarity, threshold, model = story_similarity(df['title'])
         similarity = unlink_money_conflicts(similarity, df['title'].tolist())
+        similarity = unlink_place_conflicts(similarity, df['title'].tolist())  # one tour's stops, one story each
         logger.info("Story similarity from %s, threshold %.2f", model, threshold)
         clusters = form_clusters(similarity, n_samples_per_cluster, threshold)
         logger.info("%i clusters formed", len(clusters))
