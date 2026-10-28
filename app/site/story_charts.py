@@ -221,7 +221,8 @@ def saga_lanes(parts: list[dict], tv_spots: list[dict], radio: list[dict], retol
         y = top + i * ROW_H
         name = p['label'] if len(p['label']) <= 34 else p['label'][:33] + '…'
         x0, x1 = axis.x(p['first']), axis.x(p['last'])
-        out.append(f'<text x="{label_w - 6}" y="{y + 13}" class="sc-label" text-anchor="end">{i + 1}. {escape(name)}'
+        # Left-aligned, so the numbered labels line up (Oct 28, the person, of two cut labels: "why bottom farther right")
+        out.append(f'<text x="6" y="{y + 13}" class="sc-label" text-anchor="start">{i + 1}. {escape(name)}'
                    f'<title>{escape(p["label"])}</title></text>'
                    f'<rect x="{x0:.1f}" y="{y + 3}" width="{max(4.0, x1 - x0):.1f}" height="{ROW_H - 6}" rx="4" '
                    f'fill="{color[p["story"]]}" stroke="#1f1f2e" stroke-width="0.8"><title>{escape(p["label"])}: '
