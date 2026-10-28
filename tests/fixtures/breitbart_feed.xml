@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<rss version="2.0"
+			xmlns:content="http://purl.org/rss/1.0/modules/content/"
+			xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+			xmlns:dc="http://purl.org/dc/elements/1.1/"
+			xmlns:atom="http://www.w3.org/2005/Atom"
+			xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+			xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+			xmlns:media="http://search.yahoo.com/mrss/"
+			xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+			xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+					>
+		<channel>
+					<title>Breitbart News</title>
+			<link>https://feeds.feedburner.com/breitbart</link>
+			<description>HomePage</description>
+					<lastBuildDate>Wed, 28 Oct 2026 12:04:03 +0000</lastBuildDate>
+		<pubDate>Wed, 28 Oct 2026 12:04:03 +0000</pubDate>
+		<language>en</language>
+		<copyright>Copyright 2026 Breitbart</copyright>
+		<sy:updatePeriod>hourly</sy:updatePeriod>
+		<sy:updateFrequency>12</sy:updateFrequency>
+		<ttl>3</ttl>
+		<atom:link href="https://feeds.feedburner.com/breitbart" rel="self" type="application/rss+xml" />
+		<item>
+			<title>Netanyahu Claims &#8216;Decisive Majority,&#8217; Vows &#8216;National Right-Wing Government&#8217; &#8212; &#8216;Historic&#8217; Chance to End Iran Threat</title>
+			<link>https://www.breitbart.com/politics/2026/10/27/netanyahu-claims-decisive-majority-vows-national-right-wing-government/</link>
+			<atom:link href="https://www.breitbart.com/politics/2026/10/27/netanyahu-claims-decisive-majority-vows-national-right-wing-government/" />
+			<pubDate>Wed, 28 Oct 2026 03:30:03 +0000</pubDate>
+			<guid isPermaLink="false">https://www.breitbart.com/politics/2026/10/27/netanyahu-claims-decisive-majority-vows-national-right-wing-government/</guid>
+		</item>
+		<item>
+			<title>Hasan Piker Hits Scott Jennings with $72.5 Million Defamation Suit over Black Lynching Accusations</title>
+			<link>https://www.breitbart.com/politics/2026/10/27/hasan-piker-hits-scott-jennings-with-72-5-million-defamation-suit-over-black-lynching-accusations/</link>
+			<pubDate>Wed, 28 Oct 2026 02:29:40 +0000</pubDate>
+			<guid isPermaLink="false">https://www.breitbart.com/politics/2026/10/27/hasan-piker-hits-scott-jennings-with-72-5-million-defamation-suit-over-black-lynching-accusations/</guid>
+		</item>
+		<item>
+			<title>EXCLUSIVE&#8211;Paxton&#039;s Historic Settlement with TX Children&#039;s Hospital Leads to 1st Detransition Clinic</title>
+			<link>https://www.breitbart.com/politics/2026/10/27/exclusive-detransitioners-speak-out-on-paxtons-historic-clinic-victory-as-he-faces-pro-transgender-talarico/</link>
+			<pubDate>Wed, 28 Oct 2026 00:12:48 +0000</pubDate>
+			<guid isPermaLink="false">https://www.breitbart.com/politics/2026/10/27/exclusive-detransitioners-speak-out-on-paxtons-historic-clinic-victory-as-he-faces-pro-transgender-talarico/</guid>
+		</item>
+		<item>
+			<title>Grand Jury Declines to Indict Cassidy Hutchinson for Her Jan. 6 Testimony</title>
+			<link>https://www.breitbart.com/politics/2026/10/27/grand-jury-declines-indict-cassidy-hutchinson-january-6-testimony/</link>
+			<pubDate>Wed, 28 Oct 2026 01:54:05 +0000</pubDate>
+			<guid isPermaLink="false">https://www.breitbart.com/politics/2026/10/27/grand-jury-declines-indict-cassidy-hutchinson-january-6-testimony/</guid>
+		</item>
+	</channel>
+</rss>

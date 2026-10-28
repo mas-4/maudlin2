@@ -16,7 +16,7 @@ from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.firefox.options import Options
 
-from app import scraper_health
+from app import feed_sightings, scraper_health
 from app.analysis import abtests, metrics, newsfilter
 from app.analysis.preprocessing import preprocess, extract_text
 from app.models import Session, Article, Agency, Headline, SqlLock
@@ -37,6 +37,10 @@ def without(tag: Tag, selector: str) -> Tag:
     return tag
 
 
+# The time this run's new articles and headlines get (the models' default is set once, when they're loaded): a feed
+# sighting before it is from an earlier run, naive UTC as the database keeps it
+SCRAPE_TIME = Article.__table__.c.first_accessed.default.arg.astimezone(pytz.UTC).replace(tzinfo=None)
+
 ArticleTuple = namedtuple('ArticlePair', ['href', 'raw', 'title', 'processed', 'pos', 'news_score', 'event_score',
                                            'loaded_score', 'emotion', 'emotion_ranks', 'scored_by', 'scored_at',
                                            'affected'])
@@ -49,6 +53,9 @@ class Scraper(ABC, Thread):
     parser: str = 'lxml'
     country = Country.us
     sql_lock = SqlLock
+    # An RSS feed read alongside the front page, for first sightings only (app/feed_sightings.py): its items never
+    # become headlines, they only date an article the front page lists later. One request a run.
+    side_feed: str = ''
 
     def __repr__(self):
         return f'(Scraper: {self.agency})'
@@ -74,6 +81,7 @@ class Scraper(ABC, Thread):
         self.variants: list[tuple[str, list[str], str]] = []
         self.done: bool = False
         self.results: list[dict[str, str]] = []
+        self.feed_items: list[tuple] = []  # (url, title, published) from side_feed
         with Session() as session, self.sql_lock:
             agency = session.query(Agency).filter_by(url=self.url).first()
             if not agency:
@@ -112,7 +120,22 @@ class Scraper(ABC, Thread):
 
     def run(self):
         self.run_setup()
+        if self.side_feed:
+            self.read_side_feed()
         self.done = True
+
+    def read_side_feed(self):
+        """The side feed's items, with the scraper's user agent; a failure costs only this run's feed sightings"""
+        headers = self.headers or {'User-Agent': Constants.Headers.UserAgents.maudlin}
+        try:
+            with warnings.catch_warnings(action="ignore"):
+                response = self.rq.get(self.side_feed, headers=headers, timeout=Config.timeout, verify=False)
+            response.raise_for_status()
+        except Exception as e:  # noqa
+            logger.warning("%s: couldn't read its feed %s: %s", self.agency, self.side_feed, e)
+            return
+        self.feed_items = feed_sightings.parse(Soup(response.content, 'xml'))
+        logger.info("Downloaded %s, %d items", self.side_feed, len(self.feed_items))
 
     def post_run(self):
         t = time.time()
@@ -211,6 +234,10 @@ class Scraper(ABC, Thread):
         t = time.time()
         dropped, prefiltered = self.prefilter(self.downstream)
         logger.info("Prefiltered %i headlines in %f seconds", dropped, time.time() - t)
+        if self.feed_items:
+            new = feed_sightings.record(self.agency_id, [(self.clean_href(url), title, published)
+                                                         for url, title, published in self.feed_items])
+            logger.info("%s: %d feed items, %d new", self.agency, len(self.feed_items), new)
         self.batch_articles = {}  # url -> Article added in this batch, which queries can't see until a flush
         with Session() as s:
             [self.process(s, art_pair) for art_pair in prefiltered]
@@ -230,6 +257,9 @@ class Scraper(ABC, Thread):
         article = self.batch_articles.get(art.href) or s.query(Article).filter_by(url=art.href).first()
         if article is None:
             article = Article(url=art.href, agency_id=self.agency_id)
+            if self.side_feed and (seen := feed_sightings.first_seen(s, self.agency_id, art.href)) is not None \
+                    and seen < SCRAPE_TIME:
+                article.first_accessed = seen  # the feed listed it in an earlier run: its first sighting
             s.add(article)
             self.articles += 1
         self.batch_articles[art.href] = article

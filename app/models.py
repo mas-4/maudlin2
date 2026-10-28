@@ -321,6 +321,22 @@ class HeadlineVariant(Base):
     last_seen: Mapped[dt] = mapped_column(DateTime())
 
 
+class FeedSighting(Base):
+    """An article an outlet's RSS feed listed (Scraper.side_feed; Breitbart since Oct 28), with when we first and last
+    saw it there. Not a headline: a feed has no front-page position, so these never join stories, lean bars or "on
+    the front pages" counts. They only give an article its first sighting: an article the front page lists later
+    takes the feed's earlier time as its first_accessed (its headlines keep their own, front-page, times)."""
+    __tablename__ = "feed_sighting"
+    __table_args__ = (UniqueConstraint('agency_id', 'url', name='uq_feed_sighting_agency_url'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("agency.id"))
+    url: Mapped[str] = mapped_column(Text(), index=True)
+    title: Mapped[str] = mapped_column(Text())
+    published: Mapped[dt] = mapped_column(DateTime(), nullable=True)  # the feed's own pubDate, UTC, for reference
+    first_seen: Mapped[dt] = mapped_column(DateTime())  # naive UTC, as articles keep their times
+    last_seen: Mapped[dt] = mapped_column(DateTime())
+
+
 class StoryHeadline(Base):
     """A headline's membership in a story, with how its sentiment compares to the other outlets on that story."""
     __tablename__ = "story_headline"

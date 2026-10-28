@@ -5,6 +5,17 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **Breitbart's first sightings from its feed too.** About a fifth of Breitbart's articles were first seen a day after
+  the date in their address: late-night posts sit low on its homepage (median position 17 against 8) or reach it
+  only the next morning, which made Breitbart look late to stories. Each hourly run now also reads its RSS feed
+  (feeds.feedburner.com/breitbart, one request, our user agent) and keeps what it lists in `feed_sighting`. A feed
+  item is not a front-page headline and never becomes one: no position, no story, no lean bar, no "on the front pages"
+  count. When the front page later lists an article the feed listed in an earlier run, the article's first sighting
+  (`article.first_accessed`, the "first seen" on story cards and chips) is the feed's time; its headlines keep their
+  front-page times, so the story page's "first on a front page", "who stayed on it" and the first-hour count are
+  unchanged. From the first hourly run with this change (Oct 28; the earliest `feed_sighting.first_seen` marks it).
+  Articles seen before then keep their old times. The same article listed again under another section's address (65
+  of 397 late ones) isn't matched by the feed and stays late.
 - **Bylines off the headlines.** Red State's and Townhall's cards, and Scripps News's, put a section label and the
   author's name inside the headline's link ("…but There's a Catch Susie Moore"), and The Gateway Pundit's trending
   list its view count ("68.2K views"), which also made a new "headline" each time the count moved. The scrapers now
