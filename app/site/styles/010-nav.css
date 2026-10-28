@@ -39,7 +39,7 @@
     position: relative;
     z-index: 1;
     color: #ffffff;
-    -webkit-text-stroke: 1.5px #1f1f2e;  /* drawn over the white, so the black line shows inside each letter */
+    -webkit-text-stroke: 2.5px #1f1f2e;  /* drawn over the white, so the black line shows inside each letter */
     text-shadow: 1px 1px 0 #ff6b1a, 2px 2px 0 #ff6b1a, 3px 3px 0 #ff6b1a, 4px 4px 0 #ff6b1a, 5px 5px 0 #1f1f2e;
     letter-spacing: 0.02em;
 }
