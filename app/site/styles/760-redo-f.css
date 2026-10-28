@@ -197,3 +197,98 @@
     .archive-tile { transition: none; }
     .archive-tile:hover, .archive-tile:focus-visible, .archive-tile.hover-card-on { transform: none; }
 }
+
+/* ---- The court: docket strips colored by stage, the old cards' sliders and chips in each row's card ---- */
+.court-strip {
+    margin: 0.6em 0 1em;
+}
+
+.court-pops {
+    display: none;
+}
+
+.court-slot {
+    min-width: 0;
+}
+
+.hover-card:has(.court-pop) {
+    max-width: min(26em, calc(100vw - 16px));
+    max-height: min(32em, calc(100vh - 16px));
+    overflow-y: auto;
+}
+
+.court-pop h3 {
+    font: 0.95em/1.25 'Bungee', 'Comic Neue', sans-serif;
+    margin: 0 0 0.3em;
+}
+
+.court-pop-line {
+    margin: 0.25em 0;
+    font-size: 0.92em;
+}
+
+.court-pop-meta {
+    margin: 0.25em 0;
+    font-size: 0.92em;
+    color: #555;
+}
+
+.court-pop .meters {
+    margin: 0.3em 0;
+}
+
+.court-pop .story-outlets {
+    margin-top: 0.4em;
+}
+
+.court-pop .court-headlines {
+    margin: 0.4em 0 0;
+    font: 400 0.92em/1.35 Helvetica, Arial, sans-serif;
+}
+
+.court-pair-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1em 1.6em;
+}
+
+@media (min-width: 900px) {
+    .court-pair-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.court-case {
+    min-width: 0;
+    padding: 0.5em 0.8em 0.4em 0.9em;
+    background: rgba(255, 255, 255, 0.92);
+    border-left: 8px solid var(--stage-ink, #b8b8c8);
+    border-radius: 10px;
+    scroll-margin-top: 1em;
+}
+
+.court-case:target {
+    outline: 3px dashed #ff4fa3;
+    outline-offset: 3px;
+}
+
+.court-case h3 {
+    font: 700 1.1em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0.1em 0 0.2em;
+}
+
+.court-case-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.8em;
+    height: 1.8em;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+    background: var(--stage-ink, white);
+    font-size: 0.9em;
+    vertical-align: middle;
+}
+
+.court-one-side {
+    margin: 0.3em 0;
+}

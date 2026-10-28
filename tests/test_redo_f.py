@@ -53,3 +53,19 @@ def test_biggest_and_slowest_days_answer_each_other_colored_by_weekday_or_weeken
     assert next(r for r in slow['rows'] if r['href'] == '/2026/10/05/')['ink'] == ar.WEEKDAY_INK
     few = ar.day_boards(published[:3], scores)  # few days: each on one board only
     assert len(few[0]['rows']) == 3 and few[1]['rows'] == []
+
+
+def test_a_cases_stage_comes_from_its_dates_and_other_news_by_what_its_headlines_report():
+    from datetime import date
+
+    from app.site import page_court as pc
+    today = date(2026, 10, 28)
+    assert [pc.case_stage(d, today) for d in (None, date(2026, 11, 2), date(2026, 10, 28))] == \
+        ['case taken', 'to be argued', 'argued']
+    assert pc.news_kind(['ruling', 'emergency order', 'the justices']) == 'orders'
+    assert pc.news_kind(['the justices', 'term preview']) == 'justices'  # a tie: the first kind
+    assert pc.news_kind([]) == 'other' and pc.news_kind(['other', 'weird']) == 'other'
+    assert pc.reported([('ruling', 6), ('term preview', 1)]) == '🔨 a ruling 6 · 🗓️ a preview of the term 1'
+    assert pc.lean_split({'left': 3, 'right': 1, 'center': 4}) == 0.75 and pc.lean_split({'center': 2}) is None
+    assert pc.sides_text({'left': 1, 'unrated': 2}) == '1 left-leaning, 2 not rated'
+    assert [k['name'] for k in pc.key_of(pc.CASE_STAGES, {'argued', 'case taken'})] == ['case taken', 'argued']
