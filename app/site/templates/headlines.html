@@ -46,6 +46,9 @@
                 </span>
             </div>
         {% endif %}
+        {% if cluster['momentum'] %}{% set mo = cluster['momentum'] %}{# young stories only (app/analysis/momentum.py) #}
+            <p class="card-momentum momentum-{{ mo.kind|e }}" title="{{ mo.title|e }}"><span aria-hidden="true">{{ mo.emoji }}</span> <b>{{ mo.label }}</b>: {{ mo.text }}</p>
+        {% endif %}
         {% if top %}{# the front page's top stories: a head card, the rest folded under "more" (Oct 27) #}
         {% set told_as = told_as_of.get(cluster['cluster']) if told_as_of is defined else none %}
         {% if told_as %}
@@ -882,6 +885,22 @@
     <h2 class="section-divider" id="current-stories"><span>📰 Every story</span></h2>
     <p class="table-intro">Every story on the front pages we follow right now: the headlines that make it up, each outlet's
         own, with what the trackers know about it. Search, sort and filter them here; each one's 📄 opens its own page.</p>
+    {% if crossing_watch %}{# young stories mostly one side is covering, and how often such stories crossed (momentum.py) #}
+    <details class="crossing-watch">
+        <summary>🌉 Crossing watch: {{ crossing_watch|length }} new stor{{ 'y' if crossing_watch|length == 1 else 'ies' }} mostly one side is covering
+            {%- for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% set n = crossing_watch|selectattr('side', 'equalto', side)|list|length %}{% if n %} <span class="crossing-count">{{ emoji }} {{ n }} mostly {{ side }}</span>{% endif %}{% endfor %}</summary>
+        <p class="crossing-sub">{{ crossing_note }}</p>
+        <ul class="crossing-list">
+            {% for w in crossing_watch %}
+            <li class="crossing-{{ w.side|e }}">
+                <a class="crossing-story" href="#{{ card_id(w.cluster) }}">{{ w.emoji }} {{ w.story|e }}</a>
+                <span class="crossing-facts">mostly {{ w.side }} ({{ w.counts.left }} left, {{ w.counts.center }} center, {{ w.counts.right }} right) · ⏱️ {{ w.when }} since it made a card · 📡 {{ w.bridge }}</span>
+                <span class="crossing-odds" title="{{ w.title|e }}">{{ w.text }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
 
     <div class="table-filters story-sort" role="group" aria-label="Search, sort and filter stories">
         <span class="bar-group"><input type="search" class="edit-search story-search" placeholder="🔎 search stories and headlines" aria-label="Search stories"></span>

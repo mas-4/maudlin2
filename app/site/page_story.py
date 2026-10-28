@@ -455,6 +455,13 @@ class StoryPages:
         except Exception as e:  # noqa: BLE001 - extra; the pages stand without them
             logger.warning("Story pages: fact-checks: %s", e)
             checks = {}
+        try:  # a young story's momentum line, as on its card (app/analysis/momentum.py)
+            from app.analysis import momentum
+            now = momentum.latest()
+            pace = momentum.table(now)
+        except Exception as e:  # noqa: BLE001 - extra; the pages stand without it
+            logger.warning("Story pages: momentum: %s", e)
+            pace = None
         names = read_json(entities.CACHE, {})
         aliases = entities.load_aliases()['aliases']
         from app.site.page_headlines import STORY_EXTRAS
@@ -501,6 +508,8 @@ class StoryPages:
                 'extras': ex, 'rewordings': rewordings(st['headlines']), 'stayed': stayed(st['headlines']),
                 'wire': wire_copied(st['headlines']),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
+                'momentum': momentum.badge(pace, momentum.from_headlines(st['id'], st['first'], st['headlines']), now)
+                if pace else None,
             }, os.path.join(Config.build, page_name(st['id'])))
             if not Config.debug:  # a preview's stale data never becomes a story's kept page
                 os.makedirs(ARCHIVE, exist_ok=True)
