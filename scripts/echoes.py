@@ -8,8 +8,9 @@ Rip Van Winkle's spot-check of its sure filings (hypothesis 3), never run till n
 
     python scripts/echoes.py propose          add candidates (one per motif, the surest; reprinted ones first)
     python scripts/echoes.py slate [-n 10]    the next candidates, with the article around the quote, for reading
-    python scripts/echoes.py decide ID approve --quote "cleaned quote" [--why ...]
+    python scripts/echoes.py decide ID approve --quote "cleaned quote" [--why ...] [--by person|claude]
     python scripts/echoes.py decide ID reject --why "..."
+    python scripts/echoes.py decide ID hold --why "..."     for the person: near a slur or trope, or a close call
     python scripts/echoes.py list [--status approved]
 
 Kept in archives/archives.sqlite, table echoes. The A2 run's own new motifs (M879 and up) carry ids today's index
@@ -119,11 +120,14 @@ def slate(n: int):
     print(f'\n{len(rows)} shown, {left} proposed in all')
 
 
-def decide(echo_id: int, verdict: str, quote: str | None, why: str | None):
+def decide(echo_id: int, verdict: str, quote: str | None, why: str | None, by: str = 'claude'):
+    """Record a verdict, and who made it: the person, or Claude reading the whole article (Oct 28, the person: "a
+    combination, sometimes human sometimes opus 5.5 with extra attention which the human has found effective")"""
     con = connect(write=True)
-    status = {'approve': 'approved', 'reject': 'rejected'}[verdict]
-    cur = con.execute('update echoes set status = ?, quote_clean = coalesce(?, quote_clean), why = ?, decided_at = ? '
-                      'where id = ?', (status, quote, why, dt.now().isoformat(timespec='seconds'), echo_id))
+    status = {'approve': 'approved', 'reject': 'rejected', 'hold': 'held'}[verdict]
+    cur = con.execute('update echoes set status = ?, quote_clean = coalesce(?, quote_clean), why = ?, decided_at = ?, '
+                      'reviewer = ? where id = ?',
+                      (status, quote, why, dt.now().isoformat(timespec='seconds'), by, echo_id))
     con.commit()
     print(f'#{echo_id}: {status}' if cur.rowcount else f'#{echo_id}: no such echo')
 
@@ -136,7 +140,8 @@ if __name__ == '__main__':
     s.add_argument('-n', type=int, default=10)
     d = sub.add_parser('decide')
     d.add_argument('id', type=int)
-    d.add_argument('verdict', choices=['approve', 'reject'])
+    d.add_argument('verdict', choices=['approve', 'reject', 'hold'])
+    d.add_argument('--by', choices=['person', 'claude'], default='claude')
     d.add_argument('--quote')
     d.add_argument('--why')
     li = sub.add_parser('list')
@@ -147,7 +152,7 @@ if __name__ == '__main__':
     elif a.cmd == 'slate':
         slate(a.n)
     elif a.cmd == 'decide':
-        decide(a.id, a.verdict, a.quote, a.why)
+        decide(a.id, a.verdict, a.quote, a.why, a.by)
     else:
         con = connect()
         for r in con.execute('select id, motif_name, date, paper, status from echoes where status = ?', (a.status,)):

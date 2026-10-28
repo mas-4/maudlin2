@@ -57,7 +57,7 @@ def cards(rows: list[dict], entries: dict) -> list[dict]:
                     'ink': boards.GENRE_INK.get(genre, boards.UNCOLORED), 'today': today_claim(e),
                     'quote': r['quote_clean'] or r['quote'], 'ocr': r['quote'], 'headline': (r['headline'] or '').strip(),
                     'paper': paper_name(r['paper']), 'place': r['place'], 'day': day(r['date']), 'url': r['url'],
-                    'papers': r['retold'] or 1, 'why': r['why'] or ''})
+                    'papers': r['retold'] or 1, 'why': r['why'] or '', 'reviewer': r.get('reviewer') or 'person'})
     return out
 
 

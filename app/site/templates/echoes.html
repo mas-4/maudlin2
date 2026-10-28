@@ -5,7 +5,9 @@
     <h1>🏛️ Older than you think</h1>
     <p class="table-intro echo-intro">Today's political stories, told in 1896. Each card pairs a story shape from
         <a href="motifs.html">our motif index</a> with a claim printed in a real 1896 newspaper, found by the same
-        reading that files today's claims and checked by a person before it went up. The quotes are from the Library of
+        reading that files today's claims and checked before it went up: some by the person who runs the site, some by
+        Claude (Anthropic's Opus 5.5) reading the whole article closely, which the person has found works well. Each
+        card says which. The quotes are from the Library of
         Congress's <a href="https://chroniclingamerica.loc.gov/">Chronicling America</a> scans, read by a machine
         (OCR) and lightly cleaned; each card links to the page itself, and the OCR as printed is in the quote's card.</p>
 
@@ -29,7 +31,8 @@
                     <blockquote class="echo-quote" data-tip-head="The OCR as printed" data-tip="{{ c.ocr|e }}">“{{ c.quote|e }}”</blockquote>
                     <p class="echo-source">🗞️ <b>{{ c.paper|e }}</b>, {{ c.place|e }}, {{ c.day|e }}</p>
                     <p class="echo-links">{% if c.papers > 1 %}<span class="echo-papers">🔁 printed in {{ c.papers }} papers</span>{% endif %}
-                        <a class="echo-scan" href="{{ c.url|e }}" rel="noopener">📜 see the page →</a></p>
+                        <a class="echo-scan" href="{{ c.url|e }}" rel="noopener">📜 see the page →</a>
+                        <span class="echo-checked">{% if c.reviewer == 'claude' %}🤖 checked by Claude{% else %}🧑 checked by a person{% endif %}</span></p>
                 </div>
             </article>
             {% endfor %}
@@ -43,8 +46,9 @@
         <p>From 413,186 political articles printed in 1896 (American Stories, Dell et al. 2023, from Chronicling America),
             520 were read by a local language model for their claims, each kept only if its quote is in the article.
             The claims were filed to a copy of today's motif index by the pipeline that files today's claims (the Lab's
-            🧪 Rip Van Winkle). An echo is a claim filed with confidence to a motif the site shows, put to a person, and
-            shown only once they approve it. Claims printed in more than one paper were found by matching near-copies
+            🧪 Rip Van Winkle). An echo is a claim filed with confidence to a motif the site shows, and it's shown only
+            once it has been checked against the whole article: by the person who runs the site, or by Claude (Opus
+            5.5), who sets aside for the person anything close to a slur or a trope, or too close to call. Claims printed in more than one paper were found by matching near-copies
             across papers, as 1896's exchange papers reprinted each other.</p>
     </details>
 {% endblock %}

@@ -52,6 +52,7 @@ def test_the_page_pairs_2026_with_1896_and_links_the_scan(tmp_path, monkeypatch)
     assert card.select_one('.echo-quote')['data-tip'] == 'Tlie bonds were TO go'  # the OCR as printed, in its card
     assert card.select_one('.echo-scan')['href'] == 'https://chroniclingamerica.loc.gov/x'
     assert 'printed in 20 papers' in card.text and 'The Salt Lake Herald' in card.text
+    assert 'checked by a person' in card.select_one('.echo-checked').text  # who checked it, on the card
     assert soup.select_one('.rank-board-viral .rank-row')  # 1896's viral copy, as a strip
     assert not soup.select('.echo-cards [title]')  # details in hover cards, not tooltips
 

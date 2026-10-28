@@ -15,7 +15,9 @@ SCHEMA = """create table if not exists echoes (
     id integer primary key, motif text not null, motif_name text not null, claim integer not null, run text not null,
     claim_text text, quote text, quote_clean text, headline text, paper text, place text, date text, url text,
     fit real, retold integer, status text not null default 'proposed', why text, proposed_at text, decided_at text,
-    unique (motif, claim))"""
+    reviewer text, unique (motif, claim))"""
+REVIEWERS = ('person', 'claude')  # who checked an echo: the person, or Claude (Opus 5.5) reading the whole article
+STATUSES = ('proposed', 'approved', 'rejected', 'held')  # held: for the person (near a slur or trope, or a close call)
 
 
 def connect(write: bool = False, path: str | None = None) -> sqlite3.Connection:
@@ -24,6 +26,10 @@ def connect(write: bool = False, path: str | None = None) -> sqlite3.Connection:
     con.row_factory = sqlite3.Row
     if write:
         con.execute(SCHEMA)
+        if 'reviewer' not in {r[1] for r in con.execute('pragma table_info(echoes)')}:  # tables made before Oct 28 evening
+            con.execute('alter table echoes add column reviewer text')
+            con.execute("update echoes set reviewer = 'person' where status != 'proposed'")
+            con.commit()
     return con
 
 

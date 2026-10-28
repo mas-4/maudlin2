@@ -133,3 +133,8 @@
     max-width: 46em;
     margin: 1em auto 2em;
 }
+
+.echo-checked {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #6b5a3c;
+}
