@@ -1,0 +1,24 @@
+{# The hourly swimlane of On TV and On the radio (page_tv.swimlane, page_radio.swimlane; styles/762-redo-b.css): a lane
+   per channel across the hours, oldest on the left; on a phone, the hours run down and the channels across. Each cell
+   has its hour's detail in a hover card (data-tip). Nothing here is escaped by the environment, so every field is. #}
+{% macro lane(l, label) %}<div class="air-lane" role="group" aria-label="{{ label|e }}" style="--cols: {{ l.cols }}; --lanes: {{ l.lanes|length }}">
+    <span class="air-lane-corner" aria-hidden="true" style="--r: 1; --c: 1; --f: 1">🕐 ET</span>
+    {% for x in l.lanes %}<span class="air-lane-name" style="--r: {{ loop.index + 1 }}; --c: 1; --f: 1; --ink: {{ x.ink|e }}"><span class="rank-mark air-mark" aria-hidden="true">{{ x.mark|e }}</span><span class="air-lane-label">{{ x.name|e }}</span></span>
+    {% endfor %}
+    {% for h in l.hours %}<span class="air-lane-hour" style="--r: 1; --c: {{ h.col }}; --f: {{ h.flip }}">{{ h.label|e }}</span>{% endfor %}
+    {% for c in l.cells %}<div class="air-lane-cell{% if c.rank is none %} air-lane-off{% endif %}" tabindex="0" style="--r: {{ c.row }}; --c: {{ c.col }}; --f: {{ c.flip }}; --ink: {{ c.ink|e }}" data-tip-head="{{ c.head|e }}" data-tip="{{ c.tip|e }}" aria-label="{{ c.head|e }}: {{ c.lead|e }}">
+        <span class="air-lane-rank">{% if c.rank is not none %}#{{ c.rank }}{% else %}off{% endif %}</span><span class="air-lane-text">{{ c.lead|e }}</span></div>
+    {% endfor %}
+</div>{% endmacro %}
+
+{# A ranked strip whose bar comes in parts, one per channel in its ink (page_tv.most_on_screen) #}
+{% macro stacked(title, emoji, stage, sub, rows, key) %}<section class="rank-board rank-board-{{ key|e }}" aria-labelledby="rank-{{ key|e }}">
+    <h3 class="section-divider stage-banner rank-board-title" id="rank-{{ key|e }}" style="--stage: {{ stage|e }}"><span>{{ emoji|e }} {{ title|e }}</span></h3>
+    <p class="stage-sub">{{ sub|e }}</p>
+    <ol class="rank-list">
+        {% for r in rows %}<li><div tabindex="0" class="rank-row" style="--ink: {{ r.mark_ink|e }}" data-tip-head="{{ r.name|e }}" data-tip="{{ r.tip|e }}">
+            <span class="rank-mark air-mark" role="img" aria-label="most on {{ r.mark_label|e }}">{{ r.mark_mark|e }}</span>
+            <span class="rank-main"><span class="rank-name">{{ r.name|e }}</span><span class="air-stack" aria-hidden="true">{% for p in r.parts %}<span style="--ink: {{ p.ink|e }}; --w: {{ '%.1f'|format(p.share) }}%"></span>{% endfor %}</span></span>
+            <span class="rank-figure">{{ r.figure|e }}{% if r.rank %} <span class="air-front">📰 #{{ r.rank }}</span>{% endif %}</span></div></li>
+        {% endfor %}</ol>
+</section>{% endmacro %}

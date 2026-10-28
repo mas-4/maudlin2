@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% block content %}
     <p class="story-page-crumb"><a href="beyond.html">← every show and newsletter</a></p>
@@ -18,21 +19,23 @@
             shape of the story. "Came up on" the show: told, reported or argued against. We don't yet mark which.</p>
     </div>
 
-    {% if sh.signature %}
-        <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>✍️ Its signature</span></h2>
-        <p class="stage-sub">the motifs it tells far more than the other shows we follow do</p>
-        <p class="stage-notes">{% for m, name, z in sh.signature %}<a class="motif-chip" href="{{ motif_href(m) }}">🧩 {{ name|e }}</a> {% endfor %}</p>
-    {% endif %}
-
-    {% if neighbours %}
-        <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>👯 Tells the most alike</span></h2>
-        <p class="stage-sub">the shows whose stories overlap most with its own, whatever their lean</p>
-        <ul class="story-checks show-page-neighbours">{% for o, pct in neighbours %}<li><a class="show-chip tv-chip" href="{{ show_href(o) }}" style="--chip: {{ inks.get(leans[o] or '', '#b8b8c8') }}">🎙️ {{ o|e }}</a> <span class="court-when">{{ pct }}% alike{% if leans[o] %} · {{ leans[o] }}{% endif %}</span></li>{% endfor %}</ul>
-    {% endif %}
+    <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>✍️ Its signature</span></h2>
+    <p class="stage-sub">what it tells far more often than the other shows we follow, and what they tell that it never
+        does; each motif colored by its genre, the layer of story it is</p>
+    {{ b.key(genre_key, 'Genre colors') }}
+    {{ b.boards(signature) }}
 
     <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🧩 Its repertoire</span></h2>
-    <p class="stage-sub">every motif its claims came up in, the most first</p>
-    <p class="stage-notes">{% for m, name, n in repertoire %}<a class="motif-chip small" href="{{ motif_href(m) }}">🧩 {{ name|e }} <span class="motif-seen">×{{ n }}</span></a> {% endfor %}</p>
+    <p class="stage-sub">every motif its claims came up in, the most first: {{ sh.motifs|length }} in all{% if sh.motifs|length > repertoire_shown %}, the top {{ repertoire_shown }} here{% endif %}</p>
+    {% if mix %}<div class="showpg-mix-wrap"><p class="showpg-mix-label">🎨 What kind of stories: its tellings by genre</p>
+        <p class="showpg-mix" role="img" aria-label="Its tellings by genre: {% for g in mix %}{{ g.genre|e }} {{ g.share }}%{{ ', ' if not loop.last }}{% endfor %}">{% for g in mix %}<span class="showpg-mix-part{% if g.ink == '#ffffff' %} showpg-mix-plain{% endif %}" tabindex="0" style="--ink: {{ g.ink|e }}; --w: {{ g.share }}%" data-tip-head="{{ g.mark|e }} {{ g.genre|e }}" data-tip="{{ g.n }} of its tellings ({{ g.share }}%)">{% if g.share >= 7 %}<span aria-hidden="true">{{ g.mark|e }}</span>{% endif %}</span>{% endfor %}</p></div>{% endif %}
+    {{ b.boards(repertoire) }}
+
+    <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>👯 Tells the most alike</span></h2>
+    <p class="stage-sub">the shows that tell the same motifs in much the same proportions, and the ones that least do;
+        each colored by the show's lean, our loose grouping by reputation</p>
+    {{ b.key(lean_key, 'Lean colors') }}
+    {{ b.boards(alike) }}
 
     <h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🎙️ Lately on the show</span></h2>
     <p class="stage-sub">its latest claims, in our words, with their motifs</p>

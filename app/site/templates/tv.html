@@ -1,4 +1,6 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
+{% import "air.html" as air %}
 
 {% block content %}
     <h2>📺 On TV</h2>
@@ -8,39 +10,24 @@
         language model corrects the reading errors and sets aside names, promos and ads, and each headline is matched by
         meaning to the story on the front pages it's about. The number beside a story is its place on the front pages
         then: #1 is the story the most outlets had.</p>
-    {% if stories or hours %}
-        {% if stories %}
-            <h3 class="radio-hour">The last 24 hours: stories by time on screen</h3>
-            <div class="tv-table-wrap">
-                <table class="tv-table">
-                    <thead><tr><th>Story</th><th>Front pages</th>{% for ch in channels %}<th style="--ink: {{ inks[loop.index0]|e }}">{{ ch }}</th>{% endfor %}</tr></thead>
-                    <tbody>
-                        {% for r in stories %}
-                            <tr><td>{{ r.label|e }}</td><td><span class="radio-rank">#{{ r.rank }}</span></td>
-                                {% for cell in r.cells %}<td class="tv-cell" style="--ink: {{ inks[loop.index0]|e }}">{% if cell.seconds %}<span class="tv-bar" style="width: {{ cell.share|e }}%"></span><span class="tv-min">{{ cell.text }}</span>{% endif %}</td>{% endfor %}</tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    {% if stories or lane.cells %}<div class="air-marks">
+        {{ b.key(key, 'Channel colors') }}
+        {% if lane.cells %}
+            <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>🕐 Hour by hour</span></h2>
+            <p class="stage-sub">the last {{ lane.cols }} hours, a lane per channel: each hour's longest-running caption
+                and its place on the front pages then (off: not on them); point at an hour, or tap it, for all its
+                captions and the program</p>
+            {{ air.lane(lane, 'Each channel hour by hour') }}
         {% endif %}
-        {% for h in hours %}
-            <h3 class="radio-hour">{{ h.label }} ET</h3>
-            <div class="radio-hour-cards">
-                {% for c in h.channels %}
-                    <div class="saga-card radio-card" style="--saga: {{ c.ink|e }}">
-                        <h3>📺 {{ c.name }}</h3>
-                        <ol class="radio-items">
-                            {% for g in c.captions %}
-                                <li>{{ g.text|e }} <span class="tv-time">{{ g.time }}</span>
-                                    {% if g.story %}<span class="radio-rank" title="On the front pages as “{{ g.label|e }}”: #{{ g.rank|e }}">#{{ g.rank }}</span>
-                                    {% else %}<span class="radio-rank radio-off">not on the front pages</span>{% endif %}</li>
-                            {% endfor %}
-                        </ol>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endfor %}
+        {% if stories %}
+            {{ air.stacked('The most time on screen', '⏱️', '#ff4fa3', "the last 24 hours' stories by minutes on screen; the bar in parts, a channel each, the disc the one that gave it the most, 📰 its best place on the front pages", stories, 'tv-most') }}
+        {% endif %}
+        <h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🤔 Air and front pages, apart</span></h2>
+        <p class="stage-sub">the last 24 hours: what television gave time to that the front pages didn't have, and the
+            other way round; each row in the ink of the channel that gave it the most time</p>
+        {{ b.key(pair_key, 'Row colors') }}
+        {{ b.boards(pair) }}</div>
     {% else %}
-        <p>No captions read yet.</p>
+        <p class="stage-empty">🦗 No captions read yet.</p>
     {% endif %}
 {% endblock %}

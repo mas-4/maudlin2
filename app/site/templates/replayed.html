@@ -1,6 +1,6 @@
 {% extends "page.html" %}
 
-{% macro chips(list) %}{% for s in list %}<a class="show-chip tv-chip" href="{{ s.url|e }}" style="--chip: {{ s.ink|e }}" title="{{ s.title|e }}">🎙️ {{ s.name|e }}</a> {% endfor %}{% endmacro %}
+{% macro chips(list) %}{% for s in list %}<a class="show-chip tv-chip" href="{{ s.url|e }}" style="--chip: {{ s.ink|e }}" data-tip="{{ s.title|e }}">🎙️ {{ s.name|e }}</a> {% endfor %}{% endmacro %}
 
 {% block content %}
     <h2>🔁 The Replay</h2>
@@ -17,18 +17,21 @@
 
     <h2 class="section-divider"><span>🎬 Most replayed</span></h2>
     {% if cards %}
+        <p class="stage-sub">each clip with the shows that played it by their lean, our loose grouping by reputation:
+            🫏 left, ⚖️ center, 🐘 right, and 🔀 crossover, shows with listeners on both sides, like Rogan, Theo Von
+            and Tim Dillon</p>
         <ol class="replay-cards">
             {% for c in cards %}
                 <li class="replay-card" id="r-{{ c.id|e }}">
-                    <p class="replay-count"><b>{{ c.shows }} shows</b> · {{ c.airings|length }} airing{{ '' if c.airings|length == 1 else 's' }}{% for name, emoji, n in c.sides %} · {{ emoji }} {{ n }} {{ name }}{% endfor %}</p>
+                    <p class="replay-count"><b>{{ c.shows }} shows</b> · {{ c.airings|length }} airing{{ '' if c.airings|length == 1 else 's' }}{% for name, emoji, n in c.sides %} · {% if name == 'crossover' %}<span class="replay-crossover" tabindex="0" data-tip="{{ crossover|e }}">{{ emoji }} {{ n }} {{ name }}</span>{% else %}{{ emoji }} {{ n }} {{ name }}{% endif %}{% endfor %}</p>
                     {% if c.kind == 'campaign' %}<p class="replay-tag">🗳️ A political ad, in its own words: {{ c.why|e }}</p>{% endif %}
                     <blockquote class="replay-quote">“{{ c.quote|e }}”</blockquote>
+                    {% if c.about %}<p class="replay-about">{{ c.about|e }}</p>{% endif %}
                     <p class="replay-first">🥇 First heard: <a href="{{ c.first.url|e }}">{{ c.first.show|e }}</a>, {{ c.first.when }} ET{% if c.first.clock %} (at {{ c.first.clock }} in){% endif %}</p>
                     <figure class="story-chart-figure replay-figure">
                         {{ c.strip }}
-                        <figcaption>Each dot is an episode that played it, at the time its feed published it (ET), in a lane for the show's lean.</figcaption>
+                        <figcaption>Each dot is an episode that played it, at the time its feed published it (ET), in a lane for the show's lean; point at a dot, or tap it, for the show and the episode.</figcaption>
                     </figure>
-                    <p class="replay-chips">{{ chips(c.chips) }}</p>
                     <details class="replay-airings">
                         <summary>⏱️ Every airing, with the time in the episode</summary>
                         <ol>

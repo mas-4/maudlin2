@@ -1,6 +1,7 @@
 """The Replay (replayed.html): the passages heard word for word on many shows this week (app/analysis/replay.py),
 the clips first, each with when and where it aired by the shows' lean, then the sponsor reads and promos, grouped by
 which sides' shows carried them."""
+import re
 from datetime import datetime, timedelta as td
 from html import escape
 
@@ -63,7 +64,10 @@ def strip(airings: list[dict]) -> str:
                      f'<text x="{x:.1f}" y="{bottom + 14}" class="sc-tick" text-anchor="middle">{escape(label)}</text>')
     for j, (group, emoji, name) in enumerate(LANES):
         y = top + j * LANE_H + LANE_H / 2
-        parts.append(f'<text x="{LABEL_W - 8}" y="{y + 4}" class="sc-label" text-anchor="end">{emoji} {name}</text>'
+        # "crossover" explained in the label's hover card (index.js hoverCard reads an SVG <title>)
+        tip = f'<title>{escape(CROSSOVER)}</title>' if group == 'crossover' else ''
+        tab = ' tabindex="0"' if tip else ''
+        parts.append(f'<text x="{LABEL_W - 8}" y="{y + 4}" class="sc-label" text-anchor="end"{tab}>{tip}{emoji} {name}</text>'
                      f'<line x1="{LABEL_W}" y1="{y}" x2="{WIDTH - 12}" y2="{y}" class="sc-lane"/>')
         for a, t in zip(airings, times):
             if a['group'] != group:
@@ -94,10 +98,72 @@ def shows_of(airings: list[dict], detail: bool = True) -> list[dict]:
                                                            a['published']))]
 
 
+# "Crossover", said where its lane and its count appear (Oct 28: the label went unexplained): sidefeeds' loose group
+CROSSOVER = ('Crossover: shows with listeners on both sides, like Rogan, Theo Von and Tim Dillon; a loose label by '
+             'reputation, as left and right are')
+# Who is speaking, where the words say so: a speaker naming themselves, an ad's sponsor
+INTRO = re.compile(r"\b[Mm]y name(?: is|'s) (?P<name>[A-Z][\w'’-]+(?: [A-Z][\w'’-]+){0,3})"
+                   r"(?:,? and (?P<what>I(?:'m| am) [^.!?,]{3,60}))?"
+                   r"|(?:^|(?<=[.!?] ))(?P<here>[A-Z][a-z'’]+(?: [A-Z][a-z'’]+){0,2}) here\.")
+APPROVE = re.compile(r"\bI(?:'m| am) ([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,3}),? and I approve this message")
+PAID = re.compile(r"\b[Pp]aid for by ((?:[A-Z0-9][\w'’&-]*|for|of|the|and)(?: (?:[A-Z0-9][\w'’&-]*|for|of|the|and)){0,7})")
+NAME = re.compile(r"\b[A-Z][a-z'’]+(?:[- ][A-Z][a-z'’]+){0,2}\b")
+NOT_NAMES = {'This', 'That', 'There', 'They', 'Well', 'Right', 'Quote', 'Okay', 'Today', 'Sir', 'God', 'America',
+             'American', 'Americans', 'President', 'Senate', 'Congress', 'Republican', 'Republicans', 'Democrat',
+             'Democrats', 'Democratic', 'Party', 'State', 'States', 'United', 'House', 'White', 'Election'}
+NAMED_IN = 2  # a name in the clip counts when at least this many of its episodes' titles have it too
+NAMES = 3  # names given
+
+
+def name_like(text: str) -> list[str]:
+    """The clip's words that look like names: capitalized runs, a possessive's 's dropped; a single word only when
+    it's 4 letters or more, not a common capitalized word, and, at the start of a sentence, never seen lowercase"""
+    lower = set(re.findall(r"\b[a-z][a-z'’]+\b", text))
+    out = []
+    for m in NAME.finditer(text):
+        n = re.sub(r"['’]s\b", '', m.group(0))
+        if ' ' not in n and '-' not in n:
+            starts = m.start() == 0 or text[:m.start()].rstrip()[-1:] in '.!?"“'
+            if n in NOT_NAMES or len(n) < 4 or (starts and n.lower() in lower):
+                continue
+        out.append(n)
+        if ' ' in n and len(last := n.split()[-1]) >= 4 and last not in NOT_NAMES:  # a surname, as titles have it
+            out.append(last)
+    return out
+
+
+def about(p: dict) -> str | None:
+    """A line on who is speaking or what the clip is, where the words or the episodes say so: a speaker naming
+    themselves, an ad's "I approve this message" or "paid for by", else the names in the clip that the episodes that
+    played it also have in their titles"""
+    text = ' '.join(p['text'].split())
+    if m := APPROVE.search(text):
+        return f'🗳️ The candidate speaking: {m.group(1)}, who “approves this message”'
+    if p['kind'] == 'campaign' and (m := PAID.search(text)):
+        return f'🗳️ Paid for by {m.group(1).rstrip(".")}, it says'
+    if m := INTRO.search(text):
+        if m['here']:
+            return f'🗣️ Speaking, in their own words: {m["here"]} (“{m["here"]} here”)'
+        return f'🗣️ Speaking, in their own words: {m["name"]}' + (f', “{m["what"]}”' if m['what'] else '')
+    titles = [a['title'] or '' for a in {a['source'] + (a['title'] or ''): a for a in p['airings']}.values()]
+    names = []
+    for n in dict.fromkeys(name_like(text)):
+        k = sum(bool(re.search(rf'\b{re.escape(n)}\b', t, re.I)) for t in titles)
+        if k >= NAMED_IN:
+            names.append((n, k))
+    # a longer name wins over its parts ("Amy Acton" over "Acton")
+    names = [(n, k) for n, k in names if not any(n != o and n in o.split() for o, _ in names)]
+    names.sort(key=lambda x: -x[1])
+    if not names:
+        return None
+    return ('📝 Named in the clip and in the titles of the episodes that played it: '
+            + ', '.join(f'{n} ({k} of {len(titles)})' for n, k in names[:NAMES]))
+
+
 def card(p: dict) -> dict:
     airings = [dict(a, when=when(a['published']), clock=clock(a['at'])) for a in p['airings']]
     chips = shows_of(p['airings'])
-    return {'id': p['id'], 'kind': p['kind'], 'why': p['why'], 'quote': quote(p['text'], EXCERPT),
+    return {'id': p['id'], 'kind': p['kind'], 'why': p['why'], 'quote': quote(p['text'], EXCERPT), 'about': about(p),
             'shows': p['shows'], 'airings': airings, 'chips': chips, 'strip': strip(p['airings']),
             'first': airings[0], 'span': f'{when(p["first"])} to {when(p["last"])}',
             'sides': [(name, emoji, n) for g, emoji, name in LANES
@@ -161,6 +227,7 @@ class ReplayPage:
             'until': when(result['until']) if result.get('until') else None,
             'since': when((_utc(result['until']) - WEEK).isoformat()) if result.get('until') else None,
             'top': cards[0]['shows'] if cards else 0, 'min_shows': replay.MIN_SHOWS, 'k': replay.K,
+            'crossover': CROSSOVER,
             'og_description': 'Clips, campaign ads and statements heard word for word on many shows this week, '
                               'left and right, and when each show played them.',
         })

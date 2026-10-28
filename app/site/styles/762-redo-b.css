@@ -1,0 +1,477 @@
+/* Show pages, On TV, On the radio, Beyond and the Replay redone as ranked strips (Oct 28) */
+
+/* The site redo's group B: the boards are 175-boards.css; here, the variants these pages need: a genre-mix bar, the
+   hourly swimlanes, stickers with bars, a diverging strip */
+
+/* Show pages (show.html): its tellings by genre as one bar, and the repertoire's second board counting on from the
+   first */
+.showpg-mix-wrap {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    padding: 0.4em 0.7em 0.6em;
+    margin: 0.4em 0 0.2em;
+}
+
+.showpg-mix-label {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0 0 0.3em;
+}
+
+.showpg-mix {
+    display: flex;
+    margin: 0;
+    height: 40px;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 3px 3px 0 #8a5cff;
+}
+
+.showpg-mix-part {
+    flex: 0 0 var(--w);
+    min-width: 4px;
+    display: grid;
+    place-items: center;
+    background: var(--ink);
+    font-size: 1.05em;
+    line-height: 1;
+}
+
+.showpg-mix-part + .showpg-mix-part {
+    border-left: 2px solid #1f1f2e;
+}
+
+.showpg-mix-part.showpg-mix-plain {
+    background: repeating-linear-gradient(45deg, #fff 0 6px, #ececf3 6px 9px);
+}
+
+.showpg-mix-part:hover, .showpg-mix-part:focus-visible {
+    filter: brightness(1.12);
+    outline: none;
+}
+
+.rank-board-rep-next .rank-list {
+    counter-reset: rank-list 20;  /* page_show.FIRST */
+}
+
+/* On TV and On the radio (air.html): channel discs carry their short name (CNN, NPR...) on the channel's ink, so the
+   color is never alone; white on the dark TV inks, ink on the light radio ones */
+.air-marks .rank-mark, .air-mark {
+    width: 2.9em;
+    height: 2.9em;
+    font: 700 0.68em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: var(--mark-text, white);
+    letter-spacing: -0.02em;
+}
+
+.air-marks .rank-key-plain .rank-mark {
+    color: #1f1f2e;
+}
+
+.air-marks.air-light .rank-mark, .air-light .air-mark {
+    --mark-text: #1f1f2e;
+}
+
+/* The hourly swimlane: a lane per channel across the hours (oldest left); on a phone the hours run down, newest at
+   the top, and the channels across */
+.air-lane {
+    display: grid;
+    grid-template-columns: 7.2em repeat(var(--cols), minmax(0, 1fr));
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #00c2a8;
+    padding: 0.5em;
+    margin: 0.6em 0 1.4em;
+}
+
+.air-lane > * {
+    grid-row: var(--r);
+    grid-column: var(--c);
+    min-width: 0;
+}
+
+.air-lane-corner, .air-lane-hour {
+    font: 700 0.8em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    align-self: end;
+    text-align: center;
+    padding-bottom: 0.15em;
+}
+
+.air-lane-name {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.air-lane-name .air-mark {
+    font-size: 0.62em;
+}
+
+.air-lane-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 5.2em;
+    padding: 4px 5px;
+    border: 2px solid #1f1f2e;
+    border-left: 6px solid var(--ink);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--ink) 9%, white);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.15s;
+}
+
+.air-lane-cell:hover, .air-lane-cell:focus-visible, .air-lane-cell.hover-card-on {
+    transform: translate(-1px, -2px);
+    box-shadow: 3px 3px 0 var(--ink);
+    outline: none;
+}
+
+.air-lane-rank {
+    align-self: flex-start;
+    font: 700 0.75em 'Comic Neue', 'Comic Sans MS', cursive;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0 0.4em;
+    background: #fff3c4;
+    line-height: 1.3;
+}
+
+.air-lane-off .air-lane-rank {
+    background: #eee;
+    color: #555;
+}
+
+.air-lane-text {
+    font-size: 0.72em;
+    line-height: 1.25;
+    color: #1f1f2e;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+}
+
+@media (max-width: 760px) {
+    .air-lane {
+        grid-template-columns: 3.4em repeat(var(--lanes), minmax(0, 1fr));
+        padding: 0.4em 0.3em;
+    }
+
+    .air-lane > * {
+        grid-row: var(--f);
+        grid-column: var(--r);
+    }
+
+    .air-lane-hour {
+        align-self: center;
+        text-align: right;
+        padding: 0 0.2em 0 0;
+    }
+
+    .air-lane-name {
+        flex-direction: column;
+        gap: 0.15em;
+        text-align: center;
+        font-size: 0.78em;
+        line-height: 1.1;
+    }
+
+    .air-lane-cell {
+        min-height: 4.4em;
+    }
+
+    .air-lane-text {
+        font-size: 0.64em;
+        overflow-wrap: break-word;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .air-lane-cell { transition: none; }
+    .air-lane-cell:hover, .air-lane-cell:focus-visible, .air-lane-cell.hover-card-on { transform: none; }
+}
+
+/* A ranked strip's bar in parts, one per channel in its ink, outlined like the boards' bars */
+.air-stack {
+    display: flex;
+    height: 12px;
+    width: 100%;
+}
+
+.air-stack > span {
+    flex: 0 0 var(--w);
+    min-width: 4px;
+    box-sizing: border-box;
+    background: var(--ink);
+    border: 1.5px solid #1f1f2e;
+}
+
+.air-stack > span + span {
+    border-left: none;
+}
+
+.air-stack > span:first-child {
+    border-radius: 2px 0 0 2px;
+}
+
+.air-stack > span:last-child {
+    border-radius: 0 5px 5px 0;
+}
+
+.air-front {
+    font-size: 0.85em;
+    color: #555;
+}
+
+/* On the radio (radio.html): NPR and ABC as stickers, side by side, each with bars for how often it led with what the
+   front pages led with */
+.radiopg-stickers {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20em), 1fr));
+    gap: 1.2em;
+    padding: 0;
+    margin: 1em 0 0.6em;
+}
+
+.radiopg-sticker {
+    background: color-mix(in srgb, var(--ink) 12%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--ink);
+    padding: 0.6em 0.9em 0.7em;
+    transform: rotate(-1deg);
+}
+
+.radiopg-sticker:nth-child(even) {
+    transform: rotate(1deg);
+}
+
+.radiopg-sticker-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin: 0 0 0.4em;
+    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.radiopg-sticker-head .rank-mark {
+    --ink: inherit;
+    background: var(--ink);
+}
+
+.radiopg-sticker-head > span:last-child {
+    display: flex;
+    flex-direction: column;
+}
+
+.radiopg-sticker-sub {
+    font-size: 0.75em;
+    color: #555;
+}
+
+.radiopg-bars {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.radiopg-bars li {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 40px;
+    justify-content: center;
+    padding: 0.15em 0.3em;
+    border-radius: 8px;
+}
+
+.radiopg-bars li:hover, .radiopg-bars li:focus-visible {
+    background: rgba(255, 255, 255, 0.7);
+    outline: none;
+}
+
+.radiopg-bar-label {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.radiopg-bar-label b {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-weight: 400;
+}
+
+.radiopg-bar {
+    display: block;
+    height: 12px;
+    background: white;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.radiopg-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--ink);
+    border-right: 1.5px solid #1f1f2e;
+}
+
+.radiopg-log {
+    margin-top: 2em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .radiopg-sticker, .radiopg-sticker:nth-child(even) { transform: none; }
+}
+
+/* Beyond the front pages (beyond.html): the subjects as a diverging strip, left-leaning shows' pieces out to the
+   left, right-leaning out to the right, the rest across the middle; each row a button that filters the pieces */
+.bypg-key .bypg-key-left .rank-mark, .bypg-left {
+    background: #3a86ff;
+}
+
+.bypg-key .bypg-key-elsewhere .rank-mark, .bypg-mid {
+    background: #b8b8c8;
+}
+
+.bypg-key .bypg-key-right .rank-mark, .bypg-right {
+    background: #ff4f6d;
+}
+
+/* The Replay (replayed.html): who is speaking or what the clip is, where the words say so; "crossover" explained */
+.replay-about {
+    margin: -0.2em 0 0.6em;
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    background: color-mix(in srgb, #ffc400 18%, white);
+    border-radius: 8px;
+    padding: 0.2em 0.6em;
+    display: inline-block;
+}
+
+.replay-crossover {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+.replay-strip text[tabindex] {
+    cursor: help;
+    text-decoration: underline dotted;
+}
+
+.bypg-picked[hidden] {
+    display: none;
+}
+
+.bypg-strip {
+    list-style: none;
+    padding: 0.3em 0.4em;
+    margin: 0.4em 0 1.2em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+}
+
+@media (min-width: 900px) {
+    .bypg-strip {
+        columns: 2;
+        column-gap: 2em;
+    }
+}
+
+.bypg-strip li {
+    break-inside: avoid;
+}
+
+.bypg-strip li + li {
+    border-top: 2px solid #ececf3;
+}
+
+.bypg-row {
+    display: grid;
+    grid-template-columns: minmax(6em, 11em) minmax(0, 1fr) 6.5em;
+    align-items: center;
+    gap: 0.5em;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.25em 0.4em;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: none;
+    color: #1f1f2e;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    transition: background 0.15s;
+}
+
+.bypg-row:hover, .bypg-row:focus-visible {
+    background: #f3f3f8;
+    outline: none;
+}
+
+.bypg-row[aria-pressed="true"] {
+    background: #fff3c4;
+    border-color: #1f1f2e;
+    box-shadow: 3px 3px 0 #ffc400;
+}
+
+.bypg-name {
+    font: 700 0.98em 'Comic Neue', 'Comic Sans MS', cursive;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+
+.bypg-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 14px;
+    background: linear-gradient(#1f1f2e, #1f1f2e) center / 2px 100% no-repeat;  /* the axis */
+}
+
+.bypg-half {
+    display: flex;
+}
+
+.bypg-half-left {
+    justify-content: flex-end;
+}
+
+.bypg-seg {
+    display: block;
+    min-width: 3px;
+    box-sizing: border-box;
+    border: 1.5px solid #1f1f2e;
+}
+
+.bypg-half-left .bypg-seg + .bypg-seg, .bypg-half .bypg-seg + .bypg-seg {
+    border-left: none;
+}
+
+.bypg-figure {
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+    .bypg-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "name figure" "bar bar";
+        row-gap: 4px;
+    }
+
+    .bypg-name { grid-area: name; }
+    .bypg-bar { grid-area: bar; }
+    .bypg-figure { grid-area: figure; }
+}
