@@ -49,15 +49,131 @@
 }
 
 .omap-pick {
-    max-width: 46em;
-    min-height: 2.6em;
-    margin: 0 auto 0.6em;
-    padding: 0.5em 0.9em;
-    background: rgba(255, 255, 255, 0.94);
-    border: 2px dashed #b8b8c8;
-    border-radius: 12px;
-    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0 auto 0.4em;
+    color: #666;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
     text-align: center;
+}
+
+/* The card that pops up beside a dot (outlet_map.html): placed in window coordinates, so it works over the
+   full-screen copy of the map too (690-chart-full.css, z-index 10000) */
+.omap-pop {
+    position: fixed;
+    z-index: 10001;
+    width: min(19em, calc(100vw - 16px));
+    box-sizing: border-box;
+    padding: 0.7em 0.85em 0.6em;
+    background: #fffdf5;
+    border: 2.5px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #ff4fa3;
+    font: 700 0.92em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    line-height: 1.3;
+    animation: omap-pop-in 0.12s ease-out;
+}
+
+.omap-pop[hidden] {
+    display: none;
+}
+
+@keyframes omap-pop-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .omap-pop { animation: none; }
+}
+
+.omap-pop a {
+    color: inherit;
+}
+
+.omap-pop-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    margin-bottom: 0.35em;
+}
+
+.omap-pop-head .omap-swatch {
+    flex: none;
+    width: 1em;
+    height: 1em;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+}
+
+.omap-pop-name {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-size: 1.05em;
+    font-weight: 400;
+    text-decoration: none;
+}
+
+.omap-pop-name:hover {
+    text-decoration: underline;
+}
+
+.omap-pop-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+    margin-bottom: 0.5em;
+}
+
+.omap-pop-tag {
+    padding: 0.1em 0.55em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    background: white;
+    font-size: 0.88em;
+}
+
+.omap-pop-type {
+    background: #ffc400;
+}
+
+.omap-pop-meter {
+    display: grid;
+    grid-template-columns: 4.6em 1fr 2.6em;
+    align-items: center;
+    gap: 0.45em;
+    margin: 0.25em 0;
+}
+
+.omap-pop-bar {
+    height: 0.7em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 999px;
+    background: white;
+    overflow: hidden;
+}
+
+.omap-pop-fill {
+    display: block;
+    height: 100%;
+    background: #00c2a8;
+}
+
+.omap-pop-heat .omap-pop-fill {
+    background: #ff6b1a;
+}
+
+.omap-pop-val {
+    text-align: right;
+}
+
+.omap-pop-line {
+    margin: 0.35em 0 0.1em;
+}
+
+.omap-pop-more {
+    display: block;
+    margin-top: 0.4em;
+    text-align: right;
+    color: #d6337f !important;
 }
 
 .omap-legend {

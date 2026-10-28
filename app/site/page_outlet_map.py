@@ -117,9 +117,9 @@ def view_group(outlets: dict, view: str, shown: bool) -> str:
     for name, x, y in reversed(points):  # the most distinctive drawn last, on top
         o = outlets[name]
         tip = f'{name}: {o["type"] or "no settled type"}'
-        parts.append(f'<g class="omap-dot" tabindex="0" data-name="{escape(name)}">'
-                     f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill(o["lean"])}"/>'
-                     f'<title>{escape(tip)}</title></g>')
+        # No <title>: the browser's tooltip would cover the card that pops up beside the dot (outlet_map.html)
+        parts.append(f'<g class="omap-dot" tabindex="0" role="button" data-name="{escape(name)}" '
+                     f'aria-label="{escape(tip)}"><circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill(o["lean"])}"/></g>')
     for name, (lx, ly, anchor) in labels.items():
         parts.append(f'<text class="omap-label" x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" '
                      f'aria-hidden="true">{escape(short_name(name))}</text>')

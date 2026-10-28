@@ -467,7 +467,8 @@ def test_outlet_map_draws_both_views_with_a_dot_per_outlet(site):
     names = OUTLET_PROFILE['outlets']
     assert {d['data-name'] for d in coverage.select('.omap-dot')} == set(names)
     assert {d['data-name'] for d in style.select('.omap-dot')} == {n for n, o in names.items() if not o['is_wire']}
-    assert 'Odd <News> & Co' in {d.select_one('title').get_text().split(':')[0] for d in coverage.select('.omap-dot')}
+    assert 'Odd <News> & Co' in {d['aria-label'].split(':')[0] for d in coverage.select('.omap-dot')}
+    assert not coverage.select('.omap-dot title')  # no browser tooltip over the card that pops up
     fill = {d['data-name']: d.select_one('circle')['fill'] for d in coverage.select('.omap-dot')}
     assert fill['Odd <News> & Co'] == '#ffffff' and fill['Breitbart'] == '#b40426'  # lean colors, unrated white
     assert coverage.select('.omap-label')  # the most distinctive are labeled
