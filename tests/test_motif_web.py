@@ -109,8 +109,22 @@ def test_the_cloud_of_stories_told_sizes_by_tellers_and_colors_by_side():
 def test_told_against_checked_finds_the_unchecked():
     rows = [row('M1', 'Voter fraud', f'c{n}', kind='posts', teller='people online', side=None) for n in range(5)]
     rows += [row('M2', 'Rigged election', 'x', kind='check', teller='Snopes', side=None)]
+    rows += [row('M3', 'Sports', f's{n}', kind='posts', teller='people online', side=None, genre='Perennials')
+             for n in range(9)]  # everyday talk: nothing to check
+    rows += [dict(row('M1', 'Voter fraud', 'h', teller='Right Show', side='right'), speaker='host'),
+             dict(row('M1', 'Voter fraud', 'k', teller='Left Show', side='left'), speaker='clip')]
     out = w.checked_vs_told(rows)
     assert [m['name'] for m in out['unchecked']] == ['Voter fraud'] and out['checked'][0]['name'] == 'Rigged election'
+    assert {k: out['unchecked'][0][k] for k in ('told', 'posts', 'left', 'right')} == {'told': 7, 'posts': 5,
+                                                                                       'left': 0, 'right': 1}
+
+
+def test_voters_only_motifs_are_told_by_nobody_else():
+    rows = [row('M1', 'Work horse', f'v{n}', kind='voters', teller='Focus Group', side=None) for n in range(3)]
+    rows += [row('M2', 'Proven record', 'v9', kind='voters', teller='Focus Group', side=None),
+             row('M2', 'Proven record', 'p', kind='posts', teller='people online', side=None),
+             row('M3', 'Clean hands', 'v8', kind='voters', teller='Focus Group', side=None)]
+    assert [(m['name'], m['claims']) for m in w.voters_only(rows)] == [('Work horse', 3), ('Clean hands', 1)]
 
 
 def test_a_sagas_drift_marks_the_motifs_new_that_day():

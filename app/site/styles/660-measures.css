@@ -1,4 +1,10 @@
 /* Measures on existing pages (Oct 28): the aisle's weekly divide, the folklore page's lead lists, who stayed on a story */
+.folk-lead-about {
+    margin: 0.1em 0 0.4em;
+    font-size: 0.9em;
+    color: #555;
+}
+
 .divide-figure {
     margin: 0.6em 0 0.8em;
     background: white;

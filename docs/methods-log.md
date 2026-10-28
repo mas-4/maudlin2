@@ -25,6 +25,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   claims an episode against 24) and are drawn hollow. First values: 0.16 (Oct 3–5), 0.10, 0.18, 0.23 (Oct 20–26).
   The latest week's shared motifs are those said by 2 or more shows a side with weighted log-odds |z| < 1; its
   one-sided motifs have the largest |z|, said by 2 or more shows on that side.
+- **Folklore: told a lot, never checked; what only voters say.** The first lists the motifs with the most distinct
+  claims told on the shows and online (4 or more) and no claim examined by a fact-checker we follow, everyday talk
+  left out, each with the left and right shows whose host or guest said it: a list of leads, not of falsehoods. The
+  second lists the motifs whose only claims come from the voters in The Focus Group (33 on Oct 27; by a hand count in
+  the probe, 17 of them praise for a candidate).
 
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the

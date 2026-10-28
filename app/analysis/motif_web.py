@@ -416,10 +416,11 @@ def words_by_motif(found: list[dict]) -> dict[str, list[dict]]:
     return out
 
 
-def checked_vs_told(rows: list[dict], least: int = 4, top: int = 10) -> dict:
-    """What the fact-checkers spend their time on, against what's told: per motif, the claims told on the shows and
-    online, and the claims fact-checkers examined. {'unchecked': the most told with no check, 'checked': the most
-    checked, each [{id, name, told, checked, sides}]}"""
+def checked_vs_told(rows: list[dict], least: int = 4, top: int = 12) -> dict:
+    """What the fact-checkers spend their time on, against what's told: per motif, the distinct claims told on the
+    shows and online, and the claims fact-checkers examined. {'unchecked': the most told with no check (a lead list
+    for checkers; not everyday talk, which has nothing to check), 'checked': the most checked, each [{id, name, told,
+    checked, posts, left, right}]}, left and right counting the shows whose host or guest said it (spoken)"""
     told, checked, by = defaultdict(set), defaultdict(set), defaultdict(list)
     for r in rows:
         by[r['motif']].append(r)
@@ -427,11 +428,27 @@ def checked_vs_told(rows: list[dict], least: int = 4, top: int = 10) -> dict:
             told[r['motif']].add(r['key'])
         elif r['kind'] == 'check':
             checked[r['motif']].add(r['key'])
-    items = [{'id': m, 'name': by[m][0]['name'], 'told': len(told[m]), 'checked': len(checked[m]), 'sides': sided(by[m])}
-             for m in by]
-    unchecked = sorted((i for i in items if i['checked'] == 0 and i['told'] >= least), key=lambda i: -i['told'])[:top]
+    items = []
+    for m, rs in by.items():
+        said = sided(spoken(rs))
+        items.append({'id': m, 'name': rs[0]['name'], 'genre': rs[0]['genre'], 'told': len(told[m]),
+                      'checked': len(checked[m]), 'posts': len({r['key'] for r in rs if r['kind'] == 'posts'}),
+                      'left': len(said['left']), 'right': len(said['right'])})
+    unchecked = sorted((i for i in items if i['checked'] == 0 and i['told'] >= least and i['genre'] != 'Perennials'),
+                       key=lambda i: (-i['told'], i['name']))[:top]
     most = sorted((i for i in items if i['checked']), key=lambda i: (-i['checked'], -i['told']))[:top]
     return {'unchecked': unchecked, 'checked': most}
+
+
+def voters_only(rows: list[dict], top: int = 15) -> list[dict]:
+    """The motifs only voters told (The Focus Group), told by no show, online or checker we follow: [{id, name,
+    claims}], the most claims first"""
+    by = defaultdict(list)
+    for r in rows:
+        by[r['motif']].append(r)
+    out = [{'id': m, 'name': rs[0]['name'], 'claims': len({r['key'] for r in rs})}
+           for m, rs in by.items() if all(r['kind'] == 'voters' for r in rs)]
+    return sorted(out, key=lambda i: (-i['claims'], i['name']))[:top]
 
 
 def cloud(rows: list[dict], days: int = 7, most: int = 60) -> list[dict]:
