@@ -1,7 +1,7 @@
 """Headline edits: word extraction, kicker stripping, overlap, minor-change detection and the diff markup."""
 import pytest
 
-from app.analysis.edits import LIVE, _core, _words, diff_html, is_minor, overlap
+from app.analysis.edits import LIVE, LIVE_URL, _core, _words, diff_html, is_minor, overlap
 
 
 @pytest.mark.parametrize('text, expected', [
@@ -134,6 +134,10 @@ def test_diff_html_full_rewrite():
     ('Election live updates: polls close', True),
     ('Ukraine war live blog', True),
     ('Budget vote – as it happened', True),
+    ('India Vs Brazil Live Score: Kolkata Hosts 5-Time Champions', True),
+    ('IND vs WI live scores, 3rd ODI', True),
+    ('Israel Elections Live: Turnout Surges To 55.7%', True),
+    ('Wall Street Tries to Live With 5% Yields', False),
     ('Olivia lives in Paris', False),
     ('Delivery firm expands', False),
 ])
@@ -144,3 +148,15 @@ def test_live_pattern(title, live):
 @pytest.mark.parametrize('title', ['Live music returns to Austin', 'The best cities to live in'])
 def test_live_pattern_ignores_plain_word_live(title):
     assert not LIVE.search(title)
+
+
+@pytest.mark.parametrize('url, live', [
+    ('https://www.news18.com/cricket/india-vs-west-indies-3rd-odi-live-score-commentary-liveblog-10365411.html', True),
+    ('https://timesofindia.indiatimes.com/sports/cricket/ind-vs-wi/liveblog/134653796.cms', True),
+    ('https://www.bloomberg.com/news/live-blog/2026-10-15/stock-market-today-dow-s-p-live-updates', True),
+    ('https://www.theguardian.com/us-news/live/2026/oct/27/us-politics-latest', True),
+    ('https://www.france24.com/en/live-news/20261015-two-dead-as-istanbul-endures-heaviest-rainfall', False),
+    ('https://www.huffpost.com/entry/early-october-prime-day-deals-already-live_l_6ab2a012', False),
+])
+def test_live_url_pattern(url, live):
+    assert bool(LIVE_URL.search(url)) is live

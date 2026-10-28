@@ -23,6 +23,16 @@ def test_variants_go_by_one_name_and_overreaching_aliases_are_off():
     assert en.canonical('administration', aliases) == 'administration'  # Cornell's isn't the Trump administration
 
 
+def test_both_spellings_of_talarico_are_one_name_on_the_names_page():
+    from app.analysis import motif_web
+    aliases = en.load_aliases()['aliases']
+    assert {en.canonical(n, aliases) for n in ('James Tallarico', 'Tallarico', 'James Talarico')} == {'James Talarico'}
+    rows = [{'motif': m, 'name': m, 'claim': c, 'key': c.lower(), 'kind': 'shows', 'teller': 'A', 'side': 'left',
+             'date': '2026-10-20', 'story': None, 'url': '', 'genre': 'Plots'}
+            for m, c in (('M1', 'Tallarico is a radical.'), ('M2', 'James Talarico leads the race.'))]
+    assert len(motif_web.people(rows, ['James Talarico'], aliases)['James Talarico']) == 2
+
+
 def test_a_surname_joins_the_one_full_name_it_belongs_to():
     names = {'putin': {'name': 'Putin', 'stories': [{'id': 1}], 'outlets': {'A': 'left'}},
              'vladimir putin': {'name': 'Vladimir Putin', 'stories': [{'id': 2}], 'outlets': {'B': 'right'}},

@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as Soup
 
-from app.scraper import Scraper
+from app.scraper import Scraper, without
+from app.scrapers.townhall import CARD_EXTRAS
 from app.utils.constants import Constants
 from app.utils.logger import get_logger
 
@@ -16,6 +17,7 @@ class RedState(Scraper):
             href = a['href']
             if href.startswith('/'):
                 href = self.url + href
+            a = without(a, CARD_EXTRAS)  # the same cards as Townhall's: section label and author inside the link
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

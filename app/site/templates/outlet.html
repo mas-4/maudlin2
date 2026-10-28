@@ -62,7 +62,6 @@
             <div class="outlet-rewrite">
                 <div class="edit-before">{{ r.before|safe }}</div>
                 <div class="edit-after">{{ r.after|safe }}</div>
-                {% if r.change %}<span class="edit-change">✏️ {{ r.change }}</span>{% endif %}
             </div>
         {% endfor %}
     {% endif %}

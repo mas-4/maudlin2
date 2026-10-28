@@ -1,10 +1,9 @@
-import re
 import os
 
 import pandas as pd
 
 from app.analysis import abtests
-from app.analysis.edits import judge_edits, find_edits, edit_rates, WINDOW_DAYS
+from app.analysis.edits import find_edits, edit_rates, WINDOW_DAYS
 from app.site.common import TemplateHandler, chip_style, j2env
 from app.site.data import DataHandler
 from app.utils.constants import Bias
@@ -18,40 +17,6 @@ TIME = '%b %#d, %#I:%M %p' if os.name == 'nt' else '%b %-d, %-I:%M %p'
 
 def eastern(timestamp) -> str:
     return pd.Timestamp(timestamp).tz_localize('UTC').tz_convert('US/Eastern').strftime(TIME)
-
-
-NOTES = {('wording', 'more_loaded'): 'more loaded wording', ('wording', 'plainer'): 'plainer wording',
-         ('news', 'better'): 'reads as better news', ('news', 'worse'): 'reads as worse news'}
-
-
-def note_text(change) -> str | None:
-    """The model's note on what changed, or None when it wrote one of its labels instead ("more_loaded", "same": Oct 27
-    audit, 7% of the notes), which isn't a note"""
-    change = re.sub(r'\s*,?\s*(?:and\s+)?(?:wording|news)\s*:\s*[a-z_]+', '', str(change or '')).strip(' ,;')
-    if not change or re.fullmatch(r'[a-z_]+', change):
-        return None
-    return change
-
-
-def shifts(judgment, edit) -> list[str]:
-    """Notes on how a rewrite moved the wording or the news, shown only when two independent readings agree on the
-    direction: the language model's side-by-side judgment of both versions, and the change between each version's own
-    scores. Either alone is noisy (one called an added apostrophe "more loaded"); both agreeing is worth showing."""
-    if not judgment:
-        return []
-    notes = []
-
-    def moved(field):
-        before, after = edit[f'{field}_before'], edit[f'{field}_after']
-        if pd.isna(before) or pd.isna(after) or before == after:
-            return None
-        return 'up' if after > before else 'down'
-    agree = {('wording', 'more_loaded'): moved('loaded') == 'up', ('wording', 'plainer'): moved('loaded') == 'down',
-             ('news', 'better'): moved('event') == 'up', ('news', 'worse'): moved('event') == 'down'}
-    for (field, value), note in NOTES.items():
-        if judgment.get(field) == value and agree[(field, value)]:
-            notes.append(note)
-    return notes
 
 
 def source_kinds() -> dict[str, str]:
@@ -73,25 +38,23 @@ class EditsPage:
         logger.info("Generating edits page...")
         edits, minor = find_edits()
         kinds = source_kinds()
-        judged = judge_edits([(e['before'], e['after']) for _, e in edits.iterrows()]) if not edits.empty else {}
+        # The language model's reading of each rewrite (more loaded or plainer wording, better or worse news, a note
+        # on what changed) isn't shown since Oct 28: it called 63% of rewrites "more loaded" for outlets on every
+        # side, and 6.8% of its notes only repeated a label. The rewrites and their counts stay
         rows = []
         for _, edit in edits.iterrows():
-            judgment = judged.get((edit['before'], edit['after']))
             rows.append({
                 'agency': edit['agency'], 'url': edit['url'], 'style': chip_style(edit['agency'], edit['bias']),
                 'bias': 'not rated' if edit['agency'] in j2env.globals['unrated'] else str(Bias(int(edit['bias']))),
                 'before_html': edit['before_html'], 'after_html': edit['after_html'],
                 'between': f"{eastern(edit['last_seen_before'])} and {eastern(edit['first_seen_after'])} ET",
                 'when': int(pd.Timestamp(edit['first_seen_after']).timestamp()),
-                'shifts': shifts(judgment, edit),
-                'change': note_text(judgment.get('change')) if judgment else None,
                 'source': kinds.get(edit['agency'], 'front page'),
             })
         rates = edit_rates(edits)
         ab = [{**t, 'style': chip_style(t['agency'], t['bias']), 'started': eastern(t['started']),
                'latest': eastern(t['latest'])} for t in abtests.tests()]
         self.context.update({
-            'shift_notes': [n for n in NOTES.values() if any(n in r['shifts'] for r in rows)],
             'tests': ab,
             'edits': rows,
             'minor_count': len(minor),

@@ -7,6 +7,7 @@ from collections import Counter
 from datetime import date, timedelta
 
 from app.analysis import accusations, motif_index
+from app.site import motif_search
 from app.site.common import TemplateHandler
 from app.utils import get_logger
 
@@ -87,8 +88,11 @@ class MotifsPage:
 
     def generate(self):
         logger.info("Generating motif index page...")
-        shown = catalog()
-        self.template.write({'title': 'Motif index', **shown,
+        index = motif_index.load()
+        shown = catalog(index)
+        size = motif_search.write(shown['entries'], index)  # what the page's search box fetches on first use
+        logger.info("...search index: %d motifs, %d KB", len(shown['entries']), size // 1024)
+        self.template.write({'title': 'Motif index', **shown, 'search_file': motif_search.FILE,
                              'recurring': sum(1 for e in shown['entries'] if e['count'] > 1),
                              # the headline: shapes told about two events or more (motif_told.py), the rest placed
                              'attested': sum(1 for e in shown['entries'] if motif_index.attested(e)),
