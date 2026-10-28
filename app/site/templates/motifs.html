@@ -16,6 +16,17 @@
         (<b>{{ entries|length }}</b> motifs from <b>{{ claims }}</b> claims), in {{ genres|length }} genres and
         {{ groups|length }} groups; {{ resting }} resting on another.</p>
     <p class="more-link"><a href="motif-map.html">↔️ see them across the aisle</a> <a href="folklore.html">🧶 what's told now</a></p>
+    {% if entries %}
+        {# Keyword search (motif-search.js): the index file comes the first time the box is used #}
+        <form class="motifs-search" role="search" action="#" data-index="{{ search_file|e }}?v={{ build_version|e }}">
+            <label class="motifs-search-label" for="motifs-search-q">🔎 Search the index</label>
+            <input type="search" id="motifs-search-q" name="q" autocomplete="off" spellcheck="false"
+                   placeholder="try “deep state” or “stolen election”"
+                   aria-describedby="motifs-search-status" aria-controls="motifs-search-results">
+            <p class="motifs-search-status" id="motifs-search-status" aria-live="polite">Words from a story as people tell it find the motifs it's filed under.</p>
+            <ol class="motifs-search-results" id="motifs-search-results" aria-label="Motifs found"></ol>
+        </form>
+    {% endif %}
     {% include "motif_note.html" %}
     <details class="how-it-works" id="how">
         <summary>How the index works</summary>
@@ -46,9 +57,6 @@
                 <button type="button" data-sort="recent" title="Most claims in the last {{ lately_days }} days first">🔥 lately</button>
                 <button type="button" data-sort="first" title="The newest motifs first">🆕 newest</button>
                 <button type="button" data-sort="name">🔤 A–Z</button></span>
-            <span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><label class="bar-label" for="motif-search">🔎</label>
-                <input type="search" id="motif-search" placeholder="a word in a motif or claim"></span>
         </div>
         <details class="motif-group-picker">
             <summary>🗂️ <b>{{ groups|length }} groups</b>: shelves of motifs that go together, across genres</summary>
@@ -57,7 +65,7 @@
         <p class="table-intro motif-showing" aria-live="polite"></p>
         <div class="court-cards narrative-cards motif-cards">
             {% for e in entries %}
-                <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-genre="{{ e.genre|e }}" data-groups="|{{ e.groups|map(attribute='id')|join('|')|e }}|" data-count="{{ e.count }}" data-recent="{{ e.recent }}" data-first="{{ (e.first_seen or '')|e }}" data-name="{{ e.name|lower|e }}" data-text="{{ (e.name ~ ' ' ~ e.note ~ ' ' ~ (e.claims|map(attribute='claim')|join(' ')))|lower|e }}">
+                <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-genre="{{ e.genre|e }}" data-groups="|{{ e.groups|map(attribute='id')|join('|')|e }}|" data-count="{{ e.count }}" data-recent="{{ e.recent }}" data-first="{{ (e.first_seen or '')|e }}" data-name="{{ e.name|lower|e }}">
                     {% if e.genre or e.groups %}<p class="folk-sources">{% if e.genre %}<a class="folk-genre" href="#genre={{ e.genre|urlencode }}" title="{{ e.genre|e }}: show the whole genre">{{ genre_emoji.get(e.genre, '') }} {{ e.genre|e }}</a>{% endif %}{% for g in e.groups %}<a class="folk-genre motif-group-tag" href="#group={{ g.id|e }}" title="Show the whole group">🗂️ {{ g.name|e }}</a>{% endfor %}</p>{% endif %}
                     <h4><a class="motif-entry-link" href="{{ motif_href(e.id) }}" title="Its own page: who it came up with, its answers, all its claims">🧩 {{ e.name|e }}</a></h4>
                     {% if e.note %}<p class="motif-note">{{ e.note|e }}</p>{% endif %}
@@ -82,7 +90,6 @@
                 const about = Object.fromEntries({{ genres|map(attribute='name')|list|tojson }}.map((g, i) => [g, {{ genres|map(attribute='about')|list|tojson }}[i]]));
                 const groupName = Object.fromEntries({{ groups|map(attribute='id')|list|tojson }}.map((g, i) => [g, {{ groups|map(attribute='name')|list|tojson }}[i]]));
                 const showing = document.querySelector('.motif-showing');
-                const search = document.getElementById('motif-search');
                 const esc = (s) => s.replace(/[&<>"]/g, (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
                 let sort = 'count';
                 // The genre or group picked lives in the address (#genre=Plots, #group=G19), so it can be linked to,
@@ -99,9 +106,8 @@
                 };
                 const show = () => {
                     const {genre, group} = picked();
-                    const q = search.value.trim().toLowerCase();
                     const shown = all.filter((c) => (!genre || c.dataset.genre === genre)
-                        && (!group || c.dataset.groups.includes(`|${group}|`)) && (!q || c.dataset.text.includes(q)))
+                        && (!group || c.dataset.groups.includes(`|${group}|`)))
                         .sort(order[sort]);
                     repack(shown);
                     document.querySelectorAll('.motif-tools button[data-genre]').forEach((b) => b.classList.toggle('active', b.dataset.genre === genre));
@@ -139,13 +145,11 @@
                     history.replaceState(null, '', location.pathname);
                     show();
                 });
-                search.addEventListener('input', show);
                 const arrive = () => {
                     const id = location.hash.slice(1);
                     const one = /^M\d+$/.test(id) && all.find((c) => c.id === id);  // filtered out, it's off the page
                     if (!one) return show();
-                    search.value = '';  // a motif's own address: show everything, then go to it
-                    history.replaceState(null, '', location.pathname);
+                    history.replaceState(null, '', location.pathname);  // a motif's own address: show everything, then go to it
                     show();
                     history.replaceState(null, '', `#${id}`);
                     requestAnimationFrame(() => one.scrollIntoView({block: 'start'}));  // after the repack lays out
@@ -154,6 +158,71 @@
                 };
                 window.addEventListener('hashchange', arrive);
                 arrive();
+            })();
+        </script>
+        <script src="motif-search.js?v={{ build_version|e }}"></script>
+        <script>
+            (function () {
+                const form = document.querySelector('.motifs-search');
+                const input = document.getElementById('motifs-search-q');
+                const status = document.getElementById('motifs-search-status');
+                const list = document.getElementById('motifs-search-results');
+                const emoji = {{ genre_emoji|tojson }};
+                const intro = status.textContent;
+                const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+                let engine = null, loading = null, timer = 0;
+                // Fetched once, the first time the box is touched
+                const load = () => loading || (loading = fetch(form.dataset.index).then((r) => {
+                    if (!r.ok) throw new Error(r.status);
+                    return r.json();
+                }).then((data) => { engine = new MotifSearch.Search(data.docs); }).catch(() => {
+                    loading = null;
+                    status.textContent = "🤷 The search couldn't load. Try again in a moment.";
+                }));
+                const run = () => {
+                    const q = input.value.trim();
+                    if (!q) { list.innerHTML = ''; status.textContent = intro; return; }
+                    if (!engine) {
+                        status.textContent = '⏳ Loading the index…';
+                        load().then(() => { if (engine) run(); });
+                        return;
+                    }
+                    const hits = engine.top(q, 8);
+                    status.textContent = hits.length
+                        ? `${hits.length === 8 ? 'The 8 best motifs' : hits.length + (hits.length === 1 ? ' motif' : ' motifs')} for “${q}”, best first`
+                        : '🦗 No motif has those words. Try fewer, or put it the way a teller would.';
+                    list.innerHTML = hits.map(({doc}) => `<li><a class="motifs-search-hit" href="${esc(doc.u)}">`
+                        + `<span class="motifs-search-name">🧩 ${esc(doc.n)}</span>`
+                        + `<span class="motifs-search-meta">${doc.g ? `${emoji[doc.g] || ''} ${esc(doc.g)} · ` : ''}${doc.k} claim${doc.k === 1 ? '' : 's'}</span>`
+                        + `<span class="motifs-search-snippet">${MotifSearch.snippet(doc, q)}</span></a></li>`).join('');
+                };
+                input.addEventListener('focus', load, {once: true});
+                input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 120); });
+                form.addEventListener('submit', (ev) => {  // Enter: search now, then to the best motif
+                    ev.preventDefault();
+                    clearTimeout(timer);
+                    run();
+                    const first = list.querySelector('a');
+                    if (first) first.focus();
+                });
+                // Arrow keys move between the box and the results; Escape clears
+                form.addEventListener('keydown', (ev) => {
+                    const links = [...list.querySelectorAll('a')];
+                    const at = links.indexOf(document.activeElement);
+                    if (ev.key === 'ArrowDown' && links.length) {
+                        ev.preventDefault();
+                        links[Math.min(at + 1, links.length - 1)].focus();
+                    } else if (ev.key === 'ArrowUp' && at >= 0) {
+                        ev.preventDefault();
+                        (at === 0 ? input : links[at - 1]).focus();
+                    } else if (ev.key === 'Escape' && input.value) {
+                        input.value = '';
+                        run();
+                        input.focus();
+                    }
+                });
+                const asked = new URLSearchParams(location.search).get('q');  // motifs.html?q=… opens with a search
+                if (asked) { input.value = asked; run(); }
             })();
         </script>
     {% else %}
