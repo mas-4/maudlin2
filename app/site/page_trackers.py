@@ -41,6 +41,8 @@ FOLKLORE = [
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
     {'href': 'motif-map.html', 'emoji': '↔️', 'name': 'The aisle',
      'about': "The motif map: every story placed by which side's shows tell it, and the answers across the aisle."},
+    {'href': 'echoes.html', 'emoji': '🏛️', 'name': 'Older than you think',
+     'about': "Today's story shapes told in 1896 newspapers, each checked by a person."},
 ]
 
 ABOUT = [
@@ -60,8 +62,12 @@ PREVIEW_ONLY: set = set()
 
 
 def menus(published: bool) -> list:
-    """MENUS, without the preview-only pages where the site is published"""
-    return [(label, [p for p in pages if not (published and p['href'] in PREVIEW_ONLY)], note) for label, pages, note in MENUS]
+    """MENUS, without the preview-only pages where the site is published, and without the echoes page until a person
+    has approved an echo"""
+    from app.analysis import echoes
+    hidden = set() if echoes.any_approved() else {'echoes.html'}
+    return [(label, [p for p in pages if not (published and p['href'] in PREVIEW_ONLY) and p['href'] not in hidden], note)
+            for label, pages, note in MENUS]
 
 
 # (label, its pages, a note at the top of the menu)

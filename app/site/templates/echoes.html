@@ -1,0 +1,50 @@
+{% extends "page.html" %}
+{% import "boards.html" as b %}
+
+{% block content %}
+    <h1>🏛️ Older than you think</h1>
+    <p class="table-intro echo-intro">Today's political stories, told in 1896. Each card pairs a story shape from
+        <a href="motifs.html">our motif index</a> with a claim printed in a real 1896 newspaper, found by the same
+        reading that files today's claims and checked by a person before it went up. The quotes are from the Library of
+        Congress's <a href="https://chroniclingamerica.loc.gov/">Chronicling America</a> scans, read by a machine
+        (OCR) and lightly cleaned; each card links to the page itself, and the OCR as printed is in the quote's card.</p>
+
+    {% if cards %}
+        {{ b.key(genre_key, 'Genre colors') }}
+        {% if viral %}{{ b.board(viral, 'h2') }}{% endif %}
+
+        <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🪞 Then and now</span></h2>
+        <div class="echo-cards">
+            {% for c in cards %}
+            <article class="echo-card" id="echo-{{ c.id }}" style="--ink: {{ c.ink|e }}">
+                <div class="echo-now">
+                    <span class="echo-year">2026</span>
+                    <h3><span class="rank-mark" role="img" aria-label="{{ c.genre|e }}">{{ c.mark|e }}</span>
+                        <a href="{{ c.href|e }}">{{ c.name|e }}</a></h3>
+                    {% if c.note %}<p class="echo-note">{{ c.note|e }}</p>{% endif %}
+                    {% if c.today %}<p class="echo-today">🎙️ told this year: “{{ c.today|e }}”</p>{% endif %}
+                </div>
+                <div class="echo-then">
+                    <span class="echo-year echo-old">1896</span>
+                    <blockquote class="echo-quote" data-tip-head="The OCR as printed" data-tip="{{ c.ocr|e }}">“{{ c.quote|e }}”</blockquote>
+                    <p class="echo-source">🗞️ <b>{{ c.paper|e }}</b>, {{ c.place|e }}, {{ c.day|e }}{% if c.headline %} · “{{ c.headline|e }}”{% endif %}</p>
+                    <p class="echo-links">{% if c.papers > 1 %}<span class="echo-papers">🔁 printed in {{ c.papers }} papers</span>{% endif %}
+                        <a class="echo-scan" href="{{ c.url|e }}" rel="noopener">📜 see the page →</a></p>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="stage-empty">🕰️ The first echoes are being read: each one goes up when a person has checked it.</p>
+    {% endif %}
+
+    <details class="how-it-works echo-how">
+        <summary>🔧 How the echoes are found</summary>
+        <p>From 413,186 political articles printed in 1896 (American Stories, Dell et al. 2023, from Chronicling America),
+            520 were read by a local language model for their claims, each kept only if its quote is in the article.
+            The claims were filed to a copy of today's motif index by the pipeline that files today's claims (the Lab's
+            🧪 Rip Van Winkle). An echo is a claim filed with confidence to a motif the site shows, put to a person, and
+            shown only once they approve it. Claims printed in more than one paper were found by matching near-copies
+            across papers, as 1896's exchange papers reprinted each other.</p>
+    </details>
+{% endblock %}

@@ -549,12 +549,12 @@ def test_nav_menus_follow_a_story_downstream(site):
     assert [a['href'] for a in nav.select('.nav-links > a')] == ['stories.html', 'motifs.html', 'sagas.html']
     menus = nav.select('.nav-menu')
     assert [m.select_one('summary').get_text(strip=True) for m in menus] == [label for label, _, _ in MENUS]
-    for menu, (_, items, _) in zip(menus, MENUS):
-        assert [a['href'] for a in menu.select('.nav-menu-list a')] == [t['href'] for t in items]
+    for menu, (_, items, _) in zip(menus, MENUS):  # the echoes page waits for a person's first approved echo
+        assert [a['href'] for a in menu.select('.nav-menu-list a')] == [t['href'] for t in items if t['href'] != 'echoes.html']
     # Every page of the site's own is reachable from the nav (story, saga and outlet pages from their lists)
     reached = {a['href'] for a in nav.select('a')}
     pages = {name for name in site['soup'] if not re.match(r'(story|saga|outlet|agency|archive|day)-', name)}
-    assert pages - reached - {'newsletter.html'} == set()
+    assert pages - reached - {'newsletter.html', 'echoes.html'} == set()
 
 
 def test_edits_page_is_searchable_and_sortable(site):

@@ -1,0 +1,135 @@
+/* Older than you think (echoes.html): 2026 beside 1896 */
+
+/* Each card a pair: today's motif on the left, its 1896 telling on the right (one above the other on a phone), the
+   2026 side tinted by the motif's genre, the 1896 side on old paper */
+.echo-intro {
+    max-width: 46em;
+}
+
+.echo-cards {
+    display: grid;
+    gap: 1.4em;
+    margin: 0.8em 0 1.6em;
+}
+
+.echo-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    border: 3px solid #1f1f2e;
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 var(--ink);
+    overflow: hidden;
+    background: white;
+    scroll-margin-top: 5em;
+}
+
+@media (min-width: 760px) {
+    .echo-card {
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    }
+}
+
+.echo-card:target {
+    outline: 4px dashed #ffc400;
+    outline-offset: 4px;
+}
+
+.echo-now {
+    position: relative;
+    min-width: 0;
+    padding: 1em 1.1em;
+    background: color-mix(in srgb, var(--ink) 14%, white);
+}
+
+.echo-then {
+    position: relative;
+    min-width: 0;
+    padding: 1em 1.1em;
+    background: #f6eedb;
+    border-top: 3px solid #1f1f2e;
+}
+
+@media (min-width: 760px) {
+    .echo-card > .echo-then {
+        border-top: none;
+        border-left: 3px solid #1f1f2e;
+    }
+}
+
+.echo-year {
+    display: inline-block;
+    font: 0.95em 'Bungee', 'Comic Neue', sans-serif;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.05em 0.6em;
+    transform: rotate(-3deg);
+}
+
+.echo-year.echo-old {
+    background: #1f1f2e;
+    color: #f6eedb;
+}
+
+.echo-now h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    margin: 0.5em 0 0.3em;
+    font: 700 1.3em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.echo-now h3 a {
+    color: #1f1f2e;
+}
+
+.echo-note {
+    margin: 0.3em 0;
+    line-height: 1.4;
+}
+
+.echo-today {
+    margin: 0.3em 0;
+    line-height: 1.4;
+    font-style: italic;
+    color: #3a3a4a;
+}
+
+.echo-quote {
+    margin: 0.6em 0 0.5em;
+    font: 1.18em/1.45 Georgia, 'Times New Roman', serif;
+    color: #2b2317;
+    cursor: help;
+}
+
+.echo-source {
+    margin: 0.2em 0;
+    font-size: 0.92em;
+    color: #4a3f2c;
+}
+
+.echo-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em 1em;
+    margin: 0.5em 0 0;
+}
+
+.echo-papers {
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    background: #ffc400;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    padding: 0.1em 0.6em;
+}
+
+.echo-scan {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #d6337f;
+}
+
+.echo-how {
+    max-width: 46em;
+    margin: 1em auto 2em;
+}
