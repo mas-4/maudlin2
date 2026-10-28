@@ -290,6 +290,8 @@ def test_front_page_has_the_floating_section_rail(front):
     hrefs = [a['href'] for a in toc.select('a')]
     assert '#top' in hrefs
     assert 'headlines.html' in hrefs
+    # in the page's own order: top stories come before the trends, as on the page (Oct 27: it listed trending second)
+    assert hrefs.index('#top-stories') < hrefs.index('#trending')
 
 
 def test_front_page_section_links_land(front):

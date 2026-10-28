@@ -212,13 +212,14 @@
             <span class="key-part key-click"><span class="key-point" aria-hidden="true">👆</span> poke a word</span></figcaption>
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
-    {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up #}
+    {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up.
+       In the page's own order: cloud, top stories, sagas, trending (Oct 27: it listed trending second) #}
     <button class="toc-toggle" type="button" aria-label="Jump to a section" aria-expanded="false">🧭</button>
     <nav class="page-toc" aria-label="On this page">
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
-        <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
-        {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
         <a href="#top-stories"><span class="toc-emoji">📰</span><span class="toc-label">top stories</span></a>
+        {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
+        <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
         <a href="stories.html"><span class="toc-emoji">🗂️</span><span class="toc-label">every story</span></a>
         <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
     </nav>
