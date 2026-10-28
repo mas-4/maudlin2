@@ -1,0 +1,137 @@
+/* The outlet map (page_outlet_map.py): its finding, views, dots and labels, the picked outlet, lean key and types */
+.omap-finding {
+    max-width: 46em;
+    margin: 0.4em auto 1.2em;
+    padding: 0.7em 1em;
+    background: color-mix(in srgb, #ffc400 20%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #ff4fa3;
+    transform: rotate(-0.6deg);
+}
+
+.omap-views button {
+    min-height: 40px;
+}
+
+.omap-figure {
+    max-width: 52em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.omap-chart .omap-dot {
+    cursor: pointer;
+    outline: none;
+}
+
+.omap-chart .omap-dot circle {
+    stroke: #1f1f2e;
+    stroke-width: 1.2;
+}
+
+.omap-chart .omap-dot:hover circle,
+.omap-chart .omap-dot:focus circle,
+.omap-chart .omap-dot.picked circle {
+    stroke-width: 3;
+    stroke: #ff4fa3;
+}
+
+.omap-chart .omap-label {
+    font-size: 12px;
+    fill: #1f1f2e;
+    pointer-events: none;
+}
+
+.omap-chart .omap-end {
+    font-size: 13px;
+    fill: #666;
+}
+
+.omap-pick {
+    max-width: 46em;
+    min-height: 2.6em;
+    margin: 0 auto 0.6em;
+    padding: 0.5em 0.9em;
+    background: rgba(255, 255, 255, 0.94);
+    border: 2px dashed #b8b8c8;
+    border-radius: 12px;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    text-align: center;
+}
+
+.omap-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4em 1em;
+    list-style: none;
+    padding: 0;
+    margin: 0 auto 1.4em;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.omap-swatch {
+    display: inline-block;
+    width: 0.95em;
+    height: 0.95em;
+    margin-right: 0.3em;
+    vertical-align: -0.1em;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 50%;
+}
+
+.omap-unrated {
+    background: white;
+    border-style: dashed;
+}
+
+.omap-ends, .omap-types {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16em), 1fr));
+    gap: 1em;
+    max-width: 60em;
+    margin: 0 auto 1.6em;
+}
+
+.omap-end-card, .omap-type {
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    padding: 0.6em 1em;
+    box-shadow: 5px 5px 0 #00c2a8;
+}
+
+.omap-end-card:nth-child(even), .omap-type:nth-child(even) {
+    box-shadow: 5px 5px 0 #8a5cff;
+}
+
+.omap-end-card h3, .omap-type h3 {
+    margin: 0.2em 0 0.4em;
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.omap-end-card ul {
+    margin: 0;
+    padding-left: 1.2em;
+    font-size: 0.9em;
+}
+
+.omap-family {
+    background: color-mix(in srgb, #ffc400 12%, white);
+}
+
+.omap-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+}
+
+.omap-members .edit-chip {
+    text-decoration: none;
+}
+
+.omap-table td:last-child {
+    font-size: 0.85em;
+    color: #555;
+}

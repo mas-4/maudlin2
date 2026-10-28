@@ -7,6 +7,8 @@ FRONT_PAGES = [
      'about': "Every outlet's front-page headlines right now, searchable."},
     {'href': 'agencies.html', 'emoji': '🏢', 'name': 'Outlets',
      'about': 'Every outlet we read: its lean, its mood, what it leads with.'},
+    {'href': 'outlet-map.html', 'emoji': '🗺️', 'name': 'The outlet map',
+     'about': 'Every outlet placed by which stories it covers and how it words them: the first axis isn\'t left vs right.'},
     {'href': 'edits.html', 'emoji': '✏️', 'name': 'Headline changes',
      'about': 'Headlines outlets rewrote after publishing, and the wordings they A/B test.'},
     {'href': 'emotions.html', 'emoji': '😱', 'name': 'Emotions',

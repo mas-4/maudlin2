@@ -1,0 +1,130 @@
+{% extends "page.html" %}
+
+{% block content %}
+    <h1>🗺️ The outlet map</h1>
+    <p class="table-intro omap-intro">Every outlet we read on enough of our stories, placed by <strong>which stories it
+        covers</strong>: outlets close together run the same stories. Each dot is in the outlet's AllSides lean color,
+        white when it isn't rated. The second view places them by <strong>how they word them</strong>: how close their
+        stories and words are to the AP's and Reuters', and how heated their headlines are.</p>
+    <p class="omap-finding">💡 <strong>The first axis isn't left against right.</strong> Across, it runs from business,
+        tech and world news to the political fight, and the partisan outlets of both sides sit together at the fight's
+        end: they cover the same fight. Left and right part on the second axis: crime and immigration stories at the
+        bottom, stories critical of Trump at the top.</p>
+
+    {% if svg %}
+        <div class="table-filters story-sort omap-views" role="group" aria-label="Which map">
+            <span class="bar-group"><span class="bar-label">show:</span>
+                {% for key, v in views.items() %}<button type="button" data-view="{{ key }}"{% if loop.first %} class="active" aria-pressed="true"{% else %} aria-pressed="false"{% endif %}>{{ v.name }}</button>{% endfor %}</span>
+        </div>
+        <figure class="story-chart-figure omap-figure">
+            {{ svg|safe }}
+            <figcaption>{{ outlets|length }} outlets with at least {{ min_stories }} of our stories and
+                {{ min_articles }} headlines in the {{ profile.window_days }} days to {{ until }} ET.
+                <span class="omap-note" data-view="coverage">Placed by which of {{ profile.stories }} stories each ran
+                    (stories at least three of them ran), by correspondence analysis. The two axes hold
+                    {{ profile.axes.inertia[0] }}% and {{ profile.axes.inertia[1] }}% of the differences, so outlets
+                    close together here can still differ in other ways. Which way each axis points is set by the lean
+                    ratings: the end where outlets rated far left or far right gather is to the right, the end where
+                    left-rated ones gather is up. The ratings only point the axes; they place no one.</span>
+                <span class="omap-note" data-view="style" hidden>Across: how close its agenda and headline words are to
+                    the AP's and Reuters' (the share of its stories a wire also ran, how near its headlines are to the
+                    wire's on those stories, its vocabulary). Up: how heated its wording is (loaded words, combat verbs
+                    like "slams", sensational words, anger, each side's labels for the other). Each is the average of
+                    those measures' ranks among these outlets. The AP and Reuters aren't on this view: they're the
+                    yardstick.</span></figcaption>
+        </figure>
+        <p class="omap-pick" aria-live="polite">👆 Point at or tap a dot to see which outlet it is.</p>
+        <ul class="omap-legend" aria-label="Lean colors">
+            {% for l in leans %}<li><span class="omap-swatch" style="background: {{ l.color|e }}"></span>{{ l.name }}</li>{% endfor %}
+            <li><span class="omap-swatch omap-unrated"></span>not rated</li>
+        </ul>
+        <script type="application/json" id="omap-data">{{ dots|tojson }}</script>
+        <script>
+            // The two views (buttons above the map) and the outlet under the pointer or finger (the line under it)
+            document.addEventListener('DOMContentLoaded', () => {
+                const fig = document.querySelector('.omap-figure');
+                const pick = document.querySelector('.omap-pick');
+                const data = JSON.parse(document.getElementById('omap-data').textContent);
+                const buttons = document.querySelectorAll('.omap-views button');
+                buttons.forEach((b) => b.addEventListener('click', () => {
+                    buttons.forEach((x) => { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', x === b); });
+                    fig.querySelectorAll('.omap-view').forEach((g) => g.setAttribute('display', g.dataset.view === b.dataset.view ? 'inline' : 'none'));
+                    document.querySelectorAll('.omap-note').forEach((n) => { n.hidden = n.dataset.view !== b.dataset.view; });
+                }));
+                function show(dot) {
+                    const name = dot.dataset.name, o = data[name];
+                    if (!o) return;
+                    fig.querySelectorAll('.omap-dot.picked').forEach((d) => d.classList.remove('picked'));
+                    fig.querySelectorAll('.omap-dot').forEach((d) => { if (d.dataset.name === name) d.classList.add('picked'); });
+                    const a = document.createElement('a');
+                    a.href = o.href;
+                    a.textContent = name;
+                    const parts = [o.lean, o.type || 'no settled type',
+                                   o.is_wire ? '📡 a wire service' : `📡 wire: ${o.wire} percentile`,
+                                   `🌶️ heat: ${o.heat} percentile`, `👯 most like ${o.like.join(', ')}`];
+                    pick.replaceChildren('📍 ', a, ` · ${parts.join(' · ')}`);
+                }
+                ['pointerover', 'click', 'focusin'].forEach((kind) => fig.addEventListener(kind, (ev) => {
+                    const dot = ev.target.closest && ev.target.closest('.omap-dot');
+                    if (dot) show(dot);
+                }));
+            });
+        </script>
+
+        <h2 class="section-divider" id="omap-pull"><span>🧲 The stories that pull each way</span></h2>
+        <p class="table-intro">The stories that place outlets furthest along each axis, by our labels for them.</p>
+        <div class="omap-ends">
+            {% for axis, ends in [('x', [('low', views.coverage.left), ('high', views.coverage.right)]), ('y', [('high', views.coverage.up), ('low', views.coverage.down)])] %}
+                {% for end, words in ends %}
+                    <div class="omap-end-card">
+                        <h3>{{ words }}</h3>
+                        <ul>{% for s in profile.axes[axis][end] %}<li>{{ s|e }}</li>{% endfor %}</ul>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <h2 class="section-divider" id="omap-types"><span>🏷️ Outlet types</span></h2>
+        <p class="table-intro">Outlets sorted into types by what they do on their front pages: which stories they run,
+            when, beside whom, how close to the wires, how their headlines are worded, how often they rewrite them,
+            about fifty measures in all, and none of them a rating. Outlets sit on a continuum more than in islands, so
+            a type is shown only when it holds together: when we leave out a fifth of the outlets at random and sort
+            them again, it comes back at least three-quarters the same. Most of the mainstream's finer types don't, so
+            mainstream outlets carry only the broad family. A type named for a side is shown only on outlets rated on
+            that side or not rated.</p>
+        <div class="omap-types">
+            {% for t in types %}
+                <div class="omap-type{% if t.level == 'family' %} omap-family{% endif %}">
+                    <h3>{{ '🏘️' if t.level == 'family' else '🏷️' }} {{ t.name|e }}</h3>
+                    <p>{{ t.about|e }}</p>
+                    <p class="omap-members">{% for m in t.members %}<a class="edit-chip" style="{{ chip_style(m.name, m.bias)|e }}" href="{{ m.href|e }}">{{ outlet_icon(m.name) }}{{ short_name(m.name)|e }}</a>{% endfor %}</p>
+                    <p class="trend-posts">{{ t.members|length }} outlets · {{ (t.stability * 100)|round|int }}% the same when sorted again</p>
+                </div>
+            {% else %}
+                <p class="stage-empty">🤷 No type held together this time.</p>
+            {% endfor %}
+        </div>
+
+        <h2 class="section-divider" id="omap-all"><span>📋 Every outlet on the map</span></h2>
+        <div class="matrix-wrap">
+            <table class="races sortable omap-table">
+                <thead><tr><th data-sort="text">Outlet</th><th data-sort="text">Type</th>
+                    <th data-sort="number" title="Percentile: closer to the AP and Reuters than this share of the outlets here">📡 Wire</th>
+                    <th data-sort="number" title="Percentile: more heated wording than this share of the outlets here">🌶️ Heat</th>
+                    <th>Behaves most like</th></tr></thead>
+                <tbody>
+                {% for o in outlets %}
+                    <tr><td><a href="{{ o.href|e }}">{{ o.name|e }}</a></td><td>{{ (o.type or '–')|e }}</td>
+                        <td data-value="{{ -1 if o.is_wire else o.wire_pct }}">{{ 'a wire' if o.is_wire else o.wire_pct }}</td>
+                        <td data-value="{{ o.heat_pct }}">{{ o.heat_pct }}</td><td>{{ o.like|join(', ')|e }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="table-intro">From the study of Oct 27-28, rebuilt each day from the last {{ profile.window_days }}
+            days; the <a href="methods.html">methods log</a> has the details. Outlets the site doesn't build stories from
+            (most outlets outside the US and the UK) aren't on the map.</p>
+    {% else %}
+        <p class="stage-empty">🦗 Not enough of our stories in the last weeks to draw the map this time.</p>
+    {% endif %}
+{% endblock content %}

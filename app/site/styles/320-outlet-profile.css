@@ -67,3 +67,90 @@
     color: #666;
     cursor: help;
 }
+
+/* The fingerprint on each outlet's page (outlet.html): its type, wire and heat, look-alikes and its place on the map */
+.outlet-fp {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    align-items: center;
+    max-width: 52em;
+    margin: 0 auto 0.4em;
+    padding: 0.8em 1.1em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #00c2a8;
+}
+
+.outlet-fp-text {
+    flex: 1 1 20em;
+    min-width: 0;
+}
+
+.outlet-fp-text p {
+    margin: 0.4em 0;
+}
+
+.outlet-fp-type strong {
+    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.outlet-fp-bar {
+    display: block;
+    height: 10px;
+    margin-top: 0.25em;
+    max-width: 20em;
+    background: #eef1f6;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.outlet-fp-bar span {
+    display: block;
+    height: 100%;
+    background: #8a5cff;
+}
+
+.outlet-fp-heat span {
+    background: #ff6b1a;
+}
+
+.outlet-fp-figure {
+    flex: 0 1 220px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.outlet-fp-figure figcaption {
+    font-size: 0.75em;
+    color: #555;
+    max-width: 220px;
+}
+
+.outlet-fp-map {
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+}
+
+.outlet-fp-other {
+    fill: #c8c8d0;
+}
+
+.outlet-fp-me {
+    stroke: #1f1f2e;
+    stroke-width: 2;
+}
+
+.outlet-fp-note {
+    max-width: 52em;
+    margin: 0 auto 1em;
+    font-size: 0.8em;
+    color: #666;
+    text-align: center;
+}

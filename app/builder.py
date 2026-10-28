@@ -8,6 +8,7 @@ from app.site.data import DataHandler
 from app.site.deploy import publish_to_netlify
 from app.site.page_agencies import AgenciesPage
 from app.site.page_headlines import HeadlinesPage
+from app.site.page_outlet_map import OutletMapPage
 from app.site.page_court import CourtPage
 from app.site.page_edits import EditsPage
 from app.site.page_emotions import EmotionsPage
@@ -64,7 +65,7 @@ def build(upload_aside: bool = False):
     dh: DataHandler = DataHandler()
     # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
-    pages = [HeadlinesPage, AgenciesPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifPages, ShowPages, AislePage, AboutPage, LabPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage, AlmanacPage, ReplayPage, PlayPage]
+    pages = [HeadlinesPage, AgenciesPage, OutletMapPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifPages, ShowPages, AislePage, AboutPage, LabPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage, AlmanacPage, ReplayPage, PlayPage]
     if Config.netlify:  # published: the pages still waiting on the person (page_trackers.PREVIEW_ONLY) stay out
         pages = [p for p in pages if p not in (AlmanacPage, ReplayPage)]
     for page in pages:
