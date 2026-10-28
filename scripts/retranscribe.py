@@ -157,7 +157,15 @@ def redone_urls() -> set:
         return {u for (u,) in s.query(SideItem.url).filter(SideItem.id.in_(ids))}
 
 
+LAB = os.path.expanduser('~/maudlin-lab')  # the experiments' copy of the data (scripts/experiments/lab_data.py)
+
+
 if __name__ == '__main__':
+    # This job fixes production's transcripts, so it runs on production's data even from the experiment queue, which
+    # points every step at the lab copy: queue it as `env MAUDLIN_DATA=~/maudlin-data ...` (Oct 28: 223 episodes were
+    # redone on the lab copy before anyone noticed, then carried over by hand)
+    if os.path.realpath(Config.data).startswith(os.path.realpath(LAB)):
+        sys.exit('retranscribe: refusing to run on the lab copy of the data; set MAUDLIN_DATA to production\'s')
     p = argparse.ArgumentParser()
     p.add_argument('step', choices=['audio', 'claims', 'count'])
     p.add_argument('--limit', type=int, help='at most this many episodes (a trial run)')
