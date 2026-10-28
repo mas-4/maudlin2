@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% macro shape(c) %}{% if c.rumor_class or c.conspiracy or c.family %}
     <p class="rumor-shape" title="The shape of the story as its tellers tell it, not whether it's true (see What the labels mean)">
@@ -33,11 +34,14 @@
                 <b>{{ index.entries|length }}</b> motifs holding <b>{{ index.claims }}</b> claims, each checked by a
                 person and sorted into {{ index.genres|length }} genres, the way a folklorist sorts tales. Pick a genre
                 to read its motifs, or go to what's being told now, below.</p>
-            {% if index.lately %}
-                <div class="motif-lately-box">
-                    <p class="section-label" title="Motifs with the most claims dated in the last {{ index.lately_days }} days">🔥 Told most lately</p>
-                    <p class="motif-front-chips">{% for m in index.lately %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.recent }} claims in the last {{ index.lately_days }} days, {{ m.count }} in all{% if m.genre %} ({{ m.genre|e }}){% endif %}">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.recent }}</span></a>{% endfor %}</p>
-                </div>
+            {% if boards %}
+                {# The motif lists as ranked strips, in pairs that answer each other (app/site/boards.py) #}
+                {{ b.key(genre_key, 'Genre colors') }}
+                <p class="table-intro folk-boards-split"><span class="folk-split-swatch" aria-hidden="true"></span> A
+                    two-tone bar is split by who said it on the shows: 🫏 <b>blue</b> the share of left-leaning shows,
+                    🐘 <b>red</b> right-leaning (a host or guest, as <a href="motif-map.html">the aisle</a> counts
+                    sides). Point at a row for its note and its numbers.</p>
+                {{ b.boards(boards) }}
             {% endif %}
             <div class="genre-shelves">
                 {% for g in index.genres %}
@@ -54,25 +58,6 @@
                     <summary>🗂️ <b>{{ index.groups|length }} groups</b>: shelves of motifs that go together, across genres</summary>
                     <p class="motif-front-chips">{% for g in index.groups %}<a class="motif-chip small" href="motifs.html#group={{ g.id|e }}"{% if g.note %} title="{{ g.note|e }}"{% endif %}>🗂️ {{ g.name|e }} <span class="motif-seen">{{ g.count }}</span></a>{% endfor %}</p>
                 </details>
-            {% endif %}
-            {% if checking and checking.unchecked %}
-                <div class="motif-lately-box folk-unchecked">
-                    <p class="section-label" title="Motifs with the most different claims told on the shows and online, none of them examined by the fact-checkers we follow">🙈 Told a lot, never checked</p>
-                    <p class="folk-lead-about">The stories told most on the shows and online that no fact-checker we follow has examined, from both sides: a list of leads, not of falsehoods (many are opinions, or true).</p>
-                    <p class="motif-front-chips">{% for m in checking.unchecked %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.told }} different claims told: {{ m.posts }} online; said by the hosts or guests of {{ m.left }} left and {{ m.right }} right shows">🧩 {{ m.name|e }} <span class="motif-seen">×{{ m.told }}{% if m.left or m.right %} 🫏{{ m.left }} · {{ m.right }}🐘{% endif %}</span></a>{% endfor %}</p>
-                </div>
-            {% endif %}
-            {% if voters_only %}
-                <div class="motif-lately-box folk-voters-only">
-                    <p class="section-label" title="Motifs whose only claims come from the voters in The Focus Group's episodes">🗳️ What only voters say</p>
-                    <p class="folk-lead-about">Stories told by the voters in <a href="#focus-group">The Focus Group</a> and by no show, poster or fact-checker we follow. Many are praise for a candidate.</p>
-                    <p class="motif-front-chips">{% for m in voters_only %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.claims }} claim{{ '' if m.claims == 1 else 's' }} from voters">🧩 {{ m.name|e }}{% if m.claims > 1 %} <span class="motif-seen">×{{ m.claims }}</span>{% endif %}</a>{% endfor %}</p>
-                </div>
-            {% endif %}
-            {% if checking and checking.checked %}
-                <div class="folk-checking">
-                    <p class="motif-front-chips">🔎 the fact-checkers' favorites: {% for m in checking.checked %}<a class="motif-chip small" href="{{ motif_href(m.id) }}" title="{{ m.checked }} claims checked, {{ m.told }} told">🧩 {{ m.name|e }} <span class="motif-seen">🔎{{ m.checked }}</span></a>{% endfor %}</p>
-                </div>
             {% endif %}
             <p class="more-link"><a href="motifs.html">🧩 browse the whole index</a> <a href="motif-map.html">↔️ see it across the aisle</a> <a href="motifs.html#how">📖 how it works</a></p>
             {% include "motif_note.html" %}
@@ -149,30 +134,14 @@
     </details>
 
     {% if cards %}
-        <div class="table-filters story-sort narrative-tools" role="group" aria-label="Filter the catalog">
-            <span class="bar-group"><span class="bar-label">heard:</span>
-                {% for k, n in source_counts %}<button type="button" data-sources="{{ k|e }}" title="{{ sources[k].about|e }}">{{ sources[k].emoji }} {{ sources[k].name }} <b>{{ n }}</b></button>{% endfor %}</span>
-            {% if genre_counts %}<span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">genre:</span>
-                {% for g, n in genre_counts %}<button type="button" data-genres="{{ g|e }}" title="Filed under a motif of this genre in our motif index">{{ index.genre_emoji.get(g, '') }} {{ g|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
-            <span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">only:</span>
-                <button type="button" data-filter="politics">🏛️ politics</button>
-                {% if with_motifs %}<button type="button" data-filter="hasmotif" title="Only what's filed under a checked motif in our motif index">🧩 has a motif <b>{{ with_motifs }}</b></button>{% endif %}
-                {% if seen_count %}<button type="button" data-filter="seen" title="Fact-checked rumors people in our social sample are telling or arguing over">💬 circulating <b>{{ seen_count }}</b></button>{% endif %}</span>
-            {% if motif_counts %}<span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">motif:</span>
-                {% for m, n in motif_counts %}<button type="button" data-motif="{{ m.id|e }}" title="{% if m.note %}{{ m.note|e }} · {% endif %}{{ m.id|e }} in our motif index"{% if loop.index > motif_chips %} class="motif-more" hidden{% endif %}>🧩 {{ m.name|e }} <b>{{ n }}</b></button>{% endfor %}
-                {% if motif_counts|length > motif_chips %}<button type="button" class="motif-more-toggle" data-more="1" aria-expanded="false">➕ {{ motif_counts|length - motif_chips }} more</button>{% endif %}</span>{% endif %}
-            {% if class_counts %}<span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">rumor:</span>
-                {% for k, n in class_counts %}<button type="button" data-rumor="{{ k|e }}" title="{{ rumor_classes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
-            {% if scope_counts and preview %}<span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">conspiracy:</span>
-                {% for k, n in scope_counts %}<button type="button" data-scope="{{ k|e }}" title="{{ conspiracy_scopes[k]|e }}">{{ shape_emoji.get(k, '') }} {{ k }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
-            {% if family_counts %}<span class="bar-divider" aria-hidden="true"></span>
-            <span class="bar-group"><span class="bar-label">subject:</span>
-                {% for k, n in family_counts %}<button type="button" data-family="{{ k|e }}">{{ k|e }} <b>{{ n }}</b></button>{% endfor %}</span>{% endif %}
+        {# Oct 28: seven rows of chips (heard, genre, only, motif with "➕ 111 more", rumor, conspiracy, subject) became
+           a genre row and a search box: the words of a card, its motifs, its labels and where it was heard all match #}
+        <div class="folk-find" role="group" aria-label="Find in the catalog">
+            {% if genre_counts %}<p class="folk-find-genres" aria-label="Genre of its motifs">
+                {% for g, n in genre_counts %}<button type="button" class="folk-find-genre" data-genres="{{ g|e }}" aria-pressed="false" style="--ink: {{ genre_inks.get(g, '#ffffff')|e }}"><span class="rank-mark" aria-hidden="true">{{ index.genre_emoji.get(g, '🧩') }}</span> {{ g|e }} <b>{{ n }}</b></button>{% endfor %}</p>{% endif %}
+            <p class="folk-find-search"><label for="folk-find-q">🔎 <span>Find</span></label>
+                <input type="search" id="folk-find-q" autocomplete="off" spellcheck="false" placeholder="a word, a motif, “fact-checked”, “dread”…" aria-describedby="folk-find-status"></p>
+            <p class="folk-find-status" id="folk-find-status" aria-live="polite"></p>
         </div>
 
         <div class="court-cards narrative-cards">
@@ -250,41 +219,43 @@
                 const box = document.querySelector('.narrative-cards');
                 const all = [...box.querySelectorAll('.narrative')];
                 const repack = packColumns(box, all, 340);
-                const only = new Set();  // 🏛️ politics, 🧩 has a motif, 💬 circulating
-                const pick = {sources: null, genres: null, motif: null, rumor: null, scope: null, family: null};  // one per row, tapped again to clear
-                // A card can have several sources, genres and motifs ('|M004|M005|'): it matches one it holds; the other rows match exactly
-                const more = document.querySelector('.motif-more-toggle');
-                if (more) more.dataset.label = more.textContent;
-                const holds = (c, k, v) => ['sources', 'genres', 'motif'].includes(k) ? c.dataset[k].includes(`|${v}|`) : c.dataset[k] === v;
-                const show = () => repack(all.filter((c) => [...only].every((k) => c.dataset[k])
-                    && Object.entries(pick).every(([k, v]) => !v || holds(c, k, v))));
-                const choose = (key, value) => {
-                    pick[key] = pick[key] === value ? null : value;
-                    document.querySelectorAll(`.narrative-tools button[data-${key}]`).forEach((x) => x.classList.toggle('active', x.dataset[key] === pick[key]));
+                const tools = document.querySelector('.folk-find');
+                const input = document.getElementById('folk-find-q');
+                const status = document.getElementById('folk-find-status');
+                const names = {{ sources|tojson }};
+                const words = new Map(all.map((c) => [c, c.textContent.toLowerCase().replace(/\s+/g, ' ')]));
+                const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+                let genre = null, source = null, timer = 0;
+                // A card matches the genre it holds ('|Plots|Theories|'), the source it was heard in (#checks, #shows,
+                // #posts: the old Rumors page sends #checks) and every word typed, anywhere in its text
+                const show = () => {
+                    const terms = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+                    const shown = all.filter((c) => (!genre || c.dataset.genres.includes(`|${genre}|`))
+                        && (!source || c.dataset.sources.includes(`|${source}|`))
+                        && terms.every((t) => words.get(c).includes(t)));
+                    repack(shown);
+                    tools.querySelectorAll('button[data-genres]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.genres === genre));
+                    const what = [genre && `<b>${esc(genre)}</b>`, source && names[source] && `${names[source].emoji} ${esc(names[source].name)}`,
+                                  terms.length && `with “${esc(input.value.trim())}”`].filter(Boolean);
+                    status.innerHTML = what.length ? `Showing <b>${shown.length}</b> of ${all.length}: ${what.join(', ')} · <a href="#" class="folk-find-clear">show all</a>`
+                        + (shown.length ? '' : '<br>🦗 Nothing here has all of that. Try fewer words.') : '';
                 };
-                document.querySelector('.narrative-tools').addEventListener('click', (ev) => {
-                    const b = ev.target.closest('button');
-                    if (!b) return;
-                    if (b.dataset.more) {  // every motif on a card, not only the most common
-                        const open = b.getAttribute('aria-expanded') !== 'true';
-                        document.querySelectorAll('.narrative-tools .motif-more').forEach((x) => { x.hidden = !open && !x.classList.contains('active'); });
-                        b.setAttribute('aria-expanded', open);
-                        b.textContent = open ? '➖ fewer' : b.dataset.label;
-                        return;
-                    }
-                    if (b.dataset.filter) {
-                        if (b.classList.toggle('active')) only.add(b.dataset.filter); else only.delete(b.dataset.filter);
-                    }
-                    else {
-                        const key = Object.keys(pick).find((k) => b.dataset[k] !== undefined);
-                        choose(key, b.dataset[key]);
-                    }
+                tools.addEventListener('click', (ev) => {
+                    const b = ev.target.closest('button[data-genres]');
+                    if (b) { genre = genre === b.dataset.genres ? null : b.dataset.genres; show(); }
+                });
+                input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(show, 150); });
+                status.addEventListener('click', (ev) => {
+                    if (!ev.target.closest('.folk-find-clear')) return;
+                    ev.preventDefault();
+                    genre = source = null;
+                    input.value = '';
+                    if (location.hash) history.replaceState(null, '', location.pathname);
                     show();
                 });
-                // folklore.html#checks, #shows or #posts opens on that source (the old Rumors page sends #checks)
                 const from = location.hash.slice(1);
-                if (['checks', 'shows', 'posts'].includes(from) && document.querySelector(`.narrative-tools button[data-sources="${from}"]`)) {
-                    choose('sources', from);
+                if (['checks', 'shows', 'posts'].includes(from) && all.some((c) => c.dataset.sources.includes(`|${from}|`))) {
+                    source = from;
                     show();
                 }
             })();

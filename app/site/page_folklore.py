@@ -15,14 +15,15 @@ handles, a quoted post can be searched back to its author. Local preview builds 
 research can be checked."""
 import os
 import re
-from collections import Counter
-from datetime import date
+from collections import Counter, defaultdict
+from datetime import date, timedelta
 
 from app.analysis.rumor_shapes import CONSPIRACY_SCOPES, EMOJI as SHAPE_EMOJI, RUMOR_CLASSES
 from app import bluesky_examples
 from app.analysis import accusations, circulation, factchecks, motif_index, narrative_threads, show_claims
-from app.site.common import TemplateHandler
-from app.site.page_motifs import catalog
+from app.site import boards as strips
+from app.site.common import TemplateHandler, motif_href
+from app.site.page_motifs import GENRE_EMOJI, catalog
 from app.utils import Config, get_logger
 
 # The reports' reading lives with the reports (narratives.py); the names stay here for this page and its tests
@@ -39,9 +40,8 @@ SIDE_INK = {'left': '#1a5cff', 'right': '#e0102e', 'both': '#7a3fd1', 'none': '#
 
 
 FOCUS_EPISODES = 4  # Focus Group episodes shown, the latest
-MOTIF_CHIPS = 12  # motif filters shown before "more"
 CHECK_DAYS = 30  # fact-checks this recent
-# Where a card's claim was heard: the source chips on each card and the filter row
+# Where a card's claim was heard: the source chips on each card, and folklore.html#checks, #shows, #posts
 SOURCES = {'posts': {'emoji': '🧶', 'name': 'retold online', 'about': 'Told by many people in their own words on Bluesky and Mastodon'},
            'shows': {'emoji': '🎙️', 'name': 'on the shows', 'about': 'Told on two or more of the podcasts, call-in and video shows we transcribe'},
            'checks': {'emoji': '🔎', 'name': 'fact-checked', 'about': 'Examined by a fact-checker in the last 30 days'}}
@@ -60,17 +60,6 @@ def appeal(label: dict) -> bool:
     """A retold card that only asks for money: a non-political appeal for donations"""
     return not label.get('politics') and bool(APPEAL.search(f"{label.get('narrative', '')} {label.get('motif', '')}"))
 SHOW_INK = {'left': '#3a86ff', 'right': '#ff4f6d', 'center': '#b8b8c8'}  # as the front page's shows (page_headlines)
-
-
-def motif_counts(cards: list[dict]) -> list[tuple[dict, int]]:
-    """(motif, how many cards carry it) for the motif filter row, every motif on a card, most first: the first
-    MOTIF_CHIPS show, the rest behind "more" (Oct 10: only the 12 on two or more cards showed, of over a hundred)"""
-    seen, counts = {}, Counter()
-    for c in cards:
-        for m in c['motifs']:
-            seen[m['id']] = m
-            counts[m['id']] += 1
-    return [(seen[i], n) for i, n in sorted(counts.items(), key=lambda kv: (-kv[1], seen[kv[0]]['name'].lower()))]
 
 
 def motif_cards(index: dict, claim: str) -> list[dict]:
@@ -152,6 +141,136 @@ def told_before(threads: dict, report: str, claim: str, index: dict) -> list[dic
             for d in reversed(thread['days']) if d['report'] != report]
 
 
+# The motif lists at the top of the page, as ranked strips in pairs that answer each other (Oct 28: they were chip walls
+# with "×56 🫏6 · 15🐘"): told a lot and never checked | the fact-checkers' favorites; told most lately | gone quiet;
+# only voters say | only the shows say. Colored by genre; a two-tone bar where left or right shows said it
+BOARD_TOP = 10
+QUIET_DAYS, QUIET_BEFORE, QUIET_LEAST = 7, 14, 5  # gone quiet: 5+ claims in the 14 days before the last 7, at most 1 since
+ONLY_SHOWS_LEAST = 3  # only the shows say: told on at least this many shows
+
+
+def motif_stats(rows: list[dict]) -> dict[str, dict]:
+    """motif -> who told it: {kinds (shows, posts, check, voters), shows (every show that told it), left, right (the
+    shows whose own host or guest said it, as the aisle counts sides)}"""
+    from app.analysis import motif_web
+    by = defaultdict(list)
+    for r in rows:
+        by[r['motif']].append(r)
+    out = {}
+    for m, rs in by.items():
+        said = motif_web.sided(motif_web.spoken(rs))
+        out[m] = {'kinds': {r['kind'] for r in rs}, 'shows': sorted({r['teller'] for r in rs if r['kind'] == 'shows'}),
+                  'left': len(said['left']), 'right': len(said['right'])}
+    return out
+
+
+def split_of(stat: dict | None) -> float | None:
+    """The left share of the shows on either side that said it, for a two-tone bar; None when neither side did"""
+    if not stat or not (stat['left'] + stat['right']):
+        return None
+    return stat['left'] / (stat['left'] + stat['right'])
+
+
+def sides_line(stat: dict | None) -> str:
+    if not stat or not (stat['left'] + stat['right']):
+        return ''
+    return f"🫏 said on {stat['left']} left and {stat['right']} right shows 🐘 (by a host or guest)"
+
+
+def gone_quiet(entries: list[dict], today: date | None = None) -> list[dict]:
+    """The motifs told a lot before and little lately: QUIET_LEAST or more claims dated in the QUIET_BEFORE days before
+    the last QUIET_DAYS, and at most one in those last days. [{entry, before, since}], the most told before first"""
+    today = today or date.today()
+    cut = (today - timedelta(days=QUIET_DAYS)).isoformat()
+    start = (today - timedelta(days=QUIET_DAYS + QUIET_BEFORE)).isoformat()
+    out = []
+    for e in entries:
+        dates = [str(c.get('date', ''))[:10] for c in e['claims']]
+        before = sum(start < d <= cut for d in dates)
+        since = sum(d > cut for d in dates)
+        if before >= QUIET_LEAST and since <= 1:
+            out.append({'entry': e, 'before': before, 'since': since})
+    return sorted(out, key=lambda q: (-q['before'], q['since'], q['entry']['name'].lower()))
+
+
+def only_shows(entries: dict[str, dict], stats: dict[str, dict]) -> list[dict]:
+    """The motifs only the shows told: on ONLY_SHOWS_LEAST or more shows, and never by people online, a fact-checker
+    or the voters. [{entry, stat}], the most shows first"""
+    out = [{'entry': entries[m], 'stat': st} for m, st in stats.items()
+           if m in entries and st['kinds'] == {'shows'} and len(st['shows']) >= ONLY_SHOWS_LEAST]
+    return sorted(out, key=lambda o: (-len(o['stat']['shows']), -o['entry']['count'], o['entry']['name'].lower()))
+
+
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def motif_boards(shelf: dict, checking: dict, voters_only: list[dict], rows: list[dict]) -> list[dict]:
+    """The six lists, in their pairs, as boards (app/site/boards.py); each row's hover card has its genre, note and
+    who told it"""
+    entries = {e['id']: e for e in shelf['entries']}
+    stats = motif_stats(rows)
+    stat = lambda i: stats.get(i['id'])  # noqa: E731
+
+    def strip(items, value, figure, lines, split=True):
+        items = [i for i in items if i['id'] in entries][:BOARD_TOP]
+        top = max((value(i) for i in items), default=0) or 1
+        out = []
+        for i in items:
+            e = entries[i['id']]
+            # "Name: lines" reads in the hover card as a heading and its lines (index.js tipCard)
+            tip = '\n'.join(t for t in [f"{GENRE_EMOJI.get(e['genre'], '🧩')} {e['genre'] or 'no genre yet'}",
+                                        e.get('note', '')] + lines(i) + [sides_line(stat(i))] if t)
+            r = strips.genre_row(e['name'], motif_href(e['id']), e['genre'] or None, value(i), top, figure(i),
+                                 tip=f"{e['name']}: {tip}")
+            if split and (s := split_of(stat(i))) is not None:
+                r['split'] = round(100 * s)
+            out.append(r)
+        return out
+
+    lately = [{'id': e['id'], 'recent': e['recent'], 'count': e['count']} for e in shelf.get('lately', [])]
+    quiet = [{'id': q['entry']['id'], 'before': q['before'], 'since': q['since']} for q in gone_quiet(shelf['entries'])]
+    shows_only = [{'id': o['entry']['id'], 'shows': o['stat']['shows']} for o in only_shows(entries, stats)]
+    days = shelf.get('lately_days', 3)
+    b = strips.board
+    return [
+        b('unchecked', '🙈', 'Told a lot, never checked', '#ff6b1a', 'the most different claims told on the shows and '
+          'online that no fact-checker we follow has examined; the bar is how many. A list of leads, not of '
+          'falsehoods: many are opinions, or true',
+          strip(checking.get('unchecked', []), lambda i: i['told'], lambda i: plural(i['told'], 'claim'),
+                lambda i: [f"{plural(i['told'], 'different claim')} told, {i['posts']} of them online",
+                           '🔎 no fact-check yet']),
+          empty='🦗 Every much-told motif has been checked at least once.'),
+        b('checked', '🔎', "The fact-checkers' favorites", '#ffc400', 'the motifs fact-checkers examined most; the bar '
+          'is how many of its claims they checked',
+          strip(checking.get('checked', []), lambda i: i['checked'], lambda i: f"🔎 {i['checked']}",
+                lambda i: [f"🔎 {plural(i['checked'], 'claim')} checked, {i['told']} told on the shows and online"]),
+          empty='🦗 No fact-check is filed under a motif yet.'),
+        b('lately', '🔥', 'Told most lately', '#ff4fa3', f'the most claims dated in the last {days} days; the bar is '
+          'how many',
+          strip(lately, lambda i: i['recent'], lambda i: f"{i['recent']} lately",
+                lambda i: [f"🔥 {i['recent']} of its {plural(i['count'], 'claim')} in the last {days} days"]),
+          empty='🦗 Nothing filed in the last few days.'),
+        b('quiet', '🧊', 'Gone quiet', '#8a8f98', f'told {QUIET_LEAST} or more times in the {QUIET_BEFORE} days before '
+          f'last week, and once at most in the {QUIET_DAYS} days since; the bar is the claims before',
+          strip(quiet, lambda i: i['before'], lambda i: f"{i['before']} → {i['since']}",
+                lambda i: [f"🧊 {plural(i['before'], 'claim')} in the {QUIET_BEFORE} days before last week, "
+                           f"{i['since']} in the last {QUIET_DAYS}"]),
+          empty='🦗 Nothing much-told has gone quiet.'),
+        b('voters', '🗳️', 'Only voters say', '#8a5cff', "told by the voters in The Focus Group (below) and by no show, "
+          "poster or fact-checker we follow; the bar is its claims. Many are praise for a candidate",
+          strip(voters_only, lambda i: i['claims'], lambda i: plural(i['claims'], 'claim'),
+                lambda i: [f"🗳️ {plural(i['claims'], 'claim')} from voters, nowhere else"], split=False),
+          empty='🦗 Nothing the voters say is theirs alone.'),
+        b('shows', '🎙️', 'Only the shows say', '#00c2a8', f'told on {ONLY_SHOWS_LEAST} or more of the shows we follow '
+          'and never by people online, a fact-checker or the voters; the bar is how many shows',
+          strip(shows_only, lambda i: len(i['shows']), lambda i: plural(len(i['shows']), 'show'),
+                lambda i: [f"🎙️ told on {plural(len(i['shows']), 'show')}: {', '.join(i['shows'][:8])}"
+                           + (f" and {len(i['shows']) - 8} more" if len(i['shows']) > 8 else '')]),
+          empty='🦗 Everything the shows tell is told elsewhere too.'),
+    ]
+
+
 class FolklorePage:
     def __init__(self, dh=None):
         self.template = TemplateHandler('folklore.html')
@@ -227,20 +346,18 @@ class FolklorePage:
             checking, voters_only = motif_web.checked_vs_told(told_rows), motif_web.voters_only(told_rows)
         except Exception as e:  # noqa: BLE001 - extra
             logger.warning("Folklore: checked against told: %s", e)
-            checking, voters_only = {}, []
+            checking, voters_only, told_rows = {}, [], []
+        boards = motif_boards(shelf, checking, voters_only, told_rows) if shelf['entries'] else []
         screen.save()
         looked = circulation.load()
         self.template.write({
             'title': 'Folklore and rumors', 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
-            'checking': checking, 'voters_only': voters_only,
+            'boards': boards, 'genre_key': strips.genre_key([r for b in boards for r in b['rows']]),
+            'genre_inks': strips.GENRE_INK,
             'report': report, 'cards': cards, 'copies': copies, 'voters': voters, 'floor': floor, 'fewer': fewer,
-            'sources': SOURCES, 'source_counts': counted(cards, 'sources'), 'kinds': Counter(c['kind'] for c in cards),
-            'genre_counts': counted(cards, 'genres'), 'family_counts': counted(cards, 'family'),
-            'class_counts': counted(cards, 'rumor_class'), 'scope_counts': counted(cards, 'conspiracy'),
+            'sources': SOURCES, 'kinds': Counter(c['kind'] for c in cards), 'genre_counts': counted(cards, 'genres'),
             'rumor_classes': RUMOR_CLASSES, 'conspiracy_scopes': CONSPIRACY_SCOPES, 'shape_emoji': SHAPE_EMOJI,
-            'motif_counts': motif_counts(cards), 'motif_chips': MOTIF_CHIPS, 'with_motifs': sum(bool(c['motifs']) for c in cards),
-            'index': shelf,
-            'looked': looked, 'seen_count': sum(1 for c in cards if (c.get('seen') or {}).get('people')),
+            'index': shelf, 'looked': looked,
             'check_days': CHECK_DAYS, 'checkers': sorted({c['checker'] for c in cards if c['kind'] == 'checks'}),
             'preview': Config.debug, 'shows_on': SHOWS_PUBLIC or Config.debug,
         })

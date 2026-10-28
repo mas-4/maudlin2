@@ -6,9 +6,12 @@ index's genres and what's told lately."""
 from collections import Counter
 from datetime import date, timedelta
 
+from markupsafe import Markup, escape
+
 from app.analysis import accusations, motif_index
 from app.site import motif_search
-from app.site.common import TemplateHandler
+from app.site.boards import GENRE_INK, UNCOLORED
+from app.site.common import TemplateHandler, motif_href
 from app.utils import get_logger
 
 logger = get_logger(__name__)
@@ -82,6 +85,90 @@ def catalog(index: dict | None = None, screen: accusations.Screen | None = None)
             'lately_days': LATELY_DAYS, 'genre_emoji': GENRE_EMOJI}
 
 
+# The index's slim cards (Oct 28: 958 cards each with up to 10 claims and a sentence of sources, a masonry wall): a
+# card is the name, the note, where its claims were heard as one bar, and three weeks of its claims as a sparkline;
+# its claims and sources go in its hover card, and all of them on its page. The bar's parts, in this fixed order:
+MIX = [('left', '🫏', 'left-leaning shows', '#3a86ff'), ('center', '⚖️', 'center shows', '#b8b8c8'),
+       ('right', '🐘', 'right-leaning shows', '#ff4f6d'), ('crossover', '🔀', 'crossover shows', '#8a5cff'),
+       ('online', '🧶', 'people online', '#00c2a8'), ('checks', '🔎', 'fact-checkers', '#ffc400'),
+       ('voters', '🗳️', 'voters in The Focus Group', '#1f1f2e')]
+SPARK_DAYS = 21
+SPARK_W, SPARK_H = 80, 22
+HOVER_CLAIMS = 8  # claims in a card's hover card, the newest; all of them on its page
+HOVER_CHARS = 220
+
+
+def tellers_now() -> tuple[dict, dict]:
+    """The show tellings by claim and the show episodes (page_motif.shared's, when this build has worked them out
+    already, as Folklore and rumors does before this page)"""
+    from app.analysis import show_claims
+    from app.site import page_motif
+    from app.site.common import SHARED, j2env
+    s = SHARED.get('motif_pages')
+    if s and s.get('stamp') == j2env.globals.get('build_version'):
+        return s['tellers'], s['episodes']
+    return page_motif.show_tellers(), show_claims.load()
+
+
+def mix(entry: dict, tellers: dict, episodes: dict) -> list[dict]:
+    """Where a motif's claims were heard, as tellings: a claim told on a show counts once for each show (by the show's
+    lean), once if retold online, once for its fact-check, once from voters. [{key, emoji, name, ink, n, pct}] in MIX
+    order, the parts it has"""
+    from app.site.page_motif import single_show
+    n = Counter()
+    for c in entry['claims']:
+        src = c.get('source', '')
+        if src == 'shows':
+            for t in tellers.get(motif_index.key(c['claim'])) or single_show(c, episodes):
+                n[t['lean'] if t['lean'] in ('left', 'center', 'right', 'crossover') else 'center'] += 1
+        elif src == 'narrative':
+            n['online'] += 1
+        elif src == 'Focus Group':
+            n['voters'] += 1
+        elif src:
+            n['checks'] += 1
+    total = sum(n.values()) or 1
+    return [{'key': k, 'emoji': em, 'name': name, 'ink': ink, 'n': n[k], 'pct': max(1, round(100 * n[k] / total))}
+            for k, em, name, ink in MIX if n[k]]
+
+
+def sparkline(entry: dict, today: date | None = None) -> Markup:
+    """Its claims a day over the last SPARK_DAYS days, as a little filled line (inline SVG, nothing to load)"""
+    today = today or date.today()
+    days = [(today - timedelta(days=SPARK_DAYS - 1 - i)).isoformat() for i in range(SPARK_DAYS)]
+    per = Counter(str(c.get('date', ''))[:10] for c in entry['claims'])
+    counts = [per[d] for d in days]
+    top = max(counts) or 1
+    step = SPARK_W // (SPARK_DAYS - 1)
+    line = ' '.join(f'{i * step},{round(SPARK_H - 2 - (SPARK_H - 4) * v / top)}' for i, v in enumerate(counts))
+    total = sum(counts)
+    label = f"{total} claim{'' if total == 1 else 's'} in the last three weeks, at most {max(counts)} a day"
+    w = step * (SPARK_DAYS - 1)
+    return Markup(f'<svg class="motif-slim-spark" viewBox="0 0 {w} {SPARK_H}" width="{w}" height="{SPARK_H}" '
+                  f'role="img" aria-label="{escape(label)}"><path d="M0,{SPARK_H}L{line}L{w},{SPARK_H}Z"/>'
+                  f'<polyline points="{line}"/></svg>')
+
+
+def hover(entry: dict, parts: list[dict]) -> dict:
+    """What a card's hover card shows: its newest claims with where each was heard, the sources sentence, what it rests
+    on and what rests on it, its groups, its dates. Short keys: one of these per motif goes in the page"""
+    def heard(c):
+        src = c.get('source', '')
+        return 'people online' if src == 'narrative' else 'voters in The Focus Group' if src == 'Focus Group' \
+            else 'on the shows' if src == 'shows' else src
+    claims = [[c['claim'] if len(c['claim']) <= HOVER_CHARS else c['claim'][:HOVER_CHARS - 1].rstrip() + '…',
+               heard(c), c['ref'] if c.get('source') != 'narrative' and str(c.get('ref', '')).startswith('http') else '']
+              for c in entry['claims'][:HOVER_CLAIMS]]
+    return {'c': claims, 'm': max(0, entry['count'] - HOVER_CLAIMS),
+            's': ', '.join(f"{s}{f' ×{n}' if n > 1 else ''}" for s, n in entry['sources']),
+            'x': [f"{p['emoji']} {p['n']} {p['name']}" for p in parts],
+            'r': [[motif_href(p['id']), p['name']] for p in entry['rests_on']],
+            'u': [[motif_href(p['id']), p['name']] for p in entry['under']],
+            'g': [g['name'] for g in entry['groups']],
+            'd': f"{entry['id']} · first seen {entry.get('first_seen') or '?'}"
+                 + (f" · last {entry['last_seen']}" if entry.get('last_seen') and entry['last_seen'] != entry.get('first_seen') else '')}
+
+
 class MotifsPage:
     def __init__(self, dh=None):
         self.template = TemplateHandler('motifs.html')
@@ -92,7 +179,19 @@ class MotifsPage:
         shown = catalog(index)
         size = motif_search.write(shown['entries'], index)  # what the page's search box fetches on first use
         logger.info("...search index: %d motifs, %d KB", len(shown['entries']), size // 1024)
+        try:
+            tellers, episodes = tellers_now()
+        except Exception as e:  # noqa: BLE001 - the shows' leans are extra: without them the shows count as center
+            logger.warning("Motif index: no show tellings (%s)", e)
+            tellers, episodes = {}, {}
+        slim = {}
+        for e in shown['entries']:
+            parts = mix(e, tellers, episodes)
+            slim[e['id']] = {'mix': parts, 'spark': sparkline(e), 'ink': GENRE_INK.get(e['genre'], UNCOLORED)}
         self.template.write({'title': 'Motif index', **shown, 'search_file': motif_search.FILE,
+                             'slim': slim, 'hover': {e['id']: hover(e, slim[e['id']]['mix']) for e in shown['entries']},
+                             'mix_key': [{'name': name, 'mark': em, 'ink': ink} for _, em, name, ink in MIX],
+                             'genre_inks': GENRE_INK,
                              'recurring': sum(1 for e in shown['entries'] if e['count'] > 1),
                              # the headline: shapes told about two events or more (motif_told.py), the rest placed
                              'attested': sum(1 for e in shown['entries'] if motif_index.attested(e)),

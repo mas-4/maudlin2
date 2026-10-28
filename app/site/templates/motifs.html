@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% block content %}
     {# Old links into the index ("motifs.html#M538", from story pages built before each motif had a page of its own)
@@ -57,45 +58,68 @@
             fit.</p>
     </details>
     {% if entries %}
-        <div class="table-filters story-sort narrative-tools motif-tools" role="group" aria-label="Filter the index">
-            <span class="bar-group"><span class="bar-label">genre:</span>
-                {% for g in genres %}<button type="button" data-genre="{{ g.name|e }}" title="{{ g.about|e }}">{{ g.emoji }} {{ g.name }} <b>{{ g.count }}</b></button>{% endfor %}</span>
-            <span class="bar-divider" aria-hidden="true"></span>
+        <div class="motif-slim-tools">
+        {# The genre row is the cards' color key too: each card's disc is its genre's color and emoji #}
+        <p class="motif-slim-genres" role="group" aria-label="Show one genre">
+            {% for g in genres %}<button type="button" class="motif-slim-genre" data-genre="{{ g.name|e }}" aria-pressed="false" data-tip="{{ g.about|e }}" data-tip-head="{{ g.emoji }} {{ g.name|e }}" style="--ink: {{ genre_inks.get(g.name, '#ffffff')|e }}"><span class="rank-mark" aria-hidden="true">{{ g.emoji }}</span> {{ g.name|e }} <b>{{ g.count }}</b></button>{% endfor %}</p>
+        <div class="table-filters story-sort narrative-tools motif-tools" role="group" aria-label="Sort the index">
             <span class="bar-group"><span class="bar-label">sort:</span>
                 <button type="button" data-sort="count" class="active" title="Most claims first">🧮 most told</button>
                 <button type="button" data-sort="recent" title="Most claims in the last {{ lately_days }} days first">🔥 lately</button>
                 <button type="button" data-sort="first" title="The newest motifs first">🆕 newest</button>
                 <button type="button" data-sort="name">🔤 A–Z</button></span>
         </div>
+        </div>
         <details class="motif-group-picker">
             <summary>🗂️ <b>{{ groups|length }} groups</b>: shelves of motifs that go together, across genres</summary>
             <p class="motif-group-chips">{% for g in groups %}<button type="button" data-group="{{ g.id|e }}"{% if g.note %} title="{{ g.note|e }}"{% endif %}>🗂️ {{ g.name|e }} <b>{{ g.count }}</b></button>{% endfor %}</p>
         </details>
-        <p class="table-intro motif-showing" aria-live="polite"></p>
-        <div class="court-cards narrative-cards motif-cards">
-            {% for e in entries %}
-                <div class="story court-story narrative motif-entry" id="{{ e.id|e }}" data-genre="{{ e.genre|e }}" data-groups="|{{ e.groups|map(attribute='id')|join('|')|e }}|" data-count="{{ e.count }}" data-recent="{{ e.recent }}" data-first="{{ (e.first_seen or '')|e }}" data-name="{{ e.name|lower|e }}">
-                    {% if e.genre or e.groups %}<p class="folk-sources">{% if e.genre %}<a class="folk-genre" href="#genre={{ e.genre|urlencode }}" title="{{ e.genre|e }}: show the whole genre">{{ genre_emoji.get(e.genre, '') }} {{ e.genre|e }}</a>{% endif %}{% for g in e.groups %}<a class="folk-genre motif-group-tag" href="#group={{ g.id|e }}" title="Show the whole group">🗂️ {{ g.name|e }}</a>{% endfor %}</p>{% endif %}
-                    <h4><a class="motif-entry-link" href="{{ motif_href(e.id) }}" title="Its own page: who it came up with, its answers, all its claims">🧩 {{ e.name|e }}</a></h4>
-                    {% if e.note %}<p class="motif-note">{{ e.note|e }}</p>{% endif %}
-                    {% if e.rests_on %}<p class="motif-rests" title="This motif only makes sense given these: a kind of them, or a case, argument or figure that tells them">🪜 rests on {% for p in e.rests_on %}<a href="#{{ p.id|e }}">{{ p.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-                    {% if e.under %}<p class="motif-rests" title="Motifs that only make sense given this one">⤵️ under it: {% for p in e.under %}<a href="#{{ p.id|e }}">{{ p.name|e }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-                    <p class="court-stages">{{ e.count }} claim{{ '' if e.count == 1 else 's' }}{% if e.recent %} <span class="motif-lately" title="Claims dated in the last {{ lately_days }} days">🔥 {{ e.recent }} lately</span>{% endif %}: {% for s, n in e.sources %}{{ s|e }}{% if n > 1 %} ×{{ n }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
-                    <ul class="story-checks motif-claims">
-                        {% for c in e.claims[:8] %}
-                            <li>{% if c.source != 'narrative' and c.ref %}<a href="{{ c.ref|e }}">“{{ c.claim|e }}”</a> <span class="court-when">{{ c.source|e }}</span>{% else %}“{{ c.claim|e }}” <span class="court-when">people online</span>{% endif %}</li>
-                        {% endfor %}
-                        {% if e.claims|length > 8 %}<li class="court-when">and {{ e.claims|length - 8 }} more</li>{% endif %}
-                    </ul>
-                    <p class="court-when">{{ e.id }} · first seen {{ e.first_seen }}{% if e.last_seen and e.last_seen != e.first_seen %} · last {{ e.last_seen }}{% endif %}</p>
-                </div>
-            {% endfor %}
+        <div class="motif-slim-key">
+            {{ b.key(mix_key, 'Where its claims were heard') }}
+            <p class="table-intro motif-slim-about">Each card's <b>bar</b> is where its claims were heard, in those
+                colors: a claim told on a show counts once for each show, by the show's lean; once if people retold it
+                online; once for each fact-check. The <b>line</b> beside it is its claims a day over the last three
+                weeks. Point at a card (or tap it) for its claims; its page has all of them.</p>
         </div>
+        <p class="table-intro motif-showing" aria-live="polite"></p>
+        {# Slim cards (Oct 28): the claims and sources live in the hover cards, from the data below, and on each page #}
+        <div class="motif-slim-grid motif-cards">
+            {%- for e in entries %}{% set s = slim[e.id] %}
+<article class="motif-slim motif-entry" id="{{ e.id|e }}" data-genre="{{ e.genre|e }}" data-groups="|{{ e.groups|map(attribute='id')|join('|')|e }}|" data-count="{{ e.count }}" data-recent="{{ e.recent }}" data-first="{{ (e.first_seen or '')|e }}" data-name="{{ e.name|lower|e }}" style="--ink:{{ s.ink|e }}"><h4 class="motif-slim-head"><span class="rank-mark" role="img" aria-label="{{ (e.genre or 'No genre yet')|e }}">{{ genre_emoji.get(e.genre, '🧩') }}</span><a class="motif-slim-name" href="{{ motif_href(e.id) }}">{{ e.name|e }}</a><span class="motif-slim-count">{{ e.count }}<span> claim{{ '' if e.count == 1 else 's' }}</span>{% if e.recent %} · 🔥{{ e.recent }}{% endif %}</span></h4>
+<div class="motif-slim-body" tabindex="0" data-motif="{{ e.id|e }}">{% if e.note %}<p class="motif-slim-note">{{ e.note|e }}</p>{% endif %}<div class="motif-slim-charts"><span class="motif-mix" role="img" aria-label="Heard: {% for p in s.mix %}{{ p.n }} {{ p.name|e }}{% if not loop.last %}, {% endif %}{% endfor %}">{% for p in s.mix %}<i class="motif-mix-{{ p.key }}" style="flex-grow:{{ p.pct }}"></i>{% endfor %}</span>{{ s.spark }}</div></div></article>
+            {%- endfor %}
+        </div>
+        <script type="application/json" id="motif-slim-data">{{ hover|tojson }}</script>
         <script>
             (function () {
                 const box = document.querySelector('.motif-cards');
                 const all = [...box.querySelectorAll('.motif-entry')];
-                const repack = packColumns(box, all, 340);
+                const repack = (shown) => {  // a plain grid: the cards in order, the rest hidden
+                    const on = new Set(shown);
+                    all.forEach((c) => { c.hidden = !on.has(c); });
+                    box.append(...shown);
+                };
+                const data = JSON.parse(document.getElementById('motif-slim-data').textContent);
+                const esc0 = (s) => String(s).replace(/[&<>"]/g, (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+                // A card's hover card: its newest claims with where each was heard, then where all of them were, its
+                // family and groups, and a link to its page
+                window.hoverCard.register('.motif-slim-body', (el) => {
+                    const d = data[el.dataset.motif];
+                    const card = el.closest('.motif-slim');
+                    if (!d) return null;
+                    const name = card.querySelector('.motif-slim-name');
+                    const links = (xs) => xs.map(([u, n]) => `<a href="${esc0(u)}">${esc0(n)}</a>`).join(', ');
+                    return `<div class="hover-card-head">🧩 ${esc0(name.textContent)}</div>`
+                        + `<ul class="motif-slim-hover">${d.c.map(([t, from, u]) => `<li>“${esc0(t)}” <span class="court-when">${u ? `<a href="${esc0(u)}">${esc0(from)}</a>` : esc0(from)}</span></li>`).join('')}`
+                        + (d.m ? `<li class="court-when">and ${d.m} more on its page</li>` : '') + '</ul>'
+                        + `<div class="hover-card-line">${d.x.map(esc0).join(' · ')}</div>`
+                        + `<div class="hover-card-line">${d.s ? `Claims from ${esc0(d.s)}` : ''}</div>`
+                        + (d.r.length ? `<div class="hover-card-line">🪜 rests on ${links(d.r)}</div>` : '')
+                        + (d.u.length ? `<div class="hover-card-line">⤵️ under it: ${links(d.u)}</div>` : '')
+                        + (d.g.length ? `<div class="hover-card-line">🗂️ ${d.g.map(esc0).join(', ')}</div>` : '')
+                        + `<div class="hover-card-line court-when">${esc0(d.d)}</div>`
+                        + `<a class="hover-card-more" href="${esc0(name.getAttribute('href'))}">its page: who told it, all its claims →</a>`;
+                });
                 const about = Object.fromEntries({{ genres|map(attribute='name')|list|tojson }}.map((g, i) => [g, {{ genres|map(attribute='about')|list|tojson }}[i]]));
                 const groupName = Object.fromEntries({{ groups|map(attribute='id')|list|tojson }}.map((g, i) => [g, {{ groups|map(attribute='name')|list|tojson }}[i]]));
                 const showing = document.querySelector('.motif-showing');
@@ -119,7 +143,7 @@
                         && (!group || c.dataset.groups.includes(`|${group}|`)))
                         .sort(order[sort]);
                     repack(shown);
-                    document.querySelectorAll('.motif-tools button[data-genre]').forEach((b) => b.classList.toggle('active', b.dataset.genre === genre));
+                    document.querySelectorAll('.motif-slim-genre').forEach((b) => b.setAttribute('aria-pressed', b.dataset.genre === genre));
                     document.querySelectorAll('.motif-group-picker button').forEach((b) => b.classList.toggle('active', b.dataset.group === group));
                     if (group) document.querySelector('.motif-group-picker').open = true;
                     const what = [genre && `<b>${esc(genre)}</b>: ${esc(about[genre] || '')}`,
@@ -134,7 +158,7 @@
                     history.replaceState(null, '', h.toString() ? `#${h}` : location.pathname);
                     show();
                 };
-                document.querySelector('.motif-tools').addEventListener('click', (ev) => {
+                document.querySelector('.motif-slim-tools').addEventListener('click', (ev) => {
                     const b = ev.target.closest('button');
                     if (!b) return;
                     if (b.dataset.genre) go('genre', b.dataset.genre);
