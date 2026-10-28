@@ -41,16 +41,19 @@ MIN_STORIES = 20
 MIN_ARTICLES = 100
 MIN_STORY_OUTLETS = 3  # a story in the coverage analysis: run by this many profiled outlets
 NEIGHBOURS = 3
+AGREE = 2  # of an outlet's NEIGHBOURS look-alikes that must share its type for it to be shown
 STABLE = 0.75  # clusterwise Jaccard (Hennig): above this a cluster is stable
 BOOTS = 100
 CACHE = os.path.join(Config.data, 'outlet_profile.json')
-VERSION = 1  # bump when the method changes, so the day's cache is rebuilt
+VERSION = 2  # bump when the method changes, so the day's cache is rebuilt
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire', 'Memeorandum'}
 
 # Types named by their anchor outlets (from the study's clusters). A cluster takes the name whose anchors it holds most
 # of, and only when it holds more than half of the anchors profiled this window
 FAMILIES = {
-    'Wire and mainstream': ['AP', 'Reuters', 'New York Times', 'The Washington Post', 'NBC News', 'CBS News', 'ABC News',
+    # The rest: a catch-all, named for what it isn't (Oct 28, the person, of One America News Network shown as "wire and
+    # mainstream": "doesn't this seem wrong to you?")
+    'Outside the partisan webs': ['AP', 'Reuters', 'New York Times', 'The Washington Post', 'NBC News', 'CBS News', 'ABC News',
                             'USA Today', 'Bloomberg', 'NPR', 'Axios', 'The Hill'],
     'Right partisan web': ['Breitbart', 'The Gateway Pundit', 'Townhall', 'Red State', 'The Daily Wire', 'PJ Media',
                            'The Western Journal', 'The Federalist', 'The Daily Caller'],
@@ -72,8 +75,9 @@ TYPES = {
 SIDE = {'Right partisan web': 1, 'Left partisan web': -1, 'Left Trump-watch': -1, 'Left opinion': -1}
 # What each type does, in a line (the study's medians)
 ABOUT = {
-    'Wire and mainstream': 'The broad middle: the wires and the newsrooms that run the stories everyone runs, mostly in '
-                           'plain words.',
+    'Outside the partisan webs': "Everyone outside the two partisan webs, from the wires to cable news: a big, mixed "
+                                 "group that runs more of the stories everyone runs. Not a mark of quality or lean; "
+                                 "its look-alikes say more.",
     'Right partisan web': 'Heated wording, the most crime and immigration stories, and more stories that mostly '
                           'right-leaning outlets run.',
     'Left partisan web': 'Heated wording about Trump and the political fight, with the most quotes and little wire copy.',
@@ -570,11 +574,11 @@ def build(data: dict, until: dt) -> dict:
     families, kinds = find_types(Z, FAMILIES, stability=stability), find_types(Z, TYPES, stability=stability)
     labels = data['labels'].set_index('story_id')['label']
     wire_pct, heat_pct = percentile(tier['wire_axis']), percentile(tier['heat_axis'])
+    first = {name: (_type_of(name, families, bias.get(name)), _type_of(name, kinds, bias.get(name))) for name in tier.index}
     out = {}
     for name, r in tier.iterrows():
         lean = bias.get(name)
-        fam = _type_of(name, families, lean)
-        sub = _type_of(name, kinds, lean)
+        fam, sub = (agreed(name, level, first, like) for level in (0, 1))
         out[name] = {'x': round(float(r['ca1']), 5), 'y': round(float(r['ca2']), 5),
                      'wire': round(float(r['wire_axis']), 3), 'heat': round(float(r['heat_axis']), 3),
                      'wire_pct': int(wire_pct[name]), 'heat_pct': int(heat_pct[name]),
@@ -597,6 +601,16 @@ def build(data: dict, until: dt) -> dict:
             'outlets': out, 'types': types,
             'axes': {'inertia': [round(100 * float(i), 1) for i in inertia[:2]], 'rho': rho,
                      'x': _ends(cols, 'ca1', labels), 'y': _ends(cols, 'ca2', labels)}}
+
+
+def agreed(outlet: str, level: int, first: dict, like: dict) -> str | None:
+    """The outlet's family (level 0) or type (1), kept only when at least AGREE of the outlets it behaves most like
+    share it: an outlet on a type's edge shows none (Oct 28: One America News Network clustered with the wires and
+    networks while two of its three look-alikes were the right partisan web)"""
+    mine = first[outlet][level]
+    if mine is None:
+        return None
+    return mine if sum(first.get(o, (None, None))[level] == mine for o in like[outlet]) >= AGREE else None
 
 
 def _type_of(outlet: str, found: dict, lean) -> str | None:

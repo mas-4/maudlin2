@@ -94,12 +94,12 @@ def test_a_cluster_two_names_claim_gets_neither():
 
 def test_a_side_named_type_never_contradicts_a_rating():
     found = {'Left opinion': {'members': ['a', 'b']}, 'Left partisan web': {'members': ['a', 'b', 'c']},
-             'Wire and mainstream': {'members': ['d']}}
+             'Outside the partisan webs': {'members': ['d']}}
     assert op._type_of('a', found, -2) == 'Left opinion'  # the smallest type holding it
     assert op._type_of('b', found, float('nan')) == 'Left opinion'  # not rated
     assert op._type_of('a', found, 1) is None  # rated right: no left type
     assert op._type_of('c', found, 0) is None  # rated center
-    assert op._type_of('d', found, 2) == 'Wire and mainstream'
+    assert op._type_of('d', found, 2) == 'Outside the partisan webs'
 
 
 def month(seed: int = 0) -> dict:
@@ -175,3 +175,15 @@ def test_the_profile_is_kept_for_the_day(monkeypatch, tmp_path):
     assert len(calls) == 1 and calls[0] == UNTIL - td(days=op.WINDOW_DAYS)
     op.profiles(now=UNTIL + td(days=1))  # a new day
     assert len(calls) == 2
+
+
+def test_an_outlet_whose_look_alikes_are_elsewhere_shows_no_type():
+    """Oct 28, the person, of One America News Network shown as "wire and mainstream" beside its right-wing look-alikes:
+    "doesn't this seem wrong to you?\""""
+    first = {'OAN': ('Outside the partisan webs', None), 'JTN': ('Outside the partisan webs', None),
+             'WJ': ('Right partisan web', 'Right partisan web'), 'DC': ('Right partisan web', 'Right partisan web'),
+             'AP': ('Outside the partisan webs', None), 'Reuters': ('Outside the partisan webs', None)}
+    like = {'OAN': ['JTN', 'WJ', 'DC'], 'AP': ['Reuters', 'JTN', 'WJ'], 'WJ': ['DC', 'OAN', 'AP']}
+    assert op.agreed('OAN', 0, first, like) is None  # one of three agrees: on the edge, no type
+    assert op.agreed('AP', 0, first, like) == 'Outside the partisan webs'  # two of three
+    assert op.agreed('WJ', 1, first, like) is None and op.agreed('WJ', 0, first, like) is None

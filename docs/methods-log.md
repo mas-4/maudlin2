@@ -5,6 +5,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **The outlet map's broad group is "outside the partisan webs", and look-alikes must agree.** The 50-outlet cluster
+  first called "wire and mainstream" is everyone the two partisan webs leave out, One America News Network, Newsmax and
+  The Epoch Times among them, so it's now named for what it isn't. And an outlet is given a type (or family) only when
+  at least two of the three outlets it behaves most like share it: on Oct 28 that took One America News Network (two of
+  its three look-alikes in the right partisan web) and a few left outlets on the web's edge out of their types.
 - **The Election Almanac is dropped, and the Replay is published.** The Almanac's chances were set by hand, not drawn
   from the data, and the person didn't want a guess at which motifs would grow passed off as a forecast; it was never
   published and its page and code are gone. The Replay, built for the preview the same day, is now on the site, with
@@ -58,7 +63,7 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   headline form, heat, labels, churn), named by anchor outlets (a cluster holding more than half a type's anchors,
   and no other type's majority). Each type is taken at the cut of the tree (2 to 10 clusters) where it's most
   stable, and shown only when it comes back at least 0.75 the same (mean best Jaccard) across 100 reclusterings of
-  random 80% samples. On Oct 28 five held: wire and mainstream (50 outlets, 0.94), the right partisan web (13, 0.92),
+  random 80% samples. On Oct 28 five held: the outlets outside the partisan webs (50, 0.94; first called "wire and mainstream"), the right partisan web (13, 0.92),
   the left partisan web (12, 0.77), and within it the left Trump-watch (3, 0.90) and left opinion (5, 0.82); the
   mainstream's finer types (business desks, explainers and others, 0.44 to 0.68) didn't, so mainstream outlets carry
   only the broad family. A type named for a side isn't shown on an outlet rated on the other side or center (on Oct

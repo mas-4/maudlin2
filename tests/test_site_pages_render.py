@@ -104,9 +104,9 @@ OUTLET_PROFILE = {
     'day': '2026-10-28', 'since': '2026-09-30T12:00', 'until': '2026-10-28T12:00', 'window_days': 28,
     'headlines': 5000, 'articles': 4000, 'stories': 300,
     'outlets': {
-        'AP': fingerprinted(-0.5, -0.2, 50, 20, 'Wire and mainstream', ['Reuters', 'Bloomberg', 'Fox News'], -1, True),
-        'Reuters': fingerprinted(-0.7, 0.0, 40, 10, 'Wire and mainstream', ['AP', 'Bloomberg', 'Fox News'], 0, True),
-        'Bloomberg': fingerprinted(-0.8, 0.2, 70, 11, 'Wire and mainstream', ['Reuters', 'AP', 'Fox News'], 0),
+        'AP': fingerprinted(-0.5, -0.2, 50, 20, 'Outside the partisan webs', ['Reuters', 'Bloomberg', 'Fox News'], -1, True),
+        'Reuters': fingerprinted(-0.7, 0.0, 40, 10, 'Outside the partisan webs', ['AP', 'Bloomberg', 'Fox News'], 0, True),
+        'Bloomberg': fingerprinted(-0.8, 0.2, 70, 11, 'Outside the partisan webs', ['Reuters', 'AP', 'Fox News'], 0),
         'Fox News': fingerprinted(0.4, -0.5, 34, 76, 'Right partisan web', ['Breitbart', 'AP', 'Reuters'], 2),
         'Breitbart': fingerprinted(0.2, -0.47, 49, 72, 'Right partisan web', ['Fox News', 'AP', 'Reuters'], 2),
         'Raw Story': fingerprinted(1.0, 1.5, 3, 97, 'Left Trump-watch', ['Bloomberg', 'AP', 'Fox News'], -2),
