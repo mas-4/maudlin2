@@ -129,6 +129,19 @@ def page_ids() -> set[str]:
     return {e['id'] for e in shared()['catalog']['entries']}
 
 
+def write_moved(index: dict, shown) -> int:
+    """A motif merged into another: its old address goes to the one kept. Written at its own old address, never
+    motif_href's: an id without a page falls back to the index there, and the index was overwritten with this redirect
+    (Oct 28: bignews.day/motifs went to Not up to the task)"""
+    moved = 0
+    for old in index['entries'].values():
+        if old.get('merged_into') and (to := motif_index.resolve(index, old['id'])) in shown:
+            with open(os.path.join(Config.build, f"motif-{old['id'].lower()}.html"), 'w', encoding='utf-8') as f:
+                f.write(REDIRECT.format(to=motif_href(to)))
+            moved += 1
+    return moved
+
+
 class MotifPages:
     def __init__(self, dh=None):
         self.template = TemplateHandler('motif.html')
@@ -172,11 +185,5 @@ class MotifPages:
                 'phrases': phrases,
                 'show_pages': show_pages,
             }, os.path.join(Config.build, motif_href(e['id'])))
-        # A motif merged into another: its old address goes to the one kept
-        moved = 0
-        for old in index['entries'].values():
-            if old.get('merged_into') and (to := motif_index.resolve(index, old['id'])) in shown:
-                with open(os.path.join(Config.build, motif_href(old['id'])), 'w', encoding='utf-8') as f:
-                    f.write(REDIRECT.format(to=motif_href(to)))
-                moved += 1
+        moved = write_moved(index, shown)
         logger.info("...%d motif pages, %d moved addresses", len(entries), moved)

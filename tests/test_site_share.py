@@ -164,3 +164,17 @@ def test_cards_no_build_has_used_for_days_are_pruned(tmp_path, monkeypatch):
     share_images.prune()
     assert not os.path.exists(old)
     assert os.path.exists(os.path.join(share_images.cache_dir(), os.path.basename(used)))
+
+
+def test_a_merged_motifs_old_address_moves_but_the_index_never_does(tmp_path, monkeypatch):
+    """Oct 28: a merged motif has no page, so motif_href gave it the index's address, and its 'moved' page overwrote
+    motifs.html (bignews.day/motifs went to Not up to the task)"""
+    from app.site import common
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setitem(common.j2env.globals, 'motif_pages', {'M939'})
+    (tmp_path / 'motifs.html').write_text('the index')
+    index = {'entries': {'M1028': {'id': 'M1028', 'merged_into': 'M939'}, 'M939': {'id': 'M939'}}}
+    monkeypatch.setattr(page_motif.motif_index, 'resolve', lambda idx, i: 'M939')
+    page_motif.write_moved(index, {'M939'})
+    assert (tmp_path / 'motifs.html').read_text() == 'the index'
+    assert 'motif-m939.html' in (tmp_path / 'motif-m1028.html').read_text()
