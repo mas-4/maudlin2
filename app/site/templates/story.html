@@ -29,6 +29,7 @@
 
     <section class="story-stage" id="spread">
         {{ banner('📰', 'Spread', 'the front pages that ran it, hour by hour', '#00c2a8') }}
+        {% if momentum %}<p class="card-momentum story-momentum momentum-{{ momentum.kind|e }}" title="{{ momentum.title|e }}"><span aria-hidden="true">{{ momentum.emoji }}</span> <b>{{ momentum.label }}</b>: {{ momentum.text }}</p>{% endif %}
         {% if by_lean %}
             <figure class="story-chart-figure">
                 {{ by_lean.svg|safe }}

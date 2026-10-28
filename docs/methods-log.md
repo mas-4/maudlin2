@@ -18,6 +18,23 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   unchanged. From the first hourly run with this change (Oct 28; the earliest `feed_sighting.first_seen` marks it).
   Articles seen before then keep their old times. The same article listed again under another section's address (65
   of 397 late ones) isn't matched by the feed and stays late.
+- **Momentum lines and the crossing watch.** Story cards and story pages under 12 hours old can carry one line on how
+  stories gathering like them did, and the stories page lists young stories mostly one side is covering. Both are
+  lookup tables of the site's own stories (`app/analysis/momentum.py`), not a fitted model, rebuilt once a day from the
+  stories born in the last 30 days that are at least 48 hours old (905 on Oct 28, 170 of them wide). A story's state is
+  its outlets, the outlets first seen in the last three hourly runs (2.5 hours) and its hours since it first made a
+  card (`story.first_seen`); it went wide at 20 or more outlets. Each story counts once in each cell it passes through
+  in its first 12 hours (24 for crossing). A cell with fewer than 20 stories gives way to a coarser one (the hours band
+  dropped; for crossing, then the wire/center split too), and with none big enough nothing is shown. The momentum line
+  shows only when its cell is well off the base rate: at least 1.75 times it (and 10 points over) is "📈 gaining fast"
+  with 3 or more new outlets, else "📰 big for its age"; half of it or less is "🐢 slow so far". The crossing watch takes
+  stories under a day old with 5 or more rated outlets, at least 80% of them on one side and fewer than 3 on the other,
+  and gives the share of such stories (by side, a wire service or center outlet on it or not, hours so far) that had
+  3 or more outlets from the other side within the next 24 hours; both directions are counted and worded the same way.
+  Membership is final membership, as in the Oct 28 study (a headline that joined later counts from its own first
+  sighting). On Oct 28 the cells were small for crossing (24-72 stories) and showed left-leaning one-sided stories
+  reaching the right about 3-5 times in 10, right-leaning ones reaching the left about 1 in 10-15; unlike the study, a
+  wire or center outlet on a right-leaning story did not go with more crossing (1 of 18; too few to show on its own).
 - **Bylines off the headlines.** Red State's and Townhall's cards, and Scripps News's, put a section label and the
   author's name inside the headline's link ("…but There's a Catch Susie Moore"), and The Gateway Pundit's trending
   list its view count ("68.2K views"), which also made a new "headline" each time the count moved. The scrapers now

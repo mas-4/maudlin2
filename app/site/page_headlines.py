@@ -567,6 +567,7 @@ class HeadlinesPage:
         self.context['clusters'] = clusters_list
         self.trending_in_the_news(df)
         self.blindspots(clusters_list)
+        self.momentum(clusters_list)
         self.investigations(clusters_list)
         self.shows(clusters_list)
         self.show_coverage(clusters_list)
@@ -979,6 +980,29 @@ class HeadlinesPage:
                          'right': round(100 * sides['right'])}
         self.context['blindspots'] = found if found['left'] or found['right'] else None
         logger.info("Blindspots: %d mostly left, %d mostly right", len(found['left']), len(found['right']))
+
+    def momentum(self, clusters_list):
+        """A young story's momentum line on its card, and the stories page's crossing watch: what the site's own
+        history says about stories gathering like it (app/analysis/momentum.py)"""
+        self.context['crossing_watch'] = []
+        story_of = getattr(self, 'story_of', {})
+        if not story_of:
+            return
+        try:
+            from app.analysis import momentum
+            found = momentum.for_stories(set(story_of.values()))
+        except Exception as e:  # noqa: BLE001 - extra; never let it stop the page
+            logger.warning("Momentum: %s", e)
+            return
+        cluster_of = {sid: cl for cl, sid in story_of.items()}
+        for c in clusters_list:
+            c['momentum'] = found['badges'].get(story_of.get(int(c['cluster'])))
+        titles = self.context['titles']
+        self.context['crossing_note'] = momentum.WATCH_NOTE
+        self.context['crossing_watch'] =[{**w, 'cluster': cluster_of[w['id']], 'story': titles[cluster_of[w['id']]]}
+                                          for w in found['crossing'] if cluster_of.get(w['id']) in titles]
+        logger.info("Momentum: %d cards with a line, %d stories on the crossing watch", len(found['badges']),
+                    len(self.context['crossing_watch']))
 
     def make_agency_lists(self, clusters_list):
         # Articles whose headline the outlet rewrote (minor changes excluded), to mark their chips and the stories
