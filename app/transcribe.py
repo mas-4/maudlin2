@@ -48,7 +48,7 @@ _model = None
 # Names and terms Whisper mishears in political talk ("APEC" for AIPAC, "Hexeth" for Hegseth), given to it as hotwords
 # on every stretch of audio, with the people most named in recent stories (entities); and the mishearings fixed after
 # transcription, each only where it's safe (APEC is also the Asia-Pacific summit; "a PAC" is a political action committee)
-TERMS = ['AIPAC', 'DOGE', 'MSNOW', 'MAGA', 'SCOTUS', 'Hegseth', 'Whatley', 'Ramaswamy', 'El-Sayed', 'Tallarico',
+TERMS = ['AIPAC', 'DOGE', 'MSNOW', 'MAGA', 'SCOTUS', 'Hegseth', 'Whatley', 'Ramaswamy', 'El-Sayed', 'Talarico',
          'Ossoff', 'Houthis', 'Hezbollah', 'Netanyahu', 'Zelensky', 'Bolsonaro', 'Epstein', 'Fairford', 'ICE']
 HOTWORD_NAMES = 50  # the most-named people and groups in recent stories added to TERMS
 FIXES = [
@@ -56,6 +56,9 @@ FIXES = [
     (re.compile(r'\bAPEC\b'), 'AIPAC', re.compile(r'summit|Asia|Pacific|trade|economic cooperation|ministers|Korea|leaders\' meeting', re.I)),
     (re.compile(r'\b(?:Hexeth|Heggseth|Hegsath|Hexath)\b'), 'Hegseth', None),
     (re.compile(r'\bWattley\b'), 'Whatley', None),
+    # James Talarico, the Texas Senate candidate; until Oct 28 TERMS itself spelled him Tallarico, and the summaries
+    # and claims from those transcripts followed. Steven Tallarico (Steven Tyler) keeps his
+    (re.compile(r'\bTallarico\b'), 'Talarico', re.compile(r'Steven|Tyler|Aerosmith')),
 ]
 
 

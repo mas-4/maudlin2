@@ -37,6 +37,9 @@ SEED_ALIASES = {
     '2026 midterms': '2026 midterm elections', '2026 midterm elections': '2026 midterm elections',
     'ninth circuit': '9th Circuit', '9th circuit court of appeals': '9th Circuit',
     'ninth circuit court of appeals': '9th Circuit', 'houthi': 'Houthis', 'pope leo xiv': 'Pope Leo',
+    # Oct 28: the show transcripts spelled James Talarico "Tallarico" (the transcriber's own hint had it so), which
+    # split his claims in two on the names page
+    'james tallarico': 'James Talarico', 'tallarico': 'James Talarico', 'talarico': 'James Talarico',
 }
 # Aliases that reached too far (Oct 27 audit): Cornell's own administration filed as the Trump administration, a New
 # York City stabbing as New York State. Left out wherever they come from

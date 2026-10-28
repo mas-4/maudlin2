@@ -8,6 +8,8 @@ def test_known_mishearings_are_fixed_only_where_safe():
         'Leaders gathered for the APEC summit in Gyeongju. He took AIPAC money.'  # the summit stays; the next sentence is fixed
     assert transcribe.fix_text('Funded by a PAC.') == 'Funded by a PAC.'
     assert transcribe.fix_text('Hexeth and Wattley.') == 'Hegseth and Whatley.'
+    assert transcribe.fix_text('James Tallarico leads. Steven Tallarico sang.') == \
+        'James Talarico leads. Steven Tallarico sang.'
 
 
 def test_hotwords_hold_the_fixed_terms_and_recent_names(monkeypatch):
