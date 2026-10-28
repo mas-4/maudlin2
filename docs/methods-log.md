@@ -30,6 +30,9 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   left out, each with the left and right shows whose host or guest said it: a list of leads, not of falsehoods. The
   second lists the motifs whose only claims come from the voters in The Focus Group (33 on Oct 27; by a hand count in
   the probe, 17 of them praise for a candidate).
+- **No more "answered N days after".** Motif pages no longer say how many days after a motif its answer was first
+  told. In the Oct 27 probe the answer came after its move in 26 of 47 pairs, against 26.5 expected from the two
+  motifs' sizes alone: the bigger motif simply shows up first. The answers themselves stay.
 
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the

@@ -1,5 +1,5 @@
 """The motif index across the site (app/analysis/motif_web.py): who told a story from which side, each show's
-repertoire and neighbours, the motifs told about a name, how long an answer took, the motifs' words in headlines,
+repertoire and neighbours, the motifs told about a name, who said it on a show, the motifs' words in headlines,
 the cloud of stories told, and a saga's telling day by day."""
 from datetime import datetime, timedelta
 
@@ -71,14 +71,6 @@ def test_a_name_gets_the_motifs_told_about_it_by_its_name_or_an_alias():
     told = w.people(rows, ['Ilhan Omar', 'Donald Trump'], {'omar': 'Ilhan Omar', 'trump': 'Donald Trump'})
     assert {m['name'] for m in told['Ilhan Omar']} == {'The impostor', 'Lawfare'}
     assert [m['name'] for m in told['Donald Trump']] == ['Senile leader']
-
-
-def test_an_answers_lag_is_the_days_between_first_tellings():
-    rows = [row('M1', 'Ballot dump', 'x', date='2026-10-17'), row('M2', 'Red mirage', 'y', date='2026-10-26')]
-    index = {'related': [['M1', 'M2']], 'related_notes': {'M1|M2': 'Red mirage answers Ballot dump'}}
-    entries = {'M1': {'name': 'Ballot dump'}, 'M2': {'name': 'Red mirage'}}
-    lag = w.answer_lag(rows, index, entries)
-    assert lag['M1'][0]['days'] == 9 and lag['M2'][0]['days'] == -9
 
 
 def test_a_motifs_words_are_found_whole_by_group_and_plots_left_out():

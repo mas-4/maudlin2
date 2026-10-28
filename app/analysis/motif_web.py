@@ -309,26 +309,6 @@ def people(rows: list[dict], names: list[str], aliases: dict[str, str]) -> dict[
     return result
 
 
-def answer_lag(rows: list[dict], index: dict, entries: dict) -> dict[str, list[dict]]:
-    """motif -> for each answer: {id, name, note, first_move, first_answer, days (the answer's first telling after
-    the move's), move_sides, answer_sides}"""
-    first = {}
-    for r in rows:
-        if r['date']:
-            first[r['motif']] = min(first.get(r['motif'], r['date']), r['date'])
-    by_m = defaultdict(list)
-    for r in rows:
-        by_m[r['motif']].append(r)
-    out = defaultdict(list)
-    for m, ans in answers(index, entries).items():
-        for a in ans:
-            if m in first and a['id'] in first:
-                days = (datetime.fromisoformat(first[a['id']]) - datetime.fromisoformat(first[m])).days
-                out[m].append({**a, 'first_move': first[m], 'first_answer': first[a['id']], 'days': days,
-                               'move_sides': sided(by_m[m]), 'answer_sides': sided(by_m[a['id']])})
-    return out
-
-
 # Words that name a motif in so many words, spotted in headlines and captions: its name or a teller's phrase, at least
 # two words long (single words like "Inflation" or "Sanctions" are topics more often than tellings). Not Plots or the
 # everyday talk: a plot's name is what a report says plainly ("found dead", "mass shooting", "data breach", Oct 27
@@ -376,14 +356,15 @@ def words_in(items: list, lex: dict[str, tuple[str, str]], pat: re.Pattern | Non
 
 def build(tie: bool = True) -> dict:
     """Everything the pages need, once: {index, entries, rows, stories (by_story), motif_stories, shows, answers,
-    lag, lexicon}"""
+    lexicon}. No "the answer took N days" (Oct 28): in the Oct 27 probe the answer came after its move in 26 of 47
+    pairs, against 26.5 expected from the motifs' sizes alone, so the order mostly says which motif is bigger"""
     index = mi.load()
     entries = public_entries(index)
     rows = tellings(index, tie=tie)
     lex = lexicon(entries)
     return {'index': index, 'entries': entries, 'rows': rows, 'stories': by_story(rows, index, entries),
             'motif_stories': by_motif_stories(rows), 'shows': shows(rows), 'answers': answers(index, entries),
-            'lag': answer_lag(rows, index, entries), 'lexicon': lex, 'pattern': lexicon_pattern(lex)}
+            'lexicon': lex, 'pattern': lexicon_pattern(lex)}
 
 
 def recent_headlines(days: int = 3) -> list[tuple[str, str]]:

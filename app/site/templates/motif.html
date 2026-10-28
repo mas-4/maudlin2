@@ -33,8 +33,7 @@
             {% if e.rests_on %}<p title="This motif only makes sense given these: a kind of them, or a case, argument or figure that tells them">🪜 rests on {% for p in e.rests_on %}<a class="motif-chip" href="{{ motif_href(p.id) }}">🧩 {{ p.name|e }}</a> {% endfor %}</p>{% endif %}
             {% if e.under %}<p title="Motifs that only make sense given this one">⤵️ under it: {% for p in e.under %}<a class="motif-chip" href="{{ motif_href(p.id) }}">🧩 {{ p.name|e }}</a> {% endfor %}</p>{% endif %}
             {% for r in related if r.answer %}{% if loop.first %}<p>↔️ answers and mirrors:</p><ul class="motif-page-answers">{% endif %}
-                <li><a class="motif-chip" href="{{ motif_href(r.id) }}">🧩 {{ r.name|e }}</a> <span class="court-when">{{ r.note|e }}</span>
-                    {% for l in lag if l.id == r.id %}<br><span class="court-when">⏱️ {% if l.days > 0 %}answered {{ l.days }} day{{ '' if l.days == 1 else 's' }} after this was first told here ({{ l.first_move }} → {{ l.first_answer }}){% elif l.days < 0 %}told here {{ -l.days }} day{{ '' if l.days == -1 else 's' }} after its answer ({{ l.first_answer }} → {{ l.first_move }}){% else %}both first told the same day ({{ l.first_move }}){% endif %}</span>{% endfor %}</li>
+                <li><a class="motif-chip" href="{{ motif_href(r.id) }}">🧩 {{ r.name|e }}</a> <span class="court-when">{{ r.note|e }}</span></li>
             {% if loop.last %}</ul>{% endif %}{% endfor %}
             {% for r in related if not r.answer %}{% if loop.first %}<p>🔗 goes with: {% endif %}<a class="motif-chip small" href="{{ motif_href(r.id) }}"{% if r.note %} title="{{ r.note|e }}"{% endif %}>🧩 {{ r.name|e }}</a> {% if loop.last %}</p>{% endif %}{% endfor %}
         </div>
