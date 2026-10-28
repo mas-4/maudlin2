@@ -1,0 +1,116 @@
+{% extends "page.html" %}
+
+{% macro motif_link(m) %}{% if m.href %}<a class="motif-chip" href="{{ m.href }}">🧩 {{ m.name|e }}</a>{% else %}<span class="motif-chip almanac-unlinked" title="Not public in the index yet, so no page of its own">🧩 {{ m.name|e }}</span>{% endif %}{% endmacro %}
+{% macro pct(x) %}{{ '%.2f'|format(100 * x) }}%{% endmacro %}
+
+{% block content %}
+    <header class="story-hero almanac-hero">
+        <p class="story-kicker"><span>🔮 2026 midterms</span></p>
+        <h2 class="story-page-title">The Election Almanac</h2>
+        <p class="almanac-lede">A forecast of the election stories you'll hear in election week: which story shapes
+            will surge, and which side's shows will lead each one. We publish it before the polls open and score it
+            afterwards, win or lose; a story shape is a story people tell, not a claim that it's true.</p>
+    </header>
+    {% include "share.html" %}
+
+    <div class="almanac-status almanac-status-{{ stage }}" role="status">
+        {% if stage == 'draft' %}
+            <p class="almanac-status-head">📝 DRAFT · not frozen yet</p>
+            <p>These are starting values. They may still change until the forecast is frozen, before the polls open
+                (Nov 3, 00:00 ET). Once frozen, its SHA-256 fingerprint goes here and it never changes again.</p>
+        {% elif stage == 'broken' %}
+            <p class="almanac-status-head">⚠️ SEAL BROKEN</p>
+            <p>The forecast below no longer matches the fingerprint it was frozen with, so it isn't scored. That
+                shouldn't happen; please tell us.</p>
+            <p class="almanac-hash">frozen {{ frozen_at }} · SHA-256 <code>{{ seal.sha256|e }}</code></p>
+        {% else %}
+            {% if stage == 'frozen' %}<p class="almanac-status-head">🔒 FROZEN · scored from {{ window }}</p>
+            {% elif stage == 'scoring' %}<p class="almanac-status-head">⏳ SCORING · so far, through {{ through }}</p>
+                <p>The numbers below are provisional: tellings keep arriving as shows are read and claims are filed.
+                    The final count is on {{ count_day }}.</p>
+            {% else %}<p class="almanac-status-head">🏁 SCORED · counted {{ count_day }}</p>{% endif %}
+            <p class="almanac-hash">frozen {{ frozen_at }}{% if seal.late %} (after the polls opened, so not a true
+                forecast){% endif %} · SHA-256 <code>{{ seal.sha256|e }}</code></p>
+        {% endif %}
+    </div>
+
+    {% if scored.brier is not none %}
+        <h2 class="section-divider stage-banner" style="--stage: #ffc400"><span>🏁 {{ 'So far' if scored.provisional else 'The score' }}</span></h2>
+        <p class="stage-sub">{{ "{:,}".format(scored.window_n) }} tellings in the window{% if scored.provisional %} so far (through {{ through }}){% endif %}, against {{ "{:,}".format(scored.baseline_n) }} in October</p>
+        <ul class="story-stickers almanac-score">
+            <li style="--sticker: #ff6b1a"><span class="sticker-emoji" aria-hidden="true">🌋</span><b>{{ scored.surges }} of {{ scored.n }}</b><span>motifs surged</span></li>
+            <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🎯</span><b>{{ '%.3f'|format(scored.brier) }}</b><span>our Brier score (lower is better)</span></li>
+            <li style="--sticker: #b8b8c8"><span class="sticker-emoji" aria-hidden="true">📏</span><b>{{ '%.3f'|format(scored.brier_ref) }}</b><span>the yardstick's, {{ base }} for every motif</span></li>
+            <li style="--sticker: {{ '#00c2a8' if scored.skill > 0 else '#ff4fa3' }}"><span class="sticker-emoji" aria-hidden="true">{{ '🏆' if scored.skill > 0 else '🙈' }}</span><b>{{ '%+.2f'|format(scored.skill) }}</b><span>skill: {{ 'beats' if scored.skill > 0 else 'loses to' }} the yardstick</span></li>
+            {% if scored.sides.scored %}<li style="--sticker: #3a86ff"><span class="sticker-emoji" aria-hidden="true">↔️</span><b>{{ scored.sides.hits }} of {{ scored.sides.scored }}</b><span>side calls right (October's sides: {{ scored.sides.persistence }})</span></li>{% endif %}
+            {% set hits = scored.answers|selectattr('result', 'equalto', 'hit')|list|length %}{% set called = scored.answers|selectattr('result')|list|length %}
+            {% if called %}<li style="--sticker: #ff4fa3"><span class="sticker-emoji" aria-hidden="true">💬</span><b>{{ hits }} of {{ called }}</b><span>answer calls right</span></li>{% endif %}
+        </ul>
+    {% endif %}
+
+    <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🔮 The forecasts</span></h2>
+    <p class="stage-sub">{{ n_forecasts }} story shapes: the chance each surges in election week, and the side we
+        expect to lead it</p>
+    <div class="stage-notes almanac-key">
+        <p>📊 The bar is our chance of a surge. The dashed line is the yardstick: in October, {{ (100 * base)|round|int }}%
+            of election motifs' weeks surged, so a forecaster who knew nothing else would say {{ (100 * base)|round|int }}%
+            for each. Ours average {{ (100 * mean_p)|round|int }}%: we expect election week to stir these stories more than
+            an ordinary October week.</p>
+        <p>🌋 A <b>surge</b> means a story's share of everything told in {{ window }} is at least twice its share of
+            October's tellings, with at least 3 tellings in the window.</p>
+    </div>
+    {% for g in groups %}
+        <h3 class="almanac-group" style="--pop: {{ g.pop }}"><span aria-hidden="true">{{ g.emoji }}</span> {{ g.label }}</h3>
+        <ol class="almanac-list">
+            {% for f in g.rows %}
+                <li class="almanac-row" style="--pop: {{ g.pop }}">
+                    <div class="almanac-row-head">{{ motif_link(f) }}<span class="almanac-p">{{ (100 * f.p_surge)|round|int }}%</span></div>
+                    {{ f.bar }}
+                    <p class="almanac-why">{{ f.why|e }}</p>
+                    <p class="almanac-meta"><span title="The side whose shows we expect to tell it at the highest rate">↔️ lead side: <b>{{ f.lead_side|e }}</b></span>
+                        <span>🗓️ October: {{ f.oct_tellings }} telling{{ '' if f.oct_tellings == 1 else 's' }} ({{ f.oct_share_pct }}% of all)</span>
+                        <span>🌋 surges at {{ '%.2f'|format(f.needs) }}% of the window, with at least 3 tellings</span></p>
+                    {% set o = f.out %}
+                    {% if o and not o.public %}
+                        <p class="almanac-outcome">🤷 not public in the index on the count day, so not scored</p>
+                    {% elif o %}
+                        <p class="almanac-outcome almanac-outcome-{{ 'yes' if o.surge else 'no' }}">{% if o.surge %}🌋 surged{% else %}💤 no surge{% endif %}{% if scored.provisional %} so far{% endif %}:
+                            {{ o.n }} telling{{ '' if o.n == 1 else 's' }}, {{ pct(o.share) }} of the window{% if o.lift is not none %} ({{ '%.1f'|format(o.lift) }}× October){% endif %}
+                            · {% if o.lead %}led by <b>{{ o.lead }}</b> shows {% if o.side_hit is none %}(call not scored){% elif o.side_hit %}✅{% else %}❌{% endif %}{% else %}too few show tellings for a lead side{% endif %}</p>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    {% endfor %}
+
+    <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>💬 Answer calls</span></h2>
+    <p class="stage-sub">stories that answer each other: what we expect when one is told</p>
+    <ol class="almanac-calls">
+        {% for c in calls %}
+            <li class="almanac-call">
+                <p>{{ c.call|e }}</p>
+                <p class="almanac-meta">{% for m in c.links %}{{ motif_link(m) }} {% endfor %}<span class="almanac-p small">{{ (100 * c.p)|round|int }}%</span>
+                    {% if c.out %}{% if c.out.result == 'hit' %}<span class="almanac-outcome-yes">✅ hit{% if scored.provisional %} so far{% endif %}</span>{% elif c.out.result == 'miss' %}<span class="almanac-outcome-no">❌ miss{% if scored.provisional %} so far{% endif %}</span>{% else %}<span>🤷 {{ c.out.why|e }}</span>{% endif %}{% endif %}</p>
+            </li>
+        {% endfor %}
+    </ol>
+
+    <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>📜 The rules</span></h2>
+    <p class="stage-sub">set before the vote, part of what's frozen</p>
+    <dl class="stage-notes almanac-rules">
+        {% for r in rules %}<dt>{{ r.name|e }}</dt><dd>{{ r.text|e }}</dd>{% endfor %}
+        <dt>The House</dt><dd>{% if house %}{{ 'Democrats won' if house == 'D' else 'Republicans held' }} the House, as AP called it.{% else %}Not called yet.{% endif %}{% if conditional %} The side calls that depend on it: {% for f in conditional %}{{ f.name|e }} ({{ f.lead_side|e }}){{ '; ' if not loop.last else '.' }}{% endfor %} D means Democrats win the House; R, Republicans hold it.{% endif %}</dd>
+    </dl>
+
+    <h2 class="section-divider stage-banner" style="--stage: #3a86ff"><span>🏛️ What the watchdogs expect</span></h2>
+    <p class="stage-sub">the {{ brennan_meta.by|e }}'s themes ("{{ brennan_meta.title|e }}", Oct 9) and the motifs we file them under</p>
+    <div class="almanac-table-wrap">
+        <table class="almanac-table">
+            <thead><tr><th scope="col">Their theme</th><th scope="col">Our motifs</th></tr></thead>
+            <tbody>
+                {% for t in brennan %}<tr><td>{{ t.theme|e }}</td><td>{% for m in t.links %}{{ motif_link(m) }} {% endfor %}</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="poll-note">The matching is ours, not theirs. A motif without a link isn't public in our index yet.</p>
+{% endblock content %}

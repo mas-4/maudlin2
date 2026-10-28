@@ -4,6 +4,15 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-28
+- **The Election Almanac.** A forecast of which of 30 election motifs surge in election week (Nov 3-9), with a lead
+  side for each and five answer calls, to be frozen before Nov 3, 00:00 ET (`scripts/freeze_almanac.py` records the
+  SHA-256 of the forecast's canonical JSON) and scored on Nov 17 (`app/analysis/almanac.py`). A surge: the motif's share
+  of the window's tellings is at least twice its share of Oct 3-26 tellings, with at least 3 in the window. Scored by
+  the Brier score against a reference forecaster that gives every motif 0.271 (the share of October's 59 election
+  motif-weeks that doubled). Days are the index's: a show's is its episode's publish day in UTC, so an episode out after
+  7 PM ET counts as the next day. A frozen forecast that no longer matches its hash is not scored, and its test fails.
+
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
   front page's cards ("🧩 told as"). A show claim is tied to the story on the front pages it is nearest in meaning to
