@@ -34,13 +34,13 @@ POPS = {'pink': (255, 79, 163), 'yellow': (255, 196, 0), 'teal': (0, 194, 168), 
 LEAN = {'left': (38, 53, 122), 'center': (160, 160, 170), 'right': (122, 2, 25)}
 PART_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff']  # story_charts.PART_COLORS
 FOLDER = 'share'  # in the build: /share/<hash>.png
-VERSION = 4  # bump to redraw every card after a change to the drawing
+VERSION = 5  # bump to redraw every card after a change to the drawing
 FONT_FILES = {'bold': ['/usr/share/fonts/comic-neue/ComicNeue-Bold.ttf', '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf'],
               'regular': ['/usr/share/fonts/comic-neue/ComicNeue-Regular.ttf', '/usr/share/fonts/TTF/DejaVuSans.ttf'],
               # big numbers on stickers: the site shouts them in Bungee, which isn't installed for drawing here
               'black': ['/usr/share/fonts/noto/NotoSans-Black.ttf', '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf']}
 EMOJI_FONT = '/usr/share/fonts/noto/NotoColorEmoji.ttf'  # a bitmap font: drawn at its one size, then scaled
-MOTTO = 'The news, and the stories people tell about it'
+MOTTO = 'How the news is shaped and shared'
 CARD = (60, 60, W - 60, H - 60)  # the white card; everything is drawn inside it
 KEEP_DAYS = 3  # a cached card no build has used for this long is deleted (a live story's card changes every hour)
 
@@ -91,6 +91,16 @@ def emoji(char: str, size: int) -> Image.Image | None:
     im = im.crop(box)
     scale = size / max(im.size)
     return im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))), Image.LANCZOS)
+
+
+@lru_cache(maxsize=8)
+def logo(height: int) -> Image.Image | None:
+    """The site's mark, the talking paper (static/logo-mark.png, drawn from static/logo.svg), `height` pixels tall"""
+    path = os.path.join(Config.assets, 'logo-mark.png')
+    if not os.path.exists(path):
+        return None
+    im = Image.open(path).convert('RGBA')
+    return im.resize((round(im.width * height / im.height), height), Image.LANCZOS)
 
 
 def put_emoji(img: Image.Image, char: str, x: float, y: float, size: int):
@@ -193,7 +203,9 @@ def brand(img: Image.Image, d: ImageDraw.ImageDraw):
     right = CARD[2] - 40
     width = d.textlength('bignews.day', font=f)
     d.text((right, 116), 'bignews.day', font=f, fill=INK, anchor='rm')
-    put_emoji(img, '🗞️', right - width - 30, 114, 40)
+    mark = logo(44)
+    if mark:
+        img.paste(mark, (round(right - width - 14 - mark.width), 114 - mark.height // 2), mark)
 
 
 def sticker(img: Image.Image, x: float, y: float, w: int, h: int, icon: str, big: str, small: str, pop,
@@ -334,9 +346,9 @@ def site_card() -> str:
         ld = ImageDraw.Draw(layer)
         ld.rounded_rectangle((12, 12, 212, 212), radius=36, fill=POPS['pink'])
         ld.rounded_rectangle((0, 0, 200, 200), radius=36, fill=POPS['yellow'], outline=INK, width=6)
-        e = emoji('🗞️', 140)
+        e = logo(150)
         if e:
-            layer.paste(e, (100 - e.width // 2, 100 - e.height // 2), e)
+            layer.paste(e, (100 - e.width // 2, 104 - e.height // 2), e)
         tilted(img, layer, 100, 120, -5)
         d.text((350, 150), 'bignews.day', font=font('bold', 96), fill=INK)
         f, lines = fit(d, spec['line'], 'bold', (44, 40, 36), 720, 2)

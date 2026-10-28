@@ -39,7 +39,7 @@ class TemplateHandler:
 
 
 SITE_URL = 'https://bignews.day'
-SITE_DESCRIPTION = ("The news, and the stories people tell about it: 145 front pages every hour, TV, radio and over a "
+SITE_DESCRIPTION = ("How the news is shaped and shared: 145 front pages every hour, TV, radio and over a "
                     "hundred shows left and right, and our own index of the stories being told.")
 
 

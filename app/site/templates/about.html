@@ -3,7 +3,7 @@
 {% block content %}
     <header class="story-hero about-hero">
         <p class="story-kicker"><span>👋 About bignews.day</span></p>
-        <h2 class="story-page-title">The news, and the stories people tell about it</h2>
+        <h2 class="story-page-title">How the news is shaped and shared</h2>
         <p class="about-lede">We read the news the way a folklorist reads tales: what happened, and the shapes of the
             stories people tell about it, left and right alike.</p>
     </header>
@@ -37,6 +37,21 @@
                 <li><b>Not finished.</b> A language model running on our own computer suggests motifs and files claims; a
                     person checks every motif before it's shown here. Expect some loose fits, and tell us when you find
                     one. How we test the machine is in <a href="lab.html">the Lab</a>.</li>
+            </ul>
+        </section>
+        <section class="about-card about-wide" style="--about: #00c2a8">
+            <h3>🔐 What we collect from Bluesky and Mastodon</h3>
+            <ul>
+                <li><b>A sample, read for its stories.</b> We regularly listen to Bluesky's public stream for a few minutes at a
+                    time, and read a few pages of Mastodon's public timeline from people who chose to be searchable. We look for
+                    the stories people retell, counted across many posts.</li>
+                <li><b>No names.</b> We keep a post's text and time and a salted fingerprint of its author, enough to count
+                    how many people said something, never to say who. No handles, images or links' previews. Labeled posts
+                    are skipped, a post deleted while we listen is deleted here, and raw posts are dropped after {{ retention }}
+                    days.</li>
+                <li><b>Nothing republished.</b> We never post anyone's words as our own. A few posts that were already
+                    widely seen are shown embedded from Bluesky itself, so if the author deletes one it disappears here too.
+                    Mastodon posts are never shown. Datasets of posts are never published.</li>
             </ul>
         </section>
         <section class="about-card" style="--about: #ff4fa3">

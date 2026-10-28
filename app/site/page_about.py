@@ -16,6 +16,7 @@ class AboutPage:
 
     def generate(self):
         logger.info("Generating about page...")
-        self.template.write({'title': 'About', 'contact': CONTACT,
-                             'og_description': "What bignews.day is: the news, and the stories people tell about it, "
+        from app.vernacular import RETENTION_DAYS
+        self.template.write({'title': 'About', 'contact': CONTACT, 'retention': RETENTION_DAYS,
+                             'og_description': "What bignews.day is: how the news is shaped and shared, "
                                                "read the way a folklorist reads tales, left and right alike."})
