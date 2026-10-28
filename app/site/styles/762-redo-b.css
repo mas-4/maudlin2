@@ -1,0 +1,55 @@
+/* Show pages, On TV, On the radio, Beyond and the Replay redone as ranked strips (Oct 28) */
+
+/* The site redo's group B: the boards are 175-boards.css; here, the variants these pages need: a genre-mix bar, the
+   hourly swimlanes, stickers with bars, a diverging strip */
+
+/* Show pages (show.html): its tellings by genre as one bar, and the repertoire's second board counting on from the
+   first */
+.showpg-mix-wrap {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    padding: 0.4em 0.7em 0.6em;
+    margin: 0.4em 0 0.2em;
+}
+
+.showpg-mix-label {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    margin: 0 0 0.3em;
+}
+
+.showpg-mix {
+    display: flex;
+    margin: 0;
+    height: 40px;
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 3px 3px 0 #8a5cff;
+}
+
+.showpg-mix-part {
+    flex: 0 0 var(--w);
+    min-width: 4px;
+    display: grid;
+    place-items: center;
+    background: var(--ink);
+    font-size: 1.05em;
+    line-height: 1;
+}
+
+.showpg-mix-part + .showpg-mix-part {
+    border-left: 2px solid #1f1f2e;
+}
+
+.showpg-mix-part.showpg-mix-plain {
+    background: repeating-linear-gradient(45deg, #fff 0 6px, #ececf3 6px 9px);
+}
+
+.showpg-mix-part:hover, .showpg-mix-part:focus-visible {
+    filter: brightness(1.12);
+    outline: none;
+}
+
+.rank-board-rep-next .rank-list {
+    counter-reset: rank-list 20;  /* page_show.FIRST */
+}
