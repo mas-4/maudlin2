@@ -362,8 +362,10 @@ def stickers(st: dict, outlets: list[dict], lean_counts: dict, tv: dict | None, 
     return out
 
 
-STAY_OUTLETS = 3  # rated outlets a side needs for "who stayed on it"
-STAY_HOURS = 24  # the gap between the sides' medians worth a line
+STAY_OUTLETS = 5  # rated outlets a side needs for "who stayed on it" (Oct 28: at 3, the FDA story's 250 h gap rested on
+# three right outlets)
+STAY_HOURS = 24  # the gap between the sides' medians worth a line...
+STAY_SHARE = 0.25  # ...and at least this share of the longer median (a day is noise on a week-long story)
 
 
 def stayed(headlines: list[dict]) -> dict | None:
@@ -388,7 +390,8 @@ def stayed(headlines: list[dict]) -> dict | None:
     left, right = median(hours['left']), median(hours['right'])
     gap = right - left
     return {'left': round(left), 'right': round(right), 'left_n': len(hours['left']), 'right_n': len(hours['right']),
-            'longer': ('right' if gap > 0 else 'left') if abs(gap) >= STAY_HOURS else None, 'hours': round(abs(gap))}
+            'longer': ('right' if gap > 0 else 'left') if abs(gap) >= max(STAY_HOURS, STAY_SHARE * max(left, right)) else None,
+            'hours': round(abs(gap))}
 
 
 def rewordings(headlines: list[dict]) -> list[dict]:
