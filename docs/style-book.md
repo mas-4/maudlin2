@@ -31,8 +31,10 @@ Both web fonts come from Google Fonts in `page.html` (`Bungee`, `Comic Neue:wght
 
 The mark is **the talking paper**: a white front page, ink outline, a yellow hard shadow, a speech-bubble tail at its
 lower left, tilted 5° (`app/site/static/logo.svg`; `logo-mark.png` for share cards). On the pink pop it's the favicon,
-the home-screen icon and the Bluesky and Mastodon avatar. The motto is **How the news is shaped and shared** (Oct 28,
-the person: the yarn "looks like a ping pong paddle"; the old line was "the news, and the stories people tell about it").
+the home-screen icon and the Bluesky and Mastodon avatar. The motto is **Nobody's immune to a good story** (Oct 28, the person's pick from a workshop: the folklore angle and
+the propaganda angle at once, pointed at every side and the reader too; before it, "How the news is shaped and shared",
+and before that "the news, and the stories people tell about it"). The mark: the person said the yarn "looks like a
+ping pong paddle".
 
 ## Color
 

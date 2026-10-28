@@ -23,6 +23,12 @@
     padding-left: 0.9em;  /* room for the paper, which sticks out to the left of the sticker */
 }
 
+/* The motto starts under the lettering, not under the paper's tail (Oct 28, the person: "slightly righter because
+   it's badly integrated") */
+.nav-mast > .nav-tagline {
+    margin-left: 3.4em;
+}
+
 .nav-brand {
     position: relative;
     display: inline-flex;
@@ -125,6 +131,10 @@
 
     .nav-brand {
         font-size: 1.75em;
+    }
+
+    .nav-mast > .nav-tagline {
+        margin-left: 2.9em;
     }
 
     .nav-links {

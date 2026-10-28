@@ -34,13 +34,13 @@ POPS = {'pink': (255, 79, 163), 'yellow': (255, 196, 0), 'teal': (0, 194, 168), 
 LEAN = {'left': (38, 53, 122), 'center': (160, 160, 170), 'right': (122, 2, 25)}
 PART_COLORS = ['#ff4fa3', '#00c2a8', '#ffc400', '#3a86ff', '#ff6b1a', '#8a5cff']  # story_charts.PART_COLORS
 FOLDER = 'share'  # in the build: /share/<hash>.png
-VERSION = 5  # bump to redraw every card after a change to the drawing
+VERSION = 6  # bump to redraw every card after a change to the drawing
 FONT_FILES = {'bold': ['/usr/share/fonts/comic-neue/ComicNeue-Bold.ttf', '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf'],
               'regular': ['/usr/share/fonts/comic-neue/ComicNeue-Regular.ttf', '/usr/share/fonts/TTF/DejaVuSans.ttf'],
               # big numbers on stickers: the site shouts them in Bungee, which isn't installed for drawing here
               'black': ['/usr/share/fonts/noto/NotoSans-Black.ttf', '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf']}
 EMOJI_FONT = '/usr/share/fonts/noto/NotoColorEmoji.ttf'  # a bitmap font: drawn at its one size, then scaled
-MOTTO = 'How the news is shaped and shared'
+MOTTO = "Nobody's immune to a good story"  # Oct 28, the person's pick
 CARD = (60, 60, W - 60, H - 60)  # the white card; everything is drawn inside it
 KEEP_DAYS = 3  # a cached card no build has used for this long is deleted (a live story's card changes every hour)
 
