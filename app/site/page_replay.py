@@ -69,9 +69,12 @@ def strip(airings: list[dict]) -> str:
             if a['group'] != group:
                 continue
             at = f' (at {clock(a["at"])} in)' if a['at'] is not None else ''
+            # A card beside the dot on hover, kept open by a click (index.js hoverCard), with a link to the episode
+            link = (f' data-tip-href="{escape(a["url"])}" data-tip-link="the episode →"'
+                    if (a.get('url') or '').startswith('http') else '')
             parts.append(f'<circle cx="{axis.x(t):.1f}" cy="{y}" r="5" fill="{INK[group]}" fill-opacity="0.85" '
-                         f'stroke="#1f1f2e" stroke-width="1"><title>{escape(a["show"])}, {when(a["published"])} ET'
-                         f'{at}: {escape(a["title"])}</title></circle>')
+                         f'stroke="#1f1f2e" stroke-width="1" tabindex="0" data-tip-head="{escape(a["show"])}"'
+                         f'{link}><title>{when(a["published"])} ET{at}\n{escape(a["title"])}</title></circle>')
     height = bottom + 20
     return (f'<svg viewBox="0 0 {WIDTH} {height}" width="{WIDTH}" height="{height}" role="img" '
             f'class="story-chart replay-strip" aria-label="When each airing was published, by the lean of the show">'

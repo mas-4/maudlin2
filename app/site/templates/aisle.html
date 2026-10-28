@@ -38,9 +38,8 @@
         <figcaption>Left to right: the share of the shows whose host or guest said it that lean left or right (a motif
             few shows said is drawn nearer the middle). Up: how many tellers told it, on a log scale. 🔥 A ringed dot is rising: told at least
             twice as often this week as the week before. The time buttons move each dot to where it sits in that window.
-            The most told are named; tap any dot.</figcaption>
+            The most told are named; point at or tap any dot for its card, and click to keep it open.</figcaption>
     </figure>
-    <div class="aisle-card" hidden aria-live="polite"></div>
 
     {% if divide_svg %}{% set k = divide.latest %}
         <section class="divide-section" aria-labelledby="divide">
@@ -87,7 +86,6 @@
         (function () {
             const DOTS = Object.fromEntries({{ dots|tojson }}.map((d) => [d.id, d]));
             const svg = document.querySelector('.aisle-svg');
-            const card = document.querySelector('.aisle-card');
             const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
             // Tellings a day for the last three weeks, as little bars (oldest left)
             const spark = (daily) => {
@@ -122,22 +120,19 @@
                     path.setAttribute('d', `M ${a[0]} ${a[1]} Q ${(a[0] + b[0]) / 2} ${Math.min(a[1], b[1]) - lift} ${b[0]} ${b[1]}`);
                 });
             };
+            // A dot's card pops up beside it (index.js hoverCard: on hover, kept open by a click), not under the chart
+            // (Oct 28, the person: "pop ups below the chart are effectively useless and terrible ux")
             const pick = (id) => {
                 const d = DOTS[id];
-                svg.querySelectorAll('.aisle-dot').forEach((a) => a.classList.toggle('picked', a.dataset.id === id));
-                svg.querySelectorAll('.aisle-arc').forEach((p) => p.classList.toggle('lit', p.dataset.a === id || p.dataset.b === id));
-                card.hidden = false;
-                card.innerHTML = `<h3>🧩 ${esc(d.name)}</h3>${d.note ? `<p class="motif-page-note">${esc(d.note)}</p>` : ''}
+                if (!d) return null;
+                document.querySelectorAll('.aisle-dot').forEach((a) => a.classList.toggle('picked', a.dataset.id === id));
+                document.querySelectorAll('.aisle-arc').forEach((p) => p.classList.toggle('lit', p.dataset.a === id || p.dataset.b === id));
+                return `<div class="aisle-pop"><h3>🧩 ${esc(d.name)}</h3>${d.note ? `<p class="motif-page-note">${esc(d.note)}</p>` : ''}
                     <p><span class="show-chip tv-chip" style="--chip: #3a86ff">🫏 ${d.left} left</span> <span class="show-chip tv-chip" style="--chip: #8a8f98">⚖️ ${d.center} center</span> <span class="show-chip tv-chip" style="--chip: #ff4f6d">🐘 ${d.right} right</span>${d.posts ? ` <span class="show-chip tv-chip" style="--chip: #8a5cff">🧶 online</span>` : ''}</p>
                     ${spark(d.daily)}
-                    <p class="more-link"><a href="${d.href}">its page: who told it, its answers, its claims →</a></p>`;
+                    <p class="more-link"><a href="${d.href}">its page: who told it, its answers, its claims →</a></p></div>`;
             };
-            svg.addEventListener('click', (ev) => {
-                const a = ev.target.closest('.aisle-dot') || (ev.target.closest('.aisle-label') && svg.querySelector(`.aisle-dot[data-id="${ev.target.closest('.aisle-label').dataset.id}"]`));
-                if (!a) return;
-                ev.preventDefault();
-                pick(a.dataset.id);
-            });
+            window.hoverCard.register('.aisle-dot, .aisle-label', (el) => pick(el.dataset.id));
             let genre = null;
             const search = document.getElementById('aisle-search');
             const show = () => {

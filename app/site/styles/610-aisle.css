@@ -77,16 +77,12 @@
     opacity: 1;
 }
 
-.aisle-card {
-    background: color-mix(in srgb, #8a5cff 8%, white);
-    border: 3px solid #1f1f2e;
-    border-radius: 14px;
-    box-shadow: 5px 5px 0 #ffc400;
-    padding: 0.5em 1em 0.7em;
-    margin: 0.6em 0 1em;
+/* A dot's card, inside the hover card (450-tooltip.css) */
+.hover-card:has(.aisle-pop) {
+    max-width: min(24em, calc(100vw - 16px));
 }
 
-.aisle-card h3 {
+.aisle-pop h3 {
     font: 700 1.3em 'Comic Neue', 'Comic Sans MS', cursive;
     margin: 0.2em 0;
 }

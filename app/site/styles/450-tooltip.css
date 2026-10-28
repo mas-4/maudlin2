@@ -1,35 +1,94 @@
-/* Our own hover box (tooltips) */
+/* Hover cards in place of tooltips (index.js hoverCard) */
 
-/* Our own hover box (index.js), in place of the browser's tooltips: an ink-outlined card with an offset shadow like the
-   chips, tinted by lean where an element asks */
-.tooltip {
-    position: absolute;
+/* A card beside what you point at, kept open by a click. Window coordinates, so it works over the full-screen chart
+   overlay (690-chart-full.css, z-index 10000) */
+.hover-card {
+    position: fixed;
     top: 0;
     left: 0;
-    z-index: 1000;  /* above the popped-up story card (50) and chips with their own layer */
-    max-width: min(22em, calc(100vw - 16px));
-    padding: 6px 11px;
-    background: #fffdf3;
+    z-index: 10001;
+    width: max-content;
+    max-width: min(21em, calc(100vw - 16px));
+    box-sizing: border-box;
+    padding: 0.6em 0.85em 0.55em;
+    background: #fffdf5;
     color: #1f1f2e;
-    border: 2px solid #1f1f2e;
-    border-radius: 10px;
-    box-shadow: 3px 3px 0 #1f1f2e;
-    font: 14px/1.4 Helvetica, Arial, sans-serif;
-    white-space: normal;
+    border: 2.5px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 #ff4fa3;
+    font: 700 0.92rem/1.35 'Comic Neue', 'Comic Sans MS', cursive;
     overflow-wrap: anywhere;
-    pointer-events: none;
-    opacity: 0;
-    transform: translateY(3px);
-    transition: opacity 0.15s, transform 0.15s;
+    animation: hover-card-in 0.12s ease-out;
 }
 
-.tooltip.shown {
-    opacity: 1;
-    transform: none;
+.hover-card[hidden] {
+    display: none;
+}
+
+.hover-card.pinned {
+    box-shadow: 5px 5px 0 #ffc400;
+    padding-right: 2.2em;
+}
+
+@keyframes hover-card-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .tooltip {
-        transition: none;
-    }
+    .hover-card { animation: none; }
+}
+
+.hover-card-head {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-weight: 400;
+    font-size: 0.95em;
+    line-height: 1.25;
+    margin-bottom: 0.3em;
+}
+
+.hover-card-line + .hover-card-line {
+    margin-top: 0.2em;
+}
+
+.hover-card a {
+    color: inherit;
+}
+
+.hover-card-more {
+    display: block;
+    margin-top: 0.45em;
+    text-align: right;
+    color: #d6337f !important;
+}
+
+.hover-card-close {
+    position: absolute;
+    top: 0.3em;
+    right: 0.35em;
+    width: 1.6em;
+    height: 1.6em;
+    padding: 0;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+    background: white;
+    color: #1f1f2e;
+    font: 700 0.85em/1 'Comic Neue', sans-serif;
+    cursor: pointer;
+}
+
+/* The mark a card belongs to */
+svg .hover-card-on circle, svg circle.hover-card-on, svg rect.hover-card-on, svg polygon.hover-card-on {
+    stroke: #ff4fa3;
+    stroke-width: 3;
+}
+
+/* A page's "more" button, smaller inside a card */
+.hover-card .more-link {
+    margin: 0.6em 0 0.1em;
+    font-size: 0.85rem;
+}
+
+.hover-card .more-link a {
+    padding: 0.35em 0.9em;
 }

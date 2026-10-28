@@ -172,7 +172,9 @@ def test_strip_draws_a_dot_per_airing_in_its_lean_lane():
     dots = soup.select('circle')
     assert len(dots) == 3
     assert {d['fill'] for d in dots} == {page_replay.INK['left'], page_replay.INK['right'], page_replay.INK['center']}
-    assert 'viewBox' in svg and 'The Megyn Kelly Show, Oct 20, 5:00 PM ET' in svg
+    assert 'viewBox' in svg
+    megyn = next(d for d in dots if d['data-tip-head'] == 'The Megyn Kelly Show')  # its hover card's heading
+    assert megyn.title.get_text().startswith('Oct 20, 5:00 PM ET\n') and megyn['data-tip-href'] == 'https://example.com/2'
 
 
 def test_sponsor_reads_are_grouped_by_whether_left_and_right_carried_them():

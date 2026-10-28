@@ -269,72 +269,222 @@ document.addEventListener('DOMContentLoaded', () => {
     if (target) addEventListener('load', () => setTimeout(() => target.scrollIntoView({block: 'start'}), 300));
 });
 
-// Our own hover box in place of the browser's tooltips, on every page: whatever has a title shows it here, styled like
-// the site (ink border, offset shadow), tinted by data-tooltip-color / data-tooltip-ink where an element sets them.
-// The title moves to data-title while the box is up, so the browser doesn't show its own on top.
-document.addEventListener('DOMContentLoaded', () => {
-    const tip = document.createElement('div');
-    tip.className = 'tooltip';
-    tip.setAttribute('role', 'tooltip');
-    document.body.appendChild(tip);
-    let current = null;
+// Hover cards in place of tooltips, everywhere (Oct 28, the person: "we should completely abandon tooltips as a
+// feature. Everywhere we have a tooltip we should have an actual pop up"; "mouse over card pop up", "click to keep
+// open"). Whatever has a title (an HTML element, or an SVG mark with a <title> inside) shows its text in a card beside
+// it on hover or keyboard focus; a click keeps the card open (a link or button still does its own thing on click), and
+// ✕, Escape or a click elsewhere closes it. Pages with richer cards register them: hoverCard.register(selector, build),
+// where build(element) returns the card's content (a node or an HTML string). Cards sit in window coordinates, inside
+// the full-screen overlay when the mark is in one (index.js's chart-full), so they work there too.
+// The title moves to data-tip (and to aria-label where the element has no text of its own), so the browser never shows
+// its own tooltip on top. data-tip-head gives the card a heading; data-tip-href a link at its foot.
+window.hoverCard = (() => {
+    const registry = [];
+    let card = null, anchor = null, pinned = false, showTimer = null, hideTimer = null;
+    const SKIP = 'iframe, frame, object, embed, link, meta, head, html, title, input, select, textarea';
 
-    function place() {
-        if (!current) return;
-        // Measure at the left edge: measured where it last was (say, near the right edge) it shrinks to the room
-        // left there, and then, moved, lays out wider than measured and sticks out past the window
-        tip.style.left = '0px';
-        const rect = current.getBoundingClientRect();
-        const box = tip.getBoundingClientRect();
-        let left = rect.left + scrollX + (rect.width - box.width) / 2;
-        left = Math.max(4, Math.min(left, innerWidth - box.width - 4));
-        // Below the element, or above it when there's no room underneath
-        let top = rect.bottom + scrollY + 8;
-        if (rect.bottom + 8 + box.height > innerHeight && rect.top - 8 - box.height > 0) top = rect.top + scrollY - 8 - box.height;
-        tip.style.top = `${top}px`;
-        tip.style.left = `${left}px`;
+    function adopt(el) {
+        // An element's title (or its SVG <title> child) becomes data-tip: no browser tooltip, the text kept
+        if (!el || el.dataset?.tip !== undefined) return el;
+        let text = null;
+        if (el instanceof SVGElement) {
+            const t = [...el.children].find((c) => c.tagName.toLowerCase() === 'title');
+            if (t) { text = t.textContent.trim(); t.remove(); }
+        } else if (el.hasAttribute('title') && !el.matches(SKIP)) {
+            text = el.getAttribute('title');
+            el.removeAttribute('title');
+        }
+        if (!text) return null;
+        el.dataset.tip = text;
+        if (!el.getAttribute('aria-label') && !(el.textContent || '').trim()) el.setAttribute('aria-label', text);
+        else if (!el.getAttribute('aria-label')) el.setAttribute('aria-description', text);
+        return el;
     }
 
-    function show(target) {
-        if (current && current !== target) hide();
-        const text = target.getAttribute('title');
-        if (!text) return;
-        target.setAttribute('data-title', text);
-        target.removeAttribute('title');
-        current = target;
-        tip.textContent = text;
-        tip.style.background = target.getAttribute('data-tooltip-color') || '';
-        tip.style.color = target.getAttribute('data-tooltip-ink') || '';
-        tip.classList.add('shown');
+    function sweep(root) {
+        root.querySelectorAll('[title]').forEach((el) => { if (!el.matches(SKIP)) adopt(el); });
+        root.querySelectorAll('svg title').forEach((t) => { if (t.parentElement && t.parentElement.tagName.toLowerCase() !== 'svg') adopt(t.parentElement); });
+    }
+
+    function find(target) {
+        // The nearest element with a card: a registered one first, then anything with a tip or a title
+        if (!target || !target.closest) return null;
+        for (const [sel, build] of registry) {
+            const el = target.closest(sel);
+            if (el) { adopt(el); return {el, build}; }  // its <title> goes too, or the browser shows it over the card
+        }
+        let el = target;
+        while (el && el !== document.body && el !== document.documentElement) {
+            if (el.dataset && el.dataset.tip !== undefined) return {el, build: tipCard};
+            if (el.hasAttribute && (el.hasAttribute('title') || (el instanceof SVGElement && [...el.children].some((c) => c.tagName.toLowerCase() === 'title')))) {
+                if (adopt(el)) return {el, build: tipCard};
+            }
+            el = el.parentElement;
+        }
+        return null;
+    }
+
+    function tipCard(el) {
+        // The card for a plain tip: "Name, when: text" reads as a heading and a line; a heading of its own wins
+        const frag = document.createDocumentFragment();
+        let head = el.dataset.tipHead || '', body = el.dataset.tip || '';
+        const split = !head && body.match(/^([^:]{2,90}?):\s+([\s\S]{3,})$/);
+        if (split && !/^https?$/i.test(split[1])) { head = split[1]; body = split[2]; }
+        if (head) {
+            const h = document.createElement('div');
+            h.className = 'hover-card-head';
+            h.textContent = head;
+            frag.append(h);
+        }
+        body.split('\n').forEach((line) => {
+            if (!line.trim()) return;
+            const p = document.createElement('div');
+            p.className = 'hover-card-line';
+            p.textContent = line;
+            frag.append(p);
+        });
+        if (el.dataset.tipHref) {
+            const a = document.createElement('a');
+            a.className = 'hover-card-more';
+            a.href = el.dataset.tipHref;
+            a.textContent = el.dataset.tipLink || 'open →';
+            frag.append(a);
+        }
+        return frag;
+    }
+
+    function ensure(host) {
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'hover-card';
+            card.hidden = true;
+            card.addEventListener('pointerenter', () => clearTimeout(hideTimer));
+            card.addEventListener('pointerleave', (ev) => { if (!pinned && ev.pointerType !== 'touch') later(); });
+        }
+        if (card.parentNode !== host) host.appendChild(card);
+        return card;
+    }
+
+    function place() {
+        if (!card || card.hidden || !anchor || !anchor.isConnected) return;
+        const r = anchor.getBoundingClientRect(), gap = 12, pad = 8;
+        card.style.left = '0px'; card.style.top = '0px';
+        const w = card.offsetWidth, h = card.offsetHeight;
+        const vw = document.documentElement.clientWidth, vh = innerHeight;
+        const clamp = (v, lo, hi) => Math.min(Math.max(lo, v), Math.max(lo, hi));
+        let x, y;
+        if (r.right + gap + w <= vw - pad) { x = r.right + gap; y = r.top + r.height / 2 - h / 2; }  // beside, right
+        else if (r.left - gap - w >= pad) { x = r.left - gap - w; y = r.top + r.height / 2 - h / 2; }  // beside, left
+        else {  // no room either side (a phone): under it, or over it
+            x = clamp(r.left + r.width / 2 - w / 2, pad, vw - w - pad);
+            y = r.bottom + gap + h <= vh - pad ? r.bottom + gap : r.top - gap - h;
+        }
+        card.style.left = `${clamp(x, pad, vw - w - pad)}px`;
+        card.style.top = `${clamp(y, pad, vh - h - pad)}px`;
+    }
+
+    function show(el, build, pin) {
+        clearTimeout(showTimer); clearTimeout(hideTimer);
+        if (anchor && anchor !== el) anchor.classList.remove('hover-card-on');
+        const host = el.closest('.chart-full') || document.body;
+        ensure(host);
+        if (anchor !== el || card.hidden) {
+            const content = build(el);
+            if (content == null) return;
+            if (typeof content === 'string') card.innerHTML = content; else card.replaceChildren(content);
+        }
+        anchor = el;
+        pinned = Boolean(pin);
+        card.classList.toggle('pinned', pinned);
+        card.setAttribute('role', pinned ? 'dialog' : 'tooltip');
+        card.querySelector(':scope > .hover-card-close')?.remove();
+        if (pinned) {
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.className = 'hover-card-close';
+            x.setAttribute('aria-label', 'Close');
+            x.textContent = '✕';
+            x.addEventListener('click', (ev) => { ev.stopPropagation(); hide(true); });
+            card.prepend(x);
+        }
+        // A tint where an element asks for one (lean colors on chips)
+        card.style.background = el.dataset.tooltipColor || '';
+        card.style.color = el.dataset.tooltipInk || '';
+        el.classList.add('hover-card-on');
+        card.hidden = false;
         place();
     }
 
-    function hide() {
-        if (current) {
-            current.setAttribute('title', current.getAttribute('data-title'));
-            current.removeAttribute('data-title');
-            current = null;
-        }
-        tip.classList.remove('shown');
-        // Parked in the corner, so a hidden box never widens the page (phones let you pan to it)
-        tip.style.left = '0px';
-        tip.style.top = '0px';
+    function hide(force) {
+        clearTimeout(showTimer); clearTimeout(hideTimer);
+        if (pinned && !force) return;
+        pinned = false;
+        if (card) { card.hidden = true; card.classList.remove('pinned'); }
+        if (anchor) anchor.classList.remove('hover-card-on');
+        anchor = null;
     }
 
-    document.addEventListener('mouseover', (ev) => {
-        const target = ev.target.closest && ev.target.closest('[title]');
-        if (target && !(target instanceof SVGElement) && target !== document.documentElement) show(target);
+    function later() { clearTimeout(hideTimer); hideTimer = setTimeout(() => hide(false), 250); }
+
+    const acts = (el) => el.closest('a[href], button, summary, label');  // a click that already does something
+
+    document.addEventListener('pointerover', (ev) => {
+        if (ev.pointerType === 'touch') return;
+        if (card && card.contains(ev.target)) { clearTimeout(hideTimer); return; }
+        const hit = find(ev.target);
+        if (!hit) return;
+        if (pinned) return;  // a kept card stays until it's closed or another is clicked
+        clearTimeout(hideTimer); clearTimeout(showTimer);
+        if (hit.el === anchor && card && !card.hidden) return;
+        showTimer = setTimeout(() => show(hit.el, hit.build, false), anchor ? 0 : 90);
     });
-    document.addEventListener('mouseout', (ev) => {
-        // Moving onto a child (an emoji inside a chip) isn't leaving
-        if (current && !(ev.relatedTarget && current.contains(ev.relatedTarget))) hide();
+    document.addEventListener('pointerout', (ev) => {
+        if (ev.pointerType === 'touch' || pinned) return;
+        clearTimeout(showTimer);
+        const into = ev.relatedTarget;
+        if (anchor && into && (anchor.contains(into) || (card && card.contains(into)))) return;
+        if (anchor) later();
     });
-    // On touch screens a tap fires the hover and nothing ever fires its end: close it on the next scroll or a tap
-    // elsewhere
-    addEventListener('scroll', () => { if (matchMedia('(hover: none)').matches) hide(); else place(); }, {passive: true});
+    document.addEventListener('click', (ev) => {
+        if (card && card.contains(ev.target)) return;
+        const hit = find(ev.target);
+        if (!hit) { if (card && !card.hidden) hide(true); return; }
+        const registered = registry.some(([sel]) => hit.el.matches(sel));
+        const link = acts(ev.target);
+        if (link && !registered && !(link instanceof SVGElement)) { hide(true); return; }  // a link or button: its own click
+        if (registered && link) ev.preventDefault();
+        if (pinned && anchor === hit.el) { hide(true); return; }
+        show(hit.el, hit.build, true);
+    });
+    document.addEventListener('focusin', (ev) => {
+        if (card && card.contains(ev.target)) return;
+        const hit = find(ev.target);
+        if (hit && !pinned) show(hit.el, hit.build, false);
+    });
+    document.addEventListener('focusout', (ev) => {
+        if (pinned) return;
+        const into = ev.relatedTarget;
+        if (into && card && card.contains(into)) return;
+        if (anchor && anchor.contains(ev.target)) later();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && card && !card.hidden) { hide(true); anchor?.focus?.(); }
+        if ((ev.key === 'Enter' || ev.key === ' ') && ev.target instanceof SVGElement) {
+            const hit = find(ev.target);
+            if (hit) { ev.preventDefault(); show(hit.el, hit.build, true); }
+        }
+    });
+    addEventListener('scroll', place, {passive: true});
     addEventListener('resize', place);
-    document.addEventListener('touchstart', (ev) => { if (current && !current.contains(ev.target)) hide(); }, {passive: true});
-});
+    document.addEventListener('DOMContentLoaded', () => sweep(document));
+    if (document.readyState !== 'loading') sweep(document);
+    return {
+        register(selector, build) { registry.push([selector, build]); },
+        show(el, build, pin) { show(el, build || tipCard, pin); },
+        hide() { hide(true); },
+        sweep,
+    };
+})();
 
 // Charts open full screen (Oct 28, the person, of a saga's charts on a phone: "these deserve to be fullscreenable").
 // A button on each story and saga chart opens it in an overlay over the whole window; on a phone held upright the chart
