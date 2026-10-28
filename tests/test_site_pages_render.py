@@ -805,12 +805,16 @@ def test_saga_tracker_lays_out_parts_on_a_timeline(site):
 
 
 def test_names_page_shows_who_is_in_the_news_today(site):
-    card = site['soup']['names.html'].select_one('.name-card')
-    assert card.select_one('h3').get_text() == '🗣️ Donald <Trump>' and card['data-now'] == '1'
-    assert [li.select_one('.saga-part-title').get_text() for li in card.select('.saga-timeline li')] == \
-        ['Trump defends tariffs', 'Trump <rallies>']  # on the front pages now first, then the widest; escaped
-    assert '66 outlets · 2 stories today' in card.select_one('.saga-facts').get_text()
-    assert not card.select('.name-day')  # no day-by-day bars any more (Oct 12)
+    page = site['soup']['names.html']
+    row = page.select_one('.names-strip .rank-row')
+    assert row.select_one('.rank-name').get_text() == 'Donald <Trump>'  # escaped
+    assert row.select_one('.rank-figure').get_text() == '66 outlets'
+    assert row['data-tip'].splitlines()[2:] == ['🗞️ Trump defends tariffs (40 outlets)', '🗞️ Trump <rallies> (20 outlets)']
+    cards = json.loads(page.select_one('#name-cards').string)
+    stories = cards['Donald <Trump>']['stories']
+    assert [st['label'] for st in stories] == ['Trump defends tariffs', 'Trump <rallies>']  # on the front pages now first
+    assert stories[0]['now'] and stories[0]['href'] in ('index.html#s-70', 'story-70.html')
+    assert not page.select('.name-card') and 'on the front pages now' not in page.select_one('.names-strip').get_text()
 
 
 def test_radio_page_sets_each_newscast_beside_the_front_pages(site):

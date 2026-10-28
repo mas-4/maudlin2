@@ -1,59 +1,80 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% block content %}
     <h2>🗣️ Who's in the news today</h2>
     <p class="table-intro">The people, countries, places, organizations and groups named in the stories on the front
-        pages today, {{ today }}, the most widely covered first: how many outlets carry their stories, by lean, and the
-        stories themselves. A local language model reads each story's headlines for the names, kept only if the
-        headlines contain them; different names for one subject (Trump, Donald Trump, President Donald Trump) are
-        merged.</p>
+        pages today, {{ today|e }}, ranked by how many outlets named them in a headline. A local language model reads
+        each story's headlines for the names, kept only if the headlines contain them; different names for one subject
+        (Trump, Donald Trump, President Donald Trump) are merged. Point at a name for its stories and the stories
+        people tell about it.</p>
     {% if names %}
-        <div class="table-filters story-sort saga-tools" role="group" aria-label="Search and filter names">
-            <span class="bar-group"><input type="search" class="edit-search" id="name-search" placeholder="🔎 search names and stories" aria-label="Search names"></span>
-            <span class="bar-group"><span class="bar-label">only:</span>
-            <button data-filter="now" class="toggle" title="Only names in a story on the front pages now">📰 on the front pages now</button></span>
-        </div>
-        <div class="saga-track-cards name-cards">
-            {% for n in names %}
-                <div class="saga-card saga-track name-card" style="--saga: #7a5cff" data-text="{{ n.text|e }}"{% if n.now %} data-now="1"{% endif %}>
-                    <h3>🗣️ {{ n.name|e }}</h3>
-                    <p class="saga-facts">{% if n.now %}<span class="saga-live">📰 on the front pages now</span> · {% endif %}named by {{ n.outlets }} outlet{{ '' if n.outlets == 1 else 's' }} · {{ n.stories|length }} stor{{ 'y' if n.stories|length == 1 else 'ies' }} today</p>
-                    <div class="saga-lean" title="Outlets on these stories: {{ n.left|e }} left, {{ n.center|e }} center, {{ n.right|e }} right{% if n.unrated %}, {{ n.unrated|e }} unrated{% endif %}">
-                        {% for side in ('left', 'center', 'right') %}{% if n.shares[side] %}<span class="saga-lean-{{ side|e }}" style="width: {{ n.shares[side]|e }}%">{{ n[side] }}</span>{% endif %}{% endfor %}
-                    </div>
-                    {% macro story(st) %}
-                        <li{% if st.now %} class="saga-now"{% endif %}>
-                            <p class="saga-part-title">{% if st.page %}<a href="{{ st.page|e }}">{{ st.label|e }}</a>{% elif st.now %}<a href="index.html#s-{{ st.id|e }}" title="This story on the front page">{{ st.label|e }}</a>{% else %}{{ st.label|e }}{% endif %}</p>
-                            <p class="saga-part-facts">{{ st.outlets }} outlet{{ '' if st.outlets == 1 else 's' }} · since {{ st.when }} ET{% if st.now %} · on the front pages now{% endif %}</p>
-                        </li>
-                    {% endmacro %}
-                    <ol class="saga-timeline">{% for st in n.stories[:shown] %}{{ story(st) }}{% endfor %}</ol>
-                    {% if n.motifs %}<p class="name-told" title="Stories told about this name, from our motif index: a story people tell, not a claim that it's true">🧩 told about them: {% for m in n.motifs %}<a class="motif-chip small" href="{{ motif_href(m.id) }}">{{ m.name|e }} <span class="motif-seen">×{{ m.claims }}</span></a> {% endfor %}</p>{% endif %}
-                    {% if n.stories|length > shown %}<details class="name-more"><summary>+{{ n.stories|length - shown }} more</summary>
-                        <ol class="saga-timeline">{% for st in n.stories[shown:] %}{{ story(st) }}{% endfor %}</ol></details>{% endif %}
-                </div>
-            {% endfor %}
-        </div>
-        <p class="edit-count saga-count" aria-live="polite"></p>
+        <section class="names-strip" aria-labelledby="rank-names-all">
+            {{ b.key(fresh_key, 'How new each name is') }}
+            <div class="table-filters story-sort saga-tools" role="group" aria-label="Search names">
+                <span class="bar-group"><input type="search" class="edit-search" id="name-search" placeholder="🔎 search names and stories" aria-label="Search names"></span>
+            </div>
+            <div class="names-all{% if names|length > shown %} names-clipped{% endif %}">
+                {{ b.board(everyone, 'h3') }}
+            </div>
+            <p class="edit-count names-count" aria-live="polite"></p>
+            {% if names|length > shown %}<p class="show-all-wrap"><button class="trend-more names-more" type="button" aria-expanded="false">show all {{ names|length }} names</button></p>{% endif %}
+        </section>
+
+        <section class="names-sides" aria-labelledby="names-sides">
+            <h3 class="section-divider stage-banner" id="names-sides" style="--stage: #a9a9b8"><span>⚖️ Who each side names</span></h3>
+            <p class="stage-sub">today, {{ base }}% of the left- and right-leaning outlets naming anyone lean left: these
+                names were named by noticeably more of one side than that (ten points or more past it, and at least
+                two more outlets than the mix would give them)</p>
+            {{ b.boards(pair, 'h4') }}
+        </section>
+        <script type="application/json" id="name-cards">{{ cards|tojson }}</script>
         <script>
             (function () {
-                const box = document.querySelector('.name-cards');
-                const all = [...box.querySelectorAll('.name-card')];
-                const repack = packColumns(box, all, 360);
-                const count = document.querySelector('.saga-count');
-                let words = [], now = false;
-                function apply() {
-                    const shown = all.filter((c) => (!now || c.dataset.now) && words.every((w) => c.dataset.text.includes(w)));
-                    repack(shown);
-                    count.textContent = shown.length === all.length ? '' : shown.length ? `${shown.length} of ${all.length} names` : 'No name matches';
-                }
-                document.getElementById('name-search').addEventListener('input', (ev) => {
-                    words = ev.target.value.toLowerCase().split(/\s+/).filter(Boolean);
-                    apply();
+                // Each name's card: who named it, how new it is, its stories (linked where they have a page) and the
+                // stories people tell about it, from the motif index
+                const cards = JSON.parse(document.getElementById('name-cards').textContent);
+                const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+                const link = (href, text, cls) => { const a = el('a', cls, text); a.href = href; return a; };
+                window.hoverCard.register('.names-strip .rank-row, .names-sides .rank-row', (row) => {
+                    const name = row.querySelector('.rank-name').textContent, c = cards[name];
+                    if (!c) return null;
+                    const frag = document.createDocumentFragment();
+                    frag.append(el('div', 'hover-card-head', name));
+                    frag.append(el('div', 'hover-card-line', `Named in a headline by ${c.outlets} outlets: 🫏 ${c.left} · ⚖️ ${c.center} · 🐘 ${c.right}${c.unrated ? ` · ⚪ ${c.unrated}` : ''}`));
+                    frag.append(el('div', 'hover-card-line', `${c.mark} ${c.fresh} (${c.since})`));
+                    const list = el('ul', 'names-card-stories');
+                    c.stories.forEach((st) => {
+                        const li = el('li');
+                        li.append(st.href ? link(st.href, st.label) : el('span', null, st.label));
+                        li.append(el('span', 'names-card-facts', ` ${st.outlets} outlets · since ${st.when} ET${st.now ? ' · 📰 on the front pages now' : ''}`));
+                        list.append(li);
+                    });
+                    if (c.more) list.append(el('li', 'names-card-facts', `+${c.more} more stories`));
+                    frag.append(list);
+                    if (c.motifs.length) {
+                        const told = el('div', 'names-card-told', '🧩 told about them: ');
+                        c.motifs.forEach((m, i) => { told.append(link(m.href, `${m.name} ×${m.claims}`)); if (i < c.motifs.length - 1) told.append(' · '); });
+                        frag.append(told);
+                    }
+                    return frag;
                 });
-                document.querySelector('.saga-tools [data-filter="now"]').addEventListener('click', (ev) => {
-                    now = ev.currentTarget.classList.toggle('active');
-                    apply();
+
+                // Search (names and their stories' labels) and "show all"
+                const box = document.querySelector('.names-all'), rows = [...box.querySelectorAll('.rank-list > li')];
+                const more = document.querySelector('.names-more'), count = document.querySelector('.names-count');
+                const text = (li) => (cards[li.querySelector('.rank-name').textContent] || {}).text || '';
+                if (more) more.addEventListener('click', () => {
+                    const open = box.classList.toggle('names-clipped') === false;
+                    more.setAttribute('aria-expanded', String(open));
+                    more.textContent = open ? 'show fewer' : `show all ${rows.length} names`;
+                });
+                document.getElementById('name-search').addEventListener('input', (ev) => {
+                    const words = ev.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+                    let shown = 0;
+                    rows.forEach((li) => { li.hidden = !words.every((w) => text(li).includes(w)); shown += !li.hidden; });
+                    box.classList.toggle('names-searching', words.length > 0);
+                    count.textContent = !words.length ? '' : shown ? `${shown} of ${rows.length} names` : 'No name matches';
                 });
             })();
         </script>

@@ -1,11 +1,13 @@
 """The site redo's group D (Oct 28): the emotions page's boards and side bars, the edits page's rewrite boards and
 headline races, the names page's strips. The pieces, on canned rows; the pages themselves render in
 test_site_pages_render.py."""
+from datetime import datetime as dt, timedelta as td
+
 import pytest
 
 from app.site import boards as strips
 from app.site.common import j2env
-from app.site import page_edits, page_emotions as pe
+from app.site import page_edits, page_emotions as pe, page_names
 
 
 @pytest.fixture
@@ -82,3 +84,37 @@ def test_a_headline_test_becomes_a_race():
     assert gone['bar'] == 4 and gone['up'] == 'under an hour' and 'dropped' in gone['tip']
     running = page_edits.race({'state': 'running', 'variants': [{**v, 'won': False} for v in t['variants']]})['lanes']
     assert '🟢 still being tried' in running[0]['tip'] and '🟢' not in running[1]['tip']
+
+
+NOW = dt(2026, 10, 28, 12)
+
+
+def named(name, left, right, outlets=None, first=NOW, center=1):
+    e = {'name': name, 'left': left, 'right': right, 'center': center, 'unrated': 0,
+         'outlets': outlets or left + right + center, 'first': first, 'since': 'since Oct 28',
+         'stories': [{'label': f'{name} story', 'outlets': 9}]}
+    e['fresh'] = page_names.freshness(first, NOW)
+    return e
+
+
+def test_names_are_colored_by_how_new_they_are():
+    assert page_names.freshness(NOW - td(days=1), NOW)['key'] == 'new'
+    assert page_names.freshness(NOW - td(days=5), NOW)['key'] == 'week'
+    old = page_names.freshness(NOW - td(days=20), NOW)
+    assert old['key'] == 'running' and old['mark'] == '🔁'
+    inks = [k['ink'] for k in page_names.fresh_key()]
+    assert len(set(inks)) == 3 and not set(inks) & {strips.LEAN_INK['left'], strips.LEAN_INK['right']}
+
+
+def test_names_strip_and_the_sides_against_the_days_mix():
+    found = [named('Both', 10, 10, outlets=40), named('Lefty', 12, 2), named('Righty', 1, 9, first=NOW - td(days=20)),
+             named('Few', 3, 0), named('Even', 5, 5)]
+    everyone, (left, right), base = page_names.boards(found)
+    assert base == pytest.approx(31 / 57)
+    assert [r['name'] for r in everyone['rows']] == ['Both', 'Lefty', 'Righty', 'Few', 'Even']
+    assert everyone['rows'][0]['figure'] == '40 outlets' and everyone['rows'][0]['bar'] == 100
+    assert everyone['rows'][2]['ink'] == '#ff4fa3' and '🗞️ Righty story (9 outlets)' in everyone['rows'][2]['tip']
+    assert [r['name'] for r in left['rows']] == ['Lefty']  # Few has too few outlets; Both and Even sit near the mix
+    assert [r['name'] for r in right['rows']] == ['Righty']
+    assert left['rows'][0]['figure'] == '🫏 12 · 2 🐘' and left['rows'][0]['split'] == 86
+    assert 'mix' in left['sub'] and left['empty']

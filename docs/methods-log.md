@@ -119,6 +119,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 - **One spelling for James Talarico.** The transcriber's list of names to expect spelled him "Tallarico", so most show
   transcripts did too, and the names page counted him twice. The list has his name right now, transcripts fix the old
   spelling, and the names page joins the two.
+- **Names: named more by the left or the right, against the day's mix.** The day's mix is the share of left-leaning
+  outlets among the left- and right-leaning ones naming anyone today. A name is listed for a side when at least 6 left
+  or right outlets named it, its share is 10 points or more past the mix toward that side, and that side named it at
+  least 2 outlets more than the mix would give it; ranked by how many more. The names are colored by how new they are to
+  the news (first named in any saved story in the last 2 days, this week, or before), as the model gives no kind.
 - **Headline changes without the model's reading.** The edits page and the outlet pages no longer show the language
   model's note on what a rewrite changed, or the "more loaded / plainer wording" and "better / worse news" tags (and
   their filter buttons). Its 15,049 judgments (qwen3:8b) called 63% of rewrites more loaded for outlets on every side,
