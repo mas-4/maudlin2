@@ -123,3 +123,32 @@ def test_the_methods_page_keeps_every_day_anchor_and_filters_by_area():
     assert 'id="2026-10-28"' in html and 'href="#2026-10-03-evening"' in html
     assert 'class="pick-chip" data-area="shows"' in html and 'data-area="shows" style="--ink: #ff6b1a"' in html
     assert html.count('<details>') == 7 and 'methods-paper' in html
+
+
+# The glossary's folklore cards
+
+def test_the_glossary_explains_the_folklore_half_each_card_opening_with_its_real_badge():
+    from bs4 import BeautifulSoup
+    from app.site.page_glossary import folk
+    from app.site.boards import GENRE_INK
+    f = folk()
+    assert 'Joe Rogan Experience' in f['crossover'] and 'Theo Von' in f['crossover']
+    assert not any('Theo Von' in c and c != 'Theo Von' for c in f['crossover'])  # its podcast feed is the same show
+    assert [k['ink'] for k in f['genre_key'][:5]] == list(GENRE_INK.values())
+    html = j2env.get_template('glossary.html').render(folk=f, emotions=[], tiers={})
+    soup = BeautifulSoup(html, 'html.parser')
+    cards = soup.select('#folklore + .table-intro + .terms > .term')
+    assert [c['id'] for c in cards] == ['motif', 'genre', 'rests-on', 'answer', 'own-words', 'divide', 'aisle',
+                                        'crossover', 'replay']
+    for c in cards:  # the badge first, then the heading
+        assert c.find(recursive=False) == c.select_one('.gloss-badge') and c.select_one('.gloss-badge').find_next('h3')
+    badge = {c['id']: c.select_one('.gloss-badge') for c in cards}
+    assert badge['motif'].select_one('a.motif-chip').get_text() == '🧩 Voter fraud'
+    assert [a.get_text() for a in badge['rests-on'].select('.motif-chip')] == ['🧩 Voter fraud', '🧩 Rigged election']
+    assert badge['answer'].select('.motif-chip')[1].get_text() == '🧩 Voter suppression'
+    assert badge['genre'].select_one('.folk-genre').get_text().strip() == '🕵️ Theories'
+    assert cards[1].select_one('.rank-key') is not None  # the genre colors' key
+    assert badge['own-words'].select_one('.meter .variety-track .meter-dot') is not None
+    assert badge['aisle'].select_one('svg.aisle-svg .aisle-arc') is not None
+    assert '3+' in badge['replay'].get_text() and badge['crossover'].select('.show-chip')
+    assert not soup.select('#folklore ~ .terms [title]')  # hover cards, never tooltips

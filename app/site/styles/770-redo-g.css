@@ -137,3 +137,56 @@
 @media (prefers-reduced-motion: reduce) {
     .pick-chip, .pick-chip:nth-child(even), .pick-chip:hover { transition: none; transform: none; }
 }
+
+/* The glossary's folklore cards: each opens with the real chip, sticker or meter it explains, on a little stage */
+.gloss-badge {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    min-height: 3.2em;
+    margin: 0.3em 0 0.2em;
+    padding: 0.5em 0.6em;
+    background: white;
+    border: 2px solid #e2e2ec;
+    border-radius: 12px;
+}
+
+.gloss-badge > * {
+    margin: 0;
+}
+
+.gloss-badge .meter {
+    width: 100%;
+}
+
+.gloss-badge-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35em;
+}
+
+.gloss-badge-word {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    white-space: nowrap;
+}
+
+.gloss-badge .story-stickers.gloss-stickers {
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+}
+
+/* The aisle's sketch: the aisle's own marks, at the card's width (the map itself scrolls on a phone; this doesn't) */
+.gloss-badge .aisle-svg.gloss-aisle {
+    min-width: 0;
+    max-width: 26em;
+}
+
+.gloss-folk .rank-key {
+    justify-content: flex-start;
+}
