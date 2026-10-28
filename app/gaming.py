@@ -91,19 +91,53 @@ def describe(on: dict | None) -> str:
             f"hourly runs only scrape. It turns itself off in {left:.1f} h at the latest.")
 
 
+LOG = os.path.join(Config.data, 'gaming_log.jsonl')  # every on, off and toggle, with what asked for it
+DEBOUNCE = 10  # seconds: a toggle this soon after the last change is a double click, not a second wish
+
+
+def record(what: str, quiet: bool):
+    """Who turned it on or off (Oct 28, the person: "why does gaming mode flash all the time": the notifications
+    came in on/off pairs, so something called the switch over and over; this says what)"""
+    try:
+        with open(f'/proc/{os.getppid()}/cmdline', 'rb') as f:
+            parent = f.read().replace(b'\0', b' ').decode(errors='replace').strip()
+    except OSError:
+        parent = ''
+    with open(LOG, 'a') as f:
+        f.write(json.dumps({'at': dt.now().isoformat(timespec='seconds'), 'what': what, 'quiet': quiet,
+                            'parent': parent[:300]}) + '\n')
+
+
+def last_change() -> float:
+    try:
+        return os.path.getmtime(FLAG)
+    except OSError:
+        return 0.0
+
+
 def main(argv: list[str]) -> int:
+    quiet = '--quiet' in argv  # scripts/game.sh: on and off around a game are automatic, no notification for them
+    argv = [a for a in argv if a != '--quiet']
     what = argv[0] if argv else 'status'
+    if what in ('on', 'off', 'toggle'):
+        record(what, quiet)
     if what == 'toggle':
+        if time.time() - last_change() < DEBOUNCE:
+            print(describe(active()))
+            return 0
         what = 'off' if active() else 'on'
     if what == 'on':
         on = turn_on(float(argv[1]) if len(argv) > 1 else None)
         freed = on.get('freed')
         print(describe(on) + (f" Let go of {', '.join(freed)}." if freed else ''))
-        notify('🎮 Gaming mode on', 'The worker and experiments wait, and the hourly runs only scrape, until you turn it off.')
+        if not quiet:
+            notify('🎮 Gaming mode on', 'The worker and experiments wait, and the hourly runs only scrape, until you turn it off.')
         return 0
     if what == 'off':
-        print('Gaming mode off: the machine goes back to work.' if turn_off() else 'Gaming mode was already off.')
-        notify('🎮 Gaming mode off', 'The worker picks up where it left off; the next hourly run judges what was scraped and catches the site up.')
+        was = turn_off()
+        print('Gaming mode off: the machine goes back to work.' if was else 'Gaming mode was already off.')
+        if was and not quiet:
+            notify('🎮 Gaming mode off', 'The worker picks up where it left off; the next hourly run judges what was scraped and catches the site up.')
         return 0
     if what == 'free':  # scripts/run.sh, at the end of a run that was under way when gaming mode came on
         if active():

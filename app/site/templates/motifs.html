@@ -1,6 +1,15 @@
 {% extends "page.html" %}
 
 {% block content %}
+    {# Old links into the index ("motifs.html#M538", from story pages built before each motif had a page of its own)
+       go on to the motif's page (Oct 28, the person: the preview's story links "just take you to the main motif index") #}
+    <script>
+        (function () {
+            const m = /^#(M\d+)$/i.exec(location.hash);
+            const pages = new Set({{ (motif_pages or [])|list|tojson }});
+            if (m && pages.has(m[1].toUpperCase())) location.replace('motif-' + m[1].toLowerCase() + '.html');
+        })();
+    </script>
     <h2>🧩 The BND Motif Index</h2>
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ These are rumors, not facts.</p>

@@ -14,7 +14,7 @@ gaming() { (cd "$PROD" && .venv/bin/python -m app.gaming "$@"); }
 [ $# -gt 0 ] || { echo "usage: $0 <the game's command>" >&2; exit 2; }
 was_on=0
 gaming status >/dev/null 2>&1 && was_on=1
-[ "$was_on" = 1 ] || gaming on >/dev/null
+[ "$was_on" = 1 ] || gaming on --quiet >/dev/null
 
 export __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia __VK_LAYER_NV_optimus=NVIDIA_only
 egl=/usr/share/glvnd/egl_vendor.d/10_nvidia.json  # EGL games too (Menin's own game/play.sh sets it the same way)
@@ -22,5 +22,5 @@ egl=/usr/share/glvnd/egl_vendor.d/10_nvidia.json  # EGL games too (Menin's own g
 "$@"
 status=$?
 
-[ "$was_on" = 1 ] || gaming off >/dev/null
+[ "$was_on" = 1 ] || gaming off --quiet >/dev/null
 exit "$status"
