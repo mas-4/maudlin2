@@ -129,36 +129,7 @@ figure.wordcloud figcaption.cloud-key {
     box-shadow: 6px 6px 0 rgba(31, 31, 46, 0.85);
 }
 
-.story-status {
-    font-size: 0.85em;
-    color: #666;
-    margin: 0.2em 0;
-}
 
-.chip-sort {
-    font-size: 0.75em;
-    color: #777;
-    margin: 0.4em 0 0.2em;
-}
 
-.chip-sort button {
-    font: inherit;
-    background: none;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    padding: 0.2em 0.75em;
-    margin: 0.1em 0.15em;
-    cursor: pointer;
-    color: #555;
-}
 
-.chip-sort button.active {
-    background: #1f1f2e;
-    border-color: #1f1f2e;
-    color: white;
-}
 
-.storylink.chip-gone {
-    border: 2px dashed rgba(31, 31, 46, 0.6);
-    box-shadow: none;
-}

@@ -357,10 +357,11 @@ def test_story_cards_match_the_clusters(cards, site):
 
 def test_story_card_chips(front, site):
     for card in front.select('div.stories > div.story'):
-        chips = card.select('.chips a.storylink')
-        assert chips
-        assert all(re.match(r'chip-(fresh|live|gone)', ' '.join(a['class'][1:])) for a in chips)
-        assert all(a.select_one('.outlet-icon') is not None for a in chips)
+        dots = card.select('.dot-strip a.outlet-dot')
+        assert dots
+        assert all(re.search(r'\bdot-(fresh|live|gone)\b', ' '.join(a['class'])) for a in dots)
+        assert all(a['href'] and a['data-tip-head'] and a['data-tip'].startswith('“') for a in dots)
+        assert card.select('.card-stickers .card-sticker-showing') and not card.select('.chip-sort')
 
 
 def test_story_links_point_at_cards(front):
@@ -379,7 +380,7 @@ def test_news_day_sticker(front, site):
 
 def test_table_page_has_the_table(table):
     assert table.select_one('#wrapper') is not None
-    assert table.select_one('h1').get_text(strip=True) == 'Every headline right now'
+    assert table.select_one('h1').get_text(strip=True) == '📋 Every headline right now'
 
 
 def test_table_page_has_no_front_page_sections(table):
@@ -592,7 +593,7 @@ def test_edits_page_is_searchable_and_sortable(site):
 def test_story_outlet_chips_stay_in_their_box(cards):
     # A <p> can't hold the coverage lines' own <p>s: the browser closes it early and the chips fall out of it
     cards = cards.select('.story')
-    assert cards and all(card.select('.story-outlets .storylink') for card in cards)
+    assert cards and all(card.select('.story-outlets .dot-strip .outlet-dot') for card in cards)
 
 
 def test_the_front_page_has_a_short_list_and_sends_readers_to_every_story(front, cards, site):

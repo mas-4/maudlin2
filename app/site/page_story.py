@@ -115,7 +115,7 @@ def tv_by_story() -> dict:
     for sid, by in seconds.items():
         most = max(by.values()) or 1
         out[sid] = {'channels': [{'name': chyrons.CHANNELS[ch], 'ink': page_tv.CHANNEL_INK[ch], 'time': page_tv.minutes(n),
-                                  'share': round(100 * n / most)}
+                                  'share': round(100 * n / most), 'seconds': n}
                                  for ch, n in sorted(by.items(), key=lambda kv: -kv[1])],
                     'spots': spots[sid], 'total': page_tv.minutes(sum(by.values())),
                     'captions': [{'channel': chyrons.CHANNELS[ch], 'text': t, 'time': page_tv.minutes(n)}
@@ -329,6 +329,150 @@ def wire_copied(headlines: list[dict]) -> dict:
     return {'wires': wires, 'outlets': outlets} if outlets else {}
 
 
+# The broadcasters' networks, for their lean (AllSides rates the network's site, not the programme)
+NETWORK_OUTLET = {'BBC News': 'BBC', 'CNN': 'CNN', 'Fox News': 'Fox News', 'MSNOW': 'MSNBC', 'NPR News Now': 'NPR',
+                  'ABC News Update': 'ABC News'}
+LEAN_KEY = {-2: 'left', -1: 'lean left', 0: 'center', 1: 'lean right', 2: 'right'}
+LEAN_SAY = {'left': 'left', 'lean left': 'leans left', 'center': 'center', 'lean right': 'leans right',
+            'right': 'right', 'crossover': 'crossover', 'unrated': 'not rated for lean'}
+TV_CAPTIONS, RADIO_LINES = 4, 12  # in a row's hover card
+SHOW_ROWS = 10  # shows on their board; the rest share one row
+
+
+def network_leans() -> dict[str, str]:
+    """Broadcaster -> its network's lean (a LEAN_KEY word), from the outlets' AllSides ratings; unrated ones left out"""
+    from app.models import Agency, Session
+    try:
+        with Session() as s:
+            rated = {a.name: a._bias for a in s.query(Agency).filter(Agency.name.in_(set(NETWORK_OUTLET.values())),
+                                                                     Agency.lean_rated)}
+    except Exception as e:  # noqa: BLE001 - the boards stand without their colors
+        logger.warning("Story pages: network leans: %s", e)
+        return {}
+    return {b: LEAN_KEY[rated[o]] for b, o in NETWORK_OUTLET.items() if rated.get(o) in LEAN_KEY}
+
+
+def show_groups() -> dict[str, str]:
+    """A show's name -> its loose lean by reputation (sidefeeds: left, right, center or crossover)"""
+    from app import sidefeeds
+    return {s['name']: s['group'] for s in sidefeeds.SOURCES}
+
+
+def lean_row(name: str, href: str | None, value, top, figure: str, tip: str, lean: str | None) -> dict:
+    """A board row colored by lean (the boards' own lean colors, the lean's emoji beside it)"""
+    from app.site import boards
+    lean = lean if lean in boards.LEAN_INK else 'unrated'
+    r = boards.row(name, href, value, top, figure, tip=tip, ink=boards.LEAN_INK[lean], mark=boards.LEAN_EMOJI[lean],
+                   mark_label=LEAN_SAY[lean])
+    r['lean'] = lean
+    return r
+
+
+def broadcast(tv: dict | None, radio: list[dict], extras: dict, leans: dict, groups: dict) -> dict:
+    """The story page's 📡 Broadcast as boards in answering pairs, one row per programme (Oct 28: the radio box
+    repeated one line per newscast, the shows box was a chip wall with one show listed 8 times): minutes on TV by
+    channel | newscasts on the radio by programme, with how high in its running order it came; then the shows by
+    episodes | the investigators and satirists. Lean is the colored axis; the details (captions, each newscast, each
+    episode) go in the rows' hover cards"""
+    from app.site import boards
+    pairs, links = [], defaultdict(dict)  # board -> row name -> the links its hover card offers
+    if tv or radio:
+        tv_rows = []
+        if tv:
+            secs = lambda c: c.get('seconds') or c.get('share') or 1  # noqa: E731 - a channel's minutes, in seconds
+            top = max(secs(c) for c in tv['channels'])
+            for c in tv['channels']:
+                lean = leans.get(c['name'])
+                caps = [x for x in tv.get('captions', []) if x['channel'] == c['name']][:TV_CAPTIONS]
+                tip = '\n'.join([f"{c['name']}: {c['time']} of captions on screen ({LEAN_SAY[lean or 'unrated']})"]
+                                + [f"“{x['text']}” ({x['time']})" for x in caps])
+                tv_rows.append(lean_row(c['name'], 'tv.html', secs(c), top, c['time'], tip, lean))
+                links['tv'][c['name']] = [{'text': '📺 every channel on the TV page', 'href': 'tv.html'}]
+        by_show = defaultdict(list)
+        for r in radio:
+            by_show[r['show']].append(r)
+        top = max((len(v) for v in by_show.values()), default=1)
+        radio_rows = []
+        for show, casts in sorted(by_show.items(), key=lambda kv: -len(kv[1])):
+            led, best = sum(c['place'] == 1 for c in casts), min(c['place'] for c in casts)
+            lines = [f"{c['when']} ET: {'the lead' if c['place'] == 1 else f'story {c['place']} of {c['of']}'}"
+                     for c in casts[:RADIO_LINES]]
+            if len(casts) > RADIO_LINES:
+                lines.append(f'and {len(casts) - RADIO_LINES} earlier')
+            n = len(casts)
+            tip = '\n'.join([f"{show}: in {n} newscast{'' if n == 1 else 's'}, the lead in {led}"] + lines)
+            radio_rows.append(lean_row(show, 'radio.html', n, top,
+                                       f"{n}× · " + (f'🥇 led {led}' if led else f'best #{best}'), tip,
+                                       leans.get(show)))
+            links['radio'][show] = [{'text': '📻 every newscast on the radio page', 'href': 'radio.html'}]
+        pairs.append([
+            boards.board('tv', '📺', 'On TV', '#cc0000', 'minutes its captions were on screen, by channel; the disc '
+                         "is the network's lean", tv_rows,
+                         empty='📺🤷 No TV captions matched to it.'),
+            boards.board('radio', '📻', 'On the radio', '#e8463c', 'hourly newscasts that carried it, by programme; '
+                         'beside the count, how often it was the lead story, or the highest it came in the running order',
+                         radio_rows, empty='📻🤷 No radio newscast matched to it.')])
+    shows, others = extras.get('shows') or [], (extras.get('investigations') or []) + (extras.get('satire') or [])
+    if shows or others:
+        def grouped(items):
+            out = defaultdict(list)
+            for p in items:
+                out[p.get('source') or '?'].append(p)
+            return sorted(out.items(), key=lambda kv: -len(kv[1]))
+
+        def tip(source, items, what, board):
+            n = len(items)
+            links[board][source] = [{'text': f"“{p.get('title') or what}”", 'href': p['url']} for p in items
+                                    if p.get('url')]
+            return f"{source}: {n} {what}{'' if n == 1 else 's'} on it"
+        found = grouped(shows)
+        top = max((len(v) for _, v in found), default=1)
+        show_rows = [lean_row(src, items[0].get('url'), len(items), top, f"{len(items)}", tip(src, items, 'episode', 'shows'),
+                     groups.get(src)) for src, items in found[:SHOW_ROWS]]
+        rest = found[SHOW_ROWS:]
+        if rest:  # the long tail in one row, each show and episode in its card
+            name, eps = f'{len(rest)} more shows', [p for _, items in rest for p in items]
+            links['shows'][name] = [{'text': f"{p.get('source')}: “{p.get('title') or 'an episode'}”", 'href': p['url']}
+                                    for p in eps if p.get('url')]
+            show_rows.append(boards.row(name, None, len(eps), top, f"{len(eps)}", mark='➕', mark_label='more shows',
+                                        tip=f"{name}: {', '.join(src for src, _ in rest)}"))
+        satire = {p.get('source') for p in extras.get('satire') or []}
+        found = grouped(others)
+        top = max((len(v) for _, v in found), default=1)
+        other_rows = [boards.row(src, items[0].get('url'), len(items), top, f"{len(items)}",
+                                 tip=tip(src, items, 'joke' if src in satire else 'piece', 'digging'),
+                                 ink='#f5b700' if src in satire else '#8a5cff', mark='🃏' if src in satire else '🕵️',
+                                 mark_label='satire' if src in satire else 'investigation') for src, items in found]
+        pairs.append([
+            boards.board('shows', '🎙️', 'On the shows', '#00c2a8', 'podcasts, newsletters and streams that talked '
+                         "about it, by show; the bar is episodes; the disc is the show's lean by reputation", show_rows,
+                         empty='🎙️🤷 No show matched to it yet.'),
+            boards.board('digging', '🕵️', 'Investigated, joked about', '#8a5cff', '🕵️ investigative reporting on it '
+                         'and 🃏 satire joking about it (jokes, never counted as coverage); the bar is pieces',
+                         other_rows, empty='🕵️🤷 No investigator or satirist matched to it yet.')])
+    rows = [r for pair in pairs for b in pair for r in b['rows'] if 'lean' in r]
+    shown = {r['lean'] for r in rows}
+    key = [{'name': LEAN_SAY[k], 'mark': boards.LEAN_EMOJI[k], 'ink': boards.LEAN_INK[k]}
+           for k in ('left', 'lean left', 'center', 'lean right', 'right', 'crossover', 'unrated') if k in shown]
+    return {'pairs': pairs, 'key': key, 'links': links}
+
+
+def notes(outlets: list[dict], wire: dict, extras: dict) -> dict:
+    """The spread's small findings as compact cards (Oct 28: a dashed box of sentences): the outlets that ran the
+    wire's headline as a strip of lean dots, the phrases quoted as a little ranked strip"""
+    from app.site.page_headlines import lean_paint
+    bias = {h['outlet']: h['bias'] for h in outlets}
+    out = {}
+    if wire:
+        out['wire'] = [{'outlet': o, **lean_paint(o, bias.get(o) or 0)} for o in wire['outlets']]
+    quotes = (extras.get('quotes') or [])[:8]
+    if quotes:
+        top = max(q.get('count') or 1 for q in quotes)
+        out['quotes'] = [{'phrase': q['phrase'], 'count': q.get('count') or 1,
+                          'bar': max(6, round(100 * (q.get('count') or 1) / top))} for q in quotes]
+    return out
+
+
 def stickers(st: dict, outlets: list[dict], lean_counts: dict, tv: dict | None, radio: list[dict],
              folklore: list[dict], factchecks: list, snapshots: list[dict]) -> list[dict]:
     """The story's numbers as stickers across the top of its page, in the order it traveled: a big number or word,
@@ -463,6 +607,7 @@ class StoryPages:
             logger.warning("Story pages: momentum: %s", e)
             pace = None
         names = read_json(entities.CACHE, {})
+        leans, groups = network_leans(), show_groups()
         aliases = entities.load_aliases()['aliases']
         from app.site.page_headlines import STORY_EXTRAS
         extras = read_json(STORY_EXTRAS, {})
@@ -492,6 +637,7 @@ class StoryPages:
             stuck = stickers(st, outlets, lean_counts, tv.get(st['id']), radio.get(st['id'], []), told,
                              ex.get('factchecks') or [], st['snapshots'])
             told_now = told_as(web, st, tv.get(st['id']))
+            wire = wire_copied(st['headlines'])
             self.template.write({
                 'title': st['label'] or 'A story', 'story': st, 'outlets': outlets,
                 'lean_counts': lean_counts, 'stickers': stuck, **told_now,
@@ -506,7 +652,9 @@ class StoryPages:
                 'tv': tv.get(st['id']), 'radio': radio.get(st['id'], [])[:12], 'folklore': told,
                 'voters': voters_by_motif(told), 'bsky_rule': bluesky_examples.RULE, 'bsky_script': bluesky_examples.SCRIPT,
                 'extras': ex, 'rewordings': rewordings(st['headlines']), 'stayed': stayed(st['headlines']),
-                'wire': wire_copied(st['headlines']),
+                'wire': wire,
+                'broadcast': broadcast(tv.get(st['id']), radio.get(st['id'], []), ex, leans, groups),
+                'notes': notes(outlets, wire, ex),
                 'flow': flow(st, outlets, tv.get(st['id']), radio.get(st['id'], []), told),
                 'momentum': momentum.badge(pace, momentum.from_headlines(st['id'], st['first'], st['headlines']), now)
                 if pace else None,

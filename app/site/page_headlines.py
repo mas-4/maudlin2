@@ -1,6 +1,5 @@
 import hashlib
 import json
-from html import escape
 from urllib.parse import urlparse
 import os
 import re
@@ -22,7 +21,7 @@ from app.investigations import recent as recent_investigations
 from app import sidefeeds
 from app.analysis.stories import sync_stories, label_stories, headline_sentiment
 from app.analysis.pipelines import default_pipeline, prepare
-from app.site.common import SHARED, calculate_xkeyscore, chip_style, copy_assets, outlet_icon, short_name, TemplateHandler
+from app.site.common import SHARED, calculate_xkeyscore, copy_assets, j2env, short_name, TemplateHandler
 from app.models import Session, Headline
 from app.site.data import DataHandler, DataTypes
 from app.analysis.edits import find_edits
@@ -43,10 +42,8 @@ BREAKING_MINUTES = 90
 CHURN_OUTLETS = 3
 CHURN_SHARE = 0.15
 STORY_EMOTION_SHARE = 0.2  # of the story's averaged emotion votes, for a feeling badge
-# Outlet chips on story cards: new ones get a sparkle, dropped ones fade over a day down to a ghost
+# Outlet dots on story cards: a new one's hover card says so (✨); a dropped one is hollow
 FRESH_HOURS = 2
-GHOST_FADE_HOURS = 12
-GHOST_OPACITY = 0.35
 # Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
@@ -156,14 +153,83 @@ def age_text(hours: float) -> str:
 
 TABLE_FILE = 'headlines-table.json'
 
-# Sort buttons over each card's outlet chips; the page script reorders chips by their data attributes
-SORT_BAR = ('<div class="chip-sort" role="group" aria-label="Sort outlets">sort: '
-            '<button data-key="bias" class="active">bias</button>'
-            '<button data-key="first">first seen</button>'
-            '<button data-key="live">still showing</button>'
-            '<button data-key="mood">mood</button>'
-            '<button data-key="framing">framing</button>'
-            '<span class="sort-legend">outlets left to right, colored by lean</span></div>')
+LEAN_WORDS = {-3: 'far left', -2: 'left', -1: 'leans left', 0: 'center', 1: 'leans right', 2: 'right', 3: 'far right'}
+
+
+def lean_paint(name: str, bias: int) -> dict:
+    """An outlet's dot colors, as its chip's (chip_style): its lean color; our own estimate in its lean color, dashed;
+    an outlet with no lean rating white, dashed. `word` says which, for its hover card"""
+    estimates, unrated = j2env.globals['lean_estimates'], j2env.globals['unrated']
+    if name in estimates:
+        lean = int(estimates[name])
+        return {'fill': bias_colors[lean + 3], 'ink': bias_ink[lean + 3], 'kind': 'estimate',
+                'word': f'{LEAN_WORDS[lean]} (our estimate, not a rating)'}
+    if name in unrated:
+        return {'fill': '#ffffff', 'ink': '#1f1f2e', 'kind': 'unrated', 'word': 'not rated for lean'}
+    return {'fill': bias_colors[int(bias) + 3], 'ink': bias_ink[int(bias) + 3], 'kind': 'rated',
+            'word': LEAN_WORDS[int(bias)]}
+
+
+BRIDGE_INK = '#00c2a8'  # a wire service or a center outlet has it: the one way across the stories page's pair knows of
+
+
+def crossing_boards(watch: list[dict], anchor_of: dict) -> list[dict]:
+    """The stories page's young one-sided stories as a pair of boards, mostly left | mostly right (Oct 28: "crossing
+    watch" was jargon over a list of sentences). The bar is how often stories like it, in the site's own history,
+    reached the other side within a day; the disc says whether a wire service or center outlet has it yet"""
+    from app.analysis import momentum
+    from app.site import boards
+    out = []
+    for side, other, emoji, stage in (('left', 'right', '🫏', '#3a86ff'), ('right', 'left', '🐘', '#ff4f6d')):
+        rows = []
+        for w in sorted((w for w in watch if w['side'] == side), key=lambda w: -w['share']):
+            c = w['counts']
+            tip = (f"{w['story']}: {c['left']} left, {c['center']} center, {c['right']} right outlets so far, "
+                   f"{w['when']} since it made a card. {w['bridge'].capitalize()}.\n{w['title']}")
+            rows.append(boards.row(w['story'], f"#{anchor_of.get(w['cluster'], 'story-' + str(w['cluster']))}",
+                                   w['share'], 1, f"{w['hit']} of {w['n']}", tip=tip,
+                                   ink=BRIDGE_INK if w['has_bridge'] else boards.UNCOLORED,
+                                   mark='📡' if w['has_bridge'] else '⚪',
+                                   mark_label='a wire service or center outlet has it' if w['has_bridge']
+                                   else 'no wire service or center outlet yet'))
+        out.append(boards.board(f'cross-{side}', emoji, f'Mostly {side} so far', stage,
+                                f"under a day old, {other}-leaning outlets hardly on it yet; the bar is how often stories "
+                                f"like it, in our last {momentum.HISTORY_DAYS} days, got {momentum.CROSS_OUTLETS} or more "
+                                f"{other}-leaning outlets within a day", rows,
+                                empty=f'🦗 No young story only the {side} is covering right now.'))
+    return out
+
+
+def card_stickers(cluster: dict, now) -> list[dict]:
+    """A story card's numbers as stickers: how many outlets still show it, how long since it broke (its first hour
+    too, when it broke fast), and, when many of them are rewording it, how many rewrote their headline. What was the
+    card's plain stats ("7 headlines / 4.79% coverage", "typically first seen...") goes in their hover cards"""
+    data = cluster['data']
+    n, live = len(data), sum(bool(a['live']) for a in data)
+    ages = sorted((now - a['first_seen']).total_seconds() / 3600 for a in data)
+    minutes = int(cluster['first'] // 60)
+    hours = minutes // 60
+    new = minutes < BREAKING_MINUTES
+    speed = cluster.get('speed') or 0
+    fast = speed >= FAST_BREAK
+    out = [{'key': 'showing', 'emoji': '📰', 'big': f'{live}/{n}', 'small': 'outlets still show it',
+            'tip': f"{n} of the {len(Scrapers)} outlets we follow ran it ({cluster['coverage']:.1f}%); {live} of them "
+                   f"still have it on their front page"},
+           {'key': 'age', 'emoji': '🆕' if new else '⏱️', 'new': new,
+            'big': f'{minutes} min' if new else f'{hours} h' if hours < 48 else f'{round(hours / 24)} days',  # as the page script counts
+            'small': 'since first seen' + (f' · 🚀 {speed} in the first hour' if fast else ''),
+            'first': min(a['appearance'] for a in data).isoformat(),
+            'tip': f"First seen on a front page {age_text(cluster['first'] / 3600)} ago; its outlets typically first "
+                   f"ran it {age_text(ages[len(ages) // 2])} ago (the middle of their first sightings)"
+                   + (f". {speed} outlets had it within an hour of the first: a fast break" if fast else '')}]
+    rewrites = cluster.get('rewrites') or 0
+    if rewrites >= max(CHURN_OUTLETS, CHURN_SHARE * n):  # many outlets still rewording it
+        out.append({'key': 'churn', 'emoji': '✏️', 'big': str(rewrites), 'small': 'rewrote their headline',
+                    'href': 'edits.html',
+                    'tip': f"{rewrites} of its {n} outlets have changed their headline on it since they first ran it: "
+                           f"they're still settling how to tell it. Their dots carry the ✏️; every rewrite is on the "
+                           f"edits page"})
+    return out
 
 
 def site_name(url: str) -> str:
@@ -262,17 +328,19 @@ def pack_table(rows: list[dict]) -> dict:
             stories[str(r['story'])] = [r['story_title'], r['story_size']]
         url = r['url'][len('https://'):] if r['url'].startswith('https://') else r['url']
         packed.append([outlet, url, r['title'], r['seen'], r['buzz'], topic, r['mood'], r['loaded'],
-                       [feelings.setdefault(name, len(feelings)) for _, name in r['feelings']], r['story']])
+                       [feelings.setdefault(name, len(feelings)) for _, name in r['feelings']], r['story'],
+                       r['words']])
     return {'version': 1, 'outlets': [list(o) for o in outlets], 'topics': list(topics), 'stories': stories,
             'feelings': [[EMOTION_EMOJI[name], name] for name in feelings],
-            'columns': ['outlet', 'url', 'title', 'seen', 'buzz', 'topic', 'mood', 'loaded', 'feelings', 'story'],
+            'columns': ['outlet', 'url', 'title', 'seen', 'buzz', 'topic', 'mood', 'loaded', 'feelings', 'story',
+                        'words'],
             'rows': packed}
 
 
 def unpack_table(data: dict) -> list[dict]:
     """pack_table undone, field for field as unpackTable does it in the page (kept in step by the tests)."""
     rows = []
-    for outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story in data['rows']:
+    for outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story, words in data['rows']:
         agency, bias, rated = data['outlets'][outlet]
         name = data['topics'][topic] if topic is not None else ''
         title_size = data['stories'].get(str(story), ['', 0]) if story is not None else ['', 0]
@@ -280,7 +348,7 @@ def unpack_table(data: dict) -> list[dict]:
                      'url': url if url.startswith('http') else 'https://' + url, 'title': title, 'seen': seen,
                      'buzz': buzz, 'topic': name, 'topic_url': f"{name.replace(' ', '_')}.html" if name else '',
                      'mood': mood, 'loaded': loaded, 'feelings': [data['feelings'][i] for i in feelings],
-                     'story': story, 'story_title': title_size[0], 'story_size': title_size[1]})
+                     'story': story, 'story_title': title_size[0], 'story_size': title_size[1], 'words': words})
     return rows
 
 
@@ -1008,11 +1076,17 @@ class HeadlinesPage:
         self.context['crossing_note'] = momentum.WATCH_NOTE
         self.context['crossing_watch'] =[{**w, 'cluster': cluster_of[w['id']], 'story': titles[cluster_of[w['id']]]}
                                           for w in found['crossing'] if cluster_of.get(w['id']) in titles]
+        self.context['crossing_boards'] = crossing_boards(self.context['crossing_watch'],
+                                                          self.context.get('anchor_of', {}))
         logger.info("Momentum: %d cards with a line, %d stories on the crossing watch", len(found['badges']),
                     len(self.context['crossing_watch']))
 
     def make_agency_lists(self, clusters_list):
-        # Articles whose headline the outlet rewrote (minor changes excluded), to mark their chips and the stories
+        """Each card's outlets as one strip of dots, left to right by lean (hollow: dropped off its front page; ✏️: the
+        outlet rewrote its headline), each dot's outlet and headline in its hover card and its article a click away;
+        and the card's numbers as two or three stickers (Oct 28: they were up to 25 chips, a block of plain stats and a
+        row of sort buttons on every card)"""
+        # Articles whose headline the outlet rewrote (minor changes excluded), to mark their dots and the stories
         # where many outlets are rewriting
         edits, _ = find_edits()
         rewritten = set(edits['url']) if not edits.empty else set()
@@ -1024,72 +1098,34 @@ class HeadlinesPage:
                 homes[a['agency']][site_name(a['url'])] += 1
         home = {k: v.most_common(1)[0][0] for k, v in homes.items()}
         now = pd.Timestamp.now(tz='US/Eastern')
-        agency_lists = {}
         for cluster in clusters_list:
             cluster['data'].sort(key=lambda x: x['agency'])
-            hrefs = [f"<p>{len(cluster['data'])} headlines / {cluster['coverage']}% coverage</p>"]
-            # The page's script keeps this current from data-first; the text here is for readers without javascript
-            story_first_seen = min(a['appearance'] for a in cluster['data']).isoformat()
-            minutes = cluster['first'] // 60
-            if minutes < BREAKING_MINUTES:  # a quiet "new" tag (the old 🚨🚨🚨 BREAKING! headline was the 2024 site's)
-                fallback = f'<p><span class="new-story">🆕 new</span> first seen {int(minutes)} min ago</p>'
-            else:
-                hours = int(cluster['first'] // 3600)
-                fallback = f'<p>First seen {hours} hour{"" if hours == 1 else "s"} ago</p>'
-            hrefs[-1] += f'<div class="broken" data-first="{story_first_seen}">{fallback}</div>'
             cluster['rewrites'] = sum(a['url'] in rewritten for a in cluster['data'])
-            if cluster['rewrites'] >= max(CHURN_OUTLETS, CHURN_SHARE * len(cluster['data'])):
-                hrefs[-1] += (f'<a class="churn" href="edits.html" title="Outlets are still changing how they headline'
-                              f' this story">✏️ High headline churn: {cluster["rewrites"]} outlets changed theirs</a>')
-            # Still-showing count and how long ago outlets first ran it
-            live = sum(bool(a['live']) for a in cluster['data'])
-            ages = sorted((now - a['first_seen']).total_seconds() / 3600 for a in cluster['data'])
-            median_age = ages[len(ages) // 2]
-            hrefs[-1] += (f'<p class="story-status">{live} of {len(cluster["data"])} outlets still showing it'
-                          f' · typically first seen {age_text(median_age)} ago'
-                          + (f'<span class="status-speed"> · <span class="fast-break">🚀 {cluster["speed"]} in the first hour</span></span>'
-                             if (cluster.get('speed') or 0) >= FAST_BREAK else '') + '</p>')
-            hrefs.append(SORT_BAR)
-            chips = []
-            for a in sorted(cluster['data'], key=lambda x: x['bias']):
+            cluster['stickers'] = card_stickers(cluster, now)
+            dots = []
+            for a in sorted(cluster['data'], key=lambda x: (x['bias'], x['first_seen'])):
                 feeling = top_feeling(a.get('emotion_ranks'))
-                smiley = EMOTION_EMOJI[feeling] if feeling else ''
-                bias = a['bias'] + 3
-                first_seen = a['appearance'].strftime(TOOLTIP_TIME)
                 edited = a['url'] in rewritten
                 hours_live = (now - a['first_seen']).total_seconds() / 3600
                 hours_gone = (now - a['last_seen']).total_seconds() / 3600
-                notes = []
-                if edited:
-                    notes.append('its headline for this article has changed since first seen')
                 elsewhere = site_name(a['url']) != home.get(a['agency'])
+                state = 'gone' if not a['live'] else 'fresh' if hours_live < FRESH_HOURS else 'live'
+                lines = [f"“{a['title'].strip()}”", f"first seen {a['appearance'].strftime(TOOLTIP_TIME)} · "
+                                                    f"{mood_note(a['deviation'], feeling)}"]
+                if state == 'fresh':
+                    lines.append(f'✨ new on its front page in the last {FRESH_HOURS} hours')
+                if state == 'gone':
+                    lines.append(f'○ dropped off its front page {age_text(hours_gone)} ago')
+                if edited:
+                    lines.append('✏️ its headline for this article has changed since first seen')
                 if elsewhere:
-                    notes.append(f"a piece on {urlparse(a['url']).netloc.removeprefix('www.')}, linked from its front page")
-                if a['live'] and hours_live < FRESH_HOURS:
-                    state, badge, opacity = 'fresh', ' ✨', 1.0
-                    notes.append(f'new on its front page in the last {FRESH_HOURS} hours')
-                elif a['live']:
-                    state, badge, opacity = 'live', '', 1.0
-                else:
-                    # Fades the longer it's been gone, down to a ghost
-                    state, badge = 'gone', ' 👻'
-                    opacity = max(GHOST_OPACITY, 1 - hours_gone / GHOST_FADE_HOURS)
-                    notes.append(f'dropped off its front page {age_text(hours_gone)} ago')
-                note = ''.join(f' · {n}' for n in notes)
-                chips.append(
-                    f'<a data-tooltip-color="{bias_colors[bias]}" data-tooltip-ink="{bias_ink[bias]}"'
-                    f' class="storylink chip-{state}"'
-                    f' style="{chip_style(a["agency"], a["bias"])}; opacity: {opacity:.2f}"'
-                    f' data-bias="{a["bias"]}" data-first="{a["first_seen"].timestamp():.0f}"'
-                    f' data-last="{a["last_seen"].timestamp():.0f}"'
-                    f' data-live="{int(bool(a["live"]))}" data-mood="{a["sentiment"]:.3f}"'
-                    f' data-framing="{a["deviation"]:.3f}"'
-                    f' title="{escape(a["title"])} (first seen {first_seen}) · {mood_note(a["deviation"], feeling)}{escape(note)}"'
-                    f' href="{escape(a["url"])}">{outlet_icon(a["agency"])}{short_name(a["agency"])}{" " + smiley if smiley else ""}{" ✏️" if edited else ""}{" ↗" if elsewhere else ""}{badge}</a>'
-                )
-            hrefs.append(f'<div class="chips">{" ".join(chips)}</div>')
-            agency_lists[cluster['cluster']] = ' '.join(hrefs)
-        self.context['agency_lists'] = agency_lists
+                    lines.append(f"↗ a piece on {urlparse(a['url']).netloc.removeprefix('www.')}, linked from its "
+                                 f"front page")
+                paint = lean_paint(a['agency'], a['bias'])
+                dots.append({'outlet': a['agency'], 'url': a['url'], 'state': state, 'edited': edited,
+                             'head': f"{a['agency']} · {paint['word']}", 'tip': '\n'.join(lines),
+                             'link': f"read it on {short_name(a['agency'])} →", **paint})
+            cluster['dots'] = dots
 
     def summarize(self, df, labels: dict[int, str]):
         summaries, titles = {}, {}
@@ -1111,8 +1147,9 @@ class HeadlinesPage:
         a front page right now.
 
         Buzz is the old "xkeyscore" (calculate_xkeyscore): how many of the day's most common words and phrases a
-        headline uses, i.e. how much it's on the same beat as everyone else. Shown as a percentile of the day's
-        headlines, since the raw count grows with headline length and means little by itself."""
+        headline uses, i.e. how much it's on the same beat as everyone else: `words` is that count, `buzz` its
+        percentile among the hour's headlines. The table shows the count as a bar against the hour's busiest headline
+        (Oct 28: as a percentile it read "top 1%" on every row of the first page), the percentile in its hover card."""
         stories = {a['url']: c['cluster'] for c in self.context.get('clusters', []) for a in c['data']}
         sizes = {c['cluster']: len(c['data']) for c in self.context.get('clusters', [])}
         summaries = self.context.get('summaries', {})
@@ -1125,7 +1162,7 @@ class HeadlinesPage:
             topic = r.topic if isinstance(r.topic, str) else ''
             rows.append({
                 'agency': r.agency, 'bias': int(r.bias), 'rated': bool(getattr(r, 'rated', True)), 'url': r.url, 'title': r.title.strip(),
-                'seen': int(raw_seen[r.url].timestamp()) if r.url in raw_seen else None, 'buzz': int(r.buzz),
+                'seen': int(raw_seen[r.url].timestamp()) if r.url in raw_seen else None, 'buzz': int(r.buzz), 'words': int(r.score),
                 'topic': topic, 'topic_url': f"{topic.replace(' ', '_')}.html" if topic else '',
                 'mood': None if pd.isna(r.event_score) else int(r.event_score),
                 'loaded': None if pd.isna(r.loaded_score) else int(r.loaded_score),

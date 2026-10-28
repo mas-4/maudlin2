@@ -22,6 +22,11 @@ read with the change in mind. Newest first. Scores in the database carry `scored
   before the last 7, and at most one in those 7. Only the shows say: told on 3 or more shows and never by people
   online, a fact-checker or the voters. The motif index's cards count where claims were heard as tellings: a claim
   once per show that told it (by the show's lean), once online, once per fact-check, once from voters.
+- **Buzz as a count, and one-sided stories by their odds.** The headline table shows buzz as the count it always was
+  (how many of the day's 1,000 most used words and phrases a headline uses, now `words` in the download), as a bar
+  against the hour's busiest headline, the percentile moving to the hover card: as a percentile the first page of the
+  table read "top 1%" on every row. The stories page's young one-sided stories are two lists, mostly left | mostly
+  right, ranked by how often stories like each reached the other side within a day in our own history.
 - **The aisle: "only in the center".** A motif is listed when at least 2 center shows said it in their own voice (a
   host or guest, as the aisle counts sides) and no left, right or crossover show told it at all, not even in a clip it
   played or a call, over all time; crossover shows are their own group, with an "only on crossover shows" list when any
