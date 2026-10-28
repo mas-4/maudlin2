@@ -17,7 +17,7 @@
             {% for n in names %}
                 <div class="saga-card saga-track name-card" style="--saga: #7a5cff" data-text="{{ n.text|e }}"{% if n.now %} data-now="1"{% endif %}>
                     <h3>🗣️ {{ n.name|e }}</h3>
-                    <p class="saga-facts">{% if n.now %}<span class="saga-live">📰 on the front pages now</span> · {% endif %}{{ n.outlets }} outlet{{ '' if n.outlets == 1 else 's' }} · {{ n.stories|length }} stor{{ 'y' if n.stories|length == 1 else 'ies' }} today</p>
+                    <p class="saga-facts">{% if n.now %}<span class="saga-live">📰 on the front pages now</span> · {% endif %}named by {{ n.outlets }} outlet{{ '' if n.outlets == 1 else 's' }} · {{ n.stories|length }} stor{{ 'y' if n.stories|length == 1 else 'ies' }} today</p>
                     <div class="saga-lean" title="Outlets on these stories: {{ n.left|e }} left, {{ n.center|e }} center, {{ n.right|e }} right{% if n.unrated %}, {{ n.unrated|e }} unrated{% endif %}">
                         {% for side in ('left', 'center', 'right') %}{% if n.shares[side] %}<span class="saga-lean-{{ side|e }}" style="width: {{ n.shares[side]|e }}%">{{ n[side] }}</span>{% endif %}{% endfor %}
                     </div>

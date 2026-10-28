@@ -294,7 +294,7 @@ def merge_surnames(names: dict):
 
 def history(least: int = 2, since=None) -> list[dict]:
     """Each name over time, for the names page: every saved story that names it (by its canonical name) with when it
-    was on the front pages and how many outlets had it, and the outlets on all of them by lean. Names in at least
+    was on the front pages and how many outlets had it, and the outlets that named it there by lean. Names in at least
     `least` stories, most stories first. With `since` (naive UTC), only stories on the front pages since then (Oct 12:
     the page shows today's). Titles are dropped before names are merged ('Rep. Ilhan Omar' is 'Ilhan Omar'). Uses the
     names already found (of_stories), asking the model nothing."""
@@ -309,34 +309,43 @@ def history(least: int = 2, since=None) -> list[dict]:
         rows = s.query(StoryHeadline.story_id, Agency.name, Agency._bias, Agency.lean_rated, Headline.title).join(
             Headline, Headline.id == StoryHeadline.headline_id).join(Article, Article.id == Headline.article_id).join(
             Agency, Agency.id == Article.agency_id).all()
-    outlets, titles = {}, {}
+    outlets, titles, heads = {}, {}, {}
     for sid, agency, bias, rated, title in rows:
         side = ('left' if bias < 0 else 'right' if bias > 0 else 'center') if rated else 'unrated'
         outlets.setdefault(f's{sid}', {})[agency] = side
         titles.setdefault(f's{sid}', []).append(title or '')
+        heads.setdefault(f's{sid}', []).append((agency, side, (title or '').lower()))
     text = {k: ' '.join(t).lower() for k, t in titles.items()}
     # A name stays on a story when its headlines name it in full, or name its last word and the full name is named
     # in full on some other story ('Vladimir Putin' where they say 'Putin'), never on a first name nobody wrote
     # ('Joe Vance': Oct 27 audit)
     full = {x for k, found in cache.items() if k in text for x in found if named_fully(x, text[k])}
 
-    def named(x: str, k: str) -> bool:
-        t = text.get(k, '')
+    def named_in(x: str, t: str) -> bool:
         words = distinctive(x)
         return named_fully(x, t) or (x in full and bool(words) and bool(re.search(r'\b' + re.escape(words[-1]), t)))
+
+    def named(x: str, k: str) -> bool:
+        return named_in(x, text.get(k, ''))
     names = {}
     for k, found in cache.items():
         if k not in stories:
             continue  # a cluster key, never saved as a story
         if since is not None and stories[k]['last'] < since:
             continue
-        for n in dict.fromkeys(canonical(untitled(canonical(x, aliases)), aliases) for x in found if named(x, k)):
+        forms = {}
+        for x in found:
+            if named(x, k):
+                forms.setdefault(canonical(untitled(canonical(x, aliases)), aliases), []).append(x)
+        for n, xs in forms.items():
             if n.lower() in EVERYWHERE:
                 continue
             entry = names.setdefault(n.lower(), {'name': n, 'stories': [], 'outlets': {}})
             st = stories[k]
             entry['stories'].append({**st, 'outlets': len(outlets.get(k, {}))})
-            entry['outlets'].update(outlets.get(k, {}))
+            # Only the outlets whose own headline names it (Oct 28, the person: "Amazon" was credited with all 63
+            # outlets on the Bolsonaro visa story, where two headlines mentioned the rainforest)
+            entry['outlets'].update({a: side for a, side, t in heads.get(k, []) if any(named_in(x, t) for x in xs)})
     merge_surnames(names)
     out = []
     for e in names.values():
