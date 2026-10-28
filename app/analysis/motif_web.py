@@ -12,7 +12,9 @@ rest, once per build, from what the index and the trackers already hold:
 - shows(): each show's repertoire (the motifs its claims came up in), its signature motifs (weighted log-odds against
   all the other shows, Monroe et al. 2008) and its nearest shows by what they tell (cosine of motif counts).
 - people(): the motifs told about each name in the news (a name, or its alias, in the claim's words).
-- answer_lag(): for each move-and-answer pair, which came first and how many days the answer took.
+- spoken(): the show tellings a show's own host or guest said, one per motif per episode: what sides are counted on
+  (the aisle's lean, the divide index). Each show telling carries who said it (host, guest, caller, a clip the show
+  played), as the show-claims pipeline heard it.
 - lexicon() / words_in(): the motifs' names and tellers' phrases spotted in headlines and TV captions, word for word.
 
 Nothing here asks a model to judge anything; show_ties embeds claims and story labels (mxbai, cached)."""
@@ -50,21 +52,37 @@ def public_entries(index: dict) -> dict:
             if mi.public(e) and e['id'] not in bins}
 
 
+SPEAKERS = ('host', 'guest', 'caller', 'clip')  # who said it on a show: the show's own voice first
+# Sides are counted on what a show's own host or guest said (Oct 28, the moonshot probe: 667 show tellings were clips
+# a show played, often to rebut them, as left shows playing the attack ad on Amy Acton). Guests count too: the show
+# booked them, center shows' tellings are 44% guest, and host-only counting halves the sample for no change in the
+# divide (excess 0.25 host-only, 0.24 host or guest). Callers are listeners, not the show
+SPOKEN = ('host', 'guest')
+
+
+def said_by(speakers) -> str:
+    """The speaker that counts most among a show's tellings of one claim (SPEAKERS order), or ''"""
+    return next((s for s in SPEAKERS if s in speakers), '')
+
+
 def show_tellers() -> dict[str, list[dict]]:
-    """claim key -> every show telling of its retold group: [{show, source, lean, date, url}], each show once"""
+    """claim key -> every show telling of its retold group: [{show, source, lean, date, url, speaker}], each show once
+    (its first episode, and the speaker counting most among its tellings)"""
     from app.analysis import show_claims
     episodes = show_claims.load()
     out = {}
     for g in show_claims.kept_retold():
-        seen, told = set(), []
+        told, speakers = {}, defaultdict(set)
         for t in g.get('told', []):
             ep = episodes.get(t.get('url'), {})
             show = t.get('show') or ep.get('show')
-            if not show or show in seen:
+            if not show:
                 continue
-            seen.add(show)
-            told.append({'show': show, 'source': ep.get('source', ''), 'lean': ep.get('lean') or '',
-                         'date': ep.get('date', ''), 'url': t['url'] if str(t.get('url', '')).startswith('http') else ''})
+            speakers[show].add(t.get('speaker') or '')
+            told.setdefault(show, {'show': show, 'source': ep.get('source', ''), 'lean': ep.get('lean') or '',
+                                   'date': ep.get('date', ''),
+                                   'url': t['url'] if str(t.get('url', '')).startswith('http') else ''})
+        told = [{**t, 'speaker': said_by(speakers[show])} for show, t in told.items()]
         for claim in [g['claim']] + [t['claim'] for t in g.get('told', []) if t.get('claim')]:
             out.setdefault(mi.key(claim), told)
     # a claim no retold group holds: the episode its filing came from (filled in tellings())
@@ -110,7 +128,8 @@ def show_ties(claims: list[dict], stories: list[dict]) -> dict[str, int]:
 
 def tellings(index: dict | None = None, tie: bool = True) -> list[dict]:
     """Every public filing as one row per teller: {motif, name, genre, claim, key, kind ('shows', 'posts', 'check',
-    'voters'), teller, side ('left', 'center', 'right' or None), date, story (id or None), url}"""
+    'voters'), teller, side ('left', 'center', 'right' or None), date, story (id or None), url}; show rows also carry
+    speaker (SPEAKERS, or '' when not known)"""
     from app.analysis import show_claims
     from app.analysis.stories import merges
     index = index if index is not None else mi.load()
@@ -134,12 +153,14 @@ def tellings(index: dict | None = None, tie: bool = True) -> list[dict]:
                 told = tellers.get(k)
                 if not told:
                     ep = episodes.get(c.get('ref'), {})
+                    said = {x.get('speaker') or '' for x in ep.get('claims', []) if mi.key(x.get('claim', '')) == k}
                     told = [{'show': ep['show'], 'source': ep.get('source', ''), 'lean': ep.get('lean') or '',
-                             'date': ep.get('date', ''), 'url': c['ref'] if str(c.get('ref', '')).startswith('http') else ''}] \
-                        if ep.get('show') else []
+                             'date': ep.get('date', ''), 'url': c['ref'] if str(c.get('ref', '')).startswith('http') else '',
+                             'speaker': said_by(said)}] if ep.get('show') else []
                 for t in told:
                     rows.append({**base, 'kind': 'shows', 'teller': t['show'], 'show_source': t['source'],
                                  'side': t['lean'] if t['lean'] in SIDES else None, 'url': t['url'],
+                                 'speaker': t.get('speaker', ''),
                                  'date': t['date'] or base['date'],
                                  'story': gone.get(int(story), int(story)) if story else None})
                 continue
@@ -148,6 +169,20 @@ def tellings(index: dict | None = None, tie: bool = True) -> list[dict]:
                          'url': c.get('ref') if kind == 'check' and str(c.get('ref', '')).startswith('http') else '',
                          'story': gone.get(int(story), int(story)) if story is not None else None})
     return rows
+
+
+def spoken(rows: list[dict]) -> list[dict]:
+    """The show tellings a show's own host or guest said (SPOKEN), one per motif per show episode: the rows sides are
+    counted on. Clips a show played, callers and tellings whose speaker isn't known are left out"""
+    seen, out = set(), []
+    for r in rows:
+        if r['kind'] != 'shows' or r.get('speaker') not in SPOKEN:
+            continue
+        k = (r['motif'], r['teller'], r['url'] or r['date'])
+        if k not in seen:
+            seen.add(k)
+            out.append(r)
+    return out
 
 
 def answers(index: dict, entries: dict) -> dict[str, list[dict]]:

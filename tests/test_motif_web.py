@@ -26,6 +26,32 @@ def test_a_story_is_told_by_side_with_its_answer():
     assert told[0]['answers'] == [{'id': 'M2', 'name': 'No one is above the law', 'note': 'No one is above the law answers Lawfare'}]
 
 
+def test_a_show_telling_carries_who_said_it_the_hosts_own_voice_first(monkeypatch):
+    from app.analysis import show_claims
+    eps = {'u1': {'show': 'Left Show', 'lean': 'left', 'date': '2026-10-20'},
+           'u2': {'show': 'Left Show', 'lean': 'left', 'date': '2026-10-21'},
+           'u3': {'show': 'Right Show', 'lean': 'right', 'date': '2026-10-21'}}
+    group = {'claim': 'Acton is an impostor.',
+             'told': [{'show': 'Left Show', 'url': 'u1', 'speaker': 'clip', 'claim': 'Acton is a fraud.'},
+                      {'show': 'Left Show', 'url': 'u2', 'speaker': 'host', 'claim': 'Acton is a fake.'},
+                      {'show': 'Right Show', 'url': 'u3', 'speaker': 'clip', 'claim': 'Acton is an impostor.'}]}
+    monkeypatch.setattr(show_claims, 'load', lambda: eps)
+    monkeypatch.setattr(show_claims, 'kept_retold', lambda: [group])
+    told = w.show_tellers()[w.mi.key('Acton is a fraud.')]
+    assert {t['show']: t['speaker'] for t in told} == {'Left Show': 'host', 'Right Show': 'clip'}
+
+
+def test_sides_are_counted_on_hosts_and_guests_once_per_motif_per_episode():
+    rows = [dict(row('M1', 'Lawfare', 'a', teller='A'), speaker='host', url='ep1'),
+            dict(row('M1', 'Lawfare', 'b', teller='A'), speaker='guest', url='ep1'),  # the same episode again
+            dict(row('M1', 'Lawfare', 'c', teller='A'), speaker='host', url='ep2'),
+            dict(row('M1', 'Lawfare', 'd', teller='B'), speaker='clip', url='ep3'),
+            dict(row('M1', 'Lawfare', 'e', teller='C'), speaker='caller', url='ep4'),
+            dict(row('M1', 'Lawfare', 'f', teller='D'), speaker='', url='ep5'),
+            row('M1', 'Lawfare', 'g', kind='posts', teller='people online', side=None)]
+    assert [r['claim'] for r in w.spoken(rows)] == ['a', 'c']
+
+
 def test_a_shows_signature_is_what_it_tells_more_than_the_others_and_its_neighbours_tell_alike():
     rows = []
     for n in range(10):

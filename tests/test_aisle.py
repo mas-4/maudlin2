@@ -2,9 +2,21 @@
 from app.site import page_aisle
 
 
-def row(motif, side, teller, kind='shows'):
+def row(motif, side, teller, kind='shows', speaker='host'):
     return {'motif': motif, 'name': motif.title(), 'genre': 'Plots', 'claim': f'{motif} {teller}', 'key': f'{motif}{teller}',
-            'kind': kind, 'teller': teller, 'side': side, 'date': '2026-10-26', 'story': None, 'url': ''}
+            'kind': kind, 'teller': teller, 'side': side, 'date': '2026-10-26', 'story': None, 'url': '',
+            'speaker': speaker if kind == 'shows' else None}
+
+
+def test_a_clip_a_show_played_doesnt_place_a_motif_on_its_side():
+    web = {'rows': [row('impostor', 'left', 'A', speaker='clip'), row('impostor', 'left', 'B', speaker='clip'),
+                    row('impostor', 'right', 'C'), row('impostor', 'right', 'D', speaker='guest'),
+                    row('played', 'left', 'A', speaker='clip')],
+           'entries': {m: {'name': m.title(), 'note': ''} for m in ('impostor', 'played')}}
+    dots = {d['id']: d for d in page_aisle.place(web)}
+    assert dots['impostor']['left'] == 0 and dots['impostor']['right'] == 2 and dots['impostor']['lean'] == 0.5
+    assert dots['impostor']['told'] == 4  # the height still counts every telling
+    assert 'played' not in dots  # only ever played in a clip: no side to put it on
 
 
 def test_a_motif_sits_by_which_sides_shows_told_it_and_few_shows_pull_it_to_the_middle():

@@ -4,6 +4,18 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-28
+- **Sides counted on what the show itself said.** Each show telling now carries who said it, as the show-claims
+  pipeline heard it: host, guest, caller or a clip the show played (for a claim retold on several shows, the speaker
+  counting most among that show's tellings, host first). Where the site counts sides, on the aisle's left-to-right
+  placement, it now counts only shows whose host or guest said it, once per motif per episode. Before, a show counted
+  when any claim of a retold group was heard there, clips included: 629 of the 4,489 show tellings on Oct 27 were clips,
+  and 15 of the left's 19 "The impostor" tellings were left shows playing the attack ad on Amy Acton, mostly to rebut
+  it. Guests count because the show booked them (center shows' tellings are 44% guest); counting hosts alone halved the
+  sample and left the divide between the sides about where it was. 21 of the 607 motifs heard on the shows came up only
+  in clips, calls or unknown voices and leave the aisle. A dot's height still counts every telling, and the motif
+  pages' "came up on" lists are unchanged: they say where a story was heard, not who said it.
+
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
   front page's cards ("🧩 told as"). A show claim is tied to the story on the front pages it is nearest in meaning to

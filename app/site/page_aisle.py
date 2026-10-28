@@ -32,9 +32,12 @@ RISING_MIN = 3  # a motif rises when told at least this often this week and at l
 
 def where(rs: list[dict]) -> dict | None:
     """A set of tellings' place on the aisle: lean (-1 all left to 1 all right, pulled toward the middle when few shows
-    told it), how many told it, and its counts; None when no show told it"""
+    told it), how many told it, and its counts; None when no show's own host or guest said it. The sides count the
+    shows whose host or guest said it (motif_web.spoken), not the clips a show played or its callers (Oct 28: 15 of
+    the left's 19 "The impostor" tellings were left shows playing the attack ad on Amy Acton); the height counts
+    every telling"""
     from app.analysis import motif_web
-    s = motif_web.sided(rs)
+    s = motif_web.sided(motif_web.spoken(rs))
     left, right, center = len(s['left']), len(s['right']), len(s['center'])
     if not (left or right or center):
         return None

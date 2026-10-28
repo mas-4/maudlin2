@@ -16,8 +16,9 @@
     <div class="rumor-warning" role="note">
         <p class="rumor-warning-head">⚠️ Stories people tell, not claims that they're true.</p>
         <p>Each dot is a motif from our <a href="motifs.html">index</a>: the shape of a story as people tell it. It sits
-            left or right by which side's shows its claims came up on (told, reported or argued against: we don't yet
-            mark which), and higher the more it was told. An arc joins a story to its usual answer.</p>
+            left or right by which side's shows said it in their own voice, a host or a guest (told, reported or argued
+            against: we don't yet mark which; clips a show played and callers aren't counted), and higher the more it
+            was told. An arc joins a story to its usual answer.</p>
     </div>
 
     <div class="table-filters story-sort aisle-tools" role="group" aria-label="Filter the aisle">
@@ -34,8 +35,8 @@
     </div>
     <figure class="aisle-figure">
         {{ svg }}
-        <figcaption>Left to right: the share of a motif's shows that lean left or right (a motif few shows told is drawn
-            nearer the middle). Up: how many tellers told it, on a log scale. 🔥 A ringed dot is rising: told at least
+        <figcaption>Left to right: the share of the shows whose host or guest said it that lean left or right (a motif
+            few shows said is drawn nearer the middle). Up: how many tellers told it, on a log scale. 🔥 A ringed dot is rising: told at least
             twice as often this week as the week before. The time buttons move each dot to where it sits in that window.
             The most told are named; tap any dot.</figcaption>
     </figure>
@@ -55,7 +56,7 @@
         <p class="stage-notes">{{ chips(leftmost) }}</p>
         <h2 class="section-divider stage-banner" style="--stage: #ff4fa3"><span>🐘 Mostly right</span></h2>
         <p class="stage-notes">{{ chips(rightmost) }}</p>
-        <p class="court-when">{{ unplaced }} more motifs were told only online, by fact-checkers or by voters, not on the shows: they're in <a href="motifs.html">the index</a>.</p>
+        <p class="court-when">{{ unplaced }} more motifs were told only online, by fact-checkers or by voters, or came up on the shows only in clips and calls: they're in <a href="motifs.html">the index</a>.</p>
     </section>
 
     <script>
