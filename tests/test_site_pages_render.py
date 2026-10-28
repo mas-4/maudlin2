@@ -280,7 +280,7 @@ def test_built_stylesheet_is_the_joined_partials(built_css):
     ('index.html', '.navbar'), ('index.html', '.top-story-cards'), ('stories.html', '.story'), ('headlines.html', '.headline-table'),
     ('agencies.html', '.outlet-card'), ('edits.html', '.edits'), ('court.html', '.court-cards'),
     ('emotions.html', 'table.emotion-matrix'), ('glossary.html', '.term'), ('sagas.html', '.saga-track'),
-    ('radio.html', '.radio-stats'), ('outlet-map.html', '.omap-finding')])
+    ('radio.html', '.radiopg-sticker'), ('outlet-map.html', '.omap-finding')])
 def test_built_stylesheet_styles_each_page(site, built_css, name, selector):
     """A selector each page uses has a rule in the built stylesheet (the page's partial made it in)."""
     assert site['soup'][name].select_one(selector) is not None, f'{name} no longer uses {selector}'
@@ -819,7 +819,14 @@ def test_radio_page_sets_each_newscast_beside_the_front_pages(site):
     assert first.select_one('.radio-rank').get_text() == '#2'
     assert second.select_one('.radio-off')
     assert [li.get_text().split()[0] for li in front.select('.radio-items li')] == ['Trump', 'Dubai']
-    assert 'of 1 newscasts, 0 led with' in page.select_one('.radio-stats').get_text()
+    sticker = page.select_one('.radiopg-sticker')  # NPR's: how often it led with what the front pages led with
+    assert '1 newscasts since Oct 5' in sticker.get_text()
+    assert sticker.select('.radiopg-bars li')[0]['data-tip'] == "0 of its 1 newscasts led with the front pages' top story (0%)"
+    cell = page.select_one('.air-lane-cell')  # the swimlane: its lead story, the running order in its hover card
+    assert cell.select_one('.air-lane-rank').get_text() == '#2'
+    assert '2. Cornell building vandalized · not on the front pages' in cell['data-tip']
+    assert page.select_one('.rank-board-radio-on-air .rank-name').get_text() == 'Cornell building vandalized'
+    assert not page.select('.radio-card [title], .air-marks [title]')  # hover cards, never tooltips
 
 
 def test_tv_page_shows_minutes_on_screen_by_channel(site):

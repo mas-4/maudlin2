@@ -28,6 +28,7 @@ OFF_AIR = 10  # rows in each of the pair
 TOP_FRONT = 10  # a story "led" the front pages in an hour it was among their top this many...
 LED_HOURS = 3  # ...for at least this many of the day's hours...
 SKIPPED_SECONDS = 5 * 60  # ...and the air "skipped" it at under this much time on screen, the four channels together
+COMMON_FROM = 20  # titles grouped (group_titles) before any word counts as too common to join on
 CHANNEL_ORDER = ['CNNW', 'FOXNEWSW', 'MSNOW', 'BBCNEWS']
 CHANNEL_INK = {'CNNW': '#cc0000', 'FOXNEWSW': '#003366', 'MSNOW': '#6a3fd1', 'BBCNEWS': '#b80000'}
 CHANNEL_MARK = {'CNNW': 'CNN', 'FOXNEWSW': 'FOX', 'MSNOW': 'MS', 'BBCNEWS': 'BBC'}  # the disc's label: never color alone
@@ -73,7 +74,7 @@ def group_titles(items: list[dict], text=lambda i: i['text'], least: int = 2, co
     in more than `common` of all the titles (election, midterm: they'd join everything). Joined titles join groups."""
     ws = [words(text(i)) for i in items]
     df = Counter(w for s in ws for w in s)
-    cut = max(2, common * len(items))
+    cut = common * len(items) if len(items) >= COMMON_FROM else len(items)  # a few titles: no word too common
     ws = [{w for w in s if df[w] <= cut} for s in ws]
     parent = list(range(len(items)))
 

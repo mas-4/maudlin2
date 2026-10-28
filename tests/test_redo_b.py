@@ -81,7 +81,8 @@ def test_group_titles_joins_wordings_of_one_story_but_not_on_common_words():
               'Milwaukee Brewers win Game 3 against Tampa Bay', 'Brewers lead Tampa Bay Rays 3-0 in World Series',
               'Democrats hold advantage in midterm election polls', 'Voter turnout in midterm election grows',
               'Midterm election ad spending', 'Midterm election early ballots', 'Pope Leo cleared to travel']
-    groups = page_tv.group_titles([{'text': t} for t in titles])
+    others = [f'Unrelated story number{i} about topic{i}' for i in range(12)]  # enough titles for a word to be common
+    groups = page_tv.group_titles([{'text': t} for t in titles + others])
     joined = sorted(sorted(i['text'] for i in g) for g in groups if len(g) > 1)
     assert joined == sorted([sorted(titles[:2]), sorted(titles[2:4])])  # midterm and election are in too many to join on
 
@@ -113,3 +114,31 @@ def test_tv_swimlane_puts_each_channel_hour_in_its_lane_and_flips_on_a_phone():
     assert (bbc['row'], bbc['col'], bbc['flip'], bbc['rank']) == (3, 3, 2, None)
     assert cnn['head'] == '📺 CNN, Mon Oct 5, 2 PM ET · News' and '#2 on the front pages, as “Story”' in cnn['tip']
     assert [h['label'] for h in lane['hours']] == ['Mon 2 PM', '3 PM']
+
+
+def cast(source, published, items, front=()):
+    return {'source': source, 'show': {'nprnewsnow': 'NPR News Now', 'abcupdate': 'ABC News Update'}[source],
+            'published': published, 'items': items,
+            'front_top': [{'id': i, 'label': f'story {i}', 'outlets': 50 - i} for i in front]}
+
+
+def test_radio_pair_counts_newscasts_off_the_front_pages_and_front_page_leaders_skipped():
+    from app.site import page_radio
+    casts = [cast('nprnewsnow', f'2026-10-05T{h:02d}:09', [{'title': 'Brewers win World Series game'},
+                                                           {'title': 'Story one', 'story': 1, 'front_rank': 1,
+                                                            'story_label': 'story 1'}], front=(1, 2, 3))
+             for h in range(10, 14)]
+    casts.append(cast('abcupdate', '2026-10-05T13:30', [{'title': 'Milwaukee Brewers win World Series'}], front=(1, 2, 3)))
+    off = page_radio.off_front(casts)
+    assert [(r['name'], r['figure'], r['mark']) for r in off] == [('Milwaukee Brewers win World Series', '5 newscasts', 'NPR')]
+    assert 'NPR News Now 4 · ABC News Update 1' in off[0]['tip']
+    skipped = page_radio.skipped(casts, now={2})
+    # stories 2 and 3 led for 4 hours and no newscast said them; story 1 was in every newscast
+    assert [(r['name'], r['figure'], r['mark'], r['href']) for r in skipped] == [
+        ('story 2', '4 h · 0 newscasts', '📵', 'index.html#s-2'), ('story 3', '4 h · 0 newscasts', '📵', None)]
+    store = dict(enumerate(casts))
+    npr = page_radio.stickers(store)[0]
+    assert (npr['show'], npr['casts'], npr['bars'][0]['pct'], npr['bars'][2]['pct']) == ('NPR News Now', 4, 0, 50)
+    lane = page_radio.swimlane(page_radio.hours(store))
+    assert [x['name'] for x in lane['lanes']] == ['NPR News Now', 'ABC News Update', 'The front pages']
+    assert len(lane['cells']) == 4 + 1 + 4  # NPR's four newscasts, ABC's one, the front pages' four hours

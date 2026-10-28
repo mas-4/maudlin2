@@ -231,3 +231,104 @@
     font-size: 0.85em;
     color: #555;
 }
+
+/* On the radio (radio.html): NPR and ABC as stickers, side by side, each with bars for how often it led with what the
+   front pages led with */
+.radiopg-stickers {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20em), 1fr));
+    gap: 1.2em;
+    padding: 0;
+    margin: 1em 0 0.6em;
+}
+
+.radiopg-sticker {
+    background: color-mix(in srgb, var(--ink) 12%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 var(--ink);
+    padding: 0.6em 0.9em 0.7em;
+    transform: rotate(-1deg);
+}
+
+.radiopg-sticker:nth-child(even) {
+    transform: rotate(1deg);
+}
+
+.radiopg-sticker-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin: 0 0 0.4em;
+    font: 700 1.15em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.radiopg-sticker-head .rank-mark {
+    --ink: inherit;
+    background: var(--ink);
+}
+
+.radiopg-sticker-head > span:last-child {
+    display: flex;
+    flex-direction: column;
+}
+
+.radiopg-sticker-sub {
+    font-size: 0.75em;
+    color: #555;
+}
+
+.radiopg-bars {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.radiopg-bars li {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 40px;
+    justify-content: center;
+    padding: 0.15em 0.3em;
+    border-radius: 8px;
+}
+
+.radiopg-bars li:hover, .radiopg-bars li:focus-visible {
+    background: rgba(255, 255, 255, 0.7);
+    outline: none;
+}
+
+.radiopg-bar-label {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.radiopg-bar-label b {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-weight: 400;
+}
+
+.radiopg-bar {
+    display: block;
+    height: 12px;
+    background: white;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.radiopg-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--ink);
+    border-right: 1.5px solid #1f1f2e;
+}
+
+.radiopg-log {
+    margin-top: 2em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .radiopg-sticker, .radiopg-sticker:nth-child(even) { transform: none; }
+}

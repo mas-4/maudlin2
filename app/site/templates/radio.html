@@ -1,4 +1,6 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
+{% import "air.html" as air %}
 
 {% block content %}
     <h2>📻 On the radio</h2>
@@ -8,46 +10,64 @@
         says which of that hour's front-page stories it is, if any. The number beside a story is its place on the front
         pages then: #1 is the story the most outlets had on their front pages. We keep the transcripts for this
         comparison and never publish them.</p>
-    {% if hours %}
-        <div class="radio-stats">
-            {% for s in stats %}{% if s.casts %}
-                <p><b>{{ s.show }}</b>: of {{ s.casts }} newscasts, {{ s.lead_top }} led with the front pages' biggest story
-                    and {{ s.lead_top3 }} with one of their three biggest; {{ s.on_front }} of its {{ s.items }} stories
-                    were on the front pages that hour.</p>
-            {% endif %}{% endfor %}
-        </div>
-        {% for h in hours %}
-            <h3 class="radio-hour">{{ h.label }} ET</h3>
-            <div class="radio-hour-cards">
-                {% for c in h.shows %}
-                    <div class="saga-card radio-card" style="--saga: {{ '#e8463c' if c.source == 'nprnewsnow' else '#2f6fe4' }}">
-                        <h3>📻 {{ c.show }}</h3>
-                        <p class="saga-facts">aired {{ c.when }} ET · {{ c['items']|length }} stories</p>
-                        <ol class="radio-items">
-                            {% for x in c['items'] %}
-                                <li>{{ x.title|e }}
-                                    {% if x.story %}<span class="radio-rank" title="On the front pages that hour as “{{ x.story_label|e }}”: #{{ x.front_rank|e }} of the front pages' stories, on {{ x.outlets|e }} outlets">{% if x.now %}<a href="index.html#s-{{ x.story|e }}">#{{ x.front_rank }}</a>{% else %}#{{ x.front_rank }}{% endif %}</span>
-                                    {% else %}<span class="radio-rank radio-off" title="Not among the front pages' stories that hour">not on the front pages</span>{% endif %}
-                                </li>
-                            {% endfor %}
-                        </ol>
-                    </div>
-                {% endfor %}
-                {% if h.front %}
-                    <div class="saga-card radio-card" style="--saga: #f5b700">
-                        <h3>📰 The front pages</h3>
-                        <p class="saga-facts">their biggest stories that hour</p>
-                        <ol class="radio-items">
-                            {% for f in h.front %}
-                                <li>{% if f.now %}<a href="index.html#s-{{ f.id|e }}">{{ f.label|e }}</a>{% else %}{{ f.label|e }}{% endif %}
-                                    <span class="radio-rank radio-outlets">{{ f.outlets }} outlets</span></li>
-                            {% endfor %}
-                        </ol>
-                    </div>
-                {% endif %}
-            </div>
-        {% endfor %}
+    {% if hours %}<div class="air-marks air-light">
+        <ul class="radiopg-stickers">
+            {% for s in stickers %}<li class="radiopg-sticker" style="--ink: {{ s.ink|e }}">
+                <p class="radiopg-sticker-head"><span class="rank-mark air-mark" aria-hidden="true">{{ s.mark|e }}</span><span><b>{{ s.show|e }}</b><span class="radiopg-sticker-sub">{{ s.casts }} newscasts since {{ s.since|e }}</span></span></p>
+                <ul class="radiopg-bars">
+                    {% for x in s.bars %}<li tabindex="0" data-tip-head="{{ s.show|e }}" data-tip="{{ x.n }} of its {{ x.of }} {{ x.unit|e }} {{ x.label|e }} ({{ x.pct }}%)"><span class="radiopg-bar-label"><b>{{ x.pct }}%</b> {{ x.label|e }}</span><span class="radiopg-bar" aria-hidden="true"><span style="width: {{ [x.pct, 2]|max }}%"></span></span></li>
+                    {% endfor %}</ul>
+            </li>{% endfor %}
+        </ul>
+
+        {{ b.key(key, 'Lane colors') }}
+        <h2 class="section-divider stage-banner" style="--stage: #00c2a8"><span>🕐 Hour by hour</span></h2>
+        <p class="stage-sub">the last {{ lane.cols }} hours with a newscast, a lane per show and one for the front pages:
+            each newscast's lead story and its place on the front pages then (off: not on them); point at a newscast,
+            or tap it, for its whole running order</p>
+        {{ air.lane(lane, 'Each newscast hour by hour') }}
+
+        <h2 class="section-divider stage-banner" style="--stage: #ff6b1a"><span>🤔 Air and front pages, apart</span></h2>
+        <p class="stage-sub">the last 24 hours: what the newscasts carried that the front pages didn't have, and the
+            other way round; each row in the ink of the show that mentioned it more</p>
+        {{ b.key(pair_key, 'Row colors') }}
+        {{ b.boards(pair) }}</div>
+
+        <details class="how-it-works radiopg-log">
+            <summary>📜 Every newscast, hour by hour: {{ casts }} since {{ hours[-1].label|e }} ET</summary>
+            {% for h in hours %}
+                <h3 class="radio-hour">{{ h.label }} ET</h3>
+                <div class="radio-hour-cards">
+                    {% for c in h.shows %}
+                        <div class="saga-card radio-card" style="--saga: {{ inks.get(c.source, '#b8b8c8')|e }}">
+                            <h3>📻 {{ c.show }}</h3>
+                            <p class="saga-facts">aired {{ c.when }} ET · {{ c['items']|length }} stories</p>
+                            <ol class="radio-items">
+                                {% for x in c['items'] %}
+                                    <li>{{ x.title|e }}
+                                        {% if x.story %}<span class="radio-rank" data-tip="On the front pages that hour as “{{ x.story_label|e }}”: #{{ x.front_rank|e }} of the front pages' stories, on {{ x.outlets|e }} outlets">{% if x.now %}<a href="index.html#s-{{ x.story|e }}">#{{ x.front_rank }}</a>{% else %}#{{ x.front_rank }}{% endif %}</span>
+                                        {% else %}<span class="radio-rank radio-off" data-tip="Not among the front pages' stories that hour">not on the front pages</span>{% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                    {% endfor %}
+                    {% if h.front %}
+                        <div class="saga-card radio-card" style="--saga: #ffc400">
+                            <h3>📰 The front pages</h3>
+                            <p class="saga-facts">their biggest stories that hour</p>
+                            <ol class="radio-items">
+                                {% for f in h.front %}
+                                    <li>{% if f.now %}<a href="index.html#s-{{ f.id|e }}">{{ f.label|e }}</a>{% else %}{{ f.label|e }}{% endif %}
+                                        <span class="radio-rank radio-outlets">{{ f.outlets }} outlets</span></li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </details>
     {% else %}
-        <p>No newscasts read yet.</p>
+        <p class="stage-empty">🦗 No newscasts read yet.</p>
     {% endif %}
 {% endblock %}
