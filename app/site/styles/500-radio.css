@@ -1,18 +1,6 @@
 /* On the radio (radio.html): newscasts beside the front pages */
 
 /* On the radio (radio.html): each hour's newscasts beside the front pages' biggest stories */
-.radio-stats {
-    background: white;
-    border: 3px solid #1f1f2e;
-    border-radius: 14px;
-    padding: 0.4em 1em;
-    margin: 1em 0;
-}
-
-.radio-stats p {
-    margin: 0.3em 0;
-}
-
 .radio-hour {
     font-family: 'Comic Neue', 'Comic Sans MS', cursive;
     margin: 1.4em 0 0.5em;
