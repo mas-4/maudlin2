@@ -9,6 +9,7 @@ Two steps, each a step of the experiment queue (scripts/experiments/exp_queue.py
 
     retranscribe.py audio    download each such episode again (one host at a time, HOST_GAP apart), transcribe it as
                              today, and replace its transcript; the old one is kept in BACKUP
+    retranscribe.py carryover  episodes redone on the lab copy brought into production (Oct 28)
     retranscribe.py claims   read the redone episodes' claims again (show_claims.read_part, as the hourly reader does)
                              and add the ones the episode didn't already have (mxbai, SIMILAR to an old one: the same
                              claim); old claims stay, so nothing filed or checked loses its telling
@@ -144,6 +145,39 @@ def claims(limit: int | None = None):
         print(f'retranscribe claims: {n}/{len(eps)} {ep["show"]} +{len(new)} of {len(found)}', flush=True)
 
 
+def carryover() -> int:
+    """Episodes redone on the lab copy (where the experiment queue put this job until Oct 28) brought into production:
+    each production transcript still on the old model takes the lab's new one, its old text appended to BACKUP first,
+    as audio() does. Idempotent: rows production has already redone are left alone"""
+    import sqlite3
+    lab_db, lab_backup = os.path.join(LAB, 'data', 'data.db'), os.path.join(LAB, 'data', 'transcripts_carryover.jsonl')
+    if not (os.path.exists(lab_db) and os.path.exists(lab_backup)):
+        print('retranscribe carryover: no lab copy to carry over', flush=True)
+        return 0
+    with open(lab_backup, encoding='utf-8') as f:
+        redone = {json.loads(line)['item_id'] for line in f if line.strip()}
+    lab = sqlite3.connect(f'file:{lab_db}?mode=ro', uri=True)
+    new = {r[0]: r[1:] for r in lab.execute('select item_id, model, created, seconds, text, segments from side_transcript '
+                                             'where model != ?', (OLD,)) if r[0] in redone}
+    prod = sqlite3.connect(Config.db_file_path, timeout=300)
+    moved = 0
+    prod.execute('begin immediate')
+    with open(BACKUP, 'a', encoding='utf-8') as out:
+        for item, (model, created, seconds, text, segments) in new.items():
+            row = prod.execute('select id, model, created, seconds, text, segments from side_transcript where item_id = ?',
+                               (item,)).fetchone()
+            if not row or row[1] != OLD:
+                continue
+            out.write(json.dumps({'item_id': item, 'model': row[1], 'created': str(row[2]), 'seconds': row[3],
+                                  'text': row[4], 'segments': row[5]}) + '\n')
+            prod.execute('update side_transcript set model = ?, created = ?, seconds = ?, text = ?, segments = ? '
+                         'where id = ?', (model, created, seconds, text, segments, row[0]))
+            moved += 1
+    prod.commit()
+    print(f'retranscribe carryover: {len(new)} redone on the lab copy, {moved} new to production', flush=True)
+    return moved
+
+
 def redone_urls() -> set:
     """The episodes whose carry-over transcript was replaced (BACKUP)"""
     from app.models import Session, SideItem
@@ -167,10 +201,12 @@ if __name__ == '__main__':
     if os.path.realpath(Config.data).startswith(os.path.realpath(LAB)):
         sys.exit('retranscribe: refusing to run on the lab copy of the data; set MAUDLIN_DATA to production\'s')
     p = argparse.ArgumentParser()
-    p.add_argument('step', choices=['audio', 'claims', 'count'])
+    p.add_argument('step', choices=['audio', 'claims', 'count', 'carryover'])
     p.add_argument('--limit', type=int, help='at most this many episodes (a trial run)')
     a = p.parse_args()
-    if a.step == 'count':
+    if a.step == 'carryover':
+        carryover()
+    elif a.step == 'count':
         print(f'{len(todo())} transcripts to redo; {len(redone_urls())} redone')
     else:
         {'audio': audio, 'claims': claims}[a.step](a.limit)
