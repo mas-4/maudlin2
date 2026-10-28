@@ -1,39 +1,61 @@
 {% extends "page.html" %}
 
-{% set MOOD_TINTS = {'grim+': '#cfc6ff', 'grim': '#e3ddff', 'plain': '#f4efe6', 'upbeat': '#fff1b3', 'upbeat+': '#ffe066'} %}
-{% set SPIN_TINTS = {'plain': '#f4efe6', 'loaded': '#ffd6c2', 'loaded+': '#ffab8a'} %}
 {% set FRAMING_TINTS = {'😈': '#e0d4ff', '😇': '#fff1b3', '🤝': '#eef1f6'} %}
+{% set FEELING_TINTS = {'anger': '#ffc2c2', 'fear': '#e0d4ff', 'sadness': '#c9e2ff', 'disgust': '#d6f5c4',
+                        'surprise': '#fff1b3', 'joy': '#ffe066', 'hope': '#c8f7e6'} %}
 
-{% macro badge(emoji, text, tint, title='') %}
-    <span class="badge" style="--tint: {{ tint|e }}"{% if title %} title="{{ title|e }}"{% endif %}><span class="badge-emoji">{{ emoji }}</span>{{ text }}</span>
+{% macro badge(emoji, text, tint, tip='') %}
+    <span class="badge" style="--tint: {{ tint|e }}"{% if tip %} data-tip="{{ tip|e }}" tabindex="0"{% endif %}><span class="badge-emoji">{{ emoji|e }}</span>{{ text|e }}</span>
 {% endmacro %}
+
+{% macro now_row(h) %}<li><div class="rank-row onow-row" data-rank="#{{ h.rank|e }}" style="--ink: #ffffff; --bar: {{ h.bar }}%{% if h.split is not none %}; --split: {{ h.split }}%{% endif %}">
+    <span class="rank-mark" role="img" aria-label="in our stories">📰</span>
+    <span class="rank-main"><a class="rank-name onow-title" href="{{ h.url|e }}">{{ h.title|e }}</a>
+        <a class="onow-story" href="stories.html#{{ h.anchor|e }}" data-tip="{{ h.story|e }}: our story no. {{ h.rank|e }} now, run by {{ h.outlets }} outlets ({{ h.left }} rated left, {{ h.right }} rated right)">🗞️ {{ h.story|e }}</a>
+        <span class="rank-bar{% if h.split is not none %} rank-bar-split{% endif %}" aria-hidden="true"></span></span>
+    <span class="rank-figure">{{ h.outlets }} outlets</span></div></li>{% endmacro %}
+
+{% macro only_row(h) %}<li><a class="rank-row onow-row onow-only" data-rank="{{ h.place|e }}" href="{{ h.url|e }}" style="--ink: #ffffff">
+    <span class="rank-mark" role="img" aria-label="only here">🦄</span>
+    <span class="rank-main"><span class="rank-name onow-title">{{ h.title|e }}</span></span></a></li>{% endmacro %}
 
 {% block content %}
     <p class="outlet-back"><a href="agencies.html#outlet-{{ o.slug|e }}">← all outlets</a></p>
     <div class="outlet-profile" style="--pop: {{ o.color|e }}">
         <div class="outlet-profile-head">
-            <span class="edit-chip outlet-profile-name" style="{{ o.style|e }}">{{ outlet_icon(o.name) }}{{ o.name }}</span>
-            <span class="outlet-flag" title="{{ o.country|e }}">{{ o.flag }}</span>
+            <span class="edit-chip outlet-profile-name" style="{{ o.style|e }}">{{ outlet_icon(o.name) }}{{ o.name|e }}</span>
+            <span class="outlet-flag" role="img" aria-label="{{ o.country|e }}">{{ o.flag|e }}</span>
         </div>
         {% if o.wiki %}
             {% set w = o.wiki %}
             <div class="outlet-about">
-                {% if w.owner or w.parent %}<span>🏢 {{ (w.owner or w.parent)|join(', ') }}</span>{% endif %}
-                {% if w.founded %}<span>📅 since {{ w.founded }}</span>{% endif %}
-                {% if w.headquarters %}<span>📍 {{ w.headquarters[0] }}</span>{% endif %}
+                {% if w.owner or w.parent %}<span>🏢 {{ (w.owner or w.parent)|join(', ')|e }}</span>{% endif %}
+                {% if w.founded %}<span>📅 since {{ w.founded|e }}</span>{% endif %}
+                {% if w.headquarters %}<span>📍 {{ w.headquarters[0]|e }}</span>{% endif %}
             </div>
-            {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract }} <a href="{{ w.url|e }}" title="Quoted from Wikipedia, CC BY-SA 4.0">— Wikipedia</a></blockquote>{% endif %}
+            {% if w.extract %}<blockquote class="outlet-wiki">{{ w.extract|e }} <a href="{{ w.url|e }}">— Wikipedia</a> <small>(CC BY-SA 4.0)</small></blockquote>{% endif %}
         {% endif %}
         <div class="outlet-facts">
-            {% if o.lean_url %}<a href="{{ o.lean_url|e }}">⚖️ {{ o.lean }} (AllSides)</a>{% elif o.estimate %}⚖️ est. {{ o.estimate }} (ours){% else %}⚖️ not rated by AllSides{% endif %}
-            · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability }}{% else %}not on Wikipedia's list{% endif %}
+            {% if o.lean_url %}<a href="{{ o.lean_url|e }}">⚖️ {{ o.lean|e }} (AllSides)</a>{% elif o.estimate %}⚖️ est. {{ o.estimate|e }} (ours){% else %}⚖️ not rated by AllSides{% endif %}
+            · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability|e }}{% else %}not on Wikipedia's list{% endif %}
         </div>
+        {% if measures %}
+            <ul class="ovs" aria-label="Its measures against the median outlet's">
+                {% for m in measures %}<li class="ovs-row" style="--bar: {{ m.bar }}%; --tick: {{ m.tick }}%">
+                    <span class="ovs-name">{{ m.emoji|e }} {{ m.name|e }}</span>
+                    <span class="ovs-track" aria-hidden="true"><span class="ovs-bar"></span><span class="ovs-tick"></span></span>
+                    <span class="ovs-figure"><b>{{ '%g'|format(m.value) }}{{ m.unit|e }}</b> · median {{ '%g'|format(m.median) }} · {{ m.words|e }}</span></li>
+                {% endfor %}
+            </ul>
+            <p class="ovs-key">The bar is this outlet; the tick ▏ is the median of the {{ medians.outlets }} outlets
+                on <a href="agencies.html">the outlets page</a>, over {{ window_days }} days.</p>
+        {% endif %}
         <div class="outlet-badges">
-            {% if o.spice %}{{ badge(o.spice.badge[0], o.spice.badge[1], SPIN_TINTS[o.spice.badge[1]], 'Average loaded score ' ~ o.spice.value) }}{% endif %}
-            {% if o.mood %}{{ badge(o.mood.badge[0], o.mood.badge[1] ~ ' news', MOOD_TINTS[o.mood.badge[1]], 'Average mood ' ~ o.mood.value) }}{% endif %}
-            {% if o.framing %}{{ badge(o.framing.badge[0], o.framing.badge[1], FRAMING_TINTS[o.framing.badge[0]]) }}{% endif %}
-            {{ badge('✏️', (o.edits ~ ' rewrites per 100') if o.edits else 'no rewrites', '#d9f7f2') }}
-            {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff') }}{% elif o.wire is not none %}{{ badge('📡', (o.wire ~ '% wire copy') if o.wire else 'no wire copy', '#e0d4ff') }}{% endif %}
+            {% if o.spice %}{{ badge(o.spice.badge[0], o.spice.badge[1], '#ffd6c2', 'Average loaded score ' ~ o.spice.value ~ ', from 0 plain to 2 built to provoke') }}{% endif %}
+            {% if o.mood %}{{ badge(o.mood.badge[0], o.mood.badge[1] ~ ' news', '#e3ddff', 'Average mood ' ~ o.mood.value ~ ', from -1 grim to 1 upbeat') }}{% endif %}
+            {% if o.framing %}{{ badge(o.framing.badge[0], o.framing.badge[1], FRAMING_TINTS[o.framing.badge[0]], 'On stories other outlets also covered, its headlines run ' ~ o.framing.value ~ ' from theirs') }}{% endif %}
+            {% if o.feeling %}{{ badge(o.feeling.emoji, ('mostly ' if o.feeling.share >= 50 else 'often ') ~ o.feeling.name, FEELING_TINTS[o.feeling.name], o.feeling.share ~ '% of the feeling in its headlines over ' ~ window_days ~ ' days') }}{% endif %}
+            {% if o.is_wire %}{{ badge('📡', 'a wire service', '#e0d4ff', 'Its headlines are the copy other outlets run') }}{% endif %}
             <span class="trend-posts">📰 {{ o.headlines }} headlines in {{ window_days }} days · {{ o.live }} on its front page now</span>
         </div>
     </div>
@@ -73,21 +95,50 @@
     {% endif %}
 
     {% if feelings %}
-        <h2 class="section-divider"><span>The feelings in its headlines</span></h2>
-        <div class="feeling-bar" title="Each feeling's share of its headlines on the front page now, ranked-choice style">
-            {% for f in feelings %}<span class="feeling-seg" style="flex: {{ f.share|e }}; --c: {{ f.color|e }}" title="{{ f.name|e }} {{ f.share|e }}%">{% if f.share >= 6 %}{{ f.emoji }} {{ f.share }}%{% endif %}</span>{% endfor %}
-        </div>
-    {% endif %}
-
-    <h2 class="section-divider"><span>On its front page now</span></h2>
-    {% if now %}
-        <ol class="outlet-now">
-            {% for h in now %}
-                <li><a href="{{ h.url|e }}">{{ h.title }}</a>{% if h.story %} <a class="trend-both" href="stories.html#{{ h.story[0]|e }}" title="Part of the story: {{ h.story[1]|e }}">📰 {{ h.story[1] }}</a>{% endif %}</li>
+        <h2 class="section-divider" id="feelings"><span>🎭 The feelings in its headlines</span></h2>
+        <p class="ofeel-lede">{% if feelings.more %}<span class="ofeel-tag-more">{{ feelings.more.emoji|e }} {{ feelings.more.more_words|e }}</span>{% endif %}
+            {% if feelings.more and feelings.less %}<span class="ofeel-sep" aria-hidden="true">|</span>{% endif %}
+            {% if feelings.less %}<span class="ofeel-tag-less">{{ feelings.less.less_words|e }} {{ feelings.less.emoji|e }}</span>{% endif %}
+            {% if not feelings.more and not feelings.less %}🤝 its feelings run close to the average outlet's{% endif %}</p>
+        <p class="stage-sub">Its headlines on its front page now against the average outlet's, ranked-choice style:
+            to the right in orange, more of a feeling than the average outlet; to the left in teal, less; grey,
+            within {{ feelings.even }} points of it. The figure is in percentage points; hover or tap a row for both shares.{% if feelings_read < 10 %} Only {{ feelings_read }} of its headlines are read so far, so a few
+            can swing it.{% endif %}</p>
+        <ol class="ofeel" aria-label="Its feelings against the average outlet's">
+            {% for f in feelings.rows %}<li class="ofeel-row ofeel-{{ f.side }} ofeel-to-{{ f.lean }}" tabindex="0" style="--bar: {{ f.bar }}%"
+                data-tip="{{ f.name|e }}: {{ f.mine }}% of its headlines now; the average outlet {{ f.average }}%">
+                <span class="ofeel-name">{{ f.emoji|e }} {{ f.name|e }}</span>
+                <span class="ofeel-track" aria-hidden="true"><span class="ofeel-half ofeel-left"><span class="ofeel-bar"></span></span><span class="ofeel-half ofeel-right"><span class="ofeel-bar"></span></span></span>
+                <span class="ofeel-figure">{% if f.side == 'even' %}≈ {% if f.diff %}{{ '%+d'|format(f.diff) }}{% else %}same{% endif %}{% else %}{{ '%+d'|format(f.diff) }} pts{% endif %}</span></li>
             {% endfor %}
         </ol>
+    {% endif %}
+
+    <h2 class="section-divider" id="now"><span>📰 On its front page now</span></h2>
+    {% if now.pack or now.only %}
+        <div class="rank-boards">
+            <section class="rank-board" aria-labelledby="now-pack">
+                <h3 class="section-divider stage-banner rank-board-title" id="now-pack" style="--stage: #00c2a8"><span>🐑 With the pack</span></h3>
+                <p class="stage-sub">headlines in our stories, by the story's rank among the {{ now.stories }} we follow
+                    now (the most outlets first); the bar is how many outlets run the story, 🫏 blue the left-rated
+                    share and 🐘 red the right-rated</p>
+                {% if now.pack %}<ol class="rank-list onow-list">{% for h in now.pack[:now.shown] %}{{ now_row(h) }}{% endfor %}</ol>
+                    {% if now.pack|length > now.shown %}<details class="onow-more"><summary>🗞️ all {{ now.pack|length }} with the pack</summary>
+                        <ol class="rank-list onow-list">{% for h in now.pack[now.shown:] %}{{ now_row(h) }}{% endfor %}</ol></details>{% endif %}
+                {% else %}<p class="stage-empty">🦄 None of its headlines is in one of our stories right now.</p>{% endif %}
+            </section>
+            <section class="rank-board" aria-labelledby="now-only">
+                <h3 class="section-divider stage-banner rank-board-title" id="now-only" style="--stage: #ff4fa3"><span>🦄 Only here</span></h3>
+                <p class="stage-sub">headlines in none of the stories we follow: few or no other outlets ran them, as
+                    far as our matching can tell; numbered by their place on its front page</p>
+                {% if now.only %}<ol class="rank-list onow-list">{% for h in now.only[:now.shown] %}{{ only_row(h) }}{% endfor %}</ol>
+                    {% if now.only|length > now.shown %}<details class="onow-more"><summary>🦄 all {{ now.only|length }} only here</summary>
+                        <ol class="rank-list onow-list">{% for h in now.only[now.shown:] %}{{ only_row(h) }}{% endfor %}</ol></details>{% endif %}
+                {% else %}<p class="stage-empty">🐑 Everything on its front page is a story others run too.</p>{% endif %}
+            </section>
+        </div>
     {% else %}
-        <p class="table-intro">Nothing on its front page in our latest read.</p>
+        <p class="stage-empty">🦗 Nothing on its front page in our latest read.</p>
     {% endif %}
 
     {% if rewrites %}
