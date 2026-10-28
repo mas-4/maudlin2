@@ -5,6 +5,10 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **The aisle: "only in the center".** A motif is listed when at least 2 center shows said it in their own voice (a
+  host or guest, as the aisle counts sides) and no left, right or crossover show told it at all, not even in a clip it
+  played or a call, over all time; crossover shows are their own group, with an "only on crossover shows" list when any
+  motif meets the same rule (none did on Oct 28). The lists under the map are now colored by genre.
 - **Sinclair: The National Desk as an outlet, five of its stations for research only.** To test the "barbell" (an
   outlet running mostly straight news around a small share of centrally made pieces, as Sinclair's must-runs sit inside
   otherwise local news), each hourly run reads the homepages of The National Desk (thenationaldesk.com, Sinclair's

@@ -11,6 +11,7 @@ from datetime import date, timedelta
 
 from markupsafe import Markup, escape
 
+from app import sidefeeds
 from app.analysis import divide, motif_web
 from app.site.common import TemplateHandler, motif_href
 from app.site.page_motif import shared
@@ -29,6 +30,19 @@ LEAN_INK = {'left': '#2456c9', 'right': '#c41d3a'}
 WINDOWS = {'all': None, 'week': 7, 'days3': 3}  # the time buttons: every telling, the last 7 days, the last 3
 SPARK_DAYS = 21  # the card's sparkline: tellings a day
 RISING_MIN = 3  # a motif rises when told at least this often this week and at least twice as often as the week before
+ONLY_LEAST = 2  # "only in the center": said on at least this many of the group's shows, so one show's habit isn't the group's
+
+# The lists under the map, colored by genre (Oct 28, the person: the chips were "plain as hell"; color an axis they don't
+# show). Five colors for the five biggest genres (93% of tellings): of 14 hues tried, no set of more than five stays apart
+# for every pair under color blindness (the dataviz validator, all pairs on white: worst deutan ΔE 7.6, the olive and
+# brown, in the floor band, so the emoji always goes with the color), and none is the lean blue or red. The rest (Values, Exhortations, Perennials) stay white,
+# known by their emoji. Fixed to the genre, in GENRE_EMOJI order, never cycled.
+GENRE_INK = {'Archetypes': '#e87ba4', 'Plots': '#a0522d', 'Beliefs': '#7a8a00', 'Theories': '#8a5cff',
+             'Arguments': '#eda100'}
+UNCOLORED = '#ffffff'
+GENRE_SHORT = {'Archetypes': 'a kind of person', 'Plots': 'what happened', 'Beliefs': 'a premise',
+               'Theories': 'what people think is behind it', 'Arguments': 'a move in an argument',
+               'Values': 'how things ought to be', 'Exhortations': 'a call to act', 'Perennials': 'safe small talk'}
 
 
 def where(rs: list[dict]) -> dict | None:
@@ -74,6 +88,93 @@ def place(web: dict, today: date | None = None) -> list[dict]:
                     **spots['all'], 'spots': spots, 'trend': trend, 'week': week, 'before': before, 'daily': daily,
                     'href': motif_href(m)})
     return out
+
+
+def group_of(r: dict) -> str | None:
+    """A show telling's lean group: its side (left, center, right), else its show's group in app/sidefeeds.py
+    (crossover: the aisle's sides leave those shows out)"""
+    return r['side'] or (sidefeeds.source_for(r.get('show_source') or '') or {}).get('group')
+
+
+def only_in(web: dict, group: str, least: int = ONLY_LEAST) -> list[dict]:
+    """The public motifs told on one lean group's shows and no other's, over all time: at least `least` of the group's
+    shows said it in their own voice (a host or guest, as the aisle counts sides), and no show of another group told it
+    at all, not even in a clip it played or a call. Not "told on both sides": a motif the center tells and the left and
+    right never do. Most shows first"""
+    by = {}
+    for r in web['rows']:
+        if r['kind'] == 'shows':
+            by.setdefault(r['motif'], []).append(r)
+    out = []
+    for m, rs in by.items():
+        if {group_of(r) for r in rs} != {group}:
+            continue
+        shows = sorted({r['teller'] for r in motif_web.spoken(rs)})
+        if len(shows) >= least:
+            out.append({'id': m, 'name': web['entries'][m]['name'], 'genre': rs[0]['genre'], 'shows': shows,
+                        'told': len({(r['teller'], r['key']) for r in rs}), 'href': motif_href(m)})
+    return sorted(out, key=lambda d: (-len(d['shows']), -d['told'], d['name'].lower()))
+
+
+def strip(items: list[dict], value, figure, tip) -> list[dict]:
+    """A list under the map as a ranked strip: each motif's genre (emoji and color), its bar (`value` against the
+    list's biggest) and its figure, with the detail in data-tip for the pop-up cards"""
+    top = max((value(d) for d in items), default=0) or 1
+    return [{'name': d['name'], 'href': d['href'], 'genre': d['genre'] or 'No genre yet',
+             'emoji': GENRE_EMOJI.get(d['genre'], '🧩'), 'ink': GENRE_INK.get(d['genre'], UNCOLORED),
+             'bar': max(4, round(100 * value(d) / top)), 'figure': figure(d), 'tip': tip(d)} for d in items]
+
+
+def sides_tip(d: dict) -> str:
+    return f"{d['genre'] or 'no genre yet'}: said on {d['left']} left, {d['center']} center and {d['right']} right shows"
+
+
+def lists(dots: list[dict], web: dict) -> list[dict]:
+    """The ranked lists under the map, in pairs that answer each other: rising and fading, left and right, both sides
+    and only in the center (and only on crossover shows, when any motif is)"""
+    def board(key, emoji, title, stage, sub, items, value, figure, tip):
+        return {'key': key, 'emoji': emoji, 'title': title, 'stage': stage, 'sub': sub,
+                'rows': strip(items, value, figure, tip)}
+    week = lambda d: f"{d['genre'] or 'no genre yet'}: {d['before']} tellings the week before, {d['week']} in the last 7 days"  # noqa: E731
+    split = lambda d: f"🫏 {d['left']} · {d['right']} 🐘"  # noqa: E731
+    only_tip = lambda d: f"{d['genre'] or 'no genre yet'}: said on {', '.join(d['shows'])}"  # noqa: E731
+    boards = [
+        board('rising', '🔥', 'Rising this week', '#ff6b1a', 'told at least twice as often in the last 7 days as in '
+              'the 7 before; the bar is this week',
+              sorted((d for d in dots if d['trend'] == 'rising'), key=lambda d: -d['week'])[:12],
+              lambda d: d['week'], lambda d: f"{d['before']} → {d['week']}", week),
+        board('fading', '🧊', 'Fading', '#8a8f98', 'told a third as often or less this week; the bar is the week before',
+              sorted((d for d in dots if d['trend'] == 'fading'), key=lambda d: -d['before'])[:12],
+              lambda d: d['before'], lambda d: f"{d['before']} → {d['week']}", week),
+        board('left', '🫏', 'Mostly left', '#3a86ff', "most of the shows that said it lean left; the bar is how many "
+              "told it", sorted((d for d in dots if d['lean'] < -0.4), key=lambda d: -d['told'])[:8],
+              lambda d: d['told'], split, sides_tip),
+        board('right', '🐘', 'Mostly right', '#ff4fa3', "most of the shows that said it lean right; the bar is how "
+              "many told it", sorted((d for d in dots if d['lean'] > 0.4), key=lambda d: -d['told'])[:8],
+              lambda d: d['told'], split, sides_tip),
+        board('both', '⚖️', 'Told on both sides', '#a9a9b8', 'said on left and right shows; the bar is the smaller '
+              'side', sorted((d for d in dots if d['left'] and d['right']), key=lambda d: -min(d['left'], d['right']))[:12],
+              lambda d: min(d['left'], d['right']), split, sides_tip),
+        board('center', '🎯', 'Only in the center', '#b8b8c8', f'said on {ONLY_LEAST} or more center shows and never '
+              'heard on a left, right or crossover show, not even in a clip; the bar is how many shows',
+              only_in(web, 'center')[:12], lambda d: len(d['shows']),
+              lambda d: f"{len(d['shows'])} shows", only_tip)]
+    crossover = only_in(web, 'crossover')[:12]
+    if crossover:
+        boards.append(board('crossover', '🔀', 'Only on crossover shows', '#00c2a8', f'said on {ONLY_LEAST} or more '
+                            'crossover shows (Rogan, Theo Von, Tim Dillon…) and no left, right or center show',
+                            crossover, lambda d: len(d['shows']), lambda d: f"{len(d['shows'])} shows", only_tip))
+    return [b for b in boards if b['rows'] or b['key'] in ('both', 'left', 'right', 'center')]
+
+
+def genre_key(boards: list[dict]) -> list[dict]:
+    """The lists' color key: the colored genres, then the uncolored ones the lists hold"""
+    shown = {r['genre'] for b in boards for r in b['rows']}
+    key = [{'genre': g, 'emoji': GENRE_EMOJI[g], 'ink': ink, 'about': GENRE_SHORT.get(g, '')}
+           for g, ink in GENRE_INK.items()]
+    rest = [g for g in GENRE_EMOJI if g not in GENRE_INK and g in shown]
+    return key + [{'genre': g, 'emoji': GENRE_EMOJI[g], 'ink': UNCOLORED, 'about': GENRE_SHORT.get(g, ''),
+                   'first_plain': i == 0} for i, g in enumerate(rest)]
 
 
 def draw(dots: list[dict], arcs: list[tuple[str, str, str]]) -> Markup:
@@ -219,7 +320,7 @@ class AislePage:
                     seen.add(pair)
                     arcs.append((pair[0], pair[1], a['note']))
         genres = sorted({d['genre'] for d in dots if d['genre']}, key=lambda g: list(GENRE_EMOJI).index(g) if g in GENRE_EMOJI else 99)
-        both = sorted((d for d in dots if d['left'] and d['right']), key=lambda d: -min(d['left'], d['right']))[:12]
+        boards = lists(dots, web)
         try:  # the weekly divide index (app/analysis/divide.py)
             gaps = divide.weekly(motif_web.spoken(web['rows']))
             for side in ('shared', 'mostly_left', 'mostly_right'):
@@ -234,11 +335,7 @@ class AislePage:
             'divide_span': day_span(latest['first'], latest['last']) if latest else '',
             'title': 'The aisle', 'svg': draw(dots, arcs), 'dots': dots, 'arcs': len(arcs),
             'genres': [(g, GENRE_EMOJI.get(g, '🧩'), sum(1 for d in dots if d['genre'] == g)) for g in genres],
-            'unplaced': len(web['entries']) - len(dots), 'both': both,
-            'rising': sorted((d for d in dots if d['trend'] == 'rising'), key=lambda d: -d['week'])[:12],
-            'fading': sorted((d for d in dots if d['trend'] == 'fading'), key=lambda d: -d['before'])[:12],
-            'leftmost': sorted((d for d in dots if d['lean'] < -0.4), key=lambda d: -d['told'])[:8],
-            'rightmost': sorted((d for d in dots if d['lean'] > 0.4), key=lambda d: -d['told'])[:8],
+            'unplaced': len(web['entries']) - len(dots), 'boards': boards, 'genre_key': genre_key(boards),
             'og_title': 'The aisle: the stories each side tells · bignews.day',
             'og_description': 'Every story shape in our motif index, placed by which side\'s shows tell it, with the '
                               'answers each side gives the other.'})
