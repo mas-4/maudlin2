@@ -60,20 +60,7 @@
     mask: var(--wave) repeat-x left center / 16px 7px;
 }
 
-.chip-metric {
-    font-size: 0.75em;
-    font-weight: 700;
-    margin-left: 0.35em;
-    padding: 0 0.35em;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.7);
-}
 
-.sort-legend {
-    display: block;
-    margin-top: 0.2em;
-    font-style: italic;
-}
 
 /* The outside trend boxes show their top six; a button opens the rest, so one long list doesn't stretch the row */
 .trending:not(.open) .trend-extra {

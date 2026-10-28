@@ -1,9 +1,32 @@
 {% extends "page.html" %}
 
 {% block content %}
+{% import "boards.html" as strips %}
 {% set cards_here = page_part == 'stories' %}
 {% macro card_id(c) %}{{ (anchor_of.get(c, 'story-' ~ c) if anchor_of is defined else 'story-' ~ c)|e }}{% endmacro %}
 {% macro card_href(c) %}{{ '' if cards_here else 'stories.html' }}#{{ card_id(c) }}{% endmacro %}
+{# A card's numbers as stickers, then its outlets as one strip of dots left to right by lean (page_headlines.
+   make_agency_lists): hollow, dropped off its front page; ✏️, rewrote its headline; dashed, not rated (white) or our
+   own estimate. Each dot's hover card has the outlet and its headline; a click opens the article #}
+{% macro outlet_strip(cluster) %}
+    <ul class="card-stickers">
+        {% for k in cluster['stickers'] %}<li class="card-sticker card-sticker-{{ k.key|e }}{% if k.key == 'churn' %} churn{% endif %}" data-tip="{{ k.tip|e }}"{% if k.first %} data-first="{{ k.first|e }}"{% endif %}>{% if k.href %}<a href="{{ k.href|e }}">{% endif %}<span class="card-sticker-emoji" aria-hidden="true">{{ k.emoji|e }}</span><b>{{ k.big|e }}</b> <span class="card-sticker-small">{{ k.small|e }}</span>{% if k.href %}</a>{% endif %}</li>{% endfor %}
+    </ul>
+    <div class="dot-strip" role="list" aria-label="{{ cluster['dots']|length }} outlets, left to right by lean">
+        <span class="dot-end" aria-hidden="true">🫏</span>
+        {% for d in cluster['dots'] %}<a role="listitem" class="outlet-dot dot-{{ d.state|e }} dot-{{ d.kind|e }}{% if d.edited %} dot-edited{% endif %}" href="{{ d.url|e }}" style="--dot: {{ d.fill|e }}" data-tooltip-color="{{ d.fill|e }}" data-tooltip-ink="{{ d.ink|e }}" data-tip-head="{{ d.head|e }}" data-tip="{{ d.tip|e }}" data-tip-href="{{ d.url|e }}" data-tip-link="{{ d.link|e }}" aria-label="{{ d.outlet|e }}"><span class="dot-disc" aria-hidden="true"></span>{% if d.edited %}<span class="dot-pencil" aria-hidden="true">✏️</span>{% endif %}</a>{% endfor %}
+        <span class="dot-end" aria-hidden="true">🐘</span>
+    </div>
+{% endmacro %}
+{# What the dots mean, once above the cards #}
+{% macro dot_key() %}
+    <ul class="dot-key" aria-label="The outlet dots">
+        {% for i, word in ((1, 'left'), (2, 'leans left'), (3, 'center'), (4, 'leans right'), (5, 'right')) %}<li><span class="outlet-dot dot-live dot-rated" style="--dot: {{ bias_colors[i]|e }}"><span class="dot-disc"></span></span>{% if i == 1 %}🫏 {% elif i == 5 %}🐘 {% endif %}{{ word }}</li>{% endfor %}
+        <li><span class="outlet-dot dot-live dot-unrated" style="--dot: #ffffff"><span class="dot-disc"></span></span>dashed: not rated</li>
+        <li><span class="outlet-dot dot-gone dot-rated" style="--dot: {{ bias_colors[2]|e }}"><span class="dot-disc"></span></span>hollow: dropped off its front page</li>
+        <li><span class="outlet-dot dot-live dot-rated dot-edited" style="--dot: {{ bias_colors[4]|e }}"><span class="dot-disc"></span><span class="dot-pencil">✏️</span></span>rewrote its headline</li>
+    </ul>
+{% endmacro %}
 {# A story card, as on stories.html; the front page's top stories use it too, with `top` (their lean bar and counts) #}
 {% macro story_card(cluster, i, top=none) %}
     <div class="story" id="{{ card_id(cluster['cluster']) }}"{% if story_of is defined and cluster['cluster'] in story_of %} data-share="s-{{ story_of[cluster['cluster']]|e }}"{% endif %} data-age="{{ cluster['first']|round|int }}"
@@ -155,7 +178,7 @@
             <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ (outlet_home(a) or '#')|e }}" style="{{ curator_style|e }}" title="{{ a|e }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
         {% endif %}
         </div>
-        <div class="story-outlets">{{ agency_lists[cluster['cluster']]|safe }}</div>
+        <div class="story-outlets">{{ outlet_strip(cluster) }}</div>
         {% if top %}</details>{% endif %}
     </div>
 {% endmacro %}
@@ -795,83 +818,36 @@
 
 
     <script>
-        // Keep "new · first seen 12 min ago" honest as the page sits open: recompute from each story's first-seen time
+        // Keep each card's "since first seen" sticker honest as the page sits open, from the story's first-seen time
         const BREAKING_MINUTES = {{ breaking_minutes }};
         function updateBroken() {
             const now = Date.now();
-            document.querySelectorAll('.broken[data-first]').forEach((el) => {
+            document.querySelectorAll('.card-sticker-age[data-first]').forEach((el) => {
                 const minutes = Math.max(0, Math.floor((now - Date.parse(el.dataset.first)) / 60000));
-                el.innerHTML = minutes < BREAKING_MINUTES
-                    ? `<p><span class="new-story">🆕 new</span> first seen ${minutes} min ago</p>`
-                    : `<p>First seen ${Math.floor(minutes / 60)} hour${Math.floor(minutes / 60) === 1 ? '' : 's'} ago</p>`;
+                const hours = Math.floor(minutes / 60);
+                el.querySelector('b').textContent = minutes < BREAKING_MINUTES ? `${minutes} min`
+                    : hours < 48 ? `${hours} h` : `${Math.round(hours / 24)} days`;
+                el.querySelector('.card-sticker-emoji').textContent = minutes < BREAKING_MINUTES ? '🆕' : '⏱️';
             });
         }
-        // Sort each card's outlet chips: bias runs left to right, first seen is oldest first, still showing puts
-        // live outlets first, mood is grimmest first, framing is gloomiest-vs-others first. Ties keep their lean order.
+        // On a touch screen the first tap on an outlet dot shows its card (the outlet, its headline, a link to the
+        // article); the next tap on it opens the article. With a mouse, hovering shows the card and a click opens it.
+        // Runs before the hover cards' own click handler (capture), which lets a link do its own thing
+        // (Whether its card was already open is read as the finger lands: the tap's focus opens one before the click)
+        let touched = false, open = null;
+        document.addEventListener('pointerdown', (ev) => {
+            touched = ev.pointerType === 'touch';
+            const dot = ev.target.closest && ev.target.closest('a.outlet-dot');
+            open = dot && dot.classList.contains('hover-card-on') ? dot : null;
+        }, true);
         document.addEventListener('click', (ev) => {
-            const button = ev.target.closest('.chip-sort button');
-            if (!button) return;
-            const card = button.closest('.story');
-            const chips = card.querySelector('.chips');
-            const key = button.dataset.key;
-            const value = (chip) => parseFloat(chip.dataset[key]);
-            const order = [...chips.querySelectorAll('a.storylink')].sort((a, b) =>
-                key === 'live' ? value(b) - value(a) || parseFloat(a.dataset.first) - parseFloat(b.dataset.first)
-                    : value(a) - value(b));
-            order.forEach((chip) => chips.appendChild(chip));
-            order.forEach((chip) => paintChip(chip, key));
-            card.querySelector('.sort-legend').textContent = SORT_LEGENDS[key];
-            card.querySelectorAll('.chip-sort button').forEach((b) => b.classList.toggle('active', b === button));
-        });
-
-        // Each sort recolors the chips by what it measures and tags them with the value, so a sort that barely moves
-        // anything (most headlines tie on mood) still shows what it found. Sorting by bias puts the lean colors back.
-        const SORT_LEGENDS = {
-            bias: 'outlets left to right, colored by lean',
-            first: 'earliest first · brighter is newer',
-            live: 'still on the front page first',
-            mood: 'grimmest headline first · purple grim, gold upbeat',
-            framing: 'gloomier than the other outlets first · purple gloomier, teal sunnier',
-        };
-        const mix = (color, amount) => `color-mix(in srgb, ${color} ${Math.round(Math.min(1, amount) * 100)}%, #eeeef2)`;
-        const ago = (hours) => hours < 1 ? `${Math.max(1, Math.round(hours * 60))}m` : `${Math.round(hours)}h`;
-        const signed = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1);
-        const PAINT = {
-            first: (c) => {
-                const hours = (Date.now() / 1000 - parseFloat(c.dataset.first)) / 3600;
-                return [mix('#ffc400', 1 - hours / 24), ago(hours)];
-            },
-            // Gone chips are already faded by how long they've been gone; the tag says how long
-            live: (c) => c.dataset.live === '1' ? ['#7ee081', 'on page']
-                : ['#e4e4e8', 'gone ' + ago((Date.now() / 1000 - parseFloat(c.dataset.last)) / 3600)],
-            mood: (c) => {
-                const v = parseFloat(c.dataset.mood);
-                return [mix(v < 0 ? '#7a5cff' : '#ffc400', Math.abs(v) * 1.5), signed(v)];
-            },
-            framing: (c) => {
-                const v = parseFloat(c.dataset.framing);
-                return [mix(v < 0 ? '#7a5cff' : '#00c2a8', Math.abs(v) * 1.5), signed(v)];
-            },
-        };
-        function paintChip(chip, key) {
-            if (!chip.dataset.bg) {
-                chip.dataset.bg = chip.style.backgroundColor;
-                chip.dataset.ink = chip.style.color;
-            }
-            chip.querySelector('.chip-metric')?.remove();
-            if (!PAINT[key]) {
-                chip.style.backgroundColor = chip.dataset.bg;
-                chip.style.color = chip.dataset.ink;
-                return;
-            }
-            const [color, text] = PAINT[key](chip);
-            chip.style.backgroundColor = color;
-            chip.style.color = '#1f1f2e';
-            const tag = document.createElement('span');
-            tag.className = 'chip-metric';
-            tag.textContent = text;
-            chip.appendChild(tag);
-        }
+            const dot = ev.target.closest('a.outlet-dot');
+            const touch = touched || matchMedia('(hover: none)').matches;
+            if (!dot || !touch || open === dot) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            hoverCard.show(dot, null, true);
+        }, true);
         document.addEventListener('DOMContentLoaded', () => {
             updateBroken();
             setInterval(updateBroken, 30000);
@@ -885,20 +861,15 @@
     <h2 class="section-divider" id="current-stories"><span>📰 Every story</span></h2>
     <p class="table-intro">Every story on the front pages we follow right now: the headlines that make it up, each outlet's
         own, with what the trackers know about it. Search, sort and filter them here; each one's 📄 opens its own page.</p>
-    {% if crossing_watch %}{# young stories mostly one side is covering, and how often such stories crossed (momentum.py) #}
+    {% if crossing_watch %}{# young stories mostly one side is covering, and how often such stories crossed (momentum.py, page_headlines.crossing_boards) #}
+    {% set n_left = crossing_watch|selectattr('side', 'equalto', 'left')|list|length %}{% set n_right = crossing_watch|length - n_left %}
     <details class="crossing-watch">
-        <summary>🌉 Crossing watch: {{ crossing_watch|length }} new stor{{ 'y' if crossing_watch|length == 1 else 'ies' }} mostly one side is covering
-            {%- for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% set n = crossing_watch|selectattr('side', 'equalto', side)|list|length %}{% if n %} <span class="crossing-count">{{ emoji }} {{ n }} mostly {{ side }}</span>{% endif %}{% endfor %}</summary>
-        <p class="crossing-sub">{{ crossing_note }}</p>
-        <ul class="crossing-list">
-            {% for w in crossing_watch %}
-            <li class="crossing-{{ w.side|e }}">
-                <a class="crossing-story" href="#{{ card_id(w.cluster) }}">{{ w.emoji }} {{ w.story|e }}</a>
-                <span class="crossing-facts">mostly {{ w.side }} ({{ w.counts.left }} left, {{ w.counts.center }} center, {{ w.counts.right }} right) · ⏱️ {{ w.when }} since it made a card · 📡 {{ w.bridge }}</span>
-                <span class="crossing-odds" title="{{ w.title|e }}">{{ w.text }}</span>
-            </li>
-            {% endfor %}
-        </ul>
+        <summary>🌉 Will the other side pick it up? {{ crossing_watch|length }} new stor{{ 'y' if crossing_watch|length == 1 else 'ies' }} only one side is covering so far
+            {%- if n_left %} <span class="crossing-count">🫏 {{ n_left }} mostly left</span>{% endif %}{% if n_right %} <span class="crossing-count">🐘 {{ n_right }} mostly right</span>{% endif %}</summary>
+        <p class="crossing-sub">{{ crossing_note|e }}</p>
+        {{ strips.key([{'name': 'a wire service or center outlet has it', 'mark': '📡', 'ink': '#00c2a8'},
+                  {'name': 'none yet', 'mark': '⚪', 'ink': '#ffffff'}], 'What the discs mean') }}
+        {{ strips.boards(crossing_boards, 'h3') }}
     </details>
     {% endif %}
 
@@ -925,6 +896,7 @@
         </span>{% endif %}
     </div>
     <p class="edit-count story-count" aria-live="polite"></p>
+    {{ dot_key() }}
     <div class="stories">
         {% for i, cluster in enumerate(clusters) %}
             {{ story_card(cluster, i) }}
@@ -977,11 +949,11 @@
             let sort = SORTS.newest;
             const only = new Set();
             let entity = null;  // one named subject at a time, tapped again to clear
-            // The search reads each card's words and its headlines (kept in the outlet chips' hover text), every
+            // The search reads each card's words and its headlines (kept in the outlet dots' hover cards), every
             // word typed has to be there
             let words = [];
-            const text = new Map(all.map((c) => [c, (c.textContent + ' ' + [...c.querySelectorAll('[title]')]
-                .map((e) => e.title).join(' ')).toLowerCase()]));
+            const text = new Map(all.map((c) => [c, (c.textContent + ' ' + [...c.querySelectorAll('[title], [data-tip]')]
+                .map((e) => e.title || e.dataset.tip).join(' ')).toLowerCase()]));
             const counter = document.querySelector('.story-count');
             let typing;
             document.querySelector('.story-search').addEventListener('input', (ev) => {
@@ -1034,9 +1006,11 @@
     <p class="more-link"><a href="headlines.html">📋 Every headline right now, with its mood, spin and feelings →</a></p>
     {% endif %}
     {% if page_part == 'table' %}
-    <h1>Every headline right now</h1>
+    <h1 class="section-divider stage-banner table-banner" style="--stage: #00c2a8"><span>📋 Every headline right now</span></h1>
     <p class="table-intro">Every headline live on a front page we follow, with how loaded its wording is, whether it
-        presents its news as good or bad, and the feelings it's likely to stir. 📌 opens the story it belongs to on the front page.</p>
+        presents its news as good or bad, and the feelings it's likely to stir. Each row is tinted in its outlet's
+        lean color (white: not rated). 📣 Buzz, the bar, counts how many of the day's most used words and phrases a
+        headline uses: how much it's on the same beat as everyone else. 📌 opens the story it belongs to.</p>
     <p class="table-download"><a href="{{ table_file|e }}" download="{{ table_download|e }}">⬇️ Download these headlines as JSON</a></p>
     <details class="table-fields">
         <summary>What's in the file</summary>
@@ -1051,6 +1025,7 @@
             <tr><td><code>title</code></td><td>text</td><td>The headline as it appears on the outlet's front page.</td></tr>
             <tr><td><code>seen</code></td><td>number or null</td><td>When we first saw the article, in Unix seconds (UTC).</td></tr>
             <tr><td><code>buzz</code></td><td>number</td><td>0 to 100: the headline's percentile among this hour's headlines for how many of the day's most common words and phrases it uses.</td></tr>
+            <tr><td><code>words</code></td><td>number</td><td>That count itself: how many of the day's 1,000 most common words and phrases the headline uses (the table's buzz bar).</td></tr>
             <tr><td><code>topic</code>, <code>topic_url</code></td><td>text</td><td>A topic page it belongs to, if any (often empty).</td></tr>
             <tr><td><code>mood</code></td><td>number or null</td><td>Whether the headline presents its news as good or bad, from its own words and tone, as our local language model reads it: -2 grim, -1, 0 plain (takes no side), 1, 2 upbeat. Null when not yet scored. Headlines scored before Oct 4 measured how good the event was for the people it affects instead, and are being rescored.</td></tr>
             <tr><td><code>loaded</code></td><td>number or null</td><td>How loaded the outlet's own wording is: 0 plain, 1 one or two charged words, 2 built to provoke. Words quoted from someone else don't count.</td></tr>
@@ -1096,14 +1071,14 @@
         // same rows with named fields, which is also what the download button saves
         const ANCHORS = {{ (anchor_of if anchor_of is defined else {})|tojson }};  // story number -> its card's id (s-123)
         function unpackTable(data) {
-            return data.rows.map(([outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story]) => {
+            return data.rows.map(([outlet, url, title, seen, buzz, topic, mood, loaded, feelings, story, words]) => {
                 const [agency, bias, rated] = data.outlets[outlet];
                 const name = topic === null ? '' : data.topics[topic];
                 const [storyTitle, storySize] = story === null ? ['', 0] : (data.stories[String(story)] || ['', 0]);
                 return {agency, bias, rated, url: url.startsWith('http') ? url : 'https://' + url, title, seen, buzz,
                         topic: name, topic_url: name ? name.replaceAll(' ', '_') + '.html' : '', mood, loaded,
                         feelings: feelings.map((i) => data.feelings[i]), story, story_title: storyTitle,
-                        story_size: storySize};
+                        story_size: storySize, words};
             });
         }
         fetch({{ table_file|tojson }}).then((r) => r.json()).then(unpackTable).then((rows) => {
@@ -1144,13 +1119,10 @@
             const METRICS = {
                 buzz: {
                     label: 'Buzz',
-                    cell: (r) => {
-                        // Loudness emoji by percentile of the day's headlines
-                        const [emoji, tint] = r.buzz >= 95 ? ['📢', '#ffab8a'] : r.buzz >= 80 ? ['🔊', '#ffd6c2']
-                            : r.buzz >= 50 ? ['🔉', '#fff1b3'] : r.buzz >= 20 ? ['🔈', '#eef1f6'] : ['🤫', '#f2f2f2'];
-                        return badge(emoji, r.buzz >= 50 ? `top ${Math.max(1, 100 - r.buzz)}%` : r.buzz >= 20 ? 'low' : 'quiet', tint);
-                    },
-                    compare: (a, b) => a.buzz - b.buzz,
+                    // A thin bar for how many of the day's common words and phrases it uses, against the hour's
+                    // busiest headline, and that count; its percentile goes in the hover card
+                    cell: (r) => `<span class="buzz-cell" data-tip-head="📣 ${r.words} of the day's common words and phrases" data-tip="Busier than ${Math.max(0, r.buzz - 1)}% of this hour's headlines. Buzz counts how many of the day's 1,000 most used words and phrases a headline uses: how much it's on the same beat as everyone else."><span class="buzz-track"><span class="buzz-bar" style="width: ${Math.max(4, Math.round(100 * r.words / MAX_WORDS))}%"></span></span><b>${r.words}</b></span>`,
+                    compare: (a, b) => a.words - b.words || a.buzz - b.buzz,
                 },
                 seen: {
                     label: 'First seen',
@@ -1194,6 +1166,13 @@
             };
 
             const state = {metric: 'buzz', lean: 'all', loaded: false, feeling: 'all'};
+            const MAX_WORDS = Math.max(1, ...ROWS.map((r) => r.words || 0));
+            // Every row is tinted in its outlet's lean color (its chip says the lean in words); not rated stays white
+            const leanTint = (r) => {
+                if (UNRATED.has(r.agency) && !(r.agency in ESTIMATES)) return null;
+                const color = BIAS_COLORS[(r.agency in ESTIMATES ? ESTIMATES[r.agency] : r.bias) + 3];
+                return `background-color: color-mix(in srgb, ${color} 16%, white)`;
+            };
             // In the story view each story's rows get their own tint, cycling through a palette in the order the
             // stories first appear (biggest first), so neighboring stories never share one
             const STORY_TINTS = ['#fff1b3', '#d9f7f2', '#e0d4ff', '#ffd6c2', '#c9e2ff', '#d6f5c4'];
@@ -1202,8 +1181,14 @@
                 .sort((a, b) => b.story_size - a.story_size || a.story - b.story)
                 .forEach((r) => { if (!(r.story in storyOrder)) storyOrder[r.story] = Object.keys(storyOrder).length; });
             const storyTint = (story) => STORY_TINTS[storyOrder[story] % STORY_TINTS.length];
-            const rowTint = (r) => state.metric === 'story' && r && r.story !== null && r.story !== undefined
-                ? {style: `background-color: color-mix(in srgb, ${storyTint(r.story)} 55%, white)`} : {};
+            const rowTint = (r) => {
+                if (!r || !r.agency) return {};
+                if (state.metric === 'story' && r.story !== null && r.story !== undefined) {
+                    return {style: `background-color: color-mix(in srgb, ${storyTint(r.story)} 55%, white)`};
+                }
+                const tint = leanTint(r);
+                return tint ? {style: tint} : {};
+            };
             const keep = (r) => (state.lean === 'all' || (!UNRATED.has(r.agency) && (state.lean === 'left' ? r.bias < 0
                                     : state.lean === 'right' ? r.bias > 0 : r.bias === 0)))
                 && (!state.loaded || r.loaded > 0)

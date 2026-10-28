@@ -457,48 +457,48 @@ def chip_cluster(entries, first_minutes=600, speed=None):
 
 
 def run_chips(cluster_, rewritten=(), monkeypatch=None):
+    """A card's outlet dots and stickers (make_agency_lists), keyed by sticker"""
     edits = pd.DataFrame({'url': list(rewritten)}) if rewritten else pd.DataFrame()
     monkeypatch.setattr(ph, 'find_edits', lambda: (edits, None))
     page = make_page()
     page.make_agency_lists([cluster_])
-    return page.context['agency_lists'][1], cluster_
+    return {k['key']: k for k in cluster_['stickers']}, cluster_
 
 
 @pytest.mark.parametrize('n, rewrites, churn', [(6, 3, True), (6, 2, False), (30, 5, True), (30, 4, False)])
 def test_churn_badge_threshold(chip_globals, monkeypatch, n, rewrites, churn):
     """At least CHURN_OUTLETS rewrites and CHURN_SHARE of the outlets: 3 of 6, but 5 of 30."""
-    html, c = run_chips(chip_cluster([{}] * n), rewritten=[f'u{i}' for i in range(rewrites)], monkeypatch=monkeypatch)
+    stickers, c = run_chips(chip_cluster([{}] * n), rewritten=[f'u{i}' for i in range(rewrites)], monkeypatch=monkeypatch)
     assert c['rewrites'] == rewrites
-    assert ('class="churn"' in html) == churn
-    assert html.count(' ✏️') == rewrites
+    assert ('churn' in stickers) == churn
+    assert sum(d['edited'] for d in c['dots']) == rewrites  # each rewriter's dot carries the ✏️ either way
 
 
 def test_chip_states(chip_globals, monkeypatch):
-    html, _ = run_chips(chip_cluster([
+    stickers, c = run_chips(chip_cluster([
         {'agency': 'Fresh', 'bias': -2, 'hours_live': 1},
         {'agency': 'Live', 'bias': 0, 'hours_live': 5},
         {'agency': 'Fading', 'bias': 1, 'live': False, 'hours_gone': 6},
         {'agency': 'Ghost', 'bias': 2, 'live': False, 'hours_gone': 30},
     ]), monkeypatch=monkeypatch)
-    chips = html.split('<div class="chips">')[1].split('</a>')
-    by_name = {name: next(c for c in chips if f'</span>{name}' in c) for name in ('Fresh', 'Live', 'Fading', 'Ghost')}
-    assert 'chip-fresh' in by_name['Fresh'] and '✨' in by_name['Fresh'] and 'opacity: 1.00' in by_name['Fresh']
-    assert 'chip-live' in by_name['Live'] and '✨' not in by_name['Live']
-    assert 'chip-gone' in by_name['Fading'] and 'opacity: 0.50' in by_name['Fading'] and '👻' in by_name['Fading']
-    assert f'opacity: {ph.GHOST_OPACITY:.2f}' in by_name['Ghost']
-    # left to right by lean
-    assert html.index('</span>Fresh') < html.index('</span>Live') < html.index('</span>Fading') < html.index('</span>Ghost')
-    assert '2 of 4 outlets still showing it' in html
+    # left to right by lean, a dropped one hollow (its state 'gone'), a new one's hover card says so
+    assert [(d['outlet'], d['state']) for d in c['dots']] == [('Fresh', 'fresh'), ('Live', 'live'), ('Fading', 'gone'),
+                                                              ('Ghost', 'gone')]
+    fresh, _, fading, _ = c['dots']
+    assert '✨ new on its front page' in fresh['tip'] and 'dropped off its front page 6 hours ago' in fading['tip']
+    assert fresh['fill'] == ph.bias_colors[1] and fresh['head'] == 'Fresh · left' and fresh['url'] == 'u0'
+    assert stickers['showing']['big'] == '2/4' and '2 of them still' in stickers['showing']['tip']
 
 
 def test_chip_feelings_and_short_names(chip_globals, monkeypatch):
-    # The face is the headline's own strongest feeling (none when neutral), not its mood: an obituary is sad, not angry
-    html, _ = run_chips(chip_cluster([
+    # The feeling is the headline's own strongest one (none when neutral), not its mood: an obituary is sad, not angry
+    _, c = run_chips(chip_cluster([
         {'agency': 'The Wall Street Journal', 'sentiment': 0.4, 'emotion_ranks': 'hope,joy'},
         {'agency': 'CNN', 'sentiment': -0.3, 'emotion_ranks': 'sadness,fear'},
         {'agency': 'AP', 'sentiment': 0.0, 'emotion_ranks': 'neutral'}]), monkeypatch=monkeypatch)
-    assert 'WSJ 🤞' in html and 'CNN 😭' in html and 'AP</a>' in html and '😠' not in html
-    assert 'Wall Street Journal' not in html.split('<div class="chips">')[1].split('title=')[0]
+    by = {d['outlet']: d for d in c['dots']}
+    assert 'feels like hope' in by['The Wall Street Journal']['tip'] and 'feels like sadness' in by['CNN']['tip']
+    assert 'feels like' not in by['AP']['tip'] and by['The Wall Street Journal']['link'] == 'read it on WSJ →'
 
 
 def test_mood_is_compared_with_the_other_outlets_only():
@@ -511,16 +511,16 @@ def test_mood_is_compared_with_the_other_outlets_only():
 
 @pytest.mark.parametrize('minutes, breaking', [(ph.BREAKING_MINUTES - 1, True), (ph.BREAKING_MINUTES, False)])
 def test_breaking_fallback_text(chip_globals, monkeypatch, minutes, breaking):
-    html, _ = run_chips(chip_cluster([{}], first_minutes=minutes), monkeypatch=monkeypatch)
-    assert ('🆕 new' in html) == breaking and 'BREAKING' not in html
-    if not breaking:
-        assert 'First seen 1 hour ago' in html
+    stickers, _ = run_chips(chip_cluster([{}], first_minutes=minutes), monkeypatch=monkeypatch)
+    age = stickers['age']
+    assert age['new'] == breaking and (age['emoji'] == '🆕') == breaking
+    assert age['big'] == (f'{minutes} min' if breaking else '1 h') and age['first']
 
 
 @pytest.mark.parametrize('speed, shown', [(ph.FAST_BREAK, True), (ph.FAST_BREAK - 1, False), (None, False)])
 def test_fast_break_badge(chip_globals, monkeypatch, speed, shown):
-    html, _ = run_chips(chip_cluster([{}], speed=speed), monkeypatch=monkeypatch)
-    assert ('fast-break' in html) == shown
+    stickers, _ = run_chips(chip_cluster([{}], speed=speed), monkeypatch=monkeypatch)
+    assert ('🚀' in stickers['age']['small']) == shown
 
 
 def test_table_rows():
@@ -638,13 +638,13 @@ def test_table_packs_and_unpacks_to_the_same_rows():
     rows = [{'agency': 'CNN', 'bias': -1, 'rated': True, 'url': 'https://cnn.com/a', 'title': 'A "quoted" <title>',
              'seen': 1791093666, 'buzz': 90, 'topic': 'Supreme Court', 'topic_url': 'Supreme_Court.html', 'mood': -1,
              'loaded': 1, 'feelings': [['🤬', 'anger'], ['😨', 'fear']], 'story': 3, 'story_title': 'Climate case',
-             'story_size': 12},
+             'story_size': 12, 'words': 9},
             {'agency': 'Fox News', 'bias': 2, 'rated': True, 'url': 'http://foxnews.com/b', 'title': 'B',
              'seen': None, 'buzz': 10, 'topic': '', 'topic_url': '', 'mood': None, 'loaded': None, 'feelings': [],
-             'story': None, 'story_title': '', 'story_size': 0},
+             'story': None, 'story_title': '', 'story_size': 0, 'words': 1},
             {'agency': 'CNN', 'bias': -1, 'rated': True, 'url': 'https://cnn.com/c', 'title': 'C', 'seen': 1,
              'buzz': 50, 'topic': 'Supreme Court', 'topic_url': 'Supreme_Court.html', 'mood': 0, 'loaded': 0,
-             'feelings': [['😨', 'fear']], 'story': 3, 'story_title': 'Climate case', 'story_size': 12}]
+             'feelings': [['😨', 'fear']], 'story': 3, 'story_title': 'Climate case', 'story_size': 12, 'words': 4}]
     rows[0]['feelings'] = [[ph.EMOTION_EMOJI['anger'], 'anger'], [ph.EMOTION_EMOJI['fear'], 'fear']]
     rows[2]['feelings'] = [[ph.EMOTION_EMOJI['fear'], 'fear']]
     packed = ph.pack_table(rows)
@@ -710,8 +710,8 @@ def test_names_for_one_subject_become_one(monkeypatch, tmp_path):
 
 def test_a_link_to_another_site_is_marked_as_one(chip_globals, monkeypatch):
     assert ph.site_name('https://www.bbc.co.uk/news/x') == ph.site_name('https://www.bbc.com/news/y') == 'bbc'
-    html, _ = run_chips(chip_cluster([
+    _, c = run_chips(chip_cluster([
         {'agency': 'Rolling Stone', 'url': 'https://www.rollingstone.com/a'}, {'agency': 'Rolling Stone', 'url': 'https://www.rollingstone.com/b'},
         {'agency': 'Rolling Stone', 'url': 'https://www.indiewire.com/c'}]), monkeypatch=monkeypatch)
-    chips = html.split('<div class="chips">')[1].split('</a>')
-    assert sum('↗' in c for c in chips) == 1 and 'a piece on indiewire.com' in html
+    marked = [d for d in c['dots'] if '↗' in d['tip']]
+    assert len(marked) == 1 and 'a piece on indiewire.com' in marked[0]['tip']

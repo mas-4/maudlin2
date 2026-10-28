@@ -1,0 +1,222 @@
+/* Story cards' outlet dots and stickers, the headline table's buzz bars, story broadcast boards, saga parts */
+
+/* The Oct 28 redo of the stories, story and saga pages and the headline table (the person: "Use that as an example
+   ... do it all", of the aisle's ranked strips) */
+
+/* --- Story cards: the numbers as stickers --------------------------------------------------------------------- */
+.card-stickers {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45em 0.5em;
+    padding: 0;
+    margin: 0.6em 0 0.5em;
+}
+
+.card-sticker {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3em;
+    padding: 0.2em 0.6em;
+    background: color-mix(in srgb, var(--pop, #ff4fa3) 12%, white);
+    border: 2px solid #1f1f2e;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 var(--pop, #ff4fa3);
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    transform: rotate(-1.5deg);
+    cursor: help;
+}
+
+.card-sticker:nth-child(even) {
+    transform: rotate(1.5deg);
+}
+
+.card-sticker b {
+    font: 1.05em 'Bungee', 'Comic Neue', sans-serif;
+}
+
+.card-sticker-small {
+    color: #444;
+}
+
+.card-sticker a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3em;
+    color: inherit;
+    text-decoration: none;
+}
+
+.card-sticker-churn {
+    background: color-mix(in srgb, #ffc400 28%, white);
+    cursor: pointer;
+}
+
+.card-sticker-age .card-sticker-emoji {
+    font-size: 1.05em;
+}
+
+/* --- Story cards: the outlets as one strip of dots, left to right by lean ------------------------------------- */
+.dot-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+    margin: 0.3em 0 0.2em;
+    padding: 0.35em 0.4em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 12px;
+}
+
+.dot-end {
+    font-size: 1.05em;
+    margin: 0 0.15em;
+}
+
+.outlet-dot {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    text-decoration: none;
+    border-radius: 50%;
+    transition: transform 0.12s;
+}
+
+.dot-disc {
+    display: block;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #1f1f2e;
+    background: var(--dot);
+}
+
+/* Hollow: dropped off its front page. The ink rim stays, the lean color a ring inside it */
+.dot-gone .dot-disc {
+    background: #ffffff;
+    box-shadow: inset 0 0 0 2.5px var(--dot);
+}
+
+/* Dashed: no lean rating (white) or our own estimate (its lean color) */
+.dot-unrated .dot-disc, .dot-estimate .dot-disc {
+    border-style: dashed;
+}
+
+.dot-unrated.dot-gone .dot-disc {
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+.dot-pencil {
+    position: absolute;
+    top: -7px;
+    right: -3px;
+    font-size: 10px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+a.outlet-dot:hover, a.outlet-dot:focus-visible, a.outlet-dot.hover-card-on {
+    transform: scale(1.3);
+    z-index: 1;
+}
+
+a.outlet-dot:focus-visible {
+    outline: 2px solid #1f1f2e;
+    outline-offset: 1px;
+}
+
+@media (max-width: 760px) {
+    /* a phone: each dot a tap-sized target */
+    .dot-strip {
+        gap: 0;
+        padding: 0.2em;
+    }
+
+    a.outlet-dot {
+        width: 40px;
+        height: 40px;
+    }
+
+    a.outlet-dot .dot-disc {
+        width: 24px;
+        height: 24px;
+    }
+
+    a.outlet-dot .dot-pencil {
+        top: 2px;
+        right: 1px;
+        font-size: 13px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .outlet-dot { transition: none; }
+    a.outlet-dot:hover, a.outlet-dot:focus-visible, a.outlet-dot.hover-card-on { transform: none; }
+}
+
+/* What the dots mean, once above the cards */
+.dot-key {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35em 0.9em;
+    padding: 0.4em 0.8em;
+    margin: 0.4em auto 1em;
+    max-width: 60em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 12px;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+}
+
+.dot-key li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+}
+
+/* The one-sided stories' pair of boards, inside their fold */
+.crossing-watch .rank-boards {
+    margin-top: -0.4em;
+}
+
+/* --- The headline table: a banner title, buzz as a thin bar with its count ------------------------------------ */
+.table-banner {
+    font-size: 1.6em;
+    margin-top: 0.8em;
+}
+
+.buzz-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    min-height: 28px;
+    cursor: help;
+}
+
+.buzz-track {
+    flex: 1;
+    min-width: 3em;
+}
+
+.buzz-bar {
+    display: block;
+    box-sizing: border-box;
+    height: 10px;
+    background: #ff6b1a;
+    border: 1.5px solid #1f1f2e;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.buzz-cell b {
+    min-width: 1.4em;
+    text-align: right;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    font-variant-numeric: tabular-nums;
+}
