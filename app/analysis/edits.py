@@ -42,7 +42,12 @@ LIST_NUMBER = re.compile(r'^\s*\d{1,2}\s*[,.)]\s+')  # a rank from a "most read"
 VIEW_COUNT = re.compile(r'^\s*[\d.,]+[kKmM]?\s+views\s*:\s*', re.IGNORECASE)  # "114.7k views : "
 # Live blogs keep one url and swap in a headline for each new development, so their changes aren't edits
 # (an all-caps LIVE tag counts; the plain word "live" doesn't: "Live music returns", "Best cities to live in")
-LIVE = re.compile(r'(?-i:\bLIVE\b)|\blive (?:updates?|blog|coverage)\b|\bas it happened\b', re.IGNORECASE)
+# Oct 28: and "Live Score" match pages (News 18, Times of India) and title-case labels ("Israel Elections Live: …")
+LIVE = re.compile(r'(?-i:\bLIVE\b|\bLive\s*:)|\blive (?:updates?|blog|coverage)\b|\blive[- ]?scores?\b|\bas it happened\b',
+                  re.IGNORECASE)
+# ...and the url often says so when the headline doesn't (/liveblog/, -live-updates, -live-score-): 178 of a week's
+# 3,367 rewrites on Oct 28 were live pages. Not France 24's /live-news/, a wire section of ordinary articles
+LIVE_URL = re.compile(r'live-?blog|live-(?:updates?|scores?|coverage)\b|/live/', re.IGNORECASE)
 # Below this share of words in common, the url now carries a different story (reused or rotating), not a rewrite
 MIN_OVERLAP = 0.2
 WORD = re.compile(r"[\w$%'’]+")
@@ -120,7 +125,8 @@ def find_edits(days: int = WINDOW_DAYS) -> tuple[pd.DataFrame, pd.DataFrame]:
                 continue  # same words, or both on the page at once
             if any(r['news'] is not None and r['news'] < NEWS_THRESHOLD for r in (old, new)):
                 continue
-            if LIVE.search(old['title']) or LIVE.search(new['title']) or overlap(old['title'], new['title']) < MIN_OVERLAP:
+            if (LIVE.search(old['title']) or LIVE.search(new['title']) or LIVE_URL.search(new['url'] or '')
+                    or overlap(old['title'], new['title']) < MIN_OVERLAP):
                 continue  # a live blog or a reused url, not a rewrite
             clean = lambda t: LIST_NUMBER.sub('', VIEW_COUNT.sub('', t.strip())).strip()  # noqa: E731
             old['title'], new['title'] = clean(old['title']), clean(new['title'])

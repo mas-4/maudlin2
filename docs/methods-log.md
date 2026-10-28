@@ -4,6 +4,12 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-28
+- **Live pages aren't headline edits.** The headline-changes count skipped live blogs only when the headline said
+  "LIVE" or "live updates". It now also skips "Live Score" match pages (News 18, Times of India), title-case labels
+  ("Israel Elections Live:") and pages whose address marks them live (/liveblog/, -live-updates, -live-score-, the
+  Guardian's /live/). On Oct 28 that took 186 of a week's 3,367 rewrites out, 46 of them live-score pages.
+
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
   front page's cards ("🧩 told as"). A show claim is tied to the story on the front pages it is nearest in meaning to
