@@ -37,7 +37,7 @@ from app.utils.config import Config
 PAGES = ['index.html', 'stories.html', 'headlines.html', 'glossary.html', 'emotions.html', 'agencies.html', 'edits.html', 'court.html',
          'sagas.html', 'names.html', 'radio.html', 'tv.html']
 NAV_LINKS = ['stories.html', 'motifs.html', 'sagas.html',
-             'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html',
+             'headlines.html', 'agencies.html', 'edits.html', 'emotions.html', 'names.html', 'court.html', 'archive.html', 'play.html',
              'tv.html', 'radio.html', 'beyond.html', 'folklore.html', 'motifs.html', 'motif-map.html',
              'about.html', 'glossary.html', 'lab.html', 'methods.html', 'feed.xml']
 # Fewer headlines than a real build: enough for stories to form, a fraction of the time

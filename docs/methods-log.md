@@ -4,6 +4,20 @@ Every change to how bignews.day collects or measures things, dated. A chart that
 read with the change in mind. Newest first. Scores in the database carry `scored_by` (model plus a rubric hash) from
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
+## 2026-10-28
+- **Headline games (🎲 Play).** Two word models (TF-IDF and logistic regression) pick each day's puzzles, trained on
+  the 21 days before the puzzles' window and scored on the window itself, after stripping scraper residue (bylines
+  glued on the end, "3 hours ago", "via Getty", view counts, kickers). *Real or satire?* sets two or three satire
+  titles (from left- and right-leaning satire feeds) the satire model takes for news among real front-page headlines
+  from the same three days it takes for satire; the real ones come only from news reports (news score 0.5 or more) by
+  center, leaning or unrated outlets, since the strongly partisan outlets' satire-looking headlines were mostly
+  outrage pieces about named people. *Guess the lean* uses headlines from the last two days that the lean model reads
+  at 0.85 confidence or more and gets right (on a held-out week, 17% of headlines at 91% precision; 62.6% right
+  overall against a 41% baseline); the answer is the outlet's AllSides rating. *Same story, two papers* takes, among
+  the six biggest stories of the last 30 hours, the left-rated outlet's most left-typical headline and the right-rated
+  outlet's most right-typical, sharing at least one word that matters. Scores count both kinds of right answer.
+  Offensive words, quizzes, cartoons and headlines naming an outlet are left out.
+
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
   front page's cards ("🧩 told as"). A show claim is tied to the story on the front pages it is nearest in meaning to
