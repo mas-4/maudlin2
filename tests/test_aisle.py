@@ -62,3 +62,63 @@ def test_a_motif_rises_when_told_twice_as_often_this_week():
     dots = {d['id']: d for d in page_aisle.place(web, today=date(2026, 10, 27))}
     assert dots['lawfare']['trend'] == 'rising' and dots['fading']['trend'] == 'fading'
     assert dots['lawfare']['daily'][-3:] == [1, 2, 1] and 'days3' in dots['lawfare']['spots']
+
+
+def crossover(motif, teller, source):
+    """A telling on a crossover show: no side on the aisle, its group from app/sidefeeds.py"""
+    return dict(row(motif, None, teller), show_source=source)
+
+
+def test_only_in_the_center_means_center_shows_and_no_other_shows_at_all():
+    web = {'rows': [row('french', 'center', 'Daily'), row('french', 'center', 'Up First'),  # two center shows: in
+                    row('once', 'center', 'Daily'),  # one show's habit, not the center's
+                    row('clipped', 'center', 'Daily'), row('clipped', 'center', 'Up First'),
+                    row('clipped', 'left', 'Pod', speaker='clip'),  # a left show played it: heard on the left
+                    row('crossed', 'center', 'Daily'), row('crossed', 'center', 'Up First'),
+                    crossover('crossed', 'Rogan', 'pod_rogan'),
+                    row('both', 'left', 'Pod'), row('both', 'right', 'Bongino'), row('both', 'center', 'Daily'),
+                    crossover('rogan', 'Rogan', 'pod_rogan'), crossover('rogan', 'Dillon', 'pod_dillon')],
+           'entries': {m: {'name': m.title(), 'note': ''} for m in ('french', 'once', 'clipped', 'crossed', 'both', 'rogan')}}
+    center = page_aisle.only_in(web, 'center')
+    assert [d['id'] for d in center] == ['french'] and center[0]['shows'] == ['Daily', 'Up First']
+    # crossover is its own group: a motif only crossover shows told is theirs (and never placed on the aisle)
+    assert [d['id'] for d in page_aisle.only_in(web, 'crossover')] == ['rogan']
+    assert 'rogan' not in {d['id'] for d in page_aisle.place(web)}
+
+
+def test_the_lists_color_each_motif_by_its_genre_with_its_emoji():
+    items = [{'name': 'Voter fraud', 'href': 'm1.html', 'genre': 'Theories', 'week': 9},
+             {'name': 'Sports', 'href': 'm2.html', 'genre': 'Perennials', 'week': 3}]
+    rows = page_aisle.strip(items, lambda d: d['week'], lambda d: str(d['week']), lambda d: d['genre'])
+    assert rows[0]['ink'] == page_aisle.GENRE_INK['Theories'] and rows[0]['emoji'] == '🕵️' and rows[0]['bar'] == 100
+    assert rows[1]['ink'] == page_aisle.UNCOLORED and rows[1]['emoji'] == '🌻' and rows[1]['bar'] == 33
+    inks = list(page_aisle.GENRE_INK.values())
+    assert len(set(inks)) == len(inks) and not set(inks) & set(page_aisle.LEAN_INK.values())  # never a lean color
+    assert list(page_aisle.GENRE_INK) == [g for g in page_aisle.GENRE_EMOJI if g in page_aisle.GENRE_INK]  # fixed order
+
+
+def test_the_aisle_page_renders_its_lists_as_ranked_strips(tmp_path, monkeypatch):
+    from bs4 import BeautifulSoup
+
+    from app.site.common import j2env
+    from app.utils.config import Config
+    monkeypatch.setattr(Config, 'build', str(tmp_path))
+    monkeypatch.setitem(j2env.globals, 'icons', {})
+    rows = [row('french', 'center', 'Daily'), row('french', 'center', 'Up First'),
+            dict(row('lawfare', 'left', 'Pod'), genre='Theories'), dict(row('lawfare', 'right', 'Bongino'), genre='Theories'),
+            row('senile', 'left', 'Pod'), row('senile', 'left', 'Majority')]
+    entries = {m: {'name': m.title(), 'note': ''} for m in ('french', 'lawfare', 'senile')}
+    monkeypatch.setattr(page_aisle, 'shared', lambda: {'web': {'rows': rows, 'entries': entries, 'answers': {}}})
+    page_aisle.AislePage().generate()
+    soup = BeautifulSoup((tmp_path / 'motif-map.html').read_text(encoding='utf-8'), 'html.parser')
+    lists = soup.select_one('.aisle-lists')
+    assert not lists.select('.stage-notes') and not lists.select('[title]')  # no dashed boxes, no tooltips
+    boards = {b.h3.get_text(strip=True): b for b in lists.select('.aisle-board')}
+    assert set(boards) >= {'🫏 Mostly left', '🐘 Mostly right', '⚖️ Told on both sides', '🎯 Only in the center'}
+    center = boards['🎯 Only in the center'].select('.aisle-row')
+    assert [a.select_one('.aisle-row-name').text for a in center] == ['French']
+    assert 'Daily, Up First' in center[0]['data-tip'] and '--genre: #a0522d' in center[0]['style']  # Plots' brown
+    both = boards['⚖️ Told on both sides'].select_one('.aisle-row')
+    assert both.select_one('[role=img]')['aria-label'] == 'Theories' and '#8a5cff' in both['style']
+    assert [k.b.text for k in lists.select('.aisle-key-item')][:2] == ['Archetypes', 'Plots']
+    assert '🦗' in boards['🐘 Mostly right'].text  # an empty list says so
