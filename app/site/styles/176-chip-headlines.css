@@ -1,0 +1,42 @@
+/* A headline beside its outlet's chip */
+
+/* Across the site an outlet chip is followed by its headline as a plain link, which read as browser-default underlined
+   text next to the hand-drawn chips (Oct 28, the person: "incongruous, somewhat hard to read and just kind of bad").
+   The headline takes the chips' voice instead: ink, Comic Neue, no underline until pointed at; a list of them lines
+   up as rows, each chip beside its headline. */
+.edit-chip + a:not(.edit-chip):not(.storylink),
+.storylink + a:not(.edit-chip):not(.storylink) {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    font-size: 1.02em;
+    line-height: 1.35;
+    color: #1f1f2e;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.edit-chip + a:not(.edit-chip):not(.storylink):hover,
+.storylink + a:not(.edit-chip):not(.storylink):hover {
+    text-decoration: underline wavy #ff4fa3;
+    text-underline-offset: 3px;
+}
+
+li:has(> .edit-chip + a:not(.edit-chip)),
+li:has(> .storylink + a:not(.storylink)) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25em 0.55em;
+    list-style: none;
+    padding: 0.35em 0;
+}
+
+li:has(> .edit-chip + a:not(.edit-chip)) > .edit-chip,
+li:has(> .storylink + a:not(.storylink)) > .storylink {
+    flex: none;
+}
+
+li:has(> .edit-chip + a:not(.edit-chip)) + li,
+li:has(> .storylink + a:not(.storylink)) + li {
+    border-top: 2px solid #ececf3;
+}
