@@ -29,7 +29,7 @@
                 <div class="echo-then">
                     <span class="echo-year echo-old">1896</span>
                     <blockquote class="echo-quote" data-tip-head="The OCR as printed" data-tip="{{ c.ocr|e }}">“{{ c.quote|e }}”</blockquote>
-                    <p class="echo-source">🗞️ <b>{{ c.paper|e }}</b>, {{ c.place|e }}, {{ c.day|e }}</p>
+                    <p class="echo-source">🗞️ {% if c.paper %}<b>{{ c.paper|e }}</b>, {{ c.place|e }}{% else %}a paper whose name our copy lost{% endif %}, {{ c.day|e }}</p>
                     <p class="echo-links">{% if c.papers > 1 %}<span class="echo-papers">🔁 printed in {{ c.papers }} papers</span>{% endif %}
                         <a class="echo-scan" href="{{ c.url|e }}" rel="noopener">📜 see the page →</a>
                         <span class="echo-checked">{% if c.reviewer == 'claude' %}🤖 checked by Claude{% else %}🧑 checked by a person{% endif %}</span></p>

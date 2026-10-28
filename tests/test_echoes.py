@@ -64,3 +64,12 @@ def test_the_menu_leaves_the_page_out_until_an_echo_is_approved(monkeypatch):
     assert 'echoes.html' not in hrefs()
     monkeypatch.setattr(echoes, 'any_approved', lambda: True)
     assert 'echoes.html' in hrefs()
+
+
+def test_a_card_whose_paper_lost_its_name_says_so():
+    """Oct 28: one 1896 letter came without its paper's name in American Stories"""
+    from app.site.common import j2env
+    html = j2env.get_template('echoes.html').render(cards=[{'id': 1, 'motif': 'M1', 'name': 'Not all men', 'href': '#',
+        'note': '', 'genre': 'Beliefs', 'mark': '🪨', 'ink': '#fff', 'today': '', 'quote': 'q', 'ocr': 'q', 'paper': '',
+        'place': '', 'day': 'October 21, 1896', 'url': 'u', 'papers': 1, 'reviewer': 'person'}], viral=None, genre_key=[])
+    assert 'a paper whose name our copy lost, October 21, 1896' in html
