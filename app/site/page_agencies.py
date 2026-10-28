@@ -154,8 +154,15 @@ def mark_types(outlets: list[dict], profile: dict) -> None:
         o['lean_look'] = lean_look(o)
 
 
+HOME = {str(Country.us), str(Country.gb)}  # the leaderboards' outlets (outlet_boards)
+
+
 def outlet_boards(outlets: list[dict], window_days: int) -> list[list[dict]]:
-    """The four answering pairs of leaderboards, each row colored by the outlet's type"""
+    """The four answering pairs of leaderboards, each row colored by the outlet's type. US and UK outlets only: the
+    wire match and the stories are built from them, and on the whole list Plainest and Least wire copy filled up with
+    outlets abroad (Xinhua, The Times of India) whose headlines we never match against the wires"""
+    outlets = [o for o in outlets if o['country'] in HOME]
+
     def rows(items, value, figure, tip):
         items = list(items)[:BOARD_ROWS]
         top = max((value(o) for o in items), default=0)
@@ -201,7 +208,7 @@ def outlet_boards(outlets: list[dict], window_days: int) -> list[list[dict]]:
                       'or Reuters headlines, word for word or nearly',
                       rows(sorted(wired, key=lambda o: -o['wire']), lambda o: o['wire'], lambda o: f"{o['wire']}%",
                            no_tip)),
-         boards.board('own', '🖋️', 'Least wire copy', '#ff4fa3', f'the least AP and Reuters copy first; the bar is '
+         boards.board('own', '🖋️', 'Writes its own', '#ff4fa3', f'the least AP and Reuters copy first; the bar is '
                       f'how many headlines it ran in {days}, the busiest first among equals',
                       rows(sorted(wired, key=lambda o: (o['wire'], -o['headlines'])), lambda o: o['headlines'],
                            lambda o: f"{o['wire']}% of {o['headlines']:,}", no_tip))),

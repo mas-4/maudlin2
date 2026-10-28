@@ -140,3 +140,15 @@ def test_outlet_pages_split_the_front_page_and_compare(site):  # noqa: F811
         for row in soup.select('.ovs-figure'):
             assert re.search(r'median', row.get_text())
     assert seen_pack and seen_only and seen_feel and seen_vs
+
+
+def test_the_leaderboards_hold_us_and_uk_outlets_only():
+    """Oct 28: on the whole list Plainest and Least wire copy filled with outlets abroad we never match to the wires"""
+    from app.site import page_agencies as pa
+    from app.utils.constants import Country
+    def outlet(name, country):
+        return {'name': name, 'slug': name.lower(), 'country': str(country), 'shares': dict.fromkeys(('stirs', 'plain', 'grim', 'sunny'), 50),
+                'edits': 1, 'headlines': 100, 'wire': 0, 'look': {'ink': '#fff', 'mark': '•', 'name': 'x'}, 'lean_look': {}}
+    pairs = pa.outlet_boards([outlet('Fox', Country.us), outlet('BBC', Country.gb), outlet('Xinhua', Country.cn)], 30)
+    names = {r['name'] for pair in pairs for b in pair for r in b['rows']}
+    assert 'Xinhua' not in names and {'Fox', 'BBC'} <= names
