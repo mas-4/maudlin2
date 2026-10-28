@@ -299,6 +299,11 @@ def part_runs(parts: list[dict]) -> list[dict]:
     return [{'fold': not r['now'] and len(r['parts']) >= FOLD_RUN, 'parts': r['parts']} for r in runs]
 
 
+RETIRED = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Moved</title>'
+           '<link rel="canonical" href="{to}"><meta http-equiv="refresh" content="0; url={to}"></head>'
+           '<body><p>This page is retired: <a href="{to}">the front page</a>.</p></body></html>')
+
+
 class HeadlinesPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
@@ -306,7 +311,6 @@ class HeadlinesPage:
         # The headline table has a page of its own, rendered from the same template (`page_part` picks the sections)
         self.table_page = TemplateHandler('headlines.html', 'headlines.html')
         self.stories_page = TemplateHandler('headlines.html', 'stories.html')
-        self.newsletter = TemplateHandler('newsletter.html')
         self.context = {'title': 'Current Headlines', 'page_title': 'Big News Day', 'breaking_minutes': BREAKING_MINUTES}
 
     def generate(self):
@@ -331,7 +335,10 @@ class HeadlinesPage:
         self.context['table_file'] = TABLE_FILE
         # Saved under a dated name, so a reader's downloads from different hours don't overwrite each other
         self.context['table_download'] = f"bignews-headlines-{pd.Timestamp.now(tz='US/Eastern'):%Y-%m-%d-%H%M}.json"
-        self.newsletter.write(self.context)
+        # The 2024 email template's page is retired (Oct 28: unstyled, garbled, linked from nowhere); its address sends
+        # anyone who kept it to the front page
+        with open(os.path.join(Config.build, 'newsletter.html'), 'w', encoding='utf-8') as f:
+            f.write(RETIRED.format(to='index.html'))
         self.write_feed()
         try:  # the stories being told: the motifs told most lately, a door from the news into the motif index
             from app.site.page_motif import shared, told_now

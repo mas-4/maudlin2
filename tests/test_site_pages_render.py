@@ -959,3 +959,9 @@ def test_an_ended_saga_points_on(monkeypatch, tmp_path):
     assert 'url=story-136.html' in (tmp_path / 'saga-17.html').read_text()
     assert 'url=saga-1.html' in (tmp_path / 'saga-3.html').read_text() and 'This saga has ended' in (tmp_path / 'saga-3.html').read_text()
     assert 'url=sagas.html' in (tmp_path / 'saga-2.html').read_text()
+
+
+def test_the_retired_newsletter_page_sends_readers_to_the_front_page(site):
+    """Oct 28: the 2024 email template's page was unstyled, garbled and linked from nowhere"""
+    page = (site['build'] / 'newsletter.html').read_text(encoding='utf-8')
+    assert 'url=index.html' in page and 'retired' in page

@@ -32,17 +32,10 @@ SPARK_DAYS = 21  # the card's sparkline: tellings a day
 RISING_MIN = 3  # a motif rises when told at least this often this week and at least twice as often as the week before
 ONLY_LEAST = 2  # "only in the center": said on at least this many of the group's shows, so one show's habit isn't the group's
 
-# The lists under the map, colored by genre (Oct 28, the person: the chips were "plain as hell"; color an axis they don't
-# show). Five colors for the five biggest genres (93% of tellings): of 14 hues tried, no set of more than five stays apart
-# for every pair under color blindness (the dataviz validator, all pairs on white: worst deutan ΔE 7.6, the olive and
-# brown, in the floor band, so the emoji always goes with the color), and none is the lean blue or red. The rest (Values, Exhortations, Perennials) stay white,
-# known by their emoji. Fixed to the genre, in GENRE_EMOJI order, never cycled.
-GENRE_INK = {'Archetypes': '#e87ba4', 'Plots': '#a0522d', 'Beliefs': '#7a8a00', 'Theories': '#8a5cff',
-             'Arguments': '#eda100'}
-UNCOLORED = '#ffffff'
-GENRE_SHORT = {'Archetypes': 'a kind of person', 'Plots': 'what happened', 'Beliefs': 'a premise',
-               'Theories': 'what people think is behind it', 'Arguments': 'a move in an argument',
-               'Values': 'how things ought to be', 'Exhortations': 'a call to act', 'Perennials': 'safe small talk'}
+# The lists under the map, colored by genre (Oct 28, the person: the chips were "plain as hell"; color an axis they
+# don't show): the shared ranked strips (app/site/boards.py)
+from app.site import boards as strips  # noqa: E402
+from app.site.boards import GENRE_INK, UNCOLORED, genre_key as _genre_key, genre_row  # noqa: E402, F401 (re-exported)
 
 
 def where(rs: list[dict]) -> dict | None:
@@ -120,9 +113,7 @@ def strip(items: list[dict], value, figure, tip) -> list[dict]:
     """A list under the map as a ranked strip: each motif's genre (emoji and color), its bar (`value` against the
     list's biggest) and its figure, with the detail in data-tip for the pop-up cards"""
     top = max((value(d) for d in items), default=0) or 1
-    return [{'name': d['name'], 'href': d['href'], 'genre': d['genre'] or 'No genre yet',
-             'emoji': GENRE_EMOJI.get(d['genre'], '🧩'), 'ink': GENRE_INK.get(d['genre'], UNCOLORED),
-             'bar': max(4, round(100 * value(d) / top)), 'figure': figure(d), 'tip': tip(d)} for d in items]
+    return [genre_row(d['name'], d['href'], d['genre'], value(d), top, figure(d), tip(d)) for d in items]
 
 
 def sides_tip(d: dict) -> str:
@@ -133,8 +124,8 @@ def lists(dots: list[dict], web: dict) -> list[dict]:
     """The ranked lists under the map, in pairs that answer each other: rising and fading, left and right, both sides
     and only in the center (and only on crossover shows, when any motif is)"""
     def board(key, emoji, title, stage, sub, items, value, figure, tip):
-        return {'key': key, 'emoji': emoji, 'title': title, 'stage': stage, 'sub': sub,
-                'rows': strip(items, value, figure, tip)}
+        return strips.board(key, emoji, title, stage, sub, strip(items, value, figure, tip),
+                            empty='🦗 None yet: no motif fits this list today.')
     week = lambda d: f"{d['genre'] or 'no genre yet'}: {d['before']} tellings the week before, {d['week']} in the last 7 days"  # noqa: E731
     split = lambda d: f"🫏 {d['left']} · {d['right']} 🐘"  # noqa: E731
     only_tip = lambda d: f"{d['genre'] or 'no genre yet'}: said on {', '.join(d['shows'])}"  # noqa: E731
@@ -169,12 +160,7 @@ def lists(dots: list[dict], web: dict) -> list[dict]:
 
 def genre_key(boards: list[dict]) -> list[dict]:
     """The lists' color key: the colored genres, then the uncolored ones the lists hold"""
-    shown = {r['genre'] for b in boards for r in b['rows']}
-    key = [{'genre': g, 'emoji': GENRE_EMOJI[g], 'ink': ink, 'about': GENRE_SHORT.get(g, '')}
-           for g, ink in GENRE_INK.items()]
-    rest = [g for g in GENRE_EMOJI if g not in GENRE_INK and g in shown]
-    return key + [{'genre': g, 'emoji': GENRE_EMOJI[g], 'ink': UNCOLORED, 'about': GENRE_SHORT.get(g, ''),
-                   'first_plain': i == 0} for i, g in enumerate(rest)]
+    return _genre_key([r for b in boards for r in b['rows']])
 
 
 def draw(dots: list[dict], arcs: list[tuple[str, str, str]]) -> Markup:

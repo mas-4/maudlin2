@@ -1,0 +1,21 @@
+{# Ranked strips (app/site/boards.py, styles/175-boards.css): `{% import 'boards.html' as b %}`. Nothing here is
+   escaped by the environment, so every field is escaped here. #}
+{% macro key(items, label='Colors') %}<ul class="rank-key" aria-label="{{ label|e }}">
+    {% for k in items %}{% if k.note %}<li class="rank-key-note">{{ k.note|e }}</li>{% endif %}<li class="rank-key-item{% if k.ink == '#ffffff' %} rank-key-plain{% endif %}" style="--ink: {{ k.ink|e }}"><span class="rank-mark" aria-hidden="true">{{ k.mark|e }}</span><b>{{ k.name|e }}</b>{% if k.about %}<span class="rank-key-about">{{ k.about|e }}</span>{% endif %}</li>
+    {% endfor %}</ul>{% endmacro %}
+
+{% macro board(b, level='h3') %}<section class="rank-board rank-board-{{ b.key|e }}" aria-labelledby="rank-{{ b.key|e }}">
+    <{{ level }} class="section-divider stage-banner rank-board-title" id="rank-{{ b.key|e }}" style="--stage: {{ b.stage|e }}"><span>{{ b.emoji|e }} {{ b.title|e }}</span></{{ level }}>
+    {% if b.sub %}<p class="stage-sub">{{ b.sub|e }}</p>{% endif %}
+    {% if b.rows %}<ol class="rank-list">
+        {% for r in b.rows %}<li><{% if r.href %}a href="{{ r.href|e }}"{% else %}div tabindex="0"{% endif %} class="rank-row" style="--ink: {{ r.ink|e }}; --bar: {{ r.bar }}%{% if r.split is not none %}; --split: {{ r.split }}%{% endif %}"{% if r.tip %} data-tip="{{ r.tip|e }}"{% endif %}>
+            <span class="rank-mark" role="img" aria-label="{{ r.mark_label|e }}">{{ r.mark|e }}</span>
+            <span class="rank-main"><span class="rank-name">{{ r.name|e }}</span><span class="rank-bar{% if r.split is not none %} rank-bar-split{% endif %}" aria-hidden="true"></span></span>
+            <span class="rank-figure">{{ r.figure|e }}</span></{% if r.href %}a{% else %}div{% endif %}></li>
+        {% endfor %}</ol>
+    {% else %}<p class="stage-empty">{{ b.empty|e }}</p>{% endif %}
+</section>{% endmacro %}
+
+{% macro boards(list, level='h3') %}<div class="rank-boards">
+    {% for b in list %}{{ board(b, level) }}
+    {% endfor %}</div>{% endmacro %}

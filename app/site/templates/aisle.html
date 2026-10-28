@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% block content %}
     <header class="story-hero aisle-hero">
@@ -66,22 +67,8 @@
     <section class="aisle-lists" aria-labelledby="aisle-lists">
         <h2 class="section-divider stage-banner" id="aisle-lists" style="--stage: #00c2a8"><span>🧩 Who tells what</span></h2>
         <p class="stage-sub">the motifs on the map, ranked, in pairs; each colored by its genre, the layer of story it is</p>
-        <ul class="aisle-key" aria-label="Genre colors">
-            {% for k in genre_key %}{% if k.first_plain %}<li class="aisle-key-note">⚪ left white, the smaller genres:</li>{% endif %}<li class="aisle-key-item{% if k.ink == '#ffffff' %} aisle-key-plain{% endif %}" style="--genre: {{ k.ink }}"><span class="aisle-row-genre" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.genre|e }}</b>{% if k.about %}<span class="aisle-key-about">{{ k.about }}</span>{% endif %}</li>
-            {% endfor %}</ul>
-        <div class="aisle-boards">
-            {% for b in boards %}<section class="aisle-board aisle-board-{{ b.key }}" aria-labelledby="aisle-{{ b.key }}">
-                <h3 class="section-divider stage-banner aisle-board-title" id="aisle-{{ b.key }}" style="--stage: {{ b.stage }}"><span>{{ b.emoji }} {{ b.title }}</span></h3>
-                <p class="stage-sub">{{ b.sub }}</p>
-                {% if b.rows %}<ol class="aisle-rank">
-                    {% for r in b.rows %}<li><a class="aisle-row" href="{{ r.href }}" style="--genre: {{ r.ink }}; --bar: {{ r.bar }}%" data-tip="{{ r.tip|e }}">
-                        <span class="aisle-row-genre" role="img" aria-label="{{ r.genre|e }}">{{ r.emoji }}</span>
-                        <span class="aisle-row-main"><span class="aisle-row-name">{{ r.name|e }}</span><span class="aisle-row-bar" aria-hidden="true"></span></span>
-                        <span class="aisle-row-figure">{{ r.figure|e }}</span></a></li>
-                    {% endfor %}</ol>
-                {% else %}<p class="stage-empty">🦗 None yet: no motif fits this list today.</p>{% endif %}
-            </section>
-            {% endfor %}</div>
+        {{ b.key(genre_key, 'Genre colors') }}
+        {{ b.boards(boards) }}
         <p class="court-when">{{ unplaced }} more motifs were told only online, by fact-checkers or by voters, or came up on the shows only in clips and calls: they're in <a href="motifs.html">the index</a>.</p>
     </section>
 

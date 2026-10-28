@@ -1,0 +1,184 @@
+/* Ranked strips, the site's lists (app/site/boards.py, templates/boards.html) */
+
+/* From the aisle's lists (Oct 28): a key of the colored axis; boards two by two where there's room, one under the
+   other on a phone; each row a rank, a colored disc with its emoji, the name over a thin bar, and the figure; names a
+   full size, rows a tap-sized target */
+.rank-key {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5em 0.7em;
+    padding: 0;
+    margin: 0.4em 0 0.6em;
+}
+
+.rank-key-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    background: white;
+    border: 2px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 #1f1f2e;
+    padding: 0.15em 0.75em 0.15em 0.2em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e;
+    transform: rotate(-1deg);
+}
+
+.rank-key-item:nth-child(even) {
+    transform: rotate(1deg);
+}
+
+.rank-key-about {
+    font-size: 0.85em;
+    color: #555;
+}
+
+.rank-key-note {
+    align-self: center;
+    font: 700 0.9em 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+    padding: 0.1em 0.5em;
+}
+
+@media (max-width: 760px) {
+    /* a phone: the key in a few lines, the genres' glosses left to the motif index */
+    .rank-key {
+        gap: 0.4em 0.45em;
+    }
+
+    .rank-key-item {
+        font-size: 0.88em;
+        padding-right: 0.55em;
+    }
+
+    .rank-key-about {
+        display: none;
+    }
+}
+
+.rank-mark {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 2em;
+    height: 2em;
+    border: 2px solid #1f1f2e;
+    border-radius: 50%;
+    background: var(--ink);
+    line-height: 1;
+}
+
+.rank-boards {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 2.2em;
+    align-items: start;
+}
+
+@media (min-width: 760px) {
+    .rank-boards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));  /* two, so each pair sits side by side */
+    }
+}
+
+.rank-board {
+    min-width: 0;
+}
+
+.rank-board-title {
+    font-size: 1.1em;
+    margin: 1.3em 0 0.1em;
+}
+
+.rank-board .stage-sub {
+    font-size: 0.92em;
+    margin-bottom: 0.5em;
+}
+
+.rank-list {
+    list-style: none;
+    counter-reset: rank-list;
+    padding: 0.3em 0.4em;
+    margin: 0 0 0.6em;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+}
+
+.rank-list li {
+    counter-increment: rank-list;
+}
+
+.rank-list li + li {
+    border-top: 2px solid #ececf3;
+}
+
+.rank-row {
+    display: grid;
+    grid-template-columns: 1.3em auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55em;
+    min-height: 44px;
+    padding: 0.3em 0.4em;
+    border-radius: 10px;
+    color: #1f1f2e;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+}
+
+.rank-row::before {
+    content: counter(rank-list);
+    font: 0.85em 'Bungee', 'Comic Neue', sans-serif;
+    color: #6b6f78;
+    text-align: right;
+}
+
+.rank-row:hover, .rank-row:focus-visible {
+    background: color-mix(in srgb, var(--ink) 16%, #fbfbfd);
+    transform: translateX(3px);
+}
+
+.rank-main {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.rank-name {
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+/* The bar: anchored at the left, its far end rounded, outlined in ink so the pale genres still show on white */
+.rank-bar {
+    display: block;
+    box-sizing: border-box;
+    width: var(--bar);
+    min-width: 8px;
+    height: 10px;
+    background: var(--ink);
+    border: 1.5px solid #1f1f2e;
+    border-radius: 2px 5px 5px 2px;
+}
+
+.rank-figure {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rank-row { transition: none; }
+    .rank-row:hover, .rank-row:focus-visible { transform: none; }
+}
+
+/* A two-tone bar: the left share in blue, the rest in red (a left/right mix) */
+.rank-bar.rank-bar-split {
+    background: linear-gradient(to right, #3a86ff var(--split), #ff4f6d var(--split));
+}

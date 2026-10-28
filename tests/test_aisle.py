@@ -90,8 +90,8 @@ def test_the_lists_color_each_motif_by_its_genre_with_its_emoji():
     items = [{'name': 'Voter fraud', 'href': 'm1.html', 'genre': 'Theories', 'week': 9},
              {'name': 'Sports', 'href': 'm2.html', 'genre': 'Perennials', 'week': 3}]
     rows = page_aisle.strip(items, lambda d: d['week'], lambda d: str(d['week']), lambda d: d['genre'])
-    assert rows[0]['ink'] == page_aisle.GENRE_INK['Theories'] and rows[0]['emoji'] == '🕵️' and rows[0]['bar'] == 100
-    assert rows[1]['ink'] == page_aisle.UNCOLORED and rows[1]['emoji'] == '🌻' and rows[1]['bar'] == 33
+    assert rows[0]['ink'] == page_aisle.GENRE_INK['Theories'] and rows[0]['mark'] == '🕵️' and rows[0]['bar'] == 100
+    assert rows[1]['ink'] == page_aisle.UNCOLORED and rows[1]['mark'] == '🌻' and rows[1]['bar'] == 33
     inks = list(page_aisle.GENRE_INK.values())
     assert len(set(inks)) == len(inks) and not set(inks) & set(page_aisle.LEAN_INK.values())  # never a lean color
     assert list(page_aisle.GENRE_INK) == [g for g in page_aisle.GENRE_EMOJI if g in page_aisle.GENRE_INK]  # fixed order
@@ -113,12 +113,12 @@ def test_the_aisle_page_renders_its_lists_as_ranked_strips(tmp_path, monkeypatch
     soup = BeautifulSoup((tmp_path / 'motif-map.html').read_text(encoding='utf-8'), 'html.parser')
     lists = soup.select_one('.aisle-lists')
     assert not lists.select('.stage-notes') and not lists.select('[title]')  # no dashed boxes, no tooltips
-    boards = {b.h3.get_text(strip=True): b for b in lists.select('.aisle-board')}
+    boards = {b.h3.get_text(strip=True): b for b in lists.select('.rank-board')}
     assert set(boards) >= {'🫏 Mostly left', '🐘 Mostly right', '⚖️ Told on both sides', '🎯 Only in the center'}
-    center = boards['🎯 Only in the center'].select('.aisle-row')
-    assert [a.select_one('.aisle-row-name').text for a in center] == ['French']
-    assert 'Daily, Up First' in center[0]['data-tip'] and '--genre: #a0522d' in center[0]['style']  # Plots' brown
-    both = boards['⚖️ Told on both sides'].select_one('.aisle-row')
+    center = boards['🎯 Only in the center'].select('.rank-row')
+    assert [a.select_one('.rank-name').text for a in center] == ['French']
+    assert 'Daily, Up First' in center[0]['data-tip'] and '--ink: #a0522d' in center[0]['style']  # Plots' brown
+    both = boards['⚖️ Told on both sides'].select_one('.rank-row')
     assert both.select_one('[role=img]')['aria-label'] == 'Theories' and '#8a5cff' in both['style']
-    assert [k.b.text for k in lists.select('.aisle-key-item')][:2] == ['Archetypes', 'Plots']
+    assert [k.b.text for k in lists.select('.rank-key-item')][:2] == ['Archetypes', 'Plots']
     assert '🦗' in boards['🐘 Mostly right'].text  # an empty list says so
