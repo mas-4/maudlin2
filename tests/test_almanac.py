@@ -17,14 +17,14 @@ def row(motif, day, kind='shows', side=None, teller='S'):
 
 def forecast(**kw) -> dict:
     """A small forecast in the tracked file's shape: two motifs and a frozen seal"""
-    f = {'about': 'test', 'dates': {'baseline': ['2026-10-03', '2026-10-26'], 'window': ['2026-11-03', '2026-11-09'],
+    f = {'about': 'test', 'dates': {'baseline': ['2026-10-20', '2026-10-26'], 'window': ['2026-11-03', '2026-11-09'],
                                     'freeze_by': '2026-11-03T00:00:00-05:00', 'count': '2026-11-17'},
          'surge': {'lift': 2, 'floor': 3}, 'side_floor': 3, 'base_rate': 0.25, 'rules': [],
          'forecasts': [{'id': 'M1', 'name': 'Red mirage', 'category': 'count and result', 'p_surge': 0.75,
-                        'lead_side': 'left', 'lead_sides': ['left'], 'why': '', 'oct_tellings': 1, 'oct_share_pct': 1},
+                        'lead_side': 'left', 'lead_sides': ['left'], 'why': '', 'baseline_tellings': 1, 'baseline_share_pct': 1},
                        {'id': 'M2', 'name': 'Rigged election', 'category': 'integrity', 'p_surge': 0.5,
                         'lead_side': 'right if D; left if R', 'lead_sides': {'D': ['right'], 'R': ['left']},
-                        'why': '', 'oct_tellings': 1, 'oct_share_pct': 1}],
+                        'why': '', 'baseline_tellings': 1, 'baseline_share_pct': 1}],
          'answer_calls': [{'p': 0.4, 'motifs': ['M1', 'M2'], 'test': 'share_exceeds', 'call': 'M1 beats M2'},
                           {'p': 0.6, 'motifs': ['M9', 'M1'], 'test': 'prebunk_first', 'call': 'pre-bunked'}],
          'brennan': {'title': 't', 'by': 'b', 'date': '2026-10-09', 'themes': [{'theme': 'Machines', 'motifs': ['M2', 'M9']}]},
@@ -34,16 +34,17 @@ def forecast(**kw) -> dict:
     return f
 
 
-# October: 100 tellings, M1 once (1%), M2 ten times (10%). Shows by side: left 40, right 40, center 20
-OCTOBER = ([row('M1', '2026-10-10', side='left')] + [row('M2', '2026-10-12', side='right') for _ in range(10)]
-           + [row('X', '2026-10-15', side='left') for _ in range(39)] + [row('X', '2026-10-15', side='right') for _ in range(30)]
-           + [row('X', '2026-10-15', side='center') for _ in range(20)])
+# The baseline: 100 tellings, M1 once (1%), M2 ten times (10%). Shows by side: left 40, right 40, center 20
+OCTOBER = ([row('M1', '2026-10-20', side='left')] + [row('M2', '2026-10-21', side='right') for _ in range(10)]
+           + [row('X', '2026-10-22', side='left') for _ in range(39)] + [row('X', '2026-10-22', side='right') for _ in range(30)]
+           + [row('X', '2026-10-22', side='center') for _ in range(20)])
 # The window: 50 tellings. M1 4 (8%: surges), M2 5 (10%: doesn't). Left shows 20 in all, right 20, posts 10
 WINDOW = ([row('M1', '2026-11-04', side='left') for _ in range(3)] + [row('M1', '2026-11-05', kind='posts')]
           + [row('M2', '2026-11-04', side='right') for _ in range(2)] + [row('M2', '2026-11-06', side='left') for _ in range(3)]
           + [row('X', '2026-11-04', side='left') for _ in range(14)] + [row('X', '2026-11-04', side='right') for _ in range(18)]
           + [row('X', '2026-11-04', kind='posts') for _ in range(9)])
-ROWS = OCTOBER + WINDOW + [row('M2', '2026-11-12', side='right') for _ in range(30)]  # after the window: not counted
+ROWS = (OCTOBER + WINDOW + [row('M2', '2026-11-12', side='right') for _ in range(30)]  # after the window: not counted
+        + [row('M1', '2026-10-12', side='right') for _ in range(50)])  # thin transcripts before Oct 20: not counted
 
 
 def test_the_digest_leaves_out_the_seal_and_the_results():
@@ -115,8 +116,8 @@ def test_surges_brier_and_skill():
     assert s['stage'] == 'scored' and not s['provisional']
     assert s['window_n'] == 50 and s['baseline_n'] == 100
     m1, m2 = s['motifs']['M1'], s['motifs']['M2']
-    assert (m1['n'], m1['share'], m1['surge']) == (4, 0.08, 1)  # 8x its October share, 4 tellings
-    assert (m2['n'], m2['share'], m2['surge']) == (5, 0.1, 0)  # its October share again
+    assert (m1['n'], m1['share'], m1['surge']) == (4, 0.08, 1)  # 8x its baseline share, 4 tellings
+    assert (m2['n'], m2['share'], m2['surge']) == (5, 0.1, 0)  # its baseline share again
     assert s['brier'] == pytest.approx(((0.75 - 1) ** 2 + 0.5 ** 2) / 2)
     assert s['brier_ref'] == pytest.approx(((0.25 - 1) ** 2 + 0.25 ** 2) / 2)
     assert s['skill'] == pytest.approx(1 - 0.15625 / 0.3125)
@@ -134,11 +135,11 @@ def test_side_calls_by_rate_and_the_house_branch():
     s = almanac.score(forecast(), ROWS, {'M1', 'M2'}, date(2026, 11, 17))
     assert s['motifs']['M1']['lead'] == 'left' and s['motifs']['M1']['side_hit'] is True
     assert s['motifs']['M2']['lead'] == 'left' and s['motifs']['M2']['side_hit'] is None  # House not called yet
-    assert s['sides'] == {'hits': 1, 'scored': 1, 'persistence': 0}  # M1 had too few October show tellings
+    assert s['sides'] == {'hits': 1, 'scored': 1, 'persistence': 0}  # M1 had too few baseline show tellings
     s = almanac.score(forecast(results={'house': 'R'}), ROWS, {'M1', 'M2'}, date(2026, 11, 17))
     assert s['motifs']['M2']['side_hit'] is True and s['sides']['scored'] == 2
     s = almanac.score(forecast(results={'house': 'D'}), ROWS, {'M1', 'M2'}, date(2026, 11, 17))
-    assert s['motifs']['M2']['side_hit'] is False and s['motifs']['M2']['oct_lead'] == 'right'
+    assert s['motifs']['M2']['side_hit'] is False and s['motifs']['M2']['base_lead'] == 'right'
     assert s['sides'] == {'hits': 1, 'scored': 2, 'persistence': 0}
 
 

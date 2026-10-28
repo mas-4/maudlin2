@@ -8,9 +8,13 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 - **The Election Almanac.** A forecast of which of 30 election motifs surge in election week (Nov 3-9), with a lead
   side for each and five answer calls, to be frozen before Nov 3, 00:00 ET (`scripts/freeze_almanac.py` records the
   SHA-256 of the forecast's canonical JSON) and scored on Nov 17 (`app/analysis/almanac.py`). A surge: the motif's share
-  of the window's tellings is at least twice its share of Oct 3-26 tellings, with at least 3 in the window. Scored by
-  the Brier score against a reference forecaster that gives every motif 0.271 (the share of October's 59 election
-  motif-weeks that doubled). Days are the index's: a show's is its episode's publish day in UTC, so an episode out after
+  of the window's tellings is at least twice its share in the baseline week, Oct 20-26, with at least 3 in the window.
+  The baseline is that week alone because show transcripts before the Oct 20 fix caught about 3.1 characters a second
+  of speech against about 15.7 since (claims per episode went from about 7 to about 24 at a steady ~80 episodes a day):
+  an Oct 3-26 baseline mixed thin weeks with full ones, so any show-told motif would look like it surged. Scored by the
+  Brier score against a reference forecaster that gives every motif 0.148, the share of 27 election motif-weeks that
+  doubled in the week of Oct 13 against the weeks before (thin transcripts on both sides). The draft's 0.271 also
+  counted the week of Oct 20 against thin weeks, where the fix alone made shows' motifs double. Days are the index's: a show's is its episode's publish day in UTC, so an episode out after
   7 PM ET counts as the next day. A frozen forecast that no longer matches its hash is not scored, and its test fails.
 
 ## 2026-10-27

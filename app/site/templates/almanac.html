@@ -36,13 +36,13 @@
 
     {% if scored.brier is not none %}
         <h2 class="section-divider stage-banner" style="--stage: #ffc400"><span>🏁 {{ 'So far' if scored.provisional else 'The score' }}</span></h2>
-        <p class="stage-sub">{{ "{:,}".format(scored.window_n) }} tellings in the window{% if scored.provisional %} so far (through {{ through }}){% endif %}, against {{ "{:,}".format(scored.baseline_n) }} in October</p>
+        <p class="stage-sub">{{ "{:,}".format(scored.window_n) }} tellings in the window{% if scored.provisional %} so far (through {{ through }}){% endif %}, against {{ "{:,}".format(scored.baseline_n) }} in the baseline week, {{ baseline }}</p>
         <ul class="story-stickers almanac-score">
             <li style="--sticker: #ff6b1a"><span class="sticker-emoji" aria-hidden="true">🌋</span><b>{{ scored.surges }} of {{ scored.n }}</b><span>motifs surged</span></li>
             <li style="--sticker: #8a5cff"><span class="sticker-emoji" aria-hidden="true">🎯</span><b>{{ '%.3f'|format(scored.brier) }}</b><span>our Brier score (lower is better)</span></li>
             <li style="--sticker: #b8b8c8"><span class="sticker-emoji" aria-hidden="true">📏</span><b>{{ '%.3f'|format(scored.brier_ref) }}</b><span>the yardstick's, {{ base }} for every motif</span></li>
             <li style="--sticker: {{ '#00c2a8' if scored.skill > 0 else '#ff4fa3' }}"><span class="sticker-emoji" aria-hidden="true">{{ '🏆' if scored.skill > 0 else '🙈' }}</span><b>{{ '%+.2f'|format(scored.skill) }}</b><span>skill: {{ 'beats' if scored.skill > 0 else 'loses to' }} the yardstick</span></li>
-            {% if scored.sides.scored %}<li style="--sticker: #3a86ff"><span class="sticker-emoji" aria-hidden="true">↔️</span><b>{{ scored.sides.hits }} of {{ scored.sides.scored }}</b><span>side calls right (October's sides: {{ scored.sides.persistence }})</span></li>{% endif %}
+            {% if scored.sides.scored %}<li style="--sticker: #3a86ff"><span class="sticker-emoji" aria-hidden="true">↔️</span><b>{{ scored.sides.hits }} of {{ scored.sides.scored }}</b><span>side calls right ({{ baseline }}'s lead sides: {{ scored.sides.persistence }})</span></li>{% endif %}
             {% set hits = scored.answers|selectattr('result', 'equalto', 'hit')|list|length %}{% set called = scored.answers|selectattr('result')|list|length %}
             {% if called %}<li style="--sticker: #ff4fa3"><span class="sticker-emoji" aria-hidden="true">💬</span><b>{{ hits }} of {{ called }}</b><span>answer calls right</span></li>{% endif %}
         </ul>
@@ -52,12 +52,13 @@
     <p class="stage-sub">{{ n_forecasts }} story shapes: the chance each surges in election week, and the side we
         expect to lead it</p>
     <div class="stage-notes almanac-key">
-        <p>📊 The bar is our chance of a surge. The dashed line is the yardstick: in October, {{ (100 * base)|round|int }}%
-            of election motifs' weeks surged, so a forecaster who knew nothing else would say {{ (100 * base)|round|int }}%
-            for each. Ours average {{ (100 * mean_p)|round|int }}%: we expect election week to stir these stories more than
-            an ordinary October week.</p>
-        <p>🌋 A <b>surge</b> means a story's share of everything told in {{ window }} is at least twice its share of
-            October's tellings, with at least 3 tellings in the window.</p>
+        <p>📊 The bar is our chance of a surge. The dashed line is the yardstick: in an ordinary October week,
+            {{ (100 * base)|round|int }}% of election motifs surged, so a forecaster who knew nothing else would say
+            {{ (100 * base)|round|int }}% for each. Ours average {{ (100 * mean_p)|round|int }}%: we expect election week
+            to stir these stories more than an ordinary week.</p>
+        <p>🌋 A <b>surge</b> means a story's share of everything told in {{ window }} is at least twice its share in
+            the baseline week, {{ baseline }}, with at least 3 tellings in the window. Why that week: until Oct 20 our
+            show transcripts caught only a fifth of what was said (see the rules).</p>
     </div>
     {% for g in groups %}
         <h3 class="almanac-group" style="--pop: {{ g.pop }}"><span aria-hidden="true">{{ g.emoji }}</span> {{ g.label }}</h3>
@@ -68,14 +69,14 @@
                     {{ f.bar }}
                     <p class="almanac-why">{{ f.why|e }}</p>
                     <p class="almanac-meta"><span title="The side whose shows we expect to tell it at the highest rate">↔️ lead side: <b>{{ f.lead_side|e }}</b></span>
-                        <span>🗓️ October: {{ f.oct_tellings }} telling{{ '' if f.oct_tellings == 1 else 's' }} ({{ f.oct_share_pct }}% of all)</span>
+                        <span>🗓️ {{ baseline }}: {{ f.baseline_tellings }} telling{{ '' if f.baseline_tellings == 1 else 's' }} ({{ f.baseline_share_pct }}% of all)</span>
                         <span>🌋 surges at {{ '%.2f'|format(f.needs) }}% of the window, with at least 3 tellings</span></p>
                     {% set o = f.out %}
                     {% if o and not o.public %}
                         <p class="almanac-outcome">🤷 not public in the index on the count day, so not scored</p>
                     {% elif o %}
                         <p class="almanac-outcome almanac-outcome-{{ 'yes' if o.surge else 'no' }}">{% if o.surge %}🌋 surged{% else %}💤 no surge{% endif %}{% if scored.provisional %} so far{% endif %}:
-                            {{ o.n }} telling{{ '' if o.n == 1 else 's' }}, {{ pct(o.share) }} of the window{% if o.lift is not none %} ({{ '%.1f'|format(o.lift) }}× October){% endif %}
+                            {{ o.n }} telling{{ '' if o.n == 1 else 's' }}, {{ pct(o.share) }} of the window{% if o.lift is not none %} ({{ '%.1f'|format(o.lift) }}× {{ baseline }}){% endif %}
                             · {% if o.lead %}led by <b>{{ o.lead }}</b> shows {% if o.side_hit is none %}(call not scored){% elif o.side_hit %}✅{% else %}❌{% endif %}{% else %}too few show tellings for a lead side{% endif %}</p>
                     {% endif %}
                 </li>

@@ -5,9 +5,11 @@ The forecast lives in app/site/almanac_2026.json. Freezing it (scripts/freeze_al
 content, every key but `frozen` and `results` (the House result, set after the vote, picks the branch of the calls
 that depend on it); a frozen forecast whose content no longer hashes to its seal is broken and never scored.
 
-A surge: the motif's share of the window's tellings is at least `lift` times its share of the October baseline's, with
-at least `floor` tellings in the window. Score: the Brier score of p_surge against the outcomes, beside a reference
-forecaster's (every motif at the October base rate); skill = 1 - Brier / Brier_ref."""
+A surge: the motif's share of the window's tellings is at least `lift` times its share of the baseline week's, with at
+least `floor` tellings in the window. The baseline is Oct 20-26 only, the first full week of show transcripts: before
+the Oct 20 fix they caught a fifth of the speech, so earlier weeks would make every show-told motif look like it surged.
+Score: the Brier score of p_surge against the outcomes, beside a reference forecaster's (every motif at a base rate of
+surges between weeks of like transcript depth); skill = 1 - Brier / Brier_ref."""
 import hashlib
 import json
 import os
@@ -199,9 +201,9 @@ def score(forecast: dict, rows: list[dict], public: set[str], today: date) -> di
             side_hits += side_hit
             side_scored += 1
             persist_hits += was == lead
-        out['motifs'][m] = {'public': True, 'oct_n': o_n, 'oct_share': o_share, 'n': w_n, 'share': w_share,
+        out['motifs'][m] = {'public': True, 'base_n': o_n, 'base_share': o_share, 'n': w_n, 'share': w_share,
                             'lift': w_share / o_share if o_share else None, 'surge': surge, 'lead': lead,
-                            'oct_lead': was, 'side_hit': side_hit}
+                            'base_lead': was, 'side_hit': side_hit}
         ps.append(f['p_surge'])
         outs.append(surge)
     b = brier(ps, outs)

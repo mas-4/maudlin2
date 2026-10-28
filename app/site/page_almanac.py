@@ -69,7 +69,7 @@ class AlmanacPage:
             if fs:
                 groups.append({'emoji': emoji, 'label': label, 'pop': CATEGORY_POP[cat],
                                'rows': [{**f, **link(f['id']), 'bar': bar(f['p_surge'], base, CATEGORY_POP[cat]),
-                                         'needs': 2 * f['oct_share_pct'], 'out': scored['motifs'].get(f['id'])}
+                                         'needs': 2 * f['baseline_share_pct'], 'out': scored['motifs'].get(f['id'])}
                                         for f in fs]})
         calls = [{**c, 'links': [link(m) for m in c['motifs']], 'out': o}
                  for c, o in zip(forecast['answer_calls'], scored['answers'] or [None] * len(forecast['answer_calls']))]
@@ -95,7 +95,7 @@ class AlmanacPage:
             'brennan_meta': forecast['brennan'], 'rules': forecast['rules'], 'base': base,
             'conditional': [f for f in forecast['forecasts'] if isinstance(f.get('lead_sides'), dict)],
             'n_forecasts': len(ps),'mean_p': sum(ps) / len(ps), 'house': (forecast.get('results') or {}).get('house'),
-            'window': span(*dates['window']),'count_day': day(dates['count']),
+            'window': span(*dates['window']), 'baseline': span(*dates['baseline']), 'count_day': day(dates['count']),
             'through': day(scored['through']) if scored.get('through') else '',
         }
 
