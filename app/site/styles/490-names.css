@@ -1,14 +1,49 @@
-/* Who's in the news today: a name's stories past the first few, folded */
-.name-more {
-    margin-top: 0.2em;
+/* Who's in the news today: the strip of names, two columns where there's room, the first few until "show all" */
+
+/* Oct 28: the masonry of identical purple cards became one ranked strip (175-boards.css), its rows down two columns on
+   a wide screen so the long list reads in half the height */
+@media (min-width: 760px) {
+    .names-all .rank-list {
+        columns: 2;
+        column-gap: 2.2em;
+    }
+
+    .names-all .rank-list li {
+        break-inside: avoid;
+    }
 }
 
-.name-more summary {
-    cursor: pointer;
-    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
-    color: #555;
+/* The first SHOWN (page_names.py, 20) until "show all" or a search */
+.names-clipped:not(.names-searching) .rank-list > li:nth-child(n+21) {
+    display: none;
 }
 
-.name-more[open] summary {
-    margin-bottom: 0.3em;
+.names-more {
+    min-height: 40px;  /* a tap-sized "show all" */
+}
+
+.names-strip .rank-board-title {
+    margin-top: 0.6em;
+}
+
+/* A name's hover card: its stories, then the stories told about it */
+.names-card-stories {
+    list-style: none;
+    padding: 0;
+    margin: 0.45em 0 0;
+}
+
+.names-card-stories li + li {
+    margin-top: 0.3em;
+}
+
+.names-card-facts {
+    color: #666;
+    font-size: 0.88em;
+}
+
+.names-card-told {
+    margin-top: 0.5em;
+    padding-top: 0.4em;
+    border-top: 2px dotted #c8c8d0;
 }
