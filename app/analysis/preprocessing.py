@@ -71,10 +71,31 @@ def split_camelcases(text):
     return ' '.join(text)
 
 
+# Who a photo is credited to, at the end of a credit: the agencies and the outlets' own photo desks
+PHOTO_AGENCIES = (r'Getty(?: Images?)?|AFP|AP(?: Photos?| Images)?|Reuters(?: Connect)?|EPA(?:-EFE)?|SOPA Images'
+                  r'|LightRocket|NurPhoto|Anadolu(?: Agency)?|Bloomberg|Imagn(?: Images)?|Shutterstock|Alamy|iStock(?:photo)?'
+                  r'|Xinhua(?: News Agency)?|ZUMA(?: Press| Wire)?|Sipa(?: USA)?|Redux|Pool|NBC News|CNN|ABC News'
+                  r'|The Christian Science Monitor')
+PHOTO_CREDIT = re.compile(
+    r'(?:photo(?:grapher| illustration)?(?: by)?\s*:?\s*)?'  # "Photo by", "Photographer:"
+    r'(?:[^/|;]{1,60}?(?:\s*/\s*(?:via\s+)?|\s*;\s*|\s+via\s+))+'  # who took it, through whom: "Jane Doe / ", "… via "
+    rf'(?:{PHOTO_AGENCIES})'  # ...ending with the agency, after a slash or "via": "buy Getty Images" isn't a credit
+    r'(?:\s+for\s+[^/|]{1,50})?'  # "Getty Images for Disney"
+    r'(?:\s*[,/]\s*file|\s+file)?(?:\s*\(\d+\))?', re.I)  # "/File", ", FILE", "(3)"
+
+
+def is_photo_credit(text: str) -> bool:
+    """Whether the text is only a photo credit ("Saul Loeb / AFP via Getty", "Jane Doe/Bloomberg via Getty Images,
+    FILE", two credits joined by " | "): what an image-only link reads as when its credit sits inside it (NBC, CNN,
+    ABC, Oct 28). A headline that names an agency ("AP sources: …", "Koch agrees to buy Getty Images") isn't one."""
+    text = ' '.join(text.split())
+    if not text or len(text.split()) > 16:
+        return False
+    return all(PHOTO_CREDIT.fullmatch(part.strip()) for part in text.split(' | '))
+
+
 def strip_story_attributions(text):
-    if text.endswith("/Getty Images") and len(text.split()) == 3:  # "First Last/Getty Images"
-        return ""
-    if text.endswith("/ AP") and len(text[:-len("/ AP")].strip().split()) == 2:  # "First Last / AP"
+    if is_photo_credit(text):
         return ""
     if text.startswith("Reuters/") and len(text.split()) == 2:  # "Reuters/First Last"
         return ""
