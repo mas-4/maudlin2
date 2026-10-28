@@ -33,6 +33,12 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 - **No more "answered N days after".** Motif pages no longer say how many days after a motif its answer was first
   told. In the Oct 27 probe the answer came after its move in 26 of 47 pairs, against 26.5 expected from the two
   motifs' sizes alone: the bigger motif simply shows up first. The answers themselves stay.
+- **Who stayed on it** (story pages). For each rated outlet, the hours from its first headline on the story to the
+  last sighting of any of its headlines on it (`headline.last_accessed`); left and right by the sign of its AllSides
+  lean, center and unrated outlets left out. With 3 or more outlets a side, the page says which side kept it up longer
+  when the two medians are 24 hours or more apart, and says nothing otherwise. Over the 481 stories that qualify the
+  sides come out even (median right minus left about +2 h); 28 stories have right outlets a day or more longer, 25
+  left. A sighting's time follows the scraper's cadence, and outlets turn their front pages over at different rates.
 
 ## 2026-10-27
 - **Show claims tied to stories.** What the shows said now reaches the story pages ("🧩 How it's being told") and the
