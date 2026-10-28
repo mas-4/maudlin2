@@ -17,6 +17,8 @@ FRONT_PAGES = [
      'about': "This term's cases: who's covering which, from which side, at which stage."},
     {'href': 'archive.html', 'emoji': '🗄️', 'name': 'Archive',
      'about': "Each day's front page as it stood at day's end."},
+    {'href': 'play.html', 'emoji': '🎲', 'name': 'Play',
+     'about': "Real or satire? Guess the lean. Today's headline games, new every day."},
 ]
 
 # On the air: broadcast, and the shows and newsletters that talk the news over
