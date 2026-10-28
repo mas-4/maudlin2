@@ -95,7 +95,7 @@ def propose() -> int:
     return added
 
 
-def around(con, row, width: int = 700) -> str:
+def around(con, row, width: int = 1100) -> str:
     """The article around the quote, for reading it in context"""
     doc = con.execute('select c.document, c.corpus from claims c where c.id = ?', (row['claim'],)).fetchone()
     text = con.execute('select text from documents where corpus = ? and id = ?', (doc['corpus'], doc['document'])).fetchone()
@@ -111,8 +111,12 @@ def around(con, row, width: int = 700) -> str:
 def slate(n: int):
     con = connect(write=True)  # creates the table on a first run
     rows = con.execute("select * from echoes where status = 'proposed' order by id limit ?", (n,)).fetchall()
+    from app.analysis import motif_index as mi
+    entries = mi.load()['entries']
     for r in rows:
+        e = entries.get(r['motif'], {})
         print(f"\n#{r['id']} {r['motif']} {r['motif_name']}  (fit {r['fit']:.2f}, in {r['retold']} paper(s))")
+        print(f"  motif: {mi.public_note(e) if e else ''}")
         print(f"  {r['date']}, {r['paper']}, {r['place']}\n  {r['url']}")
         print(f"  headline: {r['headline']}\n  claim: {r['claim_text']}\n  quote: {r['quote']}")
         print(f"  around: {around(con, r)}")
