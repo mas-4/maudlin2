@@ -339,12 +339,6 @@ class HeadlinesPage:
             from app.analysis import motif_web
             told = shared()['web']['stories']  # each card's story, as it's being told (motif_web.by_story)
             self.context['motif_cloud'] = motif_web.cloud(shared()['web']['rows'])  # the cloud's "stories told" mode
-            # ...and a box beside the trends (Oct 27, the person: fold the strip into "Trending on Bluesky" and the rest)
-            if self.context['motif_cloud'] and self.context.get('trend_boxes') is not None:
-                self.context['trend_boxes'] = [b for b in self.context['trend_boxes'] if b.get('key') != 'motifs'] + [{
-                    'key': 'motifs', 'heading': '🧩 Stories being told', 'unit': 'tellings this week', 'matches': {},
-                    'trends': [{'display_name': w['text'], 'link': w['url'], 'description': w['tip'],
-                                'post_count': w['outlets'], 'topic': None} for w in self.context['motif_cloud'][:10]]}]
             self.context['told_as_of'] = {c: told[s][:3] for c, s in getattr(self, 'story_of', {}).items() if s in told}
         except Exception as e:  # noqa: BLE001 - the front page stands without its strip
             logger.warning("Front page: stories being told: %s", e)

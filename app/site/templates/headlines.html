@@ -213,13 +213,12 @@
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
     {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up.
-       In the page's own order: cloud, top stories, sagas, trending (Oct 27: it listed trending second) #}
+       In the page's own order: cloud, top stories, sagas (Oct 27) #}
     <button class="toc-toggle" type="button" aria-label="Jump to a section" aria-expanded="false">🧭</button>
     <nav class="page-toc" aria-label="On this page">
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#top-stories"><span class="toc-emoji">📰</span><span class="toc-label">top stories</span></a>
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
-        <a href="#trending"><span class="toc-emoji">🔥</span><span class="toc-label">trending</span></a>
         <a href="stories.html"><span class="toc-emoji">🗂️</span><span class="toc-label">every story</span></a>
         <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
     </nav>
@@ -786,26 +785,8 @@
         </div>
     {% endif %}
     {% endif %}
-    <div class="trending-row" id="trending">
-        {% for box in trend_boxes %}
-            <section class="trending">
-                <h3>{{ box.heading }}</h3>
-                <ol>
-                    {% for trend in box.trends %}
-                        <li{% if loop.index > 6 %} class="trend-extra"{% endif %}>
-                            <a href="{{ trend.link|e }}" title="{{ (trend.description or trend.display_name)|e }}">{{ trend.display_name }}</a>
-                            {% if trend.post_count %}<span class="trend-posts">{{ "{:,}".format(trend.post_count) }}{% if box.key == 'google' %}+{% endif %} {{ box.unit }}</span>{% endif %}
-                            {% if trend.topic in box.matches %}<a class="trend-both" href="{{ card_href(box.matches[trend.topic]) }}" title="Also a top story in the news">news</a>{% endif %}
-                        </li>
-                    {% endfor %}
-                </ol>
-                {% if box.trends|length > 6 %}
-                    <button class="trend-more" onclick="this.parentElement.classList.toggle('open');
-                        this.textContent = this.parentElement.classList.contains('open') ? 'show fewer' : 'show all {{ box.trends|length }}'">show all {{ box.trends|length }}</button>
-                {% endif %}
-            </section>
-        {% endfor %}
-    </div>
+    {# The trend boxes (Bluesky, Google, Wikipedia, Mastodon) left the front page Oct 27, the person: "jettison this and
+       just incorporate it": a trend shows on the story card it matches ("📡 also trending on") #}
     {% endif %}
 
 
