@@ -5,6 +5,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **Bylines off the headlines.** Red State's and Townhall's cards, and Scripps News's, put a section label and the
+  author's name inside the headline's link ("…but There's a Catch Susie Moore"), and The Gateway Pundit's trending
+  list its view count ("68.2K views"), which also made a new "headline" each time the count moved. The scrapers now
+  leave those parts out. Headlines stored before keep them (3,951 on Oct 28, about half of Red State's and Townhall's)
+  until `scripts/clean_glued_titles.py --apply` is run; scores the model gave the glued wording stay either way.
+- **One spelling for James Talarico.** The transcriber's list of names to expect spelled him "Tallarico", so most show
+  transcripts did too, and the names page counted him twice. The list has his name right now, transcripts fix the old
+  spelling, and the names page joins the two.
 - **Headline changes without the model's reading.** The edits page and the outlet pages no longer show the language
   model's note on what a rewrite changed, or the "more loaded / plainer wording" and "better / worse news" tags (and
   their filter buttons). Its 15,049 judgments (qwen3:8b) called 63% of rewrites more loaded for outlets on every side,
