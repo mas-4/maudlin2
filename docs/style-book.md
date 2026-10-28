@@ -27,6 +27,13 @@ everything, and plain words.**
 
 Both web fonts come from Google Fonts in `page.html` (`Bungee`, `Comic Neue:wght@700`). Don't add other fonts.
 
+## Logo and motto
+
+The mark is **the talking paper**: a white front page, ink outline, a yellow hard shadow, a speech-bubble tail at its
+lower left, tilted 5° (`app/site/static/logo.svg`; `logo-mark.png` for share cards). On the pink pop it's the favicon,
+the home-screen icon and the Bluesky and Mastodon avatar. The motto is **How the news is shaped and shared** (Oct 28,
+the person: the yarn "looks like a ping pong paddle"; the old line was "the news, and the stories people tell about it").
+
 ## Color
 
 **Ink** `#1f1f2e` is the outline, shadow and text color for everything drawn: borders, banner text, chart outlines.
