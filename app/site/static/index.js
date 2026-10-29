@@ -366,21 +366,31 @@ window.hoverCard = (() => {
     }
 
     function place() {
+        // Beside what you point at (right, else left), or under or over it on a phone; the card is a speech bubble
+        // (Oct 29, the person: "Can we make our mouseover chips speech bubbles? It's kind of our thing"), so its tail
+        // goes on the side facing the mark, as near the mark's middle as the card's corners allow
         if (!card || card.hidden || !anchor || !anchor.isConnected) return;
-        const r = anchor.getBoundingClientRect(), gap = 12, pad = 8;
+        const r = anchor.getBoundingClientRect(), gap = 18, pad = 8;
         card.style.left = '0px'; card.style.top = '0px';
         const w = card.offsetWidth, h = card.offsetHeight;
         const vw = document.documentElement.clientWidth, vh = innerHeight;
         const clamp = (v, lo, hi) => Math.min(Math.max(lo, v), Math.max(lo, hi));
-        let x, y;
-        if (r.right + gap + w <= vw - pad) { x = r.right + gap; y = r.top + r.height / 2 - h / 2; }  // beside, right
-        else if (r.left - gap - w >= pad) { x = r.left - gap - w; y = r.top + r.height / 2 - h / 2; }  // beside, left
+        let x, y, side;
+        if (r.right + gap + w <= vw - pad) { x = r.right + gap; y = r.top + r.height / 2 - h / 2; side = 'right'; }
+        else if (r.left - gap - w >= pad) { x = r.left - gap - w; y = r.top + r.height / 2 - h / 2; side = 'left'; }
         else {  // no room either side (a phone): under it, or over it
             x = clamp(r.left + r.width / 2 - w / 2, pad, vw - w - pad);
-            y = r.bottom + gap + h <= vh - pad ? r.bottom + gap : r.top - gap - h;
+            side = r.bottom + gap + h <= vh - pad ? 'below' : 'above';
+            y = side === 'below' ? r.bottom + gap : r.top - gap - h;
         }
-        card.style.left = `${clamp(x, pad, vw - w - pad)}px`;
-        card.style.top = `${clamp(y, pad, vh - h - pad)}px`;
+        x = clamp(x, pad, vw - w - pad);
+        y = clamp(y, pad, vh - h - pad);
+        card.style.left = `${x}px`;
+        card.style.top = `${y}px`;
+        const across = side === 'right' || side === 'left';
+        const tail = across ? clamp(r.top + r.height / 2 - y, 16, h - 16) : clamp(r.left + r.width / 2 - x, 22, w - 16);
+        card.dataset.side = side;
+        card.style.setProperty('--tail', `${Math.round(tail)}px`);
     }
 
     function show(el, build, pin) {
@@ -408,7 +418,7 @@ window.hoverCard = (() => {
             card.prepend(x);
         }
         // A tint where an element asks for one (lean colors on chips)
-        card.style.background = el.dataset.tooltipColor || '';
+        card.style.setProperty('--bubble', el.dataset.tooltipColor || '');  // the tail takes the tint too
         card.style.color = el.dataset.tooltipInk || '';
         el.classList.add('hover-card-on');
         card.hidden = false;

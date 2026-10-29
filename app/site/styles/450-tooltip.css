@@ -11,11 +11,11 @@
     max-width: min(21em, calc(100vw - 16px));
     box-sizing: border-box;
     padding: 0.6em 0.85em 0.55em;
-    background: #fffdf5;
+    background: var(--bubble, #fffdf5);
     color: #1f1f2e;
     border: 2.5px solid #1f1f2e;
     border-radius: 14px;
-    box-shadow: 5px 5px 0 #ff4fa3;
+    filter: drop-shadow(5px 5px 0 #ff4fa3);  /* a drop shadow, not a box one, so the tail casts it too */
     font: 700 0.92rem/1.35 'Comic Neue', 'Comic Sans MS', cursive;
     overflow-wrap: anywhere;
     animation: hover-card-in 0.12s ease-out;
@@ -26,8 +26,50 @@
 }
 
 .hover-card.pinned {
-    box-shadow: 5px 5px 0 #ffc400;
+    filter: drop-shadow(5px 5px 0 #ffc400);
     padding-right: 2.2em;
+}
+
+/* The card is a speech bubble, like the talking paper (Oct 29): a comic tail on the side facing what you point at,
+   at --tail along that edge (index.js place() sets data-side and --tail). Two triangles in one box: ink, then the
+   card's own fill over it, which also opens the border where the tail joins. The box is drawn pointing left with its
+   right middle just inside the card's edge; the other sides mirror or turn it about that point. */
+.hover-card::before, .hover-card::after {
+    content: '';
+    position: absolute;
+    left: -19px;
+    top: calc(var(--tail, 50%) - 11px);
+    width: 20px;
+    height: 22px;
+    transform-origin: 100% 50%;
+    pointer-events: none;
+}
+
+.hover-card::before {
+    background: #1f1f2e;
+    clip-path: polygon(19px 0, 0 14px, 19px 22px);
+}
+
+.hover-card::after {
+    background: var(--bubble, #fffdf5);
+    clip-path: polygon(20px 4px, 6px 13px, 20px 18px);
+}
+
+.hover-card[data-side="left"]::before, .hover-card[data-side="left"]::after {
+    left: calc(100% - 21px);
+    transform: scaleX(-1);
+}
+
+.hover-card[data-side="below"]::before, .hover-card[data-side="below"]::after,
+.hover-card[data-side="above"]::before, .hover-card[data-side="above"]::after {
+    left: calc(var(--tail, 50%) - 20px);
+    top: -10px;
+    transform: rotate(90deg);
+}
+
+.hover-card[data-side="above"]::before, .hover-card[data-side="above"]::after {
+    top: calc(100% - 12px);
+    transform: rotate(-90deg);
 }
 
 @keyframes hover-card-in {

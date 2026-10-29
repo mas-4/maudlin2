@@ -41,7 +41,7 @@
             · 📚 {% if o.reliability %}Wikipedia: {{ o.reliability|e }}{% else %}not on Wikipedia's list{% endif %}
         </div>
         {% if measures %}
-            <ul class="ovs" aria-label="Its measures against the median outlet's">
+            <ul class="ovs" aria-label="Its measures against the median outlet’s">
                 {% for m in measures %}<li class="ovs-row" style="--bar: {{ m.bar }}%; --tick: {{ m.tick }}%">
                     <span class="ovs-name">{{ m.emoji|e }} {{ m.name|e }}</span>
                     <span class="ovs-track" aria-hidden="true"><span class="ovs-bar"></span><span class="ovs-tick"></span></span>
@@ -118,7 +118,7 @@
             to the right in orange, more of a feeling than the average outlet; to the left in teal, less; grey,
             within {{ feelings.even }} points of it. The figure is in percentage points; hover or tap a row for both shares.{% if feelings_read < 10 %} Only {{ feelings_read }} of its headlines are read so far, so a few
             can swing it.{% endif %}</p>
-        <ol class="ofeel" aria-label="Its feelings against the average outlet's">
+        <ol class="ofeel" aria-label="Its feelings against the average outlet’s">
             {% for f in feelings.rows %}<li class="ofeel-row ofeel-{{ f.side }} ofeel-to-{{ f.lean }}" tabindex="0" style="--bar: {{ f.bar }}%"
                 data-tip="{{ f.name|e }}: {{ f.mine }}% of its headlines now; the average outlet {{ f.average }}%">
                 <span class="ofeel-name">{{ f.emoji|e }} {{ f.name|e }}</span>

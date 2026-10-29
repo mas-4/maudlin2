@@ -81,7 +81,7 @@
             </div>
         {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
         {% endif %}
         <details class="card-more"><summary>🔍 more: mood, quotes, shows, TV, radio and every outlet</summary>
         {% endif %}
@@ -110,7 +110,7 @@
             </p>
         {% endif %}
         {% if cluster['wording'] %}
-            <p class="story-wording"><span class="story-quotes-label" title="Phrases three or more outlets on one side put in loaded headlines and no outlet on the other side used: word choice, read from the outlets' own wording (each side needs 3 or more rated outlets on the story)">🗣️ only one side says</span>
+            <p class="story-wording"><span class="story-quotes-label" title="Phrases three or more outlets on one side put in loaded headlines and no outlet on the other side used: word choice, read from the outlets’ own wording (each side needs 3 or more rated outlets on the story)">🗣️ only one side says</span>
                 {% for s, emoji in (('left', '🫏'), ('right', '🐘')) %}{% for p in cluster['wording'].get(s, []) %}<span class="wording-chip wording-{{ s|e }}" title="{{ s|capitalize }}-leaning: {{ p.outlets|join(', ')|e }}">{{ emoji }} {{ p.phrase|e }}{% if p.count > 2 %} <b>{{ p.count }}</b>{% endif %}</span>{% endfor %}{% endfor %}
             </p>
         {% endif %}
@@ -124,7 +124,7 @@
         {% set on_tv = tv_of.get(cluster['cluster']) if tv_of is defined else none %}
         {% if on_tv %}
             <div class="story-shows story-tv">
-                <a class="story-shows-label" href="tv.html" title="Minutes this story's captions were on screen in the last day (from the Internet Archive's TV News Archive)">📺 on TV</a>
+                <a class="story-shows-label" href="tv.html" title="Minutes this story’s captions were on screen in the last day (from the Internet Archive’s TV News Archive)">📺 on TV</a>
                 {% for t in on_tv %}<span class="show-chip tv-chip" style="--chip: {{ t.ink|e }}" title="{{ t.name|e }}: {{ t.time|e }} on screen in the last day">{{ t.name }} <b>{{ t.time }}</b></span>{% endfor %}
             </div>
         {% endif %}
@@ -171,11 +171,11 @@
             </div>
         {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet's headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
         {% endif %}
         {% endif %}
         {% if cluster['curators'] %}
-            <p class="story-curators" title="Aggregators linking to this story on their front page now (they don't count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ (outlet_home(a) or '#')|e }}" style="{{ curator_style|e }}" title="{{ a|e }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
+            <p class="story-curators" title="Aggregators linking to this story on their front page now (they don’t count as outlets covering it)">📌 picked up by {% for a in cluster['curators'] %}<a class="edit-chip" href="{{ (outlet_home(a) or '#')|e }}" style="{{ curator_style|e }}" title="{{ a|e }}: linking this story on its front page now">{{ outlet_icon(a) }}{{ short_name(a) }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
         {% endif %}
         </div>
         <div class="story-outlets">{{ outlet_strip(cluster) }}</div>
@@ -208,7 +208,7 @@
     <figure class="wordcloud">
         {% if newsday %}
             <a class="newsday-sticker {{ newsday.kind|e }}" href="{{ card_href(newsday.cluster) }}"
-               title="On {{ newsday.outlets|e }} of {{ newsday.active|e }} outlets' front pages right now; first seen {{ newsday.age|e }} ago">
+               title="On {{ newsday.outlets|e }} of {{ newsday.active|e }} outlets’ front pages right now; first seen {{ newsday.age|e }} ago">
                 <span class="newsday-end" aria-hidden="true">{{ newsday.ends[0] }}</span>
                 <span class="newsday-body">
                     <span class="newsday-label">{{ newsday.label }}</span>
@@ -226,7 +226,7 @@
             <button data-cloud="size" class="active">📏 biggest first</button>
             <button data-cloud="side">⚖️ left to right</button>
             <button data-cloud="spice" title="{{ spicy_tip|e }}">🌶️ plain to spicy</button>
-            {% if motif_cloud %}<button data-cloud="motifs" title="The stories being told this week, from our motif index: bigger = told by more shows and people online, color = which side's shows told it (blue left, red right, striped both). Poke one to open it.">🧩 stories told</button>{% endif %}
+            {% if motif_cloud %}<button data-cloud="motifs" title="The stories being told this week, from our motif index: bigger = told by more shows and people online, color = which side’s shows told it (blue left, red right, striped both). Poke one to open it.">🧩 stories told</button>{% endif %}
         </div>
         <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Poke (click or tap) a word to see how outlets are using it, and the feeling its headlines stir.">
             <span class="key-part"><span class="key-big">BIGGER</span> <span>= more outlets</span></span>
@@ -1045,8 +1045,8 @@
                 <button data-filter="metric" data-value="seen">🕒 first seen</button>
                 <button data-filter="metric" data-value="mood" title="Whether the headline presents its news as good or bad">🌦️ mood</button>
                 <button data-filter="metric" data-value="spin" title="How loaded the wording is">🌶️ spin</button>
-                <button data-filter="metric" data-value="feeling" title="The feelings it's most likely to stir, strongest first">{{ emotion_emoji.fear }} feeling</button>
-                <button data-filter="metric" data-value="story" title="Which current story it's part of">📰 story</button>
+                <button data-filter="metric" data-value="feeling" title="The feelings it’s most likely to stir, strongest first">{{ emotion_emoji.fear }} feeling</button>
+                <button data-filter="metric" data-value="story" title="Which current story it’s part of">📰 story</button>
             </div>
             <div class="table-filters" role="group" aria-label="Filter headlines">
                 <span>lean:</span>
