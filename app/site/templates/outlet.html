@@ -1,4 +1,5 @@
 {% extends "page.html" %}
+{% import "boards.html" as b %}
 
 {% set FRAMING_TINTS = {'😈': '#e0d4ff', '😇': '#fff1b3', '🤝': '#eef1f6'} %}
 {% set FEELING_TINTS = {'anger': '#ffc2c2', 'fear': '#e0d4ff', 'sadness': '#c9e2ff', 'disgust': '#d6f5c4',
@@ -86,6 +87,19 @@
                     and immigration.</figcaption>
             </figure>
         </div>
+        {% if beat %}
+            <div class="outlet-beat" id="beat">
+                <p class="outlet-beat-title">🎯 <strong>Its beat:</strong> {% if beat.named %}<strong class="outlet-beat-name">{{ beat.title|e }}</strong>{% else %}{{ beat.title|e }}{% endif %}{% if beat.with %}
+                    <span class="outlet-beat-with">· with {% for c in beat.with %}<a class="edit-chip" href="{{ c.href|e }}" style="{{ c.style|e }}" data-tip="{{ c.tip|e }}">{{ outlet_icon(c.name) }}{{ short_name(c.name) }}</a>{{ ' ' if not loop.last }}{% endfor %}</span>{% endif %}</p>
+                <p class="stage-sub">A group of our stories it ran far more than most outlets did, and that hang
+                    together. A few it ran, the most typical of the beat first; the bar is how many outlets on the map
+                    ran each.</p>
+                {{ b.rows(beat.stories, 'outlet-beat-list') }}
+                {% if beat.shared %}<p class="outlet-beat-shared">🤝 <strong>Shared with</strong>
+                    {% for c in beat.shared %}<a class="edit-chip" href="{{ c.href|e }}" style="{{ c.style|e }}" data-tip="{{ c.tip|e }}">{{ outlet_icon(c.name) }}{{ short_name(c.name) }}</a>{{ ' ' if not loop.last }}{% endfor %}
+                    <span class="trend-posts">· they ran several of its {{ beat.defining }} stories, far more often than they run ours in general</span></p>{% endif %}
+            </div>
+        {% endif %}
         <p class="outlet-fp-note">From what it did on its front page in the last {{ fp.window_days }} days
             ({{ fp.stories }} of our stories, {{ fp.articles }} headlines), not from its ratings.</p>
     {% elif profiled %}

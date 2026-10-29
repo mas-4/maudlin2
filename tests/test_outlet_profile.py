@@ -139,7 +139,18 @@ def month(seed: int = 0) -> dict:
 
 @pytest.fixture(scope='module')
 def built():
-    return op.build(month(), UNTIL)
+    from tests.test_beats import stand_in_vectors
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(op, 'label_vectors', stand_in_vectors)  # never the embedding model (or its download) here
+        return op.build(month(), UNTIL)
+
+
+def test_the_profile_carries_its_beats(built):
+    """Every outlet says which beat it leads, if any (test_beats has the beats themselves)"""
+    assert isinstance(built['beats'], list)
+    assert all('beat' in o for o in built['outlets'].values())
+    for i, b in enumerate(built['beats']):
+        assert all(built['outlets'][o]['beat'] == i for o in b['leaders'])
 
 
 def test_the_profile_covers_every_outlet_with_enough_stories(built):

@@ -154,3 +154,38 @@
     color: #666;
     text-align: center;
 }
+
+/* 🎯 Its beat (outlet.html, under the fingerprint): the group of our stories it ran far more than most outlets did */
+.outlet-beat {
+    max-width: 52em;
+    margin: 0.9em auto 0.4em;
+    padding: 0.7em 1.1em 0.8em;
+    background: white;
+    border: 3px solid #1f1f2e;
+    border-radius: 14px;
+    box-shadow: 6px 6px 0 #ff4fa3;
+}
+
+.outlet-beat-title {
+    margin: 0.2em 0 0.3em;
+    font: 700 1.05em 'Comic Neue', 'Comic Sans MS', cursive;
+    overflow-wrap: anywhere;
+}
+
+.outlet-beat-name {
+    font-size: 1.12em;
+}
+
+.outlet-beat .edit-chip {
+    margin: 0.15em 0.1em;
+    text-decoration: none;
+}
+
+.outlet-beat-list {
+    margin: 0.4em 0;
+}
+
+.outlet-beat-shared {
+    margin: 0.5em 0 0.1em;
+    line-height: 1.9;
+}

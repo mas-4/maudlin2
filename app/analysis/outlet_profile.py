@@ -15,6 +15,11 @@ WINDOW_DAYS of headlines:
   and comes back in at least STABLE of bootstrap reclusterings (clusterwise Jaccard); otherwise the outlet shows its
   broad family, or nothing.
 - **Behaves most like**: the outlet's NEIGHBOURS nearest outlets in that same feature space.
+- **Its beat** (`find_beats`): independent component analysis of the same outlets × stories table. Where the
+  correspondence analysis gives two broad axes, ICA gives groups of stories that rise together in one outlet or a few:
+  that outlet's own agenda. A beat is kept only when it comes back in reruns (new seeds, 80% of the stories) and its
+  stories hang together (their labels closer in meaning than random sets of our stories); it's named by its stories'
+  labels, and by a TOPICS family when most of them share one.
 
 Only outlets with MIN_STORIES of our stories and MIN_ARTICLES articles are profiled (story features need stories:
 the site builds them from US and six UK outlets). CPU only, a few seconds; kept for the day in CACHE."""
@@ -45,8 +50,43 @@ AGREE = 2  # of an outlet's NEIGHBOURS look-alikes that must share its type for 
 STABLE = 0.75  # clusterwise Jaccard (Hennig): above this a cluster is stable
 BOOTS = 100
 CACHE = os.path.join(Config.data, 'outlet_profile.json')
-VERSION = 3  # bump when the method changes, so the day's cache is rebuilt
+VERSION = 4  # bump when the method changes, so the day's cache is rebuilt (4: beats)
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire', 'Memeorandum'}
+
+# Beats (`find_beats`). How many components: ICA here takes the outlets as its samples, so it needs several outlets per
+# component. With the 75 outlets of Oct 28, 8 components came back whole (outlet scores matched at r ≥ 0.97 and
+# 9 of their 10 top stories in reruns on 80% of the stories); at 12 and 16 each distinctive outlet took a component of
+# its own made of its leftover stories, and those came back less (6 to 8 of 10); at 6 beats merged. So one component
+# per BEAT_PER outlets, at most BEAT_K; the beats that don't hold are dropped anyway
+BEAT_K = 8
+BEAT_PER = 9
+BEAT_RUNS = 20  # reruns, each with a new seed and BEAT_FRAC of the stories
+BEAT_FRAC = 0.8
+BEAT_MATCH = 0.8  # a rerun's component is the beat come back when its outlet scores correlate this well...
+BEAT_OVERLAP = 0.5  # ...and this share of the beat's defining stories are among the rerun's
+BEAT_KEEP = 0.8  # share of the reruns a beat must come back in
+BEAT_STORIES = 10  # the stories that define a beat: its highest loadings
+BEAT_MIN_SCORE = 2.0  # the outlet furthest out on a beat, at least this far (components: unit variance over outlets)
+# An outlet leads a beat when it ran LEAD_RAN of its defining stories and they're LEAD_FOCUS of all it ran (Oct 28:
+# MarketWatch and Fox Business, The Daily Kos and the Star Tribune, The American Conservative and RFE/RL)
+LEAD_RAN = 0.7
+LEAD_FOCUS = 0.2
+# Its stories must hang together: the mean similarity of their labels above this share of random sets of our stories.
+# The guard against the small outlets: in ICA an outlet that ran only 20 of our stories stands far from the rest
+# whatever those stories are, so every one of the Oct 28 leaders was among the smallest; Reason's and Salon's sets were
+# a mix (68th and 65th percentile of random sets), the Rays, the Nobels or noncitizen voting were not (97th-100th)
+BEAT_COHERENT = 0.95
+BEAT_NULL_DRAWS = 500
+SHARE_MIN = 4  # another outlet shares a beat when it ran this many of its defining stories...
+SHARE_LIFT = 5  # ...at this many times its usual rate of running our stories
+SHARE_MAX = 5
+# A beat's short name (`beat_name`), from a TOPICS family its defining stories match far more than our stories at
+# large; plain subjects, never a word about the outlets
+BEAT_NAMES = {'politics': 'politics', 'crime': 'crime', 'immigration': 'immigration', 'world': 'world news',
+              'business': 'business', 'tech_science': 'tech and science', 'health': 'health',
+              'celebrity': 'entertainment', 'sport': 'sport'}
+BEAT_NAME_SHARE = 0.4
+BEAT_NAME_LIFT = 2
 
 # Types named by their anchor outlets (from the study's clusters). A cluster takes the name whose anchors it holds most
 # of, and only when it holds more than half of the anchors profiled this window
@@ -542,6 +582,166 @@ def wire_vocabulary(art: pd.DataFrame, per_outlet: int = 300, draws: int = 3) ->
     return pd.concat(sims, axis=1).mean(axis=1)
 
 
+# ---------------------------------------------------------------- beats
+
+
+def ica(X: pd.DataFrame, k: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    """FastICA on the outlets' coverage profiles (each outlet's row as shares, each story centred, as in the Oct 28
+    study): the outlets' scores (outlets × k, unit variance, each turned so its long tail is positive) and the
+    stories' loadings (stories × k, the profiles projected on the scores)"""
+    import warnings
+    from sklearn.decomposition import FastICA
+    from sklearn.exceptions import ConvergenceWarning
+    P = X.to_numpy(dtype=float)
+    P = P / P.sum(axis=1, keepdims=True)
+    P = P - P.mean(axis=0)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', ConvergenceWarning)
+        S = FastICA(k, random_state=seed, max_iter=2000, whiten='unit-variance').fit_transform(P)
+    sign = np.sign((S ** 3).sum(axis=0))
+    S = S * np.where(sign == 0, 1, sign)
+    return S, P.T @ S / len(P)
+
+
+def _corr(A: np.ndarray, B: np.ndarray) -> np.ndarray:
+    """Pearson correlations between the columns of A and those of B"""
+    A = (A - A.mean(0)) / (A.std(0) + 1e-12)
+    B = (B - B.mean(0)) / (B.std(0) + 1e-12)
+    return A.T @ B / len(A)
+
+
+def beat_stability(X: pd.DataFrame, k: int, S0: np.ndarray, L0: np.ndarray, runs: int = BEAT_RUNS,
+                   seed: int = 0) -> np.ndarray:
+    """For each component of the full run, the share of reruns (each with its own seed and BEAT_FRAC of the stories)
+    it comes back in: a rerun component whose outlet scores correlate at least BEAT_MATCH with it and whose top
+    stories hold BEAT_OVERLAP of its own top stories among those drawn"""
+    rng = np.random.default_rng(seed)
+    n = X.shape[1]
+    back = np.zeros(S0.shape[1])
+    for r in range(runs):
+        cols = np.sort(rng.choice(n, int(BEAT_FRAC * n), replace=False))
+        S, L = ica(X.iloc[:, cols], k, seed + r + 1)
+        C = _corr(S0, S)
+        for c in range(S0.shape[1]):
+            d = int(np.abs(C[c]).argmax())
+            if abs(C[c, d]) < BEAT_MATCH:
+                continue
+            ref = L0[cols, c]
+            got = L[:, d] * np.sign(C[c, d])
+            m = min(BEAT_STORIES, len(cols))
+            mine, theirs = set(np.argsort(-ref)[:m]), set(np.argsort(-got)[:m])
+            back[c] += len(mine & theirs) / m >= BEAT_OVERLAP
+    return back / runs
+
+
+def coherence(vectors: np.ndarray, idx: np.ndarray, draws: int = BEAT_NULL_DRAWS, seed: int = 0) -> float:
+    """How well a set of stories hangs together: the share of random sets of as many of our stories whose labels'
+    mean pairwise cosine is below the set's (vectors: one unit row per story)"""
+    def mean_cos(i):
+        V = vectors[i]
+        G = V @ V.T
+        return (G.sum() - np.trace(G)) / (len(i) * (len(i) - 1))
+    if len(idx) < 2:
+        return 0.0
+    rng = np.random.default_rng(seed)
+    mine = mean_cos(idx)
+    null = np.array([mean_cos(rng.choice(len(vectors), len(idx), replace=False)) for _ in range(draws)])
+    return float(np.mean(null < mine))
+
+
+def label_vectors(texts: list[str]) -> np.ndarray:
+    """The story labels as unit vectors, by the site's own story embedder (a small static model, on the CPU)"""
+    from app.analysis import clustering
+    from app.analysis.embeddings import static, unit
+    return unit(static(texts, clustering.EMBEDDING_MODEL))
+
+
+def topic_shares(labels: list[str]) -> dict[str, float]:
+    """The share of the labels each TOPICS family matches"""
+    low = [t.lower() for t in labels]
+    return {k: sum(bool(rx.search(t)) for t in low) / max(len(low), 1) for k, rx in TOPICS.items()}
+
+
+def beat_name(labels: list[str], base: dict[str, float]) -> str | None:
+    """A short name: the TOPICS family matching at least BEAT_NAME_SHARE of the labels and BEAT_NAME_LIFT times its
+    share of all our stories (`base`: politics matches a third of them, so it names only a beat that's mostly
+    politics); the most matched of those, or None"""
+    shares = topic_shares(labels)
+    fits = [k for k, v in shares.items() if v >= BEAT_NAME_SHARE and v >= BEAT_NAME_LIFT * base.get(k, 0)]
+    return BEAT_NAMES.get(max(fits, key=lambda k: (shares[k], k))) if fits else None
+
+
+def find_beats(X: pd.DataFrame, labels: pd.Series, vectors=None, k: int | None = None) -> list[dict]:
+    """Each outlet's own agenda, from ICA on the coverage table: the beats that hold (BEAT_KEEP of the reruns) and
+    hang together (BEAT_COHERENT), each with the outlets leading it (LEAD_RAN, LEAD_FOCUS; by score, highest first),
+    the other outlets that share it (ran SHARE_MIN of its stories at SHARE_LIFT times their usual rate), its defining
+    stories (with the leaders that ran each) and a short name when its stories give one. An outlet leading two beats
+    keeps the one that's the bigger part of what it ran; an outlet leading none has no beat. `vectors`: the story
+    labels' embedder (label_vectors)"""
+    k = k or min(BEAT_K, max(2, len(X) // BEAT_PER))
+    if len(X) < 2 * k or X.shape[1] < 2 * BEAT_STORIES:
+        return []
+    S, L = ica(X, k, 0)
+    held = beat_stability(X, k, S, L)
+    texts = [str(labels.get(s, '') or '') for s in X.columns]
+    try:
+        V = (vectors or label_vectors)(texts)
+    except Exception:  # noqa: BLE001 - no embedder: no way to tell a beat from a small outlet's mix, so none
+        logger.exception("Beats: the story labels couldn't be embedded; no beats this time")
+        return []
+    base = X.mean(axis=1)
+    topics = topic_shares([t for t in texts if t])
+    found = []
+    total = X.sum(axis=1)
+    for c in range(k):
+        s = pd.Series(S[:, c], index=X.index)
+        defining = np.argsort(-L[:, c])[:BEAT_STORIES]
+        ran = X.iloc[:, defining].sum(axis=1)
+        lift = (ran / len(defining)) / base.where(base > 0)
+        # leading: most of the beat's stories, and they're a good part of all it ran (not a big outlet that runs
+        # everything); the outlet ICA puts furthest out must be one, or the component isn't anyone's beat
+        focus = ran / total.where(total > 0)
+        leads = (ran >= LEAD_RAN * len(defining)) & (focus >= LEAD_FOCUS)
+        first = s.idxmax()
+        leaders = sorted(leads.index[leads], key=lambda o: -s[o])
+        coh = coherence(V, defining)
+        logger.info("Beat %d: %s (score %.1f), leading %s, came back %.0f%%, hangs together %.2f", c, first,
+                    s[first], ', '.join(leaders) or '-', 100 * held[c], coh)
+        if first not in leaders or s[first] < BEAT_MIN_SCORE or held[c] < BEAT_KEEP or coh < BEAT_COHERENT:
+            continue
+        shared = [o for o in lift.sort_values(ascending=False).index
+                  if o not in leaders and ran[o] >= SHARE_MIN and lift[o] >= SHARE_LIFT][:SHARE_MAX]
+        stories = []
+        for j in defining:
+            sid = X.columns[j]
+            label = labels.get(sid)
+            if not isinstance(label, str) or not label.strip():
+                continue
+            stories.append({'id': int(sid) if isinstance(sid, (int, np.integer)) else str(sid), 'label': label.strip(),
+                            'outlets': int(X.iloc[:, j].sum()), 'by': [o for o in leaders if X.iloc[:, j][o]]})
+        found.append({'component': c, 'score': round(float(s[first]), 2), 'held': round(float(held[c]), 2),
+                      'coherence': round(coh, 2), 'leaders': leaders,
+                      'focus': {o: round(float(focus[o]), 3) for o in leaders},
+                      'shared': [{'name': o, 'ran': int(ran[o]), 'lift': round(float(lift[o]), 1)} for o in shared],
+                      'name': beat_name([x['label'] for x in stories], topics), 'stories': stories})
+    # an outlet leads one beat at most: the one that's the biggest part of what it ran. Two outlets on one beat can
+    # each get a component of their own (ICA splits them into spikes), so the same beat can turn up twice: the
+    # copy left with no leader goes
+    best = {}
+    for b in sorted(found, key=lambda b: -b['score']):
+        for o in b['leaders']:
+            if o not in best or b['focus'][o] > best[o]['focus'][o]:
+                best[o] = b
+    for b in found:
+        b['leaders'] = [o for o in b['leaders'] if best[o] is b]
+        for st in b['stories']:
+            st['by'] = [o for o in st['by'] if o in b['leaders']]
+    beats = sorted((b for b in found if b['leaders']), key=lambda b: -b['score'])
+    logger.info("Beats: %s", '; '.join(f"{', '.join(b['leaders'])} ({b['name'] or 'unnamed'})" for b in beats)
+                or 'none held')
+    return beats
+
+
 # ---------------------------------------------------------------- the profile
 
 
@@ -573,6 +773,12 @@ def build(data: dict, until: dt) -> dict:
     stability = {}
     families, kinds = find_types(Z, FAMILIES, stability=stability), find_types(Z, TYPES, stability=stability)
     labels = data['labels'].set_index('story_id')['label']
+    try:
+        beats = find_beats(X, labels)
+    except Exception:  # noqa: BLE001 - the profile without beats beats no profile
+        logger.exception("Beats failed; the profile goes without them")
+        beats = []
+    beat_of = {o: i for i, b in enumerate(beats) for o in b['leaders']}
     wire_pct, heat_pct = percentile(tier['wire_axis']), percentile(tier['heat_axis'])
     first = {name: (_type_of(name, families, bias.get(name)), _type_of(name, kinds, bias.get(name))) for name in tier.index}
     out = {}
@@ -584,7 +790,7 @@ def build(data: dict, until: dt) -> dict:
                      'wire_pct': int(wire_pct[name]), 'heat_pct': int(heat_pct[name]),
                      'family': fam, 'type': sub or fam, 'like': like[name], 'is_wire': name in WIRES,
                      'lean': None if lean is None or pd.isna(lean) else int(lean),
-                     'stories': int(r['stories']), 'articles': int(r['articles'])}
+                     'stories': int(r['stories']), 'articles': int(r['articles']), 'beat': beat_of.get(name)}
     types = []
     for level, found in (('family', families), ('type', kinds)):
         for n, t in found.items():
@@ -598,7 +804,7 @@ def build(data: dict, until: dt) -> dict:
     return {'day': until.strftime('%Y-%m-%d'), 'since': (until - td(days=WINDOW_DAYS)).isoformat(timespec='minutes'),
             'until': until.isoformat(timespec='minutes'), 'window_days': WINDOW_DAYS,
             'headlines': int(len(data['heads'])), 'articles': int(len(art)), 'stories': int(X.shape[1]),
-            'outlets': out, 'types': types,
+            'outlets': out, 'types': types, 'beats': beats,
             'axes': {'inertia': [round(100 * float(i), 1) for i in inertia[:2]], 'rho': rho,
                      'x': _ends(cols, 'ca1', labels), 'y': _ends(cols, 'ca2', labels),
                      'pull': {ax: _pulls(cols, X, f'ca{i}', labels, bias) for i, ax in ((1, 'x'), (2, 'y'))}}}

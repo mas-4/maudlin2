@@ -16,7 +16,7 @@ from app.analysis.edits import find_edits
 from app.analysis.newsfilter import EMOTIONS, EMOTION_EMOJI, emotion_weights
 from app.site.common import SHARED, TemplateHandler
 from app.site.data import DataHandler
-from app.site.page_outlet_map import fingerprint
+from app.site.page_outlet_map import beat_card, fingerprint, story_pages
 from app.utils import Config, get_logger
 
 logger = get_logger(__name__)
@@ -166,6 +166,7 @@ class OutletPages:
         except Exception:  # noqa: BLE001 - the pages without fingerprints beat no pages
             logger.exception("Outlet profiles failed; outlet pages go without fingerprints this build")
             profile = {}
+        with_page = story_pages() if profile.get('beats') else set()  # for the beat cards' story links
         has_feelings = 'emotion_ranks' in live
         average = average_feelings(live) if has_feelings else {}
         for o in self.outlets:
@@ -178,7 +179,8 @@ class OutletPages:
             read = int(mine['emotion_ranks'].notna().sum()) if has_feelings else 0
             self.template.write({'title': o['name'], 'o': o, 'now': front_page(mine, live, story_of_url),
                                  'rewrites': rewrites, 'window_days': self.window_days,
-                                 'fp': fingerprint(profile, o['name']), 'profiled': bool(profile.get('outlets')),
+                                 'fp': fingerprint(profile, o['name']),
+                                 'beat': beat_card(profile, o['name'], with_page), 'profiled': bool(profile.get('outlets')),
                                  'feelings': feeling_strip(feeling_shares(mine['emotion_ranks']), average)
                                  if has_feelings else None, 'feelings_read': read,
                                  'measures': measures(o, self.medians, self.tops) if 'shares' in o else [],

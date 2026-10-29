@@ -5,6 +5,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **🎯 An outlet's beat.** Independent component analysis (FastICA, one component per nine outlets, at most 8) of the
+  outlet map's outlets × stories table, on each outlet's row as shares. A beat is kept when it comes back in 80% of 20
+  reruns (new seeds, 80% of the stories; outlet scores at r ≥ 0.8 and half its ten defining stories) and when those
+  stories' labels sit closer in meaning (the site's static story embedder) than 95% of random sets of our stories, the
+  guard against small outlets, which stand apart in ICA whatever they ran. Outlets lead it when they ran 7 of its 10
+  stories and those are a fifth of all they ran; others share it when they ran 4 at 5 times their usual rate. Named by
+  a topic family (outlet_profile.TOPICS) matching 40% of its stories and twice its share of all of them, or by its
+  stories' own labels.
 - **Outlet lists by shares, feelings against the average outlet, measures against the median.** The outlets page's
   Spiciest | Plainest and Grimmest | Sunniest rank outlets by the share of their headlines scored loaded (1 or 2) or
   plain (0), grim (below 0) or good news (above 0), not by the averages. The outlet map's stories that pull each way
