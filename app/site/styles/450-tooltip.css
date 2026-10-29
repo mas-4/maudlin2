@@ -19,7 +19,7 @@
     font: 700 0.92rem/1.35 'Comic Neue', 'Comic Sans MS', cursive;
     overflow-wrap: anywhere;
     animation: hover-card-in 0.2s ease-out;
-    transform-origin: var(--tail, 18px) calc(100% + 40px);  /* pops out of its tail's tip (ne; the others below) */
+    transform-origin: calc(var(--tail, 18px) + 7px) calc(100% + 28px);  /* pops out of its tail's tip (ne; the others below) */
 }
 
 .hover-card[hidden] {
@@ -32,20 +32,21 @@
 }
 
 /* The card is a speech bubble, like the talking paper (Oct 29), set catty-corner to what you point at with a
-   swooping comic tail off its nearest corner ("catty corner angles and jaunty"). index.js place() sets data-side,
+   comic tail off its nearest corner ("catty corner angles and jaunty"), the logo's own: a short straight wedge from
+   near the corner, its tip a little past where it starts ("I really thought we should mimic this"). index.js place() sets data-side,
    where the card sits from the mark (ne: above and to the right), and --tail, how far the tail is from the card's
    edge. The tail is one SVG shape used twice as a mask: stroked, in ink, so its outline is as thick as the card's
    border all the way round; then unstroked, in the card's own fill, over it, which also opens the border where the
    tail joins. The box starts just inside the border (100% here is the border's inner edge), so the tail's outline
-   runs straight on from the card's. Drawn for ne, hanging off the bottom edge with its tip down and to the left; the
+   runs straight on from the card's. Drawn for ne, hanging off the bottom edge with its tip down and to the left, 7px in from the box's left; the
    others mirror it. */
 .hover-card::before, .hover-card::after {
     content: '';
     position: absolute;
     top: calc(100% - 0.5px);
     left: var(--tail, 18px);
-    width: 50px;
-    height: 44px;
+    width: 44px;
+    height: 32px;
     pointer-events: none;
     -webkit-mask: var(--tail-shape) no-repeat 0 0 / 100% 100%;
     mask: var(--tail-shape) no-repeat 0 0 / 100% 100%;
@@ -53,12 +54,12 @@
 
 .hover-card::before {
     background: #1f1f2e;
-    --tail-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 44'%3E%3Cpath d='M16 0 L38 0 Q22 14 3 38 Q12 17 16 0 Z' fill='black' stroke='black' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --tail-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 32'%3E%3Cpath d='M14 0 L35 0 L7 25 Z' fill='black' stroke='black' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .hover-card::after {
     background: var(--bubble, #fffdf5);
-    --tail-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 44'%3E%3Cpath d='M16 0 L38 0 Q22 14 3 38 Q12 17 16 0 Z' fill='black'/%3E%3C/svg%3E");
+    --tail-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 32'%3E%3Cpath d='M14 0 L35 0 L7 25 Z' fill='black'/%3E%3C/svg%3E");
 }
 
 .hover-card[data-side="nw"]::before, .hover-card[data-side="nw"]::after {
@@ -82,9 +83,9 @@
 }
 
 /* It pops out of its tail's tip, with a little spring */
-.hover-card[data-side="nw"] { transform-origin: calc(100% - var(--tail, 18px)) calc(100% + 40px); }
-.hover-card[data-side="se"] { transform-origin: var(--tail, 18px) -40px; }
-.hover-card[data-side="sw"] { transform-origin: calc(100% - var(--tail, 18px)) -40px; }
+.hover-card[data-side="nw"] { transform-origin: calc(100% - var(--tail, 18px) - 7px) calc(100% + 28px); }
+.hover-card[data-side="se"] { transform-origin: calc(var(--tail, 18px) + 7px) -28px; }
+.hover-card[data-side="sw"] { transform-origin: calc(100% - var(--tail, 18px) - 7px) -28px; }
 
 @keyframes hover-card-in {
     from { opacity: 0; transform: scale(0.6); }

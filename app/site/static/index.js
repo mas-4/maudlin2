@@ -373,7 +373,7 @@ window.hoverCard = (() => {
         // tip is from the card's edge on that side (450-tooltip.css)
         if (!card || card.hidden || !anchor || !anchor.isConnected) return;
         const r = anchor.getBoundingClientRect(), pad = 8;
-        const reach = 38, gap = 2;  // the tail's tip beyond the card's edge, and a little air before the mark
+        const reach = 25, gap = 2;  // the tail's tip beyond the card's edge, and a little air before the mark
         card.style.left = '0px'; card.style.top = '0px';
         const w = card.offsetWidth, h = card.offsetHeight;
         const vw = document.documentElement.clientWidth, vh = innerHeight;
@@ -391,9 +391,9 @@ window.hoverCard = (() => {
         y = clamp(y, pad, vh - h - pad);
         card.style.left = `${x}px`;
         card.style.top = `${y}px`;
-        const tail = east ? px - x : x + w - px;
+        const tail = (east ? px - x : x + w - px) - 7;  // the tip is 7px in from the tail's box
         card.dataset.side = (up ? 'n' : 's') + (east ? 'e' : 'w');
-        card.style.setProperty('--tail', `${Math.round(clamp(tail, 2, w - 48))}px`);
+        card.style.setProperty('--tail', `${Math.round(clamp(tail, 2, w - 46))}px`);
     }
 
     function show(el, build, pin) {
