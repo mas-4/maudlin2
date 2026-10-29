@@ -51,6 +51,12 @@
                 (clusterwise Jaccard). An outlet is given its type only when at least two of the three outlets it
                 behaves most like share it, and a type named for a side only when it's rated on that side or not
                 rated.</p>
+            <p>🎯 <strong>The beats:</strong> independent component analysis of the same outlets × stories table, which
+                looks for groups of stories that rise together in a few outlets rather than for the directions of most
+                difference. A beat is shown when it comes back in at least four of five reruns (each with a new start
+                and a fifth of the stories left out) and when its ten defining stories' labels are closer in meaning
+                than 95% of random sets of our stories: an outlet that ran few of our stories always stands apart, so
+                that alone isn't a beat. Its name is a topic most of its stories share, or the stories themselves.</p>
         </details>
         <script type="application/json" id="omap-data">{{ dots|tojson }}</script>
         <script>
@@ -164,6 +170,35 @@
             </ol>
         {% else %}
             <p class="stage-empty">🤷 No type held together this time.</p>
+        {% endif %}
+
+        {% if beats %}
+            <h2 class="section-divider" id="omap-beats"><span>🎯 Beats</span></h2>
+            <p class="table-intro">Where the map gives two broad directions, these are single outlets' own agendas:
+                groups of our stories that one outlet or a few ran far more than the rest did. A beat is shown when it
+                comes back each time we look again with part of the stories left out, and when its stories hang
+                together; outlets with no beat of their own aren't listed. Hover or tap a beat for its stories.</p>
+            <ol class="rank-list omap-beat-list">
+                {% for t in beats %}
+                    <li><div class="rank-row omap-beat-row" tabindex="0" data-obeat="{{ loop.index }}" style="--ink: #ff4fa3">
+                        <span class="rank-mark" role="img" aria-label="a beat">🎯</span>
+                        <span class="rank-main"><span class="rank-name">{{ t.title|e }}</span>
+                            <span class="omap-beat-who">{% for c in t.leaders %}<a class="edit-chip" href="{{ c.href|e }}" style="{{ c.style|e }}">{{ outlet_icon(c.name) }}{{ short_name(c.name) }}</a> {% endfor %}{% if t.shared %}<span class="omap-beat-also">· shared with {% for c in t.shared %}<a href="{{ c.href|e }}">{{ short_name(c.name) }}</a>{{ ', ' if not loop.last }}{% endfor %}</span>{% endif %}</span></span>
+                        <span class="rank-figure">{{ t.leaders|length }} {{ 'outlet' if t.leaders|length == 1 else 'outlets' }}</span></div>
+                        <template id="obeat-{{ loop.index }}"><div class="ocard"><div class="hover-card-head">🎯 {{ t.title|e }}</div>
+                            <ul class="omap-beat-stories">{% for s in t.stories %}<li>{% if s.href %}<a href="{{ s.href|e }}">🗞️ {{ s.name|e }}</a>{% else %}🗞️ {{ s.name|e }}{% endif %} <span class="trend-posts">{{ s.figure|e }}</span></li>{% endfor %}</ul>
+                            {% if t.shared %}<p>🤝 {% for c in t.shared %}{{ c.name|e }} {{ c.tip|e }}{{ '; ' if not loop.last else '.' }}{% endfor %}</p>{% endif %}
+                            <p>🧷 Came back in {{ t.held }}% of the looks again.</p></div></template></li>
+                {% endfor %}
+            </ol>
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    window.hoverCard.register('.omap-beat-row', (row) => {
+                        const t = document.getElementById(`obeat-${row.dataset.obeat}`);
+                        return t ? t.content.cloneNode(true) : null;
+                    });
+                });
+            </script>
         {% endif %}
 
         <h2 class="section-divider" id="omap-all"><span>📋 Every outlet on the map</span></h2>

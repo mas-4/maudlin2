@@ -1,7 +1,8 @@
 """🗺️ The outlet map (Oct 28): every outlet we read on enough of our stories, placed by which stories it covers (the
 coverage axes of app.analysis.outlet_profile), with a second view on how it words them (wire × heat). Dots in the
 outlets' lean colors, the most distinctive labeled, every one named on hover or tap. Drawn as inline SVG, like the
-story charts, and opens full screen the same way (svg.story-chart). Also draws the small map on each outlet's page."""
+story charts, and opens full screen the same way (svg.story-chart). Also draws the small map on each outlet's page,
+and the 🎯 beats (outlet_profile.find_beats): a board of them here, and the beat card on an outlet's page."""
 from datetime import datetime as dt
 from html import escape
 
@@ -292,6 +293,78 @@ def fingerprint(profile: dict, name: str) -> dict | None:
             'map': mini_svg(profile['outlets'], name)}
 
 
+BEAT_SHOWN = 5  # stories on an outlet's beat card
+BEAT_QUOTED = 2  # stories quoted in the name of a beat its stories' topics don't name
+BEAT_QUOTE_CHARS = 60
+BEAT_INK = '#ff4fa3'  # the beats' pink: the card's shadow, its rows and the map's board
+
+
+def _quote(label: str) -> str:
+    """A story label, cut at a word to BEAT_QUOTE_CHARS, in curly quotes"""
+    if len(label) > BEAT_QUOTE_CHARS:
+        label = label[:BEAT_QUOTE_CHARS].rsplit(' ', 1)[0].rstrip(',;:') + '…'
+    return f'‘{label}’'
+
+
+def beat_title(beat: dict) -> str:
+    """A beat in a few words: its topic name, or 'stories like ‘…’ and ‘…’' from its first stories"""
+    if beat.get('name'):
+        return beat['name']
+    quoted = [_quote(s['label']) for s in beat['stories'][:BEAT_QUOTED]]
+    return 'stories like ' + ' and '.join(quoted) if quoted else 'its own stories'
+
+
+def _chip(profile: dict, name: str, tip: str) -> dict:
+    from app.site.common import chip_style
+    lean = profile.get('outlets', {}).get(name, {}).get('lean')
+    return {'name': name, 'href': f'outlet-{slug(name)}.html', 'style': chip_style(name, lean or 0), 'tip': tip}
+
+
+def beat_story_rows(beat: dict, n_outlets: int, with_page: set, only: str | None = None,
+                    most: int = BEAT_SHOWN) -> list[dict]:
+    """A beat's stories as ranked rows (the bar: how many outlets on the map ran it), linked to their pages; `only`:
+    just the ones that outlet ran"""
+    from app.site import boards
+    from app.site.page_story import page_name
+    picked = [s for s in beat['stories'] if only is None or only in s['by']][:most]
+    top = max((s['outlets'] for s in picked), default=0)
+    return [boards.row(s['label'], page_name(s['id']) if s['id'] in with_page else None, s['outlets'], top,
+                       f"{s['outlets']} of {n_outlets}",
+                       tip=f"{s['label']}: run by {s['outlets']} of the {n_outlets} outlets on the map",
+                       ink=BEAT_INK, mark='🗞️', mark_label='a story') for s in picked]
+
+
+def beat_card(profile: dict, name: str, with_page: set) -> dict | None:
+    """🎯 What an outlet's page shows of its beat: the beat in a few words, the stories of it it ran, the outlets
+    leading it with it and those sharing it; None when it leads none"""
+    beats = (profile or {}).get('beats') or []
+    i = (profile or {}).get('outlets', {}).get(name, {}).get('beat')
+    if i is None or not 0 <= i < len(beats):
+        return None
+    beat = beats[i]
+    n = len(profile['outlets'])
+    with_it = [_chip(profile, o, f'{o} leads this beat too') for o in beat['leaders'] if o != name]
+    shared = [_chip(profile, s['name'], f"{s['name']} ran {s['ran']} of its {len(beat['stories'])} stories, "
+                                        f"{s['lift']:g}× as often as it runs our stories in general")
+              for s in beat['shared']]
+    return {'title': beat_title(beat), 'named': bool(beat.get('name')), 'with': with_it, 'shared': shared,
+            'stories': beat_story_rows(beat, n, with_page, only=name), 'held': round(100 * beat['held']),
+            'defining': len(beat['stories']), 'window_days': profile.get('window_days')}
+
+
+def beat_rows(profile: dict, with_page: set) -> list[dict]:
+    """🎯 The outlet map's beats: each with its title, leaders and sharers as chips, and its stories for the card"""
+    n = len(profile.get('outlets', {}))
+    out = []
+    for b in profile.get('beats') or []:
+        out.append({'title': beat_title(b), 'named': bool(b.get('name')),
+                    'leaders': [_chip(profile, o, f'{o}: its page') for o in b['leaders']],
+                    'shared': [_chip(profile, s['name'], f"ran {s['ran']} of these {len(b['stories'])} stories, "
+                                                         f"{s['lift']:g}× its usual rate") for s in b['shared']],
+                    'stories': beat_story_rows(b, n, with_page), 'held': round(100 * b['held'])})
+    return out
+
+
 class OutletMapPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
@@ -315,6 +388,7 @@ class OutletMapPage:
         dots = {r['name']: {**{k: r[k] for k in ('href', 'type', 'like', 'is_wire', 'lean')},
                             'wire': ordinal(r['wire_pct']), 'heat': ordinal(r['heat_pct'])} for r in rows}
         until = profile.get('until')
+        with_page = story_pages() if outlets else set()
         self.context.update({
             'profile': profile, 'svg': map_svg(outlets) if len(outlets) >= 3 else '', 'outlets': rows, 'dots': dots,
             'until': eastern_day(until) if until else '', 'min_stories': outlet_profile.MIN_STORIES,
@@ -322,7 +396,8 @@ class OutletMapPage:
             'views': VIEWS, 'leans': [{'name': nm, 'color': bias_colors[b + 3], 'ink': bias_ink[b + 3]}
                                       for b, nm in LEANS],
             'types': type_rows(profile),
-            'pulls': pull_boards(profile, story_pages()) if outlets else [],
+            'pulls': pull_boards(profile, with_page) if outlets else [],
+            'beats': beat_rows(profile, with_page) if outlets else [],
             'type_key': type_key([o['type'] for o in outlets.values()]), 'LEAN_INK': LEAN_INK, 'ordinal': ordinal,
         })
         self.template.write(self.context)
