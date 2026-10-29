@@ -80,7 +80,9 @@
                 {% for m in told_as %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{{ m.genre|e }}">🧩 {{ m.name|e }}{% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% if m.sides[side] %} <span class="told-as-side told-as-{{ side }}" title="{{ m.sides[side]|join(', ')|e }}">{{ emoji }}{{ m.sides[side]|length }}</span>{% endif %}{% endfor %}</a>{% endfor %}
             </div>
         {% endif %}
-        <details class="card-more"><summary title="Its mood, quotes, shows, TV, radio and every outlet">🔍 more of this story</summary>
+        {# "more" and the story page side by side, centred when they wrap (Oct 29) #}
+        <div class="card-actions">
+        <details class="card-more"><summary title="Its mood, quotes, shows, TV, radio and every outlet">🔍 more on this story</summary>
         {% endif %}
         <div class="meters">
             {% for feeling in cluster['feelings'] %}
@@ -168,7 +170,7 @@
             </div>
         {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true">→</span></a></p>
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true"></span></a></p>
         {% endif %}
         {% endif %}
         {% if cluster['curators'] %}
@@ -179,8 +181,9 @@
         {% if top %}</details>{% endif %}
         {# under "more", not above it (Oct 29, the person: "put everything on the story below it") #}
         {% if top and story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true">→</span></a></p>
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true"></span></a></p>
         {% endif %}
+        {% if top %}</div>{% endif %}
     </div>
 {% endmacro %}
     <script>

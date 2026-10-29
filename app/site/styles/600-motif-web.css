@@ -78,6 +78,30 @@
     margin-top: 0.4em;
 }
 
+/* "More" and the story page's sticker share a line, centred when there's no room and they stack; open, "more"
+   takes the whole width and the sticker drops under what it shows (Oct 29) */
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.7em 1.1em;
+    margin: 0.6em 0 0.4em;
+}
+
+.card-actions > .card-more, .card-actions > .story-link {
+    margin: 0;
+}
+
+.card-actions > .card-more[open] {
+    flex-basis: 100%;
+}
+
+.card-actions > .card-more[open] > summary {
+    display: table;
+    margin-inline: auto;
+}
+
 .card-more > summary {
     display: inline-block;
     list-style: none;
@@ -99,18 +123,15 @@
 /* A round ink badge with an arrow at its end says it opens, and turns over when it has (Oct 29, the person: the 🔍
    "did not make it clear to me there was a drop down expansion there!") */
 .card-more > summary::after {
-    content: '▾';
-    display: inline-grid;
-    place-items: center;
+    content: '';
+    display: inline-block;
     width: 1.35em;
     height: 1.35em;
     margin-left: 0.45em;
     border-radius: 50%;
-    background: #1f1f2e;
-    color: white;
+    background: #1f1f2e var(--tri-down) center / 100% no-repeat;
     font-size: 0.95em;
-    line-height: 1;
-    vertical-align: -0.15em;
+    vertical-align: -0.25em;
     transition: rotate 0.2s;
 }
 

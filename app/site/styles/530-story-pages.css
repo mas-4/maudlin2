@@ -87,19 +87,23 @@
     box-shadow: 1px 1px 0 #ff4fa3;
 }
 
+/* Our own triangles for the badges, drawn rather than the font's ▾ and →, which looked nasty (Oct 29); each sits a
+   touch off-centre so it looks centred in its circle */
+:root {
+    --tri-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 5.6h8L8 11.4z' fill='white'/%3E%3C/svg%3E");
+    --tri-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.6 4v8L11.4 8z' fill='white'/%3E%3C/svg%3E");
+}
+
 /* A round ink badge with the arrow, at its right end, the pair of the ▾ on "more" (600-motif-web.css; Oct 29, the
    person: "give that a right arrow on the right") */
 .story-link-arrow {
-    display: inline-grid;
-    place-items: center;
+    display: inline-block;
     width: 1.35em;
     height: 1.35em;
     margin-left: 0.4em;
     border-radius: 50%;
-    background: #1f1f2e;
-    color: white;
-    line-height: 1;
-    vertical-align: -0.15em;
+    background: #1f1f2e var(--tri-right) center / 100% no-repeat;
+    vertical-align: -0.3em;
     transition: transform 0.15s;
 }
 
