@@ -239,14 +239,13 @@
         <section id="cloud-detail" class="cloud-detail" hidden role="dialog" aria-live="polite"></section>
     </figure>
     {# Floats at the left edge so any section is a tap away from anywhere on the page; the section on screen lights up.
-       In the page's own order: cloud, top stories, sagas (Oct 27) #}
+       In the page's own order: cloud, top stories, sagas (Oct 27). Only sections on this page: links to other pages
+       left the rail (Oct 29, the person: "the rail should only show elements on the page") #}
     <button class="toc-toggle" type="button" aria-label="Jump to a section" aria-expanded="false">🧭</button>
     <nav class="page-toc" aria-label="On this page">
         <a href="#top"><span class="toc-emoji">☁️</span><span class="toc-label">cloud</span></a>
         <a href="#top-stories"><span class="toc-emoji">📰</span><span class="toc-label">top stories</span></a>
         {% if saga_list %}<a href="#sagas"><span class="toc-emoji">🧵</span><span class="toc-label">sagas</span></a>{% endif %}
-        <a href="stories.html"><span class="toc-emoji">🗂️</span><span class="toc-label">every story</span></a>
-        <a href="headlines.html"><span class="toc-emoji">📋</span><span class="toc-label">every headline</span></a>
     </nav>
     <script>
         (function () {

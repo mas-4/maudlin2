@@ -325,7 +325,8 @@ def test_front_page_has_the_floating_section_rail(front):
     assert front.select_one('button.toc-toggle') is not None
     hrefs = [a['href'] for a in toc.select('a')]
     assert '#top' in hrefs
-    assert 'headlines.html' in hrefs
+    # only sections on this page, no links away (Oct 29)
+    assert all(h.startswith('#') for h in hrefs), hrefs
     # in the page's own order: top stories, then sagas (Oct 27); the trend boxes left the page, their rail link too
     assert '#trending' not in hrefs and hrefs.index('#top') < hrefs.index('#top-stories')
 
