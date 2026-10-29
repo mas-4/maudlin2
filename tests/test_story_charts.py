@@ -79,3 +79,15 @@ def test_a_saga_coverage_drops_to_nothing_where_no_part_was_on_the_front_pages()
     oil = svg.split('<polygon points="')[1].split('"')[0]
     # the oil deal's top edge is at the baseline an hour after its last sighting, not partway down a slope
     assert f'{axis.x(T + td(hours=2)):.1f},120.0' in oil
+
+
+def test_a_headline_swapped_between_runs_carries_on_to_the_next():
+    # The Independent, Oct 29: last seen 4:05, its new headline first seen 5:01; nobody looked in between
+    old = {'first': T, 'last': T + td(minutes=5)}
+    new = {'first': T + td(minutes=61), 'last': T + td(minutes=72)}
+    assert sc.carried_until(old, [new]) == new['first']
+    # two runs or more apart: a run found the story gone, so the gap stays
+    assert sc.carried_until(old, [{**new, 'first': T + td(hours=2, minutes=1)}]) == old['last']
+    # carried side by side, or the outlet's last headline: its own last sighting
+    assert sc.carried_until(old, [{**new, 'first': T + td(minutes=2)}]) == old['last']
+    assert sc.carried_until(old, []) == old['last']

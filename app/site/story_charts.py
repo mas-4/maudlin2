@@ -76,6 +76,21 @@ def span_of(story: dict, extra: list[datetime] = ()) -> tuple[datetime, datetime
     return t0, max(t1, t0 + td(hours=2))
 
 
+# Front pages are read once an hour, so a headline swapped for a new one between two runs was last seen at one run and
+# the new one first seen at the next: the hour between is unknown, not a drop. Up to this long a gap, the outlet's bar
+# runs on to its next headline; longer, a run found the story gone from its front page (Oct 29, the person: "they
+# didn't drop it did they?")
+BETWEEN_RUNS = td(minutes=80)
+
+
+def carried_until(h: dict, later: list[dict]) -> datetime:
+    """Where a headline's bar ends: when it was last seen, or on to the outlet's next headline on the story when that
+    came up by the next run (nobody looked in between)"""
+    last = h['last'] or h['first']
+    nxt = min((g['first'] for g in later if g['first'] > last), default=None)
+    return nxt if nxt is not None and nxt - last <= BETWEEN_RUNS else last
+
+
 def timeline(story: dict, outlets: list[dict], tv_spots: list[dict], radio: list[dict], retold: datetime | None,
              channel_ink: dict) -> str | None:
     """Who carried it and when: a row per outlet in the order they picked it up, a bar for each of its headlines from
@@ -112,7 +127,7 @@ def timeline(story: dict, outlets: list[dict], tv_spots: list[dict], radio: list
                      f'<title>{escape(o)}</title></text>')
         for n, h in enumerate(by[o]):
             x0 = axis.x(max(h['first'], t0))
-            x1 = max(axis.x(h['last'] or h['first']), x0 + 4)
+            x1 = max(axis.x(carried_until(h, by[o][n + 1:])), x0 + 4)
             when = _local(h['first']).strftime('%b %-d, %-I:%M %p')
             parts.append(f'<rect x="{x0:.1f}" y="{y + 3}" width="{x1 - x0:.1f}" height="{ROW_H - 6}" rx="4" '
                          f'fill="{fill}" stroke="#1f1f2e" stroke-width="{1.5 if b is None else 0.8}" '
