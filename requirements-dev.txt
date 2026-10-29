@@ -1,2 +1,3 @@
 # Tools for working on the project, not needed to run it (prod installs requirements.txt only)
 mcp==2.3.0  # scripts/maudlin_mcp.py, the read-only database and motif index server in .mcp.json
+pytest-xdist==3.8.0  # the commit hook runs the tests on 12 workers (.githooks/pre-commit)

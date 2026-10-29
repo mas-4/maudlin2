@@ -1,11 +1,12 @@
 #!/bin/bash
-# Lint (ruff, under a second; rules in ruff.toml) and run the test suite before every commit (about a minute; it uses
-# the local database), and the checker's browser tests when the checker changed.
+# Lint (ruff, under a second; rules in ruff.toml) and run the test suite before every commit (about 40 s on 12
+# workers; it uses the local database), and the checker's browser tests when the checker changed.
 # Installed with: git config core.hooksPath .githooks    Skip once with: git commit --no-verify
 set -e
 cd "$(git rev-parse --show-toplevel)"
 .venv/bin/ruff check --quiet . || { echo "ruff found problems (.venv/bin/ruff check . --fix fixes the simple ones)"; exit 1; }
-.venv/bin/python -m pytest -q -x -m 'not slow' 2>&1 | tail -3  # the slow whole-page tests: pytest -m slow
+# On 12 workers, a file to a worker (the page tests share one scratch site a file builds once): about 40 s
+.venv/bin/python -m pytest -q -x -m 'not slow' -n 12 --dist loadfile 2>&1 | tail -3  # the slow whole-page tests: pytest -m slow
 [ "${PIPESTATUS[0]}" = 0 ] || exit 1
 # The checker's browser tests (Playwright, about 35 s), when a commit touches the checker: its React app (as built in
 # dist), its server, or the actions it runs. They run on a fresh copy of the data at port 8798, never the live checker
