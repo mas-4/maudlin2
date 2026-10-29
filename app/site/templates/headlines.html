@@ -81,7 +81,7 @@
             </div>
         {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true">→</span></a></p>
         {% endif %}
         <details class="card-more"><summary>🔍 more: mood, quotes, shows, TV, radio and every outlet</summary>
         {% endif %}
@@ -171,7 +171,7 @@
             </div>
         {% endif %}
         {% if story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story →</a></p>
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true">→</span></a></p>
         {% endif %}
         {% endif %}
         {% if cluster['curators'] %}

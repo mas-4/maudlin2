@@ -18,7 +18,8 @@
     filter: drop-shadow(5px 5px 0 #ff4fa3);  /* a drop shadow, not a box one, so the tail casts it too */
     font: 700 0.92rem/1.35 'Comic Neue', 'Comic Sans MS', cursive;
     overflow-wrap: anywhere;
-    animation: hover-card-in 0.12s ease-out;
+    animation: hover-card-in 0.2s ease-out;
+    transform-origin: var(--tail, 18px) calc(100% + 40px);  /* pops out of its tail's tip (ne; the others below) */
 }
 
 .hover-card[hidden] {
@@ -30,50 +31,64 @@
     padding-right: 2.2em;
 }
 
-/* The card is a speech bubble, like the talking paper (Oct 29): a comic tail on the side facing what you point at,
-   at --tail along that edge (index.js place() sets data-side and --tail). Two triangles in one box: ink, then the
-   card's own fill over it, which also opens the border where the tail joins. The box is drawn pointing left with its
-   right middle just inside the card's edge; the other sides mirror or turn it about that point. */
+/* The card is a speech bubble, like the talking paper (Oct 29), set catty-corner to what you point at with a
+   swooping comic tail off its nearest corner ("catty corner angles and jaunty"). index.js place() sets data-side,
+   where the card sits from the mark (ne: above and to the right), and --tail, how far the tail is from the card's
+   edge. The tail is one SVG shape used twice as a mask: stroked, in ink, so its outline is as thick as the card's
+   border all the way round; then unstroked, in the card's own fill, over it, which also opens the border where the
+   tail joins. The box starts just inside the border (100% here is the border's inner edge), so the tail's outline
+   runs straight on from the card's. Drawn for ne, hanging off the bottom edge with its tip down and to the left; the
+   others mirror it. */
 .hover-card::before, .hover-card::after {
     content: '';
     position: absolute;
-    left: -19px;
-    top: calc(var(--tail, 50%) - 11px);
-    width: 20px;
-    height: 22px;
-    transform-origin: 100% 50%;
+    top: calc(100% - 0.5px);
+    left: var(--tail, 18px);
+    width: 50px;
+    height: 44px;
     pointer-events: none;
+    -webkit-mask: var(--tail-shape) no-repeat 0 0 / 100% 100%;
+    mask: var(--tail-shape) no-repeat 0 0 / 100% 100%;
 }
 
 .hover-card::before {
     background: #1f1f2e;
-    clip-path: polygon(19px 0, 0 14px, 19px 22px);
+    --tail-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 44'%3E%3Cpath d='M16 0 L38 0 Q22 14 3 38 Q12 17 16 0 Z' fill='black' stroke='black' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .hover-card::after {
     background: var(--bubble, #fffdf5);
-    clip-path: polygon(20px 4px, 6px 13px, 20px 18px);
+    --tail-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 44'%3E%3Cpath d='M16 0 L38 0 Q22 14 3 38 Q12 17 16 0 Z' fill='black'/%3E%3C/svg%3E");
 }
 
-.hover-card[data-side="left"]::before, .hover-card[data-side="left"]::after {
-    left: calc(100% - 21px);
+.hover-card[data-side="nw"]::before, .hover-card[data-side="nw"]::after {
+    left: auto;
+    right: var(--tail, 18px);
     transform: scaleX(-1);
 }
 
-.hover-card[data-side="below"]::before, .hover-card[data-side="below"]::after,
-.hover-card[data-side="above"]::before, .hover-card[data-side="above"]::after {
-    left: calc(var(--tail, 50%) - 20px);
-    top: -10px;
-    transform: rotate(90deg);
+.hover-card[data-side="se"]::before, .hover-card[data-side="se"]::after {
+    top: auto;
+    bottom: calc(100% - 0.5px);
+    transform: scaleY(-1);
 }
 
-.hover-card[data-side="above"]::before, .hover-card[data-side="above"]::after {
-    top: calc(100% - 12px);
-    transform: rotate(-90deg);
+.hover-card[data-side="sw"]::before, .hover-card[data-side="sw"]::after {
+    top: auto;
+    bottom: calc(100% - 0.5px);
+    left: auto;
+    right: var(--tail, 18px);
+    transform: scale(-1, -1);
 }
+
+/* It pops out of its tail's tip, with a little spring */
+.hover-card[data-side="nw"] { transform-origin: calc(100% - var(--tail, 18px)) calc(100% + 40px); }
+.hover-card[data-side="se"] { transform-origin: var(--tail, 18px) -40px; }
+.hover-card[data-side="sw"] { transform-origin: calc(100% - var(--tail, 18px)) -40px; }
 
 @keyframes hover-card-in {
-    from { opacity: 0; transform: scale(0.94); }
+    from { opacity: 0; transform: scale(0.6); }
+    70% { opacity: 1; transform: scale(1.03); }
     to { opacity: 1; transform: none; }
 }
 

@@ -53,9 +53,49 @@
     padding: 0.4em 0.7em;
 }
 
+/* The way to a story's page from its card: a sticker, not a flat link (Oct 29, the person: "flat links like that
+   everything on this story are so bland"), sitting straight ("can we not make them canted?"); it hops and its arrow
+   scoots when pointed at */
 .story-link {
     font-size: 0.85em;
     font-weight: 700;
+    margin: 0.7em 0 0.5em;
+}
+
+.story-link a {
+    display: inline-block;
+    padding: 0.3em 0.85em 0.25em;
+    background: #ffc400;
+    color: #1f1f2e;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    text-decoration: none;
+    border: 2.5px solid #1f1f2e;
+    border-radius: 10px 16px 10px 16px;
+    box-shadow: 4px 4px 0 #ff4fa3;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.story-link a:hover, .story-link a:focus-visible {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #ff4fa3;
+}
+
+.story-link a:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #ff4fa3;
+}
+
+.story-link-arrow {
+    display: inline-block;
+    transition: transform 0.15s;
+}
+
+.story-link a:hover .story-link-arrow, .story-link a:focus-visible .story-link-arrow {
+    transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .story-link a, .story-link-arrow { transition: none; }
 }
 
 .story-page-intro {
@@ -224,7 +264,6 @@
     border-radius: 10px;
     box-shadow: 3px 3px 0 #1f1f2e;
     padding: 0.05em 0.6em;
-    transform: rotate(-2.5deg);
 }
 
 .story-hero .story-page-title {

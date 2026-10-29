@@ -366,31 +366,34 @@ window.hoverCard = (() => {
     }
 
     function place() {
-        // Beside what you point at (right, else left), or under or over it on a phone; the card is a speech bubble
-        // (Oct 29, the person: "Can we make our mouseover chips speech bubbles? It's kind of our thing"), so its tail
-        // goes on the side facing the mark, as near the mark's middle as the card's corners allow
+        // A speech bubble (Oct 29, the person: "Can we make our mouseover chips speech bubbles? It's kind of our
+        // thing"), set catty-corner to what you point at, its tail swooping off near the nearest corner ("cardinal
+        // directions is a little boring... catty corner angles and jaunty?"). Above and to the right if it fits, else
+        // the other diagonals; data-side names where the card sits (ne, nw, se, sw) and --tail how far the tail's
+        // tip is from the card's edge on that side (450-tooltip.css)
         if (!card || card.hidden || !anchor || !anchor.isConnected) return;
-        const r = anchor.getBoundingClientRect(), gap = 18, pad = 8;
+        const r = anchor.getBoundingClientRect(), pad = 8;
+        const reach = 38, gap = 2;  // the tail's tip beyond the card's edge, and a little air before the mark
         card.style.left = '0px'; card.style.top = '0px';
         const w = card.offsetWidth, h = card.offsetHeight;
         const vw = document.documentElement.clientWidth, vh = innerHeight;
         const clamp = (v, lo, hi) => Math.min(Math.max(lo, v), Math.max(lo, hi));
-        let x, y, side;
-        if (r.right + gap + w <= vw - pad) { x = r.right + gap; y = r.top + r.height / 2 - h / 2; side = 'right'; }
-        else if (r.left - gap - w >= pad) { x = r.left - gap - w; y = r.top + r.height / 2 - h / 2; side = 'left'; }
-        else {  // no room either side (a phone): under it, or over it
-            x = clamp(r.left + r.width / 2 - w / 2, pad, vw - w - pad);
-            side = r.bottom + gap + h <= vh - pad ? 'below' : 'above';
-            y = side === 'below' ? r.bottom + gap : r.top - gap - h;
-        }
+        const px = r.left + r.width / 2;
+        const room = {above: r.top - gap - reach - h - pad, below: vh - pad - (r.bottom + gap + reach + h)};
+        const up = room.above >= 0 || (room.below < 0 && room.above > room.below);
+        // To the right if it fits, else the left; on a phone, where neither does, the side that keeps the tail
+        // near its own corner
+        const fitsEast = px - 18 + w <= vw - pad, fitsWest = px + 18 - w >= pad;
+        const east = fitsEast || (!fitsWest && px < vw / 2);
+        let x = east ? px - 18 : px + 18 - w;
+        let y = up ? r.top - gap - reach - h : r.bottom + gap + reach;
         x = clamp(x, pad, vw - w - pad);
         y = clamp(y, pad, vh - h - pad);
         card.style.left = `${x}px`;
         card.style.top = `${y}px`;
-        const across = side === 'right' || side === 'left';
-        const tail = across ? clamp(r.top + r.height / 2 - y, 16, h - 16) : clamp(r.left + r.width / 2 - x, 22, w - 16);
-        card.dataset.side = side;
-        card.style.setProperty('--tail', `${Math.round(tail)}px`);
+        const tail = east ? px - x : x + w - px;
+        card.dataset.side = (up ? 'n' : 's') + (east ? 'e' : 'w');
+        card.style.setProperty('--tail', `${Math.round(clamp(tail, 2, w - 48))}px`);
     }
 
     function show(el, build, pin) {
