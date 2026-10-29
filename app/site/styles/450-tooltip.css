@@ -14,7 +14,8 @@
     background: var(--bubble, #fffdf5);
     color: #1f1f2e;
     border: 2.5px solid #1f1f2e;
-    border-radius: 14px;
+    border-radius: 3px;  /* hard corners, like the logo's bubble, so it stands out from the rounded cards behind */
+    rotate: 2deg;  /* canted like the logo (Oct 29, the person: "jaunty, hard corners"); west cards lean the other way */
     filter: drop-shadow(5px 5px 0 #ff4fa3);  /* a drop shadow, not a box one, so the tail casts it too */
     font: 700 0.92rem/1.35 'Comic Neue', 'Comic Sans MS', cursive;
     overflow-wrap: anywhere;
@@ -83,6 +84,7 @@
 }
 
 /* It pops out of its tail's tip, with a little spring */
+.hover-card[data-side="nw"], .hover-card[data-side="sw"] { rotate: -2deg; }
 .hover-card[data-side="nw"] { transform-origin: calc(100% - var(--tail, 18px) - 7px) calc(100% + 28px); }
 .hover-card[data-side="se"] { transform-origin: calc(var(--tail, 18px) + 7px) -28px; }
 .hover-card[data-side="sw"] { transform-origin: calc(100% - var(--tail, 18px) - 7px) -28px; }

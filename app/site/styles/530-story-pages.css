@@ -54,8 +54,8 @@
 }
 
 /* The way to a story's page from its card: a sticker, not a flat link (Oct 29, the person: "flat links like that
-   everything on this story are so bland"), sitting straight ("can we not make them canted?"); it hops and its arrow
-   scoots when pointed at */
+   everything on this story are so bland"), slapped on at a tilt with hard corners like the logo ("jaunty, hard
+   corners"); it straightens and its arrow scoots when pointed at */
 .story-link {
     font-size: 0.85em;
     font-weight: 700;
@@ -70,12 +70,14 @@
     font-family: 'Comic Neue', 'Comic Sans MS', cursive;
     text-decoration: none;
     border: 2.5px solid #1f1f2e;
-    border-radius: 10px 16px 10px 16px;
+    border-radius: 3px;
+    rotate: -2.5deg;
     box-shadow: 4px 4px 0 #ff4fa3;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition: transform 0.15s, rotate 0.15s, box-shadow 0.15s;
 }
 
 .story-link a:hover, .story-link a:focus-visible {
+    rotate: 0deg;
     transform: translate(-2px, -2px);
     box-shadow: 6px 6px 0 #ff4fa3;
 }
