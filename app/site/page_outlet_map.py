@@ -21,12 +21,14 @@ logger = get_logger(__name__)
 W, H = 760, 560
 LEFT, RIGHT, TOP, BOTTOM = 30, 14, 30, 40
 MAX_LABELS = 30
+BANDWIDTH = 0.045  # the shape's smoothing, as a share of the map's shorter side: wide enough to join a prong, not the gaps
 CHAR_W = 7.0  # a label's width per character at 12px, near enough to keep labels apart
 UNRATED = '#ffffff'
 VIEWS = {
     'coverage': {'x': 'x', 'y': 'y', 'name': '🗞️ Which stories it covers',
                  'left': '← business, tech and world', 'right': 'the political fight →',
-                 'up': '↑ stories critical of Trump', 'down': '↓ crime and immigration'},
+                 'up': '↑ stories critical of Trump', 'down': '↓ crime and immigration',
+                 'shape': True},
     'style': {'x': 'wire', 'y': 'heat', 'name': '🌶️ How it words them',
               'left': '← its own agenda and words', 'right': 'close to AP and Reuters →',
               'up': '↑ heated wording', 'down': '↓ calm wording'},
@@ -183,6 +185,38 @@ def _scale(values: list[float], lo: float, hi: float, pad: float = 0.05):
     return lambda v: lo + (hi - lo) * (v - a) / (b - a)
 
 
+def density_svg(points: list[tuple[float, float]], width: float, height: float, step: float = 5,
+                levels: tuple = (0.06, 0.2, 0.45)) -> str:
+    """The shape the outlets make, as soft shading behind their dots: a smoothed count of dots (a Gaussian kernel a
+    little wider than a dot), cut at a few heights and filled, darker where more of them crowd. It shows whatever
+    shape the day's map has, so it never claims one the dots don't make. Oct 29, the person, on the arrow the outlets
+    made (a shaft of business and wire outlets forking into a left prong and a right one): "can we tweak this to make
+    the shape clearer?" """
+    import contourpy
+    import numpy as np
+    if len(points) < 3:
+        return ''
+    xs, ys = np.arange(0, width + step, step), np.arange(0, height + step, step)
+    gx, gy = np.meshgrid(xs, ys)
+    bw = BANDWIDTH * min(width, height)
+    z = np.zeros(gx.shape)
+    for x, y in points:
+        z += np.exp(-((gx - x) ** 2 + (gy - y) ** 2) / (2 * bw * bw))
+    top = z.max()
+    if top <= 0:
+        return ''
+    gen = contourpy.contour_generator(gx, gy, z / top, fill_type='OuterOffset')
+    parts = ['<g class="omap-shape" aria-hidden="true">']
+    for i, lo in enumerate(levels):
+        polys, offsets = gen.filled(lo, 2.0)
+        for pts, offs in zip(polys, offsets):
+            d = ''.join('M' + 'L'.join(f'{px:.0f},{py:.0f}' for px, py in pts[s:e]) + 'Z'
+                        for s, e in zip(offs[:-1], offs[1:]))
+            parts.append(f'<path class="omap-shape-{i}" d="{d}" fill-rule="evenodd"/>')
+    parts.append('</g>')
+    return ''.join(parts)
+
+
 def _overlaps(box, boxes) -> bool:
     x0, y0, x1, y1 = box
     return any(x0 < b[2] and b[0] < x1 and y0 < b[3] and b[1] < y1 for b in boxes)
@@ -240,6 +274,8 @@ def view_group(outlets: dict, view: str, shown: bool) -> str:
              f'<text class="omap-end" x="{LEFT}" y="{H - BOTTOM - 6}">{escape(v["down"])}</text>']
     order = distinctive(outlets, view)
     points = [(n, sx(outlets[n][v['x']]), sy(outlets[n][v['y']])) for n in order]
+    if v.get('shape'):
+        parts.insert(1, density_svg([(x, y) for _, x, y in points], W, H))
     labels = place_labels(points, W, H - BOTTOM + 2)
     for name, x, y in reversed(points):  # the most distinctive drawn last, on top
         o = outlets[name]
