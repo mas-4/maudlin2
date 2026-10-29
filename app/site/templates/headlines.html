@@ -80,7 +80,7 @@
                 {% for m in told_as %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{{ m.genre|e }}">🧩 {{ m.name|e }}{% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% if m.sides[side] %} <span class="told-as-side told-as-{{ side }}" title="{{ m.sides[side]|join(', ')|e }}">{{ emoji }}{{ m.sides[side]|length }}</span>{% endif %}{% endfor %}</a>{% endfor %}
             </div>
         {% endif %}
-        <details class="card-more"><summary>🔍 more: mood, quotes, shows, TV, radio and every outlet</summary>
+        <details class="card-more"><summary title="Its mood, quotes, shows, TV, radio and every outlet">🔍 more of this story</summary>
         {% endif %}
         <div class="meters">
             {% for feeling in cluster['feelings'] %}
