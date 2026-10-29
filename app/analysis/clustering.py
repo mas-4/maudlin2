@@ -270,15 +270,16 @@ def best_cut(W: np.ndarray, outlets: list, min_outlets: int) -> tuple[float, np.
 
 
 def split_seams(clusters: list, texts: list[str], outlets: list, min_outlets: int,
-                titles: list[str] | None = None, confirm=None) -> tuple[list, list[dict]]:
+                titles: list[str] | None = None, confirm=None, roots: list | None = None) -> tuple[list, list[dict]]:
     """The clusters with each cut where its headlines' words (texts: the processed headlines, as Atropos tested) fall
     apart (a cut scoring under SEAM, and confirmed by `confirm(side a's titles, side b's)` if given); and the cuts made,
-    each {'ncut', 'sizes', 'a', 'b'} (each side's most central titles)"""
+    each {'ncut', 'sizes', 'a', 'b'} (each side's most central titles). `roots`, if given, is filled with each returned
+    cluster's place in `clusters`: the sides of one cut share it, so a later step doesn't join what the cut parted"""
     titles = titles or texts
     out, made = [], []
-    todo = [(sorted(c), 0) for c in clusters]
+    todo = [(sorted(c), 0, r) for r, c in enumerate(clusters)]
     while todo:
-        idx, depth = todo.pop()
+        idx, depth, root = todo.pop()
         if depth < SEAM_DEPTH and len({outlets[i] for i in idx}) >= 2 * min_outlets:
             try:
                 T = TfidfVectorizer().fit_transform([texts[i] for i in idx])
@@ -292,9 +293,11 @@ def split_seams(clusters: list, texts: list[str], outlets: list, min_outlets: in
                 if confirm is None or confirm(*sides):
                     a_idx, b_idx = [idx[k] for k in a_k], [idx[k] for k in b_k]
                     made.append({'ncut': round(b[0], 3), 'sizes': [len(a_idx), len(b_idx)], 'a': sides[0], 'b': sides[1]})
-                    todo += [(a_idx, depth + 1), (b_idx, depth + 1)]
+                    todo += [(a_idx, depth + 1, root), (b_idx, depth + 1, root)]
                     continue
         out.append(set(idx))
+        if roots is not None:
+            roots.append(root)
     return out, made
 
 

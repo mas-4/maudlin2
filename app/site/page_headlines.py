@@ -19,7 +19,7 @@ from app.analysis.quotes import story_quotes
 from app.analysis.wording import side_phrases
 from app.investigations import recent as recent_investigations
 from app import sidefeeds
-from app.analysis.stories import sync_stories, label_stories, headline_sentiment
+from app.analysis.stories import sync_stories, label_stories, headline_sentiment, fold_twins
 from app.analysis.pipelines import default_pipeline, prepare
 from app.site.common import SHARED, calculate_xkeyscore, copy_assets, j2env, short_name, TemplateHandler
 from app.models import Session, Headline
@@ -546,13 +546,16 @@ class HeadlinesPage:
         from app.utils.store import read_json, write_json
         seam_cache_path = os.path.join(Config.data, 'story_seams.json')
         seam_cache = read_json(seam_cache_path, {})
+        roots = []  # each cluster's cluster before the cut: the sides of one cut are never joined again (fold_twins)
         clusters, cut = split_seams(clusters, df['processed'].tolist(), df['agency'].tolist(), n_samples_per_cluster,
-                                    df['title'].tolist(), confirm=lambda a, b: two_events(a, b, seam_cache))
+                                    df['title'].tolist(), confirm=lambda a, b: two_events(a, b, seam_cache),
+                                    roots=roots)
         write_json(seam_cache_path, seam_cache)
         for c in cut:
             logger.info("Story seam (%.2f): %s | %s", c['ncut'], c['a'][0][:70], c['b'][0][:70])
 
         df = label_clusters(df, clusters)
+        df['seam_root'] = df['cluster'].map(dict(enumerate(roots)))
         considered = df  # every headline, for sagas to pull in related ones that made no story
         df = df[df['cluster'] != -1].copy()
         # One headline per outlet per story: the one still on its front page if there is one
@@ -564,6 +567,7 @@ class HeadlinesPage:
         sentiment = df['sentiment'] = headline_sentiment(df)
         df['deviation'] = mood_vs_others(sentiment, df['cluster'])
         stories = sync_stories(df)
+        df, stories = fold_twins(df, stories)  # one story's coverage split by this hour's clustering: one card
         labels = label_stories(df, stories)  # first: a story split at a new development (Sinbad) changes its cluster's story
         self.story_of = {int(k): story.id for k, story in stories.items()}  # cluster -> saved story, for sagas
         self.context['story_of'] = self.story_of  # stable ids for share links (cluster numbers change every run)

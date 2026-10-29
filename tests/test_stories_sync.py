@@ -333,3 +333,65 @@ def test_a_story_whose_coverage_doubled_is_asked_too(db, monkeypatch, tmp_path):
     asked, _ = fake_model(monkeypatch, same=False)
     stories.label_stories(df, found)
     assert len(asked) == 1 and found[0].id != sid
+
+
+# ---- one story's coverage split by an hour's clustering, the smaller part sharing no headline with the story
+
+def told(clusters: dict[int, list[tuple[int, str, str]]], roots: dict[int, int] | None = None) -> pd.DataFrame:
+    """A run's clusters with their headlines' titles and outlets: {cluster: [(headline id, outlet, title)]}"""
+    rows = [{'cluster': c, 'headline_id': h, 'agency': a, 'title': t, 'afinn': 0.0, 'vader_compound': 0.0,
+             'event_score': 0.0, **({'seam_root': roots[c]} if roots else {})}
+            for c, hs in clusters.items() for h, a, t in hs]
+    return pd.DataFrame(rows)
+
+
+RFK_THEN = 'RFK Jr faces backlash for anti-Arab remarks'
+RFK_NOW = 'RFK Jr. faces backlash over anti-Arab remarks'
+
+
+def test_a_story_split_by_this_hours_clustering_carries_on_as_one(db, monkeypatch):
+    """Oct 28, saga 99 (the person: "this saga has 2 stories that are the same"): at noon the clustering split the
+    RFK coverage in two; the part with new wording matched nothing and, the story being live, was no return either,
+    so it started a story of its own that carried on while the first ran out"""
+    asked = []
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: asked.append(prompt) or True)
+    old = seed(db, RFK_THEN, [1, 2, 3])
+    df = told({0: [(1, 'CNN', RFK_THEN), (2, 'NBC', RFK_THEN + ' in interview'), (3, 'AP', RFK_THEN + ', aides say')],
+               1: [(10, 'Fox', RFK_NOW), (11, 'Newsmax', RFK_NOW + ' on podcast')]})
+    out = stories.sync_stories(df)
+    assert out[0].id == out[1].id == old and asked == [stories.REJOIN_PROMPT]
+    with db() as s:
+        assert {sh.headline_id: sh.story_id for sh in s.query(StoryHeadline)} == {1: old, 2: old, 3: old, 10: old, 11: old}
+    folded, kept = stories.fold_twins(df, out)
+    assert set(kept) == {0} and set(folded['cluster']) == {0} and len(folded) == 5  # one card
+
+
+def test_a_split_part_the_model_calls_a_different_event_keeps_its_own_story(db, monkeypatch):
+    """#147, Oct 3: the G7 release and 'Trump rules out a diesel export ban' were two events, rightly two stories"""
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: False)
+    old = seed(db, 'G7 agrees to release diesel and oil', [1, 2, 3])
+    df = told({0: [(1, 'CNN', 'G7 agrees to release diesel and oil reserves'), (2, 'AP', 'G7 to release diesel and oil'),
+                   (3, 'NBC', 'G7 diesel and oil release agreed')],
+               1: [(10, 'Fox', 'Trump rules out diesel export ban'), (11, 'The Hill', 'No diesel export ban, Trump says')]})
+    out = stories.sync_stories(df)
+    assert out[0].id == old and out[1].id != old
+
+
+def test_the_sides_of_this_runs_seam_cut_are_never_joined_again(db, monkeypatch):
+    """The seam cut parted them because the model, asked both ways, called them two events (clustering.split_seams)"""
+    asked = []
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: asked.append(1) or True)
+    old = seed(db, RFK_THEN, [1, 2, 3])
+    df = told({0: [(1, 'CNN', RFK_THEN), (2, 'NBC', RFK_THEN + ' in interview'), (3, 'AP', RFK_THEN + ', aides say')],
+               1: [(10, 'Fox', RFK_NOW), (11, 'Newsmax', RFK_NOW + ' on podcast')]}, roots={0: 7, 1: 7})
+    out = stories.sync_stories(df)
+    assert out[0].id == old and out[1].id != old and not asked
+
+
+def test_folding_twins_keeps_one_headline_an_outlet(db):
+    a, b = Story(id=5), Story(id=6)
+    df = told({0: [(1, 'CNN', 'x one'), (2, 'AP', 'x two')], 1: [(3, 'CNN', 'x three'), (4, 'Fox', 'x four')],
+               2: [(9, 'AP', 'other')]})
+    folded, kept = stories.fold_twins(df, {0: a, 1: a, 2: b})
+    assert set(kept) == {0, 2}
+    assert sorted(folded[folded['cluster'] == 0]['headline_id']) == [1, 2, 4]  # CNN's from the first part

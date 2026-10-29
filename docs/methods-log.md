@@ -5,6 +5,14 @@ read with the change in mind. Newest first. Scores in the database carry `scored
 2026-10-03 on; earlier scores say `qwen3:8b rubric:pre-tracking`.
 
 ## 2026-10-28
+- **A story split by an hour's clustering carries on as one.** When one story's coverage splits into two clusters and
+  the smaller part shares no headline with the story (other outlets, new wording), it matched nothing and, the story
+  being live, was no return either, so it started a story of its own (saga 99: "RFK Jr faces backlash for anti-Arab
+  remarks" and, from noon, "RFK Jr. faces backlash over anti-Arab remarks"). Now such a cluster is compared with the
+  stories this run's other clusters continue: two frequent words in common, then the model's same-event question
+  (the rejoin wording); the same event continues that story and the page shows the two clusters as one card. A
+  different event keeps its own story, as in #147 (Oct 3, the G7 release and the diesel export ban), and the sides of
+  a seam cut are never joined again.
 - **Outlet lists by shares, feelings against the average outlet, measures against the median.** The outlets page's
   Spiciest | Plainest and Grimmest | Sunniest rank outlets by the share of their headlines scored loaded (1 or 2) or
   plain (0), grim (below 0) or good news (above 0), not by the averages. The outlet map's stories that pull each way

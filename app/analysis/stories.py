@@ -173,6 +173,48 @@ def returning(s, titles: list[str], claimed: set[int], now: dt) -> Story | None:
 Match = namedtuple('Match', 'story_id n')
 
 
+# One story's coverage can split into two clusters in one hour where the smaller part shares no headline with the story
+# (new wording from other outlets), so it matches nothing; it's no return either, since the story is still on the front
+# pages; and if the two parts never land in one cluster again, nothing rejoins them (Oct 28, saga 99: "RFK Jr faces
+# backlash for anti-Arab remarks" from 2 AM, and at noon "RFK Jr. faces backlash over anti-Arab remarks" started a
+# story of its own, while the first ran out; the person: "this saga has 2 stories that are the same"). So a cluster
+# that would start a new story is first compared with the stories this run's other clusters continue, by frequent words
+# and then by the model (REJOIN_PROMPT); the same event continues that story, and the page folds the two clusters into
+# one card (fold_twins).
+def twin(titles: list[str], continued: dict[int, tuple[Story, list[str], object]], root=None) -> Story | None:
+    """The story another cluster of this run continues that these headlines (a cluster continuing no story) tell
+    too, or None. Never one whose cluster this run's seam cut parted from this one (the same `root`): the model,
+    asked both ways, has just called them two events (clustering.split_seams)"""
+    words = frequent_words(titles)
+    if len(words) < RETURN_WORDS:
+        return None
+    alike = sorted(((len(words & frequent_words(ts)), sid) for sid, (_, ts, r) in continued.items()
+                    if root is None or r is None or r != root), reverse=True)
+    for shared, sid in alike[:RETURN_CANDIDATES]:
+        if shared >= RETURN_WORDS and same_event(continued[sid][1], titles, prompt=REJOIN_PROMPT):
+            return continued[sid][0]
+    return None
+
+
+def fold_twins(df: pd.DataFrame, stories: dict) -> tuple[pd.DataFrame, dict]:
+    """Clusters that sync_stories mapped to one story (twin) folded into one, the first cluster's, keeping each
+    outlet's headline from the first: one card per story"""
+    first = {}
+    rename = {}
+    for cluster, story in stories.items():
+        if story.id in first:
+            rename[cluster] = first[story.id]
+        else:
+            first[story.id] = cluster
+    if not rename:
+        return df, stories
+    df = df.copy()
+    df['cluster'] = df['cluster'].replace(rename)
+    if 'agency' in df:
+        df = df.drop_duplicates(['cluster', 'agency'], keep='first')
+    return df, {c: s for c, s in stories.items() if c not in rename}
+
+
 def merges() -> dict[int, int]:
     """{gone story id: the story it was merged into}, followed to the end of any chain"""
     raw = {int(k): int(v['into']) for k, v in read_json(MERGES, {}).items()}
@@ -295,6 +337,7 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
     stories = {}
     claimed = set()  # stories already continued by a cluster in this run
     rejoins = []  # (kept, folded): one story split by an earlier hour's clustering, joined again now
+    continued = {}  # story id -> (story, its cluster's titles, its seam root): this run's continued stories (twin)
     # A story ended at a new development is never continued: the story its news went on in is (followed through
     # merges too, should that one have been folded into another since)
     ended = splits()
@@ -306,6 +349,8 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
         groups = sorted(df.groupby('cluster'), key=lambda item: -len(item[1]))
         for cluster, group in groups:
             ids = [int(i) for i in group['headline_id']]
+            titles = (group['title'].tolist() if 'title' in group else
+                      [t for (t,) in s.query(Headline.title).filter(Headline.id.in_(ids))])
             # The story that already holds most of these headlines is the one this cluster continues
             matches = s.query(StoryHeadline.story_id, func.count().label('n')).filter(
                 StoryHeadline.headline_id.in_(ids)
@@ -323,10 +368,11 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
                     story = pair[0]
                     rejoins.append((pair[0].id, pair[1].id))
                     claimed.add(pair[1].id)  # folded in below: no other cluster continues it
-            elif (back := returning(s, group['title'].tolist() if 'title' in group else
-                                    [t for (t,) in s.query(Headline.title).filter(Headline.id.in_(ids))],
-                                    claimed, now)) is not None:
+            elif (back := returning(s, titles, claimed, now)) is not None:
                 story = back  # a story back on the front pages under new headlines
+            elif (same := twin(titles, continued, group['seam_root'].iloc[0] if 'seam_root' in group else None)) \
+                    is not None:
+                story = same  # this hour's clustering split the story: this part continues it too
             else:
                 story = Story(first_seen=now, last_seen=now)
                 s.add(story)
@@ -346,6 +392,7 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
                 s.add(member)
             stories[cluster] = story
             claimed.add(story.id)
+            continued.setdefault(story.id, (story, titles, group['seam_root'].iloc[0] if 'seam_root' in group else None))
         s.commit()
         for story in stories.values():
             s.refresh(story)
