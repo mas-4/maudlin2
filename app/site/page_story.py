@@ -329,7 +329,7 @@ def wire_copied(headlines: list[dict]) -> dict:
     return {'wires': wires, 'outlets': outlets} if outlets else {}
 
 
-# The broadcasters' networks, for their lean (AllSides rates the network's site, not the programme)
+# The broadcasters' networks, for their lean (AllSides rates the network's site, not the show)
 NETWORK_OUTLET = {'BBC News': 'BBC', 'CNN': 'CNN', 'Fox News': 'Fox News', 'MSNOW': 'MSNBC', 'NPR News Now': 'NPR',
                   'ABC News Update': 'ABC News'}
 LEAN_KEY = {-2: 'left', -1: 'lean left', 0: 'center', 1: 'lean right', 2: 'right'}
@@ -369,9 +369,9 @@ def lean_row(name: str, href: str | None, value, top, figure: str, tip: str, lea
 
 
 def broadcast(tv: dict | None, radio: list[dict], extras: dict, leans: dict, groups: dict) -> dict:
-    """The story page's 📡 Broadcast as boards in answering pairs, one row per programme (Oct 28: the radio box
+    """The story page's 📡 Broadcast as boards in answering pairs, one row per show (Oct 28: the radio box
     repeated one line per newscast, the shows box was a chip wall with one show listed 8 times): minutes on TV by
-    channel | newscasts on the radio by programme, with how high in its running order it came; then the shows by
+    channel | newscasts on the radio by show, with how high in its running order it came; then the shows by
     episodes | the investigators and satirists. Lean is the colored axis; the details (captions, each newscast, each
     episode) go in the rows' hover cards"""
     from app.site import boards
@@ -409,7 +409,7 @@ def broadcast(tv: dict | None, radio: list[dict], extras: dict, leans: dict, gro
             boards.board('tv', '📺', 'On TV', '#cc0000', 'minutes its captions were on screen, by channel; the disc '
                          "is the network's lean", tv_rows,
                          empty='📺🤷 No TV captions matched to it.'),
-            boards.board('radio', '📻', 'On the radio', '#e8463c', 'hourly newscasts that carried it, by programme; '
+            boards.board('radio', '📻', 'On the radio', '#e8463c', 'hourly newscasts that carried it, by show; '
                          'beside the count, how often it was the lead story, or the highest it came in the running order',
                          radio_rows, empty='📻🤷 No radio newscast matched to it.')])
     shows, others = extras.get('shows') or [], (extras.get('investigations') or []) + (extras.get('satire') or [])
