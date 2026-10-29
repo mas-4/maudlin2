@@ -87,8 +87,19 @@
     box-shadow: 1px 1px 0 #ff4fa3;
 }
 
+/* A round ink badge with the arrow, at its right end, the pair of the ▾ on "more" (600-motif-web.css; Oct 29, the
+   person: "give that a right arrow on the right") */
 .story-link-arrow {
-    display: inline-block;
+    display: inline-grid;
+    place-items: center;
+    width: 1.35em;
+    height: 1.35em;
+    margin-left: 0.4em;
+    border-radius: 50%;
+    background: #1f1f2e;
+    color: white;
+    line-height: 1;
+    vertical-align: -0.15em;
     transition: transform 0.15s;
 }
 

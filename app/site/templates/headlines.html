@@ -80,9 +80,6 @@
                 {% for m in told_as %}<a class="motif-chip" href="{{ motif_href(m.id) }}" title="{{ m.genre|e }}">🧩 {{ m.name|e }}{% for side, emoji in (('left', '🫏'), ('right', '🐘')) %}{% if m.sides[side] %} <span class="told-as-side told-as-{{ side }}" title="{{ m.sides[side]|join(', ')|e }}">{{ emoji }}{{ m.sides[side]|length }}</span>{% endif %}{% endfor %}</a>{% endfor %}
             </div>
         {% endif %}
-        {% if story_of is defined and cluster['cluster'] in story_of %}
-            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true">→</span></a></p>
-        {% endif %}
         <details class="card-more"><summary>🔍 more: mood, quotes, shows, TV, radio and every outlet</summary>
         {% endif %}
         <div class="meters">
@@ -180,6 +177,10 @@
         </div>
         <div class="story-outlets">{{ outlet_strip(cluster) }}</div>
         {% if top %}</details>{% endif %}
+        {# under "more", not above it (Oct 29, the person: "put everything on the story below it") #}
+        {% if top and story_of is defined and cluster['cluster'] in story_of %}
+            <p class="story-link"><a href="story-{{ story_of[cluster['cluster']]|e }}.html" title="Every outlet’s headline, its saga, TV and radio, names and folklore on one page">📄 everything on this story <span class="story-link-arrow" aria-hidden="true">→</span></a></p>
+        {% endif %}
     </div>
 {% endmacro %}
     <script>

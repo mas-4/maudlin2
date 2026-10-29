@@ -96,6 +96,32 @@
     display: none;
 }
 
+/* A round ink badge with an arrow at its end says it opens, and turns over when it has (Oct 29, the person: the 🔍
+   "did not make it clear to me there was a drop down expansion there!") */
+.card-more > summary::after {
+    content: '▾';
+    display: inline-grid;
+    place-items: center;
+    width: 1.35em;
+    height: 1.35em;
+    margin-left: 0.45em;
+    border-radius: 50%;
+    background: #1f1f2e;
+    color: white;
+    font-size: 0.95em;
+    line-height: 1;
+    vertical-align: -0.15em;
+    transition: rotate 0.2s;
+}
+
+.card-more[open] > summary::after {
+    rotate: 180deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-more > summary::after { transition: none; }
+}
+
 .card-more > summary:hover {
     transform: translate(-1px, -1px) rotate(-1deg);
 }
