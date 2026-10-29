@@ -18,6 +18,8 @@ logger = get_logger(__name__)
 
 VIRAL_LEAST = 2  # papers that printed it, for the viral strip
 VIRAL_ROWS = 10
+VIRAL_FEWEST = 3  # reprinted echoes the strip needs before it shows: one or two aren't a ranking (Oct 29: with reprints
+# counted word for word, one approved echo of the 520 articles was in a second paper)
 
 
 def paper_name(paper: str) -> str:
@@ -64,14 +66,14 @@ def cards(rows: list[dict], entries: dict) -> list[dict]:
 def viral(rows: list[dict]) -> dict | None:
     """The echoes printed in the most papers, as a ranked strip"""
     told = sorted((c for c in rows if c['papers'] >= VIRAL_LEAST), key=lambda c: -c['papers'])[:VIRAL_ROWS]
-    if not told:
+    if len(told) < VIRAL_FEWEST:
         return None
     top = told[0]['papers']
     strip = [boards.row(c['name'], f"#echo-{c['id']}", c['papers'], top, f"{c['papers']} papers",
                         tip=f"1896: “{c['quote']}” ({c['paper']}, {c['day']})", ink=c['ink'], mark=c['mark'],
                         mark_label=c['genre']) for c in told]
-    return boards.board('viral', '🗞️', 'Viral in 1896', '#ffc400', 'the claims 1896 papers printed again and again; the '
-                        'bar is how many papers carried it, as near-copies of each other', strip)
+    return boards.board('viral', '🗞️', 'Viral in 1896', '#ffc400', 'the articles 1896 papers printed again and again; the '
+                        'bar is how many papers ran the same passage, word for word', strip)
 
 
 class EchoesPage:

@@ -6,6 +6,7 @@ The 1896 claims are Rip Van Winkle's (papers/rip-van-winkle.md): 520 political a
 archives/archives.sqlite, table echoes."""
 import functools
 import os
+import re
 import sqlite3
 
 from app.utils import Config
@@ -18,6 +19,33 @@ SCHEMA = """create table if not exists echoes (
     reviewer text, unique (motif, claim))"""
 REVIEWERS = ('person', 'claude')  # who checked an echo: the person, or Claude (Opus 5.5) reading the whole article
 STATUSES = ('proposed', 'approved', 'rejected', 'held')  # held: for the person (near a slur or trope, or a close call)
+
+
+RUN_WORDS = 6  # a passage: six words in a row (of three letters or more, so OCR's stray marks don't count)
+SAME_TEXT = 0.15  # an article is a reprint of another when this share of the shorter one's six-word runs are in both
+SAME_TEXT_RUNS = 20  # and at least this many: a passage, not a stock phrase
+
+
+def runs(text: str) -> set[str]:
+    words = re.findall(r'[a-z]{3,}', (text or '').lower())
+    return {' '.join(words[i:i + RUN_WORDS]) for i in range(len(words) - RUN_WORDS + 1)}
+
+
+def reprinted(articles: dict[str, tuple[str, str]]) -> dict[str, int]:
+    """Article id -> how many papers printed it, counting its own (Oct 29). articles: id -> (paper, text). A paper
+    counts when one of its articles shares a passage word for word with this one, as 1896's exchange papers reprinted
+    each other. Until Oct 29 the count was of papers with a claim like it, joined in chains (app.narratives.groups),
+    which ran through a whole topic: eleven different silver and gold claims each showed "60 papers"."""
+    shingles = {k: runs(t) for k, (_, t) in articles.items()}
+    papers = {k: {p} for k, (p, _) in articles.items()}
+    keys = [k for k in articles if shingles[k]]
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            shared = len(shingles[a] & shingles[b])
+            if shared >= SAME_TEXT_RUNS and shared >= SAME_TEXT * min(len(shingles[a]), len(shingles[b])):
+                papers[a].add(articles[b][0])
+                papers[b].add(articles[a][0])
+    return {k: len(v) for k, v in papers.items()}
 
 
 def connect(write: bool = False, path: str | None = None) -> sqlite3.Connection:

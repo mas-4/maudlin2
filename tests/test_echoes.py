@@ -36,7 +36,7 @@ def test_the_page_pairs_2026_with_1896_and_links_the_scan(tmp_path, monkeypatch)
     from app.utils.config import Config
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     monkeypatch.setitem(j2env.globals, 'icons', {})
-    store_path = store(tmp_path, [('approved', 20)])
+    store_path = store(tmp_path, [('approved', 20), ('approved', 4), ('approved', 2)])
     real = echoes.approved
     monkeypatch.setattr(echoes, 'approved', lambda path=None: real(store_path))
     entry = {'id': 'M330', 'name': 'Graft', 'note': 'Officials hand contracts to friends.', 'note_by': 'person',
@@ -53,7 +53,7 @@ def test_the_page_pairs_2026_with_1896_and_links_the_scan(tmp_path, monkeypatch)
     assert card.select_one('.echo-scan')['href'] == 'https://chroniclingamerica.loc.gov/x'
     assert 'printed in 20 papers' in card.text and 'The Salt Lake Herald' in card.text
     assert 'checked by a person' in card.select_one('.echo-checked').text  # who checked it, on the card
-    assert soup.select_one('.rank-board-viral .rank-row')  # 1896's viral copy, as a strip
+    assert len(soup.select('.rank-board-viral .rank-row')) == 3  # 1896's viral copy, as a strip
     assert not soup.select('.echo-cards [title]')  # details in hover cards, not tooltips
 
 
@@ -73,3 +73,23 @@ def test_a_card_whose_paper_lost_its_name_says_so():
         'note': '', 'genre': 'Beliefs', 'mark': '🪨', 'ink': '#fff', 'today': '', 'quote': 'q', 'ocr': 'q', 'paper': '',
         'place': '', 'day': 'October 21, 1896', 'url': 'u', 'papers': 1, 'reviewer': 'person'}], viral=None, genre_key=[])
     assert 'a paper whose name our copy lost, October 21, 1896' in html
+
+
+def test_the_viral_strip_waits_for_three_reprinted_echoes():
+    card = {'name': 'Graft', 'id': 1, 'quote': 'q', 'paper': 'p', 'day': 'd', 'ink': '#000', 'mark': '', 'genre': 'Plots'}
+    assert page_echoes.viral([{**card, 'papers': 2}, {**card, 'papers': 2}, {**card, 'papers': 1}]) is None
+    assert page_echoes.viral([{**card, 'papers': n} for n in (3, 2, 2)])
+
+
+def test_a_paper_counts_only_when_it_ran_the_same_passage():
+    speech = ("You shall not press down upon the brow of labor this crown of thorns, you shall not crucify mankind "
+              "upon a cross of gold, said the young man from Nebraska to the convention, and the delegates rose "
+              "as one and carried him about the hall upon their shoulders while the band played on and on")
+    papers = echoes.reprinted({
+        'a': ('The Salt Lake Herald', 'From the Chicago speech: ' + speech),
+        'b': ('The Irish Standard', speech + ' Reprinted from an exchange.'),
+        'c': ('The Topeka State Journal', 'Free silver coinage would ruin the farmer and the workingman alike, '
+                                          'say the gold men, and the farmer knows better.'),  # the same claim, not a reprint
+        'd': ('The Salt Lake Herald', speech),  # the same paper again counts once
+    })
+    assert papers == {'a': 2, 'b': 2, 'c': 1, 'd': 2}

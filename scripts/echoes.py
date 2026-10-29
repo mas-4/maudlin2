@@ -7,6 +7,7 @@ or above), to a motif the site shows. Every echo the site shows is one the perso
 Rip Van Winkle's spot-check of its sure filings (hypothesis 3), never run till now.
 
     python scripts/echoes.py propose          add candidates (one per motif, the surest; reprinted ones first)
+    python scripts/echoes.py recount          count again the papers that printed each echo's article, word for word
     python scripts/echoes.py slate [-n 10]    the next candidates, with the article around the quote, for reading
     python scripts/echoes.py decide ID approve --quote "cleaned quote" [--why ...] [--by person|claude]
     python scripts/echoes.py decide ID reject --why "..."
@@ -23,7 +24,7 @@ import sys
 from datetime import datetime as dt
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from app.analysis.echoes import connect  # noqa: E402
+from app.analysis.echoes import connect, reprinted  # noqa: E402
 from app.utils import Config  # noqa: E402
 
 STATE = os.path.join(Config.data, 'motifs', 'experiments', 'a2_newspapers.json')
@@ -54,14 +55,42 @@ def words(text: str) -> int:
     return len(re.findall(r"[A-Za-z']+", text or ''))
 
 
+def reprints(con, state: dict) -> dict[str, int]:
+    """Document id -> papers that printed that article (app.analysis.echoes.reprinted), over the run's 520 articles"""
+    articles = {}
+    for k, a in state['articles'].items():
+        row = con.execute('select text from documents where id = ?', (k,)).fetchone()
+        articles[k] = (a['paper'], row['text'] if row else '')
+    return reprinted(articles)
+
+
+def recount() -> int:
+    """Every echo's papers counted again as reprints of its article (Oct 29: the chained count said 60 for eleven
+    different articles)"""
+    with open(STATE, encoding='utf-8') as f:
+        state = json.load(f)
+    con = connect(write=True)
+    papers = reprints(con, state)
+    changed = 0
+    for r in con.execute('select e.id, e.retold, c.document from echoes e join claims c on c.id = e.claim').fetchall():
+        n = papers.get(r['document'], 1)
+        if n != r['retold']:
+            con.execute('update echoes set retold = ? where id = ?', (n, r['id']))
+            changed += 1
+    con.commit()
+    shown = con.execute("select count(*) from echoes where status = 'approved' and retold > 1").fetchone()[0]
+    print(f'{changed} echoes recounted; {shown} approved ones were printed in more than one paper')
+    return changed
+
+
 def propose() -> int:
     """One candidate per public motif: its sure 1896 filing told in the most papers, then the surest"""
     live = live_motifs()
     with open(STATE, encoding='utf-8') as f:
         state = json.load(f)
     quotes = {(doc, c['claim']): c['quote'] for doc, cs in state['claims'].items() for c in cs}
-    retold = state.get('retold', {})
     con = connect(write=True)
+    papers = reprints(con, state)
     rows = con.execute("""select f.claim, f.motif, f.fit, c.text, c.document, d.date, d.place, d.source, d.url, d.title
         from filings f join claims c on c.id = f.claim join documents d on d.corpus = c.corpus and d.id = c.document
         where f.run = ? and f.sure = 1""", (RUN,)).fetchall()
@@ -76,7 +105,7 @@ def propose() -> int:
             continue
         cand = {'motif': e['id'], 'motif_name': e['name'], 'claim': r['claim'], 'claim_text': r['text'],
                 'quote': quote, 'headline': r['title'], 'paper': r['source'], 'place': r['place'], 'date': r['date'],
-                'url': r['url'], 'fit': r['fit'], 'retold': retold.get(r['text'], 1)}
+                'url': r['url'], 'fit': r['fit'], 'retold': papers.get(r['document'], 1)}
         key = e['id']
         if key not in best or (cand['retold'], cand['fit']) > (best[key]['retold'], best[key]['fit']):
             best[key] = cand
@@ -140,6 +169,7 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest='cmd', required=True)
     sub.add_parser('propose')
+    sub.add_parser('recount')
     s = sub.add_parser('slate')
     s.add_argument('-n', type=int, default=10)
     d = sub.add_parser('decide')
@@ -153,6 +183,8 @@ if __name__ == '__main__':
     a = p.parse_args()
     if a.cmd == 'propose':
         propose()
+    elif a.cmd == 'recount':
+        recount()
     elif a.cmd == 'slate':
         slate(a.n)
     elif a.cmd == 'decide':
