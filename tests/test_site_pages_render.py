@@ -250,17 +250,18 @@ def test_nav_links_every_page(site, name):
     hrefs = [a['href'] for a in nav.select('.nav-links a')]
     assert hrefs == NAV_LINKS
     assert nav.select_one('a.nav-brand')['href'] == 'index.html'
-    assert nav.select_one('.updated')['data-built']
+    # the build time comes from built.json, not the page, so a page doesn't change every hour (Oct 29)
+    assert nav.select_one('.updated') is not None and not nav.select_one('.updated').get('data-built')
 
 
 @pytest.mark.parametrize('name', PAGES)
-def test_assets_carry_the_build_version(site, name):
+def test_assets_carry_the_asset_version(site, name):
     soup = site['soup'][name]
     css = [l['href'] for l in soup.select('link[rel=stylesheet]') if 'style.css' in l['href']]
     js = [s['src'] for s in soup.select('script[src]') if 'index.js' in s['src']]
     assert len(css) == 1 and len(js) == 1
     for url in css + js:
-        assert re.search(r'\?v=\d{12}$', url), url
+        assert re.search(r'\?v=[0-9a-f]{12}$', url), url
     assert css[0].split('?v=')[1] == js[0].split('?v=')[1]
 
 

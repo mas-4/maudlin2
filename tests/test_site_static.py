@@ -183,8 +183,8 @@ def test_template_local_assets_exist(name):
 
 def test_layout_versions_its_assets():
     page = read(TEMPLATES, 'page.html')
-    assert re.search(r'href="\./style\.css\?v=\{\{ build_version \}\}"', page)
-    assert re.search(r'src="index\.js\?v=\{\{ build_version \}\}"', page)
+    assert re.search(r'href="\./style\.css\?v=\{\{ asset_version \}\}"', page)
+    assert re.search(r'src="index\.js\?v=\{\{ asset_version \}\}"', page)
 
 
 def test_layout_places_nav_and_footer():

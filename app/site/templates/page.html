@@ -28,9 +28,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
-    {# The build stamp in the urls makes browsers fetch the new files after each deploy instead of a cached copy #}
-    <link rel="stylesheet" href="./style.css?v={{ build_version }}">
-    <script src="index.js?v={{ build_version }}"></script>
+    {# A hash of the stylesheet and scripts in the urls makes browsers fetch them again when they change. Not the build
+       time: that changed every page every hour, and the deploy re-sent ~1,700 unchanged pages (Oct 29) #}
+    <link rel="stylesheet" href="./style.css?v={{ asset_version }}">
+    <script src="index.js?v={{ asset_version }}"></script>
     <link rel="icon" href="./favicon.ico?v=2" sizes="any">
     <link rel="alternate" type="application/rss+xml" title="bignews.day: top stories" href="feed.xml">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">

@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 
@@ -90,6 +91,10 @@ def copy_assets():
     # Written after the copy, so it always replaces any style.css in the static folder
     with open(os.path.join(Config.build, 'style.css'), 'w', encoding='utf-8') as f:
         f.write(stylesheet())
+    # When the site was built, for every page's "updated 12 min ago" (nav.html): one small file changes each hour
+    # instead of every page
+    with open(os.path.join(Config.build, 'built.json'), 'w', encoding='utf-8') as f:
+        json.dump({'at': j2env.globals.get('built_at')}, f)
 
 
 def clear_build():
@@ -141,12 +146,26 @@ j2env.globals['now'] = Constants.TimeConstants.now_func
 
 
 
+def asset_version() -> str:
+    """A short hash of the static files and the stylesheet, for the pages' ?v= on style.css and index.js: it changes
+    when they do, so browsers fetch them again, and not otherwise, so a page doesn't change just because an hour went by"""
+    import hashlib
+    h = hashlib.sha1(stylesheet().encode('utf-8'))
+    for name in sorted(os.listdir(Config.assets)):
+        path = os.path.join(Config.assets, name)
+        if os.path.isfile(path):
+            with open(path, 'rb') as f:
+                h.update(name.encode('utf-8') + b'\0' + f.read())
+    return h.hexdigest()[:12]
+
+
 def stamp_build():
     """Record when this build ran and re-render the nav bar, which shows it. Called as each build starts, not at
     import, because a run spends several minutes scraping before it builds."""
     now = dt.now(pytz.UTC)
     j2env.globals['built_at'] = now.isoformat()
-    j2env.globals['build_version'] = now.strftime('%Y%m%d%H%M')
+    j2env.globals['build_version'] = now.strftime('%Y%m%d%H%M')  # this run's key for work shared between pages
+    j2env.globals['asset_version'] = asset_version()
     j2env.globals['built_at_text'] = now.astimezone(Constants.TimeConstants.timezone).strftime(
         '%#I:%M %p ET' if os.name == 'nt' else '%-I:%M %p ET')
     from app.site.page_trackers import menus

@@ -1,5 +1,6 @@
 """app/site/common.py: the Jinja environment's helpers (chip names, chip colors, outlet icons, the date filter) and the
 template and path handlers. Nothing here touches the database; files go to tmp_path."""
+import json
 import os
 import re
 from datetime import datetime as dt
@@ -232,20 +233,23 @@ def test_copy_assets(monkeypatch, tmp_path):
     monkeypatch.setattr(Config, 'build', str(build))
     monkeypatch.setattr(Config, 'styles', str(styles))
     common.copy_assets()
-    assert sorted(os.listdir(build)) == ['index.js', 'style.css']
+    assert sorted(os.listdir(build)) == ['built.json', 'index.js', 'style.css']
+    assert json.loads((build / 'built.json').read_text()) == {'at': j2env.globals['built_at']}
     assert (build / 'style.css').read_text() == '/* Base */\nbody {}\n\n/* Nav */\n.nav {}\n'
 
 
 def test_stamp_build_sets_version_and_rerenders_nav(monkeypatch):
-    for key in ('built_at', 'build_version', 'built_at_text', 'nav'):
+    for key in ('built_at', 'build_version', 'asset_version', 'built_at_text', 'nav'):
         monkeypatch.setitem(j2env.globals, key, None)
     common.stamp_build()
     g = j2env.globals
     assert re.fullmatch(r'\d{12}', g['build_version'])
     assert dt.fromisoformat(g['built_at']).tzinfo is not None
     assert re.fullmatch(r'\d{1,2}:\d\d [AP]M ET', g['built_at_text'])
-    assert f'data-built="{g["built_at"]}"' in g['nav']
-    assert g['built_at_text'] in g['nav']
+    # the time isn't in the nav (so pages don't change every hour): the nav reads it from built.json (Oct 29)
+    assert g['built_at'] not in g['nav'] and g['built_at_text'] not in g['nav']
+    assert "fetch('/built.json'" in g['nav']
+    assert re.fullmatch(r'[0-9a-f]{12}', g['asset_version'])
 
 
 def test_core_template_globals_are_registered():

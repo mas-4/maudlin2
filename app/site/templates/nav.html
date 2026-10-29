@@ -19,11 +19,18 @@
         </details>
         {% endfor %}
     </div>
-    <span class="updated" data-built="{{ built_at|e }}" title="When this page was last rebuilt">updated {{ built_at_text }}</span>
+    {# The build time comes from built.json, not the page: written into every page, it made each one count as changed
+       every hour, and the deploy re-sent ~1,700 pages that were otherwise the same (Oct 29) #}
+    <span class="updated" title="When the site was last rebuilt">updated</span>
     <script>
         (function () {
             // "updated 12 min ago", kept current while the page is open; turns orange when the site has gone stale
             const el = document.currentScript.previousElementSibling;
+            fetch('/built.json', {cache: 'no-cache'}).then((r) => r.json()).then((b) => {
+                el.dataset.built = b.at;
+                tick();
+                setInterval(tick, 30000);
+            }).catch(() => {});
             function tick() {
                 const minutes = Math.max(0, Math.round((Date.now() - Date.parse(el.dataset.built)) / 60000));
                 const hours = Math.floor(minutes / 60);
@@ -31,8 +38,6 @@
                     : hours + ' hour' + (hours === 1 ? '' : 's') + ' ago');
                 el.classList.toggle('stale', minutes > 150);
             }
-            tick();
-            setInterval(tick, 30000);
 
             // The nav is rendered once for every page, so the current page is marked here
             const nav = el.parentElement;
