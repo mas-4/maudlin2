@@ -90,6 +90,7 @@ class Config:
             emails_to_notify = emails.split(',')
 
     netlify = read_creds(Constants.Paths.NETLIFY_CREDS)
+    cloudflare = read_creds(Constants.Paths.CLOUDFLARE_CREDS)
     dropbox = read_creds(Constants.Paths.DROPBOX_CREDS)
     anthropic = read_creds(Constants.Paths.ANTHROPIC_CREDS) or os.environ.get('ANTHROPIC_API_KEY', '')
 

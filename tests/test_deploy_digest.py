@@ -8,7 +8,7 @@ from app.utils.config import Config
 
 class Resp:
     def __init__(self, data=None, status=200):
-        self.data, self.status_code = data or {}, status
+        self.data, self.status_code, self.text = data or {}, status, str(data)
 
     def json(self):
         return self.data
@@ -83,3 +83,33 @@ def test_a_deploy_that_never_finishes_gives_up(tmp_path, monkeypatch):
         assert 'not ready after 5 minutes' in str(e)
     else:
         raise AssertionError('should have given up')
+
+
+def test_cloudflare_is_cleared_after_a_deploy(tmp_path, monkeypatch):
+    """Oct 30: Cloudflare keeps pages an hour; a finished deploy clears its copies so the new build shows at once"""
+    site(tmp_path, monkeypatch)
+    monkeypatch.setattr(Config, 'netlify', 'token')
+    monkeypatch.setattr(Config, 'cloudflare', 'cf-token')
+    monkeypatch.setattr(deploy, 'CLOUDFLARE_ZONE', 'zone1')
+    monkeypatch.setattr(deploy, 'digest_deploy', lambda token: {'state': 'ready'})
+    purged = []
+    monkeypatch.setattr(deploy.rq, 'post', lambda url, json=None, headers=None, timeout=None: purged.append((url, json)) or Resp({'success': True}))
+    deploy.publish_to_netlify()
+    assert purged == [('https://api.cloudflare.com/client/v4/zones/zone1/purge_cache', {'purge_everything': True})]
+
+
+def test_a_failed_purge_never_fails_the_run(tmp_path, monkeypatch):
+    site(tmp_path, monkeypatch)
+    monkeypatch.setattr(Config, 'cloudflare', 'cf-token')
+    monkeypatch.setattr(deploy, 'CLOUDFLARE_ZONE', 'zone1')
+    monkeypatch.setattr(deploy.rq, 'post', lambda *a, **k: (_ for _ in ()).throw(ConnectionError('down')))
+    deploy.purge_cloudflare()
+    monkeypatch.setattr(deploy.rq, 'post', lambda *a, **k: Resp({'success': False}, 403))
+    deploy.purge_cloudflare()
+
+
+def test_no_purge_without_a_token_or_zone(tmp_path, monkeypatch):
+    monkeypatch.setattr(Config, 'cloudflare', '')
+    monkeypatch.setattr(deploy, 'CLOUDFLARE_ZONE', 'zone1')
+    monkeypatch.setattr(deploy.rq, 'post', lambda *a, **k: (_ for _ in ()).throw(AssertionError('called')))
+    deploy.purge_cloudflare()

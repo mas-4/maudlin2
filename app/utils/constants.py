@@ -98,6 +98,7 @@ class Constants:
         ROOT = str(pathlib.Path(__file__).parent.parent.parent)
         EMAIL_CREDS = os.path.join(ROOT, '.creds')
         NETLIFY_CREDS = os.path.join(ROOT, '.netlify_creds')
+        CLOUDFLARE_CREDS = os.path.join(ROOT, '.cloudflare_creds')  # a token that may only purge bignews.day's cache
         DROPBOX_CREDS = os.path.join(ROOT, '.dropbox_creds')
         ANTHROPIC_CREDS = os.path.join(ROOT, '.anthropic_creds')
         TOPICS_FILE = os.path.join(ROOT, 'topics.yml')

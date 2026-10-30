@@ -13,6 +13,10 @@ logger = get_logger(__name__)
 NETLIFY_API = 'https://api.netlify.com/api/v1'
 # Netlify accepts the site's id or its netlify.app domain here
 NETLIFY_SITE = os.environ.get('NETLIFY_SITE', 'maudlin.netlify.app')
+# Cloudflare sits in front of Netlify and keeps each page for an hour (Oct 30, the person: "we update once an hour why
+# don't we cache for at least 45 minutes"); after each deploy its copies are cleared so the new build shows at once
+CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
+CLOUDFLARE_ZONE = os.environ.get('CLOUDFLARE_ZONE', '')  # bignews.day's zone id (not a secret)
 
 
 def move_to_public():
@@ -95,6 +99,22 @@ def digest_deploy(token: str) -> dict:
     return deploy
 
 
+def purge_cloudflare():
+    """Clear Cloudflare's cached copies of the whole site once a deploy is live. Never raises: if it fails, the cache
+    rule's one-hour limit still brings the new build within the hour."""
+    if not (Config.cloudflare and CLOUDFLARE_ZONE):
+        return
+    try:
+        r = rq.post(f'{CLOUDFLARE_API}/zones/{CLOUDFLARE_ZONE}/purge_cache', json={'purge_everything': True},
+                    headers={'Authorization': f'Bearer {Config.cloudflare}'}, timeout=60)
+        if r.status_code >= 400 or not r.json().get('success'):
+            logger.warning("Cloudflare purge failed (%s): %s", r.status_code, r.text[:300])
+            return
+        logger.info("Cleared Cloudflare's cache")
+    except Exception as e:  # noqa: BLE001 - the deploy itself went fine
+        logger.warning("Cloudflare purge failed: %s", e)
+
+
 def publish_to_netlify():
     """Deploy the built site straight to production through Netlify's api (no cli needed): only the files that
     changed (digest_deploy), or if that fails the whole site as a zip. A failed deploy raises, so the run exits
@@ -105,6 +125,7 @@ def publish_to_netlify():
         return
     try:
         digest_deploy(Config.netlify)
+        purge_cloudflare()
         return
     except Exception as e:  # noqa: BLE001 - the zip deploy still works
         logger.warning("Digest deploy failed (%s); sending the whole site as a zip", e)
@@ -117,3 +138,4 @@ def publish_to_netlify():
     response.raise_for_status()
     deploy = response.json()
     logger.info("Deployed %s (%s): %s", deploy.get('id'), deploy.get('state'), deploy.get('ssl_url') or deploy.get('url'))
+    purge_cloudflare()
