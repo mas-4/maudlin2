@@ -83,6 +83,7 @@ CODENAMES = {
     'F26': ('Tiresias', 'the blind seer who saw what was meant: the point a teller makes, for the shortlist'),
     'F27': ('Ali Baba', 'the cave that opens to the exact words: the tellers\' own phrases for each motif, for the shortlist'),
     'F28': ('the Judgement of Paris', 'asked to choose among those offered: which model picks from the shortlist'),
+    'F29': ('Hestia', "keeper of the hearth at the centre of every house: each motif's centre, and how far its claims stray"),
     'O1': ("the Wolf in Sheep's Clothing", 'the fleece of the flock: straight news worn over a tail of propaganda'),
 }
 
