@@ -65,6 +65,7 @@ def join(data: dict, entries: list[dict], index: dict) -> tuple[dict, int]:
     groups = {g: v.get('name', g) for g, v in index.get('groups', {}).items()}
     every = motif_index.facet_values(index).get('genre', [])  # the site's genre order, then any newer one
     out = {'public': True, 'spaces': data['spaces'], 'motifs': motifs, 'claims': claims, 'related': related,
+           'regions': {s: [r for r in rs if r['group'] in groups] for s, rs in data.get('regions', {}).items()},
            'groups': groups, 'genres': [g for g in GENRE_EMOJI if g in every] + [g for g in every if g not in GENRE_EMOJI]}
     return out, sum(1 for i in now if i not in at)
 

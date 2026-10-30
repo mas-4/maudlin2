@@ -32,6 +32,7 @@ TODAY_FILE = os.path.join(Config.data, 'motifs', 'motif_space.json')
 SPACES = {'qwen3 8b': lm.QWEN3_EMBED, 'mxbai': lm.MXBAI, 'tfidf': None}
 PUBLIC_SPACES = ('qwen3 8b', 'tfidf')
 NEAR = 8  # nearest centres kept for each motif
+VERSION = 3  # of the kept layout: a new one (Oct 30: regions) is worked out again the same day
 
 
 def cached(model: str, texts: list[str]) -> tuple[np.ndarray, np.ndarray]:
@@ -105,6 +106,7 @@ def layout(entries: list[dict], spaces=tuple(SPACES), three: bool = False) -> di
     members = [[(at[c['text']], bool(c.get('ok'))) for c in e['claims']] for e in entries]
     motifs = [{k: v for k, v in e.items() if k != 'claims'} for e in entries]
     claim_xy, claim_xyz = [{} for _ in texts], [{} for _ in texts]
+    named = {}
     likeness = {}
     for space in spaces:
         model = SPACES[space]
@@ -146,14 +148,58 @@ def layout(entries: list[dict], spaces=tuple(SPACES), three: bool = False) -> di
                     likeness[t, i] = round(float(X[t] @ s / max(np.linalg.norm(s), 1e-12)), 3)
                 vals = [likeness[t, i] for t, _ in members[i] if (t, i) in likeness]
                 motifs[i]['spread'] = round(float(np.mean(vals)), 3) if vals else None
+        named[space] = regions(motifs, keep, space)
         logger.info("Motif space: %s laid out, %d claims, %d centres (%.0f s)", space, len(ok), len(keep), time.time() - t0)
     of = [[] for _ in texts]
     for i, mem in enumerate(members):
         for t, ok_ in mem:
             of[t].append([i, int(ok_), likeness.get((t, i))])
-    return {'spaces': [s for s in spaces if any(s in m.get('xy', {}) for m in motifs)], 'motifs': motifs,
+    return {'spaces': [s for s in spaces if any(s in m.get('xy', {}) for m in motifs)], 'motifs': motifs, 'regions': named,
             'claims': [{'k': key(texts[t]), 't': shown[t], 'xy': claim_xy[t], 'm': of[t], **({'xyz': claim_xyz[t]} if claim_xyz[t] else {})}
                        for t in range(len(texts)) if claim_xy[t]]}
+
+
+REGIONS = 15  # neighbourhoods the map is cut into for naming (fewer on a small index)
+REGION_LEAST = 5  # a region's name needs this many of its motifs in the group
+REGION_SHARE = 0.12  # and this share of them (groups are many and overlap: a region's leading one holds 15-25%)
+
+
+def regions(motifs: list[dict], keep: list[int], space: str) -> list[dict]:
+    """The map's neighbourhoods named like places (Oct 30, the person: "just the regions", not axes, which would mean
+    nothing on a t-SNE map): the motifs cut into REGIONS by where they sit (k-means on the flat places), each named for
+    the group most typical of it (its count times how much likelier the group is there than overall), no group used
+    twice; a region with no clear group goes unnamed. Each name sits at the middle of its group's motifs there, flat and
+    lifted: [{group (id), n, xy, xyz?}]"""
+    from collections import Counter
+
+    from sklearn.cluster import KMeans
+    have = [i for i in keep if space in motifs[i].get('xy', {})]
+    if len(have) < 20:
+        return []
+    P = np.array([motifs[i]['xy'][space] for i in have])
+    k = max(4, min(REGIONS, len(have) // 60))
+    cut = KMeans(k, n_init=10, random_state=0).fit_predict(P)
+    total = Counter(g for i in have for g in motifs[i].get('groups', []))
+    offers = []
+    for r in range(k):
+        inside = [have[j] for j in range(len(have)) if cut[j] == r]
+        for g, n in Counter(g for i in inside for g in motifs[i].get('groups', [])).items():
+            share = n / len(inside)
+            if n >= REGION_LEAST and share >= REGION_SHARE:
+                offers.append((n * share / (total[g] / len(have)), r, g, [i for i in inside if g in motifs[i].get('groups', [])]))
+    out, named, used = [], set(), set()
+    for _, r, g, members in sorted(offers, key=lambda o: -o[0]):
+        if r in named or g in used:
+            continue
+        named.add(r)
+        used.add(g)
+        spot = {'group': g, 'n': len(members),
+                'xy': [round(float(v), 1) for v in np.mean([motifs[i]['xy'][space] for i in members], 0)]}
+        lifted = [motifs[i]['xyz'][space] for i in members if space in motifs[i].get('xyz', {})]
+        if lifted:
+            spot['xyz'] = [round(float(v), 1) for v in np.mean(lifted, 0)]
+        out.append(spot)
+    return out
 
 
 def key(text: str) -> str:
@@ -169,13 +215,14 @@ def today(entries: list[dict] | None = None, spaces=PUBLIC_SPACES, three: bool =
     try:
         with open(TODAY_FILE) as f:
             kept = json.load(f)
-        if (kept.get('day') == date.today().isoformat() and (kept.get('three') or not three)) or entries is None:
+        fresh = kept.get('day') == date.today().isoformat() and kept.get('version') == VERSION
+        if (fresh and (kept.get('three') or not three)) or entries is None:
             return kept
     except (OSError, ValueError):
         if entries is None:
             return None
     data = layout(entries, spaces, three)
-    data['day'], data['three'] = date.today().isoformat(), three
+    data['day'], data['three'], data['version'] = date.today().isoformat(), three, VERSION
     os.makedirs(os.path.dirname(TODAY_FILE), exist_ok=True)
     with open(TODAY_FILE + '.tmp', 'w') as f:
         json.dump(data, f, separators=(',', ':'))

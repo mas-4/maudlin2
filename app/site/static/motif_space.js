@@ -270,6 +270,31 @@
     }
     // nearer is fuller: far dots fade once lifted
     const fade = (p) => (V.lift > 0 ? 1 - 0.6 * V.lift * Math.max(0, Math.min(1, (p.z + 450) / 900)) : 1);
+    // The map's neighbourhoods, named like places for the group most typical of each (motif_space.regions): over the
+    // dots with a white halo, as a map names its places, the biggest first and none on top of another; they step back
+    // once a motif is picked or the motifs' own names show. They turn with the map once it's lifted.
+    function drawRegions() {
+        const sp = state.space, boxes = [];
+        const quiet = state.sel != null || V.k >= 2.6;
+        ctx.save();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+        ((D.regions || {})[sp] || []).slice().sort((a, b) => b.n - a.n).forEach((r) => {
+            const name = (D.groups || {})[r.group];
+            const p = name && place({xy: {[sp]: r.xy}, xyz: r.xyz ? {[sp]: r.xyz} : null});
+            if (!p) return;
+            const sz = Math.max(10, Math.min(19, 8 + Math.sqrt(r.n) * 1.8)) * Math.min(1.5, Math.sqrt(V.k)) * p.s;
+            const text = name.toUpperCase();
+            ctx.font = `${sz.toFixed(1)}px 'Bungee', 'Impact', sans-serif`;
+            const w = ctx.measureText(text).width;
+            const box = [p.x - w / 2 - 4, p.y - sz / 2 - 3, p.x + w / 2 + 4, p.y + sz / 2 + 3];
+            if (boxes.some((b) => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) return;
+            boxes.push(box);
+            ctx.globalAlpha = (quiet ? 0.3 : 0.9) * fade(p);
+            ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(text, p.x, p.y);
+            ctx.fillStyle = INK; ctx.fillText(text, p.x, p.y);
+        });
+        ctx.restore();
+    }
     let placedNow = new Map();
     function draw() {
         if (!W) return;
@@ -310,6 +335,7 @@
             dot(p, size(m) * p.s, GENRE_INK[m.genre] || '#ffffff', INK, f && !dim ? 2 : 1.1);
             ctx.globalAlpha = 1;
         });
+        drawRegions();
         if (sOn) {
             S.claims.forEach(({ci, ok}) => {
                 const p = place(C[ci]); if (!p) return;
@@ -464,6 +490,7 @@
 
     renderPanel();
     resize();
+    if (document.fonts) document.fonts.ready.then(draw);  // the region names are in Bungee
     const start = M.find((m) => m.id === location.hash.slice(1).toUpperCase());
     if (start) setTimeout(() => select(start.i, true), 60);
 })();
