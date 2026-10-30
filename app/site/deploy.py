@@ -66,13 +66,60 @@ def wait_for(deploy: dict, states: tuple, headers: dict, minutes: float, what: s
     return deploy
 
 
+# Uploads at once: Netlify's own cli sends 5 (Oct 30: one at a time, ~400 files took 150-200 s an hour)
+UPLOADERS = 5
+UPLOAD_TRIES = 4
+
+
+def upload(deploy_id: str, path: str, headers: dict) -> int:
+    """PUT one file into a deploy and return its size. A 429 waits out Netlify's rate limit; a 5xx or dropped
+    connection is tried again (Oct 28 02:16: one 500 on one file sent the whole site up as a zip)"""
+    import time
+    from urllib.parse import quote
+    with open(os.path.join(Config.build, path.lstrip('/')), 'rb') as f:
+        body = f.read()
+    url = f"{NETLIFY_API}/deploys/{deploy_id}/files/{quote(path.lstrip('/'))}"
+    for attempt in range(1, UPLOAD_TRIES + 1):
+        try:
+            r = rq.put(url, data=body, timeout=120, headers={**headers, 'Content-Type': 'application/octet-stream'})
+        except (rq.ConnectionError, rq.Timeout):
+            if attempt == UPLOAD_TRIES:
+                raise
+            time.sleep(2 ** attempt)
+            continue
+        if r.status_code == 429 and attempt < UPLOAD_TRIES:
+            time.sleep(rate_limit_wait(r))
+            continue
+        if r.status_code >= 500 and attempt < UPLOAD_TRIES:
+            time.sleep(2 ** attempt)
+            continue
+        r.raise_for_status()
+        return len(body)
+    raise AssertionError('unreachable')
+
+
+def rate_limit_wait(r) -> float:
+    """Seconds until Netlify lifts a rate limit: its X-RateLimit-Reset (a unix time) or Retry-After, else 10 s,
+    and never more than a minute"""
+    import time
+    headers = getattr(r, 'headers', None) or {}
+    try:
+        if headers.get('X-RateLimit-Reset'):
+            return min(60.0, max(1.0, float(headers['X-RateLimit-Reset']) - time.time()))
+        if headers.get('Retry-After'):
+            return min(60.0, max(1.0, float(headers['Retry-After'])))
+    except ValueError:
+        pass
+    return 10.0
+
+
 def digest_deploy(token: str) -> dict:
     """Netlify's file-digest deploy: the list of every file's SHA-1 goes up, and only the files Netlify doesn't have
     yet are uploaded (Oct 7: the zip deploy sent the whole site every hour; with story pages kept for good, it would
     have grown past 100 MB a run). Preparing and finishing each get their own 5 minutes, so slow uploads don't eat
     the wait after them (Oct 8 00:11: ~24 MB of uploads used up one shared 5 minutes). Raises on any failure."""
     import time
-    from urllib.parse import quote
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     headers = {'Authorization': f'Bearer {token}'}
     files = digests()
     response = rq.post(f'{NETLIFY_API}/sites/{NETLIFY_SITE}/deploys', json={'files': files, 'async': True},
@@ -83,15 +130,16 @@ def digest_deploy(token: str) -> dict:
     by_sha = {}
     for path, sha in files.items():
         by_sha.setdefault(sha, path)  # one copy of each content is enough
-    sent, started = 0, time.time()
-    for sha in required:
-        path = by_sha[sha]
-        with open(os.path.join(Config.build, path.lstrip('/')), 'rb') as f:
-            body = f.read()
-        r = rq.put(f"{NETLIFY_API}/deploys/{deploy['id']}/files/{quote(path.lstrip('/'))}", data=body, timeout=120,
-                   headers={**headers, 'Content-Type': 'application/octet-stream'})
-        r.raise_for_status()
-        sent += len(body)
+    started = time.time()
+    sent = 0
+    with ThreadPoolExecutor(UPLOADERS) as pool:
+        uploads = [pool.submit(upload, deploy['id'], by_sha[sha], headers) for sha in required]
+        try:
+            for done in as_completed(uploads):
+                sent += done.result()
+        except BaseException:
+            pool.shutdown(wait=False, cancel_futures=True)  # a file that won't go up fails the deploy; don't send the rest
+            raise
     uploading = time.time() - started
     deploy = wait_for(deploy, ('ready',), headers, 5, 'ready')
     logger.info("Deployed %s: %d files, %d new or changed (%.1f MB sent in %.0f s): %s", deploy.get('id'), len(files),

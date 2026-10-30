@@ -113,3 +113,74 @@ def test_no_purge_without_a_token_or_zone(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy, 'CLOUDFLARE_ZONE', 'zone1')
     monkeypatch.setattr(deploy.rq, 'post', lambda *a, **k: (_ for _ in ()).throw(AssertionError('called')))
     deploy.purge_cloudflare()
+
+
+def stub_deploy(monkeypatch, required):
+    monkeypatch.setattr(deploy.rq, 'post', lambda url, json=None, headers=None, timeout=None: Resp(
+        {'id': 'd1', 'state': 'prepared', 'required': [hashlib.sha1(c).hexdigest() for c in required]}))
+    monkeypatch.setattr(deploy.rq, 'get', lambda url, headers=None, timeout=None: Resp({'id': 'd1', 'state': 'ready'}))
+
+
+def test_uploads_go_several_at_a_time(tmp_path, monkeypatch):
+    """Oct 30: one PUT at a time, ~400 changed files took 150-200 s of every hour"""
+    import threading
+    site(tmp_path, monkeypatch)
+    for i in range(12):
+        (tmp_path / f'story-{i + 2}.html').write_text(f'story {i}')
+    stub_deploy(monkeypatch, [f'story {i}'.encode() for i in range(12)])
+    lock, now, most, puts = threading.Lock(), [0], [0], []
+
+    def put(url, data=None, timeout=None, headers=None):
+        with lock:
+            now[0] += 1
+            most[0] = max(most[0], now[0])
+        threading.Event().wait(0.05)  # time.sleep is stubbed out
+        with lock:
+            now[0] -= 1
+            puts.append(url)
+        return Resp()
+    monkeypatch.setattr(deploy.rq, 'put', put)
+    deploy.digest_deploy('token')
+    assert len(puts) == 12
+    assert 1 < most[0] <= deploy.UPLOADERS
+
+
+def test_a_failed_upload_is_tried_again(tmp_path, monkeypatch):
+    """Oct 28 02:16: one 500 on one file sent the whole site up as a zip"""
+    site(tmp_path, monkeypatch)
+    stub_deploy(monkeypatch, [b'front'])
+    answers = iter([Resp(status=500), Resp(status=429), ConnectionError, Resp()])
+
+    def put(url, data=None, timeout=None, headers=None):
+        a = next(answers)
+        if a is ConnectionError:
+            raise deploy.rq.ConnectionError('reset')
+        return a
+    monkeypatch.setattr(deploy.rq, 'put', put)
+    assert deploy.digest_deploy('token')['state'] == 'ready'
+
+
+def test_an_upload_that_keeps_failing_fails_the_deploy(tmp_path, monkeypatch):
+    site(tmp_path, monkeypatch)
+    stub_deploy(monkeypatch, [b'front', b'old story', b'edition'])
+    puts = []
+    monkeypatch.setattr(deploy.rq, 'put', lambda url, data=None, timeout=None, headers=None: puts.append(url) or Resp(status=503))
+    try:
+        deploy.digest_deploy('token')
+    except RuntimeError as e:
+        assert '503' in str(e)
+    else:
+        raise AssertionError('should have failed')
+    assert len(puts) <= 3 * deploy.UPLOAD_TRIES
+
+
+def test_rate_limit_wait_reads_netlifys_headers(monkeypatch):
+    monkeypatch.setattr('time.time', lambda: 1000.0)
+
+    class R:
+        def __init__(self, headers):
+            self.headers = headers
+    assert deploy.rate_limit_wait(R({'X-RateLimit-Reset': '1012'})) == 12
+    assert deploy.rate_limit_wait(R({'Retry-After': '3'})) == 3
+    assert deploy.rate_limit_wait(R({'X-RateLimit-Reset': '99999'})) == 60
+    assert deploy.rate_limit_wait(R({})) == 10
