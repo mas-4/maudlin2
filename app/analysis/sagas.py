@@ -20,6 +20,7 @@ from datetime import datetime as dt, timedelta as td
 import numpy as np
 import pandas as pd
 import pytz
+from sqlalchemy import or_
 
 from app.analysis import llm
 from app.analysis.clustering import embed
@@ -40,6 +41,9 @@ NAME_MIN_OTHER = 0.1  # ...and this share of the other's (for saved sagas; the j
 NAME_MAX_SHARE = 0.04  # ...and in no more than this share of all the day's headlines
 RELATED_SIMILARITY = 0.6  # an unclustered headline this close to a saga's center (with its word) counts toward it
 SAGA_MEMORY = td(days=7)  # saved stories this recent can join today's stories in a saga
+# and so can any part of a saga this recent, however old the part (Oct 30, the person of a Christa Pike story that
+# started a new saga 19 days after the first: "it's already a saga ... it hasn't properly connected")
+SAGA_RECALL = td(days=45)
 RENAME_GROWTH = 2  # a saga is renamed when it has grown to this many times the parts it was named with
 
 WORD = re.compile(r"[A-Za-z][A-Za-z']{3,}")  # hyphens split words: "UK-Iranian" carries "Iranian"
@@ -362,13 +366,19 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
     return groups
 
 
-def _past_stories(exclude: set[int], since: dt) -> dict[int, dict]:
-    """Saved stories seen since `since` that aren't in today's clusters: their saga, headline titles and outlets."""
+def _past_stories(exclude: set[int], since: dt, sagas_since: dt | None = None) -> dict[int, dict]:
+    """Saved stories seen since `since`, and the parts of sagas seen since `sagas_since`, that aren't in today's
+    clusters: their saga, headline titles and outlets."""
     with Session() as s:
+        recent = Story.last_seen >= since
+        if sagas_since is not None:
+            sagas = [i for (i,) in s.query(Saga.id).filter(Saga.last_seen >= sagas_since).all()]
+            if sagas:
+                recent = or_(recent, Story.saga_id.in_(sagas))
         rows = s.query(Story.id, Story.saga_id, Headline.title, Agency.name).join(
             StoryHeadline, StoryHeadline.story_id == Story.id).join(Headline, Headline.id == StoryHeadline.headline_id) \
             .join(Article, Article.id == Headline.article_id).join(Agency, Agency.id == Article.agency_id) \
-            .filter(Story.last_seen >= since).all()
+            .filter(recent).all()
     past = {}
     for story_id, saga_id, title, agency in rows:
         if story_id in exclude:
@@ -389,7 +399,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
         return {}
     now = dt.now(pytz.UTC).replace(tzinfo=None)
     current = {int(k): story_of[int(k)] for k in stories['cluster'].unique() if int(k) in story_of}
-    past = _past_stories(set(current.values()), now - SAGA_MEMORY)
+    past = _past_stories(set(current.values()), now - SAGA_MEMORY, now - SAGA_RECALL)
     with Session() as s:
         saga_of = dict(s.query(Story.id, Story.saga_id).filter(
             Story.id.in_(list(current.values())), Story.saga_id.isnot(None)).all())

@@ -94,6 +94,33 @@ def test_saved_saga_never_loses_a_part_and_keeps_its_id(db):
     assert saga['id'] == saga_id and saga['size'] == 2
 
 
+
+def saved_saga(session, days_ago):
+    when = dt.now(UTC).replace(tzinfo=None) - td(days=days_ago)
+    with session() as s:
+        saga = Saga(name='Cornell case', named_with=2, first_seen=when, last_seen=when)
+        s.add(saga)
+        s.commit()
+        return saga.id
+
+
+def test_a_saga_quiet_for_weeks_still_takes_its_next_part(db):
+    """Oct 30: a Christa Pike part 19 days after the first two started a saga of its own instead of joining them"""
+    saga_id = saved_saga(db, 19)
+    for title in ['Cornell student alleges assault', 'Cornell accuser speaks out']:
+        saved_story(db, [title], 19 * 24, saga_id=saga_id)
+    headlines, stories = today({0: ['Attorney general takes over Cornell investigation',
+                                    'New details in the Cornell investigation']})
+    [saga] = sg.link_sagas(headlines, stories, {0: saved_story(db, ['Attorney general takes over Cornell case'], 1)}).values()
+    assert saga['id'] == saga_id and saga['size'] == 3
+
+
+def test_a_loose_story_from_weeks_ago_does_not_join(db):
+    saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 19 * 24)  # in no saga
+    headlines, stories = today({0: ['Attorney general takes over Cornell investigation',
+                                    'New details in the Cornell investigation']})
+    assert sg.link_sagas(headlines, stories, {0: saved_story(db, ['Attorney general takes over Cornell case'], 1)}) == {}
+
 def test_common_noun_alone_does_not_link(db):
     saved_story(db, ['Trump Holds Rally In Alabama', 'crowds gather for the rally in Mobile'], 20)
     headlines, stories = today({0: ['factory lays off workers before the rally', 'layoffs ahead of the rally']})
