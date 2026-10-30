@@ -19,6 +19,7 @@ CODENAMES = {
     'S3': ('Rumpelstiltskin', 'the power is in the exact words'),
     'S4': ('Atropos', 'the Fate who cuts the thread where it frays'),
     'S5': ('Sinbad', 'seven voyages, each told as a tale of its own: a long story split at each new development'),
+    'S6': ('Odysseus', 'a voyage told as episodes, each a new trial, not the last told again: a new development, or the same news'),
     'E12': ('Jack', 'seeds, and whether they grow'),
     'E13': ('Anansi', 'the spider who owns every story, told in full'),
     'D1': ('Cinderella', 'the slipper must fit: the must-have element'),
