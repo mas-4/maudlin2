@@ -67,19 +67,31 @@ def words(texts: list[str]) -> tuple[np.ndarray, np.ndarray]:
     return X, have
 
 
-def flatten(P: np.ndarray) -> np.ndarray:
-    """2-D t-SNE of unit vectors (cosine), scaled to 0..1000"""
+def flatten(P: np.ndarray, three: bool = False) -> tuple[np.ndarray, np.ndarray | None]:
+    """t-SNE of unit vectors (cosine) into 2 dimensions, and with `three` into 3 as well, each scaled to 0..1000. The 3-D
+    one starts from the 2-D one (plus the next direction of the data for depth), so it keeps the flat map's
+    arrangement and the page can lift the one into the other"""
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
     Z = PCA(min(50, P.shape[1], P.shape[0] - 1), random_state=0).fit_transform(P)
-    Y = TSNE(2, metric='cosine', init='pca', perplexity=min(30, max(5, len(P) // 4)), random_state=0).fit_transform(Z)
-    Y -= Y.min(0)
-    return Y / max(float(Y.max()), 1e-9) * 1000
+    perplexity = min(30, max(5, len(P) // 4))
+    Y = TSNE(2, metric='cosine', init='pca', perplexity=perplexity, random_state=0).fit_transform(Z)
+    Y3 = None
+    if three:
+        start = np.column_stack([Y - Y.mean(0), (Z[:, 2] - Z[:, 2].mean()) * Y.std() / max(Z[:, 2].std(), 1e-9)])
+        start = start / start[:, 0].std() * 1e-4  # t-SNE's own scale for a start
+        Y3 = TSNE(3, metric='cosine', init=start, perplexity=perplexity, random_state=0).fit_transform(Z)
+
+    def scaled(A):
+        A = A - A.min(0)
+        return A / max(float(A.max()), 1e-9) * 1000
+    return scaled(Y), (scaled(Y3) if Y3 is not None else None)
 
 
-def layout(entries: list[dict], spaces=tuple(SPACES)) -> dict:
+def layout(entries: list[dict], spaces=tuple(SPACES), three: bool = False) -> dict:
     """entries: [{id, claims: [{text (as embedded), shown (as drawn), ok (confirmed)}], ...any fields to pass on}].
-    Each motif's centre is the mean of its confirmed claims (all its claims when none is). Returns {spaces, motifs:
+    Each motif's centre is the mean of its confirmed claims (all its claims when none is); with `three`, every place
+    has a 3-D one too (xyz), grown from the flat one. Returns {spaces, motifs:
     [{...entry fields, xy: {space: [x, y]}, near: {space: [[motif index, likeness]]}, spread}], claims: [{t, xy, m:
     [[motif index, confirmed, likeness to that centre, itself left out]], k: key(text)}]}"""
     t0 = time.time()
@@ -92,7 +104,7 @@ def layout(entries: list[dict], spaces=tuple(SPACES)) -> dict:
     shown = {at[c['text']]: c['shown'] for e in entries for c in e['claims']}
     members = [[(at[c['text']], bool(c.get('ok'))) for c in e['claims']] for e in entries]
     motifs = [{k: v for k, v in e.items() if k != 'claims'} for e in entries]
-    claim_xy = [{} for _ in texts]
+    claim_xy, claim_xyz = [{} for _ in texts], [{} for _ in texts]
     likeness = {}
     for space in spaces:
         model = SPACES[space]
@@ -113,13 +125,17 @@ def layout(entries: list[dict], spaces=tuple(SPACES)) -> dict:
             continue
         C = np.array(C)
         ok = np.where(have)[0]
-        Y = flatten(np.vstack([X[ok], C]))
+        Y, Y3 = flatten(np.vstack([X[ok], C]), three)
         for j, t in enumerate(ok):
-            claim_xy[t][space] = [round(float(Y[j, 0]), 1), round(float(Y[j, 1]), 1)]
+            claim_xy[t][space] = [round(float(v), 1) for v in Y[j]]
+            if Y3 is not None:
+                claim_xyz[t][space] = [round(float(v), 1) for v in Y3[j]]
         S = C @ C.T
         np.fill_diagonal(S, -2)
         for j, i in enumerate(keep):
-            motifs[i].setdefault('xy', {})[space] = [round(float(Y[len(ok) + j, 0]), 1), round(float(Y[len(ok) + j, 1]), 1)]
+            motifs[i].setdefault('xy', {})[space] = [round(float(v), 1) for v in Y[len(ok) + j]]
+            if Y3 is not None:
+                motifs[i].setdefault('xyz', {})[space] = [round(float(v), 1) for v in Y3[len(ok) + j]]
             motifs[i].setdefault('near', {})[space] = [[keep[k], round(float(S[j, k]), 3)] for k in np.argsort(-S[j])[:NEAR]]
         if space == spaces[0]:  # how tight each motif is, in the first space: its claims' likeness to its centre
             for i in keep:
@@ -136,7 +152,7 @@ def layout(entries: list[dict], spaces=tuple(SPACES)) -> dict:
         for t, ok_ in mem:
             of[t].append([i, int(ok_), likeness.get((t, i))])
     return {'spaces': [s for s in spaces if any(s in m.get('xy', {}) for m in motifs)], 'motifs': motifs,
-            'claims': [{'k': key(texts[t]), 't': shown[t], 'xy': claim_xy[t], 'm': of[t]}
+            'claims': [{'k': key(texts[t]), 't': shown[t], 'xy': claim_xy[t], 'm': of[t], **({'xyz': claim_xyz[t]} if claim_xyz[t] else {})}
                        for t in range(len(texts)) if claim_xy[t]]}
 
 
@@ -146,20 +162,20 @@ def key(text: str) -> str:
     return hashlib.sha1(text.encode()).hexdigest()[:16]
 
 
-def today(entries: list[dict] | None = None, spaces=PUBLIC_SPACES) -> dict | None:
+def today(entries: list[dict] | None = None, spaces=PUBLIC_SPACES, three: bool = True) -> dict | None:
     """The day's public layout: worked out from `entries` on the first call of the day (in the hourly build), then
     read back; None when there is none and no entries to make one. Its motifs carry their ids and its claims their
     keys, so each build joins them to the index and the screen as they stand then (and drops what's gone)"""
     try:
         with open(TODAY_FILE) as f:
             kept = json.load(f)
-        if kept.get('day') == date.today().isoformat() or entries is None:
+        if (kept.get('day') == date.today().isoformat() and (kept.get('three') or not three)) or entries is None:
             return kept
     except (OSError, ValueError):
         if entries is None:
             return None
-    data = layout(entries, spaces)
-    data['day'] = date.today().isoformat()
+    data = layout(entries, spaces, three)
+    data['day'], data['three'] = date.today().isoformat(), three
     os.makedirs(os.path.dirname(TODAY_FILE), exist_ok=True)
     with open(TODAY_FILE + '.tmp', 'w') as f:
         json.dump(data, f, separators=(',', ':'))

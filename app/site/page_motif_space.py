@@ -47,7 +47,8 @@ def join(data: dict, entries: list[dict], index: dict) -> tuple[dict, int]:
     for old in keep:
         m, e = data['motifs'][old], now[data['motifs'][old]['id']]
         motifs.append({'id': m['id'], 'name': e['name'], 'note': e['note'], 'genre': e['genre'], 'groups': e['groups'],
-                       'href': motif_href(m['id']), 'xy': m['xy'], 'spread': m.get('spread'),
+                       'href': motif_href(m['id']), 'xy': m['xy'], **({'xyz': m['xyz']} if m.get('xyz') else {}),
+                       'spread': m.get('spread'),
                        'near': {s: [[new[j], v] for j, v in near if j in new] for s, near in m.get('near', {}).items()}})
     at = {m['id']: n for n, m in enumerate(motifs)}
     for m in motifs:
@@ -58,7 +59,7 @@ def join(data: dict, entries: list[dict], index: dict) -> tuple[dict, int]:
             continue
         ms = [[new[i], ok, d] for i, ok, d in c['m'] if i in new]
         if ms:
-            claims.append({'t': shown[c['k']], 'xy': c['xy'], 'm': ms})
+            claims.append({'t': shown[c['k']], 'xy': c['xy'], 'm': ms, **({'xyz': c['xyz']} if c.get('xyz') else {})})
     related = [[at[a], at[b]] for a, b in (tuple(p) for p in index.get('related', []) if len(p) == 2)
                if a in at and b in at]
     groups = {g: v.get('name', g) for g, v in index.get('groups', {}).items()}

@@ -51,7 +51,7 @@ def read(*parts) -> str:
 
 def build(out: str):
     index = mi.load()
-    data = motif_space.layout(entries(index), tuple(motif_space.SPACES))
+    data = motif_space.layout(entries(index), tuple(motif_space.SPACES), three=True)
     at = {m['id']: i for i, m in enumerate(data['motifs'])}
     for m in data['motifs']:
         m['rests'] = [at[p] for p in m['rests'] if p in at]

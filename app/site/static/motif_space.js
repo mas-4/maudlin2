@@ -1,6 +1,8 @@
 // Motif space (app/analysis/motif_space.py): every motif's centre and its claims laid out by meaning, drawn on a canvas
-// with its own pan, zoom and pinch. The data rides in the page (#ms-data); the public page (motif-space.html) and the
-// person's own copy (scripts/motif_map.py) share this script and its markup's ids.
+// with its own pan, zoom and pinch. Flat by default; where the data carries 3-D places too (xyz), the 🧊 button lifts
+// the map into space (the person, Oct 30: "a cool little lifting animation"): the plane tilts back as the dots rise out
+// of it, then it turns slowly; drag to turn it. The data rides in the page (#ms-data); the public page
+// (motif-space.html) and the person's own copy (scripts/motif_map.py) share this script and its markup's ids.
 (() => {
     const root = document.getElementById('motif-space');
     const D = JSON.parse(document.getElementById('ms-data').textContent);
@@ -24,6 +26,7 @@
     (D.related || []).forEach(([a, b]) => { related.get(a).add(b); related.get(b).add(a); });
     const restedOn = new Map(M.map((m) => [m.i, new Set()]));
     M.forEach((m) => (m.rests || []).forEach((p) => restedOn.get(p) && restedOn.get(p).add(m.i)));
+    const HAS3 = M.some((m) => m.xyz);
 
     const state = {space: D.spaces[0], sel: null, hover: null, hoverClaim: null, genre: null, group: '', q: '',
         showClaims: false, showLinks: false, focusClaim: null};
@@ -86,15 +89,40 @@
     }
     const filtering = () => !!(state.genre || state.group || state.q);
 
-    // ---- the canvas, panned and zoomed by hand: a view {k, x, y} over the unzoomed layout
+    // ---- the view. Flat is the 3-D view looking straight at a plane: `lift` runs 0 (the flat map) to 1 (the 3-D
+    // places, turned by cam's yaw and pitch about the pivot), and V pans and zooms the picture on the screen.
     const card = $('ms-card'), canvas = $('ms-canvas'), ctx = canvas.getContext('2d'), tip = $('ms-tip');
-    let W = 0, H = 0, T = {k: 1, x: 0, y: 0};
-    const PAD = 26;
-    function base(p) {  // the layout's 0..1000 square into the card, keeping its aspect
+    let W = 0, H = 0;
+    const V = {k: 1, x: 0, y: 0, lift: 0, rise: 0, yaw: 0.6, pitch: -0.45, px: 500, py: 500, pz: 500};
+    let lifted = false;
+    const PAD = 26, FOCAL = 1700;
+    function base(x, y) {  // the layout's 0..1000 square into the card, keeping its aspect
         const s = Math.min(W - 2 * PAD, H - 2 * PAD) / 1000;
-        return [(W - 1000 * s) / 2 + p[0] * s, (H - 1000 * s) / 2 + p[1] * s];
+        return [(W - 1000 * s) / 2 + x * s, (H - 1000 * s) / 2 + y * s];
     }
-    const scr = (p) => { const b = base(p); return [b[0] * T.k + T.x, b[1] * T.k + T.y]; };
+    // Where something (a motif or a claim) is drawn: {x, y, s (its size by nearness), z (its depth)}, or null
+    function place(o) {
+        const sp = state.space, a = o.xy && o.xy[sp];
+        if (!a) return null;
+        let x = a[0], y = a[1], z = 500;
+        const L = V.lift;
+        if (L > 0 && o.xyz && o.xyz[sp]) {
+            const b = o.xyz[sp];
+            x += (b[0] - x) * L; y += (b[1] - y) * L; z += (b[2] - z) * V.rise;
+        }
+        if (L <= 0) {
+            const p = base(x, y);
+            return {x: p[0] * V.k + V.x, y: p[1] * V.k + V.y, s: 1, z: 0};
+        }
+        // about the pivot (the middle, or the motif picked), turned, then seen in perspective
+        let vx = x - (500 + (V.px - 500) * L), vy = y - (500 + (V.py - 500) * L), vz = z - (500 + (V.pz - 500) * L);
+        const yaw = V.yaw * L, pitch = V.pitch * L, cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp_ = Math.sin(pitch);
+        [vx, vz] = [vx * cy + vz * sy, -vx * sy + vz * cy];
+        [vy, vz] = [vy * cp - vz * sp_, vy * sp_ + vz * cp];
+        const shrink = 1 - 0.12 * L, f = FOCAL / Math.max(200, FOCAL + vz);
+        const p = base(500 + vx * f * shrink, 500 + vy * f * shrink);
+        return {x: p[0] * V.k + V.x, y: p[1] * V.k + V.y, s: 1 + (f - 1) * L, z: vz};
+    }
     function resize() {
         const r = card.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
         W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
@@ -103,27 +131,69 @@
     new ResizeObserver(resize).observe(card);
     const clampK = (k) => Math.max(0.7, Math.min(60, k));
     function zoomAt(cx, cy, factor) {
-        const k = clampK(T.k * factor), f = k / T.k;
-        T = {k, x: cx - (cx - T.x) * f, y: cy - (cy - T.y) * f}; draw();
+        const k = clampK(V.k * factor), f = k / V.k;
+        Object.assign(V, {k, x: cx - (cx - V.x) * f, y: cy - (cy - V.y) * f}); draw();
     }
-    let anim = null;
-    function flyTo(target) {
-        cancelAnimationFrame(anim);
-        if (reduced) { T = target; draw(); return; }
-        const from = {...T}, t0 = performance.now();
-        const step = (now) => {
-            const t = Math.min(1, (now - t0) / 420), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-            T = {k: from.k + (target.k - from.k) * e, x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e};
-            draw();
-            if (t < 1) anim = requestAnimationFrame(step);
-        };
-        anim = requestAnimationFrame(step);
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const overshoot = (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);  // ends at 1, peaks past it
+    // Each value of V moves on its own tween, so picking a motif mid-lift doesn't stop the lift; `rise` (how far the
+    // dots have come up out of the plane) follows lift, with a little overshoot on the way up
+    const tweens = new Map();
+    let ticking = false;
+    function tick(now) {
+        tweens.forEach((tw, key) => {
+            const t = Math.min(1, (now - tw.t0) / tw.ms);
+            V[key] = tw.from + (tw.to - tw.from) * tw.curve(t);
+            if (t >= 1) tweens.delete(key);
+        });
+        draw();
+        if (tweens.size) requestAnimationFrame(tick); else ticking = false;
+    }
+    function animate(target, ms) {
+        if ('lift' in target) target = {...target, rise: target.lift};
+        if (reduced) { Object.assign(V, target); draw(); return; }
+        const now = performance.now(), up = 'lift' in target && target.lift > V.lift;
+        for (const key in target) {
+            tweens.set(key, {from: V[key], to: target[key], t0: now, ms, curve: key === 'rise' && up ? overshoot : ease});
+        }
+        if (!ticking) { ticking = true; requestAnimationFrame(tick); }
     }
     $('ms-zin').onclick = () => zoomAt(W / 2, H / 2, 1.8);
     $('ms-zout').onclick = () => zoomAt(W / 2, H / 2, 1 / 1.8);
-    $('ms-zreset').onclick = () => flyTo({k: 1, x: 0, y: 0});
+    $('ms-zreset').onclick = () => animate({k: 1, x: 0, y: 0, px: 500, py: 500, pz: 500}, 420);
+
+    // ---- lifting into 3-D, and the slow turn once there
+    const liftBtn = $('ms-lift');
+    let idleSince = 0, spin = null;
+    function spinning() {
+        cancelAnimationFrame(spin);
+        if (!lifted || reduced) return;
+        const step = (now) => {
+            if (!lifted) return;
+            if (now - idleSince > 2500 && !drag) { V.yaw += 0.0022; draw(); }
+            spin = requestAnimationFrame(step);
+        };
+        spin = requestAnimationFrame(step);
+    }
+    const touched = () => { idleSince = performance.now(); };
+    if (liftBtn && HAS3) {
+        liftBtn.hidden = false;
+        liftBtn.addEventListener('click', () => {
+            lifted = !lifted;
+            liftBtn.setAttribute('aria-pressed', lifted);
+            liftBtn.setAttribute('aria-label', lifted ? 'Set the map back down flat' : 'Lift the map into 3-D');
+            liftBtn.title = lifted ? 'Back to flat' : 'Lift it into 3-D';
+            canvas.classList.toggle('ms-turn', lifted);
+            touched();
+            if (lifted) { animate({lift: 1, k: 1, x: 0, y: 0}, 1500); spinning(); }
+            else { cancelAnimationFrame(spin); animate({lift: 0, k: 1, x: 0, y: 0, px: 500, py: 500, pz: 500}, 1100); }
+            draw();
+        });
+    }
+
+    // ---- pointer: drag pans the flat map and turns the lifted one (shift-drag pans it); wheel and pinch zoom
     canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
+        e.preventDefault(); touched();
         const r = canvas.getBoundingClientRect();
         zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0016)));
     }, {passive: false});
@@ -132,7 +202,8 @@
     canvas.addEventListener('pointerdown', (e) => {
         canvas.setPointerCapture(e.pointerId);
         pointers.set(e.pointerId, [e.clientX, e.clientY]);
-        drag = {x: e.clientX, y: e.clientY, moved: 0, pinch: pointers.size > 1 ? pinchOf() : null};
+        drag = {moved: 0, pan: !lifted || e.shiftKey, pinch: pointers.size > 1 ? pinchOf() : null};
+        touched();
     });
     function pinchOf() {
         const [a, b] = [...pointers.values()];
@@ -143,16 +214,23 @@
         if (pointers.has(e.pointerId) && drag) {
             const last = pointers.get(e.pointerId);
             pointers.set(e.pointerId, [e.clientX, e.clientY]);
+            touched();
             if (pointers.size > 1 && drag.pinch) {
                 const now = pinchOf();
                 zoomAt(now.cx - r.left, now.cy - r.top, now.d / drag.pinch.d);
-                T = {...T, x: T.x + now.cx - drag.pinch.cx, y: T.y + now.cy - drag.pinch.cy};
+                V.x += now.cx - drag.pinch.cx; V.y += now.cy - drag.pinch.cy;
                 drag.pinch = now; drag.moved += 10; draw();
                 return;
             }
             const dx = e.clientX - last[0], dy = e.clientY - last[1];
             drag.moved += Math.abs(dx) + Math.abs(dy);
-            if (drag.moved > 4) { T = {...T, x: T.x + dx, y: T.y + dy}; tip.hidden = true; draw(); return; }
+            if (drag.moved > 4) {
+                if (drag.pan) { V.x += dx; V.y += dy; } else {
+                    V.yaw += dx * 0.008;
+                    V.pitch = Math.max(-1.45, Math.min(1.45, V.pitch - dy * 0.008));
+                }
+                tip.hidden = true; draw(); return;
+            }
         }
         hoverAt(e.clientX - r.left, e.clientY - r.top);
     });
@@ -163,7 +241,7 @@
                 const r = canvas.getBoundingClientRect();
                 clickAt(e.clientX - r.left, e.clientY - r.top);
             }
-            drag = null;
+            drag = null; touched();
         } else if (drag) drag.pinch = pointers.size > 1 ? pinchOf() : null;
     };
     canvas.addEventListener('pointerup', release);
@@ -171,33 +249,37 @@
     canvas.addEventListener('pointerleave', () => { if (!drag) { tip.hidden = true; state.hover = state.hoverClaim = null; draw(); } });
 
     // ---- drawing
-    const radius = (m) => Math.min(15, 2.6 + Math.sqrt(m.claims.length) * 1.15) * Math.min(1.7, Math.sqrt(T.k));
+    const size = (m) => Math.min(15, 2.6 + Math.sqrt(m.claims.length) * 1.15) * Math.min(1.7, Math.sqrt(V.k));
     function line(a, b, color, width, dash) {
         ctx.beginPath(); ctx.setLineDash(dash || []); ctx.strokeStyle = color; ctx.lineWidth = width;
-        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
     }
     function dot(p, r, fill, stroke, sw) {
-        ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5, r), 0, Math.PI * 2);
         if (fill) { ctx.fillStyle = fill; ctx.fill(); }
         if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw || 1; ctx.stroke(); }
     }
-    function label(p, text, size, placed) {
-        ctx.font = `700 ${size}px 'Comic Neue', 'Comic Sans MS', cursive`;
-        const w = ctx.measureText(text).width, x = p[0] + 8, y = p[1] - 6;
-        const box = [x - 2, y - size, x + w + 2, y + 4];
+    function label(p, text, sz, placed) {
+        ctx.font = `700 ${sz}px 'Comic Neue', 'Comic Sans MS', cursive`;
+        const w = ctx.measureText(text).width, x = p.x + 8, y = p.y - 6;
+        const box = [x - 2, y - sz, x + w + 2, y + 4];
         if (placed.some((b) => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) return;
         placed.push(box);
         ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.strokeText(text, x, y);
         ctx.fillStyle = INK; ctx.fillText(text, x, y);
     }
+    // nearer is fuller: far dots fade once lifted
+    const fade = (p) => (V.lift > 0 ? 1 - 0.6 * V.lift * Math.max(0, Math.min(1, (p.z + 450) / 900)) : 1);
+    let placedNow = new Map();
     function draw() {
         if (!W) return;
-        const sp = state.space;
         ctx.clearRect(0, 0, W, H);
-        const on = M.filter((m) => m.xy && m.xy[sp]);
-        const pos = new Map(on.map((m) => [m.i, scr(m.xy[sp])]));
+        const on = M.filter((m) => m.xy && m.xy[state.space]);
+        const pos = new Map(on.map((m) => [m.i, place(m)]));
+        placedNow = pos;
         const f = filtering(), hit = new Set(on.filter(matches).map((m) => m.i));
-        $('ms-counts').textContent = f ? `${hit.size} of ${on.length} motifs picked out` : `${on.length} motifs · ${C.length} claims`;
+        $('ms-counts').textContent = (f ? `${hit.size} of ${on.length} motifs picked out` : `${on.length} motifs · ${C.length} claims`)
+            + (lifted ? ' · drag to turn it' : '');
         if (state.showLinks) {
             (D.related || []).forEach(([a, b]) => { if (pos.has(a) && pos.has(b)) line(pos.get(a), pos.get(b), 'rgba(0,194,168,.4)', 1); });
             M.forEach((m) => (m.rests || []).forEach((p) => {
@@ -205,8 +287,11 @@
             }));
         }
         if (state.showClaims) {
-            ctx.fillStyle = 'rgba(31,31,46,.22)';
-            C.forEach((c) => { const xy = c.xy[sp]; if (!xy) return; const p = scr(xy); ctx.fillRect(p[0] - 1.2, p[1] - 1.2, 2.4, 2.4); });
+            C.forEach((c) => {
+                const p = place(c); if (!p) return;
+                ctx.fillStyle = `rgba(31,31,46,${(0.22 * fade(p)).toFixed(3)})`;
+                const r = 1.2 * p.s; ctx.fillRect(p.x - r, p.y - r, 2 * r, 2 * r);
+            });
         }
         const S = state.sel != null ? M[state.sel] : null, sOn = S && pos.has(S.i);
         if (sOn) {
@@ -214,39 +299,40 @@
             related.get(S.i).forEach((j) => pos.has(j) && line(c0, pos.get(j), TEAL, 2, [6, 4]));
             (S.rests || []).forEach((j) => pos.has(j) && line(c0, pos.get(j), PURPLE, 2.5));
             restedOn.get(S.i).forEach((j) => pos.has(j) && line(c0, pos.get(j), PURPLE, 1.5, [2, 3]));
-            S.claims.forEach(({ci}) => { const xy = C[ci].xy[sp]; if (xy) line(scr(xy), c0, 'rgba(31,31,46,.35)', 1); });
+            S.claims.forEach(({ci}) => { const p = place(C[ci]); if (p) line(p, c0, 'rgba(31,31,46,.35)', 1); });
         }
-        const order = on.slice().sort((a, b) => a.claims.length - b.claims.length);  // small first, big on top
+        // small first so big ones sit on top; once lifted, far first so near ones sit on top
+        const order = on.slice().sort((a, b) => (V.lift > 0 ? pos.get(b.i).z - pos.get(a.i).z : a.claims.length - b.claims.length));
         order.forEach((m) => {
             if (S && m.i === S.i) return;
-            const dim = f && !hit.has(m.i);
-            ctx.globalAlpha = dim ? 0.15 : 1;
-            dot(pos.get(m.i), radius(m), GENRE_INK[m.genre] || '#ffffff', INK, f && !dim ? 2 : 1.1);
+            const p = pos.get(m.i), dim = f && !hit.has(m.i);
+            ctx.globalAlpha = (dim ? 0.15 : 1) * fade(p);
+            dot(p, size(m) * p.s, GENRE_INK[m.genre] || '#ffffff', INK, f && !dim ? 2 : 1.1);
             ctx.globalAlpha = 1;
         });
         if (sOn) {
             S.claims.forEach(({ci, ok}) => {
-                const xy = C[ci].xy[sp]; if (!xy) return;
-                const p = scr(xy), focus = state.focusClaim === ci;
-                dot(p, focus ? 6 : 3.6, ok ? INK : '#fff', INK, 1.5);
-                if (focus) dot(p, 9, null, PINK, 2.5);
+                const p = place(C[ci]); if (!p) return;
+                const focus = state.focusClaim === ci;
+                dot(p, (focus ? 6 : 3.6) * p.s, ok ? INK : '#fff', INK, 1.5);
+                if (focus) dot(p, 9 * p.s, null, PINK, 2.5);
             });
-            const p = pos.get(S.i), r = radius(S) + 3;
-            dot([p[0] + 3, p[1] + 3], r, INK);
+            const p = pos.get(S.i), r = (size(S) + 3) * p.s;
+            dot({x: p.x + 3, y: p.y + 3}, r, INK);
             dot(p, r, YELLOW, INK, 2.5);
         }
-        if (state.hoverClaim != null) { const xy = C[state.hoverClaim].xy[sp]; if (xy) dot(scr(xy), 5, PINK, INK, 1.5); }
+        if (state.hoverClaim != null) { const p = place(C[state.hoverClaim]); if (p) dot(p, 5, PINK, INK, 1.5); }
         const placed = [];
         if (sOn) {
             label(pos.get(S.i), S.name, 15, placed);
-            ((S.near || {})[sp] || []).slice(0, 5).forEach(([j]) => pos.has(j) && label(pos.get(j), M[j].name, 12, placed));
+            ((S.near || {})[state.space] || []).slice(0, 5).forEach(([j]) => pos.has(j) && label(pos.get(j), M[j].name, 12, placed));
         }
         if (state.hover != null && pos.has(state.hover)) label(pos.get(state.hover), M[state.hover].name, 13, placed);
         if (f && hit.size <= 40) hit.forEach((i) => label(pos.get(i), M[i].name, 12, placed));
-        if (T.k >= 2.6) {
+        if (V.k >= 2.6) {
             order.slice().reverse().forEach((m) => {
                 const p = pos.get(m.i);
-                if (p[0] < 0 || p[1] < 0 || p[0] > W || p[1] > H || (f && !hit.has(m.i))) return;
+                if (p.x < 0 || p.y < 0 || p.x > W || p.y > H || (f && !hit.has(m.i)) || fade(p) < 0.6) return;
                 label(p, m.name, 11, placed);
             });
         }
@@ -254,20 +340,19 @@
 
     // ---- pointing
     function nearest(px, py) {
-        const sp = state.space; let best = null, bd = Infinity;
-        M.forEach((m) => {
-            if (!m.xy || !m.xy[sp]) return;
-            const p = scr(m.xy[sp]), d = Math.hypot(p[0] - px, p[1] - py) - radius(m);
-            if (d < bd) { bd = d; best = m.i; }
+        let best = null, bd = Infinity;
+        placedNow.forEach((p, i) => {
+            const d = Math.hypot(p.x - px, p.y - py) - size(M[i]) * p.s;
+            if (d < bd || (d < 0 && bd < 0 && p.z < placedNow.get(best).z)) { bd = d; best = i; }
         });
         return bd <= 8 ? best : null;
     }
     function nearestClaim(px, py) {
-        const sp = state.space; let best = null, bd = Infinity;
+        let best = null, bd = Infinity;
         const pool = state.showClaims ? C.map((c, ci) => ci) : (state.sel != null ? M[state.sel].claims.map((c) => c.ci) : []);
         pool.forEach((ci) => {
-            const xy = C[ci].xy[sp]; if (!xy) return;
-            const p = scr(xy), d = Math.hypot(p[0] - px, p[1] - py);
+            const p = place(C[ci]); if (!p) return;
+            const d = Math.hypot(p.x - px, p.y - py);
             if (d < bd) { bd = d; best = ci; }
         });
         return bd <= 7 ? best : null;
@@ -303,9 +388,17 @@
     }
     function select(i, fly) {
         state.sel = i; state.focusClaim = null; renderPanel(); draw();
-        if (i != null && fly && M[i].xy && M[i].xy[state.space]) {
-            const b = base(M[i].xy[state.space]), k = Math.max(T.k, 3);
-            flyTo({k, x: W / 2 - b[0] * k, y: H / 2 - b[1] * k});
+        const m = i != null ? M[i] : null, sp = state.space;
+        if (m && m.xy && m.xy[sp]) {
+            if (lifted && m.xyz && m.xyz[sp]) {
+                // lifted: the motif becomes the pivot it turns about, in the middle of the card
+                const k = Math.max(V.k, 1.8), [x, y, z] = m.xyz[sp];
+                touched();
+                animate({px: x, py: y, pz: z, k, x: (W / 2) * (1 - k), y: (H / 2) * (1 - k)}, 500);
+            } else if (fly) {
+                const p = place(m), bx = (p.x - V.x) / V.k, by = (p.y - V.y) / V.k, k = Math.max(V.k, 3);
+                animate({k, x: W / 2 - bx * k, y: H / 2 - by * k}, 420);
+            }
         }
         if (i != null && window.matchMedia('(max-width: 960px)').matches) $('ms-panel').scrollIntoView({block: 'nearest'});
     }
@@ -323,7 +416,7 @@
                     <div class="ms-sticker"><span>🧩 motifs</span><strong>${M.length.toLocaleString()}</strong></div>
                     <div class="ms-sticker"><span>💬 claims</span><strong>${C.length.toLocaleString()}</strong></div>
                 </div>
-                <p>Poke a dot to open its motif: its claims are drawn around it, tied to its centre, and its nearest neighbours are named.</p>
+                <p>Poke a dot to open its motif: its claims are drawn around it, tied to its centre, and its nearest neighbours are named.${HAS3 ? ' Press 🧊 to lift the map into 3-D.' : ''}</p>
                 <h3>🎯 Tightest motifs</h3>
                 <p class="ms-small">Motifs of 3 or more claims whose claims say the most nearly the same thing.</p>
                 <ol class="ms-rows">${rated.slice(-8).reverse().map((m) => row(m, m.spread.toFixed(2))).join('')}</ol>

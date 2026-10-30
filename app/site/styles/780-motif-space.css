@@ -36,6 +36,9 @@
     width: 34px; height: 34px; font: 700 18px/1 'Comic Neue', 'Comic Sans MS', cursive; background: #fff; color: #1f1f2e;
     border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 2px 2px 0 #1f1f2e; cursor: pointer;
 }
+#motif-space .ms-zoom button[aria-pressed="true"] { background: #ffc400; }
+#motif-space .ms-zoom button[hidden] { display: none; }
+#motif-space canvas.ms-turn { cursor: move; }
 #motif-space .ms-counts { position: absolute; left: 10px; top: 10px; font: 700 12px/1.2 'Comic Neue', 'Comic Sans MS', cursive;
     color: #555; background: rgba(255, 255, 255, .88); border-radius: 8px; padding: 4px 6px; }
 #motif-space .ms-tip {
