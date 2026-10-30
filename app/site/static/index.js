@@ -555,3 +555,13 @@ document.addEventListener('DOMContentLoaded', () => {
         svg.parentNode.insertBefore(button, svg);
     });
 });
+
+// Links to other sites open in a new tab (Oct 30, the person: "when we click links on bnd they should all be about=blank
+// or whatever the new tab command is"); our own pages stay in this tab. Set at click time, so links drawn later by
+// scripts (cards, tooltips, the cloud) get it too.
+document.addEventListener('click', (ev) => {
+    const a = ev.target.closest && ev.target.closest('a[href]');
+    if (!a || a.target || !/^https?:$/.test(a.protocol) || a.host === location.host) return;
+    a.target = '_blank';
+    a.rel = (a.rel ? a.rel + ' ' : '') + 'noopener';
+}, true);
