@@ -59,7 +59,7 @@
                     <p class="motif-front-chips">{% for g in index.groups %}<a class="motif-chip small" href="motifs.html#group={{ g.id|e }}"{% if g.note %} title="{{ g.note|e }}"{% endif %}>🗂️ {{ g.name|e }} <span class="motif-seen">{{ g.count }}</span></a>{% endfor %}</p>
                 </details>
             {% endif %}
-            <p class="more-link"><a href="motifs.html">🧩 browse the whole index</a> <a href="motif-map.html">↔️ see it across the aisle</a> <a href="motifs.html#how">📖 how it works</a></p>
+            <p class="more-link"><a href="motifs.html">🧩 browse the whole index</a> <a href="motif-map.html">↔️ see it across the aisle</a> <a href="motif-space.html">🌌 see it by meaning</a> <a href="motifs.html#how">📖 how it works</a></p>
             {% include "motif_note.html" %}
         </section>
         <h2 class="section-divider" id="told-now"><span>🧶 What's told now</span></h2>

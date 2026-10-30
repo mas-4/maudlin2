@@ -1,0 +1,83 @@
+/* Motif space (motif-space.html, static/motif_space.js): the map beside its panel; all under #motif-space, ms- classes */
+#motif-space { display: grid; gap: 14px; margin-top: 0.6em; }
+#motif-space .ms-controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+#motif-space .ms-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+#motif-space .ms-pill, #motif-space .ms-chip {
+    font: 700 14px/1 'Comic Neue', 'Comic Sans MS', cursive; color: #1f1f2e; background: #fff;
+    border: 2px solid #1f1f2e; border-radius: 999px; padding: 7px 12px; cursor: pointer;
+    box-shadow: 2px 2px 0 #1f1f2e; transition: transform .12s, box-shadow .12s;
+}
+#motif-space .ms-pill:hover, #motif-space .ms-chip:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #1f1f2e; }
+#motif-space .ms-pill[aria-pressed="true"] { background: #ffc400; }
+#motif-space .ms-chip[aria-pressed="true"] { background: #ff4fa3; }
+#motif-space .ms-n { color: #666; font-size: 12px; }
+#motif-space .ms-swatch { display: inline-block; width: 11px; height: 11px; border: 2px solid #1f1f2e; border-radius: 50%;
+    vertical-align: -1px; margin-right: 4px; }
+#motif-space input[type="search"], #motif-space select {
+    font: 700 14px/1 'Comic Neue', 'Comic Sans MS', cursive; color: #1f1f2e; background: #fff;
+    border: 2px solid #1f1f2e; border-radius: 10px; padding: 8px 10px; max-width: 100%; min-width: 0;
+}
+#motif-space input[type="search"] { width: 15em; }
+#motif-space .ms-tick { font: 700 14px/1 'Comic Neue', 'Comic Sans MS', cursive; display: inline-flex; gap: 6px;
+    align-items: center; cursor: pointer; }
+#motif-space .ms-tick input { accent-color: #ff4fa3; width: 16px; height: 16px; }
+#motif-space .ms-about { font: 700 13px/1.3 'Comic Neue', 'Comic Sans MS', cursive; color: #666; margin: 0; }
+#motif-space .ms-stage { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
+@media (max-width: 960px) { #motif-space .ms-stage { grid-template-columns: minmax(0, 1fr); } }
+#motif-space .ms-card {
+    position: relative; border: 3px solid #1f1f2e; border-radius: 14px; background: #fff; overflow: hidden;
+    box-shadow: 6px 6px 0 #00c2a8; height: clamp(360px, 70vh, 820px); touch-action: none;
+}
+@media (max-width: 600px) { #motif-space .ms-card { height: 62vh; } }
+#motif-space canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+#motif-space canvas.ms-over { cursor: pointer; }
+#motif-space .ms-zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; }
+#motif-space .ms-zoom button {
+    width: 34px; height: 34px; font: 700 18px/1 'Comic Neue', 'Comic Sans MS', cursive; background: #fff; color: #1f1f2e;
+    border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 2px 2px 0 #1f1f2e; cursor: pointer;
+}
+#motif-space .ms-counts { position: absolute; left: 10px; top: 10px; font: 700 12px/1.2 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #555; background: rgba(255, 255, 255, .88); border-radius: 8px; padding: 4px 6px; }
+#motif-space .ms-tip {
+    position: absolute; pointer-events: none; max-width: 300px; background: #fff; color: #1f1f2e;
+    border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 3px 3px 0 #ffc400; padding: 7px 10px;
+    font: 13px/1.35 Helvetica, Arial, sans-serif;
+}
+#motif-space .ms-tip b { font: 700 14px/1.2 'Comic Neue', 'Comic Sans MS', cursive; display: block; }
+#motif-space .ms-panel {
+    border: 3px solid #1f1f2e; border-radius: 14px; background: #fff; box-shadow: 6px 6px 0 #ff4fa3;
+    padding: 16px 16px 18px; display: grid; gap: 10px; min-width: 0; max-height: clamp(360px, 70vh, 820px); overflow-y: auto;
+}
+@media (max-width: 960px) { #motif-space .ms-panel { max-height: none; } }
+#motif-space .ms-panel h2 { font: 700 22px/1.2 'Comic Neue', 'Comic Sans MS', cursive; margin: 0; text-wrap: balance; }
+#motif-space .ms-panel h3 { font: 14px/1.2 'Bungee', sans-serif; letter-spacing: 0.03em; margin: 6px 0 0; }
+#motif-space .ms-panel p { margin: 0; color: #555; line-height: 1.5; }
+#motif-space .ms-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font: 700 13px/1 'Comic Neue', 'Comic Sans MS', cursive; }
+#motif-space .ms-tag { border: 2px solid #1f1f2e; border-radius: 999px; padding: 4px 9px; background: #f3f3f7; white-space: nowrap; }
+#motif-space .ms-tilt { transform: rotate(-3deg); box-shadow: 2px 2px 0 #ffc400; background: #fff; }
+#motif-space .ms-back { justify-self: start; font: 700 13px/1 'Comic Neue', 'Comic Sans MS', cursive; background: none;
+    border: none; color: #1f1f2e; text-decoration: underline; padding: 0; cursor: pointer; }
+#motif-space .ms-open { font: 700 14px/1 'Comic Neue', 'Comic Sans MS', cursive; }
+#motif-space .ms-stickers { display: flex; flex-wrap: wrap; gap: 10px; }
+#motif-space .ms-sticker { border: 2px solid #1f1f2e; border-radius: 12px; padding: 6px 10px; display: grid; gap: 2px;
+    font: 700 12px/1.1 'Comic Neue', 'Comic Sans MS', cursive; transform: rotate(-2deg); box-shadow: 3px 3px 0 #00c2a8; }
+#motif-space .ms-sticker:nth-child(even) { transform: rotate(2deg); box-shadow: 3px 3px 0 #ffc400; }
+#motif-space .ms-sticker strong { font: 20px/1 'Bungee', sans-serif; font-variant-numeric: tabular-nums; }
+#motif-space .ms-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+#motif-space .ms-rows button, #motif-space .ms-claim {
+    width: 100%; text-align: left; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center;
+    font: 14px/1.35 Helvetica, Arial, sans-serif; color: #1f1f2e; background: none; border: 0; border-radius: 8px; padding: 6px;
+}
+#motif-space .ms-rows button { cursor: pointer; }
+#motif-space .ms-rows button:hover, #motif-space .ms-claim:hover { background: #f3f3f7; }
+#motif-space .ms-name { font: 700 14px/1.25 'Comic Neue', 'Comic Sans MS', cursive; }
+#motif-space .ms-num { font: 700 12px/1 'Comic Neue', 'Comic Sans MS', cursive; color: #666; font-variant-numeric: tabular-nums; }
+#motif-space .ms-bar { grid-column: 1 / -1; height: 6px; background: #f3f3f7; border-radius: 4px; overflow: hidden; }
+#motif-space .ms-bar i { display: block; height: 100%; background: #00c2a8; border-radius: 4px; }
+#motif-space .ms-small { font: 700 12px/1.35 'Comic Neue', 'Comic Sans MS', cursive; color: #666; }
+#motif-space .ms-flag { font: 700 11px/1 'Comic Neue', 'Comic Sans MS', cursive; border: 1.5px solid #1f1f2e;
+    border-radius: 999px; padding: 2px 6px; margin-left: 4px; white-space: nowrap; }
+#motif-space .ms-txt { min-width: 0; overflow-wrap: anywhere; }
+#motif-space .ms-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 700 12px/1.3 'Comic Neue', 'Comic Sans MS', cursive; color: #555; margin: 0; }
+#motif-space :is(button, select, input):focus-visible { outline: 3px solid #8a5cff; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { #motif-space .ms-pill, #motif-space .ms-chip { transition: none; } }

@@ -41,6 +41,8 @@ FOLKLORE = [
      'about': "Our own index of the recurring shapes of today's political rumors and narratives."},
     {'href': 'motif-map.html', 'emoji': '↔️', 'name': 'The aisle',
      'about': "The motif map: every story placed by which side's shows tell it, and the answers across the aisle."},
+    {'href': 'motif-space.html', 'emoji': '🌌', 'name': 'Motif space',
+     'about': "Every motif placed by what its claims say: similar stories sit close together."},
     {'href': 'echoes.html', 'emoji': '🏛️', 'name': 'Older than you think',
      'about': "Today's story shapes told in 1896 newspapers, each checked by a person."},
 ]

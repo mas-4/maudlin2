@@ -21,6 +21,7 @@ from app.site.page_about import AboutPage
 from app.site.page_show import ShowPages
 from app.site.page_lab import LabPage
 from app.site.page_aisle import AislePage
+from app.site.page_motif_space import MotifSpacePage
 from app.site.page_sagas import SagasPage
 from app.site.page_names import NamesPage
 from app.site.page_radio import RadioPage
@@ -64,7 +65,7 @@ def build(upload_aside: bool = False):
     dh: DataHandler = DataHandler()
     # Pages draw their own charts now. The election topics and election data pages (and their plots) are off for
     # now, as their events predate our data; restore them in `pages`. Polls are still fetched each run.
-    pages = [HeadlinesPage, AgenciesPage, OutletMapPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifPages, ShowPages, AislePage, AboutPage, LabPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage, ReplayPage, EchoesPage]
+    pages = [HeadlinesPage, AgenciesPage, OutletMapPage, EditsPage, CourtPage, EmotionsPage, GlossaryPage, FolklorePage, MotifsPage, MotifPages, ShowPages, AislePage, MotifSpacePage, AboutPage, LabPage, SagasPage, SagaPages, NamesPage, RadioPage, TvPage, StoryPages, BeyondPage, MethodsPage, ReplayPage, EchoesPage]
     for page in pages:
         built = page(dh)
         built.generate()

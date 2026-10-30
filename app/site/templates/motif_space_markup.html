@@ -1,0 +1,27 @@
+<div id="motif-space">
+    <div class="ms-controls" role="group" aria-label="Map controls">
+        <div class="ms-seg" id="ms-spaces" role="group" aria-label="How the motifs are placed"></div>
+        <input type="search" id="ms-find" placeholder="🔎 Find a motif…" aria-label="Find a motif by name or note">
+        <select id="ms-group" aria-label="Pick out a group"><option value="">🗂️ Any group</option></select>
+        <label class="ms-tick"><input type="checkbox" id="ms-show-claims"> 💬 All claims</label>
+        <label class="ms-tick"><input type="checkbox" id="ms-show-links"> 🔗 All links</label>
+    </div>
+    <div class="ms-seg" id="ms-genres" role="group" aria-label="Pick out a genre"></div>
+    <p class="ms-about" id="ms-about"></p>
+    <div class="ms-stage">
+        <div class="ms-card" id="ms-card">
+            <canvas id="ms-canvas" aria-label="Map of the motifs: each dot a motif, placed by what its claims say"></canvas>
+            <div class="ms-counts" id="ms-counts"></div>
+            <div class="ms-zoom">
+                <button type="button" id="ms-zin" aria-label="Zoom in">+</button>
+                <button type="button" id="ms-zout" aria-label="Zoom out">−</button>
+                <button type="button" id="ms-zreset" aria-label="Show the whole map">⤢</button>
+            </div>
+            <div class="ms-tip" id="ms-tip" hidden></div>
+        </div>
+        <aside class="ms-panel" id="ms-panel" aria-live="polite"></aside>
+    </div>
+    <p class="ms-legend"><span>🎨 a dot’s color is its genre (🎭 pink, 📜 brown, 🪨 olive, 🕵️ purple, 🗣️ gold; the rest white)</span>
+        <span>🟡 the motif you picked</span><span>⚫ its claims, tied to its centre</span>
+        <span>🟩 dashed: related</span><span>🟪 solid: what it rests on</span></p>
+</div>

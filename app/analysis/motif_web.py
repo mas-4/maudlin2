@@ -455,7 +455,7 @@ def cloud(rows: list[dict], days: int = 7, most: int = 60) -> list[dict]:
         else:
             color, lean = '#8a8f98', 0
         tellers = len({(r['kind'], r['teller'], r['key']) for r in rs})
-        out.append({'text': rs[0]['name'], 'outlets': tellers, 'color': color, 'lean': lean, 'spice': 0,
+        out.append({'id': m, 'text': rs[0]['name'], 'outlets': tellers, 'color': color, 'lean': lean, 'spice': 0,
                     'url': motif_href(m),
                     'tip': f"{rs[0]['name']}: told {tellers} times this week"
                            + (f"; on {left} left and {right} right shows" if left or right else '')

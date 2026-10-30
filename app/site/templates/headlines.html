@@ -230,7 +230,7 @@
             <button data-cloud="size" class="active">📏 biggest first</button>
             <button data-cloud="side">⚖️ left to right</button>
             <button data-cloud="spice" title="{{ spicy_tip|e }}">🌶️ plain to spicy</button>
-            {% if motif_cloud %}<button data-cloud="motifs" title="The stories being told this week, from our motif index: bigger = told by more shows and people online, color = which side’s shows told it (blue left, red right, striped both). Poke one to open it.">🧩 stories told</button>{% endif %}
+            {% if motif_cloud %}<button data-cloud="motifs" title="The stories being told this week, from our motif index: bigger = told by more shows and people online, color = which side’s shows told it (blue left, red right, striped both); stories told alike sit side by side (see motif space). Poke one to open it.">🧩 stories told</button>{% endif %}
         </div>
         <figcaption class="cloud-key" title="Bigger words are used by more outlets. Color shows who uses a word: mostly left-leaning outlets, mostly right-leaning outlets, both sides, or mostly center outlets. Poke (click or tap) a word to see how outlets are using it, and the feeling its headlines stir.">
             <span class="key-part"><span class="key-big">BIGGER</span> <span>= more outlets</span></span>
@@ -441,6 +441,14 @@
                     // The biggest tenth go first onto an empty board and land near their place anyway; the top few
                     // are wider than their slice. Biggest-first leaves it off: size already shows in the type.
                     if (mode !== 'size') layout.accept((d, x, y) => d.bigness < 0.1 || Math.abs(x / geo.width - along(d.rank)) < 0.16);
+                } else if (mode === 'motifs' && words.some((d) => d.xy)) {
+                    // Stories told, by meaning (Oct 30; motif-space.html): each name starts where its motif sits in
+                    // motif space, stretched to fill the cloud, so stories told alike pack in side by side
+                    const placed = words.filter((d) => d.xy), xs = placed.map((d) => d.xy[0]), ys = placed.map((d) => d.xy[1]);
+                    const x0 = Math.min(...xs), y0 = Math.min(...ys), dx = (Math.max(...xs) - x0) || 1, dy = (Math.max(...ys) - y0) || 1;
+                    layout.origin((d) => d.xy
+                        ? [(0.06 + 0.88 * (d.xy[0] - x0) / dx) * geo.width, (0.08 + 0.84 * (d.xy[1] - y0) / dy) * geo.height]
+                        : [(0.1 + 0.8 * random()) * geo.width, (0.1 + 0.8 * random()) * geo.height]);
                 } else {
                     // The splay: the biggest words start near the middle; the rest start anywhere, so the corners
                     // (and the space under the sticker) fill in instead of the cloud thinning out toward its edges
