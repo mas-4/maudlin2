@@ -16,7 +16,7 @@ NETLIFY_SITE = os.environ.get('NETLIFY_SITE', 'maudlin.netlify.app')
 # Cloudflare sits in front of Netlify and keeps each page for an hour (Oct 30, the person: "we update once an hour why
 # don't we cache for at least 45 minutes"); after each deploy its copies are cleared so the new build shows at once
 CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
-CLOUDFLARE_ZONE = os.environ.get('CLOUDFLARE_ZONE', '')  # bignews.day's zone id (not a secret)
+CLOUDFLARE_ZONE = os.environ.get('CLOUDFLARE_ZONE', 'b17054eff5fdc840a8d9c72d29b25f01')  # bignews.day's zone (not a secret)
 
 
 def move_to_public():
