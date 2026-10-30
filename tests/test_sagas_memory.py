@@ -115,6 +115,16 @@ def test_a_saga_quiet_for_weeks_still_takes_its_next_part(db):
     assert saga['id'] == saga_id and saga['size'] == 3
 
 
+
+def test_a_sagas_own_old_headlines_dont_make_its_name_common(db):
+    """Oct 30: saga 5 brought back 472 "Christa Pike" headlines, over 4% of the day, so the name stopped counting"""
+    saga_id = saved_saga(db, 19)
+    saved_story(db, [f'Cornell student alleges assault, report {i}' for i in range(60)], 19 * 24, saga_id=saga_id)
+    headlines, stories = today({0: ['Attorney general takes over Cornell investigation',
+                                    'New details in the Cornell investigation']})
+    [saga] = sg.link_sagas(headlines, stories, {0: saved_story(db, ['Attorney general takes over Cornell case'], 1)}).values()
+    assert saga['id'] == saga_id
+
 def test_a_loose_story_from_weeks_ago_does_not_join(db):
     saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 19 * 24)  # in no saga
     headlines, stories = today({0: ['Attorney general takes over Cornell investigation',

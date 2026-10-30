@@ -414,7 +414,9 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
     vectors = embed(titles)
     vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
     bags = [words(t) for t in titles]
-    frequency = Counter(w for bag in bags for w in bag)
+    # how common a name is on the day, from today's headlines only: a saga's own old headlines brought back for
+    # comparison made its name look common (Oct 30: 472 old "Christa Pike" headlines kept her next part out)
+    frequency = Counter(w for bag in bags[:len(headlines)] for w in bag)
     common = NAME_MAX_SHARE * len(headlines)
 
     # Start from the saved sagas: their parts begin as one group, so a saga can't come apart
