@@ -224,7 +224,7 @@
             }
             const dx = e.clientX - last[0], dy = e.clientY - last[1];
             drag.moved += Math.abs(dx) + Math.abs(dy);
-            if (drag.moved > 4) {
+            if (drag.moved > (e.pointerType === 'touch' ? 10 : 4)) {
                 if (drag.pan) { V.x += dx; V.y += dy; } else {
                     V.yaw += dx * 0.008;
                     V.pitch = Math.max(-1.45, Math.min(1.45, V.pitch - dy * 0.008));
@@ -237,16 +237,18 @@
     const release = (e) => {
         pointers.delete(e.pointerId);
         if (pointers.size === 0) {
-            if (drag && drag.moved <= 4 && e.type === 'pointerup') {
+            if (drag && drag.moved <= (e.pointerType === 'touch' ? 10 : 4) && e.type === 'pointerup') {
                 const r = canvas.getBoundingClientRect();
+                slop = e.pointerType === 'touch' ? 18 : 8;
                 clickAt(e.clientX - r.left, e.clientY - r.top);
+                slop = 8;
             }
             drag = null; touched();
         } else if (drag) drag.pinch = pointers.size > 1 ? pinchOf() : null;
     };
     canvas.addEventListener('pointerup', release);
     canvas.addEventListener('pointercancel', release);
-    canvas.addEventListener('pointerleave', () => { if (!drag) { tip.hidden = true; state.hover = state.hoverClaim = null; draw(); } });
+    canvas.addEventListener('pointerleave', (e) => { if (!drag && e.pointerType !== 'touch') { tip.hidden = true; state.hover = state.hoverClaim = null; draw(); } });
 
     // ---- drawing
     const size = (m) => Math.min(15, 2.6 + Math.sqrt(m.claims.length) * 1.15) * Math.min(1.7, Math.sqrt(V.k));
@@ -365,15 +367,19 @@
     }
 
     // ---- pointing
-    function nearest(px, py) {
+    // how far off a dot a click may land and still hit it: a finger needs more room than a mouse
+    let slop = 8;
+    function nearestHit(px, py) {
         let best = null, bd = Infinity;
         placedNow.forEach((p, i) => {
             const d = Math.hypot(p.x - px, p.y - py) - size(M[i]) * p.s;
             if (d < bd || (d < 0 && bd < 0 && p.z < placedNow.get(best).z)) { bd = d; best = i; }
         });
-        return bd <= 8 ? best : null;
+        return bd <= slop ? [best, bd] : [null, Infinity];
     }
-    function nearestClaim(px, py) {
+    function nearest(px, py) { return nearestHit(px, py)[0]; }
+    function nearestClaim(px, py) { return nearestClaimHit(px, py)[0]; }
+    function nearestClaimHit(px, py) {
         let best = null, bd = Infinity;
         const pool = state.showClaims ? C.map((c, ci) => ci) : (state.sel != null ? M[state.sel].claims.map((c) => c.ci) : []);
         pool.forEach((ci) => {
@@ -381,7 +387,7 @@
             const d = Math.hypot(p.x - px, p.y - py);
             if (d < bd) { bd = d; best = ci; }
         });
-        return bd <= 7 ? best : null;
+        return bd <= slop ? [best, bd] : [null, Infinity];
     }
     function showTip(px, py, html) {
         tip.innerHTML = html; tip.hidden = false;
@@ -403,12 +409,22 @@
         if (changed) draw();
     }
     function clickAt(px, py) {
-        const m = nearest(px, py);
-        if (m != null) return select(m, false);
-        const c = nearestClaim(px, py);
+        // Oct 30: in 3-D a claim dot often sits by another motif's dot, and the motif won, so the claims clicked
+        // on vanished; now whichever is nearer the click wins (a claim dot is about 3 px across)
+        const [m, md] = nearestHit(px, py), [c, cd] = nearestClaimHit(px, py);
+        if (m != null && !(c != null && cd - 3 < md)) return select(m, false);
         if (c != null) {
             if (state.sel == null || !C[c].m.some(([mi]) => mi === state.sel)) select(C[c].m[0][0], false);
-            state.focusClaim = c; renderPanel(); draw(); return;
+            state.focusClaim = c; renderPanel(); draw();
+            // Oct 30: on a phone a tapped claim only lit up its dot, with no hover card to say which it was; now the
+            // card shows its words and its row in the panel lights up (scrolled to where the panel scrolls itself)
+            showTip(px, py, `${esc(C[c].t)}<br><span class="ms-small">in ${esc(C[c].m.map(([mi]) => M[mi].name).join(', '))}</span>`);
+            const row = panel.querySelector(`.ms-claim[data-c="${c}"]`);
+            if (row) {
+                row.classList.add('ms-claim-on');
+                if (!window.matchMedia('(max-width: 960px)').matches) row.scrollIntoView({block: 'nearest'});
+            }
+            return;
         }
         select(null);
     }
