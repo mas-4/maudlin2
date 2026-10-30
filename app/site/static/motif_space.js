@@ -451,7 +451,7 @@
                 <ol class="ms-rows">${rated.slice(0, 8).map((m) => row(m, m.spread.toFixed(2))).join('')}</ol>`;
         } else {
             const m = M[state.sel];
-            const claims = m.claims.slice().sort((a, b) => (a.d ?? 2) - (b.d ?? 2));
+            const claims = m.claims.slice().sort((a, b) => (b.d ?? -2) - (a.d ?? -2));  // likeness to the centre: the most typical first
             const ds = claims.map((c) => c.d).filter((d) => d != null);
             const lo = Math.min(...ds, 0.3), hi = Math.max(...ds, 0.9);
             const near = (m.near || {})[sp] || [];
@@ -470,7 +470,7 @@
                 ${m.note ? `<p>${esc(m.note)}</p>` : ''}
                 ${m.href ? `<p><a class="ms-open" href="${esc(m.href)}">🧩 open its page →</a></p>` : ''}
                 ${tight}${where}
-                <h3>💬 Its claims, farthest from the centre first</h3>
+                <h3>💬 Its claims, closest to the centre first</h3>
                 <ul class="ms-rows">${claims.map((c) => {
                     const w = c.d == null ? 0 : Math.round(100 * (c.d - lo) / Math.max(0.01, hi - lo));
                     const others = C[c.ci].m.filter(([mi]) => mi !== m.i).map(([mi]) => M[mi].name);
