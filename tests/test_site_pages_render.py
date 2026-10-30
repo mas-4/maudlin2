@@ -619,6 +619,20 @@ def test_story_cards_carry_a_stable_share_anchor(cards, site):
             assert card['id'].startswith('story-')
 
 
+
+def test_a_saved_storys_title_opens_its_page(cards):
+    """Oct 30, the person: "Title on home cards should be links to story": a card with its own page links its title.
+    The test site saves no stories, so the title line is drawn alone for the saved case."""
+    from app.site.common import j2env
+    path = os.path.join(os.path.dirname(__file__), '..', 'app', 'site', 'templates', 'headlines.html')
+    with open(path, encoding='utf-8') as f:
+        line = next(l for l in f if l.strip().startswith('<h4>{% if story_of'))
+    title = j2env.from_string(line)
+    assert 'href="story-1171.html"' in title.render(cluster={'cluster': 3}, summaries={3: 'G20'}, story_of={3: 1171})
+    assert '<a' not in title.render(cluster={'cluster': 3}, summaries={3: 'G20'}, story_of={})
+    for card in cards.select('.story:not([data-share])'):  # no page of its own: a plain title
+        assert not card.select_one('h4 a')
+
 def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
     from app.site import page_folklore as pn
     report = {'posts': 100, 'authors': 80, 'hours': 24, 'made': '2026-10-05T04:00', 'found': [

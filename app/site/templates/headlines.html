@@ -44,7 +44,8 @@
                  title="Part of an ongoing story told in {{ cluster['saga']['size']|e }} parts, on {{ cluster['saga']['outlets']|e }} outlets">
                 🧵 {% if cluster['saga']['id'] %}<a href="saga-{{ cluster['saga']['id']|e }}.html">{{ cluster['saga']['name'] }}</a>{% else %}{{ cluster['saga']['name'] }}{% endif %} · part {{ cluster['saga']['part_of'][cluster['cluster']] }} of {{ cluster['saga']['size'] }}</div>
         {% endif %}
-        <h4>{{ summaries[cluster['cluster']] }}</h4>
+        {# the title opens the story's own page (Oct 30, the person: "Title on home cards should be links to story") #}
+        <h4>{% if story_of is defined and cluster['cluster'] in story_of %}<a class="story-title-link" href="story-{{ story_of[cluster['cluster']]|e }}.html">{{ summaries[cluster['cluster']] }}</a>{% else %}{{ summaries[cluster['cluster']] }}{% endif %}</h4>
     {% if top %}
         <div class="spread-bar" title="Outlets carrying it, by lean: {% for s in top.spread %}{{ s.n }} {{ s.label }}{% if not loop.last %}, {% endif %}{% endfor %}">
             {% for s in top.spread %}<span class="spread-{{ s.key|e }}" style="width: {{ s.pct }}%{% if s.key != 'unrated' %}; background: {{ s.color|e }}; color: {{ s.ink|e }}{% endif %}" title="{{ s.n }} {{ s.label }}">{% if s.pct >= 9 %}{{ s.n }}{% endif %}</span>{% endfor %}

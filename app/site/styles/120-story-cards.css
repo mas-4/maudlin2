@@ -49,6 +49,17 @@
     margin: 0.3em 0 0.5em;
 }
 
+.story-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.story-title-link:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
 .story h4::after {
     content: '';
     display: block;
