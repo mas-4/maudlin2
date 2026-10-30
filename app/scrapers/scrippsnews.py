@@ -14,7 +14,7 @@ class ScrippsNews(Scraper):
         for a in soup.find_all('a', {'class': 'promo__link'}):
             href = a['href']
             if href.startswith('/'):
-                href = self.url + href
+                href = self.clean_href(href)
             # The card's section label and author ride inside the link ("Sports  Could the Final Four…  Justin Boggs")
             a = without(a, '.promo__category, .promo__author')
             title = a.text.strip()

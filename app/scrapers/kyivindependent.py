@@ -19,7 +19,7 @@ class KyivIndependent(Scraper):
         for a in soup.find_all('a', {'href': re.compile(r'^/[a-z0-9]+(-[a-z0-9]+){3,}/?$')}):
             href = a['href']
             if href.startswith('/'):
-                href = self.url + href
+                href = self.clean_href(href)
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

@@ -18,7 +18,7 @@ class BBC(Scraper):
             if 'cloud.email.bbc' in href:
                 continue
             if not href.startswith('http'):
-                href = self.url + href
+                href = self.clean_href(href)
             if not (title := a.find('h2', {'data-testid': 'card-headline'})):
                 continue
             if not title.text.strip():

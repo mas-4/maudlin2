@@ -17,7 +17,7 @@ class AlJazeera(Scraper):
         for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = a['href']
             if not href.startswith('http'):
-                href = self.url + href
+                href = self.clean_href(href)
             title = a.text.strip().replace('\xad', '')
             if title:
                 self.downstream.append((href, a))

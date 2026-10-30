@@ -37,8 +37,9 @@ def bare(cls):
     ('https://www.theguardian.com/world/1', 'https://www.theguardian.com/world/1'),
     ('http://insecure.example/a', 'http://insecure.example/a'),
     ('//cdn.example/a', 'https://cdn.example/a'),  # protocol-relative
-    ('/world/2024/oct/01/story', 'https://www.theguardian.com/us/world/2024/oct/01/story'),
-    ('story.html', 'https://www.theguardian.com/us/story.html'),
+    # resolved as a browser would from https://www.theguardian.com/us (Oct 30: gluing gave /us/world/..., a 404)
+    ('/world/2024/oct/01/story', 'https://www.theguardian.com/world/2024/oct/01/story'),
+    ('story.html', 'https://www.theguardian.com/story.html'),
     ('https://x.example/a  ', 'https://x.example/a'),
 ])
 def test_clean_href(href, expected):
@@ -54,6 +55,15 @@ def test_clean_href_leading_whitespace(href):
 def test_clean_href_root_url_trailing_slash_not_doubled():
     assert bare(NPR).clean_href('/nx-s1-123') == 'https://text.npr.org/nx-s1-123'
     assert bare(NPR).clean_href('nx-s1-123') == 'https://text.npr.org/nx-s1-123'
+
+
+def test_links_resolve_like_a_browser():
+    """Oct 30: France24's front page is /en and its links start /en/..., so gluing gave /en/en/...; RFE/RL's base ends
+    in a slash and its links start with one, so gluing gave //a/..."""
+    from app.scrapers.france24 import France24
+    from app.scrapers.radiofreeeuroperadioliberty import RadioFreeEuropeRadioLiberty
+    assert bare(France24).clean_href('/en/live-news/20261022-x') == 'https://www.france24.com/en/live-news/20261022-x'
+    assert bare(RadioFreeEuropeRadioLiberty).clean_href('/a/x/33886696.html') == 'https://www.rferl.org/a/x/33886696.html'
 
 
 def test_repr():
@@ -167,7 +177,7 @@ def test_process_dataframe_filters():
     ]
     df = scraper.process_dataframe(downstream)
     assert df['title'].tolist() == ['Storm hits the coast tonight', 'Senate passes the budget bill']
-    assert df['href'].tolist() == ['https://www.theguardian.com/us/world/2024/oct/01/a', 'https://ok.example/b']
+    assert df['href'].tolist() == ['https://www.theguardian.com/world/2024/oct/01/a', 'https://ok.example/b']
     assert df['row'].tolist() == [0, 1]  # page position survives the drops
     assert df['processed'].tolist() == ['Storm hits the coast tonight', 'Senate passes the budget bill']
 

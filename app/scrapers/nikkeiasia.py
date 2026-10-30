@@ -18,7 +18,7 @@ class NikkeiAsia(Scraper):
         for a in soup.find_all('a', {'data-trackable': re.compile(r'headline|title'), 'href': True}):
             href = a['href']
             if href.startswith('/'):
-                href = self.url + href
+                href = self.clean_href(href)
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

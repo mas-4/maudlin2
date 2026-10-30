@@ -13,7 +13,7 @@ class Quillette(Scraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
-            href = self.url + a['href']
+            href = self.clean_href(a['href'])
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

@@ -22,7 +22,7 @@ class NationalPost(Scraper):
             a = span.find_parent('a')
             href = a['href']
             if href.startswith('/'):
-                href = self.url + href
+                href = self.clean_href(href)
             title = span.text.strip()
             if "horoscope" in title.lower():
                 continue

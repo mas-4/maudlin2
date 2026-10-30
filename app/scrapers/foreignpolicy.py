@@ -15,7 +15,7 @@ class ForeignPolicy(Scraper):
         for a in soup.find_all('a', {'href': Constants.Patterns.SLASH_DATE}):
             href = a['href']
             if href.startswith('/'):
-                href = f'{self.url}{href}'
+                href = self.clean_href(href)
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

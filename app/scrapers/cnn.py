@@ -17,7 +17,7 @@ class CNN(Scraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'data-link-type': 'article'}):
-            href = self.url + a['href']
+            href = self.clean_href(a['href'])
             if 'cnn-underscored' in href:
                 continue
             if '/wbd/' in href:

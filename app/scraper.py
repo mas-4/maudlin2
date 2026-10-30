@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as dt
 from threading import Thread, Lock
+from urllib.parse import urljoin
 
 import pandas as pd
 import pytz
@@ -285,14 +286,12 @@ class Scraper(ABC, Thread):
         self.headlines += 1
 
     def clean_href(self, href):
+        """A link on the front page as a browser would follow it, resolved against the page's address (Oct 30: gluing
+        text made theguardian.com/us + /world/... into /us/world/..., a 404; France24 /en/en/, double slashes too)"""
         href = href.strip()  # before the checks: ' https://…' is absolute, not relative
         if href.startswith('//'):
-            href = 'https:' + href
-        elif href.startswith('/'):
-            href = self.url.strip('/') + href
-        elif not href.startswith('http'):
-            href = self.url.strip('/') + '/' + href
-        return href.strip()
+            return 'https:' + href
+        return urljoin(self.url, href).strip()
 
     def run_setup(self):
         page = self.get_page(self.url)

@@ -15,7 +15,7 @@ class AlArabiya(Scraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'title': True}):
-            href = self.url + a['href']
+            href = self.clean_href(a['href'])
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

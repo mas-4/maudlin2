@@ -17,7 +17,7 @@ class StraitsTimes(SeleniumScraper):
 
     def setup(self, soup: Soup):
         for a in soup.find_all('a', {'class': 'stretched-link'}):
-            href = self.url + a['href']
+            href = self.clean_href(a['href'])
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))

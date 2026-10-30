@@ -16,7 +16,7 @@ class CNBC(Scraper):
         for a in soup.find_all('a', {'href': re.compile(r'/\d{4}/\d{2}/\d{2}/')}):
             href = a['href']
             if not href.startswith('http'):
-                href = f'{self.url}{href}'
+                href = self.clean_href(href)
             title = a.text.strip()
             if title:
                 self.downstream.append((href, a))
