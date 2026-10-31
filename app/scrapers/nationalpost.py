@@ -18,13 +18,12 @@ class NationalPost(Scraper):
     }
 
     def setup(self, soup: Soup):
-        for span in soup.find_all('span', {'class': re.compile('card__headline-clamp')}):
-            a = span.find_parent('a')
-            href = a['href']
-            if href.startswith('/'):
-                href = self.clean_href(href)
-            title = span.text.strip()
-            if "horoscope" in title.lower():
+        """Every story link carries Postmedia's analytics, target_type "article" (Oct 31: the card__headline-clamp
+        spans went in a redesign, and the scraper found nothing)"""
+        for a in soup.find_all('a', {'data-analytics-properties': re.compile(r'"target_type"\s*:\s*"article"')}):
+            if 'postmedia-image__link' in a.get('class', []):
+                continue  # the picture's link to the same story, no words
+            title = a.get_text(' ', strip=True)
+            if not title or "horoscope" in title.lower():
                 continue
-            if title:
-                self.downstream.append((href, a))
+            self.downstream.append((self.clean_href(a['href']), a))

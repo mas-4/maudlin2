@@ -1,3 +1,5 @@
+import re
+
 from bs4 import BeautifulSoup as Soup
 
 from app.scraper import Scraper
@@ -11,7 +13,9 @@ class VanityFair(Scraper):
     agency: str = "Vanity Fair"
 
     def setup(self, soup: Soup):
-        for a in soup.find_all('a', {'data-component-type': 'recirc-river'}):
+        """Condé Nast's headline links, by class prefix: the suffix is a generated hash (Oct 31: the recirc-river
+        links went and the scraper found nothing)"""
+        for a in soup.find_all('a', {'class': re.compile(r'^(HeadlineLink|SummaryItemHedLink)-')}):
             try:
                 href = a['href']
                 self.downstream.append((href, a))
