@@ -39,18 +39,110 @@
     color: inherit;
 }
 
+/* Every outlet's headline (Oct 31, the person: the list was ugly and hard to find): a sticker of a button to open
+   it, then a small card a headline, tinted and shadowed in the outlet's lean color, tilting a hair each way; the
+   whole card opens the article */
+.story-headlines-box {
+    margin: 0.9em 0 0.4em;
+}
+
+.story-headlines-box > summary {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2em 0.5em;
+    cursor: pointer;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    background: color-mix(in srgb, #00c2a8 20%, white);
+    border: 3px solid #1f1f2e;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #00c2a8;
+    padding: 0.35em 0.8em;
+    transform: rotate(-1deg);
+    transition: transform 0.15s;
+}
+
+.story-headlines-box > summary:hover, .story-headlines-box[open] > summary {
+    transform: rotate(0);
+}
+
+.story-headlines-box > summary b {
+    font-family: 'Bungee', 'Comic Neue', sans-serif;
+    font-weight: 400;
+}
+
+.story-headlines-sub {
+    font-size: 0.8em;
+    color: #555;
+}
+
 .story-page-headlines {
     list-style: none;
     padding: 0;
+    margin: 1em 0 0;
     display: grid;
-    gap: 0.45em;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17em), 1fr));
+    gap: 0.8em;
 }
 
 .story-page-headlines li {
-    background: white;
-    border: 1.5px solid #e0e0e8;
+    position: relative;
+    background: color-mix(in srgb, var(--lean) 12%, white);
+    border: 2px solid #1f1f2e;
     border-radius: 10px;
-    padding: 0.4em 0.7em;
+    box-shadow: 3px 3px 0 var(--lean);
+    padding: 0.45em 0.65em 0.55em;
+    transform: rotate(-0.4deg);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.story-page-headlines li:nth-child(even) {
+    transform: rotate(0.4deg);
+}
+
+.story-page-headlines li:hover, .story-page-headlines li:focus-within {
+    transform: translateY(-2px);
+    box-shadow: 4px 5px 0 var(--lean);
+}
+
+.sph-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.3em;
+    font-size: 0.85em;
+}
+
+.sph-when {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    font-weight: 700;
+    color: #555;
+}
+
+.sph-title {
+    display: block;
+    margin-top: 0.35em;
+    color: #1f1f2e;
+    text-decoration: none;
+    line-height: 1.35;
+}
+
+/* the whole card is the link */
+.sph-title::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+.story-page-headlines li:hover .sph-title {
+    text-decoration: underline;
+}
+
+.sph-go {
+    color: #ff4fa3;
+    font-weight: 700;
 }
 
 /* The way to a story's page from its card: a sticker, not a flat link (Oct 29, the person: "flat links like that
@@ -458,4 +550,22 @@
     .story-hero .story-page-title {
         font-size: 1.6em;
     }
+}
+
+/* 📰 read it at: every outlet that ran it, a chip each, opening its article (Oct 31, the person: no chips to the
+   actual headline pages; they sat in a closed list at the foot of Spread) */
+.story-read-at {
+    margin: 1em 0 0.2em;
+    line-height: 2.2;
+}
+
+.story-read-at-head {
+    font-family: 'Comic Neue', cursive;
+    font-weight: 700;
+    margin-right: 0.3em;
+}
+
+.story-read-at a.edit-chip {
+    text-decoration: none;
+    margin: 0 2px 4px 0;
 }

@@ -630,6 +630,7 @@ class StoryPages:
                 h.update(chip=chip_style(h['outlet'], h['bias'] or 0), icon=outlet_icon(h['outlet']),
                          short=short_name(h['outlet']), lean=LEAN_WORD.get(h['bias'], 'not rated'),
                          when=eastern(h['first']) if h['first'] else '')
+                h['fill'] = (re.search(r'background-color: (#\w+)', h['chip']) or [None, '#ffffff'])[1]
             rated = [h['bias'] for h in outlets if h['bias'] is not None]
             lean_counts = {'left': sum(b < 0 for b in rated), 'center': sum(b == 0 for b in rated),
                            'right': sum(b > 0 for b in rated), 'unrated': len(outlets) - len(rated)}

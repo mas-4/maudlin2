@@ -15,6 +15,8 @@
         <ul class="story-stickers">
             {% for k in stickers %}<li style="--sticker: {{ k.color|e }}"><span class="sticker-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.big }}</b><span>{{ k.small }}</span></li>{% endfor %}
         </ul>
+        {% if outlets %}<p class="story-read-at"><span class="story-read-at-head">📰 read it at:</span>
+            {% for h in outlets %}<a class="edit-chip" href="{{ h.url|e }}" style="{{ h.chip|e }}" title="{{ h.outlet|e }} ({{ h.lean|e }}): {{ h.title|e }}">{{ h.icon }}{{ h.short }}</a> {% endfor %}</p>{% endif %}
     </header>
     {% include "share.html" %}
     <p class="table-intro story-page-intro">👣 How this story traveled: from the front pages that broke it, out through
@@ -101,11 +103,11 @@
                 <ul class="radio-items">{% for r in rewordings %}<li><b>{{ r.outlet }}</b> ({{ r.times }} wordings): “{{ r.first|e }}” → “{{ r.latest|e }}”</li>{% endfor %}</ul>
             </details>
         {% endif %}
-        <details class="story-rewordings"><summary>Every outlet's first headline ({{ outlets|length }}), left to right by AllSides rating</summary>
+        <details class="story-headlines-box"><summary>📰 Every outlet's headline <b>{{ outlets|length }}</b><span class="story-headlines-sub">left to right by AllSides rating</span></summary>
             <ul class="story-page-headlines">
                 {% for h in outlets %}
-                    <li><a class="edit-chip" style="{{ h.chip|e }}" title="{{ h.outlet|e }}: {{ h.lean|e }}">{{ h.icon }}{{ h.short }}</a>
-                        <a href="{{ h.url|e }}">{{ h.title|e }}</a> <span class="tv-time">{{ h.when }} ET</span></li>
+                    <li style="--lean: {{ h.fill|e }}"><span class="sph-top"><span class="edit-chip" style="{{ h.chip|e }}" title="{{ h.outlet|e }}: {{ h.lean|e }}">{{ h.icon }}{{ h.short }}</span>{% if h.when %}<span class="sph-when">🕒 {{ h.when }} ET</span>{% endif %}</span>
+                        <a class="sph-title" href="{{ h.url|e }}">{{ h.title|e }}<span class="sph-go" aria-hidden="true"> ↗</span></a></li>
                 {% endfor %}
             </ul>
         </details>
