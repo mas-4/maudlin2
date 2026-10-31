@@ -10,6 +10,7 @@ from datetime import datetime, timedelta as td
 from statistics import median
 
 import pytz
+from sqlalchemy import or_
 
 from app import bluesky_examples, chyrons
 from app.analysis import entities, running_order
@@ -47,14 +48,17 @@ def page_name(story_id: int) -> str:
 
 
 def recent_stories(days: int = DAYS) -> list[dict]:
-    """Saved stories seen in the last `days`, with their headlines, outlets and snapshots"""
+    """Saved stories seen in the last `days`, and the older parts of their sagas (Oct 31: a kept page went on showing
+    "2 of 2 parts" after its saga took more), with their headlines, outlets and snapshots"""
     from app.models import Session, Story, StoryHeadline, StorySnapshot, Headline, Article, Agency, Saga
     since = datetime.utcnow() - td(days=days)
     with Session() as s:
+        live = s.query(Story.saga_id).filter(Story.last_seen >= since, Story.saga_id.isnot(None))
         stories = {i: {'id': i, 'label': label or '', 'first': first, 'last': last, 'saga': saga, 'headlines': [],
                        'snapshots': []}
                    for i, label, first, last, saga in s.query(Story.id, Story.label, Story.first_seen, Story.last_seen,
-                                                               Story.saga_id).filter(Story.last_seen >= since)}
+                                                               Story.saga_id).filter(
+                       or_(Story.last_seen >= since, Story.saga_id.in_(live)))}
         if not stories:
             return []
         for sid, title, url, agency, bias, rated, first, last, seen in s.query(

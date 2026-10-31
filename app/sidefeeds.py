@@ -9,7 +9,9 @@ everything is archived.
 Polite by design: each feed is read at most every REFRESH, with conditional requests (ETag / Last-Modified, so an
 unchanged feed sends nothing back), requests to the same host a few seconds apart, and only the newest items parsed.
 A feed that fails just waits for its next turn."""
+import html
 import os
+import re
 import time
 from collections import Counter, defaultdict
 from datetime import datetime as dt, timedelta as td
@@ -351,6 +353,48 @@ def fetch_sidefeeds(force: bool = False):
     logger.info("Side feeds: read %d sources, %d new items", len(due), total)
 
 
+def web_link(url: str, audio: str | None = None) -> str:
+    """Where an item opens in a browser: its own page, or, for a podcast episode whose feed gave it no link (its guid
+    stands in as its url, to tell episodes apart), its audio file (Oct 31: the guids went out as links and 404'd); without one, the url as it is"""
+    if url and url.startswith(('http://', 'https://')):
+        return url
+    return audio or url
+
+
+_EPISODES = None
+
+
+def episode_links() -> dict[str, str]:
+    """guid -> audio file, for every item whose url is a feed's guid rather than an address; read once a build"""
+    global _EPISODES
+    if _EPISODES is None:
+        try:
+            with Session() as s:
+                _EPISODES = dict(s.query(SideItem.url, SideItem.audio).filter(
+                    SideItem.audio.isnot(None), ~SideItem.url.like('http%')))
+        except Exception as e:  # noqa: BLE001 - e.g. a database without side items; the pages stand as they are
+            logger.warning("Side feeds: episode links: %s", e)
+            _EPISODES = {}
+    return _EPISODES
+
+
+HREF = re.compile(r'href="([^"/:.#?][^"]*)"')
+
+
+def fix_episode_links(page: str) -> str:
+    """A built page with any episode guid used as a link swapped for the episode's audio file"""
+    if 'href="' not in page:
+        return page
+    links = None
+
+    def swap(m):
+        nonlocal links
+        links = episode_links() if links is None else links
+        to = links.get(html.unescape(m.group(1)))
+        return f'href="{html.escape(to)}"' if to else m.group(0)
+    return HREF.sub(swap, page)
+
+
 def recent(days: int = 3, limit: int = 12, per_source: int = 1) -> list[dict]:
     """The newest items from published sources, newest first, at most `per_source` each."""
     since = dt.now(pytz.UTC).replace(tzinfo=None) - td(days=days)
@@ -365,7 +409,7 @@ def recent(days: int = 3, limit: int = 12, per_source: int = 1) -> list[dict]:
             continue
         counts[row.source] += 1
         src = BY_KEY[row.source]
-        picked.append({'title': row.title, 'url': row.url, 'summary': row.summary or '',
+        picked.append({'title': row.title, 'url': web_link(row.url, row.audio), 'summary': row.summary or '',
                        'published': row.published.replace(tzinfo=pytz.UTC).isoformat(),
                        'source': src['name'], 'kind': src['kind'], 'group': src['group']})
         if len(picked) == limit:

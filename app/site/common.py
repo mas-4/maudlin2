@@ -35,8 +35,9 @@ class TemplateHandler:
         if path is None:
             path = self.path
         context = {'page_url': page_url(path), **context}  # the page's own address, for its share card and canonical link
+        from app.sidefeeds import fix_episode_links
         with open(path, 'w', encoding='utf-8') as f:
-            f.write(self.render(context))
+            f.write(fix_episode_links(self.render(context)))
 
 
 SITE_URL = 'https://bignews.day'

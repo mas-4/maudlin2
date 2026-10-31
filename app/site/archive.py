@@ -31,9 +31,11 @@ def _days() -> dict:
 
 def refooter(page: str) -> str:
     """A kept page with today's footer in place of its own. What a page reported stays as it was, but its footer's
-    license notice must be the one in force: the blanket CC BY 4.0 of Oct 8-9 was narrowed on Oct 10."""
+    license notice must be the one in force: the blanket CC BY 4.0 of Oct 8-9 was narrowed on Oct 10. Episode guids
+    kept as links are swapped for the episode's audio (they 404'd)."""
+    from app.sidefeeds import fix_episode_links
     footer = TemplateHandler('footer.html').render({}).strip()
-    return FOOTER.sub(lambda m: footer, page, count=1)
+    return fix_episode_links(FOOTER.sub(lambda m: footer, page, count=1))
 
 
 def edition(page: str, day: str) -> str:
