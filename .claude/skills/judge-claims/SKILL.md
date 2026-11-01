@@ -40,6 +40,11 @@ the claims at hand before judging, and the casebook entries for any motif you ar
 3. **Ask what shape the telling has before testing the motifs that exist.** Name the shape in your own words, then
    look for the motif that carries it (`motif_search`). Take-outs, "no motif" and weak fits often hide a shape no
    motif carries yet. Seeds are cheap: propose one (name, genre, note, groups) rather than force a near fit.
+   **A motif is a motif on one telling.** How many tellers it has is never a doubt and never a reason to hold a
+   seed back (the "repetition bar" in motif-praxis.md is retired). The test is whether a shape is told at all.
+   **Decide yourself whether it is plain analysis.** A pundit's reading of numbers or consequences, with no shape
+   anyone tells, gets no motif; a trope people repeat gets one. Make that call; never pass "may be plain analysis"
+   to the person as a doubt.
 4. **File the telling, not the why.** File what the tellers say, never a reading of why the story circulates. The
    shape must be in what is told: in the details the telling chooses, its framing, or the reactions it draws. Quote
    the teller's words that carry each filing. Straight news gets no motif, and that is fine.

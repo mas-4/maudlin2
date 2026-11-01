@@ -16,10 +16,10 @@ and a true one can share it.
    summary of what was claimed. A filing nobody's words carry is a guess.
 2. **Note, genre, groups.** A new motif comes with all three, and so does an existing one being applied for the first
    time without them.
-3. **Repetition bar.** A new motif normally needs two independent tellers (distinct posters or shows; one host across
-   several segments counts once). An existing motif can be applied on one telling.
-4. **Outside life.** A motif with a long life outside the corpus (a proverb, a famous phrase, a folklore type) can enter
-   on one telling. Say that the exception is used.
+3. **One telling is enough.** A motif is a motif whether one teller tells it or fifty (Nov 1: "a motif is a motif").
+   How many tellers it has is not a doubt and not a bar to making it; recurrence is a status, never a test.
+4. **Plain analysis gets none.** A pundit's reading of numbers or consequences, with no shape anyone tells, is not a
+   motif; a trope people repeat is. Whoever files decides which, rather than leaving it as a doubt.
 5. **Sparing.** Lead with existing motifs; at most one or two new ones per claim.
 6. **Shapes, not spread.** Fact-check mechanics (fake branding, deepfakes, clipped video, wrong counts, misleading
    headlines, an old quote recirculated as new) are not motifs. Breaking-news framing alone doesn't earn one. Such a
@@ -233,7 +233,7 @@ goods", "Ascension to official station", "Scandalous past hindering political re
 
 A motif idea with one telling or none is created at once as a motif with no claims (the checker's `add`), with its
 note, genre and groups (Oct 9: "there's no reason not to, it would help with the claim system"). The filing models can
-then find it when the next telling comes. The repetition bar governs how sure a filing is, not whether the motif exists.
+then find it when the next telling comes. How many tellers a motif has is never the test of whether it exists.
 
 **Attested or placed (Oct 12).** At the motif level the bar is checked by occasions, not tellers: a posts claim already
 has many tellers, so what counts is whether the shape turns up about more than one event. Every motif carries `told`,
