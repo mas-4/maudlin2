@@ -40,6 +40,7 @@ FORMATS = {
     'minutes': ('⏱️', 'Minutes on screen', "the day's top stories by minutes on each channel"),
     'chyrons': ('📺', 'Three chyrons, one moment', 'what CNN, Fox News and MSNOW had on screen at one moment, near 8 pm ET'),
     'shape': ('🧶', 'Shape of the day', 'the story shape that came up most lately, with the shows it came up on'),
+    'theme': ('🔁', 'Front-page theme', 'several of the top stories at once about one kind of thing, like shootings'),
     'both_sides': ('🤝', 'Both sides', 'a story shape that came up on left- and right-leaning shows alike'),
 }
 
@@ -189,6 +190,45 @@ def three_chyrons(now: dt) -> list[dict]:
     return []
 
 
+# Kinds of story that pile up on a front page (Nov 1, the person: four of the top stories were shootings, "can we
+# capture such a thing"): a pattern on the stories' titles, and how a post says it. Counted on the build's top
+# stories (data/top_stories.json); each story once, under every kind it matches
+THEMES = {
+    'shootings': (r'\b(shoot\w*|shot|gunm[ae]n|gunfire|opened fire|gun violence)\b', '🚨', 'about shootings'),
+    'storms': (r'\b(hurricane|tornado\w*|storms?|blizzard|flood\w*|typhoon|cyclone)\b', '🌪️', 'about storms and floods'),
+    'fires': (r'\b(wildfires?|blazes?|fire)\b', '🔥', 'about fires'),  # not "fires": a boss fires someone
+    'crashes': (r'\b(crash\w*|derail\w*|collision|plane goes down)\b', '💥', 'about crashes'),
+    'courts': (r'\b(judges?|courts?|rul(es|ing)|lawsuits?|sues?|sued|jury|verdict|indict\w*|charged|convicted|sentenced)\b',
+               '⚖️', 'in the courts'),
+    'protests': (r'\b(protest\w*|demonstrat\w*|riots?)\b', '📣', 'about protests'),
+    'deaths': (r'\b(dies|died|death of|obituary|dead at \d+)\b', '🕯️', 'about someone dying'),
+    'hospital': (r'\b(hospitali[sz]ed)\b', '🏥', 'about someone in the hospital'),
+    'hacks': (r'\b(hack\w*|breach\w*|ransomware|cyberattack\w*)\b', '💻', 'about hacks'),
+}
+THEME_LEAST = 3  # of the top stories, for a theme
+
+
+def front_page_themes(now: dt) -> list[dict]:
+    """🔁 Three or more of the front page's top stories about one kind of thing. One draft a theme a day (Eastern),
+    kept at the hour it was biggest"""
+    top = read_json(os.path.join(Config.data, 'top_stories.json'), {}).get('stories') or []
+    if not top:
+        return []
+    day = eastern(now).date().isoformat()
+    out = []
+    for theme, (pattern, emoji, about) in THEMES.items():
+        hits = [s for s in top if re.search(pattern, s['title'], re.I)]
+        if theme == 'fires':  # gunfire and sayings aren't fires
+            hits = [s for s in hits if not re.search(r'open(ed|s)? fire|under fire|fire back|line of fire', s['title'], re.I)]
+        if len(hits) < THEME_LEAST:
+            continue
+        head = f"{emoji} {len(hits)} of the top {len(top)} stories right now are {about}:"
+        d = draft('theme', f'{day}|{theme}', fits(head, [f"• {h['title']}" for h in hits]), f'{SITE}/', when=now)
+        d['peak'] = len(hits)
+        out.append(d)
+    return out
+
+
 def motif_lines(e: dict) -> tuple[str, str]:
     leans = e['leans']
     shows = ', '.join(f"{leans[k]} {k}" for k in ('left', 'center', 'right') if leans[k])
@@ -225,7 +265,7 @@ def motifs(now: dt) -> list[dict]:
     return out
 
 
-MAKERS = [headline_tests, rewrites, minutes_on_screen, three_chyrons, motifs]
+MAKERS = [front_page_themes, headline_tests, rewrites, minutes_on_screen, three_chyrons, motifs]
 
 
 def make(now: dt | None = None, file: str = FILE) -> int:
@@ -244,7 +284,9 @@ def make(now: dt | None = None, file: str = FILE) -> int:
         new = 0
         for d in fresh:
             old = by_key.get(d['key'])
-            if old:  # seen again: the newest text, the person's mark and first sighting kept
+            if old and d.get('peak', 0) < old.get('peak', 0):  # a theme smaller than it was: its biggest hour stays
+                old['seen'] = stamp
+            elif old:  # seen again: the newest text, the person's mark and first sighting kept
                 old.update(d, seen=stamp)
             else:
                 by_key[d['key']] = {**d, 'made': stamp, 'seen': stamp, 'mark': None}

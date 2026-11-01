@@ -32,3 +32,22 @@ def test_marks(tmp_path):
         p.mark('rewrite:x', 'maybe', file=file)
     with pytest.raises(ValueError):
         p.mark('nothing', 'up', file=file)
+
+
+def test_front_page_theme_and_its_biggest_hour_kept(tmp_path, monkeypatch):
+    from datetime import datetime as dt
+    monkeypatch.setattr(p.Config, 'data', str(tmp_path))
+    titles = ['Shooting after football game leaves 1 dead', 'Shootings in Dallas leave 4 dead',
+              'Pregnant woman killed in Halloween store shooting', 'Gunman opened fire at a mall', 'Senate race tightens',
+              'Israel under fire over strikes']
+    p.write_json(str(tmp_path / 'top_stories.json'), {'stories': [{'title': t} for t in titles]})
+    found = {d['key'].split('|')[1]: d for d in p.front_page_themes(dt(2026, 11, 1, 21))}
+    assert set(found) == {'shootings'}  # gunfire and "under fire" are not fires
+    assert found['shootings']['text'].startswith('🚨 4 of the top 6 stories right now are about shootings:')
+    file = str(tmp_path / 'drafts.json')
+    monkeypatch.setattr(p, 'MAKERS', [p.front_page_themes])
+    p.make(dt(2026, 11, 1, 21), file=file)
+    p.write_json(str(tmp_path / 'top_stories.json'), {'stories': [{'title': t} for t in titles[1:4]]})
+    p.make(dt(2026, 11, 1, 22), file=file)
+    kept = p.read_json(file)['drafts'][0]
+    assert kept['peak'] == 4 and kept['seen'] == '2026-11-01T22:00'
