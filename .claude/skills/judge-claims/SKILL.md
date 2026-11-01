@@ -115,18 +115,24 @@ said they've read.
    - return, for each claim, a verdict per filing (keep, take out with a one-line why, add, move), every motif the
      claim ends up in, the teller's words carrying each filing, any split or rewording with its new words, any seed
      proposed (name, genre, note, groups, the claims it takes), and its real doubts.
-4. **Check every draft yourself before writing anything.** Read each claim's sources against the subagent's verdict
-   (`claim_details`, 15 at a time). Look hardest at take-outs, new motifs, splits, rewordings and anything marked
-   doubtful. Where you disagree, your reading decides. Merge seeds that different subagents proposed for the same
-   shape into one, and check that no existing motif already carries it (`motif_search`).
-5. **Apply in batches** through `checker_action`: one batch per packet, `why` on every take-out, seeds made with
+4. **A second, independent reader for every packet.** It judges each claim from the sources first, then compares
+   with the first reader's draft and lists every difference, quoting the sources. Run it as a workflow (read, then
+   check, pipelined per packet), with the drafts and packets saved in `~/Repos/maudlin-notes/judging/`.
+5. **Check before writing anything.** Read the sources yourself (`claim_details`, 15 at a time) for every claim
+   where the readers differ, and for every take-out, new motif, split, rewording and doubt, even where they agree.
+   Where you disagree, your reading decides. A keep both readers agree on, with the tellers' words quoted, passes.
+   Merge seeds that different packets proposed for the same shape into one, and check that no existing motif already
+   carries it (`motif_search`).
+6. **Work in waves of about a hundred claims** when the queue is large. Apply and report each wave as it finishes,
+   so the person can correct while the next wave reads.
+7. **Apply in batches** through `checker_action`: one batch per packet, `why` on every take-out, seeds made with
    `new_with` and given their note, genre and groups in the same batch.
-6. **Report once, at the end, for correction after the fact:**
+8. **Report each wave for correction after the fact:**
    - how many claims were judged, and how many filings were kept, taken out, added and moved;
    - the new motifs with their real ids (looked up);
    - one row for each claim with a doubt, the doubt in its row with the teller's words;
    - the splits and rewordings;
-   - one line saying every other claim was read in full by a subagent and checked by you.
+   - one line saying every other claim was read in full by two readers who agreed.
 
    No questions in the report. The person corrects what's wrong; apply the corrections at once (with `why` on
    take-outs) and report only what changed.
