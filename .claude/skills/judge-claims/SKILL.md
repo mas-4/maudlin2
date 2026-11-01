@@ -12,7 +12,7 @@ queue as much as the first, and today's run as much as the first run of a sessio
 every source line by line, reading the motif's note against what the tellers actually said, and thinking about what
 this particular telling is doing before deciding anything. When you notice yourself speeding up, matching on names,
 or clearing claims because the last few were alike, stop and go back. A queue is never cleared by going faster. If it
-is too big to read closely, split the reading (see Large queues); never read it less closely.
+is too big to read closely, split the reading (mode 2 below); never read it less closely.
 
 The person has seen what happens without it: about a thousand claims cleared in a day at one line each, with weak
 fits they then had to find. With close attention the judgments are as good as theirs. Without it they are not worth
@@ -72,10 +72,18 @@ nothing new is there, and say so in its row.
 
 Reason each call in one line. The full casebook of calls is in `docs/motif-praxis.md` under Genres.
 
-## Presenting a slate
+## Two modes
 
-Slates are the default unless the person has said "just do it" for this particular clear. That go-ahead covers one
-clear only and never carries over.
+The person picks the mode. **Mode 1, slates:** they read slates and approve. **Mode 2, agents:** the session clears
+the queue itself with subagents, applies the verdicts, and reports, and the person corrects afterwards. They pick
+mode 2 when too many claims are coming in for them to read; words like "do it all", "clear it" or "use agents" mean
+mode 2. If the request doesn't say, use mode 1. A mode holds for the clear it was given for; the next clear starts
+from what the person asks then.
+
+The reading is the same in both modes: every claim gets the full read above. Mode 2 changes who approves, and when.
+It doesn't change how closely anyone reads.
+
+### Mode 1: slates
 
 - **Ten claims per slate.**
 - **Decide every row yourself**, the close ones too: ✅ keep, ❌ take out, ➕ add, or a new motif proposed outright.
@@ -94,9 +102,41 @@ go-ahead. Never re-table the slate. Report only the new motifs' ids, anything th
 they read, and answers to their questions. Never read a reply to a later message as approval of a slate they haven't
 said they've read.
 
+### Mode 2: agents clear the queue
+
+1. **Take the whole queue.** Page through `claims_to_judge` (or the queue named) with `offset` until it is empty,
+   and note how many claims there are.
+2. **Split it into packets of about ten claims.** Keep claims about the same story or motif in one packet, so one
+   reader sees them together. Send packets to read-only subagents in parallel, several at a time.
+3. **Brief each subagent fully.** It has none of this conversation. Tell it to:
+   - read this file (`.claude/skills/judge-claims/SKILL.md`), `docs/motif-praxis.md` and the casebook first;
+   - give every claim the full read: sources via `claim_details`, each motif's note and not-this line;
+   - never call `checker_action`;
+   - return, for each claim, a verdict per filing (keep, take out with a one-line why, add, move), every motif the
+     claim ends up in, the teller's words carrying each filing, any split or rewording with its new words, any seed
+     proposed (name, genre, note, groups, the claims it takes), and its real doubts.
+4. **Check every draft yourself before writing anything.** Read each claim's sources against the subagent's verdict
+   (`claim_details`, 15 at a time). Look hardest at take-outs, new motifs, splits, rewordings and anything marked
+   doubtful. Where you disagree, your reading decides. Merge seeds that different subagents proposed for the same
+   shape into one, and check that no existing motif already carries it (`motif_search`).
+5. **Apply in batches** through `checker_action`: one batch per packet, `why` on every take-out, seeds made with
+   `new_with` and given their note, genre and groups in the same batch.
+6. **Report once, at the end, for correction after the fact:**
+   - how many claims were judged, and how many filings were kept, taken out, added and moved;
+   - the new motifs with their real ids (looked up);
+   - one row for each claim with a doubt, the doubt in its row with the teller's words;
+   - the splits and rewordings;
+   - one line saying every other claim was read in full by a subagent and checked by you.
+
+   No questions in the report. The person corrects what's wrong; apply the corrections at once (with `why` on
+   take-outs) and report only what changed.
+
+If the queue is small enough to read closely yourself, mode 2 can skip the subagents. Everything else stays the same.
+
 ## Applying changes
 
-- Use `checker_action`, and only for changes the person asked for, or a clear they handed over.
+- Use `checker_action`, and only for changes the person asked for: an approved slate in mode 1, or the clear they
+  handed over in mode 2.
 - Every take-out of a model filing (`check` no, `unfile`, `move`, a rejected proposal) carries `why`: the reason from
   the approved row, or the person's words, tidied for capitals, spelling and grammar. Don't put `why` on your own
   additions.
@@ -104,12 +144,6 @@ said they've read.
   the batch. After the batch, look up a new motif's real id before acting on it again. Never guess the next id.
 - Notes describe the general shape. They never name the one story where the motif was found.
 - Never test the checker by doing and undoing on the live one (port 8766). Its undo stack is shared with the person.
-
-## Large queues
-
-Don't skim to get through a big queue. Split it across read-only subagents. Give each one this skill's rules and the
-praxis docs, and have it draft verdicts with the quotes that support them. Then read their drafts against the sources
-yourself before anything is written.
 
 ## Out of scope
 
