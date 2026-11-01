@@ -4,7 +4,7 @@ from typing import cast
 
 import numpy as np
 import pytz
-from sqlalchemy import ForeignKey, String, UniqueConstraint, create_engine
+from sqlalchemy import ForeignKey, String, UniqueConstraint, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
 from sqlalchemy.types import Boolean, Text, Float, DateTime, Integer
 
@@ -397,7 +397,21 @@ class PostDraft(Base):
     note: Mapped[str | None] = mapped_column(Text(), nullable=True)  # the person's word on a 👎
 
 
-engine = create_engine(Config.connection_string)
+# The tables that took over the data folder's JSON files (Nov 1), one module per group, on this Base
+from app import tables  # noqa: E402,F401
+
+engine = create_engine(Config.connection_string, connect_args={'timeout': 60})
+
+
+@event.listens_for(engine, 'connect')
+def _pragmas(con, _):
+    """Several processes write this database (the hourly run, the worker, the checker): WAL lets readers go on while
+    one writes, and a writer waits up to the timeout for another instead of failing with database is locked"""
+    cur = con.cursor()
+    cur.execute('PRAGMA journal_mode=WAL')
+    cur.execute('PRAGMA synchronous=NORMAL')
+    cur.close()
+
 # Keeping this after migrating to alembic
 # Running this would create the tables in the database but not mark alembic upgrades
 # So just don't do it. To upgrade the database run alembic upgrade head

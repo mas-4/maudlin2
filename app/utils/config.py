@@ -64,6 +64,9 @@ class Config:
     if not os.path.exists(data):
         os.makedirs(data)
     dayreport_file = os.path.join(data, 'day-report.json')
+    # Caches: answers from the models kept so nothing is asked twice, rebuilt if lost. Files, not the database
+    # (Nov 1, the person: "logs and cache are not database!"); everything else the app keeps is in data.db
+    cache = os.path.join(data, 'cache')
     assets = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'static')
     styles = os.path.join(Constants.Paths.ROOT, 'app', 'site', 'styles')  # partials joined into style.css
     build = os.path.join(Constants.Paths.ROOT, '_build')
