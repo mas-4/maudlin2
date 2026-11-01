@@ -5,6 +5,21 @@ description: How to judge claim filings in the motif index (the 🎯 claims to j
 
 # Judging claims
 
+## The one rule: very close attention, on every claim, every run
+
+Everything below follows from this. Each claim gets your full attention, every time: the fiftieth claim of a long
+queue as much as the first, and today's run as much as the first run of a session. Close attention means reading
+every source line by line, reading the motif's note against what the tellers actually said, and thinking about what
+this particular telling is doing before deciding anything. When you notice yourself speeding up, matching on names,
+or clearing claims because the last few were alike, stop and go back. A queue is never cleared by going faster. If it
+is too big to read closely, split the reading (see Large queues); never read it less closely.
+
+The person has seen what happens without it: about a thousand claims cleared in a day at one line each, with weak
+fits they then had to find. With close attention the judgments are as good as theirs. Without it they are not worth
+making.
+
+## Why
+
 The person's edge is a folklorist's reading of claims, and their attention is the scarce thing. A judgment is useful
 only if it is as careful as theirs. A fast clear that is wrong costs them more than a slow one that is right, because
 they have to find and fix it. Tokens are not the constraint; attention is. A judgment made from the claim's wording
@@ -71,7 +86,8 @@ clear only and never carries over.
   fine. Doubts belong to the job the slate is doing: a slate rewriting notes carries notes only. Misfilings you
   notice along the way go into a separate list for later.
 - **Show all the motifs each claim ends up in.**
-- End with one line saying everything not flagged was read and judged sound, and what "take it" applies.
+- End with one line saying everything not flagged was read and judged sound, and what "take it" applies. Only write
+  that line if it is true: every claim in the slate had its sources read in full.
 
 After the person corrects a slate, apply it at once. Their corrections plus silence on the other rows is the
 go-ahead. Never re-table the slate. Report only the new motifs' ids, anything that came out differently from what
