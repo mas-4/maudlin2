@@ -157,7 +157,7 @@ def site(data_handler, tmp_path_factory):
         from app.site.common import stamp_build
         stamp_build()  # the nav was drawn at import, from the real store
         from app.site import wordcloudgen
-        mp.setattr(wordcloudgen, 'CLOUD_HISTORY', str(build / 'cloud_history.json'))  # never the real history
+        mp.setattr(wordcloudgen, 'cloud_history', lambda since: [])  # never the real history
         mp.setattr(socket.socket, 'connect', refuse_connection)
         mp.setattr(llm, 'backend', lambda: None)
         mp.setattr(ph, 'sync_stories', lambda df: {})
@@ -658,10 +658,9 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
     monkeypatch.setattr(pn.motif_index, 'load', lambda: index)
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     from app.analysis import focus_group
-    (tmp_path / 'fg.json').write_text(json.dumps({'https://ep/1': {'title': 'Ep61: Trump voters', 'date': '2026-10-03',
+    monkeypatch.setattr(focus_group, 'load', lambda: {'https://ep/1': {'title': 'Ep61: Trump voters', 'date': '2026-10-03',
         'read': 1, 'claims': [{'claim': 'ChatGPT reports what you say to the government', 'side': 'Trump voter',
-                               'quote': 'SECRET QUOTE probably recording everything', 'at': 60}]}}))
-    monkeypatch.setattr(focus_group, 'STORE', str(tmp_path / 'fg.json'))
+                               'quote': 'SECRET QUOTE probably recording everything', 'at': 60}]}})
     for debug, shows_posts in ((False, False), (True, True)):
         monkeypatch.setattr(Config, 'debug', debug)
         pn.FolklorePage().generate()
@@ -761,8 +760,7 @@ def test_folklore_page_shows_claims_told_on_the_shows_with_the_persons_genres(mo
     genres are those of its checked motifs. A fact-check a narrative's card links isn't a card of its own"""
     from app.site import page_folklore as pn
     from app.analysis import show_claims
-    monkeypatch.setattr(show_claims, 'RETOLD', str(tmp_path / 'retold.json'))
-    show_claims.write_json(show_claims.RETOLD, [{
+    monkeypatch.setattr(show_claims, 'kept_retold', lambda: [{
         'claim': 'Democrats <rig> mail ballots', 'shows': ['Clay Travis & Buck Sexton', 'The Benny Show'], 'tellings': 3,
         'leans': {'right': 3}, 'speakers': {'host': 1, 'caller': 2}, 'date': '2026-10-07', 'ref': 'https://ep/1',
         'told': [{'show': 'Clay Travis & Buck Sexton', 'url': 'https://ep/1', 'at': 0, 'speaker': 'caller',
@@ -1003,7 +1001,13 @@ def test_an_ended_saga_points_on(monkeypatch, tmp_path):
     from app.analysis import sagas
     from app.site import page_saga, page_story
     monkeypatch.setattr(Config, 'build', str(tmp_path))
-    monkeypatch.setattr(sagas, 'ENDED', str(tmp_path / 'ended.json'))
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    mem = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(mem)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=mem))  # where ended sagas point, never data.db's
     monkeypatch.setattr(sagas, 'history', list)
     monkeypatch.setattr(page_story, 'recent_stories', list)
     for name, value in (('tv_by_story', dict), ('radio_by_story', dict), ('folklore_by_story', lambda stories: {})):

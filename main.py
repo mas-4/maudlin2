@@ -199,7 +199,7 @@ def main(args: argparse.Namespace):
                 logger.warning("Fact-check texts failed: %s", e)
             try:
                 from app import health
-                health.check()  # every outlet and regular feed still coming in (warnings in the log, health.json)
+                health.check()  # every outlet and regular feed still coming in (warnings in the log, run_state 'health')
             except Exception as e:  # noqa: BLE001 - the check is a lookout, never a reason to stop the run
                 logger.warning("Health check failed: %s", e)
             from app.chyrons import fetch_chyrons

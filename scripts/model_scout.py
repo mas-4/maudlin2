@@ -10,11 +10,10 @@ A model counts when it fits this machine (at most FITS billion parameters, or a 
 and is one of the kinds we use. Polite: one request a source, PAUSE seconds apart, once a week. Nothing is downloaded:
 a candidate is tested only after the person says yes (the jury, J1, is how: on their own decisions, against what runs).
 
-    ~/maudlin-data/model_scout.json    every model seen and when first seen (so only the new are reported)
+    data.db's model_seen               every model seen and when first seen (so only the new are reported)
     ~/Repos/maudlin-notes/model-scout.md   the week's new candidates, newest week first
 
     python scripts/model_scout.py         look now (deploy/systemd/user/maudlin-model-scout.timer: Mondays)"""
-import json
 import os
 import re
 import subprocess
@@ -26,9 +25,7 @@ import requests as rq
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.utils import Config  # noqa: E402
 
-STATE = os.path.join(Config.data, 'model_scout.json')
 NOTES = os.path.expanduser('~/Repos/maudlin-notes/model-scout.md')
 AGENT = 'maudlin model scout (a personal research project; weekly)'
 PAUSE = 15  # seconds between requests
@@ -145,11 +142,25 @@ def report(new: list[dict], have: list[str], today: str) -> str:
     return '\n'.join(lines)
 
 
+def seen_before() -> dict:
+    """source:id -> the day it was first seen"""
+    from app.models import Session
+    from app.tables.runstate import ModelSeen
+    with Session() as s:
+        return {r.key: r.first_seen for r in s.query(ModelSeen)}
+
+
+def remember(new: dict):
+    from app.models import Session
+    from app.tables.runstate import ModelSeen
+    with Session() as s:
+        s.add_all(ModelSeen(key=k, first_seen=day) for k, day in new.items())
+        s.commit()
+
+
 def main():
-    state = {'seen': {}}
-    if os.path.exists(STATE):
-        with open(STATE) as f:
-            state = json.load(f)
+    state = {'seen': seen_before()}
+    known = set(state['seen'])
     today = dt.now().strftime('%Y-%m-%d')
     first = not state['seen']
     new = []
@@ -170,9 +181,7 @@ def main():
             seen.add(base(m))
             kept.append(m)
     new = kept
-    with open(STATE + '.tmp', 'w') as f:
-        json.dump(state, f, indent=1)
-    os.replace(STATE + '.tmp', STATE)
+    remember({k: day for k, day in state['seen'].items() if k not in known})
     text = report(new, installed(), today + (' (the first look: everything listed now)' if first else ''))
     old = ''
     if os.path.exists(NOTES):

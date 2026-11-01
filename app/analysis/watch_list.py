@@ -14,9 +14,10 @@ pick of a real motif (not a watched one, not one a person took the claim out of)
 again, and a claim left with no motif is back where the person put it. A new name the judge offers is logged, never
 made into a motif. A watched motif picked means it's still plain.
 
-    watch_list.json    {'claims': claim key -> {claim, source, ref, date (t0), story, why ('no motif', 'watched
-                       motif'), plain (watched now), since, refiled (last pass)}, 'unfound': keys whose words weren't
-                       found, with the day they were looked for}
+    watch_claim        a row a claim: key, claim, source, ref, date (t0), story, story_tie, why ('no motif', 'watched
+                       motif'), plain (watched now), since, refiled (last pass); in data.db (watch_list.json until
+                       Nov 1), read and written as {'claims': key -> those fields}
+    watch_unfound      keys whose words weren't found, with the day they were looked for ('unfound')
     refile_log.jsonl   one line a pass over a claim"""
 import json
 import os
@@ -27,24 +28,39 @@ from datetime import timedelta as td
 from app.analysis import llm, trace
 from app.analysis import motif_index as mi
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-STORE = os.path.join(Config.data, 'motifs', 'watch_list.json')
 REFILE_LOG = os.path.join(Config.data, 'motifs', 'refile_log.jsonl')
 EVERY = td(days=7)  # a watched claim is filed again at least this often
 MAX = 60  # claims a pass, at most (about 2.5 s each with Gemma 4 26B)
 BUDGET = 300  # seconds a pass, at most
 
 
+FIELDS = ('claim', 'source', 'ref', 'date', 'story', 'story_tie', 'plain', 'why', 'since', 'refiled')
+
+
 def load() -> dict:
-    return read_json(STORE, {'claims': {}})
+    from app.models import Session
+    from app.tables.motifs import WatchClaim, WatchUnfound
+    with Session() as s:
+        claims = {r.key: {'key': r.key, **{f: getattr(r, f) for f in FIELDS if getattr(r, f) is not None}}
+                  for r in s.query(WatchClaim)}
+        unfound = {r.key: r.day for r in s.query(WatchUnfound)}
+    return {'claims': claims, **({'unfound': unfound} if unfound else {})}
 
 
 def save(store: dict):
-    os.makedirs(os.path.dirname(STORE), exist_ok=True)
-    write_json(STORE, store, indent=1)
+    """The whole list as `store` has it, in one transaction"""
+    from app.models import Session
+    from app.tables.motifs import WatchClaim, WatchUnfound
+    with Session() as s:
+        s.query(WatchClaim).delete()
+        s.query(WatchUnfound).delete()
+        s.bulk_insert_mappings(WatchClaim, [{'key': k, **{f: w.get(f) for f in FIELDS}, 'plain': bool(w.get('plain'))}
+                                            for k, w in store.get('claims', {}).items()])
+        s.bulk_insert_mappings(WatchUnfound, [{'key': k, 'day': d} for k, d in (store.get('unfound') or {}).items()])
+        s.commit()
 
 
 def state(index: dict, k: str, plain: set[str]) -> str | None:
@@ -62,7 +78,6 @@ def known_texts(index: dict) -> dict[str, dict]:
     """Claim key (as worded now) -> what we know of a claim: its words, source, ref, the day it was reported and its
     story, from wherever its words are kept: the narrative reports, the fact-checks' labels, the Focus Group's and the
     shows' claims, the shortlist log and the curation log. A claim with no motif keeps only its key in the index"""
-    import glob
 
     from app import narratives, sidefeeds
     from app.analysis import curation_db, factchecks, focus_group, show_claims
@@ -72,8 +87,7 @@ def known_texts(index: dict) -> dict[str, dict]:
         if text:
             text = mi.corrected(text, index)
             out.setdefault(mi.key(text), {'claim': text, **{f: v for f, v in fields.items() if v is not None}})
-    for path in sorted(glob.glob(os.path.join(narratives.FOLDER, 'report-*.json')), reverse=True):  # the latest first
-        report = read_json(path, {})
+    for report in narratives.reports(newest_first=True):  # the latest first
         for g in report.get('found', []):
             lab = g.get('label') or {}
             add(lab.get('narrative'), source='narrative', ref=report.get('made', ''),
@@ -89,7 +103,7 @@ def known_texts(index: dict) -> dict[str, dict]:
             story=checked.get(it['url']))
     for c in focus_group.claims():
         add(c['claim'], source=c['source'], ref=c['ref'], date=c.get('date'))
-    for r in read_json(show_claims.RETOLD, []):  # as last kept: retold() itself compares claims by meaning
+    for r in show_claims.kept_retold():  # as last kept: retold() itself compares claims by meaning
         add(r.get('claim'), source=show_claims.SOURCE, ref=r.get('ref', ''), date=r.get('date'))
     try:
         with open(mi.SHORTLIST_LOG) as f:

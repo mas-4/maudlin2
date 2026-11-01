@@ -10,9 +10,7 @@ from wordcloud import WordCloud
 
 from app.analysis.newsfilter import EMOTION_EMOJI, EMOTIONS, emotion_weights
 from app.analysis.pipelines import NORMALIZE, STOPWORDS, Pipelines, prepare
-from app.utils import Config
 from app.utils.logger import get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
@@ -253,29 +251,42 @@ def generate_wordcloud(df: pd.DataFrame, path: str, pipeline: list[Callable] | N
     logger.debug("Saved wordcloud to %s", path)
 
 
-# Words new to the cloud: each production run keeps the cloud's words (CLOUD_HISTORY, two days of runs); a word is
-# new when no cloud in the NEW_WINDOW before had it. Until the history covers MIN_HISTORY, nothing is called new (the
-# first run would call every word new). Preview builds read the history but never add to it.
-CLOUD_HISTORY = os.path.join(Config.data, 'cloud_history.json')
+# Words new to the cloud: each production run keeps the cloud's words (the cloud_word table); a word is new when no
+# cloud in the NEW_WINDOW before had it. Until the history covers MIN_HISTORY, nothing is called new (the first run
+# would call every word new). Preview builds read the history but never add to it.
 NEW_WINDOW = timedelta(hours=24)
 MIN_HISTORY = timedelta(hours=6)
-KEEP_HISTORY = timedelta(hours=48)
+
+
+def cloud_history(since: datetime) -> list[dict]:
+    """The clouds kept since then, oldest first: {'at', 'words'}"""
+    from app.models import Session
+    from app.tables.records import CloudWord
+    clouds = {}
+    with Session() as s:
+        for at, word in s.query(CloudWord.at, CloudWord.word).filter(CloudWord.at >= since) \
+                .order_by(CloudWord.at, CloudWord.rank):
+            clouds.setdefault(at, []).append(word)
+    return [{'at': at, 'words': words} for at, words in clouds.items()]
+
+
+def keep_cloud(at: datetime, words: list[str]):
+    from app.models import Session
+    from app.tables.records import CloudWord
+    with Session() as s:
+        s.add_all(CloudWord(at=at, rank=i, word=w) for i, w in enumerate(words))
+        s.commit()
 
 
 def mark_new(words: list[dict], now: datetime | None = None, save: bool = True) -> list[dict]:
-    now = now or datetime.utcnow()
-    try:
-        history = [h for h in read_json(CLOUD_HISTORY, []) if now - datetime.fromisoformat(h['at']) <= KEEP_HISTORY]
-    except ValueError:  # a bad time in it
-        history = []
-    recent = [h for h in history if now - datetime.fromisoformat(h['at']) <= NEW_WINDOW]
-    covered = recent and now - min(datetime.fromisoformat(h['at']) for h in recent) >= MIN_HISTORY
+    now = (now or datetime.utcnow()).replace(microsecond=0)
+    recent = cloud_history(now - NEW_WINDOW)
+    covered = recent and now - min(h['at'] for h in recent) >= MIN_HISTORY
     seen = {w for h in recent for w in h['words']}
     for w in words:
         w['new'] = bool(covered and w['text'] not in seen)
         if w['new']:
             w['tip'] += ' · ✨ new to the cloud'
     if save:
-        history.append({'at': now.isoformat(timespec='seconds'), 'words': [w['text'] for w in words]})
-        write_json(CLOUD_HISTORY, history)
+        keep_cloud(now, [w['text'] for w in words])
     return words

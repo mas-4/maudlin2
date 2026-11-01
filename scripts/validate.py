@@ -137,8 +137,8 @@ def log_curation(page: str, data: dict, before: dict, by: str | None = None) -> 
 
 
 # Undo: each change on the organizer pages snapshots the file it touched (the motif index, or the name aliases) so the
-# last ones can be stepped back, newest first. Kept on disk, so a server restart doesn't lose them.
-UNDO = os.path.join(FOLDER, 'undo')
+# last ones can be stepped back, newest first. Kept in data.db (checker_undo; files in validation/undo until Nov 1), so
+# a server restart doesn't lose them.
 UNDO_KEEP = 50
 
 
@@ -159,17 +159,22 @@ def read_text(path: str) -> str | None:
 def state(path: str) -> str | None:
     """What a step's undo keeps of a file it manages: the file's text, or for the motif index (a database since Oct 21)
     the number of its last save ('txn:41'), since undo takes back the rows changed after it"""
-    from app.analysis import motif_index as mi
+    from app.analysis import entities, motif_index as mi
     if path == mi.INDEX:
         return f'txn:{mi.version()}' if not mi._json_mode() else read_text(mi.legacy())
+    if path == entities.ALIASES:  # the names' choices, in data.db since Nov 1
+        return entities.aliases_text()
     return read_text(path)
 
 
 def restore(path: str, before: str | None):
     """Put a managed file back as `state` found it (the caller holds the index's lock)"""
-    from app.analysis import motif_index as mi, motif_db
+    from app.analysis import entities, motif_index as mi, motif_db
     if path == mi.INDEX and (before or '').startswith('txn:'):
         motif_db.revert(mi.INDEX, int(before[4:]))
+        return
+    if path == entities.ALIASES:
+        entities.restore_aliases(before)
         return
     if path == mi.INDEX:
         path = mi.legacy()
@@ -199,33 +204,35 @@ def push_undo(path: str, before_text: str | None, what: str, proposals: list[str
     """A step to undo: the file as it was, and the proposals the step decided (reopened on undo; a rejection changes
     no file but is a step all the same; until Oct 7 undo skipped it, and undoing an approval left it decided), and its
     row in the curation log (marked taken back on undo)"""
+    from app.models import Session
+    from app.tables.motifs import CheckerUndo
     after = state(path)
     if after == before_text and not proposals:
         return
-    os.makedirs(UNDO, exist_ok=True)
-    stamp = dt.now().strftime('%Y%m%d-%H%M%S-%f')
-    with open(os.path.join(UNDO, stamp + '.json'), 'w') as f:
-        json.dump({'path': path, 'before': before_text, 'after_sha': hashlib.sha1((after or '').encode()).hexdigest(),
-                   **({'after': after} if (after or '').startswith('txn:') else {}),  # the index's save number after it
-                   'what': what, 'at': stamp, **({'proposals': proposals} if proposals else {}),
-                   **({'log': log} if log else {})}, f)
-    for old in sorted(os.listdir(UNDO))[:-UNDO_KEEP]:
-        os.remove(os.path.join(UNDO, old))
+    with Session() as s:
+        s.add(CheckerUndo(path=path, before=before_text, after_sha=hashlib.sha1((after or '').encode()).hexdigest(),
+                          after=after if (after or '').startswith('txn:') else None,  # the index's save number after it
+                          what=what, at=dt.now().strftime('%Y%m%d-%H%M%S-%f'),
+                          proposals=json.dumps(proposals) if proposals else None, log=log or None))
+        s.flush()
+        kept = [i for (i,) in s.query(CheckerUndo.id).order_by(CheckerUndo.id.desc()).limit(UNDO_KEEP)]
+        s.query(CheckerUndo).filter(CheckerUndo.id < min(kept)).delete()
+        s.commit()
 
 
-def last_undo() -> tuple[str, dict] | None:
-    try:
-        names = sorted(n for n in os.listdir(UNDO) if n.endswith('.json'))
-    except OSError:
-        return None
+def last_undo() -> tuple[int, dict] | None:
+    """The newest step on the stack, as (its row id, the step as a dict)"""
+    from app.models import Session
+    from app.tables.motifs import CheckerUndo
     managed = set(undo_paths().values())
-    for name in reversed(names):  # only snapshots of the files undo manages (a stray one from elsewhere is skipped)
-        path = os.path.join(UNDO, name)
-        with open(path) as f:
-            snap = json.load(f)
-        if snap.get('path') in managed:
-            return path, snap
-    return None
+    with Session() as s:  # only steps on the things undo manages (a stray one from elsewhere is skipped)
+        row = s.query(CheckerUndo).filter(CheckerUndo.path.in_(managed)).order_by(CheckerUndo.id.desc()).first()
+        if row is None:
+            return None
+        snap = {'path': row.path, 'before': row.before, 'after_sha': row.after_sha, 'what': row.what, 'at': row.at,
+                **({'after': row.after} if row.after else {}),
+                **({'proposals': json.loads(row.proposals)} if row.proposals else {}), **({'log': row.log} if row.log else {})}
+        return row.id, snap
 
 
 def undo() -> str:
@@ -235,7 +242,7 @@ def undo() -> str:
     found = last_undo()
     if not found:
         raise ValueError('nothing to undo')
-    snap_path, snap = found
+    snap_id, snap = found
     with motif_index.locked():
         now = state(snap['path']) or ''
         same = hashlib.sha1(now.encode()).hexdigest() == snap['after_sha']
@@ -248,7 +255,11 @@ def undo() -> str:
             raise ValueError('the index has changed since that edit (an hourly run filing claims?), so undoing it '
                              'would lose those changes: fix it by hand instead')
         restore(snap['path'], snap['before'])
-    os.remove(snap_path)
+    from app.models import Session
+    from app.tables.motifs import CheckerUndo
+    with Session() as s:
+        s.query(CheckerUndo).filter(CheckerUndo.id == snap_id).delete()
+        s.commit()
     if snap.get('proposals'):
         from app.analysis import motif_proposals
         motif_proposals.reopen(snap['proposals'])
@@ -306,7 +317,7 @@ def save_checkpoint(name: str, kind: str = 'manual') -> dict:
     """The motif index and the proposals as they are now, saved by name in the curation database, to go back to"""
     from app.analysis import curation_db, motif_index as mi, motif_proposals as mp
     with mi.locked():
-        return curation_db.checkpoint(name, mi.export_text(), read_text(mp.PROPOSALS), kind)
+        return curation_db.checkpoint(name, mi.export_text(), mp.export_text(), kind)
 
 
 def go_back(cid: int) -> dict:
@@ -314,15 +325,14 @@ def go_back(cid: int) -> dict:
     checkpoint 'before going back'), so this can itself be gone back on, and it's one undo step too; the changes since
     the checkpoint stay in the log, marked reverted, so the models stop learning from them"""
     from app.analysis import curation_db, motif_index as mi, motif_proposals as mp
-    from app.utils.store import write_json
     cp, index_text, proposals_text = curation_db.restore(cid)
     with mi.locked():
-        now_state, now_proposals = state(mi.INDEX), read_text(mp.PROPOSALS)
+        now_state, now_proposals = state(mi.INDEX), mp.export_text()
         before = curation_db.checkpoint(f'before going back to “{cp["name"]}”', mi.export_text(), now_proposals,
                                         kind='before going back')
         mi.save(json.loads(index_text))
         if proposals_text is not None:
-            write_json(mp.PROPOSALS, json.loads(proposals_text))
+            mp.replace_all(json.loads(proposals_text))
     undone = curation_db.set_reverted(cp)
     push_undo(mi.INDEX, now_state, f'go back to “{cp["name"]}”')
     log_curation('checkpoints', {'action': 'go back', 'to': cid, 'name': cp['name'], 'reverted': undone,
@@ -362,29 +372,24 @@ def claim_detail(claim: str) -> dict:
     if filed.get('source') and filed['source'] != 'narrative':
         url = filed.get('ref', '')
         item = next((i for i in factchecks._items(90) if i.get('url') == url), {})
-        try:
-            with open(os.path.join(Config.data, 'factcheck_labels.json')) as f:
-                label = json.load(f).get(url, {})
-        except (OSError, ValueError):
-            label = {}
+        from app.tables.caches import FactcheckLabel
+        from app.models import Session
+        with Session() as s:
+            row = s.get(FactcheckLabel, url)
+            label = row.to_dict() if row else {}
         from app.analysis import factcheck_text
         out.update(kind='fact-check', url=url, title=item.get('title'), summary=item.get('summary'),
                    published=(item.get('published') or '')[:10], label=label,
                    piece=factcheck_text.text_of(url)[:2500])  # the piece's own opening, read by the hourly run
         return out
     # The narrative report the claim came from (its ref is the report's time), else the latest, else any that has it
-    import glob
-    from app.narratives import FOLDER
-    reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')), reverse=True)
+    from app import narratives
+    reports = narratives.report_files()[::-1]
     ref = filed.get('ref', '').replace('-', '').replace('T', '-').replace(':', '')  # 2026-10-05T08:17 -> 20261005-0817
-    ordered = [r for r in reports if os.path.basename(r)[7:20].replace('-', '', 2) == ref] + reports
+    ordered = [r for r in reports if r[7:20].replace('-', '', 2) == ref] + reports
     group, report = None, {}
-    for path in ordered:
-        try:
-            with open(path) as f:
-                report = json.load(f)
-        except (OSError, ValueError):
-            continue
+    for file in ordered:
+        report = narratives.load_report(file) or {}
         group = next((g for g in report.get('found', []) if (g.get('label') or {}).get('narrative') in words), None)
         if group:
             break
@@ -672,7 +677,7 @@ def second_look() -> list[dict]:
 TODAY = {'doubted': 0, 'torn': 0, 'new motifs': 10, 'proposals': 10}  # a day's set: since Oct 12 the motif-level decisions only
 # (the torn and doubted filings are in the claims to judge, each claim whole: judge_queue)
 TORN = (0.2, 0.8)  # a fit in this range: the model can't tell
-TODAY_FILE = os.path.join(FOLDER, 'today.json')  # {'date', 'keys'}: the day's set, picked the first time it's asked for
+TODAY_FILE = 'validation/today'  # its run_state name (app/runstate.py): {'date', 'keys'}: the day's set, picked the first time it's asked for
 
 
 def _today_candidates() -> dict[str, list[dict]]:
@@ -726,9 +731,9 @@ def todays_decisions(more: bool = False) -> dict:
     for the day so it runs out as the person decides (it used to fill up again to twenty at every look); `more` adds
     another twenty. {'items': those still waiting, 'picked', 'done'}"""
     from datetime import date
-    from app.utils.store import read_json, write_json
+    from app import runstate
     today = date.today().isoformat()
-    kept = read_json(TODAY_FILE, {})
+    kept = runstate.get(TODAY_FILE, {})
     keys = kept.get('keys', []) if kept.get('date') == today else []
     pools = _today_candidates()
     waiting = {x['key']: x for pool in pools.values() for x in pool}
@@ -736,7 +741,7 @@ def todays_decisions(more: bool = False) -> dict:
         taken = set(keys)
         for kind, n in TODAY.items():
             keys += [x['key'] for x in pools[kind] if x['key'] not in taken][:n]
-        write_json(TODAY_FILE, {'date': today, 'keys': keys})
+        runstate.put(TODAY_FILE, {'date': today, 'keys': keys})
     items = [x for x in (_still(k, waiting) for k in keys) if x]
     order = list(TODAY)
     items.sort(key=lambda x: order.index({'doubted': 'doubted', 'torn': 'torn', 'new motif': 'new motifs',
@@ -956,10 +961,9 @@ def _dashboard(q: dict):  # 📈 everything at a glance (app/dashboard.py)
 
 
 def _workbench_metrics(q: dict):
-    from app import health
+    from app import health, runstate
     from app.analysis import motif_index
-    from app.utils.store import read_json
-    return {**motif_index.metrics_history(), 'health': read_json(health.HEALTH, None)}
+    return {**motif_index.metrics_history(), 'health': runstate.get(health.HEALTH)}
 
 
 def _workbench_queue(q: dict):

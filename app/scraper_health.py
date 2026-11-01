@@ -1,7 +1,7 @@
 """Which scrapers look broken: after each run, a short list to check (data/scraper_check.md), with the reason for each.
 
 Every scraper's numbers are recorded as it finishes (headlines found, kept, dropped as too long, and whether its page
-loaded at all) and kept for the last HISTORY runs (data/scraper_history.json). A scraper makes the list when, this
+loaded at all) and kept (the scraper_run table); the last HISTORY runs decide. A scraper makes the list when, this
 run, it failed to load its page, found nothing, kept nothing of what it found, found far fewer than it usually does,
 dropped most of what it found as too long (its parser grabbing summaries), or hasn't added a new headline in two
 days.
@@ -12,13 +12,11 @@ from datetime import datetime as dt
 from statistics import median
 
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-HISTORY_FILE = os.path.join(Config.data, 'scraper_history.json')
 CHECK_FILE = os.path.join(Config.data, 'scraper_check.md')
-HISTORY = 72  # runs kept per scraper (three days of hourly runs)
+HISTORY = 72  # runs looked at per scraper (three days of hourly runs)
 DROP = 0.4  # found under this share of its usual number
 MIN_RUNS = 5  # runs of history before "usual" means anything
 STALE_RUNS = 48  # runs in a row adding nothing new: stale (two days, so a weekday outlet's quiet weekend isn't)
@@ -58,6 +56,27 @@ def problems(agency: str, now: dict, past: list[dict]) -> list[str]:
     return out
 
 
+def past_runs(agencies: list[str], last: int = HISTORY) -> dict[str, list[dict]]:
+    """Each scraper's last runs, oldest first, as record() makes them"""
+    from app.models import Session
+    from app.tables.records import ScraperRun
+    out = {}
+    with Session() as s:
+        for a in agencies:
+            rows = s.query(ScraperRun).filter_by(agency=a).order_by(ScraperRun.at.desc(), ScraperRun.id.desc()).limit(last)
+            out[a] = [{'at': r.at.isoformat(timespec='minutes'), 'url': r.url, 'found': r.found, 'kept': r.kept,
+                       'added': r.added, 'too_long': r.too_long, 'error': r.error} for r in reversed(rows.all())]
+    return out
+
+
+def keep(runs: dict[str, dict]):
+    from app.models import Session
+    from app.tables.records import ScraperRun
+    with Session() as s:
+        s.bulk_insert_mappings(ScraperRun, [{**r, 'agency': a, 'at': dt.fromisoformat(r['at'])} for a, r in runs.items()])
+        s.commit()
+
+
 def write(expected: list[tuple[str, str]] | None = None) -> list[tuple[str, list[str]]]:
     """Add this run to the history and write the list to check. `expected`: (agency, url) of every scraper meant to
     run, so one that never reported (crashed before finishing) is listed too."""
@@ -67,15 +86,13 @@ def write(expected: list[tuple[str, str]] | None = None) -> list[tuple[str, list
     for agency, url in expected or []:
         runs.setdefault(agency, {'at': dt.now().isoformat(timespec='minutes'), 'url': url, 'found': 0, 'kept': 0,
                                  'added': 0, 'too_long': 0, 'error': 'never finished'})
-    history = read_json(HISTORY_FILE, {})
+    history = past_runs(list(runs))
     flagged = []
     for agency, now in sorted(runs.items()):
-        past = history.get(agency, [])
-        found = problems(agency, now, past)
+        found = problems(agency, now, history.get(agency, []))
         if found:
             flagged.append((agency, found))
-        history[agency] = (past + [now])[-HISTORY:]
-    write_json(HISTORY_FILE, history)
+    keep(runs)
     stamp = dt.now().strftime('%Y-%m-%d %H:%M')
     lines = [f'# Scrapers to check ({stamp})', '']
     if flagged:

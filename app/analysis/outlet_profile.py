@@ -49,7 +49,7 @@ NEIGHBOURS = 3
 AGREE = 2  # of an outlet's NEIGHBOURS look-alikes that must share its type for it to be shown
 STABLE = 0.75  # clusterwise Jaccard (Hennig): above this a cluster is stable
 BOOTS = 100
-CACHE = os.path.join(Config.data, 'outlet_profile.json')
+CACHE = os.path.join(Config.cache, 'outlet_profile.json')
 VERSION = 4  # bump when the method changes, so the day's cache is rebuilt (4: beats)
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire', 'Memeorandum'}
 

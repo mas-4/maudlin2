@@ -27,7 +27,7 @@ from app.analysis import motif_index as mi  # noqa: E402
 from app.analysis import motif_retriever as mr  # noqa: E402
 from app.utils import Config  # noqa: E402
 
-OUT = os.path.join(Config.data, 'motifs', 'glean.json')
+OUT = os.path.join(Config.cache, 'motifs', 'glean.json')
 CHUNK = 50  # claims judged or scored between saves of the signals' caches
 
 
@@ -93,6 +93,7 @@ def score():
             scorer.signals.save()
             print(f'scored {n + 1}/{len(cands)} claims ({time.time() - started:.0f} s)', flush=True)
     scorer.signals.save()
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, 'w') as f:
         json.dump({'model': m['at'], 'at': dt.now().isoformat(timespec='seconds'), 'rows': rows}, f)
     print(f'{len(rows)} pairs scored in {time.time() - started:.0f} s, kept in {OUT}', flush=True)

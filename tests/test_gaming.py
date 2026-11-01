@@ -1,11 +1,23 @@
 """app/gaming.py: gaming mode holds the worker, experiments and hourly runs back until it's off, or its time is up"""
 import time
 
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
 from app import gaming, gpu_lease, worker
 
 
-def test_gaming_mode_holds_the_work_back_until_off(monkeypatch, tmp_path):
-    monkeypatch.setattr(gaming, 'FLAG', str(tmp_path / 'gaming.json'))
+@pytest.fixture
+def db(monkeypatch):
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+
+
+def test_gaming_mode_holds_the_work_back_until_off(monkeypatch, tmp_path, db):
     monkeypatch.setattr(gaming, 'free_card', lambda after_run=False: [])  # never the real Ollama's models
     monkeypatch.setattr(gaming, 'LOG', str(tmp_path / 'gaming_log.jsonl'))
     monkeypatch.setattr(gaming, 'notify', lambda title, body: None)
@@ -21,8 +33,7 @@ def test_gaming_mode_holds_the_work_back_until_off(monkeypatch, tmp_path):
     assert gaming.active() is None and worker.yielding() is None
 
 
-def test_gaming_mode_turns_itself_off_at_most_after_max_hours(monkeypatch, tmp_path):
-    monkeypatch.setattr(gaming, 'FLAG', str(tmp_path / 'gaming.json'))
+def test_gaming_mode_turns_itself_off_at_most_after_max_hours(monkeypatch, db):
     monkeypatch.setattr(gaming, 'free_card', lambda after_run=False: [])
     on = gaming.turn_on(hours=100)
     assert on['until'] - on['since'] == gaming.MAX_HOURS * 3600
@@ -41,9 +52,8 @@ def test_in_gaming_mode_the_hourly_run_scrapes_but_judges_nothing(monkeypatch):
     assert asked == [] and all(r['news_score'] is None and r['scored_by'] is None for r in got)
 
 
-def test_a_double_toggle_doesnt_flip_it_back_and_the_game_launcher_is_quiet(monkeypatch, tmp_path):
+def test_a_double_toggle_doesnt_flip_it_back_and_the_game_launcher_is_quiet(monkeypatch, tmp_path, db):
     """Oct 28, the person: "why does gaming mode flash all the time" (on and off notifications in pairs)"""
-    monkeypatch.setattr(gaming, 'FLAG', str(tmp_path / 'gaming.json'))
     monkeypatch.setattr(gaming, 'LOG', str(tmp_path / 'gaming_log.jsonl'))
     monkeypatch.setattr(gaming, 'free_card', lambda after_run=False: [])
     shown = []

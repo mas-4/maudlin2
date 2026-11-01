@@ -33,7 +33,7 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-TIES = os.path.join(Config.data, 'show_story_ties.json')  # claim key -> story id, or 0 for none (asked once)
+TIES = os.path.join(Config.cache, 'show_story_ties.json')  # claim key -> story id, or 0 for none (asked once)
 TIE_FLOOR, TIE_MARGIN = 0.75, 0.04
 WINDOW_BEFORE, WINDOW_AFTER = 2, 1  # days: stories on the front pages around the claim's date
 SIDES = ('left', 'center', 'right')
@@ -380,13 +380,8 @@ def recent_headlines(days: int = 3) -> list[tuple[str, str]]:
 
 def recent_captions(days: int = 3) -> list[tuple[str, str]]:
     """(TV caption, its channel) of the last `days` days read"""
-    import glob
     from app import chyrons
-    out = []
-    for path in sorted(glob.glob(os.path.join(chyrons.FOLDER, 'matched-*.json')))[-days:]:
-        for c in read_json(path, []):
-            out.append((c['text'], chyrons.CHANNELS.get(c['channel'], c['channel'])))
-    return out
+    return [(c['text'], chyrons.CHANNELS.get(c['channel'], c['channel'])) for c in chyrons.matched(days)]
 
 
 def words_by_motif(found: list[dict]) -> dict[str, list[dict]]:

@@ -1,12 +1,19 @@
 from datetime import datetime as dt
 from datetime import timedelta as td
 
+import pytest
+
 from app.analysis import llm, motif_index as mi, watch_list as wl
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def _data_db(monkeypatch):
+    memory_db(monkeypatch)  # an empty data.db: the proposals, the undo stack, the watch list are kept there
 
 
 def setup(monkeypatch, tmp_path, texts=None):
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    monkeypatch.setattr(wl, 'STORE', str(tmp_path / 'watch.json'))
     monkeypatch.setattr(wl, 'REFILE_LOG', str(tmp_path / 'refile.jsonl'))
     looked = []
 

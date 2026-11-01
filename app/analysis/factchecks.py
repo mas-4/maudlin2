@@ -14,17 +14,17 @@ from datetime import UTC, datetime as dt, timedelta as td
 from app.analysis import trace
 from app.analysis.ties import tie
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
+from app.utils.store import read_json
 from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-STORY_CACHE = os.path.join(Config.data, 'factcheck_story_links.json')
-NARRATIVE_CACHE = os.path.join(Config.data, 'factcheck_narrative_links.json')
+STORY_CACHE = os.path.join(Config.cache, 'factcheck_story_links.json')
+NARRATIVE_CACHE = os.path.join(Config.cache, 'factcheck_narrative_links.json')
 # The story pages' own answers: a week of stories, so a story that left the front page (or never made a card) still
 # gets the checks that came after. Its own file, since a tie cache keeps only one run's answers and the front page's
 # set of stories differs
-PAGE_CACHE = os.path.join(Config.data, 'factcheck_story_page_links.json')
+PAGE_CACHE = os.path.join(Config.cache, 'factcheck_story_page_links.json')
 STORY_DAYS = 7  # a story on the front page now may have been checked last week
 NARRATIVE_DAYS = 30  # folklore lives longer than the news
 SIM_FLOOR = 0.6
@@ -67,13 +67,13 @@ def for_narratives(claims: dict[int, str], items: list[dict] | None = None) -> d
 
 def stories_of() -> dict[str, int]:
     """Fact-check url -> the story it was tied to (for_stories) while that story was on a card, read from the story
-    pages' saved extras (page_headlines.STORY_EXTRAS), which keep every tie ever found; the most recently updated story
+    pages' saved extras (page_headlines.read_story_extras), which keep every tie ever found; the most recently updated story
     when more than one. Not STORY_CACHE: a tie cache keeps a run's answers as picks among that run's options, not
     story ids. Checks tied only on the story pages (for_story_pages) aren't here: those ties last a run. For the motif
     index's filings (motif_index.story_motifs)"""
-    from app.site.page_headlines import STORY_EXTRAS
+    from app.site.page_headlines import read_story_extras
     out, when = {}, {}
-    for sid, extra in read_json(STORY_EXTRAS, {}).items():
+    for sid, extra in read_story_extras().items():
         for p in extra.get('factchecks') or []:
             url, at = p.get('url'), extra.get('updated', '')
             if url and sid.isdigit() and at >= when.get(url, ''):
@@ -85,7 +85,7 @@ def stories_of() -> dict[str, int]:
 # Thompson's chapters dropped Oct 21, unread since Oct 4), so the rumors fact-checkers take on can be read beside what people retell. No verdicts: the
 # feeds' titles are often questions ("Was X...?"), and the model guessed ratings the checkers never gave (Oct 4);
 # real ratings would come from the fact-checkers' own ClaimReview data (Google's Fact Check Tools API)
-LABELS = os.path.join(Config.data, 'factcheck_labels.json')  # url -> labels, kept for good (a few KB a day)
+# The labels, url -> labels, kept for good in data.db (app/tables/caches.FactcheckLabel; a few KB a day)
 LABEL_DAYS = 30
 MAX_LABELS = 40  # model calls a run, at most
 # Gemma 4 26B since Oct 10 (Qwen3 8B before): on the person's corrected fact-check claims it wrote closer to their
@@ -122,7 +122,20 @@ def label_schema() -> dict:
 
 
 def load_labels() -> dict:
-    return read_json(LABELS, {})
+    from app.models import Session
+    from app.tables.caches import FactcheckLabel
+    with Session() as s:
+        return {r.url: r.to_dict() for r in s.query(FactcheckLabel)}
+
+
+def save_labels(labels: dict):
+    """Write these labels (url -> labels) over what's kept for their urls"""
+    from app.models import Session
+    from app.tables.caches import FactcheckLabel
+    with Session() as s:
+        for url, label in labels.items():
+            s.merge(FactcheckLabel(**FactcheckLabel.from_dict(url, label)))
+        s.commit()
 
 
 ARTICLE_CHARS = 3500  # of the piece's text shown to the model (factcheck_text.py)
@@ -168,6 +181,7 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
             article=f'\nThe piece itself:\n{text[:ARTICLE_CHARS]}\n' if text else '', examples=examples,
             genres='; '.join(GENRES), shapes=prompt_fields()),
             schema, max_tokens=700, model=LABEL_MODEL)
+    done = {}
     for item, answer in zip(todo, llm.parallel(ask, todo)):  # four at once: the bigger model is slower a call
         text = read[item['url']]
         if answer:
@@ -175,9 +189,9 @@ def label_all(items: list[dict] | None = None, limit: int = MAX_LABELS) -> dict:
             new = {**settle(answer), 'model': LABEL_MODEL, 'read': 'piece' if text else 'feed'}
             if old and new.get('claim') != old and (mi.key(old) in index.get('claims', {}) or old in index.get('corrections', {})):
                 new['claim from the piece'], new['claim'] = new.get('claim'), old
-            labels[item['url']] = new
+            labels[item['url']] = done[item['url']] = new
             trace.emit('written', new.get('claim') or '', source=item['source'], ref=item['url'], genre=new.get('genre'),
                        read=new['read'])  # the 🧠 Live page's (app/analysis/trace.py)
-    write_json(LABELS, labels)
+    save_labels(done)
     logger.info("Fact-checks: labeled %d (%d in all)", len(todo), len(labels))
     return labels

@@ -1,7 +1,17 @@
 """scripts/maudlin_mcp.py: the read-only data server. Queries answer; writes can't happen, plain or hidden in a WITH."""
 import json
 import sqlite3
+
+import pytest
+
 from tests.load import script
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def _data_db(monkeypatch):
+    memory_db(monkeypatch)  # an empty data.db: the proposals, the undo stack, the watch list are kept there
+
 
 server = script('maudlin_mcp')
 
@@ -29,8 +39,8 @@ def test_changes_go_through_the_checker_marked_and_only_claudes_are_undone(tmp_p
     from app.analysis import motif_index as mi
     validate = script('validate')
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    for k, v in (('FOLDER', tmp_path), ('CURATION_LOG', tmp_path / 'log.jsonl'), ('UNDO', tmp_path / 'undo')):
-        monkeypatch.setattr(validate, k, str(v))  # never the real log or undo folder
+    for k, v in (('FOLDER', tmp_path), ('CURATION_LOG', tmp_path / 'log.jsonl')):
+        monkeypatch.setattr(validate, k, str(v))  # never the real log
     mi.save({'next': 3, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'Empty suit', 'claims': []},
                                                     'M002': {'id': 'M002', 'name': 'Rigged vote', 'claims': []}}})
     httpd = ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
@@ -60,18 +70,16 @@ def test_undo_takes_back_a_proposal_decision_too(tmp_path, monkeypatch):
 
     from app.analysis import motif_index as mi
     from app.analysis import motif_proposals as mp
-    from app.utils.store import write_json
     validate = script('validate')
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    monkeypatch.setattr(mp, 'PROPOSALS', str(tmp_path / 'proposals.json'))
-    for k, v in (('FOLDER', tmp_path), ('CURATION_LOG', tmp_path / 'log.jsonl'), ('UNDO', tmp_path / 'undo')):
+    for k, v in (('FOLDER', tmp_path), ('CURATION_LOG', tmp_path / 'log.jsonl')):
         monkeypatch.setattr(validate, k, str(v))
     mi.save({'next': 4, 'claims': {}, 'entries': {i: {'id': i, 'name': n, 'claims': []} for i, n in
                                                     (('M001', 'Empty suit'), ('M002', 'Rigged vote'), ('M003', 'Big lie'))}})
     store = {}
     mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'cousins')
     mp.add(store, 'relate', {'a': 'M002', 'b': 'M003'}, 'cousins too')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     good, bad = sorted(store, key=lambda i: store[i]['reason'])
     httpd = ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()

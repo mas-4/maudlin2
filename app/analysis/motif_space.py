@@ -28,7 +28,7 @@ from app.utils import Config, get_logger
 logger = get_logger(__name__)
 
 CACHE = os.path.join(Config.data, 'narratives', 'embeddings.sqlite')
-TODAY_FILE = os.path.join(Config.data, 'motifs', 'motif_space.json')
+TODAY_FILE = os.path.join(Config.cache, 'motifs', 'motif_space.json')
 SPACES = {'qwen3 8b': lm.QWEN3_EMBED, 'mxbai': lm.MXBAI, 'tfidf': None}
 PUBLIC_SPACES = ('qwen3 8b', 'tfidf')
 NEAR = 8  # nearest centres kept for each motif

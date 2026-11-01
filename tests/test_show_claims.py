@@ -1,9 +1,22 @@
 """app/analysis/show_claims.py: claims read from the shows' transcripts keep only quotes found in the transcript,
 say who told them, and reach the motif index only once retold on two shows (or by two callers)."""
 import numpy as np
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import app.models as models
 from app.analysis import llm
 from app.analysis import show_claims as sc
+from app.models import Base
+
+
+@pytest.fixture
+def db(monkeypatch):
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
 
 TEXT = ("Welcome back. Caller from Ohio, you're on the air. Yeah, the Democrats are paying people to stuff ballot boxes "
         "in every swing state, I've seen it. Thanks for the call. Now this hour is brought to you by mattresses.")
@@ -25,7 +38,7 @@ def test_a_part_keeps_quoted_claims_with_their_speaker(monkeypatch):
     assert dropped[0]['why'] == 'quote not in the transcript'  # the made-up ad quote
 
 
-def test_only_retold_claims_reach_the_index(monkeypatch):
+def test_only_retold_claims_reach_the_index(monkeypatch, db):
     def fake_embed(texts):
         out = []
         for t in texts:

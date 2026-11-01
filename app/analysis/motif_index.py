@@ -261,7 +261,7 @@ STORY_FIELDS = ('story', 'story_tie')  # carried onto the filing when the claim'
 # hourly runs (each run's clusters continue the story that holds most of their headlines, and a story back on the front
 # pages under new headlines gets its old id back: app/analysis/stories.sync_stories). An id lasts unless the story is
 # folded into another (stories.merge_stories, by hand or a return the model missed); the gone id is kept in
-# story_merges.json and followed here. Labels get reworded, so ties are by id. A story isn't a saga: sagas are loose
+# the story_merge table and followed here. Labels get reworded, so ties are by id. A story isn't a saga: sagas are loose
 # clusters of stories by design (Story.saga_id). A narrative's tie is the model's, to one of the stories seen last
 # when the report was made ('story_tie': 'same event' or 'same issue', app/narratives.story_link); a fact-check's is
 # the one its card showed (factchecks.stories_of). The Focus Group's and the shows' claims carry none
@@ -785,7 +785,7 @@ def public_note(entry: dict) -> str:
 _MOVED = {
     'motif_filing': (
         'CANDIDATES', 'FILING_LOG', 'JUDGE_MODEL', 'LINK_FIELDS', 'MATCH_FLOOR', 'MATCH_PROMPT', 'MAX_NEW',
-        'MAX_WORDS', 'METRICS', 'MODEL', 'NAME_PROMPT', 'NAME_RULES', 'NAME_SCHEMA', 'NEW_PROMPT', 'REUSE_PROMPT',
+        'MAX_WORDS', 'MODEL', 'NAME_PROMPT', 'NAME_RULES', 'NAME_SCHEMA', 'NEW_PROMPT', 'REUSE_PROMPT',
         'SHORTLIST_LOG', 'SHOWN', 'SHOWN_FLOOR', 'Shortlister', 'backfill_stories', 'closest', 'file_claims', 'fits',
         'fits_name', 'log_shortlist', 'match', 'metrics', 'metrics_history', 'model_days', 'name_claim', 'nightly',
         'record', 'report_stories', 'same_name', 'snapshot_metrics', 'sure_share',

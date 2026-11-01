@@ -11,12 +11,10 @@ import pytz
 
 from app.site.common import TemplateHandler
 from app.utils import Config, Constants, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
 FOLDER = os.path.join(Config.data, 'archive')
-DAYS = os.path.join(FOLDER, 'days.json')
 RELATIVE = re.compile(r'''(\b(?:href|src)=["'])(?!https?:|#|/|mailto:|data:)([^"']+)''')
 FOOTER = re.compile(r'<div class="site-footer">.*?</div>', re.S)
 
@@ -26,7 +24,12 @@ def _today() -> str:
 
 
 def _days() -> dict:
-    return read_json(DAYS, {})
+    """day -> how the front page called it at the day's last run (data.db's archive_day)"""
+    from app.models import Session
+    from app.tables.runstate import ArchiveDay
+    with Session() as s:
+        return {r.day: {'label': r.label, 'emoji': r.emoji, 'story': r.story, 'stories': r.stories}
+                for r in s.query(ArchiveDay)}
 
 
 def refooter(page: str) -> str:
@@ -55,10 +58,13 @@ def save(newsday: dict | None):
     os.makedirs(FOLDER, exist_ok=True)
     day = _today()
     shutil.copyfile(os.path.join(Config.build, 'index.html'), os.path.join(FOLDER, f'{day}.html'))
-    days = _days()
-    days[day] = {'label': (newsday or {}).get('label'), 'emoji': (newsday or {}).get('emoji'),
-                 'story': (newsday or {}).get('story'), 'stories': (newsday or {}).get('stories')}
-    write_json(DAYS, days, indent=1)
+    from app.models import Session
+    from app.tables.runstate import ArchiveDay
+    newsday = newsday or {}
+    with Session() as s:
+        s.merge(ArchiveDay(day=day, label=newsday.get('label'), emoji=newsday.get('emoji'), story=newsday.get('story'),
+                           stories=newsday.get('stories')))
+        s.commit()
 
 
 WEEK = 7  # days the newsiness chart shows

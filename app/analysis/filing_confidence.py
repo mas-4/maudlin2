@@ -46,7 +46,7 @@ MIN_EACH = 40  # kept and removed filings needed to train
 # for better motifs by hand): for each claim with a filing under WEAK in their motifs (unchecked, or confirmed and up
 # for a second look), the CANDIDATES motifs of theirs the shortlist ranks highest that it isn't in, each given a fit by
 # this model, the best BETTER_SHOWN kept from BETTER_MIN up
-ALTERNATIVES = os.path.join(Config.data, 'motifs', 'filing_alternatives.json')  # claim key -> {'model', 'motifs'}
+ALTERNATIVES = os.path.join(Config.cache, 'motifs', 'filing_alternatives.json')  # claim key -> {'model', 'motifs'}
 WEAK = 0.5
 CANDIDATES = 12
 BETTER_SHOWN = 3

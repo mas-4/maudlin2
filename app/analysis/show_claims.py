@@ -9,20 +9,18 @@ and the quote supports it. Each claim says who told it (host, guest, caller, a p
 speaker names. Quotes stay in the local checker; the site shows claims in our words, never the quotes or callers.
 The hourly newscasts (read for their running order) and the Focus Group (read by its own reader) aren't read here."""
 import json
-import os
 import time
 from datetime import datetime as dt
 from datetime import timedelta as td
 
 from app.analysis import focus_group, llm, trace
-from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
+from app.utils import get_logger
 from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-STORE = os.path.join(Config.data, 'show_claims.json')  # episode url -> its claims, filled chunk by chunk
-RETOLD = os.path.join(Config.data, 'show_claims_retold.json')  # retold(), kept each run for the folklore page
+# Episode url -> its claims, filled chunk by chunk, and retold(), kept each run for the folklore page: in data.db
+# (app/tables/showclaims.py)
 MODEL = local_models.BIG
 CHUNK = 6000  # characters of transcript a call
 DAYS = 7  # episodes published this recently
@@ -63,11 +61,14 @@ WHO = {'host': ('A show host', 'host'), 'guest': ('A guest on a show', 'guest'),
 
 
 def load() -> dict:
-    return read_json(STORE, {})
+    from app.tables.showclaims import SHOWS, load_episodes
+    return load_episodes(SHOWS)
 
 
-def save(store: dict):
-    write_json(STORE, store, ensure_ascii=False)
+def save(store: dict, urls=None):
+    """Write these episodes of the store (every one when urls is None)"""
+    from app.tables.showclaims import SHOWS, save_episodes
+    save_episodes(SHOWS, store, urls)
 
 
 def episodes(days: int = DAYS) -> list[dict]:
@@ -127,13 +128,14 @@ def extract(budget: float | None = None) -> dict:
     store = load()
     if llm.backend() is None:
         return store
+    from app.tables.showclaims import any_retold, save_retold
     calls = read_episodes(store, budget)
-    if calls or not os.path.exists(RETOLD):
+    if calls or not any_retold():
         from app.analysis import motif_index as mi
         index = mi.load()
         filed = set(index['claims']) | set(index.get('tellings', {}))
-        old, new = read_json(RETOLD, []), retold(store, lambda text: mi.key(mi.corrected(text, index)) in filed)
-        write_json(RETOLD, new)
+        old, new = kept_retold(), retold(store, lambda text: mi.key(mi.corrected(text, index)) in filed)
+        save_retold(new)
         trace.written_shows(old, new)  # the 🧠 Live page's (app/analysis/trace.py)
     return store
 
@@ -142,11 +144,14 @@ def read_episodes(store: dict, budget: float | None) -> int:
     """Read the parts not read yet, newest episode first, llm.PARALLEL parts at once (each part's claims and their
     checks in turn), saved after each round in order; for at most `budget` seconds (a round begun is finished)"""
     started, calls = time.time(), 0
-    todo = []
+    todo, changed = [], []
     for ep in episodes():
+        if ep['url'] not in store or store[ep['url']].get('chunks') != len(ep['chunks']):
+            changed.append(ep['url'])
         entry = store.setdefault(ep['url'], {k: ep[k] for k in ('source', 'show', 'lean', 'title', 'date')} | {'read': 0, 'claims': []})
         entry['chunks'] = len(ep['chunks'])
         todo += [(ep, entry, n) for n in range(entry['read'], len(ep['chunks']))]
+    save(store, changed)
     for start in range(0, len(todo), llm.PARALLEL):
         if budget is not None and time.time() - started > budget:
             logger.info("Show claims: %d parts read this run; more next run", calls)
@@ -157,7 +162,7 @@ def read_episodes(store: dict, budget: float | None) -> int:
             entry.setdefault('dropped', []).extend(dropped)
             entry['read'] = n + 1
             calls += 1
-        save(store)
+        save(store, [ep['url'] for ep, _entry, _n in round_])
     if calls:
         logger.info("Show claims: %d parts read; %d claims from %d episodes", calls,
                     sum(len(e['claims']) for e in store.values()), len(store))
@@ -171,7 +176,8 @@ def presenter_news(episode: dict, claim: dict) -> bool:
 
 def kept_retold() -> list[dict]:
     """What the last run found retold (retold()), without embedding anything: for the site build"""
-    return read_json(RETOLD, [])
+    from app.tables.showclaims import load_retold
+    return load_retold()
 
 
 MIN_SHOWS = 2  # a claim is retold once this many shows tell it (or this many callers, to any shows)
@@ -227,7 +233,7 @@ def retold(store: dict | None = None, filed=None) -> list[dict]:
 
 def claims() -> list[dict]:
     """The retold claims, for the motif index's filing and the checker's search (source SOURCE; the first episode that
-    told it as its ref): as the last run found them (RETOLD, kept_retold), not worked out again (Oct 20: retold() embeds
+    told it as its ref): as the last run found them (kept_retold), not worked out again (Oct 20: retold() embeds
     and regroups every show claim, 390 passes over the 3.7 GB embedding cache, and the checker's "claims like this one"
     took two and a half minutes)"""
     return [{'claim': r['claim'], 'source': SOURCE, 'ref': r['ref'], 'date': r['date']} for r in kept_retold()]

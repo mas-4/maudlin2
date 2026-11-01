@@ -2,12 +2,10 @@
 makes in the checker or asks for through the MCP server (rename, merge, move, check, groups, genres, rests-on and
 related links, notes, splits' bookkeeping), each under the index's lock (motif_index.exclusive). Reached as before
 through motif_index (mi.add, mi.merge, mi.check)."""
-import os
 from datetime import datetime as dt
 
 
 from app.utils import get_logger
-from app.utils.store import read_json
 from app.analysis import motif_index as mi
 
 logger = get_logger(__name__)
@@ -637,11 +635,10 @@ def story_for(claim: dict, index: dict) -> dict:
         pass
     ref = claim.get('ref') or ''
     if claim.get('source') == 'narrative' and ref:
-        import glob
         from app import narratives
-        name = f'report-{ref[:10]}-{ref[11:13]}{ref[14:16]}*.json'  # 2026-10-05T08:17 -> report-2026-10-05-0817.json
-        for path in glob.glob(os.path.join(narratives.FOLDER, name)):
-            for g in read_json(path, {}).get('found', []):
+        name = f'report-{ref[:10]}-{ref[11:13]}{ref[14:16]}'  # 2026-10-05T08:17 -> report-2026-10-05-0817.json
+        for report in narratives.reports([f for f in narratives.report_files() if f.startswith(name)]):
+            for g in report.get('found', []):
                 said = (g.get('label') or {}).get('narrative')
                 if said and k in (mi.key(said), mi.key(mi.corrected(said, index))):
                     if not g.get('story'):  # the model left it untied: the story its posts link to

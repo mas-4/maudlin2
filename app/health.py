@@ -2,18 +2,16 @@
 noticed, and six video feeds had followed channels that went quiet.) After each run's reading: every outlet should
 have been seen on its front page in the last OUTLET_HOURS, and every side feed that posts regularly should have
 something new within QUIET_TIMES its usual gap between posts (at least QUIET_DAYS days). What's wrong is logged as a
-warning and kept in HEALTH for the checker and whoever looks."""
-import os
+warning and kept in run_state 'health' (app/runstate.py) for the checker and whoever looks."""
 import sqlite3
 import statistics
 from datetime import UTC, datetime as dt, timedelta as td
 
 from app.utils import Config, get_logger
-from app.utils.store import write_json
 
 logger = get_logger(__name__)
 
-HEALTH = os.path.join(Config.data, 'health.json')
+HEALTH = 'health'  # its run_state name
 OUTLET_HOURS = 6
 QUIET_DAYS = 3
 QUIET_TIMES = 4
@@ -70,7 +68,8 @@ def check() -> list[dict]:
         con.close()
     for p in problems:
         logger.warning("Health: %s: %s", p.get('outlet') or p.get('feed'), p['problem'])
-    write_json(HEALTH, {'at': now.isoformat(timespec='seconds'), 'problems': problems})
+    from app import runstate
+    runstate.put(HEALTH, {'at': now.isoformat(timespec='seconds'), 'problems': problems})
     if not problems:
         logger.info("Health: every outlet and regular feed is coming in")
     return problems

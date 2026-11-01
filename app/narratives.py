@@ -18,11 +18,12 @@ words. Copypasta and coordinated posting travel as the same words from few hands
    says whether a story is the same event or the same issue (anything looser isn't shown), and whether voters voice
    the same claim; otherwise the report says there's none.
 
-Writes a report to data/narratives/ (JSON and Markdown); nothing here is published. Run:
+Keeps each report in data.db (narrative_report and its groups; JSON files in data/narratives/ until Nov 1);
+nothing here is published. Run:
     .venv/bin/python -m app.narratives [--hours 6]
+    .venv/bin/python -m app.narratives --show    (the latest report as Markdown)
 """
 import argparse
-import glob
 import hashlib
 import json
 import os
@@ -41,25 +42,77 @@ from app.analysis import local_models
 logger = get_logger(__name__)
 
 FOLDER = os.path.join(Config.data, 'narratives')
-JUDGMENTS = os.path.join(FOLDER, 'judgments.json')
+JUDGMENTS = os.path.join(Config.cache, 'narratives', 'judgments.json')
 # What the filing and the folklore page read of the reports (here since Oct 21; before, the motif index read them from
 # the page builder, site/page_folklore.py)
 NOT_STORIES = {'news report or shared reaction', 'none: a shared topic, not a retold narrative'}  # no cast or motif
-WITHHELD = os.path.join(FOLDER, 'withheld.json')  # narratives pulled by hand: [{claim, reason, at}]
 
 
 def withheld() -> set[str]:
     """Claims withheld from the page by hand after a misreading (Oct 4: a group of trans people talking about their
     own identity was labeled as spreading an anti-trans claim one of them had quoted)."""
-    return {w['claim'] for w in read_json(WITHHELD, [])}
+    from app.models import Session
+    from app.tables.narratives import NarrativeWithheld
+    with Session() as s:
+        return {c for (c,) in s.query(NarrativeWithheld.claim)}
+
+
+def withhold(claim: str, reason: str):
+    """Pull a narrative's claim from the pages (python -m app.narratives --withhold CLAIM --reason WHY)"""
+    from app.models import Session
+    from app.tables.narratives import NarrativeWithheld
+    with Session() as s:
+        s.merge(NarrativeWithheld(claim=claim, reason=reason, at=dt.now().strftime('%Y-%m-%d')))
+        s.commit()
+
+
+def report_files() -> list[str]:
+    """The reports' names (report-YYYY-MM-DD-HHMM.json), oldest first"""
+    from app.models import Session
+    from app.tables.narratives import NarrativeReport
+    with Session() as s:
+        return sorted(f for (f,) in s.query(NarrativeReport.file))
+
+
+def reports(files: list[str] | None = None, newest_first: bool = False) -> list[dict]:
+    """The reports (all, or those named), each as written with its file name, oldest first unless newest_first"""
+    from app.models import Session
+    from app.tables.narratives import NarrativeGroup, NarrativeReport, report_of
+    with Session() as s:
+        q = s.query(NarrativeReport)
+        if files is not None:
+            q = q.filter(NarrativeReport.file.in_(files))
+        heads = sorted(q, key=lambda r: r.file, reverse=newest_first)
+        groups = {}
+        for g in s.query(NarrativeGroup).filter(NarrativeGroup.report.in_([r.file for r in heads])) \
+                .order_by(NarrativeGroup.report, NarrativeGroup.position):
+            groups.setdefault(g.report, []).append(g)
+        return [report_of(r, groups.get(r.file, [])) for r in heads]
+
+
+def load_report(file: str) -> dict | None:
+    found = reports([file])
+    return found[0] if found else None
 
 
 def latest_report() -> dict | None:
-    reports = sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')))
-    if not reports:
-        return None
-    with open(reports[-1]) as f:
-        return dict(json.load(f), file=os.path.basename(reports[-1]))
+    files = report_files()
+    return load_report(files[-1]) if files else None
+
+
+def save_report(file: str, out: dict):
+    """Keep a report (replacing one of the same name)"""
+    from sqlalchemy import delete, insert
+    from app.models import Session
+    from app.tables.narratives import NarrativeGroup, NarrativeReport, group_rows, report_row
+    with Session() as s:
+        s.execute(delete(NarrativeGroup).where(NarrativeGroup.report == file))
+        s.execute(delete(NarrativeReport).where(NarrativeReport.file == file))
+        s.execute(insert(NarrativeReport), [report_row(file, out)])
+        rows = group_rows(file, out.get('found', []))
+        if rows:
+            s.execute(insert(NarrativeGroup), rows)
+        s.commit()
 
 
 SIMILARITY = 0.78  # mutual neighbours this alike (mxbai) are versions of one thing
@@ -506,10 +559,11 @@ def posts_of(keys: list[str]) -> list[dict]:
 
 def made_today() -> bool:
     """Whether today's nightly report (a day's posts) has been written."""
-    for path in glob.glob(os.path.join(FOLDER, f"report-{dt.now().strftime('%Y-%m-%d')}-*.json")):
-        if read_json(path, {}).get('hours', 0) >= 24:
-            return True
-    return False
+    from app.models import Session
+    from app.tables.narratives import NarrativeReport
+    with Session() as s:
+        return s.query(NarrativeReport).filter(NarrativeReport.file.like(f"report-{dt.now().strftime('%Y-%m-%d')}-%"),
+                                               NarrativeReport.hours >= 24).first() is not None
 
 
 def report(hours: float = 6) -> dict:
@@ -591,11 +645,9 @@ def report(hours: float = 6) -> dict:
            'kinds': dict(Counter(g['kind'] for g in found)), 'focus_group_segments': len(segments),
            'found': [{k: v for k, v in g.items() if k != 'members'} for g in found]}
     stamp = dt.now().strftime('%Y-%m-%d-%H%M')
-    write_json(os.path.join(FOLDER, f'report-{stamp}.json'), out, indent=1)
+    save_report(f'report-{stamp}.json', out)
     from app.analysis import trace  # each narrative's claim, its posts by key, for the 🧠 Live page
     trace.written_narratives(out)
-    with open(os.path.join(FOLDER, f'report-{stamp}.md'), 'w') as f:
-        f.write(markdown(out))
     logger.info("Narratives: %d groups (%s), %d labeled retold narratives; report-%s", len(found), out['kinds'],
                 len(narratives), stamp)
     return out
@@ -640,4 +692,14 @@ def markdown(out: dict) -> str:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--hours', type=float, default=6)
-    report(parser.parse_args().hours)
+    parser.add_argument('--show', action='store_true', help="print the latest report as Markdown; don't run one")
+    parser.add_argument('--withhold', metavar='CLAIM', help="pull a narrative's claim from the pages; don't run one")
+    parser.add_argument('--reason', default='')
+    args = parser.parse_args()
+    if args.show:
+        print(markdown(latest_report() or {'made': '-', 'hours': 0, 'posts': 0, 'authors': 0, 'groups': 0,
+                                           'kinds': {}, 'focus_group_segments': 0, 'found': []}))
+    elif args.withhold:
+        withhold(args.withhold, args.reason)
+    else:
+        report(args.hours)

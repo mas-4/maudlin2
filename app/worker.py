@@ -12,17 +12,16 @@ down, the run does it as before. It exits when its checkout has new code (the ho
 again on the new code (deploy/maudlin-worker.service, Restart=always).
 
 Run: python -m app.worker"""
-import json
 import os
 import subprocess
 import time
 from datetime import datetime as dt
 
-from app.utils import Config, get_logger
+from app.utils import get_logger
 
 logger = get_logger(__name__)
 
-HEARTBEAT = os.path.join(Config.data, 'worker.json')  # {'pid', 'at', 'busy', 'commit', 'cycles', 'last cycle'}
+HEARTBEAT = 'worker'  # its run_state name (app/runstate.py): {'pid', 'at', 'busy', 'commit', 'cycles', 'last cycle'}
 FRESH = 10 * 60  # seconds: a heartbeat older than this means no worker
 CYCLE = 30 * 60  # seconds a cycle of processing may take (its steps' budgets within it)
 IDLE = 5 * 60  # seconds to wait after a cycle that found nothing much to do
@@ -31,23 +30,26 @@ POLL = 30  # seconds between looks while the hourly run goes
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _beat() -> dict | None:
+    from app import runstate
+    beat = runstate.get(HEARTBEAT)
+    return beat if isinstance(beat, dict) else None
+
+
 def alive() -> bool:
     """A worker is up: its heartbeat is fresh"""
     try:
-        with open(HEARTBEAT) as f:
-            beat = json.load(f)
-        return time.time() - beat['at'] < FRESH
-    except (OSError, ValueError, KeyError):
+        return time.time() - _beat()['at'] < FRESH
+    except (KeyError, TypeError):
         return False
 
 
 def busy() -> bool:
     """A worker is in the middle of a cycle (scripts/run.sh doesn't put the machine to sleep then)"""
+    beat = _beat()
     try:
-        with open(HEARTBEAT) as f:
-            beat = json.load(f)
         return time.time() - beat['at'] < FRESH and bool(beat.get('busy'))
-    except (OSError, ValueError, KeyError):
+    except (KeyError, TypeError):
         return False
 
 
@@ -55,10 +57,8 @@ def caught_up(since: float = 0) -> bool:
     """The worker has nothing waiting: its last cycle, ended after `since`, found little to do (or no worker is up). An
     experiment takes the GPU only then (Oct 11: an experiment held the lease from the afternoon through the night, the
     worker yielded to it the whole time, and the day's claims went unwritten: 100 filings on Oct 10 against ~250)"""
-    try:
-        with open(HEARTBEAT) as f:
-            beat = json.load(f)
-    except (OSError, ValueError):
+    beat = _beat()
+    if beat is None:
         return True
     if time.time() - beat.get('at', 0) >= FRESH:
         return True
@@ -74,10 +74,8 @@ def had_turn(since: float) -> bool:
     long takes the GPU even if the worker has more to do: with new transcripts and captions every hour no cycle was
     short, and on Oct 11 experiments waited all morning for a caught_up() that never came. Turns, then: a worker
     cycle, which files every claim waiting, then the experiment's TURN"""
-    try:
-        with open(HEARTBEAT) as f:
-            beat = json.load(f)
-    except (OSError, ValueError):
+    beat = _beat()
+    if beat is None:
         return True
     if time.time() - beat.get('at', 0) >= FRESH:
         return True
@@ -122,10 +120,8 @@ def beat(state: dict, **changes):
     # asleep, not the worker down (Oct 23: the desk widget said "down (last beat 47 min ago)" just after a wake)
     state.update(pid=os.getpid(), at=time.time(), awake=time.monotonic(), boot=boot_id())
     state.update(changes)
-    tmp = HEARTBEAT + '.tmp'
-    with open(tmp, 'w') as f:
-        json.dump(state, f)
-    os.replace(tmp, HEARTBEAT)
+    from app import runstate
+    runstate.put(HEARTBEAT, state)
 
 
 class Awake:
@@ -217,11 +213,8 @@ def cycle(state: dict) -> float:
 def main():
     start = commit()
     state = {'commit': start[:7], 'cycles': 0, 'since': dt.now().isoformat(timespec='seconds')}
-    try:  # the last cycle carried over a restart, for the experiments' turns (caught_up, had_turn)
-        with open(HEARTBEAT) as f:
-            state.update({k: v for k, v in json.load(f).items() if k in ('cycles', 'last cycle')})
-    except (OSError, ValueError):
-        pass
+    # the last cycle carried over a restart, for the experiments' turns (caught_up, had_turn)
+    state.update({k: v for k, v in (_beat() or {}).items() if k in ('cycles', 'last cycle')})
     logger.info("Worker up at %s", start[:7])
     while True:
         if commit() != start:

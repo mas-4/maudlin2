@@ -12,16 +12,14 @@ NEWS_DAY_HALF_LIFE_HOURS. 0.45 and up is a big news day, 0.25 a normal one.
                    against the build at Oct 12, 21:06 UTC: 53 outlets on the top story either way, 83 outlets in play
                    against the build's 81 (0.64 against 0.65). Sagas aren't joined here, so a saga's parts count apart
 
-Kept in NEWSINESS (json): {'recorded': [points], 'reconstructed': [points]}; a point is {'at' (UTC), 'score', 'share',
-'outlets', 'active', 'story' (id), 'label', 'kind'}."""
+Kept in the newsiness_point table, a row a point; load() gives {'recorded': [points], 'reconstructed': [points]}, a point
+being {'at' (UTC, ISO text), 'score', 'share', 'outlets', 'active', 'story' (id), 'label', 'kind'}."""
 from datetime import datetime as dt, timedelta as td
 
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-NEWSINESS = f'{Config.data}/newsiness.json'
 BIG, NORMAL = 0.45, 0.25  # page_headlines.NEWS_DAY_TIERS
 LIVE_SLACK = td(minutes=25)  # models' last_accessed: a headline seen in the latest scrape
 LOOKBACK = td(days=3)  # data.py: headlines first seen in the last 3 days
@@ -31,20 +29,38 @@ def kind_of(score: float) -> str:
     return 'big' if score >= BIG else 'normal' if score >= NORMAL else 'slow'
 
 
+POINT = ('score', 'share', 'outlets', 'active', 'label', 'kind')
+
+
+def as_point(r) -> dict:
+    return {'at': r.at.isoformat(timespec='seconds'), **{k: getattr(r, k) for k in POINT}, 'story': r.story_id}
+
+
+def as_row(made: str, p: dict) -> dict:
+    return {'made': made, 'at': dt.fromisoformat(p['at']), **{k: p.get(k) for k in POINT}, 'story_id': p.get('story')}
+
+
 def load() -> dict:
-    return read_json(NEWSINESS, {'recorded': [], 'reconstructed': []})
+    from app.models import Session
+    from app.tables.records import NewsinessPoint
+    data = {'recorded': [], 'reconstructed': []}
+    with Session() as s:
+        for r in s.query(NewsinessPoint).order_by(NewsinessPoint.at, NewsinessPoint.id):
+            data[r.made].append(as_point(r))
+    return data
 
 
 def record(newsday: dict, story_id: int | None, at: dt | None = None):
     """A build's own news-day score and top story, kept (page_headlines.news_day, outside debug)"""
     if not newsday or newsday.get('score') is None:
         return
-    data = load()
-    at = (at or dt.utcnow()).isoformat(timespec='seconds')
-    data['recorded'].append({'at': at, 'score': newsday['score'], 'share': newsday['share'] / 100,
-                             'outlets': newsday['outlets'], 'active': newsday['active'], 'story': story_id,
-                             'label': newsday['story'], 'kind': newsday['kind']})
-    write_json(NEWSINESS, data)
+    from app.models import Session
+    from app.tables.records import NewsinessPoint
+    with Session() as s:
+        s.add(NewsinessPoint(made='recorded', at=(at or dt.utcnow()).replace(microsecond=0), score=newsday['score'],
+                             share=newsday['share'] / 100, outlets=newsday['outlets'], active=newsday['active'],
+                             story_id=story_id, label=newsday['story'] or '', kind=newsday['kind']))
+        s.commit()
 
 
 def reconstruct(until: dt | None = None) -> list[dict]:
@@ -93,7 +109,12 @@ def series() -> list[dict]:
     first = min((p['at'] for p in data['recorded']), default=None)
     if not data['reconstructed'] or (first is None and data['reconstructed'][-1]['at'] < (dt.utcnow() - td(hours=2)).isoformat()):
         data['reconstructed'] = reconstruct(dt.fromisoformat(first) if first else None)
-        write_json(NEWSINESS, data)
+        from app.models import Session
+        from app.tables.records import NewsinessPoint
+        with Session() as s:
+            s.query(NewsinessPoint).filter_by(made='reconstructed').delete()
+            s.bulk_insert_mappings(NewsinessPoint, [as_row('reconstructed', p) for p in data['reconstructed']])
+            s.commit()
     early = [{**p, 'made': 'reconstructed'} for p in data['reconstructed'] if first is None or p['at'] < first]
     return early + [{**p, 'made': 'recorded'} for p in data['recorded']]
 

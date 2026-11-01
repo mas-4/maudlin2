@@ -1,5 +1,18 @@
 """app/lights.py: what the card shows for each state (no hardware)"""
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
 from app import lights
+
+
+@pytest.fixture
+def db(monkeypatch):
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
 
 
 def state(**kw):
@@ -28,18 +41,16 @@ def test_a_failed_run_and_heat_show():
     assert warm != lights.TEAL and warm[0] > lights.TEAL[0]  # toward orange
 
 
-def test_the_unicorn_key_brings_the_rainbow_for_a_while(monkeypatch, tmp_path):
-    import json
+def test_the_unicorn_key_brings_the_rainbow_for_a_while(db):
     import time
+    from app import runstate
     assert lights.look(state(party=True), False)[0] == 'Rainbow'
     assert lights.look(state(party=True), True)[0] == 'Rainbow'  # the person pressed it: night too
     assert lights.look(state(party=True, who='worker', temp=95), False)[:2] == ('Flashing', lights.RED)  # heat first
-    from app.utils import Config
-    monkeypatch.setattr(Config, 'data', str(tmp_path))
     assert not lights.party()
-    (tmp_path / lights.PARTY).write_text(json.dumps({'until': time.time() + 30}))
+    runstate.put(lights.PARTY, {'until': time.time() + 30})
     assert lights.party()
-    (tmp_path / lights.PARTY).write_text(json.dumps({'until': time.time() - 1}))
+    runstate.put(lights.PARTY, {'until': time.time() - 1})
     assert not lights.party()
 
 

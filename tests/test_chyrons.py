@@ -2,6 +2,17 @@ from datetime import datetime
 
 from app import chyrons
 
+
+def run_state_db(monkeypatch):
+    """An empty in-memory data.db for run_state (app/runstate.py)"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+
 DAY = ("date_time_(UTC)\tchannel\tduration\thttps://archive.org/details/\ttext\n"
        "2026-10-05 00:01:00\tMSNOW\t45\tMSNOW_20261005_000000_Nicolle_Wallace_Presents_92NY_on_MS_NOW/start/60\tNICOI I E WAL ACE\n"
        "2026-10-05 00:02:00\tFOXNEWSW\t11\tFOXNEWSW_20261005_000000_Life_Liberty__Levin/start/120\tSAMUEL ALITO\\nJUSTICE\n"
@@ -20,7 +31,7 @@ def test_a_day_of_chyrons_reads_with_program_names(monkeypatch, tmp_path):
 
 def test_each_run_reads_today_and_finishes_yesterday_once(monkeypatch, tmp_path):
     monkeypatch.setattr(chyrons, 'FOLDER', str(tmp_path))
-    monkeypatch.setattr(chyrons, 'STATE', str(tmp_path / 'state.json'))
+    run_state_db(monkeypatch)
     asked = []
     monkeypatch.setattr(chyrons, 'fetch_day', lambda day: asked.append(day) or 10)
     chyrons.fetch_chyrons(datetime(2026, 10, 6, 9))
@@ -56,6 +67,7 @@ def test_cleaning_asks_once_per_caption_and_skips_the_clock(monkeypatch, tmp_pat
 
 def test_headline_captions_match_the_story_theyre_about(monkeypatch, tmp_path):
     import numpy as np
+    run_state_db(monkeypatch)
     monkeypatch.setattr(chyrons, 'FOLDER', str(tmp_path))
     monkeypatch.setattr(chyrons, 'CLEAN', str(tmp_path / 'clean.json'))
     (tmp_path / '2026-10-05.tsv').write_text(
@@ -73,7 +85,8 @@ def test_headline_captions_match_the_story_theyre_about(monkeypatch, tmp_path):
     first, second = chyrons.match_day('2026-10-05', use_model=False)  # the fallback, without the model
     assert first['story'] == 70 and first['rank'] == 2 and first['seconds'] == 40
     assert 'story' not in second  # nothing close enough
-    assert chyrons.read_json(str(tmp_path / 'matched-2026-10-05.json'), [])[0]['text'] == 'CO-PILOT MEANT TO CRASH'
+    kept = chyrons.matched()
+    assert kept[0]['text'] == 'CO-PILOT MEANT TO CRASH' and kept[0]['story'] == 70 and 'story' not in kept[1]
 
 
 def test_bbcs_logo_comes_off_its_headlines():
@@ -85,6 +98,7 @@ def test_bbcs_logo_comes_off_its_headlines():
 
 
 def test_the_model_matches_each_channel_hour_once(monkeypatch, tmp_path):
+    run_state_db(monkeypatch)
     monkeypatch.setattr(chyrons, 'FOLDER', str(tmp_path))
     monkeypatch.setattr(chyrons, 'CLEAN', str(tmp_path / 'clean.json'))
     monkeypatch.setattr(chyrons, 'MATCHES', str(tmp_path / 'matches.json'))

@@ -1,6 +1,5 @@
 """A story back on the front pages under new headlines continues the old story (app/analysis/stories.py): the
 candidates by shared frequent words, the model's same-event verdict cached, merges followed to the end."""
-import json
 
 from app.analysis import llm, stories
 
@@ -28,8 +27,17 @@ def test_same_event_asks_once_and_caches(tmp_path, monkeypatch):
     assert stories.same_event(['x'], ['y']) is None  # no answer: nothing remembered
 
 
-def test_merges_follow_chains(tmp_path, monkeypatch):
-    path = tmp_path / 'merges.json'
-    path.write_text(json.dumps({'151': {'into': 136}, '136': {'into': 120}, '7': {'into': 9}}))
-    monkeypatch.setattr(stories, 'MERGES', str(path))
+def test_merges_follow_chains(monkeypatch):
+    from datetime import datetime as dt
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    from app.tables.stories import StoryMerge
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+    with models.Session() as s:
+        s.add_all(StoryMerge(gone=g, into=i, at=dt(2026, 10, 7)) for g, i in ((151, 136), (136, 120), (7, 9)))
+        s.commit()
     assert stories.merges() == {151: 120, 136: 120, 7: 9}

@@ -19,23 +19,20 @@ import json
 import os
 import sys
 import time
-from datetime import datetime as dt
+from datetime import datetime as dt, UTC
 
 from app.utils import Config
 
-FLAG = os.path.join(Config.data, 'gaming.json')  # {'since', 'until'}
+FLAG = 'gaming'  # its run_state name (app/runstate.py): {'since', 'until', 'at'}
 MAX_HOURS = 12
 OLLAMA = 'http://127.0.0.1:11434'
 
 
 def active() -> dict | None:
     """The gaming mode in force, or None (off, or past its time)"""
-    try:
-        with open(FLAG) as f:
-            on = json.load(f)
-    except (OSError, ValueError):
-        return None
-    if on.get('until', 0) < time.time():
+    from app import runstate
+    on = runstate.get(FLAG)
+    if not isinstance(on, dict) or on.get('until', 0) < time.time():
         return None
     return on
 
@@ -44,21 +41,17 @@ def turn_on(hours: float | None = None) -> dict:
     hours = min(float(hours), MAX_HOURS) if hours else MAX_HOURS
     now = time.time()
     on = {'since': now, 'until': now + hours * 3600, 'at': dt.now().isoformat(timespec='seconds')}
-    tmp = FLAG + '.tmp'
-    with open(tmp, 'w') as f:
-        json.dump(on, f)
-    os.replace(tmp, FLAG)
+    from app import runstate
+    runstate.put(FLAG, on)
     on['freed'] = free_card()
     return on
 
 
 def turn_off() -> bool:
     """Off; whether it was on"""
+    from app import runstate
     was = active() is not None
-    try:
-        os.remove(FLAG)
-    except FileNotFoundError:
-        pass
+    runstate.delete(FLAG)
     return was
 
 
@@ -109,10 +102,10 @@ def record(what: str, quiet: bool):
 
 
 def last_change() -> float:
-    try:
-        return os.path.getmtime(FLAG)
-    except OSError:
-        return 0.0
+    """When it was last turned on, as epoch seconds (0 when off: turning off deletes the row)"""
+    from app import runstate
+    at = runstate.when(FLAG)  # naive UTC
+    return at.replace(tzinfo=UTC).timestamp() if at else 0.0
 
 
 def main(argv: list[str]) -> int:

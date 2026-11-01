@@ -4,6 +4,12 @@ import numpy as np
 import pytest
 
 from app.analysis import llm, motif_index as mi
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def _data_db(monkeypatch):
+    memory_db(monkeypatch)  # an empty data.db: the proposals, the undo stack, the watch list are kept there
 
 
 def fresh(monkeypatch, tmp_path):
@@ -506,7 +512,13 @@ def test_a_claim_copied_or_moved_leaves_its_old_motifs_fit_behind(monkeypatch, t
 
 def test_metrics_say_how_the_catalog_is_shaped_and_keep_a_day_by_day_history(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
-    monkeypatch.setattr('app.analysis.motif_filing.METRICS', str(tmp_path / 'metrics.json'))
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))  # the snapshots go to data.db
     monkeypatch.setattr('app.analysis.motif_filing.FILING_LOG', str(tmp_path / 'filing.jsonl'))
     monkeypatch.setattr(mi.Config, 'data', str(tmp_path))
     mi.save({'next': 4, 'claims': {mi.key('a'): ['M001', 'M002'], mi.key('b'): ['M002'], mi.key('c'): []}, 'entries': {
@@ -522,6 +534,8 @@ def test_metrics_say_how_the_catalog_is_shaped_and_keep_a_day_by_day_history(mon
         f.write('{"at": "2026-10-06T04:00:00", "matched": 3, "new": 1}\n')
     days = {d['day']: d for d in mi.metrics_history()['days']}
     assert days['2026-10-05']['new_motifs'] == 1 and days['2026-10-06']['filed_matched'] == 3
+    from datetime import datetime as dt
+    assert days[dt.now().strftime('%Y-%m-%d')]['shape']['motifs'] == 2  # today's snapshot
 
 
 def test_a_new_motif_gets_the_models_note_genre_and_groups_as_drafts(monkeypatch, tmp_path):
@@ -628,9 +642,8 @@ def test_a_filing_keeps_the_story_its_claim_was_told_about(monkeypatch, tmp_path
 
 def test_a_story_lists_its_motifs_in_time_order_through_merges(monkeypatch, tmp_path):
     fresh(monkeypatch, tmp_path)
-    from app.analysis import stories, watch_list
+    from app.analysis import stories
     monkeypatch.setattr(stories, 'merges', lambda: {7: 5})  # story 7 was folded into 5
-    monkeypatch.setattr(watch_list, 'STORE', str(tmp_path / 'watch.json'))
     mi.save({'next': 3, 'claims': {}, 'entries': {
         'M001': {'id': 'M001', 'name': 'Straight news', 'claims': [
             {'claim': 'Polls closed at eight', 'source': 'narrative', 'date': '2026-10-01', 'story': 5}]},
@@ -652,10 +665,16 @@ def test_older_filings_get_their_story_from_the_report_they_came_in(monkeypatch,
     fresh(monkeypatch, tmp_path)
     from app import narratives
     from app.analysis import factchecks
-    monkeypatch.setattr(narratives, 'FOLDER', str(tmp_path))
-    (tmp_path / 'report-2026-10-05-0817.json').write_text(json.dumps({'made': '2026-10-05T08:17', 'found': [
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+    narratives.save_report('report-2026-10-05-0817.json', {'made': '2026-10-05T08:17', 'found': [
         {'label': {'narrative': 'The count was rigged'}, 'story': {'label': 'x', 'relation': 'same event', 'id': 12}},
-        {'label': {'narrative': 'No story here'}, 'story': None}]}))
+        {'label': {'narrative': 'No story here'}, 'story': None}]})
     monkeypatch.setattr(factchecks, 'stories_of', lambda: {'https://check/1': 30})
     mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [
         {'claim': 'The count was rigged', 'source': 'narrative', 'ref': '2026-10-05T08:17'},

@@ -12,7 +12,6 @@ import numpy as np
 
 from app.analysis import llm, trace
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
 from app.analysis import motif_index as mi
 from app.analysis import local_models
 
@@ -337,10 +336,10 @@ def file_claims(claims: list[dict], limit: int = MAX_NEW, budget: float | None =
     return index
 
 
-# The index's shape over time (for the workbench's stats): a snapshot a day, the latest of the day kept; and each
+# The index's shape over time (for the workbench's stats): a snapshot a day, the latest of the day kept (data.db's
+# motif_metrics_day); and each
 # filing run's outcomes. What came before Oct 6 is rebuilt where it can be (new motifs from first_seen, a person's
 # work from the curation log and the motif checks)
-METRICS = os.path.join(Config.data, 'motifs', 'metrics.json')
 FILING_LOG = os.path.join(Config.data, 'motifs', 'filing_log.jsonl')
 
 
@@ -386,16 +385,26 @@ def sure_share(es: list[dict]) -> dict:
 
 def snapshot_metrics():
     """Today's metrics into the history (the latest of the day wins)"""
-    from app.utils.store import read_json
-    history = read_json(METRICS, {})
-    history[dt.now().strftime('%Y-%m-%d')] = metrics()
-    write_json(METRICS, history)
+    from sqlalchemy.dialects.sqlite import insert
+    from app.models import Session
+    from app.tables.runstate import MotifMetricsDay
+    q = insert(MotifMetricsDay).values(day=dt.now().strftime('%Y-%m-%d'), shape=json.dumps(metrics()))
+    with Session() as s:
+        s.execute(q.on_conflict_do_update(index_elements=['day'], set_={'shape': q.excluded.shape}))
+        s.commit()
+
+
+def metrics_snapshots() -> dict:
+    """day -> that day's snapshot"""
+    from app.models import Session
+    from app.tables.runstate import MotifMetricsDay
+    with Session() as s:
+        return {r.day: json.loads(r.shape) for r in s.query(MotifMetricsDay)}
 
 
 def metrics_history() -> dict:
     """Per day: the snapshots, new motifs (from first_seen; merged ones count, they were made), the filing runs'
     outcomes, and a person's work (curation actions, motif checks)"""
-    from app.utils.store import read_json
     index = mi.load()
     days = defaultdict(lambda: defaultdict(int))
     for e in index['entries'].values():
@@ -424,7 +433,7 @@ def metrics_history() -> dict:
                         days[day]['actions'] += 1
         except (OSError, ValueError):
             pass
-    snaps = read_json(METRICS, {})
+    snaps = metrics_snapshots()
     out = []
     for day in sorted(set(days) | set(snaps)):
         if day < '2026-10-01':
@@ -518,10 +527,9 @@ def fits(label: dict) -> bool:
 def report_stories(index: dict) -> dict[str, dict[str, dict]]:
     """Each saved narrative report's story ties, by the report's time (a narrative filing's ref): {made: {claim, in the
     model's words and as corrected since: story fields}}"""
-    import glob
     from app import narratives
     out = {}
-    reports = [read_json(path, {}) for path in glob.glob(os.path.join(narratives.FOLDER, 'report-*.json'))]
+    reports = narratives.reports()
     try:  # a group the model left untied takes the story its posts link to (narratives.linked_story, Oct 12)
         known = narratives.articles(sorted({u for r in reports for g in r.get('found', []) for u, _ in g.get('shared') or []}))
     except Exception as e:  # noqa: BLE001 - the model's ties alone

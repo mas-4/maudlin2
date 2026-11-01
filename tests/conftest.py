@@ -5,6 +5,35 @@ import tempfile
 # log, which lives in the data folder prod shares
 os.environ['MAUDLIN_LOG_FILE'] = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-log-'), 'app.log')
 
+# The database too (Nov 1): each run works on a copy of data.db, brought up to the newest migration, never the real
+# one. Until then tests opened production's (the worktree's data folder is production's), so the suite failed until
+# the hourly run had migrated it, and anything a test wrote landed there. On btrfs the copy is a reflink: instant.
+_REAL_DATA = os.environ.get('MAUDLIN_DATA') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                            'data')
+
+
+def _copy_database() -> str:
+    import atexit
+    import shutil
+    import subprocess
+    # Beside the repo, on the data's own disk, so the copy can be a reflink (/tmp is another filesystem, where each of
+    # the 12 workers would copy the whole 600 MB); removed when the run ends
+    base = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.test-db')
+    os.makedirs(base, exist_ok=True)
+    folder = tempfile.mkdtemp(prefix='run-', dir=base)
+    atexit.register(shutil.rmtree, folder, True)
+    for suffix in ('', '-wal'):  # the WAL holds what isn't checkpointed into the file yet
+        src = os.path.join(_REAL_DATA, 'data.db' + suffix)
+        if os.path.exists(src):
+            dst = os.path.join(folder, 'data.db' + suffix)
+            if subprocess.run(['cp', '--reflink=auto', src, dst]).returncode:
+                shutil.copyfile(src, dst)
+    return folder
+
+
+os.environ['MAUDLIN_DATA'] = _copy_database()
+os.environ['MAUDLIN_NO_IMPORT'] = '1'  # the migration's file import has nothing to read in the copy's folder
+
 import pytest  # noqa: E402
 
 from app.utils.config import Config  # noqa: E402
@@ -19,6 +48,9 @@ def pytest_addoption(parser):
 def pytest_sessionstart(session):
     if session.config.getoption('--setup-db'):
         os.rename(os.path.join(Constants.Paths.ROOT, 'tests', 'test.db'), Config.db_file_path)
+    from alembic import command
+    from alembic.config import Config as AlembicConfig
+    command.upgrade(AlembicConfig(os.path.join(Constants.Paths.ROOT, 'alembic.ini')), 'head')  # the copy, migrated
     Config.set_debug()
     assert Config.debug
     # Pages the tests render go to a scratch folder, never the real build: the pre-commit hook runs these tests, and
@@ -35,27 +67,21 @@ def pytest_sessionstart(session):
     def no_ollama(*args, **kwargs):
         raise RuntimeError('no Ollama embeddings in tests')
     clustering.ollama_embed = no_ollama
-    # Nor Bluesky's API (and its cache is in the shared data folder): no posts to show
+    # Nor Bluesky's API (its lookups are in data.db): no posts to show
     from app import bluesky_examples
     bluesky_examples.prepared = dict
-    bluesky_examples.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-bsky-'), 'bluesky_examples.json')
     # Nor the accusations screen's model (its cache is in the shared data folder too): no one accused
     from app.analysis import accusations
     accusations.read = lambda claim: {'accused': []}
-    # Stories' return verdicts and merges live in the shared data folder too
+    # Stories' return verdicts live in the shared data folder too
     from app.analysis import stories
-    scratch = tempfile.mkdtemp(prefix='maudlin-test-stories-')
-    stories.RETURNS, stories.MERGES = os.path.join(scratch, 'story_returns.json'), os.path.join(scratch, 'story_merges.json')
+    stories.RETURNS = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-stories-'), 'story_returns.json')
     accusations.PER_BUILD = 10 ** 6  # the suite shares one screen: no budget to run out of
     accusations.CACHE = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-accuse-'), 'accusations.json')
     # The motif retriever's weights live there too; filing in tests uses the closest motifs unless a test trains it
     from app.analysis import motif_retriever
     motif_retriever.WEIGHTS = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-retriever-'), 'motif_retriever.json')
     motif_retriever.MIN_FILINGS = 10 ** 6
-    # What's read from the shows' transcripts lives there too
-    from app.analysis import show_claims
-    shows = tempfile.mkdtemp(prefix='maudlin-test-shows-')
-    show_claims.STORE, show_claims.RETOLD = os.path.join(shows, 'show_claims.json'), os.path.join(shows, 'show_claims_retold.json')
     # The motif signals' caches (claim shapes, reranker and yes/no answers) too
     from app.analysis import motif_signals
     sig = tempfile.mkdtemp(prefix='maudlin-test-signals-')
@@ -66,11 +92,9 @@ def pytest_sessionstart(session):
     # The filing confidence model lives there too
     from app.analysis import filing_confidence
     filing_confidence.MODEL = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-confidence-'), 'filing_confidence.json')
-    # Story pages kept for good, and where ended sagas point: in the shared data folder too
+    # Story pages kept for good: in the shared data folder too
     from app.site import page_story
     page_story.ARCHIVE = tempfile.mkdtemp(prefix='maudlin-test-story-archive-')
-    from app.analysis import sagas
-    sagas.ENDED = os.path.join(tempfile.mkdtemp(prefix='maudlin-test-sagas-'), 'sagas_ended.json')
 
 
 # Every path into the shared data folder, pointed at a scratch copy (Oct 14: the list above missed the shortlist and
@@ -85,7 +109,9 @@ _done = set()
 def _real_roots() -> tuple:
     global _REAL
     if _REAL is None:
-        _REAL = tuple({os.path.realpath(Config.data), os.path.abspath(Config.data)})
+        # the real folder, and the database copy's folder (paths built from Config.data at import lead there)
+        _REAL = tuple({os.path.realpath(_REAL_DATA), os.path.abspath(_REAL_DATA),
+                       os.path.realpath(os.environ['MAUDLIN_DATA'])})
     return _REAL
 
 
@@ -106,6 +132,7 @@ def _redirect_data_paths():
     _real_roots()
     if Config.data != SCRATCH:
         Config.data = SCRATCH
+        Config.cache = os.path.join(SCRATCH, 'cache')  # read at call time by some (page_headlines' story seams)
     for name, mod in list(sys.modules.items()):
         if name in _done or not (name.startswith('app') or getattr(mod, '__file__', '') and
                                  os.sep + 'scripts' + os.sep in (mod.__file__ or '')):

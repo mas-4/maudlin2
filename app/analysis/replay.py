@@ -329,7 +329,7 @@ def _key(rows: list) -> str:
 
 
 def cache_path() -> str:
-    return os.path.join(Config.data, 'replay.json')
+    return os.path.join(Config.cache, 'replay.json')
 
 
 def _window() -> tuple[list, dt | None]:

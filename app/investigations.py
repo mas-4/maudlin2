@@ -5,9 +5,8 @@ to the current story each is about, when there is one.
 
 Polite by design: each feed is read once per run (hourly), with conditional requests (ETag / Last-Modified) so an
 unchanged feed sends nothing back, and only headlines, links and the feed's own short summaries are kept. Results are
-cached in data/investigations.json; a source that errors keeps its last good items."""
+kept in data.db (run_state 'investigations'); a source that errors keeps its last good items."""
 import html
-import os
 import re
 from datetime import datetime as dt, timedelta as td
 from email.utils import parsedate_to_datetime
@@ -17,11 +16,10 @@ import requests as rq
 from bs4 import BeautifulSoup as Soup
 
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-CACHE = os.path.join(Config.data, 'investigations.json')
+CACHE = 'investigations'  # its run_state name (app/runstate.py)
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 KEEP = 20  # newest items kept per source
 # Each outfit's chip on the front page: a short name, an emoji for what it does, a color, and a one-line description
@@ -86,7 +84,8 @@ def parse(xml: str) -> list[dict]:
 
 
 def _load() -> dict:
-    return read_json(CACHE, {})
+    from app import runstate
+    return runstate.get(CACHE, {})
 
 
 def fetch_investigations():
@@ -111,7 +110,8 @@ def fetch_investigations():
         cache[source['key']] = {'items': items, 'etag': response.headers.get('ETag'),
                                 'modified': response.headers.get('Last-Modified'),
                                 'fetched': dt.now(pytz.UTC).isoformat()}
-    write_json(CACHE, cache)
+    from app import runstate
+    runstate.put(CACHE, cache)
     logger.info("Investigations: %d items from %d sources", sum(len(v.get('items', [])) for v in cache.values()),
                 len(cache))
 

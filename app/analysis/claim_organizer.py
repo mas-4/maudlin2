@@ -185,15 +185,10 @@ def alsos(rows: list[dict] | None = None) -> dict[str, list[str]]:
 def report_groups(index: dict | None = None) -> dict[str, list[tuple[str, dict]]]:
     """Claim key (as worded now) -> the paraphrase groups its claim was written for, [(report's time, group)], the
     latest report first: every narrative report read once"""
-    import glob
-    import os
-
-    from app.narratives import FOLDER
-    from app.utils.store import read_json
+    from app.narratives import reports
     index = index if index is not None else mi.load()
     out = defaultdict(list)
-    for path in sorted(glob.glob(os.path.join(FOLDER, 'report-*.json')), reverse=True):
-        report = read_json(path, {})
+    for report in reports(newest_first=True):
         for g in report.get('found', []):
             n = (g.get('label') or {}).get('narrative')
             if n:

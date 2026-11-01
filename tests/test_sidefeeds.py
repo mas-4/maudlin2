@@ -1,5 +1,4 @@
 """app/sidefeeds.py: parsing, archiving and selection, against an in-memory database and faked requests."""
-import json
 from datetime import datetime as dt, timedelta as td
 
 import pytest
@@ -29,6 +28,8 @@ def db(monkeypatch):
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)
     monkeypatch.setattr(sf, 'Session', session)
+    import app.models
+    monkeypatch.setattr(app.models, 'Session', session)  # the tables of app/tables, read through app.models
     return session
 
 
@@ -96,8 +97,7 @@ class FakeResponse:
 
 
 def test_fetch_conditional_requests_spacing_and_state(db, monkeypatch, tmp_path):
-    state = tmp_path / 'state.json'
-    monkeypatch.setattr(sf, 'STATE', str(state))
+    from app import runstate
     monkeypatch.setattr(sf, 'HOST_PAUSE', 0)
     monkeypatch.setattr(sf, 'SOURCES', [sf._source('a', 'A', 'podcast', 'left', 'https://feeds.megaphone.fm/A', True),
                                          sf._source('b', 'B', 'podcast', 'left', 'https://feeds.megaphone.fm/B', True),
@@ -113,7 +113,7 @@ def test_fetch_conditional_requests_spacing_and_state(db, monkeypatch, tmp_path)
         return FakeResponse(304)
     monkeypatch.setattr(sf.rq, 'get', get)
     sf.fetch_sidefeeds()
-    saved = json.loads(state.read_text())
+    saved = runstate.get(sf.STATE)
     assert saved['a']['etag'] == '"e1"' and 'fetched' in saved['b'] and 'fetched' in saved['c']
     with db() as s:
         assert s.query(SideItem).filter(SideItem.source == 'a').count() == 3
@@ -140,7 +140,6 @@ def test_sources_have_a_refresh_interval():
 def test_hosts_are_read_side_by_side_but_each_host_one_request_at_a_time(db, monkeypatch, tmp_path):
     import threading
     import time
-    monkeypatch.setattr(sf, 'STATE', str(tmp_path / 'state.json'))
     monkeypatch.setattr(sf, 'HOST_PAUSE', 0.2)
     monkeypatch.setattr(sf, 'SOURCES', [sf._source(k, k, 'podcast', 'left', f'https://{host}/{k}', True)
                                          for k, host in (('a', 'feeds.megaphone.fm'), ('b', 'feeds.megaphone.fm'),

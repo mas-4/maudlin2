@@ -5,7 +5,7 @@ from typing import cast
 import numpy as np
 import pytz
 from sqlalchemy import ForeignKey, String, UniqueConstraint, create_engine, event
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, scoped_session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Boolean, Text, Float, DateTime, Integer
 
 from app.utils import Config, Bias, Credibility, Country, Constants, get_logger
@@ -418,5 +418,7 @@ def _pragmas(con, _):
 # Base.metadata.create_all(engine)
 
 session_factory = sessionmaker(bind=engine, autoflush=False)
-Session = scoped_session(session_factory)
+# A new session each time, not one per thread (Nov 1): helpers that read their table inside a caller's `with Session()`
+# (they used to read a JSON file there) would otherwise get the caller's session and close it on the way out
+Session = session_factory
 SqlLock = Lock()

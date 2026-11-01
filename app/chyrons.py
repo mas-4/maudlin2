@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 URL = 'https://archive.org/services/third-eye.php'
 FOLDER = os.path.join(Config.data, 'chyrons')
-STATE = os.path.join(FOLDER, 'state.json')  # days fetched after they were over: never asked for again
+STATE = 'chyrons/state'  # days fetched after they were over, never asked for again: its run_state name
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 CHANNELS = {'BBCNEWS': 'BBC News', 'CNNW': 'CNN', 'FOXNEWSW': 'Fox News', 'MSNOW': 'MSNOW'}
 
@@ -55,13 +55,14 @@ def fetch_day(day: str) -> int | None:
 def fetch_chyrons(now: dt | None = None):
     """Each run: today's chyrons so far (UTC), and yesterday's once more after it's over, then never again"""
     now = now or dt.utcnow()
-    state = read_json(STATE, {'done': []})
+    from app import runstate
+    state = runstate.get(STATE, {'done': []})
     today, yesterday = now.strftime('%Y-%m-%d'), (now - td(days=1)).strftime('%Y-%m-%d')
     if yesterday not in state['done']:
         rows = fetch_day(yesterday)
         if rows is not None:
             state['done'] = sorted(set(state['done']) | {yesterday})
-            write_json(STATE, state)
+            runstate.put(STATE, state)
     rows = fetch_day(today)
     if rows is not None:
         logger.info("Chyrons: %d rows so far today (UTC)", rows)
@@ -90,7 +91,7 @@ def rows(day: str) -> list[dict]:
 # (the network's logo, the clock, guests' names, ads). A small local model reads each day's distinct lines in batches,
 # with the channel, the program and the day's story headlines for names, says what each line is and corrects the
 # headlines. Kept in data/chyrons/clean.json (channel + OCR line -> kind and text): the raw files never change.
-CLEAN = os.path.join(FOLDER, 'clean.json')
+CLEAN = os.path.join(Config.cache, 'chyrons', 'clean.json')
 # Gemma 4 12B: on a test batch (Oct 6) it sorted the lines well and invented nothing; Gemma 4 26B "corrected" a steel
 # plant in Iowa to one in Ohio, and Qwen3 8B kept garbled promos as headlines
 CLEAN_MODEL = 'gemma4:12b'
@@ -291,7 +292,7 @@ def headlines_of(day: str) -> list[dict]:
     return out
 
 
-MATCHES = os.path.join(FOLDER, 'matches.json')  # channel|hour|caption -> story id (0: none), as the model answered
+MATCHES = os.path.join(Config.cache, 'chyrons', 'matches.json')  # channel|hour|caption -> story id (0: none), as the model answered
 MATCH_MODEL = local_models.BIG
 MATCH_FRONT = 80  # the front pages' stories offered to the model (an hour has about 65; at 40 a stabbing story ranked 47th was missed)
 MATCH_BATCH = 40  # captions a call
@@ -334,8 +335,8 @@ def judge_hour(channel: str, texts: list[str], front: list[dict]) -> dict[str, i
 
 
 def match_day(day: str, use_model: bool = True, budget: float | None = None) -> list[dict]:
-    """The day's headline captions with the story each is about (or none), hour by hour; kept in
-    data/chyrons/matched-<day>.json. The model reads each channel-hour's captions against the front pages' stories at
+    """The day's headline captions with the story each is about (or none), hour by hour; kept in data.db
+    (chyron_match; data/chyrons/matched-<day>.json until Nov 1). The model reads each channel-hour's captions against the front pages' stories at
     the nearest run (embeddings at MATCH missed terse captions such as "U.S. B-1 BOMBERS EVACUATED" and let a few wrong
     ones through, Oct 6); its answers are kept in MATCHES, so a caption is asked about once. Without the model, or
     past `budget` seconds of asking it (the rest is asked next run), embeddings."""
@@ -390,8 +391,34 @@ def match_day(day: str, use_model: bool = True, budget: float | None = None) -> 
         for c in items:
             c.update(found.get((c['channel'], c['text']), {}))
     out = [{**c, 'at': c['at'].isoformat()} for c in caps]
-    write_json(os.path.join(FOLDER, f'matched-{day}.json'), out)
+    save_matched(day, out)
     return out
+
+
+def save_matched(day: str, captions: list[dict]):
+    """Keep a day's matched captions, replacing the day's earlier ones"""
+    from sqlalchemy import delete, insert
+    from app.models import Session
+    from app.tables.narratives import MATCH_FIELDS, ChyronMatch
+    with Session() as s:
+        s.execute(delete(ChyronMatch).where(ChyronMatch.day == day))
+        if captions:
+            s.execute(insert(ChyronMatch), [{'day': day, **{f: c.get(f) for f in MATCH_FIELDS}} for c in captions])
+        s.commit()
+
+
+def matched(days: int | None = None) -> list[dict]:
+    """The matched captions of the latest `days` UTC days read (all of them if None), oldest first, as match_day
+    made them ('at' in ISO; story, label, rank and outlets only where matched)"""
+    from app.models import Session
+    from app.tables.narratives import MATCH_FIELDS, ChyronMatch
+    with Session() as s:
+        q = s.query(ChyronMatch)
+        if days is not None:
+            kept = [d for (d,) in s.query(ChyronMatch.day).distinct().order_by(ChyronMatch.day.desc()).limit(days)]
+            q = q.filter(ChyronMatch.day.in_(kept))
+        rows = q.order_by(ChyronMatch.day, ChyronMatch.id).all()
+    return [{f: getattr(r, f) for f in MATCH_FIELDS if getattr(r, f) is not None} for r in rows]
 
 
 def match_recent(budget: float = 180, now: dt | None = None):

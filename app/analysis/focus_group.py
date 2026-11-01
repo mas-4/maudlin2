@@ -7,18 +7,16 @@ The transcripts (app/transcribe.py) have no speaker names and carry ads; the big
 in chunks and keeps only what the voters say. Quotes are kept for the local checker pages; the site shows the claims
 in our words, never the quotes (as with posts)."""
 import json
-import os
 import re
 import time
 
 from app.analysis import llm
-from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
+from app.utils import get_logger
 from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-STORE = os.path.join(Config.data, 'focus_group_claims.json')  # episode url -> its claims, filled chunk by chunk
+# Episode url -> its claims, filled chunk by chunk: in data.db beside the shows' (app/tables/showclaims.py)
 # Gemma 4 26B since Oct 6: on 12 transcript parts its claims were the voters' own, each with its side; Qwen3 30B-A3B
 # took a host's analysis for a voter's, and Qwen3.5 35B found more but left every side blank (docs/models.md)
 MODEL = local_models.BIG
@@ -53,11 +51,14 @@ SCHEMA = {"type": "object", "properties": {
 
 
 def load() -> dict:
-    return read_json(STORE, {})
+    from app.tables.showclaims import FOCUS_GROUP, load_episodes
+    return load_episodes(FOCUS_GROUP)
 
 
-def save(store: dict):
-    write_json(STORE, store, indent=1)
+def save(store: dict, urls=None):
+    """Write these episodes of the store (every one when urls is None)"""
+    from app.tables.showclaims import FOCUS_GROUP, save_episodes
+    save_episodes(FOCUS_GROUP, store, urls)
 
 
 def episodes() -> list[dict]:
@@ -209,7 +210,7 @@ def extract(budget: float | None = None) -> dict:
             entry['read'] += 1
             entry['chunks'] = len(ep['chunks'])
             calls += 1
-            save(store)
+            save(store, [ep['url']])
     if calls:
         logger.info("Focus Group: %d chunks read; %d claims from %d episodes", calls,
                     sum(len(e['claims']) for e in store.values()), len(store))
@@ -245,7 +246,7 @@ def recheck_support(budget: float | None = None) -> list[str]:
     from app.analysis import motif_index
     index = motif_index.load()
     store, gone, started = load(), [], time.time()
-    for entry in store.values():
+    for url, entry in store.items():
         keep = []
         for c in entry['claims']:
             if c.get('support') or (budget is not None and time.time() - started > budget):
@@ -258,7 +259,7 @@ def recheck_support(budget: float | None = None) -> list[str]:
             else:
                 keep.append(dict(c, support='checked') if ok else c)
         entry['claims'] = keep
-        save(store)
+        save(store, [url])
     return gone
 
 

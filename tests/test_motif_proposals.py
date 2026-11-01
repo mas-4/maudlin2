@@ -2,19 +2,32 @@
 change is made or overtaken, approved through the workbench's own actions, and a rejection sticks."""
 
 import numpy as np
+import pytest
 
 from app.analysis import llm
 from app.analysis import motif_index as mi
 from app.analysis import motif_proposals as mp
-from app.utils.store import write_json
 from tests.load import script
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def _data_db(monkeypatch):
+    memory_db(monkeypatch)  # an empty data.db: the proposals, the undo stack, the watch list are kept there
+
 
 validate = script('validate')
 
 
 def index_with(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))  # an empty data.db (the runs' run_state)
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    monkeypatch.setattr(mp, 'PROPOSALS', str(tmp_path / 'proposals.json'))
     claim = lambda t: {'claim': t, 'source': 'narrative'}  # noqa: E731
     mi.save({'next': 4, 'claims': {mi.key('a'): ['M001'], mi.key('b'): ['M002'], mi.key('c'): ['M003']},
              'groups': {'G01': {'id': 'G01', 'name': 'Archetypes'}}, 'entries': {
@@ -100,7 +113,7 @@ def test_approve_and_reject_through_the_workbench(tmp_path, monkeypatch):
     mp.add(store, 'parent', {'id': 'M002', 'parent': 'M001'}, 'an empty suit makes empty promises')
     mp.add(store, 'group', {'id': 'M002', 'group': 'G01'}, 'an archetype')
     mp.add(store, 'merge', {'a': 'M003', 'b': 'M001'}, 'nope')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     queue = {p['kind']: p for p in validate.workbench_queue('proposals')}
     assert set(queue) == {'rename', 'parent', 'group', 'merge'}
     for kind in ('rename', 'parent', 'group'):
@@ -121,7 +134,7 @@ def test_a_proposal_overtaken_by_hand_drops_out(tmp_path, monkeypatch):
     store = {}
     mp.add(store, 'relate', {'a': 'M002', 'b': 'M003'}, 'told together')
     mp.add(store, 'note', {'id': 'M001', 'from': 'They promsie', 'to': 'They promise'}, 'typo')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     mi.relate('M002', 'M003')
     mi.set_note('M001', 'Rewritten by hand')
     assert mp.open_proposals() == []
@@ -139,7 +152,6 @@ def test_a_claim_checked_after_done_counts_as_seen():
 
 def test_the_models_no_is_asked_again_once_a_motif_changes(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
-    monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
     asked = []
 
     def judge(prompt, schema, **k):
@@ -160,7 +172,6 @@ def test_the_models_no_is_asked_again_once_a_motif_changes(tmp_path, monkeypatch
 
 def test_nightly_once_a_day(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
-    monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
     runs = []
     monkeypatch.setattr(mp, 'propose', lambda budget=None: runs.append(1) or {'finished': len(runs) > 1})
     for _ in range(3):
@@ -214,7 +225,7 @@ def test_links_the_model_thinks_wrong_come_up_for_removal(tmp_path, monkeypatch)
     monkeypatch.setattr(llm, 'complete_json', judge)
     store = {}
     assert mp.review(store, mi.load()) == 1
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     queue = validate.workbench_queue('proposals')
     assert [p['kind'] for p in queue] == ['unrelate']
     validate.workbench_action({**queue[0]['do'], 'proposal': queue[0]['id']})
@@ -246,7 +257,7 @@ def test_a_runs_save_keeps_decisions_made_meanwhile(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
     store = {}
     mp.add(store, 'relate', {'a': 'M001', 'b': 'M002'}, 'cousins')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     run = mp.load()  # a run reads the store, then works for a while
     i = next(iter(run))
     mp.decide(i, 'rejected')  # meanwhile the person rejects it in the checker
@@ -260,7 +271,6 @@ def test_a_runs_save_keeps_decisions_made_meanwhile(tmp_path, monkeypatch):
 def test_best_fit_sorts_the_links_and_folds_the_unlikely(tmp_path, monkeypatch):
     index_with(tmp_path, monkeypatch)
     monkeypatch.setattr(mp, 'JUDGE_DECIDER', None)  # Gemma's 0-10 scores
-    monkeypatch.setattr(mp, 'RUNS', str(tmp_path / 'runs.json'))
     monkeypatch.setattr(mp, 'FIT_MIN', 4)
     vec = {'M001': [1, 0, 0], 'M002': [0.9, 0.44, 0], 'M003': [0, 0, 1]}
     import app.narratives
@@ -492,7 +502,7 @@ def test_what_the_person_said_was_wrong_is_kept_with_the_draft(tmp_path, monkeyp
     store = {}
     mp.add(store, 'merge', {'a': 'M003', 'b': 'M001'}, 'both about votes')
     mp.add(store, 'rename', {'id': 'M002', 'from': 'Empty suit', 'to': 'Hollow man'}, 'more vivid')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     merge, rename = (mp.pid('merge', {'a': 'M003', 'b': 'M001'}),
                      mp.pid('rename', {'id': 'M002', 'from': 'Empty suit', 'to': 'Hollow man'}))
     validate.workbench_action({'action': 'proposal_reject', 'proposal': merge})
@@ -519,7 +529,7 @@ def test_a_proposed_motif_can_be_kept_as_a_seed_or_with_some_of_its_claims(tmp_p
             'claims': [{'claim': 'a', 'in': 'M001'}, {'claim': 'b', 'in': 'M002'}]}
     mp.add(store, 'new_motif', args, 'praise')
     mp.add(store, 'new_motif', {**args, 'name': 'Nobody home'}, 'decay')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     seed, some = mp.pid('new_motif', args), mp.pid('new_motif', {**args, 'name': 'Nobody home'})
     validate.workbench_action({**mp.action(store[seed]), 'claims': [], 'proposal': seed})
     validate.workbench_action({**mp.action(store[some]), 'claims': mp.action(store[some])['claims'][:1], 'proposal': some})
@@ -539,7 +549,7 @@ def test_a_rests_on_proposal_can_be_taken_the_other_way_round(tmp_path, monkeypa
     index_with(tmp_path, monkeypatch)
     store = {}
     mp.add(store, 'parent', {'id': 'M001', 'parent': 'M002'}, 'backwards')
-    write_json(mp.PROPOSALS, store)
+    mp.replace_all(store)
     p = next(iter(store.values()))
     do = mp.action(p)
     validate.workbench_action({**do, 'id': do['parent'], 'parent': do['id'], 'proposal': p['id']})  # the checker's ⇅

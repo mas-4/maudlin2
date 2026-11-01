@@ -69,9 +69,9 @@ RETURN_GAP = td(minutes=90)  # a story last seen longer ago than this has left t
 RETURN_WORDS = 2
 RETURN_CANDIDATES = 2  # the most alike stories put to the model, the closest first
 RETURN_MODEL = local_models.BIG
-RETURNS = os.path.join(Config.data, 'story_returns.json')  # the model's verdicts, by the headlines shown
-MERGES = os.path.join(Config.data, 'story_merges.json')  # a story found to be another's return: {gone id: kept id}
-LABELED_AT = os.path.join(Config.data, 'story_labeled_at.json')  # story id -> when its label was written (ISO)
+RETURNS = os.path.join(Config.cache, 'story_returns.json')  # the model's verdicts, by the headlines shown
+# A story found to be another's return is remembered in the story_merge table, when each label was written in
+# story_labeled_at (app/tables/stories.py)
 STOP = {'that', 'this', 'with', 'from', 'after', 'over', 'into', 'about', 'what', 'says', 'said', 'will', 'more',
         'than', 'have', 'been', 'were', 'their', 'they', 'when', 'amid', 'year', 'news', 'live', 'updates', 'just'}
 SAME_EVENT_PROMPT = """Two groups of news headlines. The first left the front pages some hours before the second \
@@ -115,7 +115,6 @@ REJOIN_PROMPT = SAME_EVENT_PROMPT.replace('The first left the front pages some h
 SPLIT_DEVELOPMENTS = False
 SPLIT_LEAST = 3  # headlines on each side of a split, at least
 MAX_SPLIT_CHECKS = 5  # questions a run asks, at most (one per titled story due a new title, SPLIT_LEAST a side)
-SPLITS = os.path.join(Config.data, 'story_splits.json')  # {ended story id: {'into': new story id, 'at', ...}}
 SPLIT_PROMPT = SAME_EVENT_PROMPT.replace(
     'Two groups of news headlines. The first left the front pages some hours before the second appeared.',
     'Two groups of headlines from one running news story: its earlier headlines, and its newest, from the last \
@@ -217,7 +216,10 @@ def fold_twins(df: pd.DataFrame, stories: dict) -> tuple[pd.DataFrame, dict]:
 
 def merges() -> dict[int, int]:
     """{gone story id: the story it was merged into}, followed to the end of any chain"""
-    raw = {int(k): int(v['into']) for k, v in read_json(MERGES, {}).items()}
+    from app.models import Session
+    from app.tables.stories import StoryMerge
+    with Session() as s:
+        raw = dict(s.query(StoryMerge.gone, StoryMerge.into))
     out = {}
     for k in raw:
         v, seen = raw[k], {k}
@@ -230,7 +232,9 @@ def merges() -> dict[int, int]:
 
 def merge_stories(keep: int, gone: int, why: str = ''):
     """Fold story `gone` into story `keep` (by hand, or a return the model missed): its headlines and snapshots move,
-    its span joins keep's, and its id is remembered (MERGES), so its page redirects and data keyed by it follow"""
+    its span joins keep's, and its id is remembered (StoryMerge), so its page redirects and data keyed by it follow"""
+    from app.models import Session
+    from app.tables.stories import StoryMerge
     with Session() as s, SqlLock:
         a, b = s.get(Story, keep), s.get(Story, gone)
         moved = [i for (i,) in s.query(StoryHeadline.headline_id).filter(StoryHeadline.story_id == gone)]
@@ -238,8 +242,8 @@ def merge_stories(keep: int, gone: int, why: str = ''):
         s.query(StorySnapshot).filter(StorySnapshot.story_id == gone).update({'story_id': keep})
         a.first_seen, a.last_seen = min(a.first_seen, b.first_seen), max(a.last_seen, b.last_seen)
         a.saga_id = a.saga_id or b.saga_id
-        record = {'into': keep, 'label': b.label, 'first_seen': b.first_seen.isoformat(), 'headlines': moved,
-                  'at': dt.now(pytz.UTC).isoformat(timespec='seconds'), 'why': why}
+        s.merge(StoryMerge(gone=gone, into=keep, label=b.label, first_seen=b.first_seen, headlines=json.dumps(moved),
+                           at=dt.now(pytz.UTC).replace(tzinfo=None, microsecond=0), why=why))
         s.delete(b)
         s.flush()
         if a.saga_id and s.query(Story).filter(Story.saga_id == a.saga_id).count() < 2:  # a saga of one is no saga
@@ -247,17 +251,17 @@ def merge_stories(keep: int, gone: int, why: str = ''):
             a.saga_id = None
             s.query(Saga).filter(Saga.id == saga).delete()
             from app.analysis.sagas import record_end
-            record_end(saga, {'story': keep})
+            record_end(saga, {'story': keep}, s)
         s.commit()
-    done = read_json(MERGES, {})
-    done[str(gone)] = record
-    write_json(MERGES, done)
     logger.info("Merged story %d into %d (%d headlines)", gone, keep, len(moved))
 
 
 def splits() -> dict[int, int]:
     """{story ended by a split: the story its newest headlines went on in}"""
-    return {int(k): int(v['into']) for k, v in read_json(SPLITS, {}).items()}
+    from app.models import Session
+    from app.tables.stories import StorySplit
+    with Session() as s:
+        return dict(s.query(StorySplit.story_id, StorySplit.into))
 
 
 def carried_on(sid: int, ended: dict[int, int]) -> int:
@@ -288,6 +292,8 @@ def split_development(sid: int, since: dt, now: dt, sides: tuple[list, list] | N
     if same_event([r.title for r in earlier], [r.title for r in newest], prompt=SPLIT_PROMPT) is not False:
         return None  # the same event told again, or no answer: the story goes on and is titled again
     moved = [r.headline_id for r in newest]
+    from app.models import Session
+    from app.tables.stories import StorySplit
     with Session() as s, SqlLock:
         old = s.get(Story, sid)
         new = Story(first_seen=min(r.first_accessed for r in newest), last_seen=now, saga_id=old.saga_id)
@@ -303,14 +309,11 @@ def split_development(sid: int, since: dt, now: dt, sides: tuple[list, list] | N
         # Off the front pages from its last kept headline: never put to the rejoin rule (both stories live), and
         # label_ended titles it once more from the headlines it kept
         old.last_seen = max(r.first_accessed for r in earlier)
-        label = old.label
+        s.merge(StorySplit(story_id=sid, into=new.id, label=old.label, since=since.replace(microsecond=0),
+                           headlines=json.dumps(moved), at=now.replace(microsecond=0)))
         s.commit()
         s.refresh(new)
         s.expunge(new)
-    done = read_json(SPLITS, {})
-    done[str(sid)] = {'into': new.id, 'label': label, 'since': since.isoformat(timespec='seconds'), 'headlines': moved,
-                      'at': now.isoformat(timespec='seconds')}
-    write_json(SPLITS, done)
     logger.info("Story %d split at a new development: %d headlines since %s went on as story %d (%s)", sid, len(moved),
                 since, new.id, newest[0].title)
     return new
@@ -452,6 +455,26 @@ def restore_case(label: str, headlines) -> str:
     return label[0].upper() + label[1:]
 
 
+def labeled_at() -> dict[str, str]:
+    """str(story id) -> when its label was last written (naive UTC, ISO to the second)"""
+    from app.models import Session
+    from app.tables.stories import StoryLabeledAt
+    with Session() as s:
+        return {str(sid): at.isoformat(timespec='seconds') for sid, at in s.query(StoryLabeledAt.story_id, StoryLabeledAt.at)}
+
+
+def mark_labeled(times: dict[int, dt]):
+    """Remember when these stories' labels were written"""
+    if not times:
+        return
+    from app.models import Session
+    from app.tables.stories import StoryLabeledAt
+    with Session() as s:
+        for sid, at in times.items():
+            s.merge(StoryLabeledAt(story_id=int(sid), at=at.replace(microsecond=0)))
+        s.commit()
+
+
 def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]:
     """Write a neutral title for stories that are new or have grown a lot since they were labeled. Returns
     cluster -> label for every story that has one, so callers can fall back to a headline for the rest."""
@@ -460,7 +483,7 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
         return labels
 
     outlets = df.groupby('cluster')['agency'].nunique()
-    labeled_at = read_json(LABELED_AT, {})
+    written_at, fresh = labeled_at(), {}
     now = dt.now(pytz.UTC).replace(tzinfo=None)
     # Each headline's first sighting, naive UTC as the stories table keeps its times. Not 'first_accessed': by now
     # that's display text ("Oct 9 4:04 PM"), and as text Oct 9 sorts after Oct 11, so no story ever looked to have
@@ -472,7 +495,7 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
     newest = seen.groupby(df['cluster']).max() if seen is not None else None
 
     def written(story) -> pd.Timestamp:
-        return pd.Timestamp(labeled_at.get(str(story.id)) or story.first_seen)
+        return pd.Timestamp(written_at.get(str(story.id)) or story.first_seen)
 
     def stale(cluster, story) -> bool:
         """Old, and headlines have come in since it was written (a story labeled before Oct 11 counts from its start)"""
@@ -513,8 +536,8 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
             story.labeled_with = int(outlets[cluster])
             s.commit()
         labels[cluster] = label
-        labeled_at[str(stories[cluster].id)] = now.isoformat(timespec='seconds')
-    write_json(LABELED_AT, labeled_at)
+        fresh[stories[cluster].id] = now
+    mark_labeled(fresh)
     return labels
 
 
@@ -526,7 +549,7 @@ def label_stories(df: pd.DataFrame, stories: dict[int, Story]) -> dict[int, str]
 FINAL_AFTER = td(hours=2)  # off the front pages this long: it has left (RETURN_GAP is the shorter wait for a return)
 FINAL_WITHIN = td(days=7)  # stories that left in this window (sagas show their parts for a week: SAGA_MEMORY)
 FINAL_PER_RUN = 25  # about a week's ended stories within a day; saga parts first
-FINALS = os.path.join(Config.data, 'story_final_labels.json')  # story id -> {'at', 'from': the title it replaced}
+# Those titled so are in the story_final_label table, with the title each replaced (app/tables/stories.py)
 
 
 def label_ended(now: dt | None = None, limit: int = FINAL_PER_RUN) -> dict[int, str]:
@@ -535,13 +558,14 @@ def label_ended(now: dt | None = None, limit: int = FINAL_PER_RUN) -> dict[int, 
     if llm.backend() is None:
         return {}
     now = now or dt.now(pytz.UTC).replace(tzinfo=None)
-    done = read_json(FINALS, {})
-    labeled_at = read_json(LABELED_AT, {})
-    out = {}
+    from app.models import Session
+    from app.tables.stories import StoryFinalLabel
+    out, fresh, finals = {}, {}, []
     with Session() as s:
+        done = {sid for (sid,) in s.query(StoryFinalLabel.story_id)}
         ended = s.query(Story).filter(Story.last_seen < now - FINAL_AFTER, Story.last_seen >= now - FINAL_WITHIN) \
             .order_by(Story.saga_id.is_(None), Story.last_seen.desc()).all()
-        todo = [x for x in ended if str(x.id) not in done][:limit]
+        todo = [x for x in ended if x.id not in done][:limit]
         titles = {x.id: [t for (t,) in s.query(Headline.title).join(StoryHeadline, StoryHeadline.headline_id == Headline.id)
                          .filter(StoryHeadline.story_id == x.id).order_by(Headline.first_accessed.desc()).limit(LABEL_FROM)]
                   for x in todo}
@@ -555,18 +579,22 @@ def label_ended(now: dt | None = None, limit: int = FINAL_PER_RUN) -> dict[int, 
         if not label:
             continue
         label = restore_case(label, titles[sid])
-        done[str(sid)] = {'at': now.isoformat(timespec='seconds'), 'from': old[sid]}
+        finals.append(StoryFinalLabel(story_id=sid, at=now.replace(microsecond=0), replaced=old[sid]))
         if label != old[sid]:
             with Session() as s, SqlLock:
                 story = s.get(Story, sid)
                 if story is not None:
                     story.label = label
                     s.commit()
-            labeled_at[str(sid)] = now.isoformat(timespec='seconds')
+            fresh[sid] = now
             out[sid] = label
             logger.info("Story %d titled again as it ended: %s (was: %s)", sid, label, old[sid])
-    write_json(FINALS, done)
-    write_json(LABELED_AT, labeled_at)
+    if finals:
+        with Session() as s:
+            for row in finals:
+                s.merge(row)
+            s.commit()
+    mark_labeled(fresh)
     return out
 
 

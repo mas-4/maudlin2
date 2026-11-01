@@ -47,7 +47,7 @@ FRESH_HOURS = 2
 # Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
-NEWS_DAY_FILE = os.path.join(Config.data, 'newsday.json')  # the last build's news day
+NEWS_DAY_FILE = 'newsday'  # the last build's news day: its run_state name (app/runstate.py)
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
 INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a current story
 BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
@@ -56,7 +56,10 @@ BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedn
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}
 # An aggregator's headline this close to one of a story's headlines links to that story, per model. Oct 5, on 200
 # aggregator headlines judged by the 30B: potion-base-8M at 0.7 made 46 right links of 60, mxbai at 0.8 60 of 75
-STORY_EXTRAS = os.path.join(Config.data, 'story_extras.json')  # saved story id -> what was found around it, for its page
+# What was found around each saved story, for its page, is in the story_extra tables (read_story_extras)
+EXTRA_FIELDS = {'shows': ('source', 'title', 'url', 'color', 'emoji'), 'factchecks': ('source', 'title', 'url'),
+                'investigations': ('source', 'title', 'url', 'color', 'emoji'), 'satire': ('source', 'title', 'url'),
+                'curators': ('source', 'seen'), 'quotes': ('phrase', 'count')}
 CURATOR_MATCH = {local_models.MXBAI: 0.8, 'potion-base-8M': 0.7}
 BLINDSPOT_SHARE = 0.7  # of them from one side
 BLINDSPOT_LIFT = 1.5  # and at least this many times that side's share of all rated outlets
@@ -372,6 +375,32 @@ RETIRED = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Mo
            '<body><p>This page is retired: <a href="{to}">the front page</a>.</p></body></html>')
 
 
+def read_story_extras() -> dict[str, dict]:
+    """str(saved story id) -> what was found around it while it was on the front page: each kind's list (shows,
+    factchecks, investigations, satire, curators, quotes; newest found first), its one-sided wording, when updated"""
+    from app.models import Session
+    from app.tables.stories import StoryExtra, StoryExtraItem
+    out = {}
+    with Session() as s:
+        for e in s.query(StoryExtra):
+            out[str(e.story_id)] = {**{k: [] for k in EXTRA_FIELDS}, 'wording': json.loads(e.wording or '{}'),
+                                    'updated': e.updated.isoformat(timespec='minutes')}
+        rows = s.query(StoryExtraItem).order_by(StoryExtraItem.story_id, StoryExtraItem.kind,
+                                                StoryExtraItem.seen.desc(), StoryExtraItem.ord)
+        for r in rows:
+            entry = out.get(str(r.story_id))
+            if entry is None or r.kind not in EXTRA_FIELDS:
+                continue
+            if r.kind == 'quotes':
+                item = {'phrase': r.key, 'count': r.count}
+            elif r.kind == 'curators':
+                item = {'source': r.source, 'seen': r.seen.isoformat(timespec='minutes')}
+            else:
+                item = {k: getattr(r, k) for k in EXTRA_FIELDS[r.kind]}
+            entry[r.kind].append(item)
+    return out
+
+
 class HeadlinesPage:
     def __init__(self, dh: DataHandler):
         self.dh = dh
@@ -506,10 +535,10 @@ class HeadlinesPage:
             'stories': len(self.context.get('clusters', [])),
         }
         if not Config.debug:  # for the Stream Deck's news-day key (app/deck.py), between builds
-            from app.utils.store import write_json
+            from app import runstate
             anchor = self.context.get('anchor_of', {}).get(self.context['newsday']['cluster'])
-            write_json(NEWS_DAY_FILE, {**self.context['newsday'], 'anchor': anchor,
-                                       'at': dt.now().isoformat(timespec='seconds')})
+            runstate.put(NEWS_DAY_FILE, {**self.context['newsday'], 'anchor': anchor,
+                                         'at': dt.now().isoformat(timespec='seconds')})
             try:  # and kept, hour by hour, for the archive's chart of how newsy each hour was
                 from app.analysis import newsiness
                 newsiness.record(self.context['newsday'], self.story_of.get(self.context['newsday']['cluster']))
@@ -549,7 +578,7 @@ class HeadlinesPage:
         # The second pass: a story cut where its headlines' words fall into two (clustering.split_seams, Atropos)
         from app.analysis.clustering import two_events
         from app.utils.store import read_json, write_json
-        seam_cache_path = os.path.join(Config.data, 'story_seams.json')
+        seam_cache_path = os.path.join(Config.cache, 'story_seams.json')
         seam_cache = read_json(seam_cache_path, {})
         roots = []  # each cluster's cluster before the cut: the sides of one cut are never joined again (fold_twins)
         clusters, cut = split_seams(clusters, df['processed'].tolist(), df['agency'].tolist(), n_samples_per_cluster,
@@ -858,41 +887,43 @@ class HeadlinesPage:
 
     def save_story_extras(self, clusters_list):
         """What this run found around each saved story (the shows, fact-checks, investigations and satire on it, the
-        aggregators linking it, its quotes and one-sided wording), merged into STORY_EXTRAS so its story page has the
-        whole of it after the story leaves the front page. Lists keep every item ever found, newest kept first."""
-        from app.utils.store import read_json, write_json
+        aggregators linking it, its quotes and one-sided wording), added to the story_extra tables so its story page
+        has the whole of it after the story leaves the front page. Every item ever found is kept, newest found first."""
+        from app.models import Session
+        from app.tables.stories import StoryExtra, StoryExtraItem
         story_of = getattr(self, 'story_of', {})
         if not story_of or Config.debug and not os.environ.get('MAUDLIN_STORY_EXTRAS'):
             return  # preview builds read the extras but don't add to them
-        store = read_json(STORY_EXTRAS, {})
-        now = dt.utcnow().isoformat(timespec='minutes')
+        now = dt.utcnow().replace(second=0, microsecond=0)
         invest = defaultdict(list)
         for p in self.context.get('investigations') or []:
             if p.get('story') is not None:
                 invest[p['story']].append(p)
-        for c in clusters_list:
-            sid = story_of.get(int(c['cluster']))
-            if sid is None:
-                continue
-            cl = c['cluster']
-            found = {'shows': [{k: p.get(k) for k in ('source', 'title', 'url', 'color', 'emoji')}
-                               for p in (self.context.get('show_coverage') or {}).get(cl, [])],
-                     'factchecks': [{k: p.get(k) for k in ('source', 'title', 'url')}
-                                    for p in (self.context.get('factchecks_of') or {}).get(cl, [])],
-                     'investigations': [{k: p.get(k) for k in ('source', 'title', 'url', 'color', 'emoji')} for p in invest[cl]],
-                     'satire': [{k: p.get(k) for k in ('source', 'title', 'url')}
-                                for p in (self.context.get('satire_of') or {}).get(cl, [])],
-                     'curators': [{'source': a, 'seen': now} for a in c.get('curators') or []],
-                     'quotes': [{'phrase': q['phrase'], 'count': q['count']} for q in c.get('quotes') or []]}
-            entry = store.setdefault(str(sid), {})
-            for key, items in found.items():
-                have = entry.get(key, [])
-                ident = (lambda x: x.get('phrase')) if key == 'quotes' else (lambda x: x.get('url') or x.get('source'))
-                seen = {ident(x) for x in items}
-                entry[key] = items + [x for x in have if ident(x) not in seen]
-            entry['wording'] = c.get('wording') or entry.get('wording') or {}
-            entry['updated'] = now
-        write_json(STORY_EXTRAS, store)
+        with Session() as s:
+            for c in clusters_list:
+                sid = story_of.get(int(c['cluster']))
+                if sid is None:
+                    continue
+                cl = c['cluster']
+                found = {'shows': (self.context.get('show_coverage') or {}).get(cl, []),
+                         'factchecks': (self.context.get('factchecks_of') or {}).get(cl, []),
+                         'investigations': invest[cl],
+                         'satire': (self.context.get('satire_of') or {}).get(cl, []),
+                         'curators': [{'source': a} for a in c.get('curators') or []],
+                         'quotes': c.get('quotes') or []}
+                for kind, items in found.items():
+                    done = set()
+                    for i, p in enumerate(items):
+                        key = (p.get('phrase') if kind == 'quotes' else p.get('url') or p.get('source')) or ''
+                        if key in done:
+                            continue
+                        done.add(key)
+                        fields = {k: p.get(k) for k in EXTRA_FIELDS[kind] if k not in ('phrase', 'seen')}
+                        s.merge(StoryExtraItem(story_id=sid, kind=kind, key=key, seen=now, ord=i, **fields))
+                entry = s.get(StoryExtra, sid)
+                wording = json.dumps(c['wording']) if c.get('wording') else entry.wording if entry else '{}'
+                s.merge(StoryExtra(story_id=sid, wording=wording, updated=now))
+            s.commit()
 
     def retold_online(self, clusters_list):
         """People retelling each current story in their own words on Bluesky and Mastodon (the latest narrative report,

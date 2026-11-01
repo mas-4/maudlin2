@@ -27,11 +27,10 @@ from app.site.page_motifs import GENRE_EMOJI, catalog
 from app.utils import Config, get_logger
 
 # The reports' reading lives with the reports (narratives.py); the names stay here for this page and its tests
-from app.narratives import NOT_STORIES, WITHHELD, latest_report, withheld  # noqa: E402, F401
+from app.narratives import NOT_STORIES, latest_report, withheld  # noqa: E402, F401
 
 logger = get_logger(__name__)
 
-FOLDER = os.path.join(Config.data, 'narratives')
 # Fewer tellers than this aren't shown: at five to nine people (half of what the finder keeps) most groups are a
 # handful reacting to the same news, not a story people retell. The floor grows with the sample, 1 in PEOPLE_SHARE.
 MIN_PEOPLE = 10

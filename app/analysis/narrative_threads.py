@@ -5,15 +5,13 @@ followed across days like a saga (app/analysis/sagas.py) follows a news story ac
 Each day's report (the latest of the day that covers at least six hours) is linked once: each narrative is compared
 by meaning with the threads seen in the last WINDOW days, and the closest few are put to the bigger local model, which
 says whether it is the same narrative told again or a different one. A narrative with no match starts a thread."""
-import glob
-import json
 import os
 from datetime import date, timedelta
 
 import numpy as np
 
 from app.analysis import llm
-from app.utils import get_logger
+from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 from app.analysis import local_models
 
@@ -40,31 +38,35 @@ SCHEMA = {"type": "object", "properties": {"reason": {"type": "string", "maxLeng
           "required": ["reason", "verdict"]}
 
 
-def folder() -> str:
-    from app import narratives
-    return narratives.FOLDER
-
-
-def store_path() -> str:
-    return os.path.join(folder(), 'threads.json')
+def verdicts_path() -> str:
+    """The model's same-or-different answers: a cache, asked again if lost"""
+    return os.path.join(Config.cache, 'narratives', 'thread_verdicts.json')
 
 
 def load() -> dict:
-    return read_json(store_path(), {'next': 1, 'threads': {}, 'linked': [], 'verdicts': {}})
-
-
-def save(store: dict):
-    write_json(store_path(), store, indent=1)
+    """{'next': the next thread's number, 'threads': {id: {id, days: [...]}}, 'linked': [report], 'verdicts': {...}}"""
+    from app.models import Session
+    from app.tables.narratives import NarrativeReport, NarrativeThreadDay
+    threads = {}
+    with Session() as s:
+        for d in s.query(NarrativeThreadDay).order_by(NarrativeThreadDay.id):
+            threads.setdefault(d.thread, {'id': d.thread, 'days': []})['days'].append(
+                {'claim': d.claim, 'people': d.people, 'posts': d.posts, 'genre': d.genre, 'story': d.story,
+                 'date': d.date, 'report': d.report})
+        linked = sorted(f for (f,) in s.query(NarrativeReport.file).filter(NarrativeReport.threads_linked))
+    last = max((int(t[1:]) for t in threads if t[1:].isdigit()), default=0)
+    return {'next': last + 1, 'threads': threads, 'linked': linked, 'verdicts': read_json(verdicts_path(), {})}
 
 
 def day_reports() -> list[str]:
     """The report of each day (the latest that covers at least MIN_HOURS), oldest first"""
+    from app.models import Session
+    from app.tables.narratives import NarrativeReport
     by_day = {}
-    for path in sorted(glob.glob(os.path.join(folder(), 'report-*.json'))):
-        with open(path) as f:
-            hours = json.load(f).get('hours', 0)
-        if hours >= MIN_HOURS:
-            by_day[os.path.basename(path)[7:17]] = path
+    with Session() as s:
+        for (file,) in s.query(NarrativeReport.file).filter(NarrativeReport.hours >= MIN_HOURS) \
+                .order_by(NarrativeReport.file):
+            by_day[file[7:17]] = file
     return [by_day[d] for d in sorted(by_day)]
 
 
@@ -89,12 +91,13 @@ def judge(a: str, b: str, store: dict) -> bool:
     return store['verdicts'][key]['same']
 
 
-def link(path: str, store: dict) -> int:
-    """Put one day's narratives into threads; how many joined an earlier thread"""
-    from app.narratives import embed
-    with open(path) as f:
-        report = json.load(f)
-    day = os.path.basename(path)[7:17]
+def link(file: str, store: dict) -> int:
+    """Put one day's narratives into threads, kept at once; how many joined an earlier thread"""
+    from app.models import Session
+    from app.narratives import embed, load_report
+    from app.tables.narratives import NarrativeReport, NarrativeThreadDay
+    report = load_report(file) or {'found': []}
+    day = file[7:17]
     told = retold(report)
     since = (date.fromisoformat(day) - timedelta(days=WINDOW)).isoformat()
     past = [t for t in store['threads'].values() if since <= t['days'][-1]['date'] < day]
@@ -103,8 +106,9 @@ def link(path: str, store: dict) -> int:
         v = embed([n['claim'] for n in told])
         pv = embed([t['days'][-1]['claim'] for t in past])
         sims = v @ pv.T
+    added = []
     for i, n in enumerate(told):
-        entry = dict(n, date=day, report=os.path.basename(path))
+        entry = dict(n, date=day, report=file)
         home = None
         if told and past:
             for j in np.argsort(-sims[i])[:CANDIDATES]:
@@ -118,7 +122,13 @@ def link(path: str, store: dict) -> int:
         else:
             joined += 1
         home['days'].append(entry)
-    store['linked'].append(os.path.basename(path))
+        added.append(NarrativeThreadDay(thread=home['id'], **entry))
+    write_json(verdicts_path(), store['verdicts'])
+    with Session() as s:  # the day's entries and its mark together: a day is linked whole or not at all
+        s.add_all(added)
+        s.query(NarrativeReport).filter(NarrativeReport.file == file).update({'threads_linked': True})
+        s.commit()
+    store['linked'].append(file)
     return joined
 
 
@@ -127,13 +137,11 @@ def link_days() -> dict:
     store = load()
     if llm.backend() is None:
         return store
-    for path in day_reports():
-        if os.path.basename(path) in store['linked']:
+    for file in day_reports():
+        if file in store['linked']:
             continue
-        joined = link(path, store)
-        save(store)
-        logger.info("Narrative threads: %s linked, %d told again (%d threads)", os.path.basename(path), joined,
-                    len(store['threads']))
+        joined = link(file, store)
+        logger.info("Narrative threads: %s linked, %d told again (%d threads)", file, joined, len(store['threads']))
     return store
 
 

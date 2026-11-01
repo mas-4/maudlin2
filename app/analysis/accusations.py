@@ -29,7 +29,7 @@ from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-CACHE = os.path.join(Config.data, 'accusations.json')  # claim key -> what the model said
+CACHE = os.path.join(Config.cache, 'accusations.json')  # claim key -> what the model said
 NEVER_NAMED = os.path.join(Config.data, 'never_named.json')  # by hand: {"Jacob Geller": "a YouTuber", ...}
 ALWAYS_NAMED = os.path.join(Config.data, 'always_named.json')  # by hand: ["Don Huffines", ...]
 MODEL = local_models.BIG

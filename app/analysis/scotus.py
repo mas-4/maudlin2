@@ -27,14 +27,14 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-DOCKET = os.path.join(Config.data, 'scotus_docket.json')
-JUDGMENTS = os.path.join(Config.data, 'scotus_judgments.json')
+DOCKET = 'scotus_docket'  # its run_state name (app/runstate.py)
+JUDGMENTS = os.path.join(Config.cache, 'scotus_judgments.json')
 DOCKET_URL = 'https://www.supremecourt.gov/orders/{yy}grantednotedlist.pdf'
 DOCKET_REFRESH = td(days=7)
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 WINDOW_DAYS = 14
 MAX_NEW_JUDGMENTS = 80  # per run, so a backlog can't hold up the hourly build; the rest are judged next run
-GLOSSES = os.path.join(Config.data, 'scotus_glosses.json')
+GLOSSES = os.path.join(Config.cache, 'scotus_glosses.json')
 WIKI_API = 'https://en.wikipedia.org/w/api.php'
 WIKI_PAGE = 'List of pending United States Supreme Court cases'
 
@@ -245,13 +245,15 @@ def refresh_docket(now: dt = None) -> None:
         for case in cases:
             if old.get(case['docket']):
                 case['question'] = old[case['docket']]
-    write_json(DOCKET, {'term': term(now), 'fetched': now.isoformat(timespec='seconds'), 'source': url, 'cases': cases})
+    from app import runstate
+    runstate.put(DOCKET, {'term': term(now), 'fetched': now.isoformat(timespec='seconds'), 'source': url, 'cases': cases})
     logger.info("Supreme Court docket: %d cases for October Term %d, %d with a question presented", len(cases),
                 term(now), sum(bool(c.get('question')) for c in cases))
 
 
 def docket() -> dict:
-    return read_json(DOCKET, {})
+    from app import runstate
+    return runstate.get(DOCKET, {})
 
 
 def add_glosses(cases: list[dict]) -> None:
@@ -488,7 +490,7 @@ def candidates(since: dt) -> list[dict]:
     return out
 
 
-STORY_GLOSSES = os.path.join(Config.data, 'scotus_story_glosses.json')
+STORY_GLOSSES = os.path.join(Config.cache, 'scotus_story_glosses.json')
 STORY_GLOSS_PROMPT = """These headlines from different outlets are about one Supreme Court story:
 {titles}
 

@@ -191,16 +191,30 @@ def test_recent_two_newest_even_if_feed_out_of_order(fake_cache):
 
 # _load() and fetch_investigations()
 
+class Kept:
+    """run_state 'investigations' read and written as the JSON file was"""
+    def write_text(self, text):
+        from app import runstate
+        runstate.put(inv.CACHE, json.loads(text))
+
+    def read_text(self):
+        from app import runstate
+        return json.dumps(runstate.get(inv.CACHE))
+
+
 @pytest.fixture
-def cache_file(tmp_path, monkeypatch):
-    path = tmp_path / 'investigations.json'
-    monkeypatch.setattr(inv, 'CACHE', str(path))
-    return path
+def cache_file(monkeypatch):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+    return Kept()
 
 
-def test_load_missing_or_corrupt_cache(cache_file):
-    assert inv._load() == {}
-    cache_file.write_text('{not json')
+def test_load_missing_or_kept(cache_file):
     assert inv._load() == {}
     cache_file.write_text('{"icij": {"items": []}}')
     assert inv._load() == {'icij': {'items': []}}

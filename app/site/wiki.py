@@ -3,7 +3,7 @@ rewritten, CC BY-SA 4.0) and a few facts from Wikidata (CC0): owner, parent orga
 headquarters. Articles are matched by hand in outlet_wiki.csv.
 
 Polite by design: Wikipedia's API returns 20 articles' openings per request and Wikidata 50 items per request, so
-the whole list is about a dozen requests, spaced out, refreshed weekly and cached in data/outlet_wiki.json."""
+the whole list is about a dozen requests, spaced out, refreshed weekly and kept in data.db (run_state 'outlet_wiki')."""
 import csv
 import os
 import time
@@ -13,12 +13,11 @@ import pytz
 import requests as rq
 
 from app.utils import Config, Constants, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
 MAPPING = os.path.join(Constants.Paths.ROOT, 'outlet_wiki.csv')
-CACHE = os.path.join(Config.data, 'outlet_wiki.json')
+CACHE = 'outlet_wiki'  # its run_state name (app/runstate.py)
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php'
 WIKIDATA_API = 'https://www.wikidata.org/w/api.php'
@@ -111,7 +110,8 @@ def facts(qids: list[str]) -> dict[str, dict]:
 
 
 def _load() -> dict:
-    return read_json(CACHE, {})
+    from app import runstate
+    return runstate.get(CACHE, {})
 
 
 def refresh(force: bool = False) -> None:
@@ -133,7 +133,8 @@ def refresh(force: bool = False) -> None:
         if page:
             outlets[outlet] = {**page, **known.get(page['qid'], {}),
                                'url': 'https://en.wikipedia.org/wiki/' + page['title'].replace(' ', '_')}
-    write_json(CACHE, {'fetched': dt.now(pytz.UTC).isoformat(), 'outlets': outlets})
+    from app import runstate
+    runstate.put(CACHE, {'fetched': dt.now(pytz.UTC).isoformat(), 'outlets': outlets})
     logger.info("Outlet wiki: %d of %d outlets", len(outlets), len(titles))
 
 

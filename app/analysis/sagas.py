@@ -61,7 +61,7 @@ _names: dict[frozenset, str] = {}
 # Before two stories first join a saga, the language model reads both side by side: sharing a name isn't enough when
 # the name is an institution or a nationality (two separate cases at the Supreme Court, two separate plots by
 # Iranian nationals both passed the word rule on Oct 4). Verdicts are cached by the headlines shown.
-JUDGMENTS = os.path.join(Config.data, 'saga_judgments.json')
+JUDGMENTS = os.path.join(Config.cache, 'saga_judgments.json')
 JUDGE_SAMPLE = 4  # headlines shown from each side
 JUDGE_MODEL = local_models.BIG  # Oct 6 test against 46 labeled pairs: no wrong joins, 2 s a pair (the 30B 33 s); see docs/models.md
 JUDGE_VERSION = 4  # verdicts cached under an older judge are asked again (hand verdicts are kept); 3: gemma4:26b;
@@ -69,8 +69,8 @@ JUDGE_VERSION = 4  # verdicts cached under an older judge are asked again (hand 
 # failed execution, and two speakers at one rally, as 'a different focus')
 # A verdict is also kept for the pair of stories itself (story ids), whatever headlines were shown: until Oct 6 a pair
 # was asked again each hour as its stories grew (new headlines, a new sample) until the judge said yes once, and a yes
-# was forever: the Supreme Court climate case joined the new-term story on its 26th asking (methods log)
-PAIRS = os.path.join(Config.data, 'saga_pairs.json')
+# was forever: the Supreme Court climate case joined the new-term story on its 26th asking (methods log). In the
+# saga_pair table (app/tables/stories.py)
 JUDGE_PROMPT = """Two groups of news headlines. Are they parts of one ongoing news story: the same case, incident, \
 event, investigation or negotiation, followed as it develops? The groups may tell it from different angles or focus on \
 different parts of it; that's still one story. So are its consequences and reactions (an official resigns over a \
@@ -169,17 +169,22 @@ def central(titles: list[str], vectors: np.ndarray, n: int = JUDGE_SAMPLE) -> li
 def pair_verdict(story_a: int, story_b: int, titles_a: list[str], titles_b: list[str]) -> bool | None:
     """Whether two saved stories are one running story, remembered by the pair of stories (a person's verdict first,
     then the current judge's): asked once, not again each hour as their headlines change. None without an answer."""
-    key = '|'.join(str(i) for i in sorted((story_a, story_b)))
-    pairs = read_json(PAIRS, {})
-    known = pairs.get(key)
-    if known and (known.get('hand') or known.get('judge') == JUDGE_VERSION):
-        return bool(known['same'])
+    from app.models import Session
+    from app.tables.stories import SagaPair
+    a, b = sorted((int(story_a), int(story_b)))
+    with Session() as s:
+        known = s.get(SagaPair, (a, b))
+        if known and (known.hand or known.judge == JUDGE_VERSION):
+            return bool(known.same)
     verdict = saga_verdict(titles_a, titles_b)
     if verdict is None:
         return None
-    pairs[key] = {'same': verdict, 'judge': JUDGE_VERSION, 'model': JUDGE_MODEL,
-                  'at': dt.now(pytz.UTC).isoformat(timespec='seconds'), 'a': titles_a[:2], 'b': titles_b[:2]}
-    write_json(PAIRS, pairs)
+    # The titles as they were: the first argument's two first, whichever story id is smaller
+    with Session() as s:
+        s.merge(SagaPair(story_a=a, story_b=b, same=verdict, judge=JUDGE_VERSION, hand=False, model=JUDGE_MODEL,
+                         at=dt.now(pytz.UTC).replace(tzinfo=None, microsecond=0),
+                         titles_a=json.dumps(titles_a[:2]), titles_b=json.dumps(titles_b[:2])))
+        s.commit()
     return verdict
 
 
@@ -445,7 +450,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
                 for absorbed in known[1:]:
                     s.query(Story).filter(Story.saga_id == absorbed).update({'saga_id': saga.id})
                     s.query(Saga).filter(Saga.id == absorbed).delete()
-                    record_end(absorbed, {'saga': saga.id})
+                    record_end(absorbed, {'saga': saga.id}, s)
             else:
                 saga = Saga(id=next_saga_id(s), first_seen=now, last_seen=now)
                 s.add(saga)
@@ -534,22 +539,29 @@ def recheck(dry_run: bool = False) -> list[dict]:
                     left = s.query(Story.id).filter(Story.saga_id == saga_id).scalar()
                     s.query(Story).filter(Story.saga_id == saga_id).update({'saga_id': None})
                     s.query(Saga).filter(Saga.id == saga_id).delete()
-                    record_end(saga_id, {'story': left} if left else {})
+                    record_end(saga_id, {'story': left} if left else {}, s)
             s.commit()
     for d in out:
         logger.info("Saga recheck: '%s' loses story %s (%s)", d['name'], d['story'], d['titles'][0])
     return out
 
 
-ENDED = os.path.join(Config.data, 'sagas_ended.json')  # saga id -> where its page now points ({'saga': id} or {'story': id})
+# Sagas that ended, and where each one's page now points, are in the saga_ended table (app/tables/stories.py)
 
 
-def record_end(saga_id: int, to: dict):
+def record_end(saga_id: int, to: dict, s=None):
     """A saga gone (absorbed into another, or left with one part): its page redirects there (app/site/page_saga.py),
-    so a shared link keeps working"""
-    ended = read_json(ENDED, {})
-    ended[str(saga_id)] = to
-    write_json(ENDED, ended, indent=1)
+    so a shared link keeps working. With `s`, in the caller's session, committed with the saga's own change (a second
+    session would wait on the first's write lock)"""
+    from app.models import Session
+    from app.tables.stories import SagaEnded
+    row = SagaEnded(saga_id=int(saga_id), to_saga=to.get('saga'), to_story=to.get('story'))
+    if s is not None:
+        s.merge(row)
+        return
+    with Session() as own:
+        own.merge(row)
+        own.commit()
 
 
 def next_saga_id(s) -> int:
@@ -557,12 +569,19 @@ def next_saga_id(s) -> int:
     saga's id came back for the next new one (Oct 27 audit: 48, 50, 58, 69, 76 and 84 were ended sagas whose pages
     redirect, reused by unrelated new sagas, so an old shared link opened the wrong one)"""
     from sqlalchemy import func
+    from app.tables.stories import SagaEnded
     top = s.query(func.max(Saga.id)).scalar() or 0
-    return max([top] + list(ended())) + 1
+    return max(top, s.query(func.max(SagaEnded.saga_id)).scalar() or 0) + 1
 
 
 def ended() -> dict[int, dict]:
-    return {int(k): v for k, v in read_json(ENDED, {}).items()}
+    """saga id -> where its page now points: {'saga': id}, {'story': id} or {} (nowhere)"""
+    from app.models import Session
+    from app.tables.stories import SagaEnded
+    with Session() as s:
+        rows = s.query(SagaEnded).all()
+    return {r.saga_id: {'saga': r.to_saga} if r.to_saga is not None else {'story': r.to_story}
+            if r.to_story is not None else {} for r in rows}
 
 
 # A saga's parts in the order of their latest news, not the order they broke: a part's title tells its latest news

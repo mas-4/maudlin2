@@ -53,23 +53,34 @@ def test_circulation_counts_people_by_stance(monkeypatch, tmp_path):
     stance = {'post 0': 'telling it', 'post 1': 'arguing against it', 'post 2': 'something else'}
     monkeypatch.setattr(llm, 'complete_json',
                         lambda prompt, schema, max_tokens=0: {'stance': stance[prompt.split('A post: ')[1].split('\n')[0]]})
-    monkeypatch.setattr(circulation, 'SEEN', str(tmp_path / 'seen.json'))
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))  # the look goes to data.db
     monkeypatch.setattr(circulation, 'CACHE', str(tmp_path / 'stance.json'))
     out = circulation.seen({'u1': 'the claim'})
     assert out['u1']['telling'] == 1 and out['u1']['arguing'] == 1 and out['u1']['candidates'] == 3
     assert circulation.load()['claims']['u1']['people'] == 2
 
 
-def test_made_today_needs_a_full_day_report(monkeypatch, tmp_path):
-    import json
+def test_made_today_needs_a_full_day_report(monkeypatch):
     from datetime import datetime as dt
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    import app.models as models
     from app import narratives
-    monkeypatch.setattr(narratives, 'FOLDER', str(tmp_path))
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
     assert not narratives.made_today()
     today = dt.now().strftime('%Y-%m-%d')
-    (tmp_path / f'report-{today}-1438.json').write_text(json.dumps({'hours': 3}))
+    narratives.save_report(f'report-{today}-1438.json', {'hours': 3})
     assert not narratives.made_today()  # a short test report doesn't count
-    (tmp_path / f'report-{today}-0412.json').write_text(json.dumps({'hours': 24}))
+    narratives.save_report(f'report-{today}-0412.json', {'hours': 24})
     assert narratives.made_today()
 
 

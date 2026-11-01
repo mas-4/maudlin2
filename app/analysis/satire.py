@@ -13,7 +13,7 @@ from app.analysis.ties import tie
 from app.utils import Config
 from app.utils.store import read_json
 
-CACHE = os.path.join(Config.data, 'satire_links.json')
+CACHE = os.path.join(Config.cache, 'satire_links.json')  # the model's picks, this run's only
 DAYS = 3
 CANDIDATES = 3
 # Only stories at least this close in meaning (mxbai-embed-large) are offered. Checked by hand on Oct 4: every wrong

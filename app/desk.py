@@ -79,13 +79,11 @@ def hourly_line() -> str:
 
 
 def worker_line() -> str:
-    try:
-        with open(os.path.join(Config.data, 'worker.json')) as f:
-            beat = json.load(f)
-    except (OSError, ValueError):
+    from app import worker
+    beat = worker._beat()
+    if beat is None:
         return '🛠 worker: no heartbeat'
     if time.time() - beat.get('at', 0) > 600:
-        from app import worker
         awake_since = time.monotonic() - beat['awake'] if beat.get('boot') == worker.boot_id() and 'awake' in beat else None
         if awake_since is not None and awake_since < 600:  # the machine slept since the beat, the worker didn't stop
             return '🛠 worker: back from sleep, carrying on'

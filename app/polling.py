@@ -6,22 +6,18 @@ registered voter polls count more than all-adult polls, partisan-sponsored polls
 pollster that publishes often has its weight split across its polls so it can't drown out the others."""
 import io
 import json
-import os
 import re
-import time
-from datetime import date, timedelta as td
+from datetime import date, datetime as dt, timedelta as td, UTC
 
 import numpy as np
 import pandas as pd
 import requests as rq
 
 from app.utils import Config, Constants, get_logger
-from app.utils.store import write_json
 
 logger = get_logger(__name__)
 
 POLLS_URL = 'https://api.votehub.com/polls'
-POLLS_FILE = os.path.join(Config.data, 'polls.json')
 REFRESH_SECONDS = 60 * 60  # polls trickle in a few a day; hourly is plenty
 
 WINDOW_DAYS = 45
@@ -39,7 +35,7 @@ MIN_CHART_POLLS = 15
 # Published polling averages, as tabulated (with sources) on Wikipedia, CC BY-SA 4.0
 WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php'
 WIKIPEDIA_UA = 'Maudlin Bot (https://maudlin.news)'
-AGGREGATES_FILE = os.path.join(Config.data, 'aggregates.json')
+AGGREGATES_FILE = 'aggregates'  # its run_state name (app/runstate.py)
 AGGREGATE_PAGES = {
     'approval': 'Opinion_polling_on_the_second_Trump_presidency',
     'generic': '2026_United_States_House_of_Representatives_elections',
@@ -47,9 +43,16 @@ AGGREGATE_PAGES = {
 
 
 def fetch_polls(force: bool = False):
-    """Refresh the local copy of the poll feed if it's older than REFRESH_SECONDS. Never raises."""
-    if not force and os.path.exists(POLLS_FILE) and time.time() - os.path.getmtime(POLLS_FILE) < REFRESH_SECONDS:
-        return
+    """Refresh our copy of the poll feed (the poll tables) if it's older than REFRESH_SECONDS. Never raises."""
+    from sqlalchemy import func
+
+    from app.models import Session
+    from app.tables.records import Poll
+    if not force:
+        with Session() as s:
+            last = s.query(func.max(Poll.fetched)).scalar()
+        if last and (dt.now(UTC).replace(tzinfo=None) - last).total_seconds() < REFRESH_SECONDS:
+            return
     try:
         response = rq.get(POLLS_URL, timeout=Config.timeout,
                           headers={'User-Agent': Constants.Headers.UserAgents.maudlin})
@@ -58,8 +61,24 @@ def fetch_polls(force: bool = False):
     except Exception as e:  # noqa
         logger.error("Failed to fetch polls: %s", e)
         return
-    write_json(POLLS_FILE, polls)
+    with Session() as s:
+        save_polls(s, polls)
+        s.commit()
     logger.info("Fetched %d polls from VoteHub", len(polls))
+
+
+def save_polls(s, polls: list[dict], fetched: dt | None = None):
+    """The feed's polls in place of the ones kept (the feed is the whole list each time), through session s"""
+    from app.tables.records import Poll, PollAnswer
+    fetched = fetched or dt.now(UTC).replace(tzinfo=None)
+    s.query(PollAnswer).delete()
+    s.query(Poll).delete()
+    columns = ('id', 'poll_type', 'subject', 'pollster', 'sample_size', 'population', 'url', 'created_at',
+               'start_date', 'end_date', 'seat_name', 'internal', 'partisan')
+    s.bulk_insert_mappings(Poll, [{**{k: p.get(k) for k in columns}, 'sponsors': json.dumps(p.get('sponsors') or []),
+                                   'fetched': fetched} for p in polls])
+    s.bulk_insert_mappings(PollAnswer, [{'poll_id': p['id'], 'choice': a['choice'], 'pct': a.get('pct')}
+                                        for p in polls for a in p.get('answers') or []])
 
 
 def _clean(cell) -> str:
@@ -90,8 +109,9 @@ def _aggregate_table(html: str, required: set[str]) -> list[dict]:
 
 def fetch_aggregates(force: bool = False):
     """Refresh the published approval and generic ballot averages from Wikipedia. Never raises."""
-    if not force and os.path.exists(AGGREGATES_FILE) and \
-            time.time() - os.path.getmtime(AGGREGATES_FILE) < REFRESH_SECONDS:
+    from app import runstate
+    last = runstate.when(AGGREGATES_FILE)
+    if not force and last and (dt.now(UTC).replace(tzinfo=None) - last).total_seconds() < REFRESH_SECONDS:
         return
     required = {'approval': {'Approve', 'Disapprove'}, 'generic': {'Democrats', 'Republicans'}}
     aggregates = {}
@@ -108,20 +128,21 @@ def fetch_aggregates(force: bool = False):
             logger.warning("No %s aggregate table found on %s; the page layout may have changed", key, page)
             return
         aggregates[key] = {'page': page, 'rows': rows}
-    write_json(AGGREGATES_FILE, aggregates)
+    runstate.put(AGGREGATES_FILE, aggregates)
     logger.info("Fetched published averages: %s", {k: len(v['rows']) for k, v in aggregates.items()})
 
 
 def load_polls() -> pd.DataFrame:
     """One row per poll answer: poll metadata plus `choice` and `pct`."""
-    if not os.path.exists(POLLS_FILE):
+    from app.models import Session
+    from app.tables.records import Poll, PollAnswer
+    columns = ('id', 'poll_type', 'subject', 'pollster', 'sample_size', 'population', 'end_date', 'partisan', 'url')
+    with Session() as s:
+        found = s.query(*(getattr(Poll, k) for k in columns), PollAnswer.choice, PollAnswer.pct) \
+            .join(PollAnswer, PollAnswer.poll_id == Poll.id).all()
+    if not found:
         return pd.DataFrame()
-    with open(POLLS_FILE) as f:
-        polls = json.load(f)
-    rows = [{**{k: p[k] for k in ('id', 'poll_type', 'subject', 'pollster', 'sample_size', 'population',
-                                  'end_date', 'partisan', 'url')},
-             'choice': a['choice'], 'pct': a['pct']}
-            for p in polls for a in p['answers']]
+    rows = [dict(zip(columns + ('choice', 'pct'), r)) for r in found]
     df = pd.DataFrame(rows)
     df['end_date'] = pd.to_datetime(df['end_date']).dt.date
     # The feed occasionally carries a typo'd future field date; a poll can't have finished yet
@@ -178,7 +199,7 @@ class Polling:
         df = load_polls()
         self.available = not df.empty
         if not self.available:
-            logger.warning("No poll data at %s", POLLS_FILE)
+            logger.warning("No poll data in the database")
             return
         generic = df[(df['poll_type'] == 'generic-ballot') & df['choice'].isin(['Dem', 'Rep'])]
         approval = df[(df['poll_type'] == 'approval') & (df['subject'] == 'Donald Trump')
@@ -201,10 +222,8 @@ class Polling:
     @staticmethod
     def published_averages() -> dict:
         """Each published average plus their mean, for approval and the generic ballot."""
-        if not os.path.exists(AGGREGATES_FILE):
-            return {}
-        with open(AGGREGATES_FILE) as f:
-            aggregates = json.load(f)
+        from app import runstate
+        aggregates = runstate.get(AGGREGATES_FILE, {})
         for key, (a, b) in {'approval': ('Approve', 'Disapprove'), 'generic': ('Democrats', 'Republicans')}.items():
             if key not in aggregates:
                 continue

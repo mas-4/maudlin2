@@ -44,11 +44,11 @@ from app.analysis import local_models
 logger = get_logger(__name__)
 
 FOLDER = os.path.join(Config.data, 'motifs')
-SHAPES = os.path.join(FOLDER, 'claim_shapes.json')  # claim key -> its bare shape, by the filing model
-RERANKS = os.path.join(FOLDER, 'rerank_cache.json')  # pair hash -> the reranker's P(yes)
-JUDGED = os.path.join(FOLDER, 'pair_judge_cache.json')
-ELEMENTS = os.path.join(FOLDER, 'motif_elements.json')  # motif id -> {'element': its must-have, 'from': what it was drafted from}
-LAYERED = os.path.join(FOLDER, 'claim_layers.json')  # claim key -> {layer: its generic sentence or 'none'}  # pair hash -> the filing model's P(yes)
+SHAPES = os.path.join(Config.cache, 'motifs', 'claim_shapes.json')  # claim key -> its bare shape, by the filing model
+RERANKS = os.path.join(Config.cache, 'motifs', 'rerank_cache.json')  # pair hash -> the reranker's P(yes)
+JUDGED = os.path.join(Config.cache, 'motifs', 'pair_judge_cache.json')
+ELEMENTS = os.path.join(Config.cache, 'motifs', 'motif_elements.json')  # motif id -> {'element': its must-have, 'from': what it was drafted from}
+LAYERED = os.path.join(Config.cache, 'motifs', 'claim_layers.json')  # claim key -> {layer: its generic sentence or 'none'}  # pair hash -> the filing model's P(yes)
 NOMIC = local_models.NOMIC
 RERANKER = local_models.RERANKER
 JUDGE_MODEL = local_models.BIG

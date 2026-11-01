@@ -37,7 +37,7 @@ LOOK = 20  # seconds between lookups
 PARTY_SECONDS = 30
 CHECKER = 'http://localhost:8766/ui/workbench'
 SITE = 'https://bignews.day/'
-SEEN = 'deck_seen.json'  # the newborn motifs met on the deck
+SEEN = 'deck_seen'  # run_state name: the newborn motifs met on the deck
 BRIGHT, DIM = 70, 12  # percent, day and night
 EMOJI_FONT = '/usr/share/fonts/noto/NotoColorEmoji.ttf'  # a bitmap font: drawn at its one size, then scaled
 TEXT_FONT = '/usr/share/fonts/comic-neue/ComicNeue-Bold.ttf'  # the site's accent face (docs/style-book.md)
@@ -53,9 +53,9 @@ EXPERIMENT_ALERTS = os.path.join(Config.data, 'motifs', 'experiments', 'alerts.j
 # What the keys show
 
 def news_day() -> dict | None:
+    from app import runstate
     from app.site.page_headlines import NEWS_DAY_FILE
-    from app.utils.store import read_json
-    return read_json(NEWS_DAY_FILE, None)
+    return runstate.get(NEWS_DAY_FILE)
 
 
 def newborn(index: dict, today: str) -> list[dict]:
@@ -278,7 +278,6 @@ def motif_card(e: dict, why: str):
 
 
 def press(state: dict, n: int):
-    from app.utils.store import write_json
     now = time.time()
     if n == 0:
         news = state.get('news') or {}
@@ -298,18 +297,17 @@ def press(state: dict, n: int):
         from app import desk
         card('🎛 The machine', escape(desk.panel()).replace('\n', '<br>'))
     elif n == 5:
-        from app import lights
+        from app import lights, runstate
         state['party_until'] = now + PARTY_SECONDS
-        write_json(os.path.join(Config.data, lights.PARTY), {'until': state['party_until']})
+        runstate.put(lights.PARTY, {'until': state['party_until']})
 
 
 # Running
 
 def run(deck, start: str):
     from StreamDeck.ImageHelpers import PILHelper
-    from app import lights, worker
-    from app.utils.store import read_json
-    state = {'seen': set(read_json(os.path.join(Config.data, SEEN), []))}
+    from app import lights, runstate, worker
+    state = {'seen': set(runstate.get(SEEN, []))}
     deck.set_key_callback(lambda d, n, down: down and threading.Thread(target=press, args=(state, n), daemon=True).start())
     size = deck.key_image_format()['size']
     looked, bright = 0.0, None

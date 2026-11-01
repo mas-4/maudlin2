@@ -13,13 +13,19 @@ from app.analysis import motif_index as mi
 from app.analysis import motif_proposals as mp
 from app.analysis import trace
 from app.analysis import watch_list as wl
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def _data_db(monkeypatch):
+    memory_db(monkeypatch)  # an empty data.db: the proposals, the undo stack, the watch list are kept there
+
 
 PARENT = 'Canadian separatists are working with the United States to break up Canada.'
 
 
 def setup(monkeypatch, tmp_path):
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    monkeypatch.setattr(mp, 'PROPOSALS', str(tmp_path / 'proposals.json'))
     rec = lambda fit, **kw: {'claim': PARENT, 'source': 'narrative', 'ref': '2026-10-12T09:12', 'side': 'left',  # noqa: E731
                              'date': '2026-10-12', 'story': 7, 'story_tie': 'same event', 'fit': fit, **kw}
     mi.save({'next': 5, 'claims': {mi.key(PARENT): ['M001', 'M002', 'M003'], mi.key('other'): ['M001']},

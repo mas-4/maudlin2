@@ -41,6 +41,8 @@ def db(monkeypatch):
     monkeypatch.setattr(tr, 'Session', session)
     import app.sidefeeds as sf
     monkeypatch.setattr(sf, 'Session', session)
+    import app.models
+    monkeypatch.setattr(app.models, 'Session', session)  # the tables of app/tables, read through app.models
     return session
 
 

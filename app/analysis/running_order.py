@@ -17,7 +17,7 @@ from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-RUNNING = os.path.join(Config.data, 'running_order.json')
+RUNNING = os.path.join(Config.cache, 'running_order.json')
 SOURCES = {'nprnewsnow': 'NPR News Now', 'abcupdate': 'ABC News Update'}
 # Gemma 4 26B since Oct 6: on 10 newscasts its stories passed the first-words check 96% of the time (Qwen3 30B-A3B 81%),
 # with nearly the same front-page picks, and a little faster (docs/models.md)

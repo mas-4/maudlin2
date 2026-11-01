@@ -19,8 +19,8 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-SEEN = os.path.join(Config.data, 'factcheck_seen.json')  # url -> counts, from the latest nightly look
-CACHE = os.path.join(Config.data, 'narratives', 'stance_judgments.json')
+SEEN = 'factcheck_seen'  # the latest nightly look: its run_state name, its claims rows of factcheck_seen
+CACHE = os.path.join(Config.cache, 'narratives', 'stance_judgments.json')
 HOURS = 72
 CANDIDATE = 0.72  # Oct 4: at 0.75, 13 of 94 claims had any post at all in a half-day sample; most single posts
 CHECK = 12
@@ -37,7 +37,7 @@ SCHEMA = {"type": "object", "properties": {"stance": {"type": "string", "enum": 
 
 def seen(claims: dict[str, str], hours: float = HOURS) -> dict:
     """url -> {'telling', 'arguing', 'people', 'candidates', 'checked', 'at'} for each claim, from the sample of the
-    last `hours`; written to SEEN."""
+    last `hours`; kept in data.db in place of the last look (save)."""
     from app import narratives
     posts = narratives.load(hours)
     if not posts or not claims or llm.backend() is None:
@@ -67,14 +67,36 @@ def seen(claims: dict[str, str], hours: float = HOURS) -> dict:
                     'candidates': int(len(found)), 'checked': len(votes),
                     'at': dt.now().isoformat(timespec='minutes')}
     write_json(CACHE, cache)
-    write_json(SEEN, {'hours': hours, 'posts': len(posts), 'at': dt.now().isoformat(timespec='minutes'), 'claims': out})
+    save({'hours': hours, 'posts': len(posts), 'at': dt.now().isoformat(timespec='minutes')}, out)
     logger.info("Circulation: %d of %d fact-checked claims seen in %d posts (%g hours)",
                 sum(1 for c in out.values() if c['people']), len(out), len(posts), hours)
     return out
 
 
+def save(look: dict, claims: dict):
+    """The look (hours, posts, at) and its claims in place of the last ones, in one transaction"""
+    from app import runstate
+    from app.models import Session
+    from app.tables.runstate import FactcheckSeen
+    with Session() as s:
+        s.query(FactcheckSeen).delete()
+        s.add_all(FactcheckSeen(url=url, **c) for url, c in claims.items())
+        runstate.put(SEEN, look, session=s)
+        s.commit()
+
+
 def load() -> dict:
-    return read_json(SEEN, {})
+    """{'hours', 'posts', 'at', 'claims': {url: counts}} of the latest look, or {} before the first"""
+    from app import runstate
+    from app.models import Session
+    from app.tables.runstate import FactcheckSeen
+    look = runstate.get(SEEN)
+    if look is None:
+        return {}
+    with Session() as s:
+        claims = {r.url: {'telling': r.telling, 'arguing': r.arguing, 'people': r.people, 'candidates': r.candidates,
+                          'checked': r.checked, 'at': r.at} for r in s.query(FactcheckSeen)}
+    return {**look, 'claims': claims}
 
 
 def nightly():

@@ -1,7 +1,11 @@
 """app/deck.py: what the Stream Deck's keys show and do (no device)"""
-import json
 import time
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
 from app import deck
 
 
@@ -28,12 +32,14 @@ def test_every_key_draws_with_or_without_data():
         assert len(faces) == 6 and all(f.size == (80, 80) for f in faces)
 
 
-def test_the_unicorn_key_asks_the_lights_for_the_rainbow(monkeypatch, tmp_path):
-    from app import lights
-    monkeypatch.setattr(deck.Config, 'data', str(tmp_path))
+def test_the_unicorn_key_asks_the_lights_for_the_rainbow(monkeypatch):
+    from app import lights, runstate
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
     state = {}
     deck.press(state, 5)
-    until = json.loads((tmp_path / lights.PARTY).read_text())['until']
+    until = runstate.get(lights.PARTY)['until']
     assert until == state['party_until'] and 25 < until - time.time() <= deck.PARTY_SECONDS
 
 

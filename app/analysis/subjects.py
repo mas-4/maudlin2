@@ -9,7 +9,7 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-TAGS = os.path.join(Config.data, 'subject_tags.json')  # url -> [subjects]
+TAGS = os.path.join(Config.cache, 'subject_tags.json')  # url -> [subjects]
 MAX_NEW = 80  # model calls a run, at most
 SUBJECTS = ['elections and campaigns', 'Congress and legislation', 'the White House and the presidency',
             'courts and the law', 'immigration', 'the economy and jobs', 'taxes and government spending',

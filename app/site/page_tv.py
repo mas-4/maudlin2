@@ -5,8 +5,6 @@ Oct 28 (the site redo): the page was a table that squeezed into tall narrow cell
 hour cards. Now: the hours as a swimlane, a lane per channel, each hour's captions in its hover card; the day's stories
 by minutes on screen as a ranked strip with a bar in the channels' inks; and a pair that answers itself, what was on
 air but not on the front pages beside what the front pages led with and the air skipped."""
-import glob
-import os
 import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta as td
@@ -18,7 +16,6 @@ from app.site import boards
 from app.site.common import TemplateHandler
 from app.site.page_sagas import EASTERN
 from app.utils import get_logger
-from app.utils.store import read_json
 
 logger = get_logger(__name__)
 HOURS = 12  # the latest hours shown hour by hour, in the swimlane
@@ -37,11 +34,7 @@ NOBODY = {'ink': boards.UNCOLORED, 'mark': '📵', 'label': 'no channel'}
 
 def matched(days: int = 2) -> list[dict]:
     """The matched captions of the latest `days` UTC days, oldest first"""
-    out = []
-    for path in sorted(glob.glob(os.path.join(chyrons.FOLDER, 'matched-*.json')))[-days:]:
-        for c in read_json(path, []):
-            out.append(dict(c, at=datetime.fromisoformat(c['at'])))
-    return out
+    return [dict(c, at=datetime.fromisoformat(c['at'])) for c in chyrons.matched(days)]
 
 
 def minutes(seconds: int) -> str:

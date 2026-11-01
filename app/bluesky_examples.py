@@ -10,17 +10,14 @@ author carries a moderation label. Bluesky gives no view counts. Shown posts are
 check first, so one deleted or hidden since drops off.
 
 Mastodon posts are never shown: their authors opted in to search, not to being republished."""
-import os
 import time
 from datetime import datetime as dt, timedelta as td, UTC
 
-from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
+from app.utils import get_logger
 
 logger = get_logger(__name__)
 
 API = 'https://public.api.bsky.app/xrpc/'
-CACHE = os.path.join(Config.data, 'bluesky_examples.json')  # address -> what Bluesky said about the post, and when
 MIN_INTERACTIONS = 25  # likes, reposts, quotes and replies together
 MIN_FOLLOWERS = 5000  # ...or posted by an account this big (with some interaction)
 MIN_BIG_ACCOUNT = 3
@@ -50,7 +47,7 @@ def showable(p: dict) -> bool:
 
 def examples(uris: list[str], cache: dict | None = None) -> list[dict]:
     """The posts to show with a narrative, most interaction first: {uri, cid, url, handle, likes, reposts, ...}"""
-    cache = read_json(CACHE, {}) if cache is None else cache
+    cache = load() if cache is None else cache
     found = [dict(cache[u], uri=u) for u in uris or [] if showable(cache.get(u))]
     found.sort(key=lambda p: -interactions(p))
     for p in found:
@@ -71,7 +68,7 @@ def refresh(uris: list[str], calls: int = CALLS, get=_get, sleep=time.sleep) -> 
     """Look up the posts that need it, at most `calls` API calls: first ones shown on the site whose last check is
     RECHECK old (oldest first), then ones never looked up, then young ones not shown yet whose counts may have grown.
     `uris`: every candidate, the newest narratives' first."""
-    cache = read_json(CACHE, {})
+    cache = load()
     t = now()
     stamp = lambda p: dt.fromisoformat(p['checked'])  # noqa: E731
     shown = sorted((u for u in uris if showable(cache.get(u)) and t - stamp(cache[u]) >= RECHECK),
@@ -125,10 +122,56 @@ def refresh(uris: list[str], calls: int = CALLS, get=_get, sleep=time.sleep) -> 
                         cache[u]['hidden'] = True
     cutoff = t - KEEP
     cache = {u: p for u, p in cache.items() if dt.fromisoformat(p.get('first', p['checked'])) >= cutoff}
-    write_json(CACHE, cache)
+    save(cache, cutoff)
     logger.info("Bluesky examples: %d calls, %d posts known, %d showable, %d left to look up", used, len(cache),
                 sum(showable(p) for p in cache.values()), len(todo))
     return cache
+
+
+# A post's row as the dict the rest of this module works on (the shape the JSON file had): no keys for what Bluesky
+# never said, times as ISO text
+FIELDS = ('cid', 'did', 'handle', 'likes', 'reposts', 'quotes', 'replies', 'followers')
+
+
+def as_dict(r) -> dict:
+    if r.gone:
+        return {'gone': True, 'checked': r.checked.isoformat(timespec='seconds'),
+                'first': r.first.isoformat(timespec='seconds')}
+    p = {k: getattr(r, k) for k in FIELDS if getattr(r, k) is not None or k in ('cid', 'did', 'handle')}
+    if r.likes is None:  # never answered for: no counts, as before
+        p = {k: v for k, v in p.items() if k not in ('likes', 'reposts', 'quotes', 'replies')}
+    return {**p, 'hidden': bool(r.hidden), 'checked': r.checked.isoformat(timespec='seconds'),
+            'first': r.first.isoformat(timespec='seconds')}
+
+
+def as_row(uri: str, p: dict) -> dict:
+    checked = dt.fromisoformat(p['checked'])
+    return {'uri': uri, **{k: p.get(k) for k in FIELDS}, 'hidden': bool(p.get('hidden')), 'gone': bool(p.get('gone')),
+            'checked': checked, 'first': dt.fromisoformat(p['first']) if p.get('first') else checked}
+
+
+def load() -> dict:
+    """Every post looked up: address -> what Bluesky said about it, and when"""
+    from app.models import Session
+    from app.tables.records import BlueskyPost
+    with Session() as s:
+        return {r.uri: as_dict(r) for r in s.query(BlueskyPost)}
+
+
+def save(cache: dict, cutoff: dt):
+    """The posts as they now stand, in one transaction: rows changed or new written, ones first seen before cutoff
+    dropped"""
+    from app.models import Session
+    from app.tables.records import BlueskyPost
+    with Session() as s:
+        before = {r.uri: as_dict(r) for r in s.query(BlueskyPost)}
+        s.query(BlueskyPost).filter(BlueskyPost.first < cutoff).delete(synchronize_session=False)
+        changed = [as_row(u, p) for u, p in cache.items() if before.get(u) != p]
+        for i in range(0, len(changed), 500):  # under SQLite's limit on bound values
+            s.query(BlueskyPost).filter(BlueskyPost.uri.in_([r['uri'] for r in changed[i:i + 500]])) \
+                .delete(synchronize_session=False)
+        s.bulk_insert_mappings(BlueskyPost, changed)
+        s.commit()
 
 
 def _posts(get, uris: list[str]) -> list[dict]:
@@ -148,7 +191,7 @@ def prepared() -> dict:
         reports = [latest_report() or {}] + reports_by_day()
         uris = [u for r in reports for g in r.get('found', []) if (g.get('label') or {}).get('retold')
                 for u in g.get('uris') or []]
-        _cache = refresh(list(dict.fromkeys(uris))) if uris else read_json(CACHE, {})
+        _cache = refresh(list(dict.fromkeys(uris))) if uris else load()
     return _cache
 
 

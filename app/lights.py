@@ -46,7 +46,7 @@ LOOK = 2.0  # seconds between looks at the GPU and the machine's state
 STUCK = 120  # seconds of failed looks before the lights exit for systemd to start them afresh
 LOG, LOG_KEEP = 'lights_log.csv', 1440  # who had the GPU each minute, the last day of it
 HOT, LIMIT = 85, 93  # degrees C: the card runs at ~83 under load; its slowdown limit is 93
-PARTY = 'lights_party.json'  # {'until': epoch seconds}: the Stream Deck's 🦄 key asks for the rainbow until then
+PARTY = 'lights_party'  # run_state name, {'until': epoch seconds}: the Stream Deck's 🦄 key asks for the rainbow until then
 
 AMBER, VIOLET, TEAL, IDLE = (255, 140, 0), (140, 60, 255), (0, 190, 170), (40, 80, 200)
 ORANGE, RED, EMBER, DARK = (255, 70, 0), (255, 0, 0), (120, 12, 0), (0, 0, 0)
@@ -91,13 +91,9 @@ def log(holder: str, load: float):
 
 def party() -> bool:
     """Someone pressed the Stream Deck's 🦄 key lately (app/deck.py): the card's own rainbow until PARTY's time"""
-    import json
-    from app.utils import Config
-    try:
-        with open(os.path.join(Config.data, PARTY)) as f:
-            return json.load(f).get('until', 0) > time.time()
-    except (OSError, ValueError):
-        return False
+    from app import runstate
+    on = runstate.get(PARTY)
+    return isinstance(on, dict) and on.get('until', 0) > time.time()
 
 
 def sun(day, lat: float, lon: float) -> tuple[float, float] | None:

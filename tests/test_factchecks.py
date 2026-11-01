@@ -1,8 +1,19 @@
-import json
 
 import numpy as np
 
 from app.analysis import clustering, factchecks, llm
+
+
+def db(monkeypatch):
+    """An empty in-memory data.db in place of the real one"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
 
 
 def test_fact_checks_tie_only_above_the_floor_by_forced_choice(monkeypatch, tmp_path):
@@ -24,14 +35,14 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
     import json
 
     from app.analysis import factcheck_text as ft, motif_index as mi
-    monkeypatch.setattr(factchecks, 'LABELS', str(tmp_path / 'labels.json'))
+    db(monkeypatch)
     monkeypatch.setattr(ft, 'TEXTS', str(tmp_path / 'texts.json'))
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
     fixed = {'claim': 'Critics say a senator lied about a vote', 'source': 'PolitiFact'}  # a fact-check's, corrected
     mi.save({'next': 2, 'entries': {'M1': {'id': 'M1', 'name': 'm', 'claims': [fixed]}},
              'claims': {mi.key('Old claim, filed'): ['M1']},
              'corrections': {'Pols are bad': 'Critics say a senator lied about a vote'}})
-    (tmp_path / 'labels.json').write_text(json.dumps({'https://a.example/1': {'claim': 'Old claim, filed'}}))
+    factchecks.save_labels({'https://a.example/1': {'claim': 'Old claim, filed'}})
     (tmp_path / 'texts.json').write_text(json.dumps({'https://a.example/1': {'text': 'THE PIECE SAYS posts claimed X.'},
                                                       'https://a.example/2': {'text': 'Another piece.'}}))
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
@@ -57,6 +68,9 @@ def test_a_fact_check_is_read_from_its_piece_and_a_filed_claim_keeps_its_wording
     assert labels['https://a.example/1']['claim'] == 'Old claim, filed'  # filed: the person's claim stays as it is
     assert labels['https://a.example/1']['claim from the piece'].startswith('Posts on X')
     assert labels['https://a.example/2']['claim'].startswith('Posts on X') and labels['https://a.example/2']['read'] == 'piece'
+    kept = factchecks.load_labels()  # in data.db
+    assert {u: (v['claim'], v.get('claim from the piece')) for u, v in kept.items()} == {
+        u: (v['claim'], v.get('claim from the piece')) for u, v in labels.items()}
 
 
 def test_a_piece_s_text_is_its_article_not_the_page_around_it():
@@ -86,11 +100,14 @@ def test_robots_txt_is_read_under_our_own_name(monkeypatch):
 
 
 def test_a_fact_check_is_tied_to_the_story_its_card_showed(monkeypatch, tmp_path):
-    from app.site import page_headlines
-    path = tmp_path / 'extras.json'
-    path.write_text(json.dumps({
-        '10': {'factchecks': [{'url': 'u1'}, {'url': 'u2'}], 'updated': '2026-10-05T10:00'},
-        '11': {'factchecks': [{'url': 'u2'}], 'updated': '2026-10-06T10:00'},
-        '12': {'factchecks': [], 'updated': '2026-10-07T10:00'}}))
-    monkeypatch.setattr(page_headlines, 'STORY_EXTRAS', str(path))
+    from datetime import datetime as dt
+    import app.models as models
+    from app.tables.stories import StoryExtra, StoryExtraItem
+    db(monkeypatch)
+    with models.Session() as s:
+        for sid, urls, day in ((10, ['u1', 'u2'], 5), (11, ['u2'], 6), (12, [], 7)):
+            s.add(StoryExtra(story_id=sid, updated=dt(2026, 10, day, 10)))
+            s.add_all(StoryExtraItem(story_id=sid, kind='factchecks', key=u, url=u, seen=dt(2026, 10, day, 10), ord=i)
+                      for i, u in enumerate(urls))
+        s.commit()
     assert factchecks.stories_of() == {'u1': 10, 'u2': 11}  # the most recently updated story

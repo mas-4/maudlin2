@@ -29,7 +29,7 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-TABLE_FILE = os.path.join(Config.data, 'momentum.json')
+TABLE_FILE = os.path.join(Config.cache, 'momentum.json')  # rebuilt from the database when missing
 REFRESH = td(hours=24)
 HISTORY_DAYS = 30
 SETTLE_HOURS = 48  # a story this old has done nearly all its gathering (and its day for crossing has passed)

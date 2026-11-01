@@ -10,6 +10,13 @@ from sqlalchemy.pool import StaticPool
 from app.analysis import newsfilter
 from app.models import Agency, Article, Base, Headline
 from tests.load import script
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def _data_db(monkeypatch):
+    memory_db(monkeypatch)  # an empty data.db: the proposals, the undo stack, the watch list are kept there
+
 
 validate = script('validate')
 
@@ -114,7 +121,6 @@ def test_board_changes_are_logged_with_what_the_model_had_proposed(monkeypatch, 
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
     monkeypatch.setattr(validate, 'FOLDER', str(tmp_path))
     monkeypatch.setattr(validate, 'CURATION_LOG', str(tmp_path / 'log.jsonl'))
-    monkeypatch.setattr(validate, 'UNDO', str(tmp_path / 'undo'))  # never the real undo folder
     mi.save({'next': 3, 'claims': {mi.key('a'): ['M001']}, 'entries': {
         'M001': {'id': 'M001', 'name': 'Smug smirk', 'claims': [{'claim': 'a', 'source': 's'}]},
         'M002': {'id': 'M002', 'name': 'Blame shifting', 'curated': True, 'claims': []}}})
@@ -141,7 +147,7 @@ def test_undo_steps_back_but_never_over_a_runs_filing(monkeypatch, tmp_path):
     import urllib.request
     from app.analysis import motif_index as mi
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.json'))
-    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl', 'UNDO': tmp_path / 'undo'}.items():
+    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl'}.items():
         monkeypatch.setattr(validate, k, str(v))
     mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
     server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
@@ -171,7 +177,7 @@ def test_undo_steps_back_again_and_again(monkeypatch, tmp_path):
     import urllib.request
     from app.analysis import motif_index as mi
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.sqlite'))
-    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl', 'UNDO': tmp_path / 'undo'}.items():
+    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl'}.items():
         monkeypatch.setattr(validate, k, str(v))
     mi.save({'next': 2, 'claims': {}, 'entries': {'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's'}]}}})
     server = validate.ThreadingHTTPServer(('127.0.0.1', 0), validate.Handler)
@@ -197,7 +203,7 @@ def test_an_undone_check_no_longer_counts_as_confirmed(monkeypatch, tmp_path):
     from app.analysis import curation_db, motif_index as mi
     monkeypatch.setattr(mi, 'INDEX', str(tmp_path / 'index.sqlite'))
     monkeypatch.setattr(curation_db, 'DB', str(tmp_path / 'curation.sqlite'))
-    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl', 'UNDO': tmp_path / 'undo'}.items():
+    for k, v in {'FOLDER': tmp_path, 'CURATION_LOG': tmp_path / 'log.jsonl'}.items():
         monkeypatch.setattr(validate, k, str(v))
     mi.save({'next': 2, 'claims': {mi.key('a'): ['M001']}, 'entries': {
         'M001': {'id': 'M001', 'name': 'x', 'claims': [{'claim': 'a', 'source': 's', 'checked': 'yes'}]}}})
@@ -305,7 +311,10 @@ def test_todays_set_is_picked_once_a_day_runs_out_as_decided_and_more_can_be_ask
         'M3': {'id': 'M3', 'name': 'Made by the model', 'claims': [c('m'), c('n')]}}}
     monkeypatch.setattr(mi, 'load', lambda: index)
     monkeypatch.setattr(mi, 'snapshot', mi.load)  # the views read the index through snapshot()
-    monkeypatch.setattr(validate, 'TODAY_FILE', str(tmp_path / 'today.json'))
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))  # the day's set goes to run_state
     monkeypatch.setattr(validate, 'TODAY', {'doubted': 4, 'torn': 1, 'new motifs': 3, 'proposals': 3})
     monkeypatch.setattr(validate, 'second_look', lambda: [{'claim': 'doubted', 'id': 'M1', 'fit': 0.2, 'better': [{'id': 'M2'}]}])
     monkeypatch.setattr(fc, 'better', lambda ix, claim: [])
@@ -492,10 +501,13 @@ def test_a_side_split_from_a_dispute_finds_the_disputes_report(monkeypatch, tmp_
     dispute, side = 'Arguments exist over whether X failed.', 'X brought the country back.'
     mi.save({'next': 2, 'claims': {mi.key(side): ['M001']}, 'entries': {'M001': {'id': 'M001', 'name': 'Recovery', 'claims': [
         {'claim': side, 'source': 'narrative', 'ref': '2026-10-15T04:55', 'split_from': dispute}]}}})
-    monkeypatch.setattr(app.narratives, 'FOLDER', str(tmp_path))
+    import app.models as models
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
     monkeypatch.setattr(app.narratives, 'posts_of', lambda keys: [])
-    (tmp_path / 'report-2026-10-15-0455.json').write_text(json.dumps({'made': 'm', 'found': [
-        {'authors': 6, 'posts': 6, 'label': {'narrative': dispute}}]}))
+    app.narratives.save_report('report-2026-10-15-0455.json', {'made': 'm', 'found': [
+        {'authors': 6, 'posts': 6, 'label': {'narrative': dispute}}]})
     d = validate.claim_detail(side)
     assert d['kind'] == 'folklore' and d['people'] == 6 and d['split_from'] == dispute
 
@@ -518,7 +530,6 @@ def test_the_names_and_label_check_pages_data_is_served_as_json(monkeypatch, tmp
     import urllib.request
     from app.analysis import entities
     monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
-    monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
     (tmp_path / 'e.json').write_text(json.dumps({'s1': ['Trump', 'Biden'], 's2': ['Donald Trump', 'Joe Biden'],
                                                  's3': ['Joe Biden']}))
     monkeypatch.setattr(validate.labels, 'batch', lambda n=12: [{'headline_id': 1, 'title': 'Storm hits coast',

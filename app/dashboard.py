@@ -15,6 +15,7 @@ import time
 from collections import Counter, defaultdict
 from datetime import datetime as dt, timedelta as td
 
+from app import runstate
 from app.utils import Config, get_logger
 from app.utils.store import read_json
 
@@ -248,7 +249,7 @@ def models() -> dict:
                            'decisions': t.get('filings'), 'reranker': m.get('reranker', 'base')},
             'shortlist': {'at': learned.get('at'), **(learned.get('test') or {}), 'claims': learned.get('claims'),
                           'plain weights at': w.get('at')},
-            'reranker': read_json(reranker_teach.META, {}) or {'at': 'not taught yet'},
+            'reranker': reranker_teach.meta() or {'at': 'not taught yet'},
             'experiments': results, 'history': fc.history(), 'live': live_by_day(fc.live())}
 
 
@@ -296,7 +297,7 @@ def machine() -> dict:
         if os.path.exists(p):
             sizes[name] = round(os.path.getsize(p) / 1e6, 1)
     return {'disk free GB': round(disk.free / 1e9, 1), 'disk used %': round(100 * disk.used / disk.total),
-            'files MB': sizes, 'health': read_json(os.path.join(Config.data, 'health.json'), None)}
+            'files MB': sizes, 'health': runstate.get('health')}
 
 
 TTL = {'model loads': 900, 'processing': 120}  # seconds a part is kept (the rest: a minute); counting the model loads

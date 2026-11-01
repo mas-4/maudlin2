@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
+from app import runstate  # noqa: E402
 from app.utils import Config, get_logger  # noqa: E402
 
 logger = get_logger(__name__)
@@ -34,8 +35,7 @@ OLD = 'faster-whisper large-v3-turbo int8_float16'  # the carry-over transcripts
 SKIP = {'nprnewsnow', 'abcupdate', 'bloombergnow', 'focusgroup'}  # newscasts and focus groups: not read for claims
 HOST_GAP = 15  # seconds between downloads from one host
 BACKUP = os.path.join(Config.data, 'transcripts_carryover.jsonl')  # the replaced transcripts, one JSON line each
-FAILED = os.path.join(Config.data, 'retranscribe_failed.json')  # item id -> why it can't be redone
-DONE_CLAIMS = os.path.join(Config.data, 'retranscribe_claims.json')  # episode url -> when its claims were read again
+FAILED = 'retranscribe_failed'  # run_state name (app/runstate.py): item id -> why it can't be redone
 SIMILAR = 0.84  # show_claims.SIMILARITY: two show claims this alike are one claim
 
 
@@ -43,28 +43,13 @@ def todo() -> list:
     """The carry-over show transcripts still to redo: (transcript row id, item id, source, title, audio url), newest
     first"""
     from app.models import Session, SideItem, SideTranscript
-    failed = read(FAILED, {})
+    failed = runstate.get(FAILED, {})
     with Session() as s:
         rows = s.query(SideTranscript.id, SideItem.id, SideItem.source, SideItem.title, SideItem.audio).join(
             SideItem, SideItem.id == SideTranscript.item_id).filter(
             SideTranscript.model == OLD, SideItem.source.notin_(SKIP), SideItem.audio.isnot(None)).order_by(
             SideItem.published.desc()).all()
     return [r for r in rows if str(r[1]) not in failed]
-
-
-def read(path: str, default):
-    try:
-        with open(path, encoding='utf-8') as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return default
-
-
-def write(path: str, data):
-    tmp = path + '.tmp'
-    with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False)
-    os.replace(tmp, path)
 
 
 def audio(limit: int | None = None):
@@ -74,7 +59,7 @@ def audio(limit: int | None = None):
     print(f'retranscribe: {len(rows)} episodes to redo', flush=True)
     if not rows or not tr.free_gpu():
         return
-    words, last, failed = tr.hotwords(), {}, read(FAILED, {})
+    words, last, failed = tr.hotwords(), {}, runstate.get(FAILED, {})
     for n, (tid, item_id, source, title, url) in enumerate(rows, 1):
         host = urlparse(url).netloc
         wait = HOST_GAP - (time.time() - last.get(host, 0))
@@ -86,7 +71,7 @@ def audio(limit: int | None = None):
                 path = tr.download(url, folder)
                 if path is None:
                     failed[str(item_id)] = 'over the size limit'
-                    write(FAILED, failed)
+                    runstate.put(FAILED, failed)
                     continue
                 sound = tr.decode(path)
             segments, _ = tr.model().transcribe(sound, language='en', vad_filter=True, beam_size=1, hotwords=words,
@@ -96,7 +81,7 @@ def audio(limit: int | None = None):
         except Exception as e:  # noqa: BLE001 - one bad file mustn't stop the rest
             if tr.permanent(e):
                 failed[str(item_id)] = f'{type(e).__name__}: {e}'[:200]
-                write(FAILED, failed)
+                runstate.put(FAILED, failed)
                 print(f'retranscribe: {n}/{len(rows)} {source} failed for good: {e}', flush=True)
                 continue
             raise  # out of memory or offline: the queue tries the step again later
@@ -117,9 +102,14 @@ def audio(limit: int | None = None):
 
 def claims(limit: int | None = None):
     from app.analysis import llm, show_claims as sc
+    from sqlalchemy import select
+    from app.models import Session
     from app.narratives import embed
+    from app.tables.showclaims import RetranscribedClaims  # episode url -> when its claims were read again
     import numpy as np
-    store, done = sc.load(), read(DONE_CLAIMS, {})
+    with Session() as s:
+        done = set(s.scalars(select(RetranscribedClaims.url)))
+    store = sc.load()
     redone = redone_urls()
     eps = [ep for ep in sc.episodes(days=60) if ep['url'] in redone and ep['url'] not in done][:limit]
     print(f'retranscribe claims: {len(eps)} episodes to read again', flush=True)
@@ -139,9 +129,10 @@ def claims(limit: int | None = None):
         entry = store.setdefault(ep['url'], entry)
         entry['claims'] = entry.get('claims', []) + [dict(c, reread='2026-10-28') for c in new]
         entry['chunks'] = entry['read'] = len(ep['chunks'])
-        sc.save(store)
-        done[ep['url']] = {'at': dt.utcnow().isoformat(timespec='seconds'), 'found': len(found), 'added': len(new)}
-        write(DONE_CLAIMS, done)
+        sc.save(store, [ep['url']])
+        with Session() as s:
+            s.merge(RetranscribedClaims(url=ep['url'], at=dt.utcnow().replace(microsecond=0), found=len(found), added=len(new)))
+            s.commit()
         print(f'retranscribe claims: {n}/{len(eps)} {ep["show"]} +{len(new)} of {len(found)}', flush=True)
 
 

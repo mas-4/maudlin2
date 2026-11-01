@@ -31,17 +31,14 @@ def test_cues_become_a_speakers_sentences():
     assert transcribe.parse_timed(SRT) == [{'start': 1.0, 'end': 5.0, 'text': 'Hello there and welcome.'}]
 
 
-def test_an_item_with_a_published_transcript_skips_whisper(monkeypatch, tmp_path):
-    import json
-
+def test_an_item_with_a_published_transcript_skips_whisper(monkeypatch):
     from app import sidefeeds
 
     class Item:
         def __init__(self, i, url):
             self.id, self.url, self.title = i, url, f'item {i}'
-    links = tmp_path / 'links.json'
-    links.write_text(json.dumps({'https://s.example/1': 'https://t.example/1.vtt'}))
-    monkeypatch.setattr(sidefeeds, 'TRANSCRIPTS', str(links))
+    links = {'https://s.example/1': 'https://t.example/1.vtt'}
+    monkeypatch.setattr(sidefeeds, 'transcript_links', lambda urls: {u: links[u] for u in urls if u in links})
 
     class R:
         text = VTT

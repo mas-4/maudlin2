@@ -6,6 +6,13 @@ own. This page says what each file is, which module owns it, and whether losing 
 after Fable's architecture review found 75 JSON files and six databases with no list of them. Add a line here when you
 add a file.
 
+**Since Nov 1, 2026 the work and stores are tables in `data.db`, not JSON files.** The person: everything that isn't
+configuration, a cache or a log belongs in the database. One migration (`alembic/versions/ca8f5ed315d1_...`) made the
+tables (`app/tables/`, one module per group) and imported the files (`scripts/json_import/`). Small singletons
+(health, the news day, the worker's heartbeat, the GPU lease, gaming mode) are rows of `run_state`, read through
+`app/runstate.py`. Caches stay JSON files and live together in `data/cache/`. What's below describes the files as they
+were; a file it lists is now a table of the same meaning unless it's a cache, a log or configuration.
+
 Kinds of file:
 
 - **Work** is the person's own curation. It can't be made again, so it is backed up every hour.

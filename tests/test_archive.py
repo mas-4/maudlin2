@@ -1,7 +1,10 @@
 """app/site/archive.py: dated editions of the front page, in temp folders only."""
-import json
-
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
 
 import app.site.archive as ar
 from app.utils import Config
@@ -34,11 +37,13 @@ def test_kept_pages_carry_todays_footer():
 
 @pytest.fixture
 def folders(tmp_path, monkeypatch):
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
     build, data = tmp_path / 'build', tmp_path / 'archive'
     build.mkdir()
     monkeypatch.setattr(Config, 'build', str(build))
     monkeypatch.setattr(ar, 'FOLDER', str(data))
-    monkeypatch.setattr(ar, 'DAYS', str(data / 'days.json'))
     (build / 'index.html').write_text(PAGE)
     return build, data
 
@@ -63,4 +68,4 @@ def test_save_then_publish_past_days_only(folders, monkeypatch):
     assert 'archive-ribbon' in edition
     listing = (build / 'archive.html').read_text()
     assert '/2026/10/03/' in listing and 'G7 releases oil' in listing
-    assert json.loads((data / 'days.json').read_text())['2026-10-03']['stories'] == 40
+    assert ar._days()['2026-10-03']['stories'] == 40

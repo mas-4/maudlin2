@@ -10,7 +10,7 @@ Two products, both kept in FOLDER:
     the confidence model: scores from a reranker that learned those very decisions would look better than they are,
     and the confidence model would trust them too much.
 The taught layers are kept only if, held out, they judge the decisions better than the untaught reranker on the same
-text (both AUCs and the choice in META); otherwise the untaught reranker is used until the next teaching. On the CPU
+text (both AUCs and the choice in each teaching's row, reranker_teaching in data.db); otherwise the untaught reranker is used until the next teaching. On the CPU
 (the card is the filing model's) at low priority, weekly (due()), started from the hourly run at night as a process of
 its own: about two and a half hours.
 
@@ -26,15 +26,15 @@ from app.analysis import filing_confidence as fc
 from app.analysis import motif_index as mi
 from app.analysis import motif_retriever as mr
 from app.analysis import motif_signals as ms
-from app.utils import get_logger
+from app.utils import Config, get_logger
 from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
 FOLDER = os.path.join(ms.FOLDER, 'reranker')
 TAUGHT = os.path.join(FOLDER, 'taught.pt')
-META = os.path.join(FOLDER, 'taught.json')  # {'at', 'examples', 'decisions', 'taught_auc', 'base_auc', 'kept'}
-HELD_OUT = os.path.join(FOLDER, 'held_out.json')  # 'claim key|motif id' -> P(yes) from a model that never saw the claim
+# 'claim key|motif id' -> P(yes) from a model that never saw the claim: model answers, remade at each teaching
+HELD_OUT = os.path.join(Config.cache, 'motifs', 'reranker', 'held_out.json')
 TOP_LAYERS = 6
 EPOCHS = 2
 BATCH = 8
@@ -45,10 +45,21 @@ EVERY = td(days=7)
 MIN_NEW = 50  # decisions made since the last teaching, before teaching again is worth it
 
 
+TEACHING_FIELDS = ('at', 'examples', 'decisions', 'taught_auc', 'base_auc', 'kept')
+
+
+def meta() -> dict:
+    """The latest teaching: {'at', 'examples', 'decisions', 'taught_auc', 'base_auc', 'kept'}, or {} if never taught"""
+    from app.models import Session
+    from app.tables.motifs import RerankerTeaching
+    with Session() as s:
+        r = s.query(RerankerTeaching).order_by(RerankerTeaching.at.desc(), RerankerTeaching.id.desc()).first()
+        return {f: getattr(r, f) for f in TEACHING_FIELDS if getattr(r, f) is not None} if r else {}
+
+
 def tag() -> str:
     """Which reranker scores come from: 'base', or the taught one's date (scores are cached per reranker)"""
-    meta = read_json(META, {})
-    return meta.get('at', 'base') if os.path.exists(TAUGHT) else 'base'
+    return meta().get('at', 'base') if os.path.exists(TAUGHT) else 'base'  # no layers: no need to ask the database
 
 
 def examples(index: dict) -> list[tuple[str, str, bool, str]]:
@@ -173,8 +184,12 @@ def teach():
         write_json(HELD_OUT, held)
     elif os.path.exists(TAUGHT):  # the untaught reranker judges better: scores, and the confidence model, go back to it
         os.remove(TAUGHT)
-    write_json(META, {'at': dt.now().isoformat(timespec='seconds'), 'examples': len(rows), 'decisions': len(decided),
-                      'taught_auc': taught_auc, 'base_auc': base_auc, 'kept': 'taught' if keep else 'base'})
+    from app.models import Session
+    from app.tables.motifs import RerankerTeaching
+    with Session() as s:
+        s.add(RerankerTeaching(at=dt.now().isoformat(timespec='seconds'), examples=len(rows), decisions=len(decided),
+                               taught_auc=taught_auc, base_auc=base_auc, kept='taught' if keep else 'base'))
+        s.commit()
     logger.info("Reranker teaching on %d examples (%d decisions): held out, taught AUC %s against untaught %s; %s kept",
                 len(rows), len(decided), taught_auc, base_auc, 'taught' if keep else 'untaught')
 
@@ -194,15 +209,15 @@ def held_out() -> dict:
 
 def due() -> bool:
     """A week since the last teaching (or never) and enough new decisions to learn from"""
-    meta = read_json(META, {})
-    if not meta:
+    last = meta()
+    if not last:
         return True
-    if dt.now() - dt.fromisoformat(meta['at']) < EVERY:
+    if dt.now() - dt.fromisoformat(last['at']) < EVERY:
         return False
-    return len(fc.decisions()) - meta.get('decisions', 0) >= MIN_NEW
+    return len(fc.decisions()) - last.get('decisions', 0) >= MIN_NEW
 
 
 if __name__ == '__main__':
     os.nice(19)
     teach()
-    print(json.dumps(read_json(META, {})))
+    print(json.dumps(meta()))

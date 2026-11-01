@@ -1,9 +1,22 @@
 """The list of scrapers to check after each run."""
-import json
-
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import app.models as models
+from app.models import Base
 from app import scraper_health as sh
+
+
+@pytest.fixture(autouse=True)
+def db(monkeypatch):
+    """An in-memory data.db: the data folder is production's"""
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)
+    monkeypatch.setattr(models, 'Session', session)
+    return session
 
 
 def run(found=50, kept=50, added=5, too_long=0, error=None):
@@ -28,7 +41,6 @@ def test_problems(now, past, says):
 
 
 def test_write_lists_flagged_and_missing_scrapers(monkeypatch, tmp_path):
-    monkeypatch.setattr(sh, 'HISTORY_FILE', str(tmp_path / 'history.json'))
     monkeypatch.setattr(sh, 'CHECK_FILE', str(tmp_path / 'check.md'))
     sh.record('Good', 'https://good', found=40, kept=40, added=3)
     sh.record('Empty', 'https://empty', found=0)
@@ -37,7 +49,7 @@ def test_write_lists_flagged_and_missing_scrapers(monkeypatch, tmp_path):
     text = (tmp_path / 'check.md').read_text()
     assert "**Crashed** (https://crashed): page didn't load (never finished)" in text
     assert '**Empty**' in text and 'Good' not in text
-    assert len(json.loads((tmp_path / 'history.json').read_text())['Good']) == 1
+    assert len(sh.past_runs(['Good'])['Good']) == 1
     sh.record('Good', 'https://good', found=40, kept=40, added=3)
     assert sh.write([('Good', 'https://good')]) == []
     assert 'All 1 scrapers look healthy.' in (tmp_path / 'check.md').read_text()
@@ -50,3 +62,11 @@ def test_a_scraper_back_after_only_failed_runs_has_no_usual_yet():
     now = {'found': 40, 'kept': 40, 'added': 40, 'too_long': 0, 'error': None}
     assert sh.problems('The Washington Post', now, past) == []
     assert sh.problems('The Washington Post', {**now, 'found': 0, 'kept': 0}, past) == ['found no headlines']
+
+
+def test_only_the_last_runs_count(monkeypatch, tmp_path):
+    monkeypatch.setattr(sh, 'CHECK_FILE', str(tmp_path / 'check.md'))
+    for i in range(5):
+        sh.record('Good', 'https://good', found=i)
+        sh.keep({'Good': dict(sh._runs.pop('Good'), at=f'2026-10-0{i + 1}T12:00')})
+    assert [r['found'] for r in sh.past_runs(['Good'], last=3)['Good']] == [2, 3, 4]  # oldest first

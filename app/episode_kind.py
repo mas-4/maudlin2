@@ -10,7 +10,7 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-KINDS = os.path.join(Config.data, 'episode_kinds.json')
+KINDS = os.path.join(Config.cache, 'episode_kinds.json')
 SHOW_KINDS = ('podcast', 'call-in', 'video')
 BATCH = 10  # episodes read in one call
 PER_RUN = 80

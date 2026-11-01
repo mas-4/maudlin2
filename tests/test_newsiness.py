@@ -1,6 +1,23 @@
 """app/analysis/newsiness.py and its chart (story_charts.newsiness): how newsy each hour was, spikes linked"""
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
+from app.models import Base
 from app.analysis import newsiness as nw
 from app.site import story_charts
+
+
+@pytest.fixture(autouse=True)
+def db(monkeypatch):
+    """An in-memory data.db: the data folder is production's"""
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)
+    monkeypatch.setattr(models, 'Session', session)
+    return session
 
 
 def point(at, score, story, made='reconstructed', label='A story'):
@@ -14,8 +31,7 @@ def test_each_story_peaks_once_over_the_big_line():
     assert [(p['story'], p['score']) for p in nw.spikes(pts)] == [(1, 0.50), (2, 0.48)]
 
 
-def test_a_build_keeps_its_own_score(monkeypatch, tmp_path):
-    monkeypatch.setattr(nw, 'NEWSINESS', str(tmp_path / 'n.json'))
+def test_a_build_keeps_its_own_score():
     nw.record({'score': 0.65, 'share': 65, 'outlets': 53, 'active': 81, 'story': 'Omar', 'kind': 'big'}, 358)
     (p,) = nw.load()['recorded']
     assert (p['score'], p['story'], p['share'], p['label']) == (0.65, 358, 0.65, 'Omar')
@@ -30,3 +46,18 @@ def test_the_chart_dashes_what_was_worked_out_and_links_its_spikes():
     assert svg.count('<polyline') == 2 and 'stroke-dasharray' in svg.split('<polyline')[1]
     assert '<a href="story-1.html"><text' in svg and 'Big one' in svg and svg.count('class="nw-hit"') == 4
     assert story_charts.newsiness(pts[:1], [], lambda p: None) is None
+
+
+def test_reconstructed_points_are_worked_out_once_and_kept(monkeypatch):
+    made = [point('2026-10-10T01:00:00', 0.5, 1), point('2026-10-10T02:00:00', 0.2, 2)]
+    for p in made:
+        del p['made']
+    calls = []
+    monkeypatch.setattr(nw, 'reconstruct', lambda until: calls.append(until) or [dict(p) for p in made])
+    nw.record({'score': 0.3, 'share': 30, 'outlets': 20, 'active': 70, 'story': 'Later', 'kind': 'normal'}, 9,
+              nw.dt(2026, 10, 12, 1))
+    pts = nw.series()
+    assert [p['made'] for p in pts] == ['reconstructed', 'reconstructed', 'recorded']
+    assert calls == [nw.dt(2026, 10, 12, 1)] and nw.load()['reconstructed'] == made
+    nw.series()
+    assert len(calls) == 1  # kept: not worked out again

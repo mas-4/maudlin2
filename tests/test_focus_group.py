@@ -1,4 +1,18 @@
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
 from app.analysis import focus_group as fg
+from app.models import Base
+
+
+@pytest.fixture
+def db(monkeypatch):
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
 
 PART = ("I just know Vivek is extremely rich. Not that that's a bad thing, but most of the people in power are and "
         "they just have no clue what it's like to be a middle class person right now. If he's one of Trump's boys, "
@@ -24,8 +38,7 @@ def test_a_claim_needs_its_own_quote_from_the_transcript():
         ('Prices are up', 'quote not in the transcript')]
 
 
-def test_extraction_keeps_only_checked_claims(monkeypatch, tmp_path):
-    monkeypatch.setattr(fg, 'STORE', str(tmp_path / 'fg.json'))
+def test_extraction_keeps_only_checked_claims(monkeypatch, db):
     monkeypatch.setattr(fg.llm, 'backend', lambda: 'ollama')
     monkeypatch.setattr(fg, 'episodes', lambda: [{'title': 'Ep', 'url': 'u', 'date': '2026-10-01',
                                                   'chunks': [{'at': 0.0, 'text': PART}]}])
@@ -38,8 +51,7 @@ def test_extraction_keeps_only_checked_claims(monkeypatch, tmp_path):
     assert [c['claim'] for c in fg.claims()] == ['Vivek is rich and out of touch']
 
 
-def test_a_claim_its_quote_doesnt_support_is_dropped(monkeypatch, tmp_path):
-    monkeypatch.setattr(fg, 'STORE', str(tmp_path / 'fg.json'))
+def test_a_claim_its_quote_doesnt_support_is_dropped(monkeypatch, db):
     monkeypatch.setattr(fg.llm, 'backend', lambda: 'ollama')
     monkeypatch.setattr(fg, 'episodes', lambda: [{'title': 'Ep', 'url': 'u', 'date': '2026-10-01',
                                                   'chunks': [{'at': 0.0, 'text': PART}]}])

@@ -234,11 +234,10 @@ def parse_timed(text: str) -> list[dict]:
 
 
 def published_transcripts(items: list) -> int:
-    """The pending items whose shows publish their own transcript (sidefeeds.TRANSCRIPTS): taken from the show, not
+    """The pending items whose shows publish their own transcript (sidefeeds.transcript_links): taken from the show, not
     Whisper (no GPU, and the show's own speaker names); how many"""
     from app import sidefeeds
-    from app.utils.store import read_json
-    links = read_json(sidefeeds.TRANSCRIPTS, {})
+    links = sidefeeds.transcript_links(item.url for item in items)
     done = 0
     for item in items:
         url = links.get(item.url)

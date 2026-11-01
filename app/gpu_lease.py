@@ -21,9 +21,7 @@ Van Winkle was frozen in the middle of a batch of embeddings, Ollama couldn't ha
 and every call of the 16:00 hourly run timed out behind it for half an hour. A request that won't finish in DRAIN
 seconds is not waited for: the command is stopped instead, and started again."""
 import argparse
-import fcntl
 import http.client
-import json
 import os
 import signal
 import subprocess
@@ -32,9 +30,8 @@ import threading
 import time
 from datetime import datetime as dt
 
-from app.utils import Config
 
-LEASE = os.path.join(Config.data, 'gpu_lease.json')  # {'holder', 'pid', 'until', 'since'}
+LEASE = 'gpu_lease'  # its run_state name (app/runstate.py): {'holder', 'pid', 'until', 'since', 'renewed'}
 MAX_MINUTES = 120
 RENEW = 60  # seconds between renewals while the holder lives
 STALE = 3 * RENEW  # a lease not renewed this long is dropped (its holder died)
@@ -45,10 +42,12 @@ DRAIN = 300  # seconds a pause waits for the command's requests under way to fin
 
 def held() -> dict | None:
     """The lease if someone holds it now: not past its time, renewed lately, its process alive"""
-    try:
-        with open(LEASE) as f:
-            lease = json.load(f)
-    except (OSError, ValueError):
+    from app import runstate
+    return _live(runstate.get(LEASE))
+
+
+def _live(lease) -> dict | None:
+    if not isinstance(lease, dict):
         return None
     now = time.time()
     if lease.get('until', 0) < now or now - lease.get('renewed', 0) > STALE:
@@ -60,21 +59,14 @@ def held() -> dict | None:
     return lease
 
 
-def _write(lease: dict):
-    tmp = LEASE + '.tmp'
-    with open(tmp, 'w') as f:
-        json.dump(lease, f)
-    os.replace(tmp, LEASE)
-
-
 def release(pid: int | None = None):
     """Give the lease back (only its holder's, when `pid` is given)"""
-    lease = held()
-    if lease is None or pid is None or lease.get('pid') == pid:
-        try:
-            os.remove(LEASE)
-        except OSError:
-            pass
+    from app import runstate
+
+    def give_back(lease):
+        live = _live(lease)
+        return runstate.GONE if live is None or pid is None or live.get('pid') == pid else lease
+    runstate.update(LEASE, give_back)
 
 
 class Hold:
@@ -90,25 +82,29 @@ class Hold:
 
     def take(self):
         """Take the lease and start renewing it; RuntimeError if someone else holds it"""
-        with open(LEASE + '.lock', 'w') as lock:  # looking and taking at once: two waiting at the end of the hourly
-            fcntl.flock(lock, fcntl.LOCK_EX)  # run could both find it free (Oct 9)
-            other = held()
+        from app import runstate
+
+        def take(current):  # looking and taking in one transaction: two waiting at the end of the hourly run could
+            other = _live(current)  # both find it free (Oct 9)
             if other is not None and other.get('pid') != os.getpid():
                 raise RuntimeError(f"the GPU lease is held by {other.get('holder')} until "
                                    f"{dt.fromtimestamp(other['until']).strftime('%H:%M')}")
             self.until = time.time() + self.minutes * 60
-            self.lease = {'holder': self.holder, 'pid': os.getpid(), 'until': self.until,
-                          'since': dt.now().isoformat(timespec='seconds'), 'renewed': time.time()}
-            _write(self.lease)
+            return {'holder': self.holder, 'pid': os.getpid(), 'until': self.until,
+                    'since': dt.now().isoformat(timespec='seconds'), 'renewed': time.time()}
+        self.lease = runstate.update(LEASE, take)
         self.done = threading.Event()
         self.renewer = threading.Thread(target=self._renew, daemon=True)
         self.renewer.start()
 
     def _renew(self):
+        from app import runstate
         while not self.done.wait(RENEW):
             if time.time() >= self.until:
                 return
-            _write({**self.lease, 'renewed': time.time()})
+            # never over a lease someone else took after this one was dropped as stale
+            runstate.update(LEASE, lambda now: now if (other := _live(now)) and other.get('pid') != self.lease['pid']
+                            else {**self.lease, 'renewed': time.time()})
 
     def __exit__(self, *exc):
         self.done.set()

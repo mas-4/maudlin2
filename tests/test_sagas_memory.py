@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.analysis.sagas as sg
+import app.models as models
 from app.models import Agency, Article, Base, Headline, Saga, Story, StoryHeadline
 
 # Titles about one running story (all mention Cornell) embed close together; the rest point elsewhere
@@ -25,11 +26,11 @@ def fake_embed(titles):
 
 @pytest.fixture
 def db(monkeypatch, tmp_path):
-    monkeypatch.setattr(sg, 'PAIRS', str(tmp_path / 'pairs.json'))
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)
     monkeypatch.setattr(sg, 'Session', session)
+    monkeypatch.setattr(models, 'Session', session)  # the pair verdicts and ended sagas (app/tables/stories.py)
     monkeypatch.setattr(sg, 'embed', fake_embed)
     monkeypatch.setattr(sg, 'name', lambda stories, clusters: 'Cornell case')
     monkeypatch.setattr(sg, 'saga_verdict', lambda a, b: True)  # the language model agrees (tests never call it)

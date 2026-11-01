@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.analysis.stories as stories
+import app.models as models
 from app.models import Base, Story, StoryHeadline
 
 
@@ -17,6 +18,7 @@ def db(monkeypatch):
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)
     monkeypatch.setattr(stories, 'Session', session)
+    monkeypatch.setattr(models, 'Session', session)  # merges, splits and label times (app/tables/stories.py)
     return session
 
 
@@ -73,7 +75,6 @@ def test_smaller_part_falls_back_to_its_next_best_story(db):
 def test_a_story_whose_news_moved_on_is_labeled_again_from_its_newest_headlines(db, monkeypatch, tmp_path):
     """Oct 11: an Oct 2 label stood over nine days of a story's later news (its outlet count never doubled)"""
     from datetime import timedelta as td
-    monkeypatch.setattr(stories, 'LABELED_AT', str(tmp_path / 'labeled_at.json'))
     monkeypatch.setattr(stories.llm, 'backend', lambda: 'ollama')
     shown = []
 
@@ -121,7 +122,6 @@ def live(session, label, headline_ids, first):
 def test_a_story_split_and_joined_again_carries_on_as_the_older(db, monkeypatch, tmp_path):
     """Oct 13: Christa Pike split at 1 AM, the halves joined at 8 and the young half carried on; now the older does,
     with the younger folded in, when the model says they tell the same event"""
-    monkeypatch.setattr(stories, 'MERGES', str(tmp_path / 'merges.json'))
     asked = []
     monkeypatch.setattr(stories, 'rejoined', lambda s, a, b, lesser, size, now: asked.append((lesser, size)) or
                         tuple(sorted((a, b), key=lambda x: x.first_seen)))
@@ -136,7 +136,6 @@ def test_a_story_split_and_joined_again_carries_on_as_the_older(db, monkeypatch,
 
 
 def test_two_live_stories_the_model_calls_different_stay_apart(db, monkeypatch, tmp_path):
-    monkeypatch.setattr(stories, 'MERGES', str(tmp_path / 'merges.json'))
     monkeypatch.setattr(stories, 'same_event', lambda *a, **kw: False)
     a = live(db, 'Game 1', [1, 2, 3, 4], dt(2026, 10, 2))
     b = live(db, 'Game 2', [5, 6, 7], dt(2026, 10, 3))
@@ -151,8 +150,6 @@ def test_a_story_that_left_the_front_pages_is_titled_once_more_from_its_last_hea
     import pytz
     from datetime import timedelta as td
     from app.models import Headline
-    monkeypatch.setattr(stories, 'FINALS', str(tmp_path / 'finals.json'))
-    monkeypatch.setattr(stories, 'LABELED_AT', str(tmp_path / 'labeled_at.json'))
     monkeypatch.setattr(stories.llm, 'backend', lambda: 'ollama')
     asked = []
     monkeypatch.setattr(stories.llm, 'complete_json', lambda prompt, *a, **kw: asked.append(prompt) or
@@ -176,9 +173,11 @@ def test_a_story_that_left_the_front_pages_is_titled_once_more_from_its_last_hea
 # ---------- a live story split where its news moved on to a new development (switched off: SPLIT_DEVELOPMENTS) ----------
 
 @pytest.fixture(autouse=True)
-def no_real_splits(monkeypatch, tmp_path):
-    """Never the data folder's record of splits: its story ids would be read against the test's"""
-    monkeypatch.setattr(stories, 'SPLITS', str(tmp_path / 'splits.json'))
+def no_real_splits(monkeypatch):
+    """Never data.db's record of splits: its story ids would be read against the test's"""
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
 
 
 def running(session, tmp_path, monkeypatch, saga=True):
@@ -187,7 +186,6 @@ def running(session, tmp_path, monkeypatch, saga=True):
     import pytz
     from datetime import timedelta as td
     from app.models import Headline, Saga
-    monkeypatch.setattr(stories, 'LABELED_AT', str(tmp_path / 'labeled_at.json'))
     now = dt.now(pytz.UTC).replace(tzinfo=None)
     titles = ['Pentagon will livestream Fort Hood execution', 'Hegseth plans livestreamed execution',
               'Backlash over livestream plan', 'Vance would not watch livestream',
@@ -211,7 +209,7 @@ def running(session, tmp_path, monkeypatch, saga=True):
         s.commit()
         sid = story.id
         found = {0: s.get(Story, sid)}
-    stories.write_json(stories.LABELED_AT, {str(sid): (now - td(hours=13)).isoformat(timespec='seconds')})
+    stories.mark_labeled({sid: now - td(hours=13)})
     rows = [(i, t, a) for i, (t, a) in enumerate(zip(titles, ago), 1) if a < td(hours=15)]  # on the front pages now
     df = pd.DataFrame([{'cluster': 0, 'headline_id': i, 'agency': f'outlet {i}', 'title': t,
                         'first_seen': pd.Timestamp(now - a, tz='UTC').tz_convert('US/Eastern')} for i, t, a in rows])
@@ -284,7 +282,6 @@ def test_the_next_run_goes_on_with_the_new_development_not_the_old_story(db, mon
     """The old development's headlines still on the front pages outnumber the new ones: the cluster still goes on as
     the new story (the old one is never continued nor rejoined), and those headlines stay with the old story"""
     monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
-    monkeypatch.setattr(stories, 'MERGES', str(tmp_path / 'merges.json'))
     sid, _, df, found = running(db, tmp_path, monkeypatch)
     fake_model(monkeypatch, same=False)
     stories.label_stories(df, found)
@@ -328,7 +325,7 @@ def test_a_story_whose_coverage_doubled_is_asked_too(db, monkeypatch, tmp_path):
     monkeypatch.setattr(stories, 'SPLIT_DEVELOPMENTS', True)
     sid, _, df, found = running(db, tmp_path, monkeypatch)
     now = dt.now(pytz.UTC).replace(tzinfo=None)
-    stories.write_json(stories.LABELED_AT, {str(sid): (now - td(hours=7)).isoformat(timespec='seconds')})
+    stories.mark_labeled({sid: now - td(hours=7)})
     found[0].labeled_with = 2  # 4 outlets now
     asked, _ = fake_model(monkeypatch, same=False)
     stories.label_stories(df, found)

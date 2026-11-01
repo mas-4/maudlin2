@@ -16,7 +16,7 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-TEXTS = os.path.join(Config.data, 'factcheck_texts.json')
+TEXTS = os.path.join(Config.cache, 'factcheck_texts.json')
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 KEEP = 8000
 PAGE_GAP = 20  # seconds between two requests to one site

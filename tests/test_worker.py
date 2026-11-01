@@ -1,17 +1,29 @@
-import json
 import sys
 import time
 
-from app import worker
+import pytest
+
+from app import runstate, worker
+
+
+@pytest.fixture(autouse=True)
+def db(tmp_path, monkeypatch):
+    """A data.db of its own in a file, as the processes share it (the heartbeat and the lease are in run_state)"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    import app.models as models
+    path = str(tmp_path / 'data.db')
+    engine = create_engine(f'sqlite:///{path}', connect_args={'timeout': 10})
+    models.Base.metadata.create_all(engine)
+    monkeypatch.setattr(models, 'Session', sessionmaker(bind=engine))
+    return path
 
 
 def test_a_fresh_heartbeat_means_a_worker(tmp_path, monkeypatch):
-    path = tmp_path / 'worker.json'
-    monkeypatch.setattr(worker, 'HEARTBEAT', str(path))
     assert not worker.alive() and not worker.busy()  # none yet
     worker.beat({}, busy=True)
     assert worker.alive() and worker.busy()
-    path.write_text(json.dumps({'at': time.time() - worker.FRESH - 1, 'busy': True}))
+    runstate.put('worker', {'at': time.time() - worker.FRESH - 1, 'busy': True})
     assert not worker.alive() and not worker.busy()  # gone quiet: the hourly run processes again
     worker.beat({}, busy=False, at=0)
     assert not worker.alive()  # the way a worker leaves for new code
@@ -19,7 +31,6 @@ def test_a_fresh_heartbeat_means_a_worker(tmp_path, monkeypatch):
 
 def test_a_cycle_processes_and_stops_for_the_hourly_run(tmp_path, monkeypatch):
     from app import processing
-    monkeypatch.setattr(worker, 'HEARTBEAT', str(tmp_path / 'worker.json'))
     monkeypatch.setattr(worker, 'Awake', lambda: __import__('contextlib').nullcontext())
     calls = []
     monkeypatch.setattr(processing, 'process', lambda limit, stop: calls.append((limit, stop)))
@@ -43,7 +54,6 @@ def test_the_steps_stop_once_the_hourly_run_begins(monkeypatch):
 
 def test_a_lease_makes_the_worker_wait(tmp_path, monkeypatch):
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(worker, 'run_going', lambda: False)
     assert worker.yielding() is None and gpu_lease.held() is None
     with gpu_lease.Hold('an experiment', 5):
@@ -57,35 +67,32 @@ def test_a_lease_makes_the_worker_wait(tmp_path, monkeypatch):
 
 
 def test_a_lease_runs_out(tmp_path, monkeypatch):
-    import json
     import os
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     now = time.time()
-    (tmp_path / 'lease.json').write_text(json.dumps({'holder': 'x', 'pid': os.getpid(), 'until': now - 1, 'renewed': now}))
+    runstate.put('gpu_lease', {'holder': 'x', 'pid': os.getpid(), 'until': now - 1, 'renewed': now})
     assert gpu_lease.held() is None  # past its time
-    (tmp_path / 'lease.json').write_text(json.dumps({'holder': 'x', 'pid': os.getpid(), 'until': now + 600,
-                                                     'renewed': now - gpu_lease.STALE - 1}))
+    runstate.put('gpu_lease', {'holder': 'x', 'pid': os.getpid(), 'until': now + 600,
+                               'renewed': now - gpu_lease.STALE - 1})
     assert gpu_lease.held() is None  # its holder stopped renewing
-    (tmp_path / 'lease.json').write_text(json.dumps({'holder': 'x', 'pid': 2 ** 22 + 12345, 'until': now + 600, 'renewed': now}))
+    runstate.put('gpu_lease', {'holder': 'x', 'pid': 2 ** 22 + 12345, 'until': now + 600, 'renewed': now})
     assert gpu_lease.held() is None  # its holder is gone
 
 
-def test_run_holds_the_lease_for_the_command(tmp_path, monkeypatch):
+def test_run_holds_the_lease_for_the_command(tmp_path, monkeypatch, db):
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
     out = tmp_path / 'seen'
-    code = f"import json; open({str(out)!r}, 'w').write(json.load(open({str(tmp_path / 'lease.json')!r}))['holder'])"
+    code = (f"import json, sqlite3; v = sqlite3.connect({db!r}).execute(\"SELECT value FROM run_state WHERE name = "
+            f"'gpu_lease'\").fetchone()[0]; open({str(out)!r}, 'w').write(json.loads(v)['holder'])")
     assert gpu_lease.run([sys.executable, '-c', code], minutes=1, holder='test') == 0
     assert out.read_text() == 'test' and gpu_lease.held() is None
 
 
 def test_run_waits_for_the_worker_to_finish_its_step(tmp_path, monkeypatch):
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     busy = [True, True, False]
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: busy.pop(0) if len(busy) > 1 else busy[0])
@@ -97,7 +104,6 @@ def test_run_waits_for_the_worker_to_finish_its_step(tmp_path, monkeypatch):
 
 def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatch):
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
@@ -118,7 +124,6 @@ def test_run_waits_again_when_another_takes_the_lease_first(tmp_path, monkeypatc
 def test_run_steps_aside_for_an_hourly_run_and_goes_on_after(tmp_path, monkeypatch):
     """Oct 10: an experiment held the card through two hourly runs, which crashed; since Oct 14 it pauses for them"""
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: True)
     runs, started = tmp_path / 'runs', []
@@ -140,7 +145,6 @@ def test_run_steps_aside_for_an_hourly_run_and_goes_on_after(tmp_path, monkeypat
 def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monkeypatch):
     """Oct 11: a lease held all night left a day's claims unwritten"""
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
     monkeypatch.setattr(gpu_lease, 'TURN', 0.5 / 60)  # half a second
@@ -160,7 +164,6 @@ def test_run_waits_for_the_worker_to_catch_up_and_gives_it_turns(tmp_path, monke
 def test_run_takes_its_turn_after_a_whole_worker_cycle_though_the_worker_never_catches_up(tmp_path, monkeypatch):
     """Oct 11: with new transcripts every hour no cycle was short, and experiments waited all morning"""
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     monkeypatch.setattr(gpu_lease, '_hourly_run_going', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_busy', lambda: False)
     monkeypatch.setattr(gpu_lease, '_worker_caught_up', lambda since: False)
@@ -175,24 +178,20 @@ def test_run_takes_its_turn_after_a_whole_worker_cycle_though_the_worker_never_c
 
 def test_the_worker_had_its_turn_once_a_cycle_ended_since(tmp_path, monkeypatch):
     from datetime import datetime as dt
-    beat = tmp_path / 'worker.json'
-    monkeypatch.setattr(worker, 'HEARTBEAT', str(beat))
     assert worker.had_turn(time.time())  # no worker
     now = time.time()
-    beat.write_text(json.dumps({'at': now, 'busy': True,
-                                'last cycle': {'at': dt.fromtimestamp(now - 60).isoformat(timespec='seconds'), 'minutes': 25}}))
+    runstate.put('worker', {'at': now, 'busy': True,
+                            'last cycle': {'at': dt.fromtimestamp(now - 60).isoformat(timespec='seconds'), 'minutes': 25}})
     assert worker.had_turn(now - 120) and not worker.had_turn(now - 30)  # busy again, but a whole cycle ended since
 
 
 def test_the_worker_is_caught_up_after_a_short_cycle_since(tmp_path, monkeypatch):
     from datetime import datetime as dt
-    beat = tmp_path / 'worker.json'
-    monkeypatch.setattr(worker, 'HEARTBEAT', str(beat))
     assert worker.caught_up()  # no worker: nothing to wait for
     now = time.time()
 
     def write(**b):
-        beat.write_text(json.dumps({'at': now, 'busy': False, **b}))
+        runstate.put('worker', {'at': now, 'busy': False, **b})
     write(busy=True)
     assert not worker.caught_up()
     write(**{'last cycle': {'at': dt.fromtimestamp(now - 60).isoformat(timespec='seconds'), 'minutes': 30}})
@@ -223,14 +222,12 @@ def test_a_short_cycle_never_takes_the_awake_lock(monkeypatch, tmp_path):
 
 
 def test_the_worker_leaves_to_free_the_card_and_keeps_its_last_cycle(tmp_path, monkeypatch):
-    path = tmp_path / 'worker.json'
-    monkeypatch.setattr(worker, 'HEARTBEAT', str(path))
-    path.write_text(json.dumps({'at': time.time(), 'cycles': 4, 'last cycle': {'at': '2026-10-11T16:17:00', 'minutes': 0.4}}))
+    runstate.put('worker', {'at': time.time(), 'cycles': 4, 'last cycle': {'at': '2026-10-11T16:17:00', 'minutes': 0.4}})
     monkeypatch.setattr(worker, 'commit', lambda: 'abc1234')
     monkeypatch.setattr(worker, 'yielding', lambda: 'an experiment (rip-van-winkle-claims)')
     monkeypatch.setattr(worker, 'holding_gpu', lambda: True)
     worker.main()  # returns: systemd starts a fresh worker without the card
-    beat = json.loads(path.read_text())
+    beat = runstate.get('worker')
     assert beat['waiting'].startswith('an experiment') and beat['cycles'] == 4 and beat['last cycle']['minutes'] == 0.4
 
 
@@ -238,7 +235,6 @@ def _interrupted_once(tmp_path, monkeypatch, holds_card):
     """The command under the lease, the hourly run starting once while it runs"""
     import time as real_time
     from app import gpu_lease
-    monkeypatch.setattr(gpu_lease, 'LEASE', str(tmp_path / 'lease.json'))
     out, started = tmp_path / 'out.txt', []
 
     def hourly():  # starts once the command is under way, the first time only

@@ -44,21 +44,19 @@ rejected ones there and 8 of 79 approved (the judge alone did worse: it scored m
 import difflib
 import hashlib
 import json
-import os
 from datetime import datetime as dt
 
 import numpy as np
 
 from app.analysis import llm
 from app.analysis import motif_index as mi
-from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
+from app.utils import get_logger
+from app.utils.store import read_json
 from app.analysis import local_models
 
 logger = get_logger(__name__)
 
-PROPOSALS = os.path.join(Config.data, 'motif_proposals.json')  # {id: proposal}, decided ones kept for good
-RUNS = os.path.join(Config.data, 'motif_proposals_runs.json')  # {'done': last day finished, 'typos': {motif: mark}}
+RUNS = 'motif_proposals_runs'  # its run_state name (app/runstate.py): {'done': last day finished, 'typos': {motif: mark}}
 NIGHT_BUDGET = 480  # seconds the nightly run may spend; what's left waits for the next hour's run
 MODEL = local_models.BIG
 # The judge of related and rests-on proposals since Oct 9 (P1 in docs/filing-experiments.md): Nimble 9B's yes or no,
@@ -104,21 +102,86 @@ def pid(kind: str, args: dict) -> str:
     return hashlib.sha1(json.dumps([kind, args], sort_keys=True).encode()).hexdigest()[:10]
 
 
+# The store is the motif_proposal table (data.db, since Nov 1; motif_proposals.json until then), read and written as
+# {id: proposal} dicts with the keys below; a key left out of a proposal is NULL in its row
+JSON_FIELDS = ('args', 'final', 'judge')
+FIELDS = ('id', 'kind', 'status', 'args', 'reason', 'model', 'made', 'decided', 'why', 'final', 'judge', 'fit')
+
+
+def to_dict(row) -> dict:
+    out = {}
+    for f in FIELDS:
+        v = getattr(row, f)
+        if v is not None:
+            out[f] = json.loads(v) if f in JSON_FIELDS else v
+    return out
+
+
+def to_columns(p: dict) -> dict:
+    extra = set(p) - set(FIELDS)
+    if extra:
+        logger.warning("Proposal %s: fields with no column dropped: %s", p.get('id'), sorted(extra))
+    return {f: (json.dumps(p[f]) if f in JSON_FIELDS else p[f]) if p.get(f) is not None else
+            ('{}' if f == 'args' else '' if f in ('reason', 'model', 'made') else None) for f in FIELDS}
+
+
+def _load(s) -> dict:
+    from app.tables.motifs import MotifProposal
+    return {r.id: to_dict(r) for r in s.query(MotifProposal)}
+
+
 def load() -> dict:
-    return read_json(PROPOSALS, {})
+    from app.models import Session
+    with Session() as s:
+        return _load(s)
+
+
+def _write(s, rows: list[dict], existing: set[str]):
+    from app.tables.motifs import MotifProposal
+    new = [to_columns(p) for p in rows if p['id'] not in existing]
+    old = [to_columns(p) for p in rows if p['id'] in existing]
+    if new:
+        s.bulk_insert_mappings(MotifProposal, new)
+    if old:
+        s.bulk_update_mappings(MotifProposal, old)
 
 
 def save(store: dict):
-    """A run's store written back over what's on disk now: a person's decisions made meanwhile (in the checker) stay;
-    the run adds its new proposals and its scores"""
-    disk = load()
-    for i, p in store.items():
-        if i in disk and disk[i].get('status') in ('approved', 'rejected'):
-            disk[i] = {**p, 'status': disk[i]['status'], 'decided': disk[i].get('decided'),
-                       **{k: disk[i][k] for k in ('why', 'final') if k in disk[i]}}  # and what they said and did
-        else:
-            disk[i] = p
-    write_json(PROPOSALS, disk)
+    """A run's store written back over what's kept now: a person's decisions made meanwhile (in the checker) stay;
+    the run adds its new proposals and its scores. Only what changed is written"""
+    from app.models import Session
+    with Session() as s:
+        disk = _load(s)
+        changed = []
+        for i, p in store.items():
+            if i in disk and disk[i].get('status') in ('approved', 'rejected'):
+                p = {**p, 'status': disk[i]['status'], 'decided': disk[i].get('decided'),
+                     **{k: disk[i][k] for k in ('why', 'final') if k in disk[i]}}  # and what they said and did
+            p = {k: v for k, v in p.items() if v is not None}
+            if disk.get(i) != p:
+                changed.append(p)
+        _write(s, changed, set(disk))
+        s.commit()
+
+
+def replace_all(store: dict):
+    """Every proposal as `store` has them, nothing else (going back to a checkpoint)"""
+    from app.models import Session
+    from app.tables.motifs import MotifProposal
+    with Session() as s:
+        s.query(MotifProposal).delete()
+        _write(s, list(store.values()), set())
+        s.commit()
+
+
+def export_text() -> str:
+    """The whole store as JSON text, for a checkpoint (curation_db keeps it beside the index's)"""
+    return json.dumps(load(), ensure_ascii=False)
+
+
+def _one(s, proposal_id: str):
+    from app.tables.motifs import MotifProposal
+    return s.get(MotifProposal, proposal_id)
 
 
 def add(store: dict, kind: str, args: dict, reason: str) -> bool:
@@ -174,7 +237,8 @@ def open_proposals(index: dict | None = None) -> list[dict]:
     """The checklist: typo fixes, merges and link removals first (in KINDS order), then the rests-on and related
     proposals together, best fit first; each of those below the fold's cut marked 'unlikely'"""
     index = index if index is not None else mi.load()
-    cut = (read_json(RUNS, {}).get('fit') or {}).get('cut')
+    from app import runstate
+    cut = (runstate.get(RUNS, {}).get('fit') or {}).get('cut')
     out = []
     for p in load().values():
         if p['status'] == 'open' and still_holds(p, index):
@@ -188,38 +252,44 @@ def open_proposals(index: dict | None = None) -> list[dict]:
 def decide(proposal_id: str, decision: str, why: str | None = None, final: dict | None = None):
     """Approve or reject a proposal; with the person's words on what was wrong (`why`), and for an approval the action
     actually carried out when it isn't the proposal's own (the person changed the name, the note, the claims)"""
-    store = load()
-    if proposal_id not in store or decision not in ('approved', 'rejected'):
-        raise ValueError(f'no such proposal or decision: {proposal_id} {decision}')
-    p = store[proposal_id]
-    p.update(status=decision, decided=dt.now().isoformat(timespec='seconds'))
-    if why and why.strip():
-        p['why'] = ' '.join(why.split())
-    if final is not None and final != action(p):
-        p['final'] = final
-    write_json(PROPOSALS, store)
+    from app.models import Session
+    with Session() as s:
+        row = _one(s, proposal_id)
+        if row is None or decision not in ('approved', 'rejected'):
+            raise ValueError(f'no such proposal or decision: {proposal_id} {decision}')
+        row.status, row.decided = decision, dt.now().isoformat(timespec='seconds')
+        if why and why.strip():
+            row.why = ' '.join(why.split())
+        if final is not None and final != action(to_dict(row)):
+            row.final = json.dumps(final)
+        s.commit()
 
 
 def critique(proposal_id: str, why: str) -> dict:
     """What the person said was wrong with a proposal, written after deciding it"""
-    store = load()
-    if proposal_id not in store:
-        raise ValueError(f'no such proposal: {proposal_id}')
-    store[proposal_id]['why'] = ' '.join(why.split())
-    write_json(PROPOSALS, store)
-    return store[proposal_id]
+    from app.models import Session
+    with Session() as s:
+        row = _one(s, proposal_id)
+        if row is None:
+            raise ValueError(f'no such proposal: {proposal_id}')
+        row.why = ' '.join(why.split())
+        out = to_dict(row)
+        s.commit()
+    return out
 
 
 def reopen(ids: list[str]) -> list[str]:
     """Decisions taken back (the checker's undo): each proposal open again, as before the person decided it"""
-    store = load()
-    done = [i for i in ids if i in store and store[i]['status'] in ('approved', 'rejected')]
-    for i in done:
-        store[i]['status'] = 'open'
-        store[i].pop('decided', None)
-        store[i].pop('final', None)  # what was done is undone; what the person said was wrong stands
-    if done:
-        write_json(PROPOSALS, store)
+    from app.models import Session
+    done = []
+    with Session() as s:
+        for i in ids:
+            row = _one(s, i)
+            if row is not None and row.status in ('approved', 'rejected'):
+                row.status, row.decided = 'open', None
+                row.final = None  # what was done is undone; what the person said was wrong stands
+                done.append(i)
+        s.commit()
     return done
 
 
@@ -990,9 +1060,8 @@ def best_fit(store: dict, index: dict) -> dict | None:
     cut = float(np.quantile(chance[:len(decided)][y], 1 - FIT_KEEP))
     info = {'cut': round(cut, 3), 'trained_on': len(decided), 'approved': int(y.sum()), 'at': dt.now().isoformat(timespec='seconds'),
             'weights': dict(zip(FIT_FACTS, [round(float(w), 2) for w in model.coef_[0]]))}
-    runs = read_json(RUNS, {})
-    runs['fit'] = info
-    write_json(RUNS, runs)
+    from app import runstate
+    runstate.update(RUNS, lambda runs: {**runs, 'fit': info}, {})
     return info
 
 
@@ -1003,7 +1072,8 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'clusters', 'motifs', '
     import time
     deadline = time.time() + budget if budget else None
     index = mi.load()
-    store, runs = load(), read_json(RUNS, {})
+    from app import runstate
+    store, runs = load(), runstate.get(RUNS, {})
     entries = mi.live(index)
     counts = {'finished': False}
     try:
@@ -1030,7 +1100,7 @@ def propose(kinds=('typos', 'links', 'review', 'groups', 'clusters', 'motifs', '
         pass
     finally:
         save(store)
-        write_json(RUNS, runs)
+        runstate.update(RUNS, lambda now: {**now, **runs}, {})  # not over a fit written meanwhile
     if 'judge' in kinds:  # best fit on whatever was scored, even in a run cut short
         try:
             counts['fit'] = best_fit(store, index)
@@ -1045,11 +1115,9 @@ def nightly(budget: float = NIGHT_BUDGET):
     """Once a day, after the morning's report and its first filings: new proposals for what changed. A run cut short
     by its budget goes on in the next hour's run"""
     from datetime import date
-    runs = read_json(RUNS, {})
+    from app import runstate
     today = date.today().isoformat()
-    if runs.get('done') == today:
+    if runstate.get(RUNS, {}).get('done') == today:
         return
     if propose(budget=budget).get('finished'):
-        runs = read_json(RUNS, {})
-        runs['done'] = today
-        write_json(RUNS, runs)
+        runstate.update(RUNS, lambda runs: {**runs, 'done': today}, {})

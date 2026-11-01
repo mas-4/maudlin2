@@ -1,7 +1,6 @@
 """Story pages: one page per saved story seen in the last week, with everything the trackers know about it in one
 place: every outlet's headline, how coverage grew and faded, the saga it belongs to, the names it mentions, its minutes
 on TV, the radio newscasts that carried it, and the folklore told around it. The front page's cards link here."""
-import glob
 import os
 import shutil
 import re
@@ -104,17 +103,16 @@ def tv_by_story() -> dict:
     seconds, captions = defaultdict(lambda: defaultdict(int)), defaultdict(lambda: defaultdict(int))
     first, spots = {}, defaultdict(list)
     merged = story_merges()  # a story merged into another: its captions count for that one
-    for path in glob.glob(os.path.join(chyrons.FOLDER, 'matched-*.json')):
-        for c in read_json(path, []):
-            if c.get('story'):
-                c = {**c, 'story': merged.get(c['story'], c['story'])}
-                at = datetime.fromisoformat(c['at'])
-                if c['story'] not in first or at < first[c['story']][0]:
-                    first[c['story']] = (at, chyrons.CHANNELS[c['channel']])
-                seconds[c['story']][c['channel']] += c['seconds']
-                spots[c['story']].append({'at': at, 'seconds': c['seconds'], 'channel': c['channel'],
-                                          'name': chyrons.CHANNELS[c['channel']], 'text': c['text']})
-                captions[c['story']][(c['channel'], c['text'])] += c['seconds']
+    for c in chyrons.matched():
+        if c.get('story'):
+            c = {**c, 'story': merged.get(c['story'], c['story'])}
+            at = datetime.fromisoformat(c['at'])
+            if c['story'] not in first or at < first[c['story']][0]:
+                first[c['story']] = (at, chyrons.CHANNELS[c['channel']])
+            seconds[c['story']][c['channel']] += c['seconds']
+            spots[c['story']].append({'at': at, 'seconds': c['seconds'], 'channel': c['channel'],
+                                      'name': chyrons.CHANNELS[c['channel']], 'text': c['text']})
+            captions[c['story']][(c['channel'], c['text'])] += c['seconds']
     out = {}
     for sid, by in seconds.items():
         most = max(by.values()) or 1
@@ -170,13 +168,12 @@ SAME_LABEL = 0.5  # a report's story label this alike (shared words) to a saved 
 def reports_by_day(days: int = DAYS) -> list[dict]:
     """The last narrative report of each of the last `days` days, newest first (a day's earlier reports cover the same
     posts)"""
-    from app.site.page_folklore import FOLDER
+    from app import narratives
     last = {}
-    for path in sorted(glob.glob(os.path.join(FOLDER, 'report-*.json'))):
-        last[os.path.basename(path)[len('report-'):][:10]] = path
+    for file in narratives.report_files():
+        last[file[len('report-'):][:10]] = file
     since = (datetime.now() - td(days=days)).strftime('%Y-%m-%d')
-    return [dict(read_json(path, {}), file=os.path.basename(path))
-            for day, path in sorted(last.items(), reverse=True) if day >= since]
+    return narratives.reports([f for day, f in last.items() if day >= since], newest_first=True)
 
 
 def story_of(link: dict, stories: list[dict], at: datetime | None) -> int | None:
@@ -613,8 +610,8 @@ class StoryPages:
         names = read_json(entities.CACHE, {})
         leans, groups = network_leans(), show_groups()
         aliases = entities.load_aliases()['aliases']
-        from app.site.page_headlines import STORY_EXTRAS
-        extras = read_json(STORY_EXTRAS, {})
+        from app.site.page_headlines import read_story_extras
+        extras = read_story_extras()
         try:  # the motif index across the site (motif_web): how each story is being told, and its words
             from app.site.page_motif import shared
             web = shared()['web']

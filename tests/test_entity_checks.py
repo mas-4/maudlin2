@@ -1,6 +1,14 @@
 """Who's in the news, after the Oct 27 audit: names the headlines name in full, roles that aren't names, one subject
 under one name."""
+import pytest
+
 from app.analysis import entities as en
+from tests.motifs_db import memory_db
+
+
+@pytest.fixture(autouse=True)
+def no_choices(monkeypatch):
+    memory_db(monkeypatch)  # the seed aliases only, never the person's in data.db
 
 
 def test_a_name_must_be_named_in_full_on_word_boundaries():

@@ -10,7 +10,6 @@ Polite by design: each feed is read at most every REFRESH, with conditional requ
 unchanged feed sends nothing back), requests to the same host a few seconds apart, and only the newest items parsed.
 A feed that fails just waits for its next turn."""
 import html
-import os
 import re
 import time
 from collections import Counter, defaultdict
@@ -25,11 +24,10 @@ from sqlalchemy.exc import IntegrityError
 from app.investigations import _date, _summary
 from app.models import Session, SqlLock, SideItem
 from app.utils import Config, get_logger
-from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-STATE = os.path.join(Config.data, 'sidefeeds_state.json')  # ETag / Last-Modified / last fetch per source
+STATE = 'sidefeeds_state'  # ETag / Last-Modified / last fetch per source: its run_state name (app/runstate.py)
 USER_AGENT = 'Maudlin Bot (https://bignews.day)'
 REFRESH = td(hours=2)
 BIG_FEED = td(hours=6)  # feeds of many megabytes (thousands of items) are read less often
@@ -232,9 +230,39 @@ SOURCES = [
 BY_KEY = {s['key']: s for s in SOURCES}
 
 
-TRANSCRIPTS = os.path.join(Config.data, 'feed_transcripts.json')  # item url -> the transcript its show publishes
+KEEP_TRANSCRIPTS = 3000  # links to the transcripts shows publish (app/tables/showclaims.py FeedTranscript) kept, newest
+# first: transcribing looks back days only
 TRANSCRIPT_TYPES = ['text/vtt', 'application/x-subrip', 'application/srt']  # timed ones only: the shows' claims are
 # read part by part, by time
+
+
+def save_transcript_links(links: dict, seen: dt):
+    """Keep these item url -> published transcript links, seen now; only the newest KEEP_TRANSCRIPTS"""
+    from sqlalchemy import delete, select
+    from sqlalchemy.dialects.sqlite import insert
+    from app.models import Session
+    from app.tables.showclaims import FeedTranscript
+    with Session() as s:
+        if links:
+            q = insert(FeedTranscript).values([{'item_url': k, 'transcript_url': v, 'seen': seen} for k, v in links.items()])
+            s.execute(q.on_conflict_do_update(index_elements=['item_url'],
+                                              set_={'transcript_url': q.excluded.transcript_url, 'seen': q.excluded.seen}))
+        old = select(FeedTranscript.item_url).order_by(FeedTranscript.seen.desc()).offset(KEEP_TRANSCRIPTS)
+        s.execute(delete(FeedTranscript).where(FeedTranscript.item_url.in_(old)))
+        s.commit()
+
+
+def transcript_links(urls) -> dict:
+    """item url -> the transcript its show publishes, for those of these items that have one"""
+    from sqlalchemy import select
+    from app.models import Session
+    from app.tables.showclaims import FeedTranscript
+    urls, out = list(urls), {}
+    with Session() as s:
+        for start in range(0, len(urls), 500):
+            out.update(s.execute(select(FeedTranscript.item_url, FeedTranscript.transcript_url)
+                                 .where(FeedTranscript.item_url.in_(urls[start:start + 500]))).all())
+    return out
 
 
 def parse(xml: str) -> list[dict]:
@@ -276,7 +304,8 @@ def parse(xml: str) -> list[dict]:
 
 
 def _load_state() -> dict:
-    return read_json(STATE, {})
+    from app import runstate
+    return runstate.get(STATE, {})
 
 
 def save(source: str, items: list[dict], now: dt) -> int:
@@ -339,7 +368,7 @@ def fetch_sidefeeds(force: bool = False):
     for src in due:
         by_host['.'.join(urlparse(src['url']).hostname.split('.')[-2:])].append(src)
     total = 0
-    published = read_json(TRANSCRIPTS, {})
+    published = {}
     with ThreadPoolExecutor(max_workers=HOST_WORKERS) as pool:
         for fetched in pool.map(lambda sources: _fetch_host(sources, state), by_host.values()):
             for src, entry, items in fetched:
@@ -348,8 +377,9 @@ def fetch_sidefeeds(force: bool = False):
                     published.update({i['url']: i['transcript'] for i in items if i.get('transcript')})
                 entry['fetched'] = now.isoformat()
                 state[src['key']] = entry
-    write_json(STATE, state)
-    write_json(TRANSCRIPTS, dict(list(published.items())[-3000:]))  # the newest: transcribing looks back days only
+    from app import runstate
+    runstate.put(STATE, state)
+    save_transcript_links(published, now.replace(tzinfo=None))
     logger.info("Side feeds: read %d sources, %d new items", len(due), total)
 
 

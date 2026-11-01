@@ -18,11 +18,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 REAL = os.path.realpath(os.path.join(ROOT, 'data'))
 # Copied, not linked: what the checker's writes change (paths relative to the data folder)
-COPY = ['motif_index.sqlite', 'motif_index.json', 'motif_proposals.json', 'motif_proposals_runs.json', 'entity_aliases.json',
-        'validation', 'data.db',  # the label check's saves go onto the headlines (Oct 22: linked until then)
+COPY = ['motif_index.sqlite', 'motif_index.json', 'entity_aliases.json',
+        'validation', 'data.db',  # the label check's saves go onto the headlines (Oct 22: linked until then); the
+        # proposals and the undo stack are in it too (Nov 1)
         'motifs/experiments/f10_pandora.json', 'motifs/experiments/f22_psyche.json',  # the experiments page's verdicts:
         'motifs/experiments/f23_ptah.json', 'motifs/experiments/s5_sinbad.json', 'motifs/experiments/a2_newspapers.json']
-SKIP = {'curation.sqlite', 'app.log', 'gpu_lease.json', 'worker.json'}  # made apart (_curation), or the real processes' own
+SKIP = {'curation.sqlite', 'app.log'}  # made apart (_curation)
 
 
 def build(dest: str):
@@ -41,7 +42,19 @@ def build(dest: str):
         else:
             os.symlink(src, dst)
     _curation(os.path.join(REAL, 'curation.sqlite'), os.path.join(dest, 'curation.sqlite'))
+    _migrate(dest)
+    _no_undo(os.path.join(dest, 'data.db'))
+    _no_coordination(os.path.join(dest, 'data.db'))
     print(f'sandbox at {dest}: {len(os.listdir(dest))} entries')
+
+
+def _migrate(dest: str):
+    """The copy of data.db brought up to the code's newest migration (production's waits for the hourly run). The
+    tables only: the import step would move files, and most of the sandbox links to production's"""
+    import subprocess
+    env = {**os.environ, 'MAUDLIN_DATA': dest, 'MAUDLIN_NO_IMPORT': '1', 'MAUDLIN_LOG_FILE': os.path.join(dest, 'app.log')}
+    subprocess.run([os.path.join(ROOT, '.venv', 'bin', 'alembic'), 'upgrade', 'head'], cwd=ROOT, env=env, check=True,
+                   capture_output=True)
 
 
 def _curation(src: str, dst: str):
@@ -56,6 +69,28 @@ def _curation(src: str, dst: str):
     con.execute('ATTACH DATABASE ? AS real', (src,))
     con.execute('INSERT INTO curation SELECT * FROM real.curation')
     con.commit()
+    con.close()
+
+
+def _no_undo(db: str):
+    """The sandbox starts with an empty undo stack: the person's steps undone there would refer to their index"""
+    if not os.path.exists(db):
+        return
+    con = sqlite3.connect(db)
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name = 'checker_undo'").fetchone():
+        con.execute('DELETE FROM checker_undo')
+        con.commit()
+    con.close()
+
+
+def _no_coordination(db: str):
+    """Without the real processes' own run_state: the GPU lease and the worker's heartbeat (their pids are alive here)"""
+    if not os.path.exists(db):
+        return
+    con = sqlite3.connect(db)
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name = 'run_state'").fetchone():
+        con.execute("DELETE FROM run_state WHERE name IN ('gpu_lease', 'worker')")
+        con.commit()
     con.close()
 
 

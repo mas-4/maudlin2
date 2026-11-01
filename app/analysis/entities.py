@@ -15,12 +15,14 @@ from app.utils.store import read_json, write_json
 
 logger = get_logger(__name__)
 
-CACHE = os.path.join(Config.data, 'story_entities.json')  # story key -> [names]
+CACHE = os.path.join(Config.cache, 'story_entities.json')  # story key -> [names], the model's answers
 # One name per subject (#165): the model names a subject differently from story to story ('Trump', 'Donald Trump';
 # 'GOP', 'Republican Party'), so names pass through aliases to one canonical name. A person merges, renames and keeps
-# apart names in the organizer on the label-check page (scripts/validate.py); those choices live in this file and
-# win over the seeds below.
-ALIASES = os.path.join(Config.data, 'entity_aliases.json')  # {'aliases': {lowercase name: name}, 'not_same': [[a, b]]}
+# apart names in the organizer on the label-check page (scripts/validate.py); those choices live in the entity_alias
+# and entity_not_same tables (app/tables/stories.py) and win over the seeds below.
+# The checker's undo keys its snapshots of the names by this, the file they lived in until Nov 1; aliases_text and
+# restore_aliases are what it saves and puts back
+ALIASES = os.path.join(Config.data, 'entity_aliases.json')
 SEED_ALIASES = {
     'trump': 'Donald Trump', 'president trump': 'Donald Trump', 'donald j. trump': 'Donald Trump',
     'gop': 'Republican Party', 'republicans': 'Republican Party', 'the gop': 'Republican Party',
@@ -136,16 +138,50 @@ def named_fully(name: str, text: str) -> bool:
     return bool(words) and all(re.search(r'\b' + re.escape(w), text) for w in words)
 
 
+def chosen_aliases() -> dict:
+    """What the person chose, without the seeds: {'aliases': {lowercase name: name}, 'not_same': [[a, b]]}"""
+    from app.models import Session
+    from app.tables.stories import EntityAlias, EntityNotSame
+    with Session() as s:
+        return {'aliases': dict(s.query(EntityAlias.name, EntityAlias.target)),
+                'not_same': [[a, b] for a, b in s.query(EntityNotSame.a, EntityNotSame.b).order_by(EntityNotSame.a,
+                                                                                                  EntityNotSame.b)]}
+
+
 def load_aliases() -> dict:
-    book = read_json(ALIASES, {})
-    aliases = {k: v for k, v in {**SEED_ALIASES, **book.get('aliases', {})}.items() if k not in UNSAFE_ALIASES}
-    return {'aliases': aliases, 'not_same': book.get('not_same', [])}
+    book = chosen_aliases()
+    aliases = {k: v for k, v in {**SEED_ALIASES, **book['aliases']}.items() if k not in UNSAFE_ALIASES}
+    return {'aliases': aliases, 'not_same': book['not_same']}
 
 
 def save_aliases(book: dict):
-    """Only what a person chose: the seeds stay in the code"""
+    """Only what a person chose: the seeds stay in the code. Replaces every row in one transaction"""
+    from app.models import Session
+    from app.tables.stories import EntityAlias, EntityNotSame
     mine = {k: v for k, v in book['aliases'].items() if SEED_ALIASES.get(k) != v}
-    write_json(ALIASES, {'aliases': mine, 'not_same': book['not_same']}, indent=1, sort_keys=True)
+    pairs = {tuple(sorted(p)) for p in book['not_same'] if len(p) == 2}
+    with Session() as s:
+        s.query(EntityAlias).delete()
+        s.query(EntityNotSame).delete()
+        s.add_all(EntityAlias(name=k, target=v) for k, v in mine.items())
+        s.add_all(EntityNotSame(a=a, b=b) for a, b in pairs)
+        s.commit()
+
+
+def aliases_text() -> str:
+    """The person's choices as text, as the file had them: what the checker's undo keeps of a step on the names"""
+    import json
+    return json.dumps(chosen_aliases(), indent=1, sort_keys=True)
+
+
+def restore_aliases(text: str | None):
+    """Put the person's choices back as aliases_text had them (the checker's undo)"""
+    import json
+    try:
+        book = json.loads(text or '{}')
+    except ValueError:
+        book = {}
+    save_aliases({'aliases': book.get('aliases', {}), 'not_same': book.get('not_same', [])})
 
 
 def canonical(name: str, aliases: dict) -> str:
@@ -245,9 +281,12 @@ def merge(source: str, target: str):
 
 
 def not_same(a: str, b: str):
-    book = load_aliases()
-    book['not_same'].append(sorted([a, b]))
-    save_aliases(book)
+    from app.models import Session
+    from app.tables.stories import EntityNotSame
+    a, b = sorted([a, b])
+    with Session() as s:
+        s.merge(EntityNotSame(a=a, b=b))
+        s.commit()
 
 
 def unmerge(name: str):

@@ -13,6 +13,7 @@ import pytest
 from app.site import page_headlines as ph
 from app.site.common import j2env
 from app.site.page_headlines import HeadlinesPage
+from tests.motifs_db import memory_db
 
 
 def make_page(main_df=None, **context) -> HeadlinesPage:
@@ -663,6 +664,7 @@ def test_story_similarity_falls_back_to_the_static_model():
 def test_entity_names_must_be_in_the_headlines_and_the_us_is_left_out(monkeypatch, tmp_path):
     from app.analysis import entities, llm
     monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
+    memory_db(monkeypatch)  # the seed aliases only, never the person's in data.db
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'names': ['the Houthis', 'United States', 'Iraq', 'U.S']})
     named = entities.of_stories({'s1': ['Houthi rebels attack Saudi oil site'], 's2': ['Houthis fire missiles']})
@@ -676,6 +678,7 @@ def test_a_feeds_source_tag_isnt_a_name(monkeypatch, tmp_path):
     from app.analysis import entities, llm
     monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
     (tmp_path / 'e.json').write_text(json.dumps({'s1': ['Christa Pike', 'AP News']}))
+    memory_db(monkeypatch)  # the seed aliases only, never the person's in data.db
     monkeypatch.setattr(llm, 'backend', lambda: 'ollama')
     monkeypatch.setattr(llm, 'complete_json', lambda *a, **k: {'names': ['Tennessee', 'AP News', 'Reuters']})
     named = entities.of_stories({'s1': ["Pike's lawyer speaks - AP News"],
@@ -688,7 +691,7 @@ def test_names_for_one_subject_become_one(monkeypatch, tmp_path):
     import json
     from app.analysis import entities, llm
     monkeypatch.setattr(entities, 'CACHE', str(tmp_path / 'e.json'))
-    monkeypatch.setattr(entities, 'ALIASES', str(tmp_path / 'a.json'))
+    memory_db(monkeypatch)  # the seed aliases only, never the person's in data.db
     (tmp_path / 'e.json').write_text(json.dumps({'s1': ['Trump', 'GOP'], 's2': ['Donald Trump', 'Republican Party'],
                                                  's3': ['Supreme Court of the United States', 'Texas']}))
     monkeypatch.setattr(llm, 'backend', lambda: None)
@@ -705,7 +708,7 @@ def test_names_for_one_subject_become_one(monkeypatch, tmp_path):
     entities.unmerge('GOP')
     assert entities.of_stories(stories)['s1'] == ['Trump', 'GOP']
     entities.not_same('Texas', 'Texas A&M')
-    assert json.loads((tmp_path / 'a.json').read_text())['not_same'] == [['Texas', 'Texas A&M']]
+    assert entities.load_aliases()['not_same'] == [['Texas', 'Texas A&M']]
 
 
 def test_a_link_to_another_site_is_marked_as_one(chip_globals, monkeypatch):

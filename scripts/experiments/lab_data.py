@@ -47,6 +47,14 @@ def _backup(src: str, dst: str):
     target = sqlite3.connect(tmp)
     try:
         source.backup(target)
+        # Production's coordination rows came along (Nov 1: the lease and heartbeat moved from files, which SKIP left
+        # out, into data.db's run_state): an experiment would see production's live lease as held
+        if os.path.basename(src) == 'data.db':
+            try:
+                with target:
+                    target.execute("DELETE FROM run_state WHERE name IN ('gpu_lease', 'worker')")
+            except sqlite3.OperationalError:  # a copy from before the table
+                pass
     finally:
         target.close()
         source.close()
