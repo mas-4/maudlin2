@@ -3,7 +3,7 @@ proposals so we are generating them and can monitor them before we go live", wit
 
 Each hourly run, after the build, drafts the posts the account would make from what the run already has, in a few of
 the formats from the Oct 30 plan (maudlin-notes/bluesky-post-ideas-2026-10-30.md). Nothing here talks to Bluesky.
-The drafts are kept in data/post_drafts.json for the checker's 📣 drafts page, where the person marks each one 👍 or
+The drafts are kept in the database (post_draft) for the checker's 📣 drafts page, where the person marks each one 👍 or
 👎; after the dry run, the formats that earn their keep are the ones that go live.
 
 The guardrails from the plan hold for drafts too, so what's judged here is what would go out:
@@ -15,19 +15,17 @@ The guardrails from the plan hold for drafts too, so what's judged here is what 
 
 A draft is keyed by its format and subject, so the same headline test or motif seen again next hour updates its draft
 instead of adding another; the person's mark stays with it. Drafts are kept for KEEP_DAYS."""
-import os
 import re
 from collections import defaultdict
 from datetime import datetime as dt, timedelta as td
 
 import pytz
 
-from app.utils import Config, get_logger
-from app.utils.store import locked, read_json, write_json
+from app.utils import get_logger
+from app.utils.store import read_json
 
 logger = get_logger(__name__)
 
-FILE = os.path.join(Config.data, 'post_drafts.json')
 SITE = 'https://bignews.day'
 LIMIT = 300  # Bluesky's post length
 KEEP_DAYS = 14
@@ -85,7 +83,7 @@ def short(text: str, most: int) -> str:
 
 def draft(fmt: str, subject: str, text: str, link: str, about: str = '', when: dt | None = None) -> dict:
     return {'key': f'{fmt}:{subject}', 'format': fmt, 'text': text, 'link': link, 'about': about,
-            'chars': len(text), 'event': (when or dt.now(pytz.UTC).replace(tzinfo=None)).isoformat(timespec='minutes')}
+            'chars': len(text), 'event': (when or dt.now(pytz.UTC).replace(tzinfo=None)).replace(second=0, microsecond=0)}
 
 
 # --- the formats ---
@@ -192,7 +190,7 @@ def three_chyrons(now: dt) -> list[dict]:
 
 # Kinds of story that pile up on a front page (Nov 1, the person: four of the top stories were shootings, "can we
 # capture such a thing"): a pattern on the stories' titles, and how a post says it. Counted on the build's top
-# stories (data/top_stories.json); each story once, under every kind it matches
+# stories (front_page_story, the latest build's); each story once, under every kind it matches
 THEMES = {
     'shootings': (r'\b(shoot\w*|shot|gunm[ae]n|gunfire|opened fire|gun violence)\b', '🚨', 'about shootings'),
     'storms': (r'\b(hurricane|tornado\w*|storms?|blizzard|flood\w*|typhoon|cyclone)\b', '🌪️', 'about storms and floods'),
@@ -211,7 +209,12 @@ THEME_LEAST = 3  # of the top stories, for a theme
 def front_page_themes(now: dt) -> list[dict]:
     """🔁 Three or more of the front page's top stories about one kind of thing. One draft a theme a day (Eastern),
     kept at the hour it was biggest"""
-    top = read_json(os.path.join(Config.data, 'top_stories.json'), {}).get('stories') or []
+    from sqlalchemy import func
+    from app.models import FrontPageStory, Session
+    with Session() as db:
+        latest = db.query(func.max(FrontPageStory.at)).scalar()
+        top = [{'title': r.title} for r in db.query(FrontPageStory).filter(FrontPageStory.at == latest)
+               .order_by(FrontPageStory.rank)] if latest else []
     if not top:
         return []
     day = eastern(now).date().isoformat()
@@ -268,63 +271,71 @@ def motifs(now: dt) -> list[dict]:
 MAKERS = [front_page_themes, headline_tests, rewrites, minutes_on_screen, three_chyrons, motifs]
 
 
-def make(now: dt | None = None, file: str = FILE) -> int:
+COLUMNS = ('format', 'text', 'link', 'about', 'event', 'peak')
+
+
+def iso(t: dt | None) -> str | None:
+    return t.isoformat(timespec='minutes') if t else None
+
+
+def make(now: dt | None = None) -> int:
     """Draft this hour's posts and keep them with the earlier ones; returns how many are new"""
-    now = now or dt.now(pytz.UTC).replace(tzinfo=None)
+    from app.models import PostDraft, Session
+    now = (now or dt.now(pytz.UTC).replace(tzinfo=None)).replace(second=0, microsecond=0)
     fresh = []
     for maker in MAKERS:
         try:
             fresh += maker(now)
         except Exception as e:  # noqa: BLE001 - one format failing never stops the others, or the run
             logger.warning("Post drafts: %s failed: %s", maker.__name__, e)
-    stamp = now.isoformat(timespec='minutes')
-    with locked(file):
-        store = read_json(file, {'drafts': []})
-        by_key = {d['key']: d for d in store['drafts']}
-        new = 0
+    new = 0
+    with Session() as db:
         for d in fresh:
-            old = by_key.get(d['key'])
-            if old and d.get('peak', 0) < old.get('peak', 0):  # a theme smaller than it was: its biggest hour stays
-                old['seen'] = stamp
-            elif old:  # seen again: the newest text, the person's mark and first sighting kept
-                old.update(d, seen=stamp)
-            else:
-                by_key[d['key']] = {**d, 'made': stamp, 'seen': stamp, 'mark': None}
+            old = db.get(PostDraft, d['key'])
+            if old is None:
+                db.add(PostDraft(key=d['key'], made=now, seen=now, **{k: d.get(k) or ('' if k == 'about' else None)
+                                                                       for k in COLUMNS}))
                 new += 1
-        since = (now - td(days=KEEP_DAYS)).isoformat()
-        store['drafts'] = sorted((d for d in by_key.values() if d['seen'] >= since), key=lambda d: d['made'],
-                                 reverse=True)
-        write_json(file, store)
+                continue
+            old.seen = now
+            if (d.get('peak') or 0) >= (old.peak or 0):  # a theme smaller than it was keeps its biggest hour
+                for k in COLUMNS:  # the newest text; the person's mark and the first sighting stay
+                    setattr(old, k, d.get(k) or ('' if k == 'about' else None))
+        db.query(PostDraft).filter(PostDraft.seen < now - td(days=KEEP_DAYS)).delete()
+        db.commit()
     logger.info("Post drafts: %d this hour, %d new", len(fresh), new)
     return new
 
 
-def state(file: str = FILE) -> dict:
+def state() -> dict:
     """For the checker's 📣 drafts page: the formats with their tallies, and the drafts, newest first"""
-    drafts = read_json(file, {'drafts': []})['drafts']
+    from app.models import PostDraft, Session
+    with Session() as db:
+        rows = db.query(PostDraft).order_by(PostDraft.made.desc(), PostDraft.key).all()
+        drafts = [{'key': r.key, 'format': r.format, 'text': r.text, 'link': r.link, 'about': r.about,
+                   'chars': len(r.text), 'event': iso(r.event), 'made': iso(r.made), 'seen': iso(r.seen),
+                   'peak': r.peak, 'mark': r.mark, 'note': r.note} for r in rows]
     tally = {f: {'up': 0, 'down': 0, 'drafts': 0} for f in FORMATS}
     for d in drafts:
         t = tally.setdefault(d['format'], {'up': 0, 'down': 0, 'drafts': 0})
         t['drafts'] += 1
-        if d.get('mark') in ('up', 'down'):
+        if d['mark'] in ('up', 'down'):
             t[d['mark']] += 1
     formats = [{'id': f, 'emoji': e, 'name': n, 'what': w, **tally[f]} for f, (e, n, w) in FORMATS.items()]
     return {'formats': formats, 'drafts': drafts, 'limit': LIMIT}
 
 
-def mark(key: str, value: str | None, note: str | None = None, file: str = FILE) -> dict:
+def mark(key: str, value: str | None, note: str | None = None) -> dict:
     """The person's 👍 or 👎 (or neither) on a draft, with an optional note on what's wrong with it"""
+    from app.models import PostDraft, Session
     if value not in ('up', 'down', None):
         raise ValueError('mark: up, down or null')
-    with locked(file):
-        store = read_json(file, {'drafts': []})
-        for d in store['drafts']:
-            if d['key'] == key:
-                d['mark'] = value
-                if note is not None:
-                    d['note'] = re.sub(r'\s+', ' ', note).strip()[:500]
-                break
-        else:
+    with Session() as db:
+        row = db.get(PostDraft, key)
+        if row is None:
             raise ValueError(f'no draft {key}')
-        write_json(file, store)
-    return state(file)
+        row.mark = value
+        if note is not None:
+            row.note = re.sub(r'\s+', ' ', note).strip()[:500] or None
+        db.commit()
+    return state()

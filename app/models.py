@@ -368,6 +368,35 @@ class StoryHeadline(Base):
     last_seen: Mapped[dt] = mapped_column(DateTime())
 
 
+class FrontPageStory(Base):
+    """The front page's top stories at one build, in order (Nov 1: for the Bluesky drafts' front-page themes, and for
+    studying what led the page hour by hour)."""
+    __tablename__ = "front_page_story"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    at: Mapped[dt] = mapped_column(DateTime(), index=True)  # naive UTC, the build's
+    rank: Mapped[int] = mapped_column(Integer())  # 1 is the top
+    story_id: Mapped[int | None] = mapped_column(ForeignKey("story.id"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(Text())
+    outlets: Mapped[int] = mapped_column(Integer())
+
+
+class PostDraft(Base):
+    """A Bluesky post the hourly run would make (app/post_drafts.py), a dry run before the account goes live, with
+    the person's 👍 or 👎. Keyed by format and subject, so the same subject seen again updates its draft."""
+    __tablename__ = "post_draft"
+    key: Mapped[str] = mapped_column(Text(), primary_key=True)
+    format: Mapped[str] = mapped_column(String(32), index=True)
+    text: Mapped[str] = mapped_column(Text())
+    link: Mapped[str] = mapped_column(Text())
+    about: Mapped[str] = mapped_column(Text(), default='')  # what it's about: an article's address, a motif id
+    event: Mapped[dt] = mapped_column(DateTime())  # when the thing it reports happened (naive UTC)
+    made: Mapped[dt] = mapped_column(DateTime(), index=True)  # first drafted
+    seen: Mapped[dt] = mapped_column(DateTime())  # last drafted
+    peak: Mapped[int | None] = mapped_column(Integer(), nullable=True)  # a front-page theme's most stories
+    mark: Mapped[str | None] = mapped_column(String(8), nullable=True)  # 'up', 'down' or none
+    note: Mapped[str | None] = mapped_column(Text(), nullable=True)  # the person's word on a 👎
+
+
 engine = create_engine(Config.connection_string)
 # Keeping this after migrating to alembic
 # Running this would create the tables in the database but not mark alembic upgrades

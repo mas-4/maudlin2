@@ -48,7 +48,6 @@ FRESH_HOURS = 2
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
 NEWS_DAY_FRESH_HOURS = 12
 NEWS_DAY_FILE = os.path.join(Config.data, 'newsday.json')  # the last build's news day
-TOP_STORIES_FILE = os.path.join(Config.data, 'top_stories.json')  # the last build's top stories, in order
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
 INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a current story
 BLINDSPOT_MIN_OUTLETS = 6  # rated outlets covering a story before its lopsidedness means much
@@ -717,12 +716,16 @@ class HeadlinesPage:
                                    for key, label, n, color, ink in counts if n]})
         self.context['top_stories'] = out
         if not Config.debug:  # the list as it stood, for the Bluesky drafts' front-page themes (app/post_drafts.py)
-            from app.utils.store import write_json
-            write_json(TOP_STORIES_FILE, {'at': dt.now(pytz.UTC).replace(tzinfo=None).isoformat(timespec='minutes'),
-                                          'stories': [{'story': getattr(self, 'story_of', {}).get(x['cluster']['cluster']),
-                                                       'title': str(self.context['titles'][x['cluster']['cluster']]),
-                                                       'outlets': x['outlets'] if isinstance(x['outlets'], int)
-                                                       else len(x['outlets'])} for x in out]})
+            from app.models import FrontPageStory, Session
+            at = dt.now(pytz.UTC).replace(tzinfo=None, microsecond=0)
+            story_of = getattr(self, 'story_of', {})
+            with Session() as db:
+                for rank, x in enumerate(out, 1):
+                    cluster = x['cluster']['cluster']
+                    db.add(FrontPageStory(at=at, rank=rank, story_id=story_of.get(cluster),
+                                          title=str(self.context['titles'][cluster]),
+                                          outlets=x['outlets'] if isinstance(x['outlets'], int) else len(x['outlets'])))
+                db.commit()
 
     def trending_in_the_news(self, df):
         """Our own trending list, ranked by how many outlets carry each story, next to what's trending on social

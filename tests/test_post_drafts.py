@@ -1,7 +1,29 @@
-"""The Bluesky drafts' pure parts: whole lines under the limit, wordings alike but for quotes counted once, marks."""
-import pytest
+"""The Bluesky drafts: their pure parts: whole lines under the limit, wordings alike but for quotes counted once, marks."""
+from datetime import datetime as dt
 
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models as models
 from app import post_drafts as p
+from app.models import Base, FrontPageStory
+
+
+@pytest.fixture
+def db(monkeypatch):
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)
+    monkeypatch.setattr(models, 'Session', session)
+    return session
+
+
+def front_page(session, at, titles):
+    with session() as s:
+        s.add_all(FrontPageStory(at=at, rank=i, title=t, outlets=1) for i, t in enumerate(titles, 1))
+        s.commit()
 
 
 def test_fits_keeps_whole_lines_and_counts_the_rest():
@@ -22,32 +44,31 @@ def test_same_words_sets_quotes_and_case_aside():
     assert p.same_words('One wording') != p.same_words('Another wording')
 
 
-def test_marks(tmp_path):
-    file = str(tmp_path / 'drafts.json')
-    p.write_json(file, {'drafts': [{'key': 'rewrite:x', 'format': 'rewrite', 'text': 't', 'mark': None}]})
-    state = p.mark('rewrite:x', 'down', '  too   dull ', file=file)
+def test_marks(db, monkeypatch):
+    monkeypatch.setattr(p, 'MAKERS', [lambda now: [p.draft('rewrite', 'x', 't', 'https://bignews.day/edits.html')]])
+    p.make(dt(2026, 11, 1, 20))
+    state = p.mark('rewrite:x', 'down', '  too   dull ')
     assert state['drafts'][0]['mark'] == 'down' and state['drafts'][0]['note'] == 'too dull'
     assert next(f for f in state['formats'] if f['id'] == 'rewrite')['down'] == 1
+    p.make(dt(2026, 11, 1, 21))  # drafted again: the mark stays
+    assert p.state()['drafts'][0]['mark'] == 'down'
     with pytest.raises(ValueError):
-        p.mark('rewrite:x', 'maybe', file=file)
+        p.mark('rewrite:x', 'maybe')
     with pytest.raises(ValueError):
-        p.mark('nothing', 'up', file=file)
+        p.mark('nothing', 'up')
 
 
-def test_front_page_theme_and_its_biggest_hour_kept(tmp_path, monkeypatch):
-    from datetime import datetime as dt
-    monkeypatch.setattr(p.Config, 'data', str(tmp_path))
+def test_front_page_theme_and_its_biggest_hour_kept(db, monkeypatch):
     titles = ['Shooting after football game leaves 1 dead', 'Shootings in Dallas leave 4 dead',
               'Pregnant woman killed in Halloween store shooting', 'Gunman opened fire at a mall', 'Senate race tightens',
               'Israel under fire over strikes']
-    p.write_json(str(tmp_path / 'top_stories.json'), {'stories': [{'title': t} for t in titles]})
+    front_page(db, dt(2026, 11, 1, 21), titles)
     found = {d['key'].split('|')[1]: d for d in p.front_page_themes(dt(2026, 11, 1, 21))}
     assert set(found) == {'shootings'}  # gunfire and "under fire" are not fires
     assert found['shootings']['text'].startswith('🚨 4 of the top 6 stories right now are about shootings:')
-    file = str(tmp_path / 'drafts.json')
     monkeypatch.setattr(p, 'MAKERS', [p.front_page_themes])
-    p.make(dt(2026, 11, 1, 21), file=file)
-    p.write_json(str(tmp_path / 'top_stories.json'), {'stories': [{'title': t} for t in titles[1:4]]})
-    p.make(dt(2026, 11, 1, 22), file=file)
-    kept = p.read_json(file)['drafts'][0]
-    assert kept['peak'] == 4 and kept['seen'] == '2026-11-01T22:00'
+    p.make(dt(2026, 11, 1, 21))
+    front_page(db, dt(2026, 11, 1, 22), titles[1:4])
+    p.make(dt(2026, 11, 1, 22))
+    kept = p.state()['drafts'][0]
+    assert kept['peak'] == 4 and kept['seen'] == '2026-11-01T22:00' and '4 of the top 6' in kept['text']
