@@ -109,38 +109,28 @@ said they've read.
 
 ### Mode 2: agents clear the queue
 
-1. **Take the whole queue.** Page through `claims_to_judge` (or the queue named) with `offset` until it is empty,
-   and note how many claims there are.
-2. **Split it into packets of about ten claims.** Keep claims about the same story or motif in one packet, so one
-   reader sees them together. Send packets to read-only subagents in parallel, several at a time.
-3. **Brief each subagent fully.** It has none of this conversation. Tell it to:
-   - read this file (`.claude/skills/judge-claims/SKILL.md`), `docs/motif-praxis.md` and the casebook first;
-   - give every claim the full read: sources via `claim_details`, each motif's note and not-this line;
-   - never call `checker_action`;
-   - return, for each claim, a verdict per filing (keep, take out with a one-line why, add, move), every motif the
-     claim ends up in, the teller's words carrying each filing, any split or rewording with its new words, any seed
-     proposed (name, genre, note, groups, the claims it takes), and its real doubts.
-4. **A second, independent reader for every packet.** It judges each claim from the sources first, then compares
-   with the first reader's draft and lists every difference, quoting the sources. Run it as a workflow (read, then
-   check, pipelined per packet), with the drafts and packets saved in `~/Repos/maudlin-notes/judging/`.
-5. **Check before writing anything.** Read the sources yourself (`claim_details`, 15 at a time) for every claim
-   where the readers differ, and for every take-out, new motif, split, rewording and doubt, even where they agree.
-   Where you disagree, your reading decides. A keep both readers agree on, with the tellers' words quoted, passes.
-   Merge seeds that different packets proposed for the same shape into one, and check that no existing motif already
-   carries it (`motif_search`).
-6. **Work in waves of about a hundred claims** when the queue is large. Apply and report each wave as it finishes,
-   so the person can correct while the next wave reads.
-7. **Apply in batches** through `checker_action`: one batch per packet, `why` on every take-out, seeds made with
-   `new_with` and given their note, genre and groups in the same batch.
-8. **Report each wave for correction after the fact:**
-   - how many claims were judged, and how many filings were kept, taken out, added and moved;
-   - the new motifs with their real ids (looked up);
-   - one row for each claim with a doubt, the doubt in its row with the teller's words;
-   - the splits and rewordings;
-   - one line saying every other claim was read in full by two readers who agreed.
+This is how the clears that went well were run (Oct 24 to 30; the write-up is
+`~/Repos/maudlin-notes/judging/past-clears.md`).
 
-   No questions in the report. The person corrects what's wrong; apply the corrections at once (with `why` on
-   take-outs) and report only what changed.
+1. **Take the whole queue** (`claims_to_judge`, paged with `offset`) and save it. **Group it by motif** (each claim by
+   its best-fitting filing) and cut it into **batches of about twenty**, so one reader sees a motif's claims together.
+2. **Regenerate the guide**: the person's own verdicts from the curation log (`by` empty = the person), flattened to
+   one row per check, also, unfile, new motif and rewording, with motif ids and names. Readers grep it by motif id to
+   see what the person files where. This did the most for the Oct 30 clear.
+3. **Write one brief file** and point every reader at it ("read BRIEF.md and follow it exactly"). The brief carries
+   this skill's rules for every claim, today's rulings, the guide's path, and the output shape. A working brief is
+   `~/Repos/maudlin-notes/judging/wave3/BRIEF.md`; check it against any new rulings before reusing it.
+4. **One read-only reader per batch**, all in parallel, as a workflow. Never let a reader call `checker_action`.
+5. **Check every change yourself before writing anything.** Read the sources (`claim_details`, 15 at a time) for
+   every take-out, add, move, new motif, rewording, split, withdrawal and doubt. A keep the reader carried with the
+   tellers' words passes. Your reading decides. Merge seeds that different batches proposed for the same shape, and
+   check that no existing motif already carries it.
+6. **Apply** through `checker_action`, one batch per reader's batch, as you finish checking it: `why` on every
+   take-out, seeds made with `new_with` and given note, genre and groups in the same batch.
+7. **Report once, at the end.** In chat: totals (claims, kept, taken out, added, reworded, no motif, withdrawn), the
+   new motifs with their real ids and a claim each, and at most a handful of real doubts. The full row-by-row record
+   goes to a file in `~/Repos/maudlin-notes/judging/`. No questions during the run; the person reviews afterwards
+   and corrects. Apply corrections at once (with `why` on take-outs) and report only what changed.
 
 If the queue is small enough to read closely yourself, mode 2 can skip the subagents. Everything else stays the same.
 
