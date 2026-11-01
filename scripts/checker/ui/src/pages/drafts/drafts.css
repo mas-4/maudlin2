@@ -1,0 +1,27 @@
+/* 📣 drafts: every class here starts dr- (Vite puts every page's CSS in one file, so names never clash) */
+.dr-page { max-width: 640px; margin: 0 auto; }
+.dr-intro { margin: 6px 0 12px; box-shadow: 5px 5px 0 var(--blue, #3a86ff); }
+.dr-intro p { margin: 0; color: #555; line-height: 1.5; }
+.dr-formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+.dr-format { font: inherit; text-align: left; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center;
+  border: 1.5px solid var(--ink); border-radius: 12px; background: white; padding: 8px 10px; cursor: pointer; color: var(--ink); }
+.dr-format.on { background: var(--soft-yellow); box-shadow: 3px 3px 0 var(--yellow); }
+.dr-femoji { grid-row: span 2; font-size: 1.5em; }
+.dr-fname { font-weight: bold; font-size: .95em; }
+.dr-tally { font-size: .8em; color: #555; }
+.dr-filters { display: flex; gap: 12px; align-items: center; font-size: .9em; margin: 4px 0 8px; }
+.dr-card { margin: 12px 0; padding: 10px 14px; box-shadow: 4px 4px 0 var(--teal); }
+.dr-card.up { box-shadow: 4px 4px 0 var(--teal); outline: 2px solid var(--teal); }
+.dr-card.down { opacity: .6; box-shadow: 4px 4px 0 var(--pink); }
+.dr-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin: 0 0 6px; font-size: .85em; }
+.dr-post { border: 1.5px solid #d8d8e0; border-radius: 12px; padding: 10px 12px; background: #fcfcff; }
+.dr-text { white-space: pre-wrap; margin: 0 0 8px; line-height: 1.45; overflow-wrap: anywhere; }
+.dr-link { font-size: .85em; overflow-wrap: anywhere; }
+.dr-foot { display: flex; align-items: center; gap: 12px; margin: 8px 0 0; font-size: .85em; }
+.dr-chars { color: #777; }
+.dr-chars.over { color: #c00; font-weight: bold; }
+.dr-marks { margin-left: auto; display: flex; gap: 8px; }
+.dr-mark { font-size: 1.3em; border: 1.5px solid var(--ink); border-radius: 999px; background: white; padding: 4px 14px; cursor: pointer; }
+.dr-mark.chosen { background: var(--soft-yellow); box-shadow: 2px 2px 0 var(--ink); }
+.dr-note { margin: 6px 0 0; font-size: .9em; color: #444; }
+.dr-none { font: var(--talk); font-size: 14px; color: #777; border: 2px dashed #bbb; border-radius: 12px; padding: 10px 14px; background: white; }

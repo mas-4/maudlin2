@@ -5,6 +5,7 @@ import { PAGES } from './lib/routes'
 import { Boundary } from './components/Boundary'
 import { Feedback } from './components/Feedback'
 import { Workbench } from './workbench/Workbench'
+import { Drafts } from './pages/drafts/Drafts'
 import { Dashboard } from './pages/dashboard/Dashboard'
 import { Experiments } from './pages/experiments/Experiments'
 import { Flow } from './pages/flow/Flow'
@@ -23,6 +24,7 @@ const PAGE: Record<string, () => ReactNode> = {
   '/live': () => <Live />,
   '/names': () => <Names />,
   '/labels': () => <Labels />,
+  '/drafts': () => <Drafts />,
 }
 
 export function App() {

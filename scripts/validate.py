@@ -27,6 +27,12 @@ CHECKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checker')
 # files the checker shares with the site, served from the site's static folder (the motif maps' layout)
 
 
+def post_drafts():
+    """app/post_drafts.py, the 📣 drafts page's data: the Bluesky posts the hourly run would make, and the person's marks"""
+    from app import post_drafts as module
+    return module
+
+
 def experiments_lab():
     """scripts/experiments/lab.py, the experiments page's data, imported from this checkout"""
     import sys
@@ -1003,6 +1009,7 @@ GET_JSON = {
     '/experiment-paper.json': lambda q: experiments_lab().paper(q.get('code', '')),
     '/experiment-cases.json': lambda q: experiments_lab().cases(q.get('code', '')),
     '/entities.json': lambda q: entities_state(),  # 👥 the names organizer
+    '/post-drafts.json': lambda q: post_drafts().state(),  # 📣 the Bluesky posts the hourly run would make (a dry run)
     '/labels.json': lambda q: labels.state(),  # 🏷️ a fresh batch for the label check, with the running agreement
 }
 
@@ -1102,6 +1109,11 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 return self.send_json(experiments_lab().verdict(data.get('code', ''), data.get('key', ''), data.get('verdict')))
             except (ValueError, OSError) as e:
+                return self.send_json_error(400, str(e))
+        if self.path == '/post-draft-mark':  # 👍 or 👎 on a Bluesky draft ({key, mark, note?}); not the index, so no undo
+            try:
+                return self.send_json(post_drafts().mark(str(data.get('key', '')), data.get('mark'), data.get('note')))
+            except ValueError as e:
                 return self.send_json_error(400, str(e))
         if self.path == '/critique':  # what the person said was wrong with a proposal, after deciding it (not undone)
             try:

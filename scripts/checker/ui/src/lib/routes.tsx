@@ -17,6 +17,7 @@ export const PAGES: Page[] = [
   { path: '/experiments', emoji: '🧪', name: 'Experiments', section: 'main' },
   { path: '/flow', emoji: '🌊', name: 'Flow', section: 'main' },
   { path: '/live', emoji: '🧠', name: 'Live', section: 'main' },
+  { path: '/drafts', emoji: '📣', name: 'Bluesky drafts', section: 'other' },
   { path: '/labels', emoji: '🏷️', name: 'label check', section: 'other' },
   { path: '/names', emoji: '👥', name: 'names', section: 'other' },
 ]

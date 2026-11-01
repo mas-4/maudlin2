@@ -218,6 +218,12 @@ def main(args: argparse.Namespace):
             logger.warning("Judging the headlines kept in gaming mode failed: %s", e)
     # The upload runs beside the GPU steps (they never write the built site); joined before the run ends
     upload = build(upload_aside=not args.skip_scrape and not args.scraper and not Config.debug)
+    if not args.skip_scrape and not args.scraper and not Config.debug:
+        try:  # the Bluesky posts the account would make this hour, for the checker's 📣 drafts page (nothing is posted)
+            from app import post_drafts
+            post_drafts.make()
+        except Exception as e:  # noqa: BLE001 - a dry run, never a reason to stop the run
+            logger.warning("Post drafts failed: %s", e)
     if listening is not None:
         listening.join(timeout=10 * 60)  # five minutes of listening, begun with the scrape: usually already done
     if not args.skip_scrape and not args.scraper and not Config.debug:
