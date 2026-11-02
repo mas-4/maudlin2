@@ -373,6 +373,12 @@ window.hoverCard = (() => {
         // tip is from the card's edge on that side (450-tooltip.css)
         if (!card || card.hidden || !anchor || !anchor.isConnected) return;
         const r = anchor.getBoundingClientRect(), pad = 8;
+        // Its mark scrolled away: the bubble goes with it rather than clinging to the window's edge (Nov 1, the
+        // person: they "should collapse when you move away or stay with their anchor, not keep following you")
+        if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > document.documentElement.clientWidth) {
+            hide(true);
+            return;
+        }
         const reach = 25, gap = 2;  // the tail's tip beyond the card's edge, and a little air before the mark
         card.style.left = '0px'; card.style.top = '0px';
         const w = card.offsetWidth, h = card.offsetHeight;
@@ -441,6 +447,12 @@ window.hoverCard = (() => {
 
     const acts = (el) => el.closest('a[href], button, summary, label');  // a click that already does something
 
+    // A finger's tap focuses what it taps; that focus isn't asking for a bubble, and on a phone nothing would take it
+    // away again (Nov 1: tapping "more on this story" left its bubble on screen)
+    let touchedAt = 0;
+    document.addEventListener('pointerdown', (ev) => { if (ev.pointerType === 'touch') touchedAt = Date.now(); }, true);
+    const touchedNow = () => Date.now() - touchedAt < 800;
+
     document.addEventListener('pointerover', (ev) => {
         if (ev.pointerType === 'touch') return;
         if (card && card.contains(ev.target)) { clearTimeout(hideTimer); return; }
@@ -471,6 +483,7 @@ window.hoverCard = (() => {
     });
     document.addEventListener('focusin', (ev) => {
         if (card && card.contains(ev.target)) return;
+        if (touchedNow()) return;
         const hit = find(ev.target);
         if (hit && !pinned) show(hit.el, hit.build, false);
     });
@@ -487,7 +500,8 @@ window.hoverCard = (() => {
             if (hit) { ev.preventDefault(); show(hit.el, hit.build, true); }
         }
     });
-    addEventListener('scroll', place, {passive: true});
+    // Scrolling with a finger is moving away: a bubble not kept open closes
+    addEventListener('scroll', () => { if (!pinned && touchedNow()) hide(true); else place(); }, {passive: true});
     addEventListener('resize', place);
     document.addEventListener('DOMContentLoaded', () => sweep(document));
     if (document.readyState !== 'loading') sweep(document);

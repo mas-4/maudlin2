@@ -78,8 +78,7 @@
     margin-top: 0.4em;
 }
 
-/* "More" and the story page's sticker share a line, centred when there's no room and they stack; open, "more"
-   takes the whole width and the sticker drops under what it shows (Oct 29) */
+/* "More" sits centred; open, it takes the whole width (Oct 29). The story page's sticker is inside it since Nov 1 */
 .card-actions {
     display: flex;
     flex-wrap: wrap;
@@ -91,6 +90,12 @@
 
 .card-actions > .card-more, .card-actions > .story-link {
     margin: 0;
+}
+
+/* the story page's sticker, at the foot of what "more" shows (Nov 1) */
+.card-more > .story-link {
+    text-align: center;
+    margin: 0.9em 0 0.4em;
 }
 
 .card-actions > .card-more[open] {

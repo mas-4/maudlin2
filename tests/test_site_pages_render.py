@@ -366,6 +366,15 @@ def test_story_card_chips(front, site):
         assert card.select('.card-stickers .card-sticker-showing') and not card.select('.chip-sort')
 
 
+def test_story_page_link_is_inside_more(front):
+    """The top cards' "everything on this story" sits inside "more on this story", not beside it (Nov 1)"""
+    tops = [card for card in front.select('div.story') if card.select_one('details.card-more')]
+    assert tops
+    for card in tops:  # the sample has no saved stories, so this holds for any link that does show
+        assert all(p.find_parent('details', class_='card-more') for p in card.select('p.story-link'))
+        assert not card.select('.card-actions > p.story-link')
+
+
 def test_story_links_point_at_cards(front):
     ids = {el['id'] for el in front.select('[id]')}
     for a in front.select('a[href^="#story-"]'):
@@ -656,6 +665,8 @@ def test_folklore_page_never_publishes_posts(monkeypatch, tmp_path):
         'M007': {'id': 'M007', 'name': 'the ruler kept alive in secret', 'claims': claims, 'done': seen},  # verified
         'M008': {'id': 'M008', 'name': 'a model guess nobody checked', 'claims': claims[:1]}}}
     monkeypatch.setattr(pn.motif_index, 'load', lambda: index)
+    # the shows' claims are in data.db since Nov 1, and the test database is a copy of the real one
+    monkeypatch.setattr(pn.show_claims, 'kept_retold', list)
     monkeypatch.setattr(Config, 'build', str(tmp_path))
     from app.analysis import focus_group
     monkeypatch.setattr(focus_group, 'load', lambda: {'https://ep/1': {'title': 'Ep61: Trump voters', 'date': '2026-10-03',
