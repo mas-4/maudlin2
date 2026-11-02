@@ -488,6 +488,7 @@ def link_sagas(headlines: pd.DataFrame, stories: pd.DataFrame, story_of: dict[in
 AGGREGATORS = {'Google News', 'Drudge Report', 'Real Clear Politics', 'Political Wire'}  # as in page_headlines
 NOW_SLACK = td(minutes=30)  # a part seen this close to the latest run is on the front pages now
 FIRST_RUN = td(minutes=15)  # headlines first seen this close together came in the same run
+CARRIED_SLACK = td(minutes=30)  # a run's headlines are first seen this much before its stories are saved
 
 
 def recheck(dry_run: bool = False) -> list[dict]:
@@ -611,6 +612,13 @@ def history() -> list[dict]:
         out = {}
         for p in parts:
             heads = sorted(by_story.get(p.id, []))
+            # Its first headline leaves out those from before it began that came while an earlier part was on the
+            # front pages: one still up from that part can cluster with it (Nov 2: the Rogers endorsement's part opened
+            # with "El-Sayed asks fellow Democrat Stevens not to attend final campaign events", from the part before).
+            # A story is saved some hours after its first headlines, so older ones with no earlier part about count.
+            before = [q.last_seen for q in parts if q.saga_id == p.saga_id and q.first_seen < p.first_seen]
+            own = [h for h in heads if h[0] >= p.first_seen - CARRIED_SLACK or not any(h[0] <= b for b in before)] \
+                or heads
             saga = out.setdefault(p.saga_id, {'id': p.saga_id, 'name': sagas[p.saga_id].name if p.saga_id in sagas
                                               else None, 'parts': [], 'lean': {}})
             for _, agency, _, bias, rated in heads:
@@ -621,8 +629,8 @@ def history() -> list[dict]:
                 'outlets': len({h[1] for h in heads}),
                 # Every outlet that had it in the first run it was seen in: one run's headlines share a time, so
                 # there's no telling which of them was first
-                'first_outlets': sorted({h[1] for h in heads if h[0] - heads[0][0] <= FIRST_RUN}),
-                'first_title': heads[0][2] if heads else None})
+                'first_outlets': sorted({h[1] for h in own if h[0] - own[0][0] <= FIRST_RUN}),
+                'first_title': own[0][2] if own else None})
     out = {k: v for k, v in out.items() if len(v['parts']) >= 2}  # a saga left with one part (a merge) is no saga
     for saga in out.values():
         saga['first'] = min(p['first'] for p in saga['parts'])

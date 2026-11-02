@@ -392,3 +392,27 @@ def test_folding_twins_keeps_one_headline_an_outlet(db):
     folded, kept = stories.fold_twins(df, {0: a, 1: a, 2: b})
     assert set(kept) == {0, 2}
     assert sorted(folded[folded['cluster'] == 0]['headline_id']) == [1, 2, 4]  # CNN's from the first part
+
+
+def test_a_continued_story_leaves_older_headlines_with_the_story_that_had_them(db):
+    """Nov 2: the Rogers endorsement's story took the disinvite headlines still on CBS's and the Times's front pages"""
+    from datetime import timedelta as td
+    from app.models import Headline
+    disinvite = seed(db, 'El-Sayed disinvites Stevens', [1, 2, 3])
+    day = dt(2026, 10, 3)
+    with db() as s:
+        endorse = Story(label='Stevens endorses Rogers', first_seen=day + td(days=1), last_seen=day + td(days=1))
+        s.add(endorse)
+        s.flush()
+        endorse = endorse.id
+        for h, first in [(1, day), (2, day), (3, day), (10, day + td(days=1)), (11, day + td(days=1)),
+                         (12, day + td(days=1))]:
+            s.add(Headline(id=h, article_id=h, title=f'headline {h}', first_accessed=first, last_accessed=first))
+        for h in (10, 11, 12):
+            s.add(StoryHeadline(story_id=endorse, headline_id=h, sentiment=0.0, deviation=0.0, last_seen=day))
+        s.commit()
+    out = stories.sync_stories(frame({0: [10, 11, 12, 1]}))
+    assert out[0].id == endorse
+    with db() as s:
+        held = {sh.headline_id: sh.story_id for sh in s.query(StoryHeadline)}
+    assert held[1] == disinvite and held[10] == endorse

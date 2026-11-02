@@ -31,6 +31,12 @@ LABEL_FROM = 30  # the newest headlines the label is written from
 MAX_LABELS_PER_RUN = 25
 FRAMING_WINDOW_DAYS = 30
 MIN_STORIES_FOR_FRAMING = 5
+# A headline already in a story stays there when the cluster it's in this hour continues a story that began after it
+# was first seen, plus this much (a run's headlines are first seen minutes before its stories are saved). Nov 2, the
+# person, on the Michigan Senate saga: El-Sayed disinviting Stevens was still on CBS, the New York Times and IJR's front
+# pages when she endorsed Rogers, and each hour's clustering put the whole feud in one cluster, so the endorsement's
+# story took those disinvite headlines and its part on the saga opened with them.
+CARRIED_SLACK = td(minutes=30)
 
 
 def headline_sentiment(df: pd.DataFrame) -> pd.Series:
@@ -385,9 +391,14 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
             sentiment = headline_sentiment(group)
             mean = sentiment.mean()
             existing = {sh.headline_id: sh for sh in s.query(StoryHeadline).filter(StoryHeadline.headline_id.in_(ids))}
+            # Headlines older than the story this cluster continues, held by another story: they were that one's news
+            # and stay there (a story begun this hour takes what it clusters with, or it would start empty)
+            older = {i for i, first in s.query(Headline.id, Headline.first_accessed).filter(Headline.id.in_(
+                [i for i, sh in existing.items() if sh.story_id not in (None, story.id)]))
+                if first < story.first_seen - CARRIED_SLACK} if story.first_seen < now else set()
             for headline_id, value in zip(ids, sentiment):
                 member = existing.get(headline_id) or StoryHeadline(headline_id=headline_id)
-                if member.story_id not in ended:  # what a split left with the old development stays there
+                if member.story_id not in ended and headline_id not in older:  # what a split left stays there
                     member.story_id = story.id  # a headline can move to the story it now clusters with
                 member.sentiment = float(value)
                 member.deviation = float(value - mean)
