@@ -77,7 +77,8 @@ def site() -> sqlite3.Connection:
 
 def key():
     """The drafts (by 'claude') and any corrections (corrections/<case>.json, the same shape, by 'person') into the
-    archive. A correction file needs only the headlines and events it changes; the rest stand as drafted."""
+    archive. A correction file needs only the headlines and events it changes; the rest stand as drafted. One with
+    "approved" and no key is the person approving the draft as it stands (Nov 2: "It looks good to me")."""
     con = db()
     now = dt.now().isoformat(timespec='seconds')
     for name in sorted(os.listdir(os.path.join(NOTES, 'drafts'))):
@@ -95,6 +96,8 @@ def key():
             if not os.path.exists(path):
                 continue
             x = json.load(open(path))
+            if by == 'person' and x.get('approved') and not x.get('key'):  # approved as drafted: the draft, as theirs
+                x = {**d, **x, 'key': d['key'], 'events': d['events']}
             for e in x.get('events', []):
                 con.execute('insert or replace into osiris_events values (?, ?, ?, ?, ?, ?)',
                             (case, e['id'], e['name'], e.get('first', ''), e.get('note', ''), by))
