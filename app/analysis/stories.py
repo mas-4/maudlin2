@@ -105,6 +105,10 @@ verdict: "the same event" or "different events\""""
 # event, and the older continues with the younger folded into it (merge_stories).
 REJOIN_LEAST = 3
 REJOIN_SHARE = 0.2
+# A cluster continues the saved story holding most of its headlines, however few: one of yesterday's headlines in a new
+# development's cluster is enough to carry the new news into yesterday's story. A story must hold at least this share
+# of the cluster's headlines to be continued (0: any, as since Oct 3). Tuned by Daedalus (S9, Nov 3).
+CONTINUE_SHARE = 0.0
 REJOIN_PROMPT = SAME_EVENT_PROMPT.replace('The first left the front pages some hours before the second appeared.',
                                           'Both were on the front pages at the same time.') \
     .replace('Earlier:', 'One:').replace('Now:', 'The other:')
@@ -369,6 +373,8 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
                 for m in matches:
                     n[carried_on(m.story_id, ended)] += m.n
                 matches = [Match(sid, k) for sid, k in n.most_common()]
+            if CONTINUE_SHARE:
+                matches = [m for m in matches if m.n >= CONTINUE_SHARE * len(ids)]
             match = next((m for m in matches if m.story_id not in claimed), None)
             if match:
                 story = s.get(Story, match.story_id)
