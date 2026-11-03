@@ -72,6 +72,26 @@
         </div>
     {% endif %}
 
+    {% if echoes %}
+        <h2 class="section-divider stage-banner" style="--stage: #c98a2b"><span>🏛️ Told in 1896</span></h2>
+        <p class="stage-sub">the same shape in a newspaper 130 years ago, from <a href="echoes.html">Older than you think</a></p>
+        <div class="echo-cards">
+            {% for c in echoes %}
+            <article class="echo-card motif-page-echo" style="--ink: {{ c.ink|e }}">
+                <div class="echo-then">
+                    <span class="echo-year echo-old">1896</span>
+                    <blockquote class="echo-quote" data-tip-head="The OCR as printed" data-tip="{{ c.ocr|e }}">“{{ c.quote|e }}”</blockquote>
+                    <p class="echo-source">🗞️ {% if c.paper %}<b>{{ c.paper|e }}</b>, {{ c.place|e }}{% else %}a paper whose name our copy lost{% endif %}, {{ c.day|e }}</p>
+                    <p class="echo-links">{% if c.papers > 1 %}<span class="echo-papers">🔁 printed in {{ c.papers }} papers</span>{% endif %}
+                        <a class="echo-scan" href="{{ c.url|e }}" rel="noopener">📜 see the page →</a>
+                        <a class="echo-scan" href="echoes.html#echo-{{ c.id }}">🪞 then and now →</a>
+                        <span class="echo-checked">{% if c.reviewer == 'claude' %}🤖 checked by Claude{% else %}🧑 checked by a person{% endif %}</span></p>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <h2 class="section-divider stage-banner" style="--stage: #8a5cff"><span>🧶 Its claims</span></h2>
     <p class="stage-sub">what's been told in this shape, in our words, by who told it: newest first in each; a claim's
         dots are the shows it came up on, in their lean's color (point at them for their names)</p>

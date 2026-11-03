@@ -229,6 +229,11 @@ class MotifPages:
         # Its words spotted in headlines and captions were taken off the pages before launch (Oct 27 audit: a quarter
         # to a third were the words used plainly, "Ponzi scheme" in a fraud report, "Game of Thrones" in costumes)
         show_pages = {sh: motif_web.show_slug(sh) for sh in web['shows']}
+        from app.analysis import echoes
+        from app.site import page_echoes
+        olds = defaultdict(list)  # its approved 1896 echoes, under the motif it lives on as now
+        for c in page_echoes.cards(echoes.approved(), index['entries']):
+            olds[motif_index.resolve(index, c['motif'])].append(c)
         for e in entries:
             up = came_up(e, s['tellers'], s['episodes'])
             claims = []
@@ -266,6 +271,7 @@ class MotifPages:
                 'genre_emoji': GENRE_EMOJI, 'genre_gloss': GENRE_GLOSS.get(e['genre'], ''), 'inks': LEAN_INK,
                 'news': [labels[sid] for sid in web['motif_stories'].get(e['id'], []) if sid in labels and sid in pages][:NEWS],
                 'phrases': phrases,
+                'echoes': olds.get(e['id'], []),
                 'show_pages': show_pages,
             }, os.path.join(Config.build, motif_href(e['id'])))
         moved = write_moved(index, shown)

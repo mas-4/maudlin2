@@ -138,3 +138,12 @@
     font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
     color: #6b5a3c;
 }
+
+/* On a motif's own page: only the 1896 side, the page itself being the 2026 one */
+.echo-card.motif-page-echo {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.echo-card.motif-page-echo > .echo-then {
+    border: none;
+}
