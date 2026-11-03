@@ -45,6 +45,10 @@ Closest relatives: Tangherlini's work (bottom-up, social media, by machine) and 
 
 ## Mapping our motifs to the catalogs (for the ~Oct 12 review)
 
+**Set aside, Nov 2.** Proposed as Bifrost (papers/bifrost.md) and not run. The person: "I just think the Thompson
+index is a totally different thing from our system; it's literally why we built our system." And: "It would only make sense for some plots and that's it." The comparison above
+stands as reading; the plan below is kept as it was written.
+
 Plan: link each motif to the entries it matches in the catalogs, using the SKOS mapping properties, so the index can
 be read alongside them and the motifs with no match stand out as candidates for something new.
 
