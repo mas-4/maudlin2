@@ -228,3 +228,56 @@
     stroke-dasharray: 5 4;
     stroke-opacity: 0.7;
 }
+
+/* Find an outlet (outlet_map.html): the box above the map; found outlets ringed and named, the rest faded */
+.omap-find {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em 0.6em;
+    margin: 0.2em auto 0.7em;
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.omap-find input {
+    flex: 1 1 14em;
+    max-width: 22em;
+    min-height: 40px;
+    box-sizing: border-box;
+    padding: 0.3em 0.8em;
+    font: inherit;
+    font-weight: 400;
+    color: #1f1f2e;
+    background: white;
+    border: 2.5px solid #1f1f2e;
+    border-radius: 999px;
+    box-shadow: 3px 3px 0 #ffc400;
+}
+
+.omap-find input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 #ff4fa3;
+}
+
+.omap-find-count {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.omap-chart.omap-searching .omap-dot:not(.found),
+.omap-chart.omap-searching .omap-label:not(.found) {
+    opacity: 0.18;
+}
+
+.omap-chart .omap-dot.found circle {
+    stroke: #ff4fa3;
+    stroke-width: 4;
+}
+
+.omap-chart .omap-label.found {
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: white;
+    stroke-width: 3px;
+}

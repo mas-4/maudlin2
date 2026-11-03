@@ -17,6 +17,13 @@
             <span class="bar-group"><span class="bar-label">show:</span>
                 {% for key, v in views.items() %}<button type="button" data-view="{{ key }}"{% if loop.first %} class="active" aria-pressed="true"{% else %} aria-pressed="false"{% endif %}>{{ v.name }}</button>{% endfor %}</span>
         </div>
+        <div class="omap-find" role="search">
+            <label for="omap-find-input">🔎 Find an outlet</label>
+            <input type="search" id="omap-find-input" list="omap-find-names" autocomplete="off" spellcheck="false"
+                   placeholder="The New York Times, Fox, Reason…">
+            <datalist id="omap-find-names">{% for name in dots|sort %}<option value="{{ name|e }}">{% endfor %}</datalist>
+            <span class="omap-find-count" aria-live="polite"></span>
+        </div>
         <figure class="story-chart-figure omap-figure">
             {{ svg|safe }}
             <figcaption>{{ outlets|length }} outlets with at least {{ min_stories }} of our stories and
@@ -129,6 +136,59 @@
                     return box;
                 }
                 window.hoverCard.register('.omap-dot', fillCard);
+
+                // Find an outlet (Nov 3, the person: "a search system to highlight, like New York Times"): the
+                // outlets whose names hold what's typed light up, the rest fade, on both views and on the full-screen
+                // copy (the classes are on the map itself, so the copy takes them); one match opens its card
+                const svg = fig.querySelector('svg.omap-chart');
+                const input = document.getElementById('omap-find-input');
+                const count = document.querySelector('.omap-find-count');
+                const plain = (s) => s.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+                const SVGNS = 'http://www.w3.org/2000/svg';
+                function find() {
+                    const q = plain(input.value);
+                    svg.querySelectorAll('.omap-found-label').forEach((t) => t.remove());
+                    svg.querySelectorAll('.found').forEach((x) => x.classList.remove('found'));
+                    svg.classList.toggle('omap-searching', Boolean(q));
+                    if (!q) { count.textContent = ''; return; }
+                    const names = Object.keys(data).filter((n) => plain(n).includes(q));
+                    const exact = names.find((n) => plain(n) === q);
+                    const hits = new Set(exact ? [exact] : names);
+                    svg.querySelectorAll('.omap-dot, .omap-label').forEach((x) => {
+                        if (hits.has(x.dataset.name)) x.classList.add('found');
+                    });
+                    // A found outlet with no label of its own gets one while it's found
+                    svg.querySelectorAll('.omap-view').forEach((view) => {
+                        const labelled = new Set([...view.querySelectorAll('.omap-label.found')].map((t) => t.dataset.name));
+                        view.querySelectorAll('.omap-dot.found').forEach((dot) => {
+                            if (labelled.has(dot.dataset.name)) return;
+                            const c = dot.querySelector('circle');
+                            const t = document.createElementNS(SVGNS, 'text');
+                            t.setAttribute('class', 'omap-label omap-found-label found');
+                            t.setAttribute('x', parseFloat(c.getAttribute('cx')) + 11);
+                            t.setAttribute('y', parseFloat(c.getAttribute('cy')) + 4);
+                            t.setAttribute('aria-hidden', 'true');
+                            t.textContent = dot.dataset.name;
+                            view.appendChild(t);
+                        });
+                    });
+                    count.textContent = hits.size ? (hits.size === 1 ? '' : `${hits.size} outlets`) : 'no outlet by that name on the map';
+                    if (hits.size === 1) {
+                        const dot = [...svg.querySelectorAll('.omap-dot.found')]
+                            .find((d) => d.closest('.omap-view').getAttribute('display') !== 'none');
+                        if (dot) {
+                            // At once, not smoothly: a card whose dot is still off screen closes itself (index.js)
+                            dot.scrollIntoView({block: 'center', behavior: 'instant'});
+                            requestAnimationFrame(() => window.hoverCard.show(dot, fillCard, true));
+                        }
+                    } else {
+                        window.hoverCard.hide();
+                    }
+                }
+                let typing = null;
+                input.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(find, 150); });
+                input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); find(); } });
+                buttons.forEach((b) => b.addEventListener('click', () => { if (input.value.trim()) find(); }));
             });
         </script>
 

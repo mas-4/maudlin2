@@ -285,7 +285,7 @@ def view_group(outlets: dict, view: str, shown: bool) -> str:
                      f'aria-label="{escape(tip)}"><circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill(o["lean"])}"/></g>')
     for name, (lx, ly, anchor) in labels.items():
         parts.append(f'<text class="omap-label" x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" '
-                     f'aria-hidden="true">{escape(short_name(name))}</text>')
+                     f'data-name="{escape(name)}" aria-hidden="true">{escape(short_name(name))}</text>')
     parts.append('</g>')
     return ''.join(parts)
 

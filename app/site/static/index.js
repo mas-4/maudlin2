@@ -372,17 +372,29 @@ window.hoverCard = (() => {
         // the other diagonals; data-side names where the card sits (ne, nw, se, sw) and --tail how far the tail's
         // tip is from the card's edge on that side (450-tooltip.css)
         if (!card || card.hidden || !anchor || !anchor.isConnected) return;
-        const r = anchor.getBoundingClientRect(), pad = 8;
-        // Its mark scrolled away: the bubble goes with it rather than clinging to the window's edge (Nov 1, the
-        // person: they "should collapse when you move away or stay with their anchor, not keep following you")
-        if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > document.documentElement.clientWidth) {
+        let r = anchor.getBoundingClientRect();
+        const pad = 8;
+        let vw = document.documentElement.clientWidth, vh = innerHeight;
+        // In a full-screen chart turned on its side (a phone held upright, 690-chart-full.css), the card sits inside
+        // the turned stage, so it turns with the chart (Nov 3, the person: the map "rotates sideways correctly for full
+        // screen but then clicking them makes them still other direction"). The stage's transform makes it the frame
+        // for the card's fixed position, so the mark is placed in the stage's own unturned coordinates: turned 90°
+        // clockwise, the stage's x runs down the screen and its y runs right to left.
+        const frame = turned(card.parentNode);
+        if (frame) {
+            const b = frame.getBoundingClientRect();
+            r = {left: r.top - b.top, right: r.bottom - b.top, top: b.right - r.right, bottom: b.right - r.left,
+                 width: r.height, height: r.width};
+            vw = frame.offsetWidth; vh = frame.offsetHeight;
+        } else if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > vw) {
+            // Its mark scrolled away: the bubble goes with it rather than clinging to the window's edge (Nov 1, the
+            // person: they "should collapse when you move away or stay with their anchor, not keep following you")
             hide(true);
             return;
         }
         const reach = 25, gap = 2;  // the tail's tip beyond the card's edge, and a little air before the mark
         card.style.left = '0px'; card.style.top = '0px';
         const w = card.offsetWidth, h = card.offsetHeight;
-        const vw = document.documentElement.clientWidth, vh = innerHeight;
         const clamp = (v, lo, hi) => Math.min(Math.max(lo, v), Math.max(lo, hi));
         const px = r.left + r.width / 2;
         const room = {above: r.top - gap - reach - h - pad, below: vh - pad - (r.bottom + gap + reach + h)};
@@ -402,10 +414,16 @@ window.hoverCard = (() => {
         card.style.setProperty('--tail', `${Math.round(clamp(tail, 2, w - 46))}px`);
     }
 
+    function turned(el) {
+        // A full-screen chart's stage when it's turned on its side, else null
+        return el && el.classList && el.classList.contains('chart-full-stage')
+            && getComputedStyle(el).transform !== 'none' ? el : null;
+    }
+
     function show(el, build, pin) {
         clearTimeout(showTimer); clearTimeout(hideTimer);
         if (anchor && anchor !== el) anchor.classList.remove('hover-card-on');
-        const host = el.closest('.chart-full') || document.body;
+        const host = el.closest('.chart-full-stage') || el.closest('.chart-full') || document.body;
         ensure(host);
         if (anchor !== el || card.hidden) {
             const content = build(el);
