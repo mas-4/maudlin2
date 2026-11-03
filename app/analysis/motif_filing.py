@@ -2,10 +2,13 @@
 shape against the closest motifs, matching a new name to the motifs we have, the shortlist, file_claims and the
 nightly run that feeds it, the story a filing was told about, and the index's metrics over time. Reached as before
 through motif_index (mi.file_claims, mi.nightly); the index itself is read and written through motif_index's store."""
+import functools
+import hashlib
 import json
 from collections import Counter, defaultdict
 import os
 import re
+import sqlite3
 from datetime import datetime as dt
 
 import numpy as np
@@ -212,11 +215,39 @@ def log_shortlist(index: dict, c: dict, shown: list[dict], named: dict):
 LINK_FIELDS = ('split_from',)  # a child claim's telling, the claim it was split from (claim_organizer.apply_split)
 
 
+@functools.lru_cache(maxsize=1)
+def method() -> str:
+    """The filing method's version, stamped on each filing it makes: a short hash of its prompts, models and signals.
+    What a hash stands for is kept once, the first time it files, in the index database's meta table ('method:<hash>'),
+    so a filing can always be traced to the method that made it. The reranker's and the confidence model's weekly
+    teaching isn't in it: a filing's fit_model says which confidence model scored it"""
+    from app.analysis import motif_signals as ms
+    what = {'prompts': {'name': NAME_PROMPT, 'name rules': NAME_RULES, 'reuse': REUSE_PROMPT, 'new': NEW_PROMPT,
+                        'match': MATCH_PROMPT, 'shape': ms.SHAPE_PROMPT, 'layers': ms.LAYERS_PROMPT,
+                        'element': ms.ELEMENT_PROMPT, 'judge': ms.JUDGE_PROMPT, 'rerank': ms.RERANK_TASK},
+            'models': {'filer': JUDGE_MODEL, 'decider': local_models.DECIDER}, 'signals': json.loads(ms.describe())}
+    sha = hashlib.sha1(json.dumps(what, sort_keys=True).encode()).hexdigest()[:10]
+    if not os.path.exists(mi.INDEX):  # never a new, empty index database: it would hide the JSON it migrates from
+        return sha
+    try:
+        con = sqlite3.connect(mi.INDEX, timeout=60)
+        try:
+            with con:
+                con.execute("INSERT OR IGNORE INTO meta VALUES (?, ?)",
+                            (f'method:{sha}', json.dumps({**what, 'first': dt.now().isoformat(timespec='seconds')})))
+        finally:
+            con.close()
+    except sqlite3.Error as e:  # the stamp still goes on the filings; what it stands for is in git
+        logger.warning("Filing method %s not kept: %s", sha, e)
+    return sha
+
+
 def record(c: dict, today: str) -> dict:
     """A filing's claim record, with the story the claim was told about when its source ties it to one (see
-    story_motifs), and the telling it was split from, if it was"""
+    story_motifs), the telling it was split from, if it was, and the method that filed it"""
     return {'claim': c['claim'], 'source': c.get('source', ''), 'ref': c.get('ref', ''), 'side': c.get('side'),
-            'date': c.get('date') or today, **{f: c[f] for f in mi.STORY_FIELDS + LINK_FIELDS if c.get(f) is not None}}
+            'date': c.get('date') or today, **{f: c[f] for f in mi.STORY_FIELDS + LINK_FIELDS if c.get(f) is not None},
+            'method': method()}
 
 
 class Shortlister:

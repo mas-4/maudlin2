@@ -731,6 +731,22 @@ def test_a_filing_record_keeps_the_telling_a_child_claim_was_split_from():
     assert 'split_from' not in mi.record({'claim': 'plain'}, '2026-10-13')
 
 
+def test_a_filing_record_carries_the_method_that_made_it_and_the_method_is_kept(monkeypatch, tmp_path):
+    import json
+    import sqlite3
+    from app.analysis import motif_filing
+    fresh(monkeypatch, tmp_path)
+    mi.save({'next': 1, 'claims': {}, 'entries': {}})
+    motif_filing.method.cache_clear()
+    rec = mi.record({'claim': 'plain'}, '2026-10-13')
+    motif_filing.method.cache_clear()
+    assert len(rec['method']) == 10
+    con = sqlite3.connect(mi.INDEX)
+    kept = json.loads(con.execute("SELECT value FROM meta WHERE key = ?", (f"method:{rec['method']}",)).fetchone()[0])
+    con.close()
+    assert kept['models']['filer'] and 'Today is {today}' in kept['prompts']['reuse']
+
+
 def test_the_workbench_saves_carrying_words(monkeypatch, tmp_path):
     """The checker's 'carrying' action reaches the index through the workbench (which passes it to the board's)"""
     import scripts.validate as v
