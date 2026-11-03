@@ -293,12 +293,15 @@ def run_trials(config: str, settings: list[dict], stage: str, workers: int):
             seen.add(t)
     print(f'{stage}: {len(todo)} replays to run on {config}', flush=True)
     me = os.path.abspath(__file__)
+    count = iter(range(1, len(todo) + 1))
 
     def one(p):
         r = subprocess.run([sys.executable, '-u', me, 'trial', config, json.dumps(p), stage], capture_output=True,
                            text=True, cwd='/home/mas/Repos/maudlin2')
         line = (r.stdout.strip().splitlines() or [''])[-1]
-        print(line if r.returncode == 0 else f'failed: {p}\n{r.stderr[-2000:]}', flush=True)
+        n = next(count)  # the queue reads a counter as progress
+        print(f'{stage} {n}/{len(todo)}: ' + (line if r.returncode == 0 else f'failed: {p}\n{r.stderr[-2000:]}'),
+              flush=True)
     with ThreadPoolExecutor(workers) as pool:
         list(pool.map(one, todo))
 
