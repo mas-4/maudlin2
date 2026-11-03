@@ -6,7 +6,8 @@ made to bless: the same words put to the opposite use.
     s8_balaam.py sample    200 filed show claims, by speaker (50 host, 50 guest, 50 clip, 25 caller, 25 unmarked), each
                            with its quote and the four minutes of transcript around it; 40 of them marked for the
                            person; the readers' batches written to maudlin-notes/experiments/balaam/items-NN.json
-    s8_balaam.py key       the readers' drafts (drafts/*.json) and the person's answers (person.json) into balaam_key
+    s8_balaam.py key       the readers' drafts (drafts/*.json), Claude's close reading of the 40 (close.json: the person
+                           handed it over, Nov 2), the news-register rule applied to the drafts (rule.json) and any answers of the person's (person.json) into balaam_key
     s8_balaam.py arms      R (circulation's prompt as it is, the quote alone), Q (a show prompt: the quote, the speaker
                            and the minutes around it) and N (Q on Nimble 9B); answers kept, resumable
     s8_balaam.py report    the hypotheses, on the person's answer where there is one and the readers' elsewhere
@@ -158,12 +159,13 @@ def key():
             con.execute('insert or replace into balaam_key values (?, ?, ?, ?, ?)',
                         (r['id'], 'claude', r['stance'], r.get('why', ''), at))
             n['claude'] += 1
-    person = os.path.join(NOTES, 'person.json')
-    if os.path.exists(person):
-        for r in json.load(open(person)):
-            con.execute('insert or replace into balaam_key values (?, ?, ?, ?, ?)',
-                        (r['id'], 'person', r['stance'], r.get('why', ''), at))
-            n['person'] += 1
+    for by, name in (('rule', 'rule.json'), ('close', 'close.json'), ('person', 'person.json')):
+        path = os.path.join(NOTES, name)
+        if os.path.exists(path):
+            for r in json.load(open(path)):
+                con.execute('insert or replace into balaam_key values (?, ?, ?, ?, ?)',
+                            (r['id'], by, r['stance'], r.get('why', ''), at))
+                n[by] += 1
     bad = con.execute(f"select count(*) from balaam_key where stance not in ({','.join('?' * len(STANCES))})",
                       STANCES).fetchone()[0]
     con.commit()
@@ -199,21 +201,24 @@ def report():
     items = {r[0]: r for r in con.execute('select id, speaker, person from balaam_items')}
     rows = con.execute('select id, by, stance from balaam_key').fetchall()
     claude = {i: s for i, b, s in rows if b == 'claude'}
+    rule = {i: s for i, b, s in rows if b == 'rule'}  # the news-register rule applied to the drafts (rule.json)
+    close = {i: s for i, b, s in rows if b == 'close'}  # Claude's own close reading of the 40, for the person (Nov 2)
     person = {i: s for i, b, s in rows if b == 'person'}
-    truth = {**claude, **person}
-    both = [i for i in person if i in claude]
-    if both:
-        same = sum(claude[i] == person[i] for i in both)
-        print(f'Readers: Claude and the person agree on {same} of {len(both)} ({same / len(both):.0%})')
-        for i in both:
-            if claude[i] != person[i]:
-                print(f'  {i}: Claude {claude[i]}, the person {person[i]}')
+    truth = {**claude, **rule, **close, **person}
+    for name, second in (('the close reading', close), ('the person', person)):
+        both = [i for i in second if i in claude]
+        if both:
+            same = sum(claude[i] == second[i] for i in both)
+            print(f'Readers: the drafts and {name} agree on {same} of {len(both)} ({same / len(both):.0%})')
+            for i in both:
+                if claude[i] != second[i]:
+                    print(f'  {i}: drafts {claude[i]}, {name} {second[i]}')
     if not truth:
         print('No key yet')
         return
     kinds = Counter(truth.values())
     side = sum(kinds[s] for s in ('arguing against it', 'reporting it'))
-    print(f'Key: {len(truth)} claims ({len(person)} by the person) {dict(kinds)}')
+    print(f'Key: {len(truth)} claims ({len(close)} closely read, {len(person)} by the person) {dict(kinds)}')
     print(f'1. It matters: arguing against or reporting {side} of {len(truth)} ({side / len(truth):.0%}); needs 15%')
     share = {}
     for sp in STRATA:
