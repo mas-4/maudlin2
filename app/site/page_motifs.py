@@ -169,6 +169,26 @@ def hover(entry: dict, parts: list[dict]) -> dict:
                  + (f" · last {entry['last_seen']}" if entry.get('last_seen') and entry['last_seen'] != entry.get('first_seen') else '')}
 
 
+HELD_UP_INK = {'sure': '#00c2a8', 'middling': '#ffc400', 'unsure': '#ff4f6d'}
+
+
+def held_up() -> dict | None:
+    """The model's filings as they held up when read, by how sure it was, as a board for "How the index works" """
+    from app.analysis import filing_confidence
+    from app.site import boards
+    t = filing_confidence.held_up()
+    if not t['read']:
+        return None
+    rows = [boards.row(b['name'], None, 100 * b['kept'] / b['read'], 100,
+                       f"{round(100 * b['kept'] / b['read'])}% kept of {b['read']:,}",
+                       tip=f"{b['kept']:,} of the {b['read']:,} filings read in this band were kept",
+                       ink=HELD_UP_INK[b['key']], mark={'sure': '😎', 'middling': '🤔', 'unsure': '😬'}[b['key']],
+                       mark_label=b['key']) for b in t['bands'] if b['read']]
+    return {'board': boards.board('held-up', '🎯', 'How the filings hold up', '#00c2a8',
+                                  "of the model's filings someone has read, the share kept, by how sure the model "
+                                  "was of each one beforehand", rows), **t}
+
+
 class MotifsPage:
     def __init__(self, dh=None):
         self.template = TemplateHandler('motifs.html')
@@ -188,7 +208,12 @@ class MotifsPage:
         for e in shown['entries']:
             parts = mix(e, tellers, episodes)
             slim[e['id']] = {'mix': parts, 'spark': sparkline(e), 'ink': GENRE_INK.get(e['genre'], UNCOLORED)}
-        self.template.write({'title': 'Motif index', **shown, 'search_file': motif_search.FILE,
+        try:
+            held = held_up()
+        except Exception as e:  # noqa: BLE001 - the figure is extra: the index stands without it
+            logger.warning("Motif index: how the filings hold up: %s", e)
+            held = None
+        self.template.write({'title': 'Motif index', **shown, 'search_file': motif_search.FILE, 'held': held,
                              'slim': slim, 'hover': {e['id']: hover(e, slim[e['id']]['mix']) for e in shown['entries']},
                              'mix_key': [{'name': name, 'mark': em, 'ink': ink} for _, em, name, ink in MIX],
                              'genre_inks': GENRE_INK,

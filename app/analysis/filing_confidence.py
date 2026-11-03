@@ -90,6 +90,36 @@ def live(rows: list[dict] | None = None) -> list[dict]:
     return out
 
 
+HELD_UP_BANDS = ((0.85, 'sure', 'the model sure: 0.85 or more'), (0.5, 'middling', 'between 0.5 and 0.85'),
+                 (0.0, 'unsure', 'under 0.5'))
+
+
+def held_up(rows: list[dict] | None = None) -> dict:
+    """How the model's filings held up when they were read: each filing's last verdict, by how sure the confidence
+    model was of it then (only decisions logged with their fit, since Oct 9), and how many the person and Claude read.
+    {'bands': [{'key', 'name', 'read', 'kept'}], 'read', 'kept', 'by': {'person': {'read', 'kept'}, 'claude': {...}}}"""
+    last = {}
+    for r in log_rows() if rows is None else rows:
+        if not isinstance(r.get('action'), dict):
+            continue
+        decided = {}
+        _decided(r['action'], decided)
+        fits = (r.get('before') or {}).get('fits') or {}
+        who = 'claude' if str(r.get('by') or '').startswith('claude') else 'person'
+        for (k, eid), kept in decided.items():
+            last[(k, eid)] = (kept, fits.get(f'{k}|{eid}'), who)
+    bands = [{'key': key, 'name': name, 'read': 0, 'kept': 0} for _, key, name in HELD_UP_BANDS]
+    by = {w: {'read': 0, 'kept': 0} for w in ('person', 'claude')}
+    for kept, fit, who in last.values():
+        if fit is None:
+            continue
+        band = next(b for (low, _, _), b in zip(HELD_UP_BANDS, bands) if fit >= low)
+        for tally in (band, by[who]):
+            tally['read'] += 1
+            tally['kept'] += kept
+    return {'bands': bands, 'read': sum(b['read'] for b in bands), 'kept': sum(b['kept'] for b in bands), 'by': by}
+
+
 def _decided(a: dict, out: dict, hand: bool = False):
     """The filings one logged action decides, into out: (claim key, motif id) -> kept"""
     act = a.get('action')

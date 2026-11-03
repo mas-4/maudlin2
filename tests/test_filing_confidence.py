@@ -139,3 +139,20 @@ def test_the_held_out_test_says_how_often_the_likely_out_were_taken_out():
     y = X[:, 0] + 0.3 * rng.normal(size=400) > -0.8
     out = fc.evaluate(X, y, [str(i % 97) for i in range(400)])['at_out']
     assert out['at'] == fc.OUT_AT and out['under'] > 0 and out['removed'] > 0.5 and 0 < out['of removed'] <= 1
+
+
+def test_held_up_counts_each_filings_last_verdict_by_its_fit_and_reader():
+    k = mi.key('A claim')
+    rows = [
+        {'at': '2026-10-10', 'action': {'action': 'check', 'claim': 'A claim', 'id': 'M1', 'answer': 'no'},
+         'before': {'fits': {f'{k}|M1': 0.9}}},
+        {'at': '2026-10-11', 'by': 'claude', 'action': {'action': 'batch', 'steps': [
+            {'action': 'check', 'claim': 'A claim', 'id': 'M1', 'answer': 'yes'},
+            {'action': 'check', 'claim': 'A claim', 'id': 'M2', 'answer': 'no'}]},
+         'before': {'fits': {f'{k}|M1': 0.95, f'{k}|M2': 0.3}}},
+        {'at': '2026-10-12', 'action': {'action': 'check', 'claim': 'A claim', 'id': 'M3', 'answer': 'yes'}},
+    ]
+    t = fc.held_up(rows)
+    assert [(b['key'], b['read'], b['kept']) for b in t['bands']] == [('sure', 1, 1), ('middling', 0, 0),
+                                                                       ('unsure', 1, 0)]
+    assert t['by'] == {'person': {'read': 0, 'kept': 0}, 'claude': {'read': 2, 'kept': 1}}

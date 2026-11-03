@@ -56,6 +56,20 @@
             A person checks each motif before it's shown here: its name, its note, its genre, its groups and the
             claims in it. The genres' definitions are found as we sort, case by case, and change when a case doesn't
             fit.</p>
+        {% if held %}
+            {{ b.board(held.board) }}
+            <p class="poll-note">Before a filing is read, a small model trained on the person's own past checks says
+                how sure it is that the filing will be kept. Of the {{ '{:,}'.format(held.read) }} filings read since
+                that was first written down (Oct 9), {{ (100 * held.kept / held.read)|round|int }}% were kept. The
+                person read {{ '{:,}'.format(held.by.person.read) }} of them and kept
+                {{ (100 * held.by.person.kept / held.by.person.read)|round|int if held.by.person.read else 0 }}%;
+                Claude (Anthropic's Opus) read {{ '{:,}'.format(held.by.claude.read) }}, at the person's request, in
+                batches the person approved or in clears of the whole queue, and kept
+                {{ (100 * held.by.claude.kept / held.by.claude.read)|round|int if held.by.claude.read else 0 }}%.
+                The least sure are read first, so this isn't a random sample. The sure ones are passed a page at a
+                time, any that don't fit unticked and set aside rather than counted, so the top bar runs a little
+                high.</p>
+        {% endif %}
     </details>
     {% if entries %}
         <div class="motif-slim-tools">
