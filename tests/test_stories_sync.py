@@ -416,3 +416,40 @@ def test_a_continued_story_leaves_older_headlines_with_the_story_that_had_them(d
     with db() as s:
         held = {sh.headline_id: sh.story_id for sh in s.query(StoryHeadline)}
     assert held[1] == disinvite and held[10] == endorse
+
+
+def test_two_carried_on_stories_that_title_alike_and_tell_one_event_fold_together(db, monkeypatch):
+    """Nov 4, the Michigan saga (the person: "2 identical parts"): "Democrat Abdul El-Sayed wins Michigan Senate race"
+    and "Abdul El-Sayed wins Michigan Senate race" were each carried on by a cluster of their own, hour after hour"""
+    asked = []
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: asked.append(prompt) or True)
+    first = seed(db, 'Democrat Abdul El-Sayed wins Michigan Senate race', [1, 2, 3])
+    second = seed(db, 'Abdul El-Sayed wins Michigan Senate race', [4, 5])
+    df = told({0: [(1, 'CNN', 'El-Sayed wins'), (2, 'NBC', 'El-Sayed wins in Michigan'), (3, 'AP', 'El-Sayed elected')],
+               1: [(4, 'Fox', 'El-Sayed defeats Rogers'), (5, 'Newsmax', 'Rogers loses to El-Sayed')]})
+    out = stories.sync_stories(df)
+    assert asked == [stories.REJOIN_PROMPT]
+    assert out[0].id == out[1].id == first
+    with db() as s:
+        assert s.get(Story, second) is None
+        assert {sh.story_id for sh in s.query(StoryHeadline)} == {first}
+    folded, kept = stories.fold_twins(df, out)
+    assert set(kept) == {0}  # one card
+
+
+def test_alike_titles_the_model_calls_two_events_stay_apart(db, monkeypatch):
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: False)
+    first = seed(db, 'Democrats lead Senate races in new polls', [1, 2, 3])
+    second = seed(db, 'Democrats lead Senate races in final polls', [4, 5])
+    out = stories.sync_stories(told({0: [(1, 'CNN', 'a'), (2, 'NBC', 'b'), (3, 'AP', 'c')],
+                                     1: [(4, 'Fox', 'd'), (5, 'Newsmax', 'e')]}))
+    assert out[0].id == first and out[1].id == second
+
+
+def test_unalike_titles_are_not_put_to_the_model(db, monkeypatch):
+    asked = []
+    monkeypatch.setattr(stories, 'same_event', lambda a, b, prompt=None: asked.append(1) or True)
+    seed(db, 'Stevens endorses Rogers in Michigan', [1, 2, 3])
+    seed(db, 'El-Sayed wins Michigan Senate race', [4, 5])
+    stories.sync_stories(told({0: [(1, 'CNN', 'a'), (2, 'NBC', 'b'), (3, 'AP', 'c')], 1: [(4, 'Fox', 'd'), (5, 'AP', 'e')]}))
+    assert not asked

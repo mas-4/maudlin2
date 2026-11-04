@@ -205,6 +205,43 @@ def twin(titles: list[str], continued: dict[int, tuple[Story, list[str], object]
     return None
 
 
+# Two stories carried on side by side, each by its own cluster hour after hour, were never compared again once both
+# had begun: twin() asks only of a cluster that would start a new story (Nov 4, the person, of the Michigan saga's
+# "Democrat Abdul El-Sayed wins Michigan Senate race" and "Abdul El-Sayed wins Michigan Senate race": "2 identical
+# parts"). So stories this run continues whose titles share LOOK_ALIKE of their words are put to the model with the
+# rejoin prompt, at most LOOK_ALIKE_CHECKS pairs a run, the most alike first: the same event, and the younger folds
+# into the older. Never two the seam cut parted this hour.
+LOOK_ALIKE = 0.5
+LOOK_ALIKE_CHECKS = 4
+
+
+def title_words(label: str | None) -> set[str]:
+    return set(re.findall(r"[a-z][a-z']{3,}", (label or '').lower())) - STOP
+
+
+def look_alikes(continued: list[tuple[Story, list[str], object]]) -> list[tuple[Story, Story]]:
+    """(older, younger) for each pair of this run's continued stories that title alike and tell the same event"""
+    pairs = []
+    for i, (a, ta, ra) in enumerate(continued):
+        for b, tb, rb in continued[i + 1:]:
+            if ra is not None and ra == rb:
+                continue
+            wa, wb = title_words(a.label), title_words(b.label)
+            if wa and wb and len(wa & wb) / len(wa | wb) >= LOOK_ALIKE:
+                pairs.append((len(wa & wb) / len(wa | wb), (a, ta), (b, tb)))
+    out, folded = [], set()
+    for _, (a, ta), (b, tb) in sorted(pairs, key=lambda p: -p[0])[:LOOK_ALIKE_CHECKS]:
+        if a.id in folded or b.id in folded:
+            continue
+        if same_event(ta, tb, prompt=REJOIN_PROMPT):
+            older, younger = sorted((a, b), key=lambda x: (x.first_seen, x.id))
+            out.append((older, younger))
+            folded.add(younger.id)
+            logger.info("Look-alike stories %d and %d are one event: %s | %s", older.id, younger.id, older.label,
+                        younger.label)
+    return out
+
+
 def fold_twins(df: pd.DataFrame, stories: dict) -> tuple[pd.DataFrame, dict]:
     """Clusters that sync_stories mapped to one story (twin) folded into one, the first cluster's, keeping each
     outlet's headline from the first: one card per story"""
@@ -413,6 +450,11 @@ def sync_stories(df: pd.DataFrame) -> dict[int, Story]:
             stories[cluster] = story
             claimed.add(story.id)
             continued.setdefault(story.id, (story, titles, group['seam_root'].iloc[0] if 'seam_root' in group else None))
+        for older, younger in look_alikes(list(continued.values())):
+            rejoins.append((older.id, younger.id))
+            for c, st in stories.items():  # its cluster's card goes with the story it folds into (fold_twins)
+                if st.id == younger.id:
+                    stories[c] = older
         s.commit()
         for story in stories.values():
             s.refresh(story)
