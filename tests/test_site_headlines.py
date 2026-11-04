@@ -233,26 +233,43 @@ def test_news_day_tiers_at_their_boundaries(on_top, kind):
 
 
 @pytest.mark.parametrize('hours, kind', [
-    (ph.NEWS_DAY_FRESH_HOURS, 'big'),  # full weight through the fresh hours
-    (ph.NEWS_DAY_FRESH_HOURS + ph.NEWS_DAY_HALF_LIFE_HOURS, 'big'),  # one half-life: 0.5
-    (ph.NEWS_DAY_FRESH_HOURS + 2 * ph.NEWS_DAY_HALF_LIFE_HOURS, 'normal'),  # 0.25
-    (ph.NEWS_DAY_FRESH_HOURS + 3 * ph.NEWS_DAY_HALF_LIFE_HOURS, 'slow'),  # 0.125
+    (ph.NEWS_DAY_BURST_HOURS, 'big'),  # full weight through the fresh hours
+    (ph.NEWS_DAY_BURST_HOURS + ph.NEWS_DAY_BURST_HALF_LIFE, 'big'),  # one half-life: 0.5
+    (ph.NEWS_DAY_BURST_HOURS + 2 * ph.NEWS_DAY_BURST_HALF_LIFE, 'normal'),  # 0.25
+    (ph.NEWS_DAY_BURST_HOURS + 3 * ph.NEWS_DAY_BURST_HALF_LIFE, 'slow'),  # 0.125
 ])
-def test_news_day_age_weighting(hours, kind):
-    """A story every outlet carries fades with age once it's past its fresh hours."""
+def test_news_day_weighs_each_outlets_newest_headline(hours, kind):
+    """A story every outlet carries fades as its newest headlines grow old, once past the fresh hours."""
     day = run_news_day({1: outlets('o', 10, hours=hours)})
     assert day['kind'] == kind
     assert day['share'] == 100
     assert day['age'] == ph.age_text(hours)
 
 
-def test_news_day_story_is_as_old_as_its_oldest_headline():
-    """Fresh posts on a running story don't make it new: a dropped two-and-a-half-day-old headline sets its age."""
-    fresh = run_news_day({1: outlets('o', 10, hours=1)})
-    aged = run_news_day({1: outlets('o', 10, hours=1) + [('gone', False, 60)]})
-    assert fresh['kind'] == 'big'
-    assert aged['kind'] == 'normal'
-    assert aged['active'] == 10  # an outlet with nothing live isn't counted as active
+def test_news_day_running_story_with_fresh_headlines_is_big():
+    """Election night: a story begun days ago (a dropped two-and-a-half-day-old headline sets its age), with every
+    outlet posting on it this hour, is a big news day; the same outlets with only yesterday's headlines left up aren't"""
+    running = run_news_day({1: outlets('o', 10, hours=1) + [('gone', False, 60)]})
+    stale = run_news_day({1: outlets('o', 10, hours=30)})
+    assert running['kind'] == 'big' and running['age'] == ph.age_text(60)
+    assert stale['kind'] == 'slow'
+    assert running['active'] == 10  # an outlet with nothing live isn't counted as active
+
+
+def test_news_day_outlet_counts_by_its_newest_headline():
+    """An outlet with an old and a new headline live on the story counts at the new one's weight"""
+    day = run_news_day({1: [(f'o{i}', True, 30) for i in range(10)] + [(f'o{i}', True, 1) for i in range(10)]})
+    assert day['kind'] == 'big' and day['score'] == 1.0
+
+
+def test_news_day_reads_as_big_as_the_recent_peak(monkeypatch):
+    """The morning after a big night: this hour is quiet, but the last hours' peak makes the day"""
+    quiet = {1: outlets('top', 6), 2: outlets('old', 14, hours=500)}
+    assert run_news_day(quiet)['kind'] == 'normal'
+    monkeypatch.setattr(ph, 'recent_peak', lambda: 0.58)
+    day = run_news_day(quiet)
+    assert day['kind'] == 'big' and day['day_score'] == 0.58
+    assert day['score'] == 0.3  # the hour's own score, kept for the archive's chart
 
 
 def test_news_day_picks_highest_weighted_story_not_widest():

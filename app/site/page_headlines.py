@@ -46,7 +46,13 @@ STORY_EMOTION_SHARE = 0.2  # of the story's averaged emotion votes, for a feelin
 FRESH_HOURS = 2
 # Share of active outlets on the biggest story, highest tier first. A starting point, to tune with a few weeks of data.
 NEWS_DAY_TIERS = [('big', 0.45), ('normal', 0.25), ('slow', 0.0)]  # on the age-weighted share, see news_day
-NEWS_DAY_FRESH_HOURS = 12
+NEWS_DAY_FRESH_HOURS = 12  # the trending list's age weighting (heat)
+# The news-day sticker weighs each outlet by its own newest headline on the story: full weight for this long, then
+# halving every NEWS_DAY_BURST_HALF_LIFE. A day is as big as its biggest hour in the last NEWS_DAY_PEAK_HOURS (Nov 4,
+# the person, of election night read as "just another news day": "it's a huge news day, our metric is bugged")
+NEWS_DAY_BURST_HOURS = 2
+NEWS_DAY_BURST_HALF_LIFE = 3
+NEWS_DAY_PEAK_HOURS = 12
 NEWS_DAY_FILE = 'newsday'  # the last build's news day: its run_state name (app/runstate.py)
 SAGA_COLORS = ['#ff4fa3', '#3a86ff', '#00c2a8', '#ff6b1a', '#7a5cff', '#ffc400']
 INVESTIGATION_MATCH = 0.55  # title similarity to tie an investigation to a current story
@@ -101,6 +107,19 @@ def meter(value: float, scale: float, negative: str, positive: str) -> dict:
     else:
         text = f'{value:+.2f}'
     return {'value': round(float(value), 3), 'position': round(position, 1), 'text': text}
+
+
+def recent_peak() -> float | None:
+    """The highest news-day score the builds kept in the last NEWS_DAY_PEAK_HOURS (app/analysis/newsiness.py); None
+    in debug or when there's none"""
+    if Config.debug:
+        return None
+    try:
+        from app.analysis import newsiness
+        return newsiness.peak(dt.utcnow() - td(hours=NEWS_DAY_PEAK_HOURS))
+    except Exception as e:  # noqa: BLE001 - the sticker can go by this hour alone
+        logger.warning("News day: no recent peak (%s)", e)
+        return None
 
 
 DB_START = dt(2000, 1, 1)  # our first scrape, set when the page is generated
@@ -498,35 +517,40 @@ class HeadlinesPage:
         TemplateHandler('feed.xml').write({'feed_items': items, 'feed_date': format_datetime(now)})
 
     def news_day(self, df, active_outlets: int):
-        """How big a news day it is: the share of outlets carrying a story on their front page right now, for the
-        story where that's highest once age is weighed in. One fresh story everyone is covering makes a big news day;
-        a story stays at full weight for NEWS_DAY_FRESH_HOURS from its first sighting, then halves every
-        NEWS_DAY_HALF_LIFE_HOURS, so yesterday's blockbuster that's still on every front page fades out. Needs no
-        historical baseline. (Ages count from our own first sighting, so stories already running when the database
-        started look younger than they are.)"""
+        """How big a news day it is: the share of outlets with a story on their front page right now that carry the
+        story where that's highest, each outlet weighed by how fresh its own newest headline on it is: full weight for
+        NEWS_DAY_BURST_HOURS, then halving every NEWS_DAY_BURST_HALF_LIFE. So everyone posting on one story at once
+        makes a big news day, a running story included (election night, in a saga begun days before), while
+        yesterday's blockbuster left up on every front page fades out. The day is as big as its biggest hour in the
+        last NEWS_DAY_PEAK_HOURS, so the morning after a big night still reads big. Needs no historical baseline."""
         live = df[df['live']]
         live_outlets = live['agency'].nunique()
         if live.empty or not live_outlets:
             self.context['newsday'] = None
             return
-        # A story is as old as its oldest headline in the window; outlets keep posting fresh articles on a running
-        # story, so a typical article's age would make it look new
-        # A saga counts as one story here
+        # A saga counts as one story here. A story is as old as its oldest headline in the window (shown on the
+        # sticker); each outlet's weight comes from its own newest live headline on it
         ages = df.groupby('group')['howlong'].max()
         stories = live.groupby('group').agg(outlets=('agency', 'nunique'))
         stories['age'] = ages.reindex(stories.index)
         stories['share'] = stories['outlets'] / live_outlets
         hours = stories['age'] / 3600
-        stories['score'] = stories['share'] * 0.5 ** ((hours - NEWS_DAY_FRESH_HOURS).clip(lower=0) / NEWS_DAY_HALF_LIFE_HOURS)
+        newest = live.groupby(['group', 'agency'])['howlong'].min() / 3600
+        weight = 0.5 ** ((newest - NEWS_DAY_BURST_HOURS).clip(lower=0) / NEWS_DAY_BURST_HALF_LIFE)
+        stories['score'] = weight.groupby(level=0).sum().reindex(stories.index) / live_outlets
         top = stories['score'].idxmax()
         score = stories.loc[top, 'score']
         sagas = self.context.get('sagas', {})
-        kind = next(k for k, threshold in NEWS_DAY_TIERS if score >= threshold)
-        logger.info("News day: %s (top story on %.0f%% of outlets, %.0fh old, score %.2f)",
-                    kind, 100 * stories.loc[top, 'share'], hours[top], score)
+        peak = recent_peak()
+        day = max(score, peak or 0.0)
+        kind = next(k for k, threshold in NEWS_DAY_TIERS if day >= threshold)
+        logger.info("News day: %s (top story on %.0f%% of outlets, %.0fh old, score %.2f, the last %dh's peak %s)",
+                    kind, 100 * stories.loc[top, 'share'], hours[top], score, NEWS_DAY_PEAK_HOURS,
+                    'none' if peak is None else f'{peak:.2f}')
         self.context['newsday'] = {
             **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * stories.loc[top, 'share']),
-            'score': round(float(score), 3),  # the age-weighted share the kind comes from (app/analysis/newsiness.py)
+            'day_score': round(float(day), 3),  # what the kind comes from: this hour's score or the recent peak
+            'score': round(float(score), 3),  # this hour's own score, kept hour by hour (app/analysis/newsiness.py)
             'outlets': int(stories.loc[top, 'outlets']), 'active': live_outlets,
             'story': sagas[top]['name'] if top in sagas else self.context['titles'][top],
             'cluster': int(sagas[top]['lead'] if top in sagas else top), 'age': age_text(hours[top]),

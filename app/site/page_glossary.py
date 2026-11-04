@@ -36,7 +36,7 @@ class GlossaryPage:
             'saga_similarity': sagas.SAGA_SIMILARITY, 'saga_word_share': round(100 * sagas.NAME_MIN_SHARE),
             'saga_word_rare': round(100 * sagas.NAME_MAX_SHARE),
             'story_feeling': round(100 * ph.STORY_EMOTION_SHARE),
-            'fresh_hours': ph.NEWS_DAY_FRESH_HOURS, 'half_life': ph.NEWS_DAY_HALF_LIFE_HOURS,
+            'fresh_hours': ph.NEWS_DAY_BURST_HOURS, 'half_life': ph.NEWS_DAY_BURST_HALF_LIFE, 'peak_hours': ph.NEWS_DAY_PEAK_HOURS,
             'tiers': {k: round(100 * v) for k, v in ph.NEWS_DAY_TIERS},
             'break_minutes': ph.BREAK_WINDOW_MINUTES, 'fast_break': ph.FAST_BREAK,
             'blind_outlets': ph.BLINDSPOT_MIN_OUTLETS, 'blind_share': round(100 * ph.BLINDSPOT_SHARE),

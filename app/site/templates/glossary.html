@@ -99,8 +99,10 @@
         {% endcall %}
         {% call term('🚨', 'News day', 'news-day') %}
             <p>How big a news day it is: the share of outlets carrying the top story on their front page right now,
-                weighed by the story's age (full weight for {{ fresh_hours }} hours, then halving every
-                {{ half_life }}). {{ tiers.big }}%+ is a big news day, {{ tiers.normal }}%+ just another news day, less
+                each weighed by how fresh its own latest headline on it is (full weight for {{ fresh_hours }} hours,
+                then halving every {{ half_life }}), so everyone writing about one story at once counts in full and
+                yesterday's headline left up fades. The day is as big as its biggest hour in the last
+                {{ peak_hours }}. {{ tiers.big }}%+ is a big news day, {{ tiers.normal }}%+ just another news day, less
                 a slow one.</p>
         {% endcall %}
         {% call term('🚀', 'Speed of break', 'speed') %}

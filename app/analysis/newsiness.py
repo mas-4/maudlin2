@@ -1,8 +1,11 @@
 """How newsy each hour was: the news-day score over time (Oct 12, the person: "some kind of chart somewhere on the site
 that shows the newsiness score and a link to the story on spikes"). The score is the front page's news-day sticker
 (page_headlines.news_day): for the story where it's highest, the share of the outlets with a story on their front page
-now that carry it, at full weight for NEWS_DAY_FRESH_HOURS from its first sighting, then halving every
-NEWS_DAY_HALF_LIFE_HOURS. 0.45 and up is a big news day, 0.25 a normal one.
+now that carry it, each weighed by its own newest headline on it (full weight for NEWS_DAY_BURST_HOURS, then halving
+every NEWS_DAY_BURST_HALF_LIFE; until Nov 4 the story's age weighed every outlet alike, full weight for
+NEWS_DAY_FRESH_HOURS from its first sighting, then halving every NEWS_DAY_HALF_LIFE_HOURS, which the reconstructed
+points below still use). 0.45 and up is a big news day, 0.25 a normal one; the sticker takes the last
+NEWS_DAY_PEAK_HOURS' highest point.
 
     recorded       from Oct 12 each build keeps its own score and top story (record(), from news_day): exact
     reconstructed  before then, from the database: at each hourly run (the story snapshots' times) a headline counts
@@ -57,10 +60,21 @@ def record(newsday: dict, story_id: int | None, at: dt | None = None):
     from app.models import Session
     from app.tables.records import NewsinessPoint
     with Session() as s:
+        # The hour's own tier: the sticker's kind may come from the day's peak (page_headlines.news_day)
         s.add(NewsinessPoint(made='recorded', at=(at or dt.utcnow()).replace(microsecond=0), score=newsday['score'],
                              share=newsday['share'] / 100, outlets=newsday['outlets'], active=newsday['active'],
-                             story_id=story_id, label=newsday['story'] or '', kind=newsday['kind']))
+                             story_id=story_id, label=newsday['story'] or '', kind=kind_of(newsday['score'])))
         s.commit()
+
+
+def peak(since: dt) -> float | None:
+    """The highest score a build kept since `since` (UTC), or None"""
+    from sqlalchemy import func
+    from app.models import Session
+    from app.tables.records import NewsinessPoint
+    with Session() as s:
+        return s.query(func.max(NewsinessPoint.score)).filter(NewsinessPoint.made == 'recorded',
+                                                              NewsinessPoint.at >= since).scalar()
 
 
 def reconstruct(until: dt | None = None) -> list[dict]:
