@@ -39,6 +39,19 @@ NAME_MIN_SHARE = 0.3  # a distinctive word appears in at least this share of one
 NAME_MIN_OTHER = 0.1  # ...and this share of the other's (for saved sagas; the judge decides): 'Fairford' was in 42% of the
                       # bail story and 10% of the bombers-pulled one, which 30% on both sides kept apart (Oct 5)
 NAME_MAX_SHARE = 0.04  # ...and in no more than this share of all the day's headlines
+# ...counting only the headlines outside the two sides: on the biggest story of the day its own coverage made its name
+# look common (Nov 4: "midterm" in 5.6%, 7.5% and 10.6% of three days' headlines, and the midterm vote and its results
+# made a saga apart from the midterms saga). Up to NAME_MAX_COMMON outside, a word still counts when it's NAME_LIFT
+# times more common on the two sides than outside them; past that ("Trump") it never does
+NAME_MAX_COMMON = 0.12
+NAME_LIFT = 5
+
+
+def rare_outside(inside: float, outside_n: float, outside_total: int) -> bool:
+    """Whether a word in `inside` (a share) of a side's headlines is rare enough elsewhere to name what they share:
+    `outside_n` of the `outside_total` headlines outside both sides carry it"""
+    out = outside_n / max(1, outside_total)
+    return out <= NAME_MAX_SHARE or (out <= NAME_MAX_COMMON and inside >= NAME_LIFT * out)
 RELATED_SIMILARITY = 0.6  # an unclustered headline this close to a saga's center (with its word) counts toward it
 SAGA_MEMORY = td(days=7)  # saved stories this recent can join today's stories in a saga
 # and so can any part of a saga this recent, however old the part (Oct 30, the person of a Christa Pike story that
@@ -311,17 +324,32 @@ def _merge(groups: dict, vectors: np.ndarray, bags: list[set], frequency: Counte
         v = vectors[rows].mean(axis=0)
         return v / np.linalg.norm(v)
 
+    today = round(common / NAME_MAX_SHARE)  # rows before this are today's headlines, the ones `frequency` counts
+
+    def today_counts(rows):
+        return Counter(w for r in rows if r < today for w in bags[r] if w in names_ok)
+
     def shares(rows):
-        """Each name rare on the day -> the share of these headlines that carry it"""
-        counts = Counter(w for r in rows for w in bags[r] if w in names_ok and frequency[w] <= common)
+        """Each name -> the share of these headlines that carry it (rarity outside is judged pair by pair)"""
+        counts = Counter(w for r in rows for w in bags[r] if w in names_ok)
         return {w: n / len(rows) for w, n in counts.items() if n >= NAME_MIN_OTHER * len(rows)}
 
     def distinctive(rows):
-        return {w for w, share in shares(rows).items() if share >= NAME_MIN_SHARE}
+        own, n_today = today_counts(rows), sum(r < today for r in rows)
+        return {w for w, share in shares(rows).items()
+                if share >= NAME_MIN_SHARE and rare_outside(share, frequency[w] - own[w], today - n_today)}
 
     def shared(a, b):
-        """A name in NAME_MIN_SHARE of one side's headlines and NAME_MIN_OTHER of the other's"""
-        return any(max(names[a][w], names[b][w]) >= NAME_MIN_SHARE for w in names[a].keys() & names[b].keys())
+        """A name in NAME_MIN_SHARE of one side's headlines and NAME_MIN_OTHER of the other's, rare on the day
+        outside the two of them"""
+        ra, rb = groups[a]['rows'], groups[b]['rows']
+        own = today_counts(ra + rb)
+        outside = today - sum(r < today for r in ra + rb)
+        for w in names[a].keys() & names[b].keys():
+            inside = max(names[a][w], names[b][w])
+            if inside >= NAME_MIN_SHARE and rare_outside(inside, frequency[w] - own[w], outside):
+                return True
+        return False
 
     centers = {k: center(g['rows']) for k, g in groups.items()}
     names = {k: shares(g['rows']) for k, g in groups.items()}

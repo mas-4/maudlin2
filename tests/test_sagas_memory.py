@@ -126,6 +126,24 @@ def test_a_sagas_own_old_headlines_dont_make_its_name_common(db):
     [saga] = sg.link_sagas(headlines, stories, {0: saved_story(db, ['Attorney general takes over Cornell case'], 1)}).values()
     assert saga['id'] == saga_id
 
+def test_the_days_biggest_story_keeps_its_name(db):
+    """Nov 4: on election night "Senate" was in far over 4% of the day's headlines, all of them the election's own,
+    so the vote and its results made a saga apart. Rarity is counted outside the two sides"""
+    saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 20)
+    big = [f'Trustees meet at Cornell, update {i}' for i in range(40)]  # 10% of a 400-headline day, all this story's
+    headlines, stories = today({0: big})
+    assert len(sg.link_sagas(headlines, stories, {0: saved_story(db, ['Cornell trustees'], 1)})) == 1
+
+
+def test_a_name_common_across_the_day_still_does_not_link(db):
+    """...but a name common outside the two stories, as "Trump" is, never links them"""
+    saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 20)
+    headlines, stories = today({0: ['Trustees meet at Cornell', 'Trustees vote at Cornell']})
+    headlines = pd.concat([headlines, pd.DataFrame([{'title': f'Snow falls on Cornell, item {i}', 'agency': 'X', 'cluster': -1}
+                                                    for i in range(60)])], ignore_index=True)
+    assert sg.link_sagas(headlines, stories, {0: saved_story(db, ['Cornell trustees'], 1)}) == {}
+
+
 def test_a_loose_story_from_weeks_ago_does_not_join(db):
     saved_story(db, ['Cornell student alleges assault', 'Cornell accuser speaks out'], 19 * 24)  # in no saga
     headlines, stories = today({0: ['Attorney general takes over Cornell investigation',
