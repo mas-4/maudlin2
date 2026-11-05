@@ -491,10 +491,16 @@ Examples of the style:
 def restore_case(label: str, headlines) -> str:
     """Small models drift on capitalization ("doj", "U.s.", "cornell"). The outlets' own headlines spell proper
     nouns and acronyms right, so each word takes the casing the headlines mostly use for it mid-sentence, and the
-    title starts with a capital."""
+    title starts with a capital. A name the model split in two ("Ron de santis") is joined back as the headlines
+    spell it (DeSantis)."""
     spellings: dict[str, Counter] = {}
+    names: dict[str, Counter] = {}  # names with a capital inside: DeSantis, McConnell, LaGuardia
     for headline in headlines:
         words = re.findall(r"[\w.'-]+", headline)
+        for word in words:
+            word = re.sub(r"'s$", '', word)
+            if re.fullmatch(r"[A-Z][a-z]+[A-Z][a-z]+", word):
+                names.setdefault(word.lower(), Counter())[word] += 1
         long_words = [w for w in words if len(w) > 3]
         if long_words and sum(w[0].isupper() for w in long_words) / len(long_words) > 0.6:
             continue  # Title Case headlines capitalize everything, so they say nothing about proper nouns
@@ -503,14 +509,36 @@ def restore_case(label: str, headlines) -> str:
                 continue  # a headline's first word is capitalized anyway, unless it's an acronym like DOJ
             spellings.setdefault(word.lower(), Counter())[word] += 1
 
+    def lowercase_kin(lower: str) -> bool:
+        """The word's singular or plural is written lowercase in the headlines: a common noun ("midterms"), so one
+        headline's "Midterm" isn't a proper noun (Nov 5: "Pete Hegseth's future following Midterm losses")"""
+        kin = {lower + 's', lower + 'es', lower[:-1] if lower.endswith('s') else None} - {None}
+        return any(k in spellings[k] for k in kin if k in spellings)
+
     def fix(match):
         word = match.group()
         if re.fullmatch(r'(\w\.){2,}', word):
             return word.upper()  # dotted abbreviations: U.S., D.C.
         seen = spellings.get(word.lower())
-        return seen.most_common(1)[0][0] if seen else word
+        if not seen:
+            return word
+        best = seen.most_common(1)[0][0]
+        if word.islower() and best[0].isupper() and not best.isupper() and (
+                len(word) <= 3 or word not in seen and lowercase_kin(word)):
+            return word  # a capitalized "As" or "Midterm" mid-headline, not a name (acronyms like AI still go up)
+        return best
 
-    label = re.sub(r"[\w.'-]+", fix, label)
+    def join(label: str) -> str:
+        """Each two words in a row, spaced or hyphenated, that the headlines write as one name, written so"""
+        words, joined_at = list(re.finditer(r"[A-Za-z]+", label)), None
+        for a, b in reversed(list(zip(words, words[1:]))):
+            if b.start() == joined_at:
+                continue  # b is already part of a joined name
+            if label[a.end():b.start()] in (' ', '-') and (seen := names.get((a.group() + b.group()).lower())):
+                label, joined_at = label[:a.start()] + seen.most_common(1)[0][0] + label[b.end():], a.start()
+        return label
+
+    label = re.sub(r"[\w.'-]+", fix, join(label))
     return label[0].upper() + label[1:]
 
 
