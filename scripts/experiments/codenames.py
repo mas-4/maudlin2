@@ -25,6 +25,7 @@ CODENAMES = {
     'S9': ('Daedalus', 'the middle course, neither near the sun nor near the sea: the story settings searched together'),
     'S10': ('the Prodigal Son', 'a part gone off on its own, taken back into the household: the saga judge reworded'),
     'S11': ('Mnemosyne', 'memory, mother of the Muses: each running story kept under its name, each new one filed to it'),
+    'S12': ('Eurycleia', 'who knew Odysseus by his scar: a story known as a race\'s part by the race it names'),
     'E12': ('Jack', 'seeds, and whether they grow'),
     'E13': ('Anansi', 'the spider who owns every story, told in full'),
     'D1': ('Cinderella', 'the slipper must fit: the must-have element'),
