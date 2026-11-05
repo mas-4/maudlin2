@@ -35,3 +35,8 @@ def test_ordinary_word_pairs_are_left_alone():
 def test_short_words_stay_lowercase_unless_acronyms():
     headlines = ['U.S. strikes Iran As Trump downplays the conflict', 'Iran braces as U.S. strikes; Trump eyes AI']
     assert stories.restore_case('U.S. strikes Iran as Trump eyes ai', headlines) == 'U.S. strikes Iran as Trump eyes AI'
+
+
+def test_curly_apostrophes_count_as_straight_ones():
+    headlines = ['Investors flee as Musk’s companies slide', 'Tesla falls after Musk’s midterm losses']
+    assert stories.restore_case("Elon musk's stocks drop", headlines) == "Elon Musk's stocks drop"

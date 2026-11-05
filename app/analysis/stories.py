@@ -496,7 +496,7 @@ def restore_case(label: str, headlines) -> str:
     spellings: dict[str, Counter] = {}
     names: dict[str, Counter] = {}  # names with a capital inside: DeSantis, McConnell, LaGuardia
     for headline in headlines:
-        words = re.findall(r"[\w.'-]+", headline)
+        words = re.findall(r"[\w.'-]+", headline.replace('\u2019', "'"))  # Musk’s is Musk's
         for word in words:
             word = re.sub(r"'s$", '', word)
             if re.fullmatch(r"[A-Z][a-z]+[A-Z][a-z]+", word):
@@ -538,7 +538,9 @@ def restore_case(label: str, headlines) -> str:
                 label, joined_at = label[:a.start()] + seen.most_common(1)[0][0] + label[b.end():], a.start()
         return label
 
-    label = re.sub(r"[\w.'-]+", fix, join(label))
+    curly = '\u2019' in label
+    label = re.sub(r"[\w.'-]+", fix, join(label.replace('\u2019', "'")))
+    label = label.replace("'", '\u2019') if curly else label  # the title keeps its own apostrophes
     return label[0].upper() + label[1:]
 
 
