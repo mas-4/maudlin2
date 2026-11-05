@@ -19,6 +19,8 @@ FRONT_PAGES = [
      'about': "This term's cases: who's covering which, from which side, at which stage."},
     {'href': 'archive.html', 'emoji': '🗄️', 'name': 'Archive',
      'about': "Each day's front page as it stood at day's end."},
+    {'href': 'over-time.html', 'emoji': '📈', 'name': 'The news over time',
+     'about': 'Every headline on one map, and newsiness, motifs, feelings and sagas day by day.'},
 ]
 
 # On the air: broadcast, and the shows and newsletters that talk the news over

@@ -1,0 +1,110 @@
+/* The news over time (over-time.html, static/over_time.js): the galaxy's night sky and the charts' cards; ot- classes */
+.ot-hero { box-shadow: 7px 7px 0 #8a5cff; }
+.ot-lede { color: #555; line-height: 1.5; margin: 0.4em 0 0.6em; }
+.ot-jump { display: flex; flex-wrap: wrap; gap: 8px; }
+.ot-jump a {
+    font: 700 0.95em 'Comic Neue', 'Comic Sans MS', cursive; color: #1f1f2e; text-decoration: none; background: #fff;
+    border: 2px solid #1f1f2e; border-radius: 999px; padding: 0.35em 0.8em; box-shadow: 2px 2px 0 #ffc400;
+    transition: transform .12s, box-shadow .12s;
+}
+.ot-jump a:nth-child(even) { box-shadow: 2px 2px 0 #00c2a8; }
+.ot-jump a:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #1f1f2e; }
+
+.ot-card {
+    margin: 0.6em 0 1.4em; padding: 0.8em 0.9em 0.9em; background: #fff; border: 3px solid #1f1f2e;
+    border-radius: 14px; box-shadow: 6px 6px 0 var(--pop, #00c2a8); min-width: 0;
+}
+.ot-card figcaption { color: #555; line-height: 1.5; margin: 0.6em 0.2em 0; font-size: 0.95em; }
+.ot-chart { position: relative; width: 100%; min-height: 120px; }
+.ot-chart svg { display: block; width: 100%; height: auto; overflow: visible;
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive; font-weight: 700; }
+
+/* chart text and marks (static/over_time.js) */
+.ot-tick { font-size: 11px; fill: #666; }
+.ot-grid { stroke: #e6e6ee; stroke-width: 1; }
+.ot-axis { stroke: #1f1f2e; stroke-width: 1; }
+.ot-name { font-size: 13px; fill: #1f1f2e; }
+a .ot-name { fill: #c43d00; text-decoration: underline; }
+.ot-note { font-size: 11px; fill: #555; }
+.ot-label { font-size: 12px; fill: #1f1f2e; paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+a .ot-label { fill: #c43d00; text-decoration: underline; }
+.ot-band-big { fill: color-mix(in srgb, #ff4fa3 10%, white); }
+.ot-band-normal { fill: color-mix(in srgb, #ffc400 10%, white); }
+.ot-mark-line { stroke: #d6d0e6; stroke-dasharray: 3 3; }
+.ot-area { fill: color-mix(in srgb, #00c2a8 16%, transparent); }
+.ot-line { fill: none; stroke: #1f1f2e; stroke-width: 2; stroke-linejoin: round; }
+.ot-spike { fill: #ff6b1a; stroke: #1f1f2e; stroke-width: 1.5; }
+.ot-stem { stroke: #1f1f2e; stroke-width: 1; stroke-dasharray: 2 2; }
+.ot-cross { stroke: #1f1f2e; stroke-width: 1; pointer-events: none; }
+.ot-hit { fill: transparent; }
+.ot-row-hit { fill: transparent; }
+.ot-row-hit:hover { fill: rgba(31, 31, 46, 0.05); }
+
+.ot-legend { list-style: none; margin: 0 0 0.6em; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 12px;
+    font: 700 13px/1.2 'Comic Neue', 'Comic Sans MS', cursive; color: #1f1f2e; }
+.ot-legend li { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ot-swatch { display: inline-block; width: 12px; height: 12px; border: 2px solid #1f1f2e; border-radius: 4px; }
+
+/* the floating card every chart shares */
+.ot-tip {
+    position: fixed; z-index: 50; pointer-events: none; max-width: min(320px, calc(100vw - 24px)); background: #fff;
+    color: #1f1f2e; border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 3px 3px 0 #ffc400; padding: 7px 10px;
+    font: 13px/1.4 Helvetica, Arial, sans-serif;
+}
+.ot-tip b { font: 700 14px/1.25 'Comic Neue', 'Comic Sans MS', cursive; display: block; }
+.ot-tip ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.ot-tip li { display: flex; justify-content: space-between; gap: 12px; }
+.ot-tip .ot-faint { color: #777; }
+
+/* the galaxy: a night sky in a card */
+.ot-controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 10px; }
+.ot-seg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ot-week { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 1 1 260px; }
+.ot-week input[type="range"] { flex: 1 1 120px; min-width: 100px; accent-color: #8a5cff; height: 32px; }
+.ot-week-label { font: 700 13px/1.2 'Comic Neue', 'Comic Sans MS', cursive; color: #555; min-width: 8.5em; }
+.ot-pill {
+    font: 700 14px/1 'Comic Neue', 'Comic Sans MS', cursive; color: #1f1f2e; background: #fff; border: 2px solid #1f1f2e;
+    border-radius: 999px; padding: 8px 12px; min-height: 36px; cursor: pointer; box-shadow: 2px 2px 0 #1f1f2e;
+    transition: transform .12s, box-shadow .12s;
+}
+.ot-pill:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #1f1f2e; }
+.ot-pill:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #1f1f2e; }
+.ot-pill[aria-pressed="true"] { background: #ffc400; }
+.ot-sky {
+    position: relative; height: clamp(380px, 72vh, 820px); border: 3px solid #1f1f2e; border-radius: 12px;
+    background: #14142a; overflow: hidden; touch-action: none;
+}
+@media (max-width: 600px) { .ot-sky { height: auto; aspect-ratio: 1; max-height: 70vh; } }  /* the map is about square */
+.ot-sky canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.ot-sky canvas.ot-dragging { cursor: grabbing; }
+.ot-loading { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; color: #fff;
+    font: 700 16px 'Comic Neue', 'Comic Sans MS', cursive; pointer-events: none; }
+.ot-loading[hidden] { display: none; }
+.ot-zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ot-zoom button {
+    width: 38px; height: 38px; font: 700 18px/1 'Comic Neue', 'Comic Sans MS', cursive; background: #fff; color: #1f1f2e;
+    border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 2px 2px 0 #ffc400; cursor: pointer;
+}
+.ot-sky-card {
+    position: absolute; left: 10px; right: 58px; bottom: 10px; max-width: 420px; background: #fff; color: #1f1f2e;
+    border: 2px solid #1f1f2e; border-radius: 10px; box-shadow: 3px 3px 0 #ff4fa3; padding: 8px 32px 8px 10px;
+    font: 14px/1.4 Helvetica, Arial, sans-serif;
+}
+.ot-sky-card[hidden] { display: none; }
+.ot-sky-card b { font: 700 15px/1.3 'Comic Neue', 'Comic Sans MS', cursive; display: block; }
+.ot-sky-card small { color: #666; display: block; margin-top: 2px; }
+.ot-sky-card button { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border: 0; background: none;
+    font: 700 16px system-ui; cursor: pointer; color: #1f1f2e; }
+.ot-topics { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ot-topics button {
+    display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1.1 'Comic Neue', 'Comic Sans MS', cursive;
+    color: #1f1f2e; background: #fff; border: 2px solid #1f1f2e; border-radius: 999px; padding: 7px 10px;
+    min-height: 34px; cursor: pointer;
+}
+.ot-topics button[aria-pressed="true"] { background: #ffe9a8; box-shadow: 2px 2px 0 #1f1f2e; }
+.ot-topics .ot-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #1f1f2e; flex: none; }
+.ot-topics small { color: #666; font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ot-pill, .ot-jump a { transition: none; }
+}

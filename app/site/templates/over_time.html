@@ -1,0 +1,110 @@
+{% extends "page.html" %}
+{# The news over time (app/site/page_over_time.py): our whole record on one page; the charts are drawn by over_time.js
+   from the data below, the galaxy's points and words fetched from galaxy/ #}
+{% block content %}
+    <header class="story-hero ot-hero">
+        <p class="story-kicker"><span>📈 Over time</span></p>
+        <h2 class="story-page-title">The news over time</h2>
+        <p class="ot-lede">Everything we've read since {{ start }}, all at once: {{ '{:,}'.format(headlines) }} front-page
+            headlines on one map, how newsy each hour was, which stories people kept telling, what the news made
+            us feel and the running stories that lasted. Point at anything for the details; times are Eastern.</p>
+        <nav class="ot-jump" aria-label="Jump to a chart">
+            <a href="#ot-galaxy">🌌 galaxy</a><a href="#ot-newsiness">📈 newsiness</a><a href="#ot-tides">🧶 motif tides</a>
+            <a href="#ot-feelings">😱 feelings</a><a href="#ot-sagas">🧵 sagas</a>
+        </nav>
+    </header>
+
+    <h2 class="section-divider stage-banner" id="ot-galaxy" style="--stage: #8a5cff"><span>🌌 The headline galaxy</span></h2>
+    <p class="stage-sub">every headline we've read, near the ones that say similar things</p>
+    {% if galaxy %}
+        <figure class="ot-card ot-galaxy" style="--pop: #8a5cff">
+            <div class="ot-controls" role="group" aria-label="Galaxy controls">
+                <div class="ot-seg" role="group" aria-label="Color the dots by">
+                    <button type="button" class="ot-pill" data-color="topic" aria-pressed="true">🎨 by topic</button>
+                    <button type="button" class="ot-pill" data-color="day" aria-pressed="false">🗓️ by day</button>
+                </div>
+                <div class="ot-week">
+                    <button type="button" class="ot-pill" id="ot-play" aria-label="Play the weeks one day at a time">▶️ play</button>
+                    <input type="range" id="ot-slider" min="0" max="0" value="0" aria-label="Light up a week">
+                    <span class="ot-week-label" id="ot-week-label">all of it</span>
+                    <button type="button" class="ot-pill" id="ot-all" aria-pressed="true">✨ all</button>
+                </div>
+            </div>
+            <div class="ot-sky" id="ot-sky">
+                <canvas id="ot-canvas" aria-label="Map of every headline: each dot a headline, placed near the ones that say similar things"></canvas>
+                <p class="ot-loading" id="ot-loading">🔭 Loading {{ '{:,}'.format(galaxy.n) }} headlines…</p>
+                <div class="ot-zoom">
+                    <button type="button" id="ot-zin" aria-label="Zoom in">+</button>
+                    <button type="button" id="ot-zout" aria-label="Zoom out">−</button>
+                    <button type="button" id="ot-zreset" aria-label="Show the whole map">⤢</button>
+                </div>
+                <div class="ot-sky-card" id="ot-sky-card" hidden></div>
+            </div>
+            <ul class="ot-topics" id="ot-topics" aria-label="Topics: tap one to pick it out"></ul>
+            <figcaption>Each dot is one headline, {{ '{:,}'.format(galaxy.n) }} in all. A computer reads each one and turns
+                it into a list of numbers for what it says; headlines with similar numbers sit close together, so
+                bright knots are many headlines on one thing. The colors are eight rough topics the computer found
+                on its own, named by the words most typical of them. Labels mark the big running stories (🧵) and
+                stories whose headlines sit together. Point at or tap a dot for its headline; drag to move; pinch,
+                ctrl + scroll or the + and − buttons to zoom. Press ▶️ to watch the weeks go by. The map is laid out again once a week (last on
+                {{ galaxy.made }}); new headlines join it every hour.</figcaption>
+        </figure>
+    {% else %}
+        <p class="stage-empty">🦗 The galaxy isn't laid out yet; it will be at the next build.</p>
+    {% endif %}
+
+    <h2 class="section-divider stage-banner" id="ot-newsiness" style="--stage: #ff6b1a"><span>📈 Newsiness</span></h2>
+    <p class="stage-sub">how much of the news its biggest story took, every hour</p>
+    <figure class="ot-card" style="--pop: #ff6b1a">
+        <div class="ot-chart" id="ot-newsiness-chart" role="img" aria-label="How newsy each hour was, with the biggest stories marked"></div>
+        <figcaption>Each hour's news-day score: the share of the outlets with a story on their front page that carry the
+            hour's biggest story, counting a story for less once it's old (0.5: half of them). From 0.45 the front page
+            calls it a big news day 🚨. Dashed: worked out afterwards from what we'd saved; solid: kept by each hour's
+            build. Each dot is a story's highest hour above the big line, labelled with the story where there's room;
+            tap a label for its story. Hour by hour for the past week: <a href="archive.html#newsiness">🗄️ the archive</a>.</figcaption>
+    </figure>
+
+    <h2 class="section-divider stage-banner" id="ot-tides" style="--stage: #00c2a8"><span>🧶 Motif tides</span></h2>
+    <p class="stage-sub">when the stories people tell came in and went out</p>
+    <figure class="ot-card" style="--pop: #00c2a8">
+        <div class="ot-chart" id="ot-tides-chart"></div>
+        <figcaption>Claims filed under each <a href="motifs.html">motif</a>, day by day: the {{ tides.motifs|length if tides else 0 }}
+            motifs told most in any one week, from shows, people online and fact-checkers. A claim told under two motifs counts for
+            both. The top row, on its own scale, is every claim filed under the {{ tides.motif_count if tides else 0 }} motifs a person has checked; the
+            motifs' rows share one scale, each with its biggest day named at the right (▲) and outlined. A story people tell, never a claim that it's true.</figcaption>
+    </figure>
+
+    <h2 class="section-divider stage-banner" id="ot-feelings" style="--stage: #ff4fa3"><span>😱 Feelings over time</span></h2>
+    <p class="stage-sub">what the news was likely to make us feel, day by day</p>
+    <figure class="ot-card" style="--pop: #ff4fa3">
+        <div class="ot-controls">
+            <div class="ot-seg" role="group" aria-label="Show the feelings">
+                <button type="button" class="ot-pill" data-feelings="stack" aria-pressed="true">📚 stacked</button>
+                <button type="button" class="ot-pill" data-feelings="rows" aria-pressed="false">〰️ one by one</button>
+            </div>
+        </div>
+        <ul class="ot-legend" id="ot-feelings-key" aria-label="Feelings"></ul>
+        <div class="ot-chart" id="ot-feelings-chart"></div>
+        <figcaption>Each day's news headlines by the feelings they're likely to stir, as our local language model reads
+            them: each headline's one vote split across up to three feelings (3:2:1), the day's votes stacked to 100%. “One by one” draws each feeling's share on a scale of its
+            own, from its lowest day to its highest, the dashed line its usual (middle) day, so small swings show. A day with fewer than 200 news
+            headlines read (our first evening) is left out.
+            Pins mark the days a feeling ran furthest above its usual share, with that day's biggest story among the
+            headlines it led. More on <a href="emotions.html">😱 the emotions page</a>.</figcaption>
+    </figure>
+
+    <h2 class="section-divider stage-banner" id="ot-sagas" style="--stage: #ffc400"><span>🧵 Saga lifelines</span></h2>
+    <p class="stage-sub">the running stories with the most headlines, from first to last</p>
+    <figure class="ot-card" style="--pop: #ffc400">
+        <div class="ot-chart" id="ot-sagas-chart"></div>
+        <figcaption>Each line is one of the biggest <a href="sagas.html">sagas</a>: a running story told in parts. Its
+            thickness shows how many of its headlines we first saw that day, all on one scale (drawn by the square root,
+            so a quiet day still shows beside a huge one), its biggest day named at the
+            right (▲) and outlined.
+            Our records start on {{ start }}: a saga seen then may have begun earlier.</figcaption>
+    </figure>
+
+    <div class="ot-tip" id="ot-tip" role="status" hidden></div>
+    <script id="ot-data" type="application/json">{{ data|tojson }}</script>
+    <script src="over_time.js?v={{ asset_version }}"></script>
+{% endblock content %}

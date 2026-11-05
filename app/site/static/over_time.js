@@ -1,0 +1,749 @@
+// The news over time (app/site/page_over_time.py): the headline galaxy on a canvas (its points fetched from
+// galaxy/points.bin, each headline's words from galaxy/t-N.json when someone points at it) and four charts drawn as SVG
+// at the width they're given, redrawn when it changes. Every chart shares one day axis: day i of D.days spans [i, i+1].
+(() => {
+    const D = JSON.parse(document.getElementById('ot-data').textContent);
+    const DAYS = D.days || [];
+    const N = DAYS.length;
+    const INK = '#1f1f2e';
+    const SVG = 'http://www.w3.org/2000/svg';
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+    const dayName = (d) => { const [, m, dd] = d.split('-'); return `${MONTHS[+m - 1]} ${+dd}`; };
+    const weekday = (d) => { const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).getDay(); };
+    const short = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+    const pct = (v) => `${Math.round(100 * v)}%`;
+
+    // ---- one floating card for every chart
+    const tip = $('ot-tip');
+    function showTip(html, x, y) {
+        tip.innerHTML = html;
+        tip.hidden = false;
+        const r = tip.getBoundingClientRect();
+        let left = x + 14, top = y + 14;
+        if (left + r.width > innerWidth - 8) left = Math.max(8, x - r.width - 14);
+        if (top + r.height > innerHeight - 8) top = Math.max(8, y - r.height - 14);
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+    }
+    const hideTip = () => { tip.hidden = true; };
+    addEventListener('scroll', hideTip, {passive: true});
+
+    function el(tag, attrs, parent, text) {
+        const e = document.createElementNS(SVG, tag);
+        for (const [k, v] of Object.entries(attrs || {})) if (v !== undefined && v !== null) e.setAttribute(k, v);
+        if (text !== undefined) e.textContent = text;
+        if (parent) parent.appendChild(e);
+        return e;
+    }
+    function link(parent, href) { return href ? el('a', {href}, parent) : parent; }
+
+    // The day axis: [x0, x1] across the record
+    function dayAxis(x0, x1) {
+        const x = (d) => x0 + (x1 - x0) * d / Math.max(N, 1);
+        return {x, w: (x1 - x0) / Math.max(N, 1), x0, x1};
+    }
+    // Ticks a readable distance apart: every day, two days, or on Mondays every week or two
+    function ticks(ax) {
+        const room = (ax.x1 - ax.x0) / 64;
+        const step = [1, 2, 7, 14, 28].find((s) => N / s <= room) || 28;
+        const out = [];
+        for (let i = 0; i < N; i++) {
+            if (step < 7 ? i % step === 0 : weekday(DAYS[i]) === 1 && Math.round((i - firstMonday) / 7) % (step / 7) === 0) out.push(i);
+        }
+        return out;
+    }
+    const firstMonday = Math.max(0, DAYS.findIndex((d) => weekday(d) === 1));
+    function grid(svg, ax, top, bottom, labels = true) {
+        for (const i of ticks(ax)) {
+            el('line', {x1: ax.x(i), x2: ax.x(i), y1: top, y2: bottom, class: 'ot-grid'}, svg);
+            if (labels) el('text', {x: ax.x(i), y: bottom + 14, class: 'ot-tick', 'text-anchor': 'middle'}, svg, dayName(DAYS[i]));
+        }
+    }
+    // Labels on up to `rows` rows above a chart, each on the first row it fits without touching another; returns the
+    // row or -1 when it fits nowhere
+    function placer(x0, x1, rows) {
+        const placed = [];
+        return (x, width) => {
+            let left = x - width / 2;
+            left = Math.max(x0, Math.min(left, x1 - width));
+            for (let r = 0; r < rows; r++) {
+                if (placed.every((p) => p.r !== r || left + width + 8 < p.a || left > p.b + 8)) {
+                    placed.push({r, a: left, b: left + width});
+                    return {row: r, left};
+                }
+            }
+            return {row: -1, left};
+        };
+    }
+    const textWidth = (s, size) => s.length * size * 0.55;
+
+    // Eastern day of an hourly time (naive UTC ISO), as a fraction on the day axis
+    const eastern = new Intl.DateTimeFormat('en-US', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit',
+        day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
+    const dayIndex = new Map(DAYS.map((d, i) => [d, i]));
+    function onAxis(iso) {
+        const parts = Object.fromEntries(eastern.formatToParts(new Date(iso + 'Z')).map((p) => [p.type, p.value]));
+        const i = dayIndex.get(`${parts.year}-${parts.month}-${parts.day}`);
+        return i === undefined ? null : i + (+parts.hour + +parts.minute / 60) / 24;
+    }
+    const hourName = new Intl.DateTimeFormat('en-US', {timeZone: 'America/New_York', weekday: 'short', month: 'short',
+        day: 'numeric', hour: 'numeric'});
+
+    // Redraw each chart when its width changes
+    function chart(id, draw) {
+        const host = $(id);
+        if (!host) return;
+        let last = 0;
+        const go = () => {
+            const w = Math.round(host.clientWidth);
+            if (!w || w === last) return;
+            last = w;
+            host.textContent = '';
+            draw(host, w);
+        };
+        new ResizeObserver(go).observe(host);
+        go();
+        return () => { last = 0; go(); };
+    }
+    // A strip of hit areas, one a day, that shows a card while pointed at (or tapped)
+    function dayHover(svg, ax, top, bottom, html, onDay) {
+        const cross = el('line', {y1: top, y2: bottom, class: 'ot-cross', visibility: 'hidden'}, svg);
+        const hit = el('rect', {x: ax.x0, y: top, width: ax.x1 - ax.x0, height: bottom - top, class: 'ot-hit'}, svg);
+        const at = (ev) => {
+            const r = svg.getBoundingClientRect();
+            const scale = svg.viewBox.baseVal.width / r.width;
+            const x = (ev.clientX - r.left) * scale;
+            return Math.max(0, Math.min(N - 1, Math.floor((x - ax.x0) / ax.w)));
+        };
+        const move = (ev) => {
+            const i = at(ev);
+            const h = html(i, ev);
+            if (!h) { hideTip(); cross.setAttribute('visibility', 'hidden'); return; }
+            const cx = onDay ? onDay(i, ev) : ax.x(i + 0.5);
+            cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+            showTip(h, ev.clientX, ev.clientY);
+        };
+        hit.addEventListener('pointermove', move);
+        hit.addEventListener('pointerdown', move);
+        hit.addEventListener('pointerleave', () => { hideTip(); cross.setAttribute('visibility', 'hidden'); });
+        return hit;
+    }
+
+    // ---- 📈 newsiness: the hourly score, the big and normal lines, each story's peak above the big line
+    chart('ot-newsiness-chart', (host, W) => {
+        const S = D.newsiness;
+        if (!S || S.points.length < 2) { host.innerHTML = '<p class="stage-empty">🦗 No scores yet.</p>'; return; }
+        const narrow = W < 560;
+        const rows = narrow ? 3 : 3, rowH = 16;
+        const top = 10 + rows * rowH + 6, H = (narrow ? 250 : 320), bottom = H - 22, left = 30, right = W - 6;
+        const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img',
+            'aria-label': 'How newsy each hour was'}, host);
+        const ax = dayAxis(left, right);
+        const pts = S.points.map((p) => ({t: onAxis(p[0]), score: p[1], kept: p[2], story: S.stories[p[3]], outlets: p[4],
+            active: p[5], at: p[0]})).filter((p) => p.t !== null);
+        const hi = Math.max(0.8, Math.max(...pts.map((p) => p.score)) + 0.05);
+        const y = (v) => bottom - (bottom - top) * v / hi;
+        el('rect', {x: left, y: y(hi), width: right - left, height: y(S.big) - y(hi), class: 'ot-band-big'}, svg);
+        el('rect', {x: left, y: y(S.big), width: right - left, height: y(S.normal) - y(S.big), class: 'ot-band-normal'}, svg);
+        grid(svg, ax, top, bottom);
+        for (const v of [0, 0.25, 0.5, 0.75]) {
+            if (v <= hi) el('text', {x: left - 5, y: y(v) + 4, class: 'ot-tick', 'text-anchor': 'end'}, svg, String(v));
+        }
+        el('line', {x1: left, x2: right, y1: y(S.big), y2: y(S.big), class: 'ot-mark-line'}, svg);
+        el('line', {x1: left, x2: right, y1: y(S.normal), y2: y(S.normal), class: 'ot-mark-line'}, svg);
+        el('text', {x: left + 4, y: y(S.big) - 4, class: 'ot-note'}, svg, '🚨 big news day');
+        el('text', {x: left + 4, y: y(S.normal) + 13, class: 'ot-note'}, svg, '📰 normal');
+        // runs of hours with no gap over twelve hours (a missed build or two is bridged), each drawn dashed (worked
+        // out afterwards) or solid (kept)
+        const runs = [];
+        pts.forEach((p, k) => {
+            const prev = pts[k - 1];
+            if (!prev || p.kept !== prev.kept || (p.t - prev.t) * 24 > 12) runs.push([]);
+            runs[runs.length - 1].push(p);
+        });
+        for (const run of runs) {
+            const line = run.map((p) => `${ax.x(p.t).toFixed(1)},${y(p.score).toFixed(1)}`).join(' ');
+            if (run.length > 1) {
+                el('polygon', {points: `${ax.x(run[0].t).toFixed(1)},${bottom} ${line} ${ax.x(run[run.length - 1].t).toFixed(1)},${bottom}`, class: 'ot-area'}, svg);
+            }
+            el('polyline', {points: line, class: 'ot-line', 'stroke-dasharray': run[0].kept ? null : '4 3'}, svg);
+        }
+        el('line', {x1: left, x2: right, y1: bottom, y2: bottom, class: 'ot-axis'}, svg);
+        // the hover: the nearest hour
+        const byTime = pts.map((p) => p.t);
+        const nearest = (t) => {
+            let lo = 0, hiI = byTime.length - 1;
+            while (hiI - lo > 1) { const mid = (lo + hiI) >> 1; if (byTime[mid] < t) lo = mid; else hiI = mid; }
+            return Math.abs(byTime[lo] - t) < Math.abs(byTime[hiI] - t) ? pts[lo] : pts[hiI];
+        };
+        let near = null;
+        const dot = el('circle', {r: 4, fill: INK, visibility: 'hidden', 'pointer-events': 'none'}, svg);
+        dayHover(svg, ax, top, bottom, (i, ev) => {
+            const r = svg.getBoundingClientRect();
+            const t = ((ev.clientX - r.left) * W / r.width - left) / ax.w;
+            near = nearest(t);
+            dot.setAttribute('cx', ax.x(near.t)); dot.setAttribute('cy', y(near.score)); dot.setAttribute('visibility', 'visible');
+            return `<b>${esc(hourName.format(new Date(near.at + 'Z')))} ET: ${near.score.toFixed(2)}</b>` +
+                `Top story: ${esc(near.story)}<br><span class="ot-faint">${near.outlets} of ${near.active} outlets` +
+                `${near.kept ? '' : ', worked out afterwards'}</span>`;
+        }, () => ax.x(near.t));
+        svg.addEventListener('pointerleave', () => dot.setAttribute('visibility', 'hidden'));
+        // the spikes: the highest first gets the first room for its label
+        const place = placer(left, right, rows);
+        const size = 12, chars = narrow ? 24 : 40;
+        const order = [...S.spikes].sort((a, b) => b.score - a.score);
+        for (const s of order) {
+            const t = onAxis(s.at);
+            if (t === null) continue;
+            const x = ax.x(t), yy = y(s.score);
+            const words = short(s.label, chars);
+            const spot = place(x, textWidth(words, size));
+            const g = el('g', {}, svg);
+            if (spot.row >= 0) {
+                const ty = 10 + spot.row * rowH + 11;
+                el('line', {x1: x, x2: x, y1: ty + 3, y2: yy - 6, class: 'ot-stem'}, g);
+                el('text', {x: spot.left, y: ty, class: 'ot-label'}, link(g, s.href), words);
+            }
+            const c = el('circle', {cx: x, cy: yy, r: 5, class: 'ot-spike'}, link(g, s.href));
+            const card = `<b>${esc(s.label)}</b>${esc(hourName.format(new Date(s.at + 'Z')))} ET: ${s.score.toFixed(2)}` +
+                `<br><span class="ot-faint">${s.outlets} of ${s.active} outlets${s.href ? ' · tap for its story' : ''}</span>`;
+            c.addEventListener('pointerenter', (ev) => showTip(card, ev.clientX, ev.clientY));
+            c.addEventListener('pointerleave', hideTip);
+        }
+    });
+
+    // Rows of day bars (the tides) or ribbons (the sagas), one scale for all rows but the first when `ownFirst`
+    function rowsChart(host, W, items, opts) {
+        const nameH = 18, bandH = opts.ribbon ? 26 : 34, gap = 10;
+        const rowH = nameH + bandH + gap;
+        const top = 4, left = 6, right = W - 6;
+        const H = top + rowH * items.length + 18;
+        const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': opts.label}, host);
+        const ax = dayAxis(left, right);
+        grid(svg, ax, top, H - 18);
+        const shared = Math.max(1, ...items.filter((it, k) => !(opts.ownFirst && k === 0)).flatMap((it) => it.counts));
+        const scale = opts.sqrt ? Math.sqrt : (v) => v;
+        items.forEach((it, k) => {
+            const y0 = top + k * rowH, band = y0 + nameH, mid = band + bandH / 2;
+            const most = opts.ownFirst && k === 0 ? Math.max(1, ...it.counts) : shared;
+            const peakDay = it.peak && it.peak.n ? DAYS.indexOf(it.peak.day) : -1;
+            // on a phone the name gets the room: only the biggest day beside it
+            const peakWords = peakDay >= 0 ? `▲ ${dayName(it.peak.day)}: ${it.peak.n}` : '';
+            const side = W < 560 ? peakWords + (it.narrow ? ` · ${it.narrow}` : '') : [peakWords, it.side].filter(Boolean).join(' · ');
+            const room = right - left - textWidth(side, 11) - 14;
+            el('text', {x: left, y: y0 + 13, class: 'ot-name'}, link(svg, it.href), short(it.title, Math.max(8, Math.floor(room / (13 * 0.55)))));
+            el('text', {x: right, y: y0 + 13, class: 'ot-note', 'text-anchor': 'end'}, svg, side);
+            const ink = it.ink || '#fff';
+            if (opts.ribbon) {
+                const on = it.counts.map((c, i) => (c ? i : -1)).filter((i) => i >= 0);
+                if (on.length) el('line', {x1: ax.x(on[0] + 0.5), x2: ax.x(on[on.length - 1] + 0.5), y1: mid, y2: mid, stroke: INK, 'stroke-width': 1.5}, svg);
+            } else {
+                el('line', {x1: left, x2: right, y1: band + bandH, y2: band + bandH, class: 'ot-axis'}, svg);
+            }
+            it.counts.forEach((c, i) => {
+                if (!c) return;
+                const h = Math.max(opts.ribbon ? 3 : 2, bandH * scale(c) / scale(most));
+                const x = ax.x(i) + (ax.w > 4 ? 0.75 : 0), w = Math.max(1, ax.w - (ax.w > 4 ? 1.5 : 0));
+                el('rect', {x, y: opts.ribbon ? mid - h / 2 : band + bandH - h, width: w, height: h, rx: ax.w > 6 ? 2 : 0,
+                    fill: ink, stroke: INK, 'stroke-width': i === peakDay ? 2 : 0.6}, svg);
+            });
+            // a hover area across the row: that day's count
+            const hit = el('rect', {x: left, y: band, width: right - left, height: bandH, class: 'ot-row-hit'}, svg);
+            const move = (ev) => {
+                const r = svg.getBoundingClientRect();
+                const i = Math.max(0, Math.min(N - 1, Math.floor(((ev.clientX - r.left) * W / r.width - left) / ax.w)));
+                showTip(`<b>${esc(it.title)}</b>${dayName(DAYS[i])}: ${it.counts[i]} ${opts.unit(it.counts[i])}` +
+                    `<br><span class="ot-faint">${esc(it.total)} in all</span>` +
+                    (it.href ? '<br><span class="ot-faint">tap the name for its page</span>' : ''), ev.clientX, ev.clientY);
+            };
+            hit.addEventListener('pointermove', move);
+            hit.addEventListener('pointerdown', move);
+            hit.addEventListener('pointerleave', hideTip);
+        });
+        return svg;
+    }
+
+    // ---- 🧶 motif tides: every claim filed, then the motifs told most in a week, a row each on one scale
+    chart('ot-tides-chart', (host, W) => {
+        const T = D.tides;
+        if (!T || !T.motifs.length) { host.innerHTML = '<p class="stage-empty">🦗 No motif has claims in our record yet.</p>'; return; }
+        const items = [{title: '🧩 Every claim filed, all motifs', counts: T.all, ink: '#c8f7e6', side: `${T.claims.toLocaleString()} claims · own scale`, narrow: 'own scale', total: `${T.claims.toLocaleString()} claims`,
+            peak: {day: DAYS[T.all.indexOf(Math.max(...T.all))], n: Math.max(...T.all)}}]
+            .concat(T.motifs.map((m) => ({title: `${m.emoji} ${m.name}`, counts: m.counts, ink: m.ink, href: m.href, peak: m.peak,
+                side: `${m.total} claim${m.total === 1 ? '' : 's'}`, total: `${m.total} claim${m.total === 1 ? '' : 's'}`})));
+        rowsChart(host, W, items, {label: 'Claims filed under the motifs told most, day by day', ownFirst: true,
+            unit: (n) => (n === 1 ? 'claim' : 'claims')});
+    });
+
+    // ---- 🧵 saga lifelines
+    chart('ot-sagas-chart', (host, W) => {
+        const S = D.sagas;
+        if (!S || !S.length) { host.innerHTML = '<p class="stage-empty">🦗 No saga yet.</p>'; return; }
+        rowsChart(host, W, S.map((s) => ({title: `🧵 ${s.name}`, counts: s.counts, ink: s.ink, href: s.href, peak: s.peak,
+            side: `${s.total.toLocaleString()} headlines`, total: `${s.total.toLocaleString()} headlines`})), {label: 'The biggest sagas, headlines a day', ribbon: true, sqrt: true,
+            unit: (n) => (n === 1 ? 'headline first seen' : 'headlines first seen')});
+    });
+
+    // ---- 😱 feelings: each day's vote stacked to 100%, the days a feeling ran high pinned with their story
+    const E = D.emotions;
+    if (E && $('ot-feelings-key')) {
+        $('ot-feelings-key').innerHTML = [...E.feelings].reverse().map((f) => `<li><span class="ot-swatch" style="background:${E.ink[f]}"></span>` +
+            `${E.emoji[f]} ${f === 'neutral' ? 'no strong feeling' : f}</li>`).join('');
+    }
+    let feelingsView = 'stack';
+    const feelingsChart = chart('ot-feelings-chart', (host, W) => {
+        if (!E || !E.counts.some((c) => c)) { host.innerHTML = '<p class="stage-empty">🦗 No feelings read yet.</p>'; return; }
+        if (feelingsView === 'rows') { feelingRows(host, W); return; }
+        const narrow = W < 560;
+        const rows = 3, rowH = 16;
+        const top = 10 + rows * rowH + 6, H = narrow ? 280 : 340, bottom = H - 22, left = 34, right = W - 6;
+        const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img',
+            'aria-label': 'Each day\'s headlines by the feelings they stir, stacked to 100%'}, host);
+        const ax = dayAxis(left, right);
+        const y = (v) => bottom - (bottom - top) * v;
+        const have = E.counts.map((c, i) => (E.shares[E.feelings[0]][i] !== null ? i : -1)).filter((i) => i >= 0);
+        const below = new Map(have.map((i) => [i, 0]));
+        const xs = (i, k) => (k === 0 ? ax.x(i) : k === have.length - 1 ? ax.x(i + 1) : ax.x(i + 0.5));
+        const tops = {};
+        for (const f of E.feelings) {
+            const upper = have.map((i) => below.get(i) + (E.shares[f][i] || 0));
+            const pts = have.map((i, k) => `${xs(i, k).toFixed(1)},${y(upper[k]).toFixed(1)}`);
+            const back = have.map((i, k) => `${xs(i, k).toFixed(1)},${y(below.get(i)).toFixed(1)}`).reverse();
+            el('polygon', {points: pts.concat(back).join(' '), fill: E.ink[f], stroke: '#fff', 'stroke-width': 1}, svg);
+            tops[f] = new Map(have.map((i, k) => [i, [below.get(i), upper[k]]]));
+            have.forEach((i, k) => below.set(i, upper[k]));
+        }
+        grid(svg, ax, top, bottom);
+        for (const v of [0, 0.5, 1]) el('text', {x: left - 5, y: y(v) + 4, class: 'ot-tick', 'text-anchor': 'end'}, svg, pct(v));
+        el('line', {x1: left, x2: right, y1: bottom, y2: bottom, class: 'ot-axis'}, svg);
+        const pins = new Map((E.spikes || []).map((s) => [s.day, s]));
+        dayHover(svg, ax, top, bottom, (i) => {
+            if (E.shares[E.feelings[0]][i] === null) return null;
+            const list = E.feelings.map((f) => [f, E.shares[f][i] || 0]).sort((a, b) => b[1] - a[1])
+                .map(([f, v]) => `<li><span>${E.emoji[f]} ${f === 'neutral' ? 'no strong feeling' : f}</span><span>${pct(v)}</span></li>`).join('');
+            const pin = pins.get(DAYS[i]);
+            return `<b>${dayName(DAYS[i])}${DAYS[i] === D.today ? ' (so far)' : ''}: ${E.counts[i].toLocaleString()} news headlines</b><ul>${list}</ul>` +
+                (pin && pin.label ? `<span class="ot-faint">${pin.emoji} ${esc(pin.feeling)} ran high: ${esc(pin.label)}</span>` : '');
+        });
+        const place = placer(left, right, rows);
+        const chars = narrow ? 22 : 38;
+        for (const s of [...(E.spikes || [])].sort((a, b) => b.lift - a.lift)) {
+            const i = DAYS.indexOf(s.day);
+            if (i < 0 || !tops[s.feeling].has(i)) continue;
+            const [lo, hiV] = tops[s.feeling].get(i);
+            const x = ax.x(i + 0.5), yy = y((lo + hiV) / 2);
+            const words = `${s.emoji} ${short(s.label || s.feeling, chars)}`;
+            const spot = place(x, textWidth(words, 12) + 8);
+            const g = el('g', {}, svg);
+            if (spot.row >= 0) {
+                const ty = 10 + spot.row * rowH + 11;
+                el('line', {x1: x, x2: x, y1: ty + 3, y2: yy, class: 'ot-stem'}, g);
+                el('text', {x: spot.left, y: ty, class: 'ot-label'}, link(g, s.href), words);
+            }
+            const c = el('circle', {cx: x, cy: yy, r: 5, fill: '#fff', stroke: INK, 'stroke-width': 2}, link(g, s.href));
+            const card = `<b>${s.emoji} ${esc(s.feeling)} on ${dayName(s.day)}: ${pct(s.share)} (usually ${pct(s.usual)})</b>` +
+                (s.label ? `Its biggest story among the headlines ${esc(s.feeling)} led: ${esc(s.label)} (${s.headlines} headlines)` : '');
+            c.addEventListener('pointerenter', (ev) => showTip(card, ev.clientX, ev.clientY));
+            c.addEventListener('pointerleave', hideTip);
+        }
+    });
+
+    document.querySelectorAll('[data-feelings]').forEach((b) => b.addEventListener('click', () => {
+        feelingsView = b.dataset.feelings;
+        document.querySelectorAll('[data-feelings]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+        if (feelingsChart) feelingsChart();
+    }));
+    // Each feeling on its own scale, lowest day to highest, its usual (median) day dashed
+    function feelingRows(host, W) {
+        const nameH = 16, bandH = 34, gap = 10, rowH = nameH + bandH + gap, left = 6, right = W - 6, top = 4;
+        const list = E.feelings.filter((f) => f !== 'neutral').concat(['neutral']);
+        const H = top + rowH * list.length + 18;
+        const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img',
+            'aria-label': 'Each feeling\'s share of the day\'s headlines, each on its own scale'}, host);
+        const ax = dayAxis(left, right);
+        grid(svg, ax, top, H - 18);
+        const pins = new Map((E.spikes || []).map((s) => [`${s.day} ${s.feeling}`, s]));
+        list.forEach((f, k) => {
+            const y0 = top + k * rowH, band = y0 + nameH;
+            const vals = E.shares[f];
+            const have = vals.filter((v) => v !== null);
+            if (!have.length) return;
+            const lo = Math.min(...have), hi = Math.max(...have), sorted = [...have].sort((a, b) => a - b);
+            const usual = sorted[Math.floor(sorted.length / 2)];
+            const y = (v) => band + bandH - (bandH - 4) * (v - lo) / Math.max(hi - lo, 1e-6) - 2;
+            el('text', {x: left, y: y0 + 12, class: 'ot-name'}, svg, `${E.emoji[f]} ${f === 'neutral' ? 'no strong feeling' : f}`);
+            el('text', {x: right, y: y0 + 12, class: 'ot-note', 'text-anchor': 'end'}, svg, `${pct(lo)} to ${pct(hi)} · usually ${pct(usual)}`);
+            el('line', {x1: left, x2: right, y1: y(usual), y2: y(usual), stroke: '#999', 'stroke-dasharray': '3 3'}, svg);
+            const pts = vals.map((v, i) => (v === null ? null : `${ax.x(i + 0.5).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean);
+            const ink = f === 'neutral' ? '#8a8f98' : E.ink[f];
+            el('polyline', {points: pts.join(' '), fill: 'none', stroke: INK, 'stroke-width': 4, 'stroke-linejoin': 'round'}, svg);
+            el('polyline', {points: pts.join(' '), fill: 'none', stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round'}, svg);
+            const hit = el('rect', {x: left, y: band, width: right - left, height: bandH, class: 'ot-row-hit'}, svg);
+            const move = (ev) => {
+                const r = svg.getBoundingClientRect();
+                const i = Math.max(0, Math.min(N - 1, Math.floor(((ev.clientX - r.left) * W / r.width - left) / ax.w)));
+                if (vals[i] === null) { hideTip(); return; }
+                const pin = pins.get(`${DAYS[i]} ${f}`);
+                showTip(`<b>${E.emoji[f]} ${f === 'neutral' ? 'no strong feeling' : f} on ${dayName(DAYS[i])}: ${pct(vals[i])}</b>` +
+                    `usually ${pct(usual)} · ${E.counts[i].toLocaleString()} news headlines` +
+                    (pin && pin.label ? `<br><span class="ot-faint">its biggest story that day: ${esc(pin.label)}</span>` : ''), ev.clientX, ev.clientY);
+            };
+            hit.addEventListener('pointermove', move);
+            hit.addEventListener('pointerdown', move);
+            hit.addEventListener('pointerleave', hideTip);
+            vals.forEach((v, i) => {  // over the hover strip, so they can be tapped
+                const pin = pins.get(`${DAYS[i]} ${f}`);
+                if (v === null || !pin) return;
+                el('circle', {cx: ax.x(i + 0.5), cy: y(v), r: 5, fill: '#fff', stroke: INK, 'stroke-width': 2}, link(svg, pin.href));
+            });
+        });
+    }
+
+    // ---- 🌌 the galaxy
+    const G = D.galaxy;
+    const sky = $('ot-sky');
+    if (G && sky) galaxy(G, sky);
+
+    function galaxy(G, sky) {
+        const canvas = $('ot-canvas'), ctx = canvas.getContext('2d');
+        const card = $('ot-sky-card'), loading = $('ot-loading');
+        const n = G.n;
+        const BG = [20, 20, 42];
+        const hex = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16));
+        const topicRGB = G.topics.map((t) => hex(t.ink));
+        // by day: old blue to pink to new yellow
+        const RAMP = ['#3a86ff', '#ff4fa3', '#ffc400'].map(hex);
+        const rampAt = (f) => {
+            const s = f * (RAMP.length - 1), k = Math.min(RAMP.length - 2, Math.floor(s)), u = s - k;
+            return RAMP[k].map((v, j) => v + (RAMP[k + 1][j] - v) * u);
+        };
+        const dayRGB = DAYS.map((_, i) => rampAt(N > 1 ? i / (N - 1) : 1));
+        const state = {color: 'topic', topic: null, until: null, hover: -1, chosen: -1};
+        let X, Y, DAY, TOP, cellStart, order;
+        const CELLS = 256;
+        const view = {s: 1, ox: 0, oy: 0, w: 0, h: 0, dpr: 1};
+        let image = null, acc = null, labelBoxes = [];
+
+        fetch(`galaxy/points.bin?v=${encodeURIComponent(G.stamp)}`).then((r) => {
+            if (!r.ok) throw new Error(r.status);
+            return r.arrayBuffer();
+        }).then((buf) => {
+            const q = (k) => new Uint16Array(buf, 2 * k * n, n);
+            X = new Float32Array(n); Y = new Float32Array(n);
+            const qx = q(0), qy = q(1);
+            for (let i = 0; i < n; i++) { X[i] = qx[i] / 65535; Y[i] = qy[i] / 65535; }
+            DAY = q(2); TOP = new Uint8Array(buf, 6 * n, n);
+            // a grid of cells, each listing its points, for finding the one under the pointer
+            const cell = new Int32Array(n);
+            cellStart = new Int32Array(CELLS * CELLS + 1);
+            for (let i = 0; i < n; i++) {
+                const c = Math.min(CELLS - 1, X[i] * CELLS | 0) * CELLS + Math.min(CELLS - 1, Y[i] * CELLS | 0);
+                cell[i] = c; cellStart[c + 1]++;
+            }
+            for (let c = 0; c < CELLS * CELLS; c++) cellStart[c + 1] += cellStart[c];
+            const fill = cellStart.slice(0, -1);
+            order = new Int32Array(n);
+            for (let i = 0; i < n; i++) order[fill[cell[i]]++] = i;
+            loading.hidden = true;
+            fit();
+            draw();
+        }).catch(() => { loading.textContent = '🦗 The galaxy couldn’t load. Try again in a moment.'; });
+
+        // ---- controls
+        const slider = $('ot-slider'), weekLabel = $('ot-week-label'), allBtn = $('ot-all'), playBtn = $('ot-play');
+        slider.max = String(Math.max(0, N - 1));
+        slider.value = String(Math.max(0, N - 1));
+        const setUntil = (v) => {
+            state.until = v;
+            allBtn.setAttribute('aria-pressed', v === null ? 'true' : 'false');
+            if (v === null) weekLabel.textContent = 'all of it';
+            else weekLabel.textContent = `${dayName(DAYS[Math.max(0, v - 6)])} to ${dayName(DAYS[v])}`;
+            draw();
+        };
+        slider.addEventListener('input', () => { stop(); setUntil(+slider.value); });
+        allBtn.addEventListener('click', () => { stop(); setUntil(null); });
+        let timer = null;
+        const stop = () => { if (timer) { clearInterval(timer); timer = null; playBtn.textContent = '▶️ play'; } };
+        playBtn.addEventListener('click', () => {
+            if (timer) { stop(); return; }
+            let v = state.until === null || state.until >= N - 1 ? Math.min(6, N - 1) : state.until + 1;
+            slider.value = String(v); setUntil(v);
+            playBtn.textContent = '⏸️ pause';
+            timer = setInterval(() => {
+                if (v >= N - 1) { stop(); return; }
+                v += 1; slider.value = String(v); setUntil(v);
+            }, reduced ? 1200 : 450);
+        });
+        document.querySelectorAll('.ot-galaxy [data-color]').forEach((b) => b.addEventListener('click', () => {
+            state.color = b.dataset.color;
+            document.querySelectorAll('.ot-galaxy [data-color]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+            topicsKey();
+            draw();
+        }));
+        const topicList = $('ot-topics');
+        function topicsKey() {
+            if (state.color === 'day') {
+                topicList.innerHTML = `<li><button type="button" disabled><span class="ot-dot" style="background:linear-gradient(90deg,#3a86ff,#ff4fa3,#ffc400);width:48px;border-radius:6px"></span>` +
+                    `${dayName(DAYS[0])} → ${dayName(DAYS[N - 1])}</button></li>`;
+                return;
+            }
+            topicList.innerHTML = G.topics.map((t, k) => `<li><button type="button" data-topic="${k}" aria-pressed="${state.topic === k}">` +
+                `<span class="ot-dot" style="background:${t.ink}"></span>${esc(t.name)} <small>${t.n.toLocaleString()}</small></button></li>`).join('');
+            topicList.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+                const k = +b.dataset.topic;
+                state.topic = state.topic === k ? null : k;
+                topicsKey();
+                draw();
+            }));
+        }
+        topicsKey();
+
+        // ---- the view
+        function size() {
+            const r = sky.getBoundingClientRect();
+            view.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            view.w = Math.max(1, Math.round(r.width)); view.h = Math.max(1, Math.round(r.height));
+            canvas.width = Math.round(view.w * view.dpr); canvas.height = Math.round(view.h * view.dpr);
+            acc = new Float32Array(canvas.width * canvas.height * 3);
+        }
+        function fit() {
+            size();
+            view.s = Math.min(view.w, view.h) * 0.94;
+            view.ox = (view.w - view.s) / 2; view.oy = (view.h - view.s) / 2;
+        }
+        const lit = (i) => (state.topic === null || TOP[i] === state.topic) &&
+            (state.until === null || (DAY[i] <= state.until && DAY[i] > state.until - 7));
+
+        // Each dot adds its color to its pixel; a pixel fills toward white as dots pile up, so knots glow
+        function render() {
+            if (!X) return;
+            const W = canvas.width, H = canvas.height, d = view.dpr, s = view.s * d, ox = view.ox * d, oy = view.oy * d;
+            acc.fill(0);
+            const zoom = view.s / (Math.min(view.w, view.h) * 0.94);
+            const r = zoom > 9 ? 1 : 0;  // dots grow to 3x3 pixels close up
+            const a = Math.min(0.9, 0.28 * Math.sqrt(zoom)), dim = 0.03;
+            const filtering = state.topic !== null || state.until !== null;
+            for (let i = 0; i < n; i++) {
+                const px = ox + X[i] * s | 0, py = oy + Y[i] * s | 0;
+                if (px < r || py < r || px >= W - r || py >= H - r) continue;
+                let c, alpha;
+                if (filtering && !lit(i)) { c = [150, 150, 175]; alpha = dim; }
+                else { c = state.color === 'day' ? dayRGB[DAY[i]] : topicRGB[TOP[i]]; alpha = filtering ? Math.max(a, 0.9) : a; }
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        const p = ((py + dy) * W + px + dx) * 3;
+                        acc[p] += c[0] * alpha; acc[p + 1] += c[1] * alpha; acc[p + 2] += c[2] * alpha;
+                    }
+                }
+            }
+            image = ctx.createImageData(W, H);
+            const out = image.data;
+            for (let p = 0, q = 0; q < out.length; p += 3, q += 4) {
+                out[q] = BG[0] + (255 - BG[0]) * (1 - Math.exp(-acc[p] / 255));
+                out[q + 1] = BG[1] + (255 - BG[1]) * (1 - Math.exp(-acc[p + 1] / 255));
+                out[q + 2] = BG[2] + (255 - BG[2]) * (1 - Math.exp(-acc[p + 2] / 255));
+                out[q + 3] = 255;
+            }
+        }
+        // Labels for the big stories and sagas that sit together: more as you zoom in, none overlapping
+        function overlay() {
+            if (!image) return;
+            ctx.putImageData(image, 0, 0);
+            const d = view.dpr;
+            ctx.save();
+            ctx.scale(d, d);
+            const zoom = view.s / (Math.min(view.w, view.h) * 0.94);
+            const most = Math.round((view.w < 560 ? 6 : 12) * Math.sqrt(zoom));
+            const font = view.w < 560 ? 12 : 13;
+            ctx.font = `700 ${font}px 'Comic Neue', 'Comic Sans MS', cursive`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+            labelBoxes = [];
+            for (const L of G.labels) {
+                if (labelBoxes.length >= most) break;
+                let x = view.ox + L.x * view.s;
+                const y = view.oy + L.y * view.s;
+                if (x < 0 || y < 0 || x > view.w || y > view.h) continue;
+                if (state.until !== null && (L.days[1] < state.until - 6 || L.days[0] > state.until)) continue;  // not that week
+                const words = short(L.name, view.w < 560 ? 24 : 34);
+                const w = ctx.measureText(words).width + 10, h = font + 8;
+                x = Math.max(w / 2 + 2, Math.min(view.w - w / 2 - 2, x));  // kept inside the sky
+                const box = {a: x - w / 2, b: x + w / 2, c: y - h / 2, e: y + h / 2, L};
+                if (labelBoxes.some((o) => box.a < o.b && box.b > o.a && box.c < o.e && box.e > o.c)) continue;
+                labelBoxes.push(box);
+                ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.strokeText(words, x, y);
+                ctx.fillStyle = '#fff'; ctx.fillText(words, x, y);
+            }
+            for (const [k, color] of [[state.chosen, '#ffc400'], [state.hover, '#fff']]) {
+                if (k < 0) continue;
+                ctx.beginPath();
+                ctx.arc(view.ox + X[k] * view.s, view.oy + Y[k] * view.s, 7, 0, Math.PI * 2);
+                ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+                ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+            }
+            ctx.restore();
+        }
+        let pending = false;
+        function draw() {
+            if (pending) return;
+            pending = true;
+            requestAnimationFrame(() => { pending = false; render(); overlay(); });
+        }
+        new ResizeObserver(() => {
+            if (!X) return;
+            const r = sky.getBoundingClientRect();
+            if (Math.round(r.width) === view.w && Math.round(r.height) === view.h) return;
+            const cx = (view.w / 2 - view.ox) / view.s, cy = (view.h / 2 - view.oy) / view.s, k = view.s / Math.min(view.w, view.h);
+            size();
+            view.s = k * Math.min(view.w, view.h);
+            view.ox = view.w / 2 - cx * view.s; view.oy = view.h / 2 - cy * view.s;
+            draw();
+        }).observe(sky);
+
+        // The headline nearest the pointer, within a few pixels, among those lit
+        function pick(mx, my) {
+            if (!X) return -1;
+            const gx = (mx - view.ox) / view.s, gy = (my - view.oy) / view.s;
+            const reach = 9 / view.s;
+            const c0 = Math.max(0, Math.floor((gx - reach) * CELLS)), c1 = Math.min(CELLS - 1, Math.floor((gx + reach) * CELLS));
+            const r0 = Math.max(0, Math.floor((gy - reach) * CELLS)), r1 = Math.min(CELLS - 1, Math.floor((gy + reach) * CELLS));
+            const filtering = state.topic !== null || state.until !== null;
+            let best = -1, bd = reach * reach;
+            for (let cx = c0; cx <= c1; cx++) {
+                for (let cy = r0; cy <= r1; cy++) {
+                    const c = cx * CELLS + cy;
+                    for (let k = cellStart[c]; k < cellStart[c + 1]; k++) {
+                        const i = order[k];
+                        if (filtering && !lit(i)) continue;
+                        const dx = X[i] - gx, dy = Y[i] - gy, dd = dx * dx + dy * dy;
+                        if (dd < bd) { bd = dd; best = i; }
+                    }
+                }
+            }
+            return best;
+        }
+        const chunks = new Map();
+        function words(i) {
+            const k = Math.floor(i / G.chunk);
+            if (!chunks.has(k)) {
+                chunks.set(k, fetch(`galaxy/t-${k}.json?v=${encodeURIComponent(G.stamp)}`).then((r) => r.json())
+                    .catch(() => { chunks.delete(k); return null; }));
+            }
+            return chunks.get(k).then((rows) => (rows ? rows[i - k * G.chunk] : null));
+        }
+        const topicName = (i) => G.topics[TOP[i]] ? G.topics[TOP[i]].name : '';
+        function hoverAt(ev) {
+            const r = canvas.getBoundingClientRect();
+            const i = pick(ev.clientX - r.left, ev.clientY - r.top);
+            if (i !== state.hover) { state.hover = i; overlay(); }
+            const label = labelAt(ev.clientX - r.left, ev.clientY - r.top);
+            canvas.style.cursor = i >= 0 || (label && label.href) ? 'pointer' : '';
+            if (i < 0) {
+                if (label) showTip(`<b>${esc(label.name)}</b>${label.n.toLocaleString()} headlines${label.href ? ' · click for its page' : ''}`, ev.clientX, ev.clientY);
+                else hideTip();
+                return;
+            }
+            words(i).then((w) => {
+                if (state.hover !== i || !w) return;
+                showTip(`<b>${esc(w[0])}</b><span class="ot-faint">${esc(w[1])} · ${esc(w[2])}</span>` +
+                    (w[3] ? `<br>🗞️ ${esc(w[3])}` : '') + `<br><span class="ot-faint">🎨 ${esc(topicName(i))}</span>`, ev.clientX, ev.clientY);
+            });
+        }
+        function labelAt(x, y) {
+            const b = labelBoxes.find((o) => x >= o.a && x <= o.b && y >= o.c && y <= o.e);
+            return b ? b.L : null;
+        }
+        function choose(i) {
+            state.chosen = i;
+            overlay();
+            if (i < 0) { card.hidden = true; return; }
+            card.hidden = false;
+            card.innerHTML = '<p>…</p>';
+            words(i).then((w) => {
+                if (state.chosen !== i) return;
+                if (!w) { card.innerHTML = '<p>🦗 Couldn’t load this headline.</p><button type="button" aria-label="Close">✕</button>'; }
+                else {
+                    card.innerHTML = `<b>${esc(w[0])}</b><small>📰 ${esc(w[1])} · ${esc(w[2])} · 🎨 ${esc(topicName(i))}</small>` +
+                        (w[3] ? `<small>🗞️ ${w[4] ? `<a href="${esc(w[4])}">${esc(w[3])}</a>` : esc(w[3])}</small>` : '') +
+                        '<button type="button" aria-label="Close">✕</button>';
+                }
+                card.querySelector('button').addEventListener('click', () => choose(-1));
+            });
+        }
+
+        // ---- pan, zoom and pinch
+        const pointers = new Map();
+        let drag = null, moved = false;
+        function zoomAt(f, mx, my) {
+            const base = Math.min(view.w, view.h) * 0.94;
+            const s = Math.max(base * 0.6, Math.min(base * 400, view.s * f));
+            f = s / view.s;
+            view.ox = mx - (mx - view.ox) * f; view.oy = my - (my - view.oy) * f; view.s = s;
+            draw();
+        }
+        canvas.addEventListener('wheel', (ev) => {
+            // plain scrolling moves the page past the map; ctrl/⌘ + scroll (and a trackpad pinch) zooms it
+            if (!ev.ctrlKey && !ev.metaKey) return;
+            ev.preventDefault();
+            const r = canvas.getBoundingClientRect();
+            zoomAt(Math.exp(-ev.deltaY * 0.0015), ev.clientX - r.left, ev.clientY - r.top);
+        }, {passive: false});
+        canvas.addEventListener('pointerdown', (ev) => {
+            canvas.setPointerCapture(ev.pointerId);
+            pointers.set(ev.pointerId, {x: ev.clientX, y: ev.clientY});
+            moved = false;
+            drag = {x: ev.clientX, y: ev.clientY, ox: view.ox, oy: view.oy};
+            if (pointers.size === 2) {
+                const [a, b] = [...pointers.values()];
+                drag.pinch = Math.hypot(a.x - b.x, a.y - b.y);
+            }
+        });
+        canvas.addEventListener('pointermove', (ev) => {
+            if (!pointers.has(ev.pointerId)) { if (ev.pointerType === 'mouse') hoverAt(ev); return; }
+            pointers.set(ev.pointerId, {x: ev.clientX, y: ev.clientY});
+            if (pointers.size === 2 && drag && drag.pinch) {
+                const [a, b] = [...pointers.values()];
+                const dist = Math.hypot(a.x - b.x, a.y - b.y);
+                const r = canvas.getBoundingClientRect();
+                zoomAt(dist / drag.pinch, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+                drag.pinch = dist;
+                moved = true;
+                return;
+            }
+            if (!drag) return;
+            const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+            if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+            if (moved) {
+                canvas.classList.add('ot-dragging');
+                hideTip();
+                view.ox = drag.ox + dx; view.oy = drag.oy + dy;
+                draw();
+            }
+        });
+        const up = (ev) => {
+            pointers.delete(ev.pointerId);
+            canvas.classList.remove('ot-dragging');
+            if (pointers.size) { const [a] = [...pointers.values()]; drag = {x: a.x, y: a.y, ox: view.ox, oy: view.oy}; return; }
+            if (!moved && ev.type === 'pointerup') {
+                const r = canvas.getBoundingClientRect();
+                const x = ev.clientX - r.left, y = ev.clientY - r.top;
+                const i = pick(x, y);
+                const label = labelAt(x, y);
+                if (i < 0 && label && label.href) { location.href = label.href; return; }
+                choose(i);
+                hideTip();
+            }
+            drag = null;
+        };
+        canvas.addEventListener('pointerup', up);
+        canvas.addEventListener('pointercancel', up);
+        canvas.addEventListener('pointerleave', (ev) => {
+            if (ev.pointerType === 'mouse' && !pointers.size) { state.hover = -1; overlay(); hideTip(); }
+        });
+        $('ot-zin').addEventListener('click', () => zoomAt(1.6, view.w / 2, view.h / 2));
+        $('ot-zout').addEventListener('click', () => zoomAt(1 / 1.6, view.w / 2, view.h / 2));
+        $('ot-zreset').addEventListener('click', () => { fit(); draw(); });
+    }
+})();
