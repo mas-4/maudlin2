@@ -133,3 +133,36 @@ main > h1, main > h2, main > h3 {
         margin: 0 auto 0.6em;
     }
 }
+
+/* The news-day score itself, with a little gauge: filled to the score, ticks where normal and big begin (Nov 5) */
+.newsday-score {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2em 0.45em;
+    font: 700 0.85em 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.newsday-score small {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.newsday-meter {
+    position: relative;
+    display: inline-block;
+    width: 6.5em;
+    height: 0.75em;
+    border: 2px solid currentColor;
+    border-radius: 999px;
+    overflow: hidden;
+    background:
+        linear-gradient(currentColor, currentColor) var(--normal) 0 / 2px 100% no-repeat,
+        linear-gradient(currentColor, currentColor) var(--big) 0 / 2px 100% no-repeat,
+        linear-gradient(90deg, #ff3b3b, #ff3b3b) 0 0 / var(--at) 100% no-repeat,
+        rgba(255, 255, 255, 0.55);
+}
+
+.newsday-sticker.big .newsday-meter {
+    background-color: rgba(255, 255, 255, 0.15);
+}

@@ -219,6 +219,14 @@
                 <span class="newsday-body">
                     <span class="newsday-label">{{ newsday.label }}</span>
                     <span class="newsday-why">Top story on {{ newsday.share }}% of outlets: {{ newsday.story }}</span>
+                    {% if newsday.day_score is defined and newsday.tiers is defined %}
+                        {% set peaked = newsday.day_score > newsday.score + 0.005 %}
+                        <span class="newsday-score" title="Newsiness: the top story’s share of front pages, each outlet counted in full for 2 hours after its newest headline on it, then half as much every 3 hours. Under {{ newsday.tiers.normal }} is a slow day, {{ newsday.tiers.big }} and up a big one; the day goes by its highest hour in the last 12.">
+                            🌡️ Newsiness {{ '%.2f'|format(newsday.day_score) }}{% if peaked %} <small>(12-hour high; {{ '%.2f'|format(newsday.score) }} now)</small>{% endif %}
+                            <span class="newsday-meter" style="--at: {{ [100 * newsday.day_score, 100]|min|round(1) }}%; --normal: {{ 100 * newsday.tiers.normal }}%; --big: {{ 100 * newsday.tiers.big }}%" aria-hidden="true"></span>
+                            <small>🚨 at {{ '%.2f'|format(newsday.tiers.big) }}</small>
+                        </span>
+                    {% endif %}
                     {% if newsday.live_headlines is defined %}
                         <span class="newsday-count">📡 {{ "{:,}".format(newsday.live_headlines) }} headlines live · 📰 {{ newsday.stories }} active stories</span>
                     {% endif %}

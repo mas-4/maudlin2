@@ -550,6 +550,7 @@ class HeadlinesPage:
         self.context['newsday'] = {
             **NEWS_DAY_LABELS[kind], 'kind': kind, 'share': round(100 * stories.loc[top, 'share']),
             'day_score': round(float(day), 3),  # what the kind comes from: this hour's score or the recent peak
+            'tiers': dict(NEWS_DAY_TIERS),  # for the sticker's meter (Nov 5: "add a literal newsiness score")
             'score': round(float(score), 3),  # this hour's own score, kept hour by hour (app/analysis/newsiness.py)
             'outlets': int(stories.loc[top, 'outlets']), 'active': live_outlets,
             'story': sagas[top]['name'] if top in sagas else self.context['titles'][top],
