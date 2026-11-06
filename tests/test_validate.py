@@ -214,6 +214,10 @@ def test_an_undone_check_no_longer_counts_as_confirmed(monkeypatch, tmp_path):
     try:
         post('/workbench', {'action': 'check', 'claim': 'a', 'id': 'M001', 'answer': 'yes'})
         assert (mi.key('a'), 'M001') in validate.recently_confirmed()
+        post('/workbench', {'action': 'correct', 'claim': 'a', 'text': 'a, reworded'})  # the check follows the claim
+        assert (mi.key('a, reworded'), 'M001') in validate.recently_confirmed()
+        post('/undo')
+        assert (mi.key('a, reworded'), 'M001') not in validate.recently_confirmed()
         post('/undo')
         assert (mi.key('a'), 'M001') not in validate.recently_confirmed()
     finally:

@@ -490,7 +490,9 @@ SECOND_WAIT = 30  # days: a filing the person confirmed this lately isn't doubte
 
 
 def recently_confirmed(days: int = SECOND_WAIT) -> set[tuple[str, str]]:
-    """(claim key, motif id) for every filing the person checked ✓ or not sure in the last `days`, from the curation log"""
+    """(claim key, motif id) for every filing the person checked ✓ or not sure in the last `days`, from the curation log.
+    A check follows the claim through its rewordings ('correct') after it: the Nov 6 claim clear checked claims, then
+    reworded them, and the new wording came back to the board as doubted"""
     from app.analysis import curation_db, motif_index as mi
     since = (dt.now() - td(days=days)).isoformat(timespec='seconds')
     out = set()
@@ -498,14 +500,20 @@ def recently_confirmed(days: int = SECOND_WAIT) -> set[tuple[str, str]]:
         rows = curation_db.actions()
     except Exception:  # noqa: BLE001 - no log: nothing counts as recent
         return out
-    for r in rows:
+    for r in rows:  # oldest first
         if r['at'] < since:
             continue
         a = r['action']
         for step in (a.get('steps') or []) if a.get('action') == 'batch' else [a]:
-            if isinstance(step, dict) and step.get('action') == 'check' and step.get('answer') in ('yes', 'unsure') \
+            if not isinstance(step, dict):
+                continue
+            if step.get('action') == 'check' and step.get('answer') in ('yes', 'unsure') \
                     and isinstance(step.get('claim'), str) and step.get('id'):
                 out.add((mi.key(step['claim']), step['id']))
+            elif step.get('action') == 'correct' and isinstance(step.get('claim'), str) \
+                    and isinstance(step.get('text'), str):
+                old, new = mi.key(step['claim']), mi.key(step['text'])
+                out |= {(new, mid) for k, mid in out if k == old}
     return out
 
 
