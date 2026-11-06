@@ -1,4 +1,4 @@
-"""The news over time (over-time.html; Nov 5, the person: "can we do some interesting visualizations of the news over
+"""The news over time (over-time.html, and the headline galaxy's own page, galaxy.html; Nov 5, the person: "can we do some interesting visualizations of the news over
 time?"): our whole record at once. The headline galaxy (every headline we've read, placed by what it says:
 app/analysis/galaxy.py), how newsy each hour was (app/analysis/newsiness.py), the motifs' tides, the feelings the news
 stirred day by day, and the biggest sagas' lifelines; the series are worked out in app/analysis/over_time.py and drawn
@@ -29,6 +29,8 @@ FEELING_INK = {'fear': '#8a5cff', 'anger': '#ff6b1a', 'sadness': '#8a8f98', 'dis
                'joy': '#ffc400', 'hope': '#00c2a8', 'neutral': '#e2e2ea'}
 # The galaxy's topics, brightest pops first, checked for color-blind pairs (dataviz validate_palette, on the night sky)
 TOPIC_INK = ['#ff4fa3', '#ffc400', '#3a86ff', '#ff6b1a', '#00c2a8', '#b197fc', '#ff8787', '#8ce99a']
+SKY = (20, 20, 42)  # the galaxy's night sky (static/galaxy.css)
+PREVIEW = 'preview.png'  # the whole galaxy as a picture, in FOLDER
 
 
 def utc_now() -> dt:
@@ -101,10 +103,26 @@ def write_galaxy(rows: list[tuple], days: list[str], local: list[str], with_page
             groups.setdefault(('story', story), {'name': label, 'href': page_story.page_name(story) if story in with_page
                                                  else None, 'rows': []})['rows'].append(n)
     topics = np.bincount(lay['topic'], minlength=len(lay['names']))
+    preview_png(lay['xy'], lay['topic'], os.path.join(folder, PREVIEW))
     return {'n': len(ids), 'chunk': CHUNK, 'stamp': f'{len(ids)}-{int(ids[-1])}-{lay["made"]}',
             'made': lay['made'], 'labels': ot.cluster_labels(lay['xy'], groups, day),
             'topics': [{'name': str(name), 'ink': TOPIC_INK[i % len(TOPIC_INK)], 'n': int(topics[i])}
                        for i, name in enumerate(lay['names'])], 'bytes': len(blob)}
+
+
+def preview_png(xy: np.ndarray, topic: np.ndarray, path: str, w: int = 1200, h: int = 630):
+    """The whole galaxy as a still picture, drawn as galaxy.js draws it (each dot adds its topic's color to its pixel,
+    which fills toward white as dots pile up): the over-time page's door to the galaxy, and its share card"""
+    from PIL import Image
+    ink = np.array([[int(c[k:k + 2], 16) for k in (1, 3, 5)] for c in TOPIC_INK], dtype=np.float32)
+    side = h * 0.92
+    px = np.clip(((w - side) / 2 + xy[:, 0] * side).astype(int), 0, w - 1)
+    py = np.clip(((h - side) / 2 + xy[:, 1] * side).astype(int), 0, h - 1)
+    acc = np.zeros((h, w, 3), dtype=np.float32)
+    np.add.at(acc, (py, px), ink[topic % len(TOPIC_INK)] * 0.3)
+    sky = np.array(SKY, dtype=np.float32)
+    out = sky + (255 - sky) * (1 - np.exp(-acc / 255))
+    Image.fromarray(out.astype(np.uint8)).save(path, optimize=True)
 
 
 def emotions(rows: list[tuple], local: list[str], days: list[str], with_page: set[int]) -> dict:
@@ -192,9 +210,16 @@ class OverTimePage:
                 logger.warning("News over time: %s failed (%s: %s)", name, type(e).__name__, e)
                 data[name] = None
             timings[name] = round(time.time() - t, 1)
-        self.context.update({'data': data, 'headlines': len(rows), 'start': short_day(days[0]),
+        page_data = {k: v for k, v in data.items() if k != 'galaxy'}  # the galaxy's own page carries its data
+        self.context.update({'data': page_data, 'headlines': len(rows), 'start': short_day(days[0]),
                              'galaxy': data.get('galaxy'), 'tides': data.get('tides')})
         self.template.write(self.context)
+        # The galaxy fills a page of its own (Nov 5, the person: "abandon the whole site for that one specific thing
+        # with a big back button"); the charts page shows its picture and links to it
+        galaxy_data = data.get('galaxy')
+        TemplateHandler('galaxy.html').write({
+            'data': {'days': days, 'galaxy': galaxy_data}, 'galaxy': galaxy_data, 'start': short_day(days[0]),
+            'preview': f'{FOLDER}/{PREVIEW}' if galaxy_data else None})
         logger.info("...done in %.1f s (%s)", time.time() - t0, ', '.join(f'{k} {v} s' for k, v in timings.items()))
 
 

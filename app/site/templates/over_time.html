@@ -1,6 +1,6 @@
 {% extends "page.html" %}
 {# The news over time (app/site/page_over_time.py): our whole record on one page; the charts are drawn by over_time.js
-   from the data below, the galaxy's points and words fetched from galaxy/ #}
+   from the data below. The headline galaxy has a page of its own (galaxy.html); here, its picture links to it #}
 {% block content %}
     <header class="story-hero ot-hero">
         <p class="story-kicker"><span>📈 Over time</span></p>
@@ -9,7 +9,7 @@
             headlines on one map, how newsy each hour was, which stories people kept telling, what the news made
             us feel and the running stories that lasted. Point at anything for the details; times are Eastern.</p>
         <nav class="ot-jump" aria-label="Jump to a chart">
-            <a href="#ot-galaxy">🌌 galaxy</a><a href="#ot-newsiness">📈 newsiness</a><a href="#ot-tides">🧶 motif tides</a>
+            <a href="galaxy.html">🌌 galaxy</a><a href="#ot-newsiness">📈 newsiness</a><a href="#ot-tides">🧶 motif tides</a>
             <a href="#ot-feelings">😱 feelings</a><a href="#ot-sagas">🧵 sagas</a>
         </nav>
     </header>
@@ -17,38 +17,14 @@
     <h2 class="section-divider stage-banner" id="ot-galaxy" style="--stage: #8a5cff"><span>🌌 The headline galaxy</span></h2>
     <p class="stage-sub">every headline we've read, near the ones that say similar things</p>
     {% if galaxy %}
-        <figure class="ot-card ot-galaxy" style="--pop: #8a5cff">
-            <div class="ot-controls" role="group" aria-label="Galaxy controls">
-                <div class="ot-seg" role="group" aria-label="Color the dots by">
-                    <button type="button" class="ot-pill" data-color="topic" aria-pressed="true">🎨 by topic</button>
-                    <button type="button" class="ot-pill" data-color="day" aria-pressed="false">🗓️ by day</button>
-                </div>
-                <div class="ot-week">
-                    <button type="button" class="ot-pill" id="ot-play" aria-label="Play the weeks one day at a time">▶️ play</button>
-                    <input type="range" id="ot-slider" min="0" max="0" value="0" aria-label="Light up a week">
-                    <span class="ot-week-label" id="ot-week-label">all of it</span>
-                    <button type="button" class="ot-pill" id="ot-all" aria-pressed="true">✨ all</button>
-                </div>
-            </div>
-            <div class="ot-sky" id="ot-sky">
-                <canvas id="ot-canvas" aria-label="Map of every headline: each dot a headline, placed near the ones that say similar things"></canvas>
-                <p class="ot-loading" id="ot-loading">🔭 Loading {{ '{:,}'.format(galaxy.n) }} headlines…</p>
-                <div class="ot-zoom">
-                    <button type="button" id="ot-zin" aria-label="Zoom in">+</button>
-                    <button type="button" id="ot-zout" aria-label="Zoom out">−</button>
-                    <button type="button" id="ot-zreset" aria-label="Show the whole map">⤢</button>
-                </div>
-                <div class="ot-sky-card" id="ot-sky-card" hidden></div>
-            </div>
-            <ul class="ot-topics" id="ot-topics" aria-label="Topics: tap one to pick it out"></ul>
-            <figcaption>Each dot is one headline, {{ '{:,}'.format(galaxy.n) }} in all. A computer reads each one and turns
-                it into a list of numbers for what it says; headlines with similar numbers sit close together, so
-                bright knots are many headlines on one thing. The colors are eight rough topics the computer found
-                on its own, named by the words most typical of them. Labels mark the big running stories (🧵) and
-                stories whose headlines sit together. Point at or tap a dot for its headline; drag to move; pinch,
-                ctrl + scroll or the + and − buttons to zoom. Press ▶️ to watch the weeks go by. The map is laid out again once a week (last on
-                {{ galaxy.made }}); new headlines join it every hour.</figcaption>
-        </figure>
+        {# The galaxy has a page of its own, the whole screen (galaxy.html); here, its picture as the way in #}
+        <a class="ot-card ot-galaxy-door" href="galaxy.html" style="--pop: #8a5cff">
+            <img src="galaxy/preview.png?v={{ galaxy.stamp|urlencode }}" width="1200" height="630" loading="lazy"
+                 alt="The headline galaxy: {{ '{:,}'.format(galaxy.n) }} headlines as dots of light, bright where many say the same thing">
+            <span class="ot-door-go">🌌 Open the galaxy, full screen →</span>
+            <span class="ot-door-note">{{ '{:,}'.format(galaxy.n) }} headlines on one map. Point at any dot for its
+                headline, zoom into the knots and play the weeks back.</span>
+        </a>
     {% else %}
         <p class="stage-empty">🦗 The galaxy isn't laid out yet; it will be at the next build.</p>
     {% endif %}

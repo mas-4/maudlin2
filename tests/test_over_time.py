@@ -179,6 +179,10 @@ def test_galaxy_files_hold_every_headline(sky, monkeypatch, tmp_path):
     assert chunk[0][:3] == [titles[192], 'AP', 'Oct 3']
     first = json.loads((tmp_path / 'build' / 'galaxy' / 't-0.json').read_text())
     assert first[0][3:] == ['A story', 'story-5.html']
+    from PIL import Image
+    with Image.open(tmp_path / 'build' / 'galaxy' / pot.PREVIEW) as im:  # the picture the charts page links with
+        assert im.size == (1200, 630)
+        assert im.getpixel((0, 0)) == pot.SKY
     assert [t['ink'] for t in out['topics']] == pot.TOPIC_INK[:3]
 
 
@@ -198,3 +202,19 @@ def test_page_renders(monkeypatch, tmp_path):
     assert json.loads(soup.select_one('#ot-data').string)['x'] == '</script><b>'
     assert soup.select_one('script[src^="over_time.js"]') is not None
     assert '12,345' in html
+
+
+def test_galaxy_page_is_the_whole_page(tmp_path, monkeypatch):
+    """The galaxy's own page (Nov 5): no site menu or footer, a big way back, and its data for galaxy.js"""
+    monkeypatch.setattr(pot.Config, 'build', str(tmp_path))
+    G = {'n': 321652, 'chunk': 1000, 'stamp': 's', 'made': '2026-11-05', 'labels': [], 'topics': [], 'bytes': 7}
+    pot.TemplateHandler('galaxy.html').write({'data': {'days': DAYS, 'galaxy': G}, 'galaxy': G, 'start': 'Oct 2',
+                                              'preview': 'galaxy/preview.png'})
+    soup = BeautifulSoup((tmp_path / 'galaxy.html').read_text(), 'html.parser')
+    assert soup.select_one('a#gx-back')['href'] == 'over-time.html'
+    assert soup.select_one('nav') is None and soup.select_one('footer') is None
+    assert soup.select_one('link[href^="./style.css"]') is None  # its own stylesheet only
+    assert json.loads(soup.select_one('#ot-data').string)['galaxy']['n'] == 321652
+    assert soup.select_one('script[src^="galaxy.js"]') is not None
+    assert '321,652 headlines' in soup.get_text()
+    assert soup.select_one('meta[property="og:image"]')['content'].endswith('/galaxy/preview.png')

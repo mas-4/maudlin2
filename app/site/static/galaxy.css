@@ -1,0 +1,100 @@
+/* The headline galaxy (galaxy.html, static/galaxy.js): the night sky is the whole page, with a big way back in the
+   corner and the controls floating over the bottom. None of the site's stylesheet; a dark page on purpose */
+:root { color-scheme: dark; --ink: #1f1f2e; --sky: #14142a; --comic: 'Comic Neue', 'Comic Sans MS', cursive; }
+html, body { margin: 0; height: 100%; background: var(--sky); color: #fff; overflow: hidden; overscroll-behavior: none; }
+body { font: 15px/1.4 var(--comic); font-weight: 700; -webkit-text-size-adjust: 100%; }
+
+.gx-sky { position: fixed; inset: 0; touch-action: none; }
+.gx-sky canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.gx-sky canvas.ot-dragging { cursor: grabbing; }
+.ot-loading { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; color: #fff; font: 700 18px var(--comic);
+    pointer-events: none; }
+.ot-loading[hidden] { display: none; }
+
+/* the way back: big, bright, always there */
+.gx-top {
+    position: fixed; z-index: 10; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 14px;
+    padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 12px max(14px, env(safe-area-inset-left));
+    pointer-events: none; background: linear-gradient(rgba(20, 20, 42, 0.85), rgba(20, 20, 42, 0));
+}
+.gx-back {
+    pointer-events: auto; flex: none; display: inline-flex; align-items: center; min-height: 56px; padding: 0 22px;
+    font: 400 22px/1 'Bungee', var(--comic); color: var(--ink); background: #ffc400; text-decoration: none;
+    border: 3px solid var(--ink); border-radius: 999px; box-shadow: 4px 4px 0 #ff4fa3; transition: transform .12s, box-shadow .12s;
+}
+.gx-back:hover, .gx-back:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #ff4fa3; outline: none; }
+.gx-back:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #ff4fa3; }
+.gx-title { min-width: 0; text-shadow: 0 1px 3px #000; }
+.gx-title h1 { margin: 0; font: 400 clamp(15px, 2.6vw, 24px)/1.15 'Bungee', var(--comic); }
+.gx-title p { margin: 2px 0 0; font-size: 13px; color: #d8d8ec; }
+
+.gx-zoom { position: fixed; z-index: 10; right: max(12px, env(safe-area-inset-right)); top: calc(max(12px, env(safe-area-inset-top)) + 72px);
+    display: flex; flex-direction: column; gap: 8px; }
+.gx-zoom button {
+    width: 44px; height: 44px; font: 700 20px/1 var(--comic); background: #fff; color: var(--ink);
+    border: 2px solid var(--ink); border-radius: 12px; box-shadow: 2px 2px 0 #ffc400; cursor: pointer;
+}
+
+/* the headline someone tapped */
+.gx-card {
+    position: fixed; z-index: 11; left: max(12px, env(safe-area-inset-left)); top: calc(max(12px, env(safe-area-inset-top)) + 76px);
+    width: min(420px, calc(100vw - 84px)); background: #fff; color: var(--ink); border: 2px solid var(--ink); border-radius: 12px;
+    box-shadow: 3px 3px 0 #ff4fa3; padding: 9px 34px 9px 11px; font: 14px/1.4 Helvetica, Arial, sans-serif; box-sizing: border-box;
+}
+.gx-card[hidden] { display: none; }
+.gx-card p { margin: 0; }
+.gx-card b { font: 700 16px/1.3 var(--comic); display: block; }
+.gx-card small { color: #666; display: block; margin-top: 3px; }
+.gx-card a { color: #c43d00; }
+.gx-card button { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border: 0; background: none;
+    font: 700 17px system-ui; cursor: pointer; color: var(--ink); }
+
+/* the controls, floating over the bottom of the sky */
+.gx-panel {
+    position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 8px;
+    padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    background: linear-gradient(rgba(20, 20, 42, 0), rgba(20, 20, 42, 0.9) 40%); pointer-events: none;
+}
+.gx-panel > * { pointer-events: auto; }
+.ot-controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.ot-seg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ot-week { display: flex; gap: 6px; align-items: center; flex: 1 1 300px; min-width: 0; }
+.ot-week input[type="range"] { flex: 1 1 100px; min-width: 70px; accent-color: #ffc400; height: 32px; }
+.ot-week-label { font: 700 13px/1.2 var(--comic); color: #d8d8ec; min-width: 7.5em; }
+.ot-pill {
+    font: 700 14px/1 var(--comic); color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 999px;
+    padding: 8px 12px; min-height: 38px; cursor: pointer; box-shadow: 2px 2px 0 #8a5cff; white-space: nowrap;
+}
+.ot-pill[aria-pressed="true"] { background: #ffc400; }
+.ot-topics { list-style: none; margin: 0; padding: 2px 0 4px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.ot-topics li { flex: none; }
+.ot-topics button {
+    display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1.1 var(--comic); color: var(--ink); background: #fff;
+    border: 2px solid var(--ink); border-radius: 999px; padding: 7px 10px; min-height: 34px; cursor: pointer; white-space: nowrap;
+}
+.ot-topics button[aria-pressed="true"] { background: #ffe9a8; box-shadow: 2px 2px 0 #ffc400; }
+.ot-topics .ot-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--ink); flex: none; }
+.ot-topics small { color: #666; font-size: 11px; }
+.gx-about summary { cursor: pointer; color: #d8d8ec; font-size: 13px; width: fit-content; }
+.gx-about p { margin: 6px 0 0; max-width: 62em; font: 14px/1.5 Helvetica, Arial, sans-serif; color: #e8e8f4; }
+.gx-about[open] { background: rgba(20, 20, 42, 0.95); border-radius: 10px; padding: 8px 10px; margin: 0 -10px; }
+
+/* the floating card for whatever the pointer is over */
+.ot-tip {
+    position: fixed; z-index: 50; pointer-events: none; max-width: min(320px, calc(100vw - 24px)); background: #fff;
+    color: var(--ink); border: 2px solid var(--ink); border-radius: 10px; box-shadow: 3px 3px 0 #ffc400; padding: 7px 10px;
+    font: 13px/1.4 Helvetica, Arial, sans-serif;
+}
+.ot-tip[hidden] { display: none; }
+.ot-tip b { font: 700 14px/1.25 var(--comic); display: block; }
+.ot-tip .ot-faint { color: #777; }
+
+.gx-empty { position: fixed; inset: 0; display: grid; place-items: center; margin: 0; font-size: 18px; }
+
+@media (max-width: 600px) {
+    .gx-back { min-height: 50px; padding: 0 16px; font-size: 18px; }
+    .gx-title p { display: none; }
+    .ot-week-label { min-width: 0; font-size: 12px; }
+    .ot-pill { padding: 7px 10px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .gx-back { transition: none; } }

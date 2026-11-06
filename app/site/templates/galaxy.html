@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+{# The headline galaxy (app/site/page_over_time.py, drawn by static/galaxy.js): every headline we've read on a map that
+   is the whole page, none of the site around it, and a big way back (Nov 5, the person: "abandon the whole site for
+   that one specific thing with a big back button"). Its own stylesheet, static/galaxy.css #}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>The headline galaxy · bignews.day</title>
+    {% set share_text = 'Every headline we have read, ' ~ '{:,}'.format(galaxy.n if galaxy else 0) ~ ' of them, on one map: headlines that say similar things sit together.' %}
+    <meta name="description" content="{{ share_text|e }}">
+    {% if page_url %}<link rel="canonical" href="{{ page_url|e }}">
+    <meta property="og:url" content="{{ page_url|e }}">{% endif %}
+    <meta property="og:site_name" content="bignews.day">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="The headline galaxy · bignews.day">
+    <meta property="og:description" content="{{ share_text|e }}">
+    <meta property="og:image" content="{{ site_url }}/{{ preview if preview else site_image }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#14142a">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./galaxy.css?v={{ asset_version }}">
+    <link rel="icon" href="./favicon.ico?v=2" sizes="any">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+</head>
+<body>
+{% if galaxy %}
+    <div class="ot-sky gx-sky" id="ot-sky">
+        <canvas id="ot-canvas" aria-label="Map of every headline: each dot a headline, placed near the ones that say similar things"></canvas>
+        <p class="ot-loading" id="ot-loading">🔭 Loading {{ '{:,}'.format(galaxy.n) }} headlines…</p>
+    </div>
+
+    <header class="gx-top">
+        <a class="gx-back" id="gx-back" href="over-time.html">⬅️ Back</a>
+        <div class="gx-title">
+            <h1>🌌 The headline galaxy</h1>
+            <p>{{ '{:,}'.format(galaxy.n) }} headlines since {{ start }}</p>
+        </div>
+    </header>
+
+    <div class="ot-zoom gx-zoom">
+        <button type="button" id="ot-zin" aria-label="Zoom in">+</button>
+        <button type="button" id="ot-zout" aria-label="Zoom out">−</button>
+        <button type="button" id="ot-zreset" aria-label="Show the whole map">⤢</button>
+    </div>
+
+    <div class="ot-sky-card gx-card" id="ot-sky-card" hidden></div>
+
+    <section class="gx-panel" aria-label="Galaxy controls">
+        <div class="ot-controls">
+            <div class="ot-seg" role="group" aria-label="Color the dots by">
+                <button type="button" class="ot-pill" data-color="topic" aria-pressed="true">🎨 by topic</button>
+                <button type="button" class="ot-pill" data-color="day" aria-pressed="false">🗓️ by day</button>
+            </div>
+            <div class="ot-week">
+                <button type="button" class="ot-pill" id="ot-play" aria-label="Play the weeks one day at a time">▶️ play</button>
+                <input type="range" id="ot-slider" min="0" max="0" value="0" aria-label="Light up a week">
+                <span class="ot-week-label" id="ot-week-label">all of it</span>
+                <button type="button" class="ot-pill" id="ot-all" aria-pressed="true">✨ all</button>
+            </div>
+        </div>
+        <ul class="ot-topics" id="ot-topics" aria-label="Topics: tap one to pick it out"></ul>
+        <details class="gx-about">
+            <summary>ℹ️ What am I looking at?</summary>
+            <p>Each dot is one headline, {{ '{:,}'.format(galaxy.n) }} in all. A computer reads each one and turns it into
+                a list of numbers for what it says; headlines with similar numbers sit close together, so bright knots
+                are many headlines on one thing. The colors are eight rough topics the computer found on its own, named
+                by the words most typical of them. Labels mark the big running stories (🧵) and stories whose headlines
+                sit together. Point at or tap a dot for its headline; drag to move; scroll, pinch or the + and −
+                buttons to zoom. Press ▶️ to watch the weeks go by. The map is laid out again once a week (last on
+                {{ galaxy.made }}); new headlines join it every hour.</p>
+        </details>
+    </section>
+
+    <div class="ot-tip" id="ot-tip" role="status" hidden></div>
+    <script id="ot-data" type="application/json">{{ data|tojson }}</script>
+    <script src="galaxy.js?v={{ asset_version }}"></script>
+{% else %}
+    <header class="gx-top">
+        <a class="gx-back" id="gx-back" href="over-time.html">⬅️ Back</a>
+    </header>
+    <p class="gx-empty">🦗 The galaxy isn’t laid out yet; it will be at the next build.</p>
+{% endif %}
+<script data-goatcounter="https://bignewsday.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
