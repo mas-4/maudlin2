@@ -8,6 +8,7 @@ against the motifs busiest that week; then whether a story's top motif rises in 
     s14_cassandra.py build    stories, headlines, filings and motifs, embedded (mxbai under the lease)
     s14_cassandra.py judge    Gemma 4 26B picks from the learned arm's top 12 for each test story (lease; resumes)
     s14_cassandra.py report   hit@5 and recall@10 per arm; the bump test; examples
+    s14_cassandra.py check    post hoc: the bump test by each arm and by the answers; the learned arm, fairer negatives
 
 Data in ~/maudlin-data/archives/archives.sqlite (cassandra_*). The paper is ~/maudlin-data/papers/cassandra.md."""
 import json
@@ -265,9 +266,11 @@ def judge():
     print(f'judge {len(test)}/{len(test)} done', flush=True)
 
 
-def bump(d: Data, arms: dict, answers: dict, test: list) -> tuple[float, float, float, int]:
-    """The mean show-filing lift of each test story's top learned motif (one with BUMP_FLOOR+ filings) after its
-    launch, the placebo's mean (the same motifs on other test stories' launch days) and the p-value"""
+def bump(d: Data, arms: dict, answers: dict, test: list, arm: str = 'learned',
+         pick=None) -> tuple[float, float, float, int]:
+    """The mean show-filing lift of each test story's top motif by an arm (one with BUMP_FLOOR+ filings) after its
+    launch, the placebo's mean (the same motifs on other test stories' launch days) and the p-value. pick(k) gives
+    a story's motifs instead of an arm's top one"""
     shows = d.c_source == 'shows'
     daily = defaultdict(Counter)
     for m, day in zip(d.c_motif[shows], d.c_day[shows]):
@@ -280,7 +283,10 @@ def bump(d: Data, arms: dict, answers: dict, test: list) -> tuple[float, float, 
         return after - BUMP_DAYS * prior
     pairs = []
     for k in test:
-        top = [m for m in arms['learned'][k] if d.total[m] >= BUMP_FLOOR]
+        if pick is not None:
+            pairs += [(m, d.stories[k]['day']) for m in pick(k) if d.total[m] >= BUMP_FLOOR]
+            continue
+        top = [m for m in arms[arm][k] if d.total[m] >= BUMP_FLOOR]
         if top:
             pairs.append((top[0], d.stories[k]['day']))
     real = float(np.mean([lift(m, day) for m, day in pairs]))
@@ -320,5 +326,56 @@ def report():
     print(f'examples in {EXAMPLES}', flush=True)
 
 
+def check():
+    """After the report, not in the hypotheses (Nov 6): is the bump test's p 1.000 regression to the mean, since
+    the learned arm leans on a motif's busy week before launch? And does the learned arm lose to mixed because its
+    negatives came only from the top 50 by mixed? Each is labelled post hoc in the paper"""
+    from sklearn.linear_model import LogisticRegression
+    con = db()
+    d = Data(con)
+    arms, answers, test = rankings(d, con)
+    lines = []
+    for arm in ('learned', 'busy', 'claims', 'name', 'mixed'):
+        real, placebo, p, n = bump(d, arms, answers, test, arm)
+        lines.append(f'S14 check bump by {arm}: {n} top motifs, lift {real:+.2f} against placebo {placebo:+.2f}, '
+                     f'p {p:.3f}')
+    real, placebo, p, n = bump(d, arms, answers, test, pick=lambda k: sorted(answers[k]))
+    lines.append(f'S14 check bump by the answers: {n} told-as motifs, lift {real:+.2f} against placebo '
+                 f'{placebo:+.2f}, p {p:.3f}')
+    feats = {}
+    for k in range(len(d.stories)):
+        X, idx, ans = d.features(k)
+        if len(idx) and ans:
+            feats[k] = (X, idx)
+    train = [k for k in feats if d.stories[k]['day'] < SPLIT]
+    rng = np.random.default_rng(141)
+    rows, ys = [], []
+    for k in train:
+        X, idx = feats[k]
+        pos = [i for i, m in enumerate(idx) if m in answers[k]]
+        neg = [i for i in range(len(idx)) if idx[i] not in answers[k]]
+        for i in pos + rng.choice(neg, size=min(TOP_POOL, len(neg)), replace=False).tolist():
+            rows.append(X[i])
+            ys.append(int(idx[i] in answers[k]))
+    R = np.array(rows)
+    mu, sd = R.mean(0), R.std(0) + 1e-9
+    model = LogisticRegression(max_iter=2000, class_weight='balanced').fit((R - mu) / sd, ys)
+    coef = dict(zip(FEATURES, np.round(model.coef_[0], 3).tolist()))
+    for name, cols in (('all five', list(range(len(FEATURES)))), ('without busy', [0, 1, 2, 4])):
+        m2 = model if len(cols) == len(FEATURES) else LogisticRegression(
+            max_iter=2000, class_weight='balanced').fit(((R - mu) / sd)[:, cols], ys)
+        hit = rec = 0.0
+        for k in test:
+            X, idx = feats[k]
+            rank = idx[np.argsort(-m2.decision_function(((X - mu) / sd)[:, cols]))]
+            hit += bool(set(rank[:5].tolist()) & answers[k])
+            rec += len(set(rank[:10].tolist()) & answers[k]) / len(answers[k])
+        lines.append(f'S14 check learned, negatives drawn from every motif, {name}: hit@5 {hit / len(test):.3f}, '
+                     f'recall@10 {rec / len(test):.3f}' + (f'; weights {coef}' if name == 'all five' else ''))
+    for ln in lines:
+        print(ln, flush=True)
+        harness.note(ln)
+
+
 if __name__ == '__main__':
-    {'build': build, 'judge': judge, 'report': report}[sys.argv[1] if len(sys.argv) > 1 else 'report']()
+    {'build': build, 'judge': judge, 'report': report, 'check': check}[sys.argv[1] if len(sys.argv) > 1 else 'report']()
